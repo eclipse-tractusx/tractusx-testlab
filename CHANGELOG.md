@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   without an index, and nested/dotted predicate keys
 - `util/parse_kv` step for parsing delimited `key=value` strings such as an EDC
   `subprotocolBody`
+- `util/base64` step for encoding/decoding strings with base64 / base64url, e.g.
+  building a base64url `aas_identifier` for the AAS DTR
 - `util/log` step for echoing a resolved value while authoring a test
 
 ### Fixed

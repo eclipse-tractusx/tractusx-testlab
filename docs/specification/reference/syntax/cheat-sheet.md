@@ -299,6 +299,22 @@ nothing raises a clear error rather than returning a wrong value.
     # kv_separator: "="     (default)
 ```
 
+**`util/base64`** — encode or decode a string with base64 / base64url. The
+AAS DTR requires an `aas_identifier` to be **base64url**-encoded before it goes
+in a request path, so `url_safe: true` is the common case. Decoding restores
+padding automatically, so an unpadded value round-trips without extra `=`.
+
+```yaml
+- id: encode_aas_id
+  uses: util/base64
+  with:
+    input: "${{ env.variables.twin_id }}"   # "urn:uuid:1234" or a URL
+    mode: encode                             # encode (default) | decode
+    url_safe: true                           # -/_ instead of +//; needed for DTR
+    strip_padding: false                     # drop trailing '=' when encoding
+    store_in_variable: aas_identifier_b64
+```
+
 **`util/log`** — echo a resolved value to stdout and the run log while authoring.
 Asserts nothing and always passes; remove once a test is finalised.
 
@@ -380,7 +396,7 @@ env:
 |--------|----------|
 | `mock/` | `mock/api`, `mock/wait/http_request` |
 | `connector/` | `connector/pull_data_filtered`, `connector/create_asset`, `connector/health_check` |
-| `util/` | `util/generate_uuid`, `util/log`, `util/parse_kv` |
+| `util/` | `util/generate_uuid`, `util/log`, `util/parse_kv`, `util/base64` |
 | `validate/` | `validate/assert`, `validate/field`, `validate/schema` |
 | `variable/` | `variable/type/string`, `variable/type/integer`, `variable/type/boolean` |
 | `config/` | `config/connector/policy` |
