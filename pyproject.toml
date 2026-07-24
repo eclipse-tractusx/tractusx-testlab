@@ -56,7 +56,7 @@ requires-poetry = ">=2.0"
 
 [tool.poetry.group.dev.dependencies]
 build = "^1.2.2"
-setuptools = "^78.1.1"
+setuptools = "^83.0.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.1.1"
