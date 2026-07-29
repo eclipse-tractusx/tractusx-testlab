@@ -103,7 +103,7 @@ def _extract_by_path(data: object, path: str) -> object:
     return current
 
 
-@step("json_path_extract")
+@step("util/json_path_extract", aliases=["json_path_extract"])
 class JsonPathExtractStep(BaseStep):
     """Extract a value from a context variable using dot-notation path.
 

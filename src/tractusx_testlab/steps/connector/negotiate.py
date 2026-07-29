@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("negotiate_contract", aliases=["negotiate"])
+@step("connector/consumer/negotiate", aliases=["negotiate_contract", "negotiate"])
 class NegotiateContractStep(BaseStep):
     """Start an EDR contract negotiation with the provider via the SDK."""
 

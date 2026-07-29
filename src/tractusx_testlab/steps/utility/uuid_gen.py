@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("generate_uuid", aliases=["util/generate_uuid"])
+@step("util/generate_uuid", aliases=["generate_uuid"])
 class GenerateUuidStep(BaseStep):
     """Generate a random UUID v4.
 

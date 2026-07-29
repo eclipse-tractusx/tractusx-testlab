@@ -51,7 +51,7 @@ def _resolve_filter_expression(params: dict) -> list[dict]:
     return filter_expression or []
 
 
-@step("query_catalog")
+@step("connector/consumer/query_catalog", aliases=["query_catalog"])
 class QueryCatalogStep(BaseStep):
     """Query a provider's catalog via the SDK connector consumer service."""
 
@@ -88,7 +88,7 @@ class QueryCatalogStep(BaseStep):
         )
 
 
-@step("query_catalog_by_asset_id")
+@step("connector/consumer/query_catalog_by_asset_id", aliases=["query_catalog_by_asset_id"])
 class QueryCatalogByAssetIdStep(BaseStep):
     """Query the catalog filtered by a specific asset ID."""
 
@@ -121,7 +121,7 @@ class QueryCatalogByAssetIdStep(BaseStep):
         )
 
 
-@step("query_catalog_by_bpnl")
+@step("connector/consumer/query_catalog_by_bpnl", aliases=["query_catalog_by_bpnl"])
 class QueryCatalogByBpnlStep(BaseStep):
     """Query the catalog using BPNL-based connector discovery."""
 

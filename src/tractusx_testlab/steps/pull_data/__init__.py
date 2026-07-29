@@ -40,6 +40,6 @@ from tractusx_testlab.steps.pull_data._executor import (
 
 __all__ = ["STEP_TYPES"]
 
-step(STEP_PULL_DATA_FILTERED)(PullDataFiltered)
-step(STEP_PULL_DATA_FILTERED_BY_POLICY)(PullDataFilteredByPolicy)
+step("connector/consumer/pull_data_filtered", aliases=[STEP_PULL_DATA_FILTERED])(PullDataFiltered)
+step("connector/consumer/pull_data_filtered_by_policy", aliases=[STEP_PULL_DATA_FILTERED_BY_POLICY])(PullDataFilteredByPolicy)
 step("connector/pull_data_filtered")(ConnectorPullDataFiltered)

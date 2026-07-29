@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@step("delete_asset")
+@step("connector/provider/delete_asset", aliases=["delete_asset"])
 class DeleteAssetStep(BaseStep):
     """Delete an asset from the provider connector."""
 
@@ -58,7 +58,7 @@ class DeleteAssetStep(BaseStep):
         )
 
 
-@step("delete_policy")
+@step("connector/provider/delete_policy", aliases=["delete_policy"])
 class DeletePolicyStep(BaseStep):
     """Delete a policy definition from the provider connector."""
 
@@ -77,7 +77,7 @@ class DeletePolicyStep(BaseStep):
         )
 
 
-@step("delete_contract_definition", aliases=["delete_contract_def"])
+@step("connector/provider/delete_contract_definition", aliases=["delete_contract_definition", "delete_contract_def"])
 class DeleteContractDefinitionStep(BaseStep):
     """Delete a contract definition from the provider connector."""
 

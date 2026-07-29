@@ -60,7 +60,7 @@ def _resolve_variables(obj: dict | list | str, context: "StepContext") -> dict |
     return obj
 
 
-@step("mock_endpoint", aliases=["mock/api"])
+@step("mock/api", aliases=["mock_endpoint"])
 class MockEndpointStep(BaseStep):
     """Register a mock HTTP endpoint that returns a canned response.
 
