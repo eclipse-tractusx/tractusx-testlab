@@ -247,14 +247,14 @@ e.g. asserting an array `contains` an element with a given field:
 
 ---
 
-## Extracting Values (`json_path_extract`)
+## Extracting Values (`util/json_path_extract`)
 
-`json_path_extract` reads a value out of a dict/list using a dot-separated path,
+`util/json_path_extract` reads a value out of a dict/list using a dot-separated path,
 storing it in a variable for later steps.
 
 ```yaml
 - id: get_asset_id
-  uses: json_path_extract
+  uses: util/json_path_extract
   with:
     source: response_body        # variable NAME, or a ${{ }} expression
     path: "datasets.0.id"        # dot path; numeric segments index lists
@@ -392,18 +392,28 @@ env:
 
 ## Common `uses:` Handlers
 
-| Prefix | Examples |
-|--------|----------|
-| `mock/` | `mock/api`, `mock/wait/http_request` |
-| `connector/` | `connector/pull_data_filtered`, `connector/create_asset`, `connector/health_check` |
-| `util/` | `util/generate_uuid`, `util/log`, `util/parse_kv`, `util/base64` |
-| `validate/` | `validate/assert`, `validate/field`, `validate/schema` |
-| `variable/` | `variable/type/string`, `variable/type/integer`, `variable/type/boolean` |
-| `config/` | `config/connector/policy` |
-| `service/` | `service/connector_service` |
-| _(no prefix)_ | `json_path_extract` |
+Handlers follow the **function-key** pattern `root_capability / [module …] / action`.
+The root capability is the subsystem, the optional module groups related actions, and
+the action is what the step does. Simple capabilities skip the module (`http/http_request`).
 
-See [Extracting Values](#extracting-values-json_path_extract) and
+| Root capability | Module | Examples |
+|-----------------|--------|----------|
+| `connector/` | `provider/` | `connector/provider/create_asset`, `connector/provider/create_policy`, `connector/provider/create_contract_definition`, `connector/provider/delete_asset` |
+| `connector/` | `consumer/` | `connector/consumer/query_catalog`, `connector/consumer/negotiate`, `connector/consumer/transfer`, `connector/consumer/extract_dataset`, `connector/consumer/do_dsp`, `connector/consumer/pull_data_filtered` |
+| `connector/` | `dataplane/` | `connector/dataplane/http_request`, `connector/dataplane/get_edr` |
+| `http/` | _(none)_ | `http/http_request` |
+| `mock/` | _(none)_, `wait/` | `mock/api`, `mock/wait/http_request` |
+| `industry/` | `dtr/`, `notification/`, `semantic/`, `submodel/` | `industry/dtr/create_shell_descriptor`, `industry/notification/send`, `industry/semantic/validate`, `industry/submodel/upload_backend_data` |
+| `util/` | _(none)_ | `util/generate_uuid`, `util/log`, `util/parse_kv`, `util/base64`, `util/json_path_extract`, `util/load_schema`, `util/export_variable`, `util/import_variable` |
+| `validate/` | _(none)_ | `validate/assert`, `validate/field`, `validate/schema` |
+| `variable/` | `type/` | `variable/type/string`, `variable/type/integer`, `variable/type/boolean` |
+| `config/` | `connector/` | `config/connector/policy` |
+| `service/` | _(none)_ | `service/connector_service` |
+
+Legacy flat names (`query_catalog`, `negotiate_contract`, `json_path_extract`, …) remain
+registered as aliases, so existing scripts keep working.
+
+See [Extracting Values](#extracting-values-utiljson_path_extract) and
 [Utility Steps](#utility-steps) below for the extraction and helper handlers.
 
 

@@ -67,16 +67,15 @@
           "examples": [
             "connector/provider/create_asset",
             "connector/consumer/negotiate",
-            "connector/consumer/initiate_transfer",
-            "connector/http/call_via_dataplane",
-            "http/call",
-            "mock/create_endpoint",
-            "mock/wait_for_call",
+            "connector/consumer/transfer",
+            "connector/dataplane/http_request",
+            "http/http_request",
+            "mock/api",
+            "mock/wait/http_request",
             "util/generate_uuid",
-            "util/wait",
-            "validate/json_schema",
-            "notification/send",
-            "flow/if"
+            "util/json_path_extract",
+            "validate/schema",
+            "industry/notification/send"
           ]
         },
         "name": {

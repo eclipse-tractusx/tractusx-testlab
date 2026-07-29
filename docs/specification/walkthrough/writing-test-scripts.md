@@ -273,7 +273,7 @@ and extract the data-plane `href` of its `SUBMODEL-VALUE-3.1` endpoint.
 steps:
   # 1. Query the twin and keep the whole body
   - id: query_dt
-    uses: get_shell_descriptor
+    uses: industry/dtr/get_shell_descriptor
     with:
       aas_identifier: "${{ env.variables.twin_id }}"
     returns:
@@ -292,7 +292,7 @@ steps:
   #    The predicate steps over the descriptor/endpoint arrays without indices,
   #    so it does not depend on ordering or on any idShort.
   - id: get_subprotocol_body
-    uses: json_path_extract
+    uses: util/json_path_extract
     with:
       source: response_body
       path: "submodelDescriptors.endpoints[interface='SUBMODEL-VALUE-3.1'].protocolInformation.subprotocolBody"
@@ -314,7 +314,7 @@ steps:
 - `util/parse_kv` splits each pair on the first `=` only, so a `dspEndpoint`
   value containing its own query string survives intact.
 
-See the [Cheat Sheet](../reference/syntax/cheat-sheet.md#extracting-values-json_path_extract)
+See the [Cheat Sheet](../reference/syntax/cheat-sheet.md#extracting-values-utiljson_path_extract)
 for the full predicate syntax and utility-step options.
 
 ## Key Differences from v0
