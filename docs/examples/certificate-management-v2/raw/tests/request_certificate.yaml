@@ -75,48 +75,25 @@ execution:
       dataplane_url:
         type: string
         class: DataplaneUrl
-
-  - id: assert_datasets_1
-    uses: validate/assert
-    name: Datasets must be returned
-    with:
-      input: "${{ steps.pull_data_1.datasets }}"
-      operator: not_null
-
-  - id: assert_asset_id_1
-    uses: validate/assert
-    name: Asset ID must be returned
-    with:
-      input: "${{ steps.pull_data_1.asset_id }}"
-      operator: not_null
-
-  - id: assert_negotiation_id_1
-    uses: validate/assert
-    name: Negotiation ID must be returned
-    with:
-      input: "${{ steps.pull_data_1.negotiation_id }}"
-      operator: not_null
-
-  - id: assert_transfer_id_1
-    uses: validate/assert
-    name: Transfer process ID must be returned
-    with:
-      input: "${{ steps.pull_data_1.transfer_process_id }}"
-      operator: not_null
-
-  - id: assert_edr_token_1
-    uses: validate/assert
-    name: EDR token must be returned
-    with:
-      input: "${{ steps.pull_data_1.edr_token }}"
-      operator: not_null
-
-  - id: assert_dataplane_url_1
-    uses: validate/assert
-    name: Dataplane URL must be returned
-    with:
-      input: "${{ steps.pull_data_1.dataplane_url }}"
-      operator: not_null
+    validate:
+      - uses: validate/assert
+        name: Datasets must be returned
+        with: { input: "${{ steps.pull_data_1.datasets }}", operator: not_null }
+      - uses: validate/assert
+        name: Asset ID must be returned
+        with: { input: "${{ steps.pull_data_1.asset_id }}", operator: not_null }
+      - uses: validate/assert
+        name: Negotiation ID must be returned
+        with: { input: "${{ steps.pull_data_1.negotiation_id }}", operator: not_null }
+      - uses: validate/assert
+        name: Transfer process ID must be returned
+        with: { input: "${{ steps.pull_data_1.transfer_process_id }}", operator: not_null }
+      - uses: validate/assert
+        name: EDR token must be returned
+        with: { input: "${{ steps.pull_data_1.edr_token }}", operator: not_null }
+      - uses: validate/assert
+        name: Dataplane URL must be returned
+        with: { input: "${{ steps.pull_data_1.dataplane_url }}", operator: not_null }
 
   - id: gen_uuid_1
     uses: util/generate_uuid
@@ -144,97 +121,37 @@ execution:
       response_body:
         type: object
         class: ResponseBody
-
-  - id: assert_status_200
-    uses: validate/assert
-    name: Response status code must be 200
-    with:
-      input: "${{ steps.http_call_1.status_code }}"
-      operator: equals
-      value: 200
-
-  - id: assert_message_id
-    uses: validate/field
-    name: Header messageId must be a valid URN UUID
-    with:
-      input: "${{ steps.http_call_1.response_body }}"
-      path: "header.messageId"
-      operator: matches_regex
-      value: "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-
-  - id: assert_context
-    uses: validate/field
-    name: Header context must match request context
-    with:
-      input: "${{ steps.http_call_1.response_body }}"
-      path: "header.context"
-      operator: equals
-      value: "CompanyCertificateManagement-CCMAPI-Request:1.0.0"
-
-  - id: assert_sent_datetime
-    uses: validate/field
-    name: Header sentDateTime must be present
-    with:
-      input: "${{ steps.http_call_1.response_body }}"
-      path: "header.sentDateTime"
-      operator: not_null
-
-  - id: assert_sender_bpn
-    uses: validate/field
-    name: Header senderBpn must be a valid BPNL
-    with:
-      input: "${{ steps.http_call_1.response_body }}"
-      path: "header.senderBpn"
-      operator: matches_regex
-      value: "^BPNL[0-9A-Z]{12}$"
-
-  - id: assert_receiver_bpn
-    uses: validate/field
-    name: Header receiverBpn must match consumer BPN
-    with:
-      input: "${{ steps.http_call_1.response_body }}"
-      path: "header.receiverBpn"
-      operator: equals
-      value: "${{ env.consumer_bpn }}"
-
-  - id: assert_related_msg_id
-    uses: validate/field
-    name: Header relatedMessageId must match request UUID
-    with:
-      input: "${{ steps.http_call_1.response_body }}"
-      path: "header.relatedMessageId"
-      operator: equals
-      value: "urn:uuid:${{ steps.gen_uuid_1.generated_id }}"
-
-  - id: assert_version
-    uses: validate/field
-    name: Header version must be 3.1.0
-    with:
-      input: "${{ steps.http_call_1.response_body }}"
-      path: "header.version"
-      operator: equals
-      value: "3.1.0"
-
-  - id: assert_request_status
-    uses: validate/field
-    name: Content requestStatus must be valid enum value
-    with:
-      input: "${{ steps.http_call_1.response_body }}"
-      path: "content.requestStatus"
-      operator: one_of
-      value:
-        - "IN_PROGRESS"
-        - "COMPLETED"
-        - "REJECTED"
-
-  - id: assert_document_id
-    uses: validate/field
-    name: Content documentId must be present
-    with:
-      input: "${{ steps.http_call_1.response_body }}"
-      path: "content.documentId"
-      operator: not_null
-
+    validate:
+      - uses: validate/assert
+        name: Response status code must be 200
+        with: { input: "${{ steps.http_call_1.status_code }}", operator: equals, value: 200 }
+      - uses: validate/field
+        name: Header messageId must be a valid URN UUID
+        with: { input: "${{ steps.http_call_1.response_body }}", path: "header.messageId", operator: matches_regex, value: "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }
+      - uses: validate/field
+        name: Header context must match request context
+        with: { input: "${{ steps.http_call_1.response_body }}", path: "header.context", operator: equals, value: "CompanyCertificateManagement-CCMAPI-Request:1.0.0" }
+      - uses: validate/field
+        name: Header sentDateTime must be present
+        with: { input: "${{ steps.http_call_1.response_body }}", path: "header.sentDateTime", operator: not_null }
+      - uses: validate/field
+        name: Header senderBpn must be a valid BPNL
+        with: { input: "${{ steps.http_call_1.response_body }}", path: "header.senderBpn", operator: matches_regex, value: "^BPNL[0-9A-Z]{12}$" }
+      - uses: validate/field
+        name: Header receiverBpn must match consumer BPN
+        with: { input: "${{ steps.http_call_1.response_body }}", path: "header.receiverBpn", operator: equals, value: "${{ env.consumer_bpn }}" }
+      - uses: validate/field
+        name: Header relatedMessageId must match request UUID
+        with: { input: "${{ steps.http_call_1.response_body }}", path: "header.relatedMessageId", operator: equals, value: "urn:uuid:${{ steps.gen_uuid_1.generated_id }}" }
+      - uses: validate/field
+        name: Header version must be 3.1.0
+        with: { input: "${{ steps.http_call_1.response_body }}", path: "header.version", operator: equals, value: "3.1.0" }
+      - uses: validate/field
+        name: Content requestStatus must be valid enum value
+        with: { input: "${{ steps.http_call_1.response_body }}", path: "content.requestStatus", operator: one_of, value: [ "IN_PROGRESS", "COMPLETED", "REJECTED" ] }
+      - uses: validate/field
+        name: Content documentId must be present
+        with: { input: "${{ steps.http_call_1.response_body }}", path: "content.documentId", operator: not_null }
 teardown:
   - id: export_request_id
     uses: util/export_env

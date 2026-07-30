@@ -61,17 +61,10 @@ execution:
       dataplane_url:
         type: string
         class: DataplaneUrl
-
-  - id: assert_edr_token_1
-    uses: validate/assert
-    name: EDR authorization token must be obtained
-    with:
-      input: "${{ steps.pull_data_1.edr_token }}"
-      operator: not_null
-
-  - id: assert_dataplane_url_1
-    uses: validate/assert
-    name: Dataplane URL must be returned
-    with:
-      input: "${{ steps.pull_data_1.dataplane_url }}"
-      operator: not_null
+    validate:
+      - uses: validate/assert
+        name: EDR authorization token must be obtained
+        with: { input: "${{ steps.pull_data_1.edr_token }}", operator: not_null }
+      - uses: validate/assert
+        name: Dataplane URL must be returned
+        with: { input: "${{ steps.pull_data_1.dataplane_url }}", operator: not_null }
