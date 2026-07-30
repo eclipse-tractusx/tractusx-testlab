@@ -32,7 +32,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from tractusx_testlab.models.authoring.infrastructure import (
     DataspaceContext,
@@ -125,6 +125,17 @@ class StepDefinitionV2(BaseModel):
     on_failure: FailurePolicy = FailurePolicy.ABORT
     timeout_s: Optional[float] = None
     if_condition: Optional[str] = Field(default=None, alias="if")
+
+    @field_validator("uses")
+    @classmethod
+    def forbid_standalone_assert(cls, value: str) -> str:
+        """field validator to avoid validate use as an individual execution"""
+        if value.startswith("validate/"):
+            raise ValueError(
+                f"'{value}' can't be set as an individual execution. "
+                "Must be under block 'validate:' under an existing execution."
+            )
+        return value
 
 
 class ScriptDefinitionV2(BaseModel):
