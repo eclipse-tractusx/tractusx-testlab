@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
+from pydantic import ValidationError
 
 from tractusx_testlab.compiler.packager import Packager
 from tractusx_testlab.scripting.script import Tck as Tck, TestScript
@@ -60,15 +61,25 @@ def _load_test_scripts(tests: list, base_dir: Path) -> list[TestScript]:
     """
     scripts: list[TestScript] = []
     tests_dir = base_dir / "tests"
+    validation_errors = []
     for entry in tests:
         test_path = tests_dir / entry.id
         if not test_path.exists():
             logger.warning("Test file not found, skipping: %s", test_path)
             continue
-        script_def = parse_script_file(test_path)
-        scripts.append(TestScript(script_def, skippable=entry.skippable, test_id=entry.id))
+        try:
+            script_def = parse_script_file(test_path)
+            scripts.append(TestScript(script_def, skippable=entry.skippable, test_id=entry.id))
+        except ValidationError as e:
+            # 3. if Pydantic fails, capture exception to add filename
+            validation_errors.append(f"File: {entry.id}\n{e}")
+    if validation_errors:
+        separator = "\n" + "-" * 80 + "\n"
+        raise ValueError(
+            f"Can't run. Validation failure in {len(validation_errors)} test(s):"
+            f"{separator}{separator.join(validation_errors)}"
+        )
     return scripts
-
 
 def _detect_kind(data: dict) -> ScriptKind:
     """Detect the kind of a YAML document.
