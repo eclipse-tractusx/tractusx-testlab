@@ -53,7 +53,7 @@ def _extract_path_from_endpoint_url(endpoint_url: str) -> str:
     return urlparse(endpoint_url).path
 
 
-@step("wait_for_call")
+@step("mock/wait/http_request")
 class WaitForCallStep(BaseStep):
     """Wait for an inbound HTTP request on a previously-registered mock endpoint.
 

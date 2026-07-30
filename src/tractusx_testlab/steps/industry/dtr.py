@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("create_shell_descriptor")
+@step("dtr/create_shell_descriptor")
 class CreateShellDescriptorStep(BaseStep):
     """Create an AAS shell descriptor in the Digital Twin Registry."""
 
@@ -58,7 +58,7 @@ class CreateShellDescriptorStep(BaseStep):
         )
 
 
-@step("get_shell_descriptor")
+@step("dtr/get_shell_descriptor")
 class GetShellDescriptorStep(BaseStep):
     """Retrieve an AAS shell descriptor by ID."""
 
@@ -78,7 +78,7 @@ class GetShellDescriptorStep(BaseStep):
         )
 
 
-@step("create_submodel_descriptor")
+@step("dtr/create_submodel_descriptor")
 class CreateSubmodelDescriptorStep(BaseStep):
     """Create a submodel descriptor under an AAS shell."""
 
@@ -101,7 +101,7 @@ class CreateSubmodelDescriptorStep(BaseStep):
         )
 
 
-@step("delete_shell_descriptor")
+@step("dtr/delete_shell_descriptor")
 class DeleteShellDescriptorStep(BaseStep):
     """Delete an AAS shell descriptor."""
 

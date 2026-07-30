@@ -86,7 +86,6 @@
       "type": "object"
     }
   },
-  "services": [],
   "schemas": {
     "certificate_schema": {
       "asset_key": "business_partner_certificate_schema.json",
@@ -131,7 +130,6 @@
       "type": "application/json"
     }
   },
-  "preconditions": [],
   "tests": [
     {
       "id": "catalog-policy-validation",

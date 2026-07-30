@@ -58,7 +58,7 @@ setup:
 
 steps:
   - id: pull_data_1
-    uses: connector/pull_data_filtered
+    uses: connector/consumer/pull_data_filtered
     name: Query catalog for CCMAPI assets and validate policy matches expected constraints
     with:
       connector_service: ${{ infrastructure.engine.connector }}

@@ -164,7 +164,7 @@ setup:
 
 steps:
   - id: pull_notification_endpoint
-    uses: connector/pull_data_filtered
+    uses: connector/consumer/pull_data_filtered
     name: Discover the SUT's CCMAPI notification endpoint and obtain dataplane credentials
     with:
       connector_service: ${{ infrastructure.engine.connector }}

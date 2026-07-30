@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("dsp_negotiate")
+@step("connector/consumer/dsp/negotiate")
 class DspNegotiateStep(BaseStep):
     """Send a DSP ContractRequestMessage directly to the provider.
 
@@ -109,7 +109,7 @@ class DspNegotiateStep(BaseStep):
         )
 
 
-@step("dsp_get_negotiation")
+@step("connector/consumer/dsp/get_negotiation")
 class DspGetNegotiationStep(BaseStep):
     """Poll a DSP negotiation state by provider PID.
 

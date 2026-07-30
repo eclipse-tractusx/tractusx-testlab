@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 _EXPORT_NAMESPACE = "!"
 
 
-@step("export_variable")
+@step("util/export_env")
 class ExportVariableStep(BaseStep):
     """Mark a context variable for export to downstream scripts.
 
@@ -66,7 +66,7 @@ class ExportVariableStep(BaseStep):
         return StepOutput(value=value)
 
 
-@step("import_variable")
+@step("util/import_env")
 class ImportVariableStep(BaseStep):
     """Import a variable exported by a previous script.
 

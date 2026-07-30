@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("dsp_resolve_did")
+@step("connector/consumer/dsp/resolve_did")
 class DspResolveDidStep(BaseStep):
     """Resolve a DID document via HTTP.
 

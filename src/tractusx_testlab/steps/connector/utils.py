@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("http_request", aliases=["http_call"])
+@step("http/http_request")
 class HttpRequestStep(BaseStep):
     """Execute a plain HTTP request.
 

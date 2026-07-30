@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@step("query_catalog")
+@step("connector/consumer/query_catalog")
 class QueryCatalogStep(BaseStep):
     """Query a provider's catalog via DSP protocol."""
 
@@ -83,7 +83,7 @@ class QueryCatalogStep(BaseStep):
         )
 
 
-@step("query_catalog_by_asset_id")
+@step("connector/consumer/query_catalog_by_asset_id")
 class QueryCatalogByAssetIdStep(BaseStep):
     """Query the catalog filtered by a specific asset ID."""
 
@@ -116,7 +116,7 @@ class QueryCatalogByAssetIdStep(BaseStep):
         )
 
 
-@step("query_catalog_by_bpnl")
+@step("connector/consumer/query_catalog_by_bpnl")
 class QueryCatalogByBpnlStep(BaseStep):
     """Query the catalog using BPNL-based connector discovery."""
 

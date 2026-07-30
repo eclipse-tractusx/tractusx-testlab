@@ -1,0 +1,62 @@
+{
+  "specversion": "1.0",
+  "id": "certificate-management-tck/request-certificate/send_request_1/tck.test.step.failed/f8c367508a7d",
+  "source": "connector/consumer/pull_data_filtered",
+  "type": "tck.test.step.failed",
+  "time": "2026-05-28T18:31:17.801Z",
+  "sequence": 25,
+  "data": {
+    "attempt": 1,
+    "performance": {
+      "start_time": "2026-05-28T18:30:47.801Z",
+      "end_time": "2026-05-28T18:31:17.801Z"
+    },
+    "outputs": {
+      "negotiation_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+      "last_state": "REQUESTED"
+    },
+    "validations": [
+      {
+        "source": "validate/assert",
+        "field": "status_code",
+        "inputs": { "assertion": "equals", "expected": 200 },
+        "outputs": { "actual": 500, "passed": false },
+        "errors": [
+          {
+            "code": "NEGOTIATION_TIMEOUT",
+            "message": "Contract negotiation did not reach AGREED state within 30s",
+            "retryable": true,
+            "context": {
+              "negotiation_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+              "last_state": "REQUESTED",
+              "timeout_ms": 30000
+            },
+            "recommendations": [
+              {
+                "id": "check-policy-match",
+                "message": "Verify the SUT's access policy accepts your BPN and usage purpose",
+                "docs": "https://eclipse-tractusx.github.io/docs/tutorials/policy-troubleshooting"
+              },
+              {
+                "id": "increase-timeout",
+                "message": "Increase negotiation timeout via 'negotiation_timeout_ms' in test config",
+                "config": "negotiation_timeout_ms"
+              },
+              {
+                "id": "verify-dct-type",
+                "message": "Confirm the catalog filter dct:type matches the SUT asset registration"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "errors": [
+      {
+        "code": "NEGOTIATION_TIMEOUT",
+        "message": "Contract negotiation did not reach AGREED state within 30s",
+        "retryable": true
+      }
+    ]
+  }
+}

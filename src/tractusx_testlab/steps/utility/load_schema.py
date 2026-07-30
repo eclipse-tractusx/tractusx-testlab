@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@step("load_schema")
+@step("util/load_schema")
 class LoadSchemaStep(BaseStep):
     """Load a JSON schema from a local file path.
 

@@ -55,7 +55,7 @@ def _safe_delete(service: object, method_name: str, **kwargs: object) -> object:
         return None
 
 
-@step("delete_asset")
+@step("connector/provider/delete_asset")
 class DeleteAssetStep(BaseStep):
     """Delete an asset from the provider connector."""
 
@@ -73,7 +73,7 @@ class DeleteAssetStep(BaseStep):
         )
 
 
-@step("delete_policy")
+@step("connector/provider/delete_policy")
 class DeletePolicyStep(BaseStep):
     """Delete a policy definition from the provider connector."""
 
@@ -91,7 +91,7 @@ class DeletePolicyStep(BaseStep):
         )
 
 
-@step("delete_contract_definition", aliases=["delete_contract_def"])
+@step("connector/provider/delete_contract_definition")
 class DeleteContractDefinitionStep(BaseStep):
     """Delete a contract definition from the provider connector."""
 

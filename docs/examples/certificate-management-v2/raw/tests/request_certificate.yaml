@@ -57,7 +57,7 @@ setup:
 
 steps:
   - id: pull_data_1
-    uses: connector/pull_data_filtered
+    uses: connector/consumer/pull_data_filtered
     name: Discover CCMAPI offers, negotiate with expected policy, and obtain EDR
     with:
       connector_service: ${{ infrastructure.engine.connector }}

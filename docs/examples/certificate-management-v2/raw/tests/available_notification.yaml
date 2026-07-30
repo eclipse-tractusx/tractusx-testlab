@@ -50,29 +50,9 @@ setup:
       full_mock_url:
         type: string
 
-  - id: ccm_policy
-    uses: precondition/provide
-    name: Required CCMAPI Usage Policy
-    with:
-      value:
-        permissions:
-          - action: use
-            constraints:
-              and:
-                - left_operand: UsagePurpose
-                  operator: isAnyOf
-                  right_operand: "cx.ccm.base:1"
-                - left_operand: FrameworkAgreement
-                  operator: eq
-                  right_operand: "DataExchangeGovernance:1.0"
-    returns:
-      policy:
-        type: object
-        class: Policy
-
 steps:
   - id: pull_notification_endpoint
-    uses: connector/pull_data_filtered
+    uses: connector/consumer/pull_data_filtered
     name: Discover CCMAPI notification endpoint and obtain dataplane credentials
     with:
       connector_service: ${{ infrastructure.engine.connector }}

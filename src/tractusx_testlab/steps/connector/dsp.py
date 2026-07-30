@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("do_dsp")
+@step("connector/consumer/dsp/do_dsp")
 class DoDspStep(BaseStep):
     """Full DSP flow: catalog → negotiate → transfer → EDR in one step."""
 
@@ -64,7 +64,7 @@ class DoDspStep(BaseStep):
         )
 
 
-@step("do_dsp_with_bpnl")
+@step("connector/consumer/dsp/do_dsp_with_bpnl")
 class DoDspWithBpnlStep(BaseStep):
     """Full DSP flow via BPNL: discover → catalog → negotiate → transfer → EDR."""
 

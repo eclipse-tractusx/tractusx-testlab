@@ -238,8 +238,8 @@ Variables with no published config schema (plain primitives, infrastructure-deri
 |--------|-------------|-------------|
 | `tck.test.step.start` | `{attempt}` | Step execution begins |
 | `tck.test.step.update` | `{attempt, state, ...context}` | Progress (long-running) |
-| `tck.test.step.passed` | `{attempt, duration_ms, outputs, validations}` | Step succeeded (terminal) |
-| `tck.test.step.failed` | `{attempt, duration_ms, outputs?, validations, errors}` | Step failed (terminal) |
+| `tck.test.step.passed` | `{attempt, duration_ms, outputs, http?, validations}` | Step succeeded (terminal) |
+| `tck.test.step.failed` | `{attempt, duration_ms, outputs?, http?, validations, errors}` | Step failed (terminal) |
 | `tck.test.step.skipped` | `{attempt, reason}` | Step skipped |
 | `tck.test.step.timeout` | `{attempt, duration_ms, timeout_ms}` | Step timed out |
 | `tck.test.step.retry` | `{attempt, previous_attempt, reason}` | Retry initiated |
@@ -267,6 +267,38 @@ Validations are **nested inside the terminal step event** in `data.validations[]
 | `errors` | `array` | Present only on validation failure (with recommendations) |
 
 **Rationale**: Validations are semantically part of the step result, not independent events. Nesting reduces event count and keeps the step result self-contained for IDE rendering.
+
+### Nested HTTP Exchanges
+
+The wire-level HTTP requests and responses a step performs are **nested inside the terminal step event** in `data.http[]`, parallel to `data.validations[]`. They are NOT separate CloudEvents. Each element captures one request/response exchange:
+
+```json
+{
+  "exchange": "catalog_request",
+  "request": {
+    "method": "POST",
+    "url": "https://testlab.local/management/v3/catalog/request",
+    "headers": {"x-api-key": {"$jwe": "..."}, "content-type": "application/json"},
+    "body": {"@type": "CatalogRequest", "counterPartyAddress": "..."}
+  },
+  "response": {
+    "status": 200,
+    "headers": {"content-type": "application/json"},
+    "body": {"@id": "urn:catalog:sut-ccm-offers", "dcat:dataset": []},
+    "duration_ms": 312
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `exchange` | `string` | Logical name of the exchange within the step (e.g. `catalog_request`, `contract_negotiation_poll`, `dataplane_pull`) |
+| `request` | `object` | `{method, url, headers, body?}` of the outbound call |
+| `response` | `object` | `{status, headers, body?, duration_ms}` of the inbound reply |
+
+Sensitive header values (e.g. `x-api-key`, `authorization`) and sensitive body fields carry the JWE `$jwe` wrapper described in [Secret Protection](#secret-protection) — they are never logged in clear text. A failed exchange records the last observed `response` (e.g. a negotiation that stayed `REQUESTED` until timeout); the failure reason itself lives in `data.errors[]` / `data.validations[]`.
+
+**Rationale**: HTTP exchanges are the evidence behind a step's `outputs`. Nesting them in the terminal event keeps the request/response trail self-contained for IDE inspection and offline audit, mirroring the `validations` nesting and avoiding a flood of separate wire-level events.
 
 ### Retry Handling
 

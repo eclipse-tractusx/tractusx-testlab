@@ -56,7 +56,7 @@ setup:
 
 steps:
   - id: pull_notification_endpoint
-    uses: connector/pull_data_filtered
+    uses: connector/consumer/pull_data_filtered
     name: Discover CCMAPI offer and obtain dataplane credentials
     with:
       connector_service: ${{ infrastructure.engine.connector }}

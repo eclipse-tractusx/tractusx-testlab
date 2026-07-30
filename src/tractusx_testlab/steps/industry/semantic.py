@@ -58,7 +58,7 @@ def _validate_keys(data: dict, required_keys: list[str]) -> tuple[bool, list[str
     return len(missing) == 0, missing
 
 
-@step("validate_semantic_schema")
+@step("industry/validate_semantic_schema")
 class ValidateSemanticSchemaStep(BaseStep):
     """Validate a JSON payload against expected top-level keys for a semantic model.
 

@@ -69,7 +69,7 @@ def _normalize_asset_params(params: dict) -> dict:
     return normalized
 
 
-@step("create_asset")
+@step("connector/provider/create_asset")
 class CreateAssetStep(BaseStep):
     async def execute(self, params: dict, context: "StepContext", definition: StepDefinition) -> StepOutput:
         service_name = params.get("service")
@@ -98,7 +98,7 @@ class CreateAssetStep(BaseStep):
         )
 
 
-@step("create_policy")
+@step("connector/provider/create_policy")
 class CreatePolicyStep(BaseStep):
     async def execute(self, params: dict, context: "StepContext", definition: StepDefinition) -> StepOutput:
         service_name = params.get("service")
@@ -136,7 +136,7 @@ class CreatePolicyStep(BaseStep):
         )
 
 
-@step("create_contract_definition", aliases=["create_contract_definition"])
+@step("connector/provider/create_contract_definition")
 class CreateContractDefinitionStep(BaseStep):
     async def execute(self, params: dict, context: "StepContext", definition: StepDefinition) -> StepOutput:
         service_name = params.get("service")

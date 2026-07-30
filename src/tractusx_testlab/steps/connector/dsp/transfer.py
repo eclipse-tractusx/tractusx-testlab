@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("dsp_transfer_request")
+@step("connector/consumer/dsp/transfer_request")
 class DspTransferRequestStep(BaseStep):
     """Send a DSP TransferRequestMessage directly to the provider.
 
@@ -111,7 +111,7 @@ class DspTransferRequestStep(BaseStep):
         )
 
 
-@step("dsp_get_transfer")
+@step("connector/consumer/dsp/get_transfer")
 class DspGetTransferStep(BaseStep):
     """Poll a DSP transfer state by provider PID.
 

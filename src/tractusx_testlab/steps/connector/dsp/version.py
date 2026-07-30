@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("dsp_version")
+@step("connector/consumer/dsp/version")
 class DspVersionStep(BaseStep):
     """Query the DSP version endpoint directly.
 

@@ -73,7 +73,7 @@ def _extract_offer_id(dataset: dict) -> str | None:
     return None
 
 
-@step("extract_dataset")
+@step("connector/consumer/extract_dataset")
 class ExtractDatasetStep(BaseStep):
     """Extract matching datasets from a catalog response by dct:type.
 

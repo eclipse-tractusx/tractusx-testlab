@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("dsp_request")
+@step("connector/consumer/dsp/request")
 class DspGenericRequestStep(BaseStep):
     """Generic DSP protocol request for custom testing.
 
