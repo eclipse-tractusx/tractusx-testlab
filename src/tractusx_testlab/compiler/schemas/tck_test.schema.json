@@ -67,7 +67,11 @@
       "required": ["id", "uses", "name"],
       "properties": {
         "id": { "type": "string" },
-        "uses": { "type": "string" },
+        "uses": { "type": "string",
+          "not": {
+            "pattern": "^validate/"
+          }
+        },
         "name": { "type": "string" },
         "with": { "type": "object", "additionalProperties": true },
         "returns": {
