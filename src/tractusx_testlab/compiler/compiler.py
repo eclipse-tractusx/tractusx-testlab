@@ -88,13 +88,12 @@ class Compiler:
         Raises:
             ValueError: If validation produces errors.
         """
-        definition = self._parser.parse_script(script_path)
-        validation_result = self._validator.validate(definition, version=version)
-
+        definition = self._parser.parse_tck(script_path)
+        validation_result = self.validate(script_path, version=version)
         if not validation_result.valid:
             raise ValueError(
-                f"Script validation failed with {sum(1 for issue in validation_result.issues if issue.level == 'error')} error(s): "
-                + "; ".join(issue.message for issue in validation_result.issues if issue.level == "error")
+                f"Validation failed with {len(validation_result.issues)} error(s):\n"
+                + "\n".join(f"  [{i.phase or 'step'}] {i.message}" for i in validation_result.issues)
             )
 
         script_yaml = script_path.read_bytes()
@@ -128,8 +127,18 @@ class Compiler:
 
         Returns:
             Tuple of (manifest_dict, execution_dict).
+
+        Raises:
+            ValueError: If semantic validation produces errors.
         """
         from tractusx_testlab.compiler.ir.builder import build_ir
+
+        validation_result = self.validate(manifest_path, version=version)
+        if not validation_result.valid:
+            raise ValueError(
+                f"Validation failed with {len(validation_result.issues)} error(s):\n"
+                + "\n".join(f"  [{i.phase or 'step'}] {i.message}" for i in validation_result.issues)
+            )
 
         if output_path is None:
             output_path = manifest_path.parent / "plain"
@@ -166,18 +175,18 @@ class Compiler:
         with open(manifest_path, "r", encoding="utf-8") as manifest_file:
             tck_data = yaml.safe_load(manifest_file)
 
-        inlined_tests, combined_validation = self._resolve_and_validate_test_entries(
+        validation_result = self.validate(manifest_path, version=version)
+        if not validation_result.valid:
+            raise ValueError(
+                f"Validation failed with {len(validation_result.issues)} error(s): "
+                + "; ".join(issue.message for issue in validation_result.issues)
+            )
+
+        inlined_tests = self._resolve_and_validate_test_entries(
             tck_data.get("tests", []),
             manifest_path.parent,
             version,
         )
-
-        if not combined_validation.valid:
-            errors = [issue for issue in combined_validation.issues if issue.level == "error"]
-            raise ValueError(
-                f"Validation failed with {len(errors)} error(s): "
-                + "; ".join(issue.message for issue in errors)
-            )
 
         tck_data["tests"] = inlined_tests
         bundled_yaml = yaml.dump(tck_data, default_flow_style=False, sort_keys=False).encode("utf-8")
@@ -198,29 +207,26 @@ class Compiler:
             version=ver,
         )
 
-        return manifest, combined_validation
+        return manifest, validation_result
 
     def _resolve_and_validate_test_entries(
         self,
         tests_raw: list,
         base_dir: Path,
         version: Optional[str],
-    ) -> tuple[list[dict], ValidationResult]:
+    ) -> list[dict]:
         """Resolve string file references to inline dicts and validate each entry.
 
-        Returns the list of inlined test dicts and a combined validation result.
+        Returns the list of inlined test dicts.
         """
         inlined_tests: list[dict] = []
-        combined_validation = ValidationResult()
 
         for entry in tests_raw:
             script_dict = self._load_test_entry(entry, base_dir)
             definition = YamlParser.parse_script_from_dict(script_dict)
-            validation_result = self._validator.validate(definition, version=version)
-            combined_validation.issues.extend(validation_result.issues)
             inlined_tests.append(script_dict)
 
-        return inlined_tests, combined_validation
+        return inlined_tests
 
     @staticmethod
     def _load_test_entry(entry, base_dir: Path) -> dict:
