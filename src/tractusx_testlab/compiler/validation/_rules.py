@@ -112,9 +112,6 @@ def validate_tck_manifest(
         all_errors.extend(
             _reject_validate_step(test_data, f"tests/{test_file}")
         )
-        all_errors.extend(
-            _reject_validate_input_expressions(test_data, f"tests/{test_file}")
-        )
 
     if all_errors:
         error_list = "\n  - ".join(all_errors)
@@ -261,53 +258,4 @@ def _reject_validate_step(
                     f"'{uses}' cannot be used as a standalone step. "
                     "Place it under the parent step's 'validate:' block."
                 )
-    return errors
-
-def _reject_validate_input_expressions(
-    test_data: dict[str, Any],
-    source_label: str,
-) -> list[str]:
-    """Reject ``${{ ... }}`` in inline ``validate/*`` assertion ``with.input`` values."""
-    errors: list[str] = []
-    for phase in ("setup", "execution", "teardown"):
-        steps = test_data.get(phase, [])
-        if not isinstance(steps, list):
-            continue
-
-        for step in steps:
-            if not isinstance(step, dict):
-                continue
-            step_id = step.get("id", "?")
-            assertions = step.get("validate", [])
-            if not isinstance(assertions, list):
-                continue
-
-            for assertion in assertions:
-                if not isinstance(assertion, dict):
-                    continue
-                uses = str(assertion.get("uses", ""))
-                if not isinstance(uses, str) or uses not in ("validate/assert", "validate/field"):
-                    continue
-
-                with_block = assertion.get("with", {})
-                if not isinstance(with_block, dict):
-                    errors.append(
-                        f"Rejected validate block in {source_label} step '{step_id}': "
-                        f"'with' must be a mapping for '{uses}'."
-                    )
-                    continue
-
-                input_value = with_block.get("input")
-                if not isinstance(input_value, str):
-                    errors.append(
-                        f"Rejected validate block in {source_label} step '{step_id}': "
-                        f"'validate.with.input' must be a plain string for '{uses}'."
-                    )
-                    continue
-
-                if "${{" in input_value or "}}" in input_value:
-                    errors.append(
-                        f"Rejected validate block in {source_label} step '{step_id}': "
-                        f"'validate.with.input' must not contain variable expressions for '{uses}'."
-                    )
     return errors
