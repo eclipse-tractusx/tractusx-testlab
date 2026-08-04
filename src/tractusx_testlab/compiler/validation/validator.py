@@ -82,6 +82,7 @@ class ScriptValidator:
             try:
                 script = YamlParser.parse_script(test_path)
             except ValidationError as exc:
+                # Format kind: error log
                 issues = "; ".join(f"{e['loc'][0]}: {e['msg']}" for e in exc.errors())
                 combined.add_error(f"tests/{entry.id}: parse error — {issues}")
                 continue
@@ -89,6 +90,12 @@ class ScriptValidator:
                 combined.add_error(f"tests/{entry.id}: failed to parse — {exc}")
                 continue
             result = self.validate(script, version=version)
+            # Validate tck id and test namespace
+            if script.namespace != tck.id:
+                result.add_error(
+                    f"namespace '{script.namespace}' must match the TCK id '{tck.id}'.",
+                    field="namespace",
+                )
             for issue in result.issues:
                 issue.message = f"tests/{entry.id}: {issue.message}"
                 combined.issues.append(issue)
