@@ -126,17 +126,6 @@ class StepDefinitionV2(BaseModel):
     timeout_s: Optional[float] = None
     if_condition: Optional[str] = Field(default=None, alias="if")
 
-    @field_validator("uses")
-    @classmethod
-    def forbid_standalone_assert(cls, value: str) -> str:
-        """field validator to avoid validate use as an individual execution"""
-        if value.startswith("validate/"):
-            raise ValueError(
-                f"'{value}' can't be set as an individual execution. "
-                "Must be under block 'validate:' under an existing execution."
-            )
-        return value
-
 
 class ScriptDefinitionV2(BaseModel):
     """Syntax v2 top-level test script definition."""
