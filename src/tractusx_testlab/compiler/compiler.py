@@ -47,9 +47,23 @@ class Compiler:
         self._parser = YamlParser()
 
     def validate(self, script_path: Path, version: Optional[str] = None) -> ValidationResult:
-        """Validate a YAML test script without compiling."""
-        definition = self._parser.parse_script(script_path)
-        return self._validator.validate(definition, version=version)
+        """Validate a YAML tck and its tests without compiling."""
+        from tractusx_testlab.compiler.validation._rules import validate_tck_manifest
+
+        definition = self._parser.parse_tck(script_path)
+        # Validate restrictions and rules of tck and test files
+        result = self._validator.validate_tck(definition, script_path.parent, version=version)
+
+        # Validate the tck and test files against JSON schemas
+        try:
+            manifest_data = yaml.safe_load(script_path.read_text(encoding="utf-8"))
+            validate_tck_manifest(manifest_data, script_path.parent)
+        except ValueError as exc:
+            for line in str(exc).splitlines():
+                if line.startswith("  - "):
+                    result.add_error(line[4:])
+
+        return result
 
     def compile(
         self,

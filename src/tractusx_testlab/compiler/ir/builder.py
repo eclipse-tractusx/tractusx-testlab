@@ -45,7 +45,6 @@ from tractusx_testlab.compiler.ir._helpers import (
     infer_testdata_type as _infer_testdata_type,
 )
 from tractusx_testlab.compiler.ir._symbols import build_global_symbols
-from tractusx_testlab.compiler.validation._rules import validate_tck_manifest
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +60,6 @@ def build_ir(
     """
     manifest_data = _load_manifest(manifest_path)
     base_dir = manifest_path.parent
-
-    # Validate manifest and test files against JSON schemas
-    validate_tck_manifest(manifest_data, base_dir)
 
     compiler_version = version or "0.5.0"
     compiled_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
