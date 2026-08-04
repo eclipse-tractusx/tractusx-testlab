@@ -31,6 +31,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from pydantic import ValidationError
+
 from tractusx_testlab.models import ScriptDefinitionV2, StepDefinitionV2, TckDefinitionV2
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.syntax import defaults
@@ -79,7 +81,11 @@ class ScriptValidator:
             from tractusx_testlab.scripting.parser import YamlParser
             try:
                 script = YamlParser.parse_script(test_path)
-            except Exception as exc:  # noqa: BLE001 — surface parse errors as validation errors
+            except ValidationError as exc:
+                issues = "; ".join(f"{e['loc'][0]}: {e['msg']}" for e in exc.errors())
+                combined.add_error(f"tests/{entry.id}: parse error — {issues}")
+                continue
+            except Exception as exc:  # noqa: BLE001
                 combined.add_error(f"tests/{entry.id}: failed to parse — {exc}")
                 continue
             result = self.validate(script, version=version)
