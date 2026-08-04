@@ -107,8 +107,8 @@ class Compiler:
             compiler_id=compiler_identity.signing.fingerprint,
             recipient_public_keys=recipient_keys,
             output_path=output_path,
-            name=definition.name,
-            version=definition.version,
+            name=definition.metadata.name,
+            version=definition.metadata.version,
         )
 
         return manifest, validation_result
