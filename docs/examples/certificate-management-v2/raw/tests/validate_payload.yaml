@@ -25,7 +25,7 @@ kind: test
 syntax: v2
 
 id: validate-certificate-payload
-namespace: ccm-v0.0.1
+namespace: certificate-management-tck
 
 metadata:
   name: "Validate Certificate Payload"
@@ -61,10 +61,10 @@ execution:
     validate:
       - uses: validate/assert
         name: EDR token must be obtained
-        with: { input: "${{ steps.pull_data_1.edr_token }}", operator: not_null }
+        with: { input: edr_token, operator: not_null }
       - uses: validate/assert
         name: Dataplane URL must be returned
-        with: { input: "${{ steps.pull_data_1.dataplane_url }}", operator: not_null }
+        with: { input: dataplane_url, operator: not_null }
 
   - id: http_call_1
     uses: connector/dataplane/http_request
@@ -86,13 +86,13 @@ execution:
     validate:
       - uses: validate/assert
         name: Response status code must be 200
-        with: { input: "${{ steps.http_call_1.status_code }}", operator: equals, value: 200 }
+        with: { input: status_code, operator: equals, value: 200 }
       - uses: validate/assert
         name: Response body must not be empty
-        with: { input: "${{ steps.http_call_1.response_body }}", operator: not_null }
+        with: { input: response_body, operator: not_null }
       - uses: validate/schema
         name: Validate response against BusinessPartnerCertificate v3.1.0 schema
-        with: { input: "${{ steps.http_call_1.response_body }}", schema: "${{ env.schemas.certificate_schema }}" }
+        with: { input: response_body, schema: "${{ env.schemas.certificate_schema }}" }
       - uses: validate/field
         name: Certificate type must match expected value
-        with: { input: "${{ steps.http_call_1.response_body }}", path: "certificateType", operator: equals, value: "${{ env.certificate_type }}" }
+        with: { input: response_body, path: "certificateType", operator: equals, value: "${{ env.certificate_type }}" }

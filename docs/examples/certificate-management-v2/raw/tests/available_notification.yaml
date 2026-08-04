@@ -23,7 +23,7 @@ kind: test
 syntax: v2
 
 id: available-notification
-namespace: ccm-v0.0.1
+namespace: certificate-management-tck
 
 metadata:
   name: "Available Notification"

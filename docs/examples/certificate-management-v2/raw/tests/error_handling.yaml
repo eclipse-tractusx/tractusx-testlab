@@ -23,7 +23,7 @@ kind: test
 syntax: v2
 
 id: error-handling
-namespace: ccm-v0.0.1
+namespace: certificate-management-tck
 
 metadata:
   name: "Error Handling"
@@ -179,6 +179,6 @@ execution:
     validate:
       - uses: validate/assert
         with: 
-          input: status_code, 
+          input: status_code
           operator: equals
           value: 500
