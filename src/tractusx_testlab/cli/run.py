@@ -92,7 +92,10 @@ def run(
 
 
 def _compile_target_for_run(target: Path) -> None:
-    """Compile YAML targets before execution and return the runnable package path."""
+    """Compile YAML targets before execution; skip already-compiled packages."""
+    if target.suffix in (".tck", ".stck"):
+        return
+
     from tractusx_testlab.cli.compile import compile as compile_command
 
     typer.echo(f"Preparing run package from {target} ...")
