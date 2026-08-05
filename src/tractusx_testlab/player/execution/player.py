@@ -104,8 +104,17 @@ class TestlabPlayer:
     # ------------------------------------------------------------------
 
     async def run(self, path: str | Path, runtime_vars: Optional[dict] = None) -> TckResult:
-        """Load and execute a TCK, returning the full result."""
-        tck = self._loader.load(Path(path))
+        """Load and execute a TCK, emitting package verification events before execution."""
+        resolved = Path(path)
+        import zipfile as _zf
+        encrypted = _zf.is_zipfile(resolved) and _is_encrypted_tck(resolved)
+        self._monitor.on_package_verify_start(resolved.name, encrypted=encrypted)
+        try:
+            tck = self._loader.load(resolved)
+        except ValueError as exc:
+            self._monitor.on_package_verify_failed(resolved.name, str(exc))
+            raise
+        self._monitor.on_package_verify_passed(resolved.name, checksum="")
         return await self.run_tck(tck, runtime_vars=runtime_vars)
 
     async def run_tck(
@@ -251,3 +260,13 @@ class TestlabPlayer:
             if value is not None:
                 context.set_variable(export_name, value)
                 context.set_variable(f"!{script.name}:{export_name}", value)
+
+
+def _is_encrypted_tck(path: Path) -> bool:
+    """Return True if the .tck ZIP contains payload.enc (encrypted package format)."""
+    import zipfile
+    try:
+        with zipfile.ZipFile(path, "r") as zf:
+            return "payload.enc" in zf.namelist()
+    except Exception:
+        return False

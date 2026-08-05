@@ -43,23 +43,23 @@ CCM_TESTS_DIR = CCM_DIR / "tests"
 
 _CCM_TEST_FILES = {
     "available_notification.yaml": 4,
-    "catalog_policy_validation.yaml": 3,
-    "certificate_asset_validation.yaml": 3,
+    "catalog_policy_validation.yaml": 1,
+    "certificate_asset_validation.yaml": 1,
     "error_handling.yaml": 4,
     "expose_testlab_asset.yaml": 4,
     "push_certificate.yaml": 4,
-    "request_certificate.yaml": 19,
+    "request_certificate.yaml": 3,
     "send_feedback.yaml": 4,
-    "validate_payload.yaml": 8,
+    "validate_payload.yaml": 2,
 }
 
 _CCM_STEP_TYPES = [
-    "create_asset", "create_contract_definition", "create_policy",
-    "delete_asset", "delete_policy",
-    "export_variable", "generate_uuid", "http_call_dataplane",
-    "import_variable", "load_schema", "mock_endpoint",
-    "pull_data_filtered", "query_catalog_with_filters",
-    "wait_for_call",
+    "connector/provider/create_asset", "connector/provider/create_contract_definition",
+    "connector/provider/create_policy", "connector/provider/delete_asset",
+    "connector/provider/delete_policy", "util/export_env", "util/generate_uuid",
+    "connector/dataplane/http_request", "util/load_schema", "mock/api",
+    "connector/consumer/pull_data_filtered", "connector/consumer/query_catalog_with_filters",
+    "mock/wait/http_request",
 ]
 
 _CCM_STEP_TYPES_UNREGISTERED: list[str] = []

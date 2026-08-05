@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
-@step("send_notification")
+@step("notifications/send")
 class SendNotificationStep(BaseStep):
     """Send a notification through the dataspace.
 
@@ -123,7 +123,7 @@ class SendNotificationStep(BaseStep):
         )
 
 
-@step("discover_notification_assets")
+@step("notifications/discover_assets")
 class DiscoverNotificationAssetsStep(BaseStep):
     """Discover notification assets in a provider catalog."""
 

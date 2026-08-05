@@ -153,7 +153,7 @@ metadata:
   name: Error Test
   version: "1.0"
 execution:
-  - uses: http_request
+  - uses: http/http_request
     name: Bad Request
     with:
       url: "http://127.0.0.1:1/nonexistent"

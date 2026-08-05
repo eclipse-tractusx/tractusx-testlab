@@ -63,7 +63,7 @@ def _parse(text: str, pair_sep: str, kv_sep: str) -> dict[str, str]:
     return result
 
 
-@step("util/parse_kv", aliases=["parse_kv"])
+@step("util/parse_kv")
 class ParseKvStep(BaseStep):
     """Parse a delimited ``key=value`` string and optionally select one key.
 

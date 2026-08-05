@@ -48,7 +48,7 @@ metadata:
   version: "1.0"
 setup:
   - id: setup_step
-    uses: generate_uuid
+    uses: util/generate_uuid
     name: Generate Asset ID
 execution:
   - id: exec_step_one
@@ -60,11 +60,11 @@ execution:
       - uses: assert/not_empty
         with: {field: datasets}
   - id: exec_step_two
-    uses: http_request
+    uses: http/http_request
     name: HTTP Call
 teardown:
   - id: teardown_step
-    uses: delete_asset
+    uses: connector/provider/delete_asset
     name: Delete Asset
     validate:
       - uses: assert/status_code
@@ -96,7 +96,7 @@ metadata:
   name: Script A
   version: "1.0"
 execution:
-  - uses: generate_uuid
+  - uses: util/generate_uuid
     name: Step One
 """
 
@@ -110,9 +110,9 @@ metadata:
   name: Script B
   version: "1.0"
 execution:
-  - uses: http_request
+  - uses: http/http_request
     name: Step Two
-  - uses: http_request
+  - uses: http/http_request
     name: Step Three
 """
 
@@ -171,9 +171,9 @@ class TestTckInspectSingleScript:
     def test_inspect_extracts_uses_identifier(self, single_script_tck) -> None:
         result = single_script_tck.inspect()
         steps = result.scripts[0].steps
-        assert steps[0].uses == "generate_uuid"
+        assert steps[0].uses == "util/generate_uuid"
         assert steps[1].uses == "connector/request_catalog"
-        assert steps[3].uses == "delete_asset"
+        assert steps[3].uses == "connector/provider/delete_asset"
 
     def test_inspect_uses_name_field_when_present(self, single_script_tck) -> None:
         result = single_script_tck.inspect()
@@ -187,16 +187,16 @@ class TestTckInspectSingleScript:
         script_def = _SCRIPT_ADAPTER.validate_python(data)
         tck = Tck.from_single_script(script_def)
         result = tck.inspect()
-        http_step = next(s for s in result.scripts[0].steps if s.uses == "http_request")
-        assert http_step.step_name == "http_request"
+        http_step = next(s for s in result.scripts[0].steps if s.uses == "http/http_request")
+        assert http_step.step_name == "http/http_request"
 
     def test_inspect_per_step_validation_count(self, single_script_tck) -> None:
         result = single_script_tck.inspect()
         steps = {s.uses: s for s in result.scripts[0].steps}
-        assert steps["generate_uuid"].validation_count == 0
+        assert steps["util/generate_uuid"].validation_count == 0
         assert steps["connector/request_catalog"].validation_count == 2
-        assert steps["http_request"].validation_count == 0
-        assert steps["delete_asset"].validation_count == 1
+        assert steps["http/http_request"].validation_count == 0
+        assert steps["connector/provider/delete_asset"].validation_count == 1
 
     def test_inspect_result_is_frozen(self, single_script_tck) -> None:
         result = single_script_tck.inspect()

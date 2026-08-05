@@ -173,7 +173,7 @@ class TestJsonPathExtractPredicates:
 
     @staticmethod
     def _definition() -> StepDefinitionV2:
-        return StepDefinitionV2(id="get_href", uses="json_path_extract")
+        return StepDefinitionV2(id="get_href", uses="util/json_path_extract")
 
     @pytest.mark.asyncio
     async def test_extracts_href_via_nested_predicates(self, context: StepContext) -> None:

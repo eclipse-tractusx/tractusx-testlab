@@ -50,14 +50,14 @@ class TestStepDefinitionV2:
     """Tests for StepDefinitionV2 model validation."""
 
     def test_minimal_step_only_requires_uses(self) -> None:
-        step = StepDefinitionV2(uses="create_asset")
-        assert step.uses == "create_asset"
+        step = StepDefinitionV2(uses="connector/provider/create_asset")
+        assert step.uses == "connector/provider/create_asset"
         assert step.with_ is None
         assert (step.validate or []) == []
 
     def test_step_with_all_fields(self) -> None:
         step = StepDefinitionV2(
-            uses="http_request",
+            uses="http/http_request",
             name="Call API",
             description="Calls an external API",
             **{"with": {"url": "http://example.com"}},
@@ -74,7 +74,7 @@ class TestStepDefinitionV2:
 
     def test_step_with_assertions(self) -> None:
         step = StepDefinitionV2(
-            uses="http_request",
+            uses="http/http_request",
             validate=[
                 AssertionV2(uses="assert/status_code", **{"with": {"value": 200}}),
                 AssertionV2(uses="assert/not_null", **{"with": {"output": "body"}}),
@@ -104,7 +104,7 @@ class TestScriptDefinitionV2:
             id="s1",
             namespace="ns",
             metadata=MetadataDefinition(name="With Steps"),
-            execution=[StepDefinitionV2(uses="create_asset")],
+            execution=[StepDefinitionV2(uses="connector/provider/create_asset")],
         )
         assert len(script.execution) == 1
 
@@ -114,9 +114,9 @@ class TestScriptDefinitionV2:
             id="full",
             namespace="ns",
             metadata=MetadataDefinition(name="Full"),
-            setup=[StepDefinitionV2(uses="create_asset")],
-            execution=[StepDefinitionV2(uses="http_request")],
-            teardown=[StepDefinitionV2(uses="delete_asset")],
+            setup=[StepDefinitionV2(uses="connector/provider/create_asset")],
+            execution=[StepDefinitionV2(uses="http/http_request")],
+            teardown=[StepDefinitionV2(uses="connector/provider/delete_asset")],
         )
         assert len(script.setup) == 1
         assert len(script.execution) == 1

@@ -51,7 +51,7 @@ def definition() -> StepDefinitionV2:
 
 
 class TestGenerateUuidStep:
-    """Tests for generate_uuid step."""
+    """Tests for util/generate_uuid step."""
 
     @pytest.mark.asyncio
     async def test_generates_valid_uuid(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
@@ -74,7 +74,7 @@ class TestGenerateUuidStep:
 
 
 class TestJsonPathExtractStep:
-    """Tests for json_path_extract step."""
+    """Tests for util/json_path_extract step."""
 
     @pytest.mark.asyncio
     async def test_extracts_nested_value(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
@@ -121,7 +121,7 @@ class TestJsonPathExtractStep:
 
 
 class TestValidateSemanticSchemaStep:
-    """Tests for validate_semantic_schema step."""
+    """Tests for validate/semantic_schema step."""
 
     @pytest.mark.asyncio
     async def test_valid_payload_passes(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
@@ -171,7 +171,7 @@ class TestValidateSemanticSchemaStep:
 
 
 class TestQueryCatalogWithFiltersStep:
-    """Tests for query_catalog_with_filters step."""
+    """Tests for connector/consumer/query_catalog_with_filters step."""
 
     @pytest.mark.asyncio
     async def test_successful_catalog_query(
@@ -225,7 +225,7 @@ class TestQueryCatalogWithFiltersStep:
 
 
 class TestSendNotificationStep:
-    """Tests for send_notification step."""
+    """Tests for notifications/send step."""
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")

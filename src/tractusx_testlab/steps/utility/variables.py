@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Variable export/import steps for cross-script variable propagation."""
+"""Variable export step for cross-script variable propagation."""
 
 from __future__ import annotations
 
@@ -41,12 +41,12 @@ logger = logging.getLogger(__name__)
 _EXPORT_NAMESPACE = "!"
 
 
-@step("export_variable", aliases=["util/export_env"])
+@step("util/export_env")
 class ExportVariableStep(BaseStep):
     """Mark a context variable for export to downstream scripts.
 
     Stores the variable under ``!{script_name}:{var_name}`` so that
-    ``import_variable`` steps in later scripts can retrieve it.
+    downstream scripts can retrieve it during cross-script resolution.
 
     Params:
         name (str): The variable name to export from the current context.
@@ -63,42 +63,4 @@ class ExportVariableStep(BaseStep):
         context.set_variable(export_key, value)
 
         logger.info("Exported variable %s as %s", var_name, export_key)
-        return StepOutput(value=value)
-
-
-@step("import_variable")
-class ImportVariableStep(BaseStep):
-    """Import a variable exported by a previous script.
-
-    Looks up ``!{test}:{select}`` in the shared context and stores
-    it under ``store_in_variable`` (defaults to ``select``).
-
-    Params:
-        test (str): Name of the source script that exported the variable.
-        select (str): Name of the exported variable.
-        store_in_variable (str, optional): Local variable name to store as.
-            Defaults to the value of ``select``.
-    """
-
-    async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2
-    ) -> StepOutput:
-        source_test: str = params["test"]
-        select: str = params["select"]
-        store_as: str = params.get("store_in_variable", select)
-
-        export_key = f"{_EXPORT_NAMESPACE}{source_test}:{select}"
-        value = context.get_variable(export_key)
-
-        if value is None:
-            logger.warning(
-                "Variable %s not found in exports from script '%s'",
-                select, source_test,
-            )
-
-        context.set_variable(store_as, value)
-        logger.info(
-            "Imported %s from script '%s' as '%s'",
-            select, source_test, store_as,
-        )
         return StepOutput(value=value)

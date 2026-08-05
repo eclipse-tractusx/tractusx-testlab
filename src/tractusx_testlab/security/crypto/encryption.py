@@ -62,6 +62,33 @@ def encrypt_package(plaintext: bytes, recipient_public_pem: bytes) -> tuple[byte
     return encrypted_key, nonce, ciphertext
 
 
+def encrypt_for_recipients(
+    plaintext: bytes,
+    recipient_public_pems: dict[str, bytes],
+) -> tuple[bytes, bytes, list[tuple[str, bytes]]]:
+    """Encrypt *plaintext* once and wrap the AES key for each recipient.
+
+    Returns:
+        (nonce, ciphertext, [(player_id, encrypted_aes_key), ...])
+    """
+    aes_key = os.urandom(_AES_KEY_LEN)
+    nonce = os.urandom(_NONCE_LEN)
+    ciphertext = AESGCM(aes_key).encrypt(nonce, plaintext, None)
+    key_blocks: list[tuple[str, bytes]] = []
+    for player_id, pub_pem in recipient_public_pems.items():
+        rsa_pub = serialization.load_pem_public_key(pub_pem)
+        enc_key = rsa_pub.encrypt(
+            aes_key,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None,
+            ),
+        )
+        key_blocks.append((player_id, enc_key))
+    return nonce, ciphertext, key_blocks
+
+
 def decrypt_package(encrypted_key: bytes, nonce: bytes, ciphertext: bytes, private_pem: bytes) -> bytes:
     """Unwrap AES key with RSA-OAEP, then decrypt AES-256-GCM ciphertext."""
     rsa_priv = serialization.load_pem_private_key(private_pem, password=None)

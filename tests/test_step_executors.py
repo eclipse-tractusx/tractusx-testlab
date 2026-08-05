@@ -41,7 +41,7 @@ class TestStepRegistry:
     """Tests for the StepRegistry lookup mechanism."""
 
     def test_registry_has_export_variable_step(self) -> None:
-        cls = StepRegistry.get("export_variable", "saturn")
+        cls = StepRegistry.get("util/export_env", "saturn")
         assert cls is not None
         assert issubclass(cls, BaseStep)
 
@@ -50,18 +50,18 @@ class TestStepRegistry:
         assert cls is None
 
     def test_registry_has_method_checks_existence(self) -> None:
-        assert StepRegistry.has("export_variable", "saturn") is True
+        assert StepRegistry.has("util/export_env", "saturn") is True
         assert StepRegistry.has("fake_step_not_real", "saturn") is False
 
     def test_list_step_types_returns_nonempty(self) -> None:
         types = StepRegistry.list_step_types()
         assert len(types) > 0
-        assert "export_variable" in types
+        assert "util/export_env" in types
 
     def test_list_step_types_with_version_filter(self) -> None:
         types = StepRegistry.list_step_types("saturn")
         assert isinstance(types, list)
-        assert "export_variable" in types
+        assert "util/export_env" in types
 
 
 class TestExportVariableStep:
@@ -71,7 +71,7 @@ class TestExportVariableStep:
     async def test_export_variable_reads_from_context(self, mock_context: MagicMock) -> None:
         # Arrange
         mock_context.set_variable("my_var", "hello_world")
-        cls = StepRegistry.get("export_variable", "saturn")
+        cls = StepRegistry.get("util/export_env", "saturn")
         assert cls is not None
         step_instance = cls()
         definition = MagicMock()
@@ -87,7 +87,7 @@ class TestExportVariableStep:
     @pytest.mark.asyncio
     async def test_export_variable_with_missing_var(self, mock_context: MagicMock) -> None:
         # Arrange
-        cls = StepRegistry.get("export_variable", "saturn")
+        cls = StepRegistry.get("util/export_env", "saturn")
         assert cls is not None
         step_instance = cls()
         definition = MagicMock()

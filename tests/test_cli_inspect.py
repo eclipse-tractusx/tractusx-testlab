@@ -60,16 +60,16 @@ metadata:
   name: Inspect Script
   version: "1.0"
 setup:
-  - uses: generate_uuid
+  - uses: util/generate_uuid
     name: Generate UUID
 execution:
-  - uses: http_request
+  - uses: http/http_request
     name: HTTP Request
     validate:
       - uses: assert/status_code
         with: {expected: 200}
 teardown:
-  - uses: delete_asset
+  - uses: connector/provider/delete_asset
     name: Delete Asset
 """
 
@@ -108,9 +108,9 @@ class TestInspectCommand:
 
     def test_inspect_human_output_shows_uses_identifier(self, tck_archive: Path) -> None:
         result = runner.invoke(app, ["inspect", str(tck_archive)])
-        assert "generate_uuid" in result.output
-        assert "http_request" in result.output
-        assert "delete_asset" in result.output
+        assert "util/generate_uuid" in result.output
+        assert "http/http_request" in result.output
+        assert "connector/provider/delete_asset" in result.output
 
     def test_inspect_json_flag_produces_valid_json(self, tck_archive: Path) -> None:
         result = runner.invoke(app, ["inspect", str(tck_archive), "--json"])

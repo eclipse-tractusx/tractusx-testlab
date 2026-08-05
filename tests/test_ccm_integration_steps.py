@@ -60,7 +60,7 @@ class TestGenerateUuidStep:
 
         step_instance = GenerateUuidStep()
         ctx = _make_mock_context()
-        definition = _make_step_definition(type="generate_uuid")
+        definition = _make_step_definition(type="util/generate_uuid")
 
         output = await step_instance.execute({}, ctx, definition)
 
@@ -73,7 +73,7 @@ class TestGenerateUuidStep:
 
         step_instance = GenerateUuidStep()
         ctx = _make_mock_context()
-        definition = _make_step_definition(type="generate_uuid")
+        definition = _make_step_definition(type="util/generate_uuid")
 
         output = await step_instance.execute({"prefix": "urn:uuid:"}, ctx, definition)
 
@@ -89,7 +89,7 @@ class TestJsonPathExtractStep:
         data = {"a": {"b": [{"id": "found-it"}]}}
         ctx = _make_mock_context(source_data=data)
         step_instance = JsonPathExtractStep()
-        definition = _make_step_definition(type="json_path_extract")
+        definition = _make_step_definition(type="util/json_path_extract")
 
         output = await step_instance.execute(
             {"source": "source_data", "path": "a.b.0.id"}, ctx, definition,
@@ -102,7 +102,7 @@ class TestJsonPathExtractStep:
 
         ctx = _make_mock_context()
         step_instance = JsonPathExtractStep()
-        definition = _make_step_definition(type="json_path_extract")
+        definition = _make_step_definition(type="util/json_path_extract")
 
         with pytest.raises(KeyError, match="not found"):
             await step_instance.execute(
@@ -130,7 +130,7 @@ class TestExtractDatasetStep:
         }
         ctx = _make_mock_context(catalog=catalog)
         step_instance = ExtractDatasetStep()
-        definition = _make_step_definition(type="extract_dataset")
+        definition = _make_step_definition(type="connector/consumer/extract_dataset")
 
         output = await step_instance.execute(
             {"source": "catalog", "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI"},
@@ -148,7 +148,7 @@ class TestExtractDatasetStep:
         catalog = {"dcat:dataset": []}
         ctx = _make_mock_context(catalog=catalog)
         step_instance = ExtractDatasetStep()
-        definition = _make_step_definition(type="extract_dataset")
+        definition = _make_step_definition(type="connector/consumer/extract_dataset")
 
         output = await step_instance.execute(
             {"source": "catalog", "dct_type": "https://nonexistent"}, ctx, definition,
@@ -166,7 +166,7 @@ class TestValidateSemanticSchemaStep:
         payload = {"catenaXId": "urn:uuid:123", "childItems": []}
         ctx = _make_mock_context(payload=payload)
         step_instance = ValidateSemanticSchemaStep()
-        definition = _make_step_definition(type="validate_semantic_schema")
+        definition = _make_step_definition(type="validate/semantic_schema")
 
         output = await step_instance.execute(
             {"source": "payload", "schema_ref": "CX-0135"}, ctx, definition,
@@ -181,7 +181,7 @@ class TestValidateSemanticSchemaStep:
         payload = {"someOtherKey": "value"}
         ctx = _make_mock_context(payload=payload)
         step_instance = ValidateSemanticSchemaStep()
-        definition = _make_step_definition(type="validate_semantic_schema")
+        definition = _make_step_definition(type="validate/semantic_schema")
 
         output = await step_instance.execute(
             {"source": "payload", "schema_ref": "CX-0135"}, ctx, definition,
@@ -197,7 +197,7 @@ class TestValidateSemanticSchemaStep:
         payload = {"myKey": "present"}
         ctx = _make_mock_context(payload=payload)
         step_instance = ValidateSemanticSchemaStep()
-        definition = _make_step_definition(type="validate_semantic_schema")
+        definition = _make_step_definition(type="validate/semantic_schema")
 
         output = await step_instance.execute(
             {"source": "payload", "schema_ref": "CUSTOM", "required_keys": ["myKey"]},

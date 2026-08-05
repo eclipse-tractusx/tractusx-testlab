@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 import uuid
 
-@step("upload_backend_data")
+@step("submodels/upload")
 class UploadBackendDataStep(BaseStep):
     """Upload sample data to the backend under a unique UUID path.
 

@@ -1,6 +1,7 @@
 ################################################################################
-# Eclipse Tractus-X - Tractus-X TestLab
+# Catena-X - Test Suite
 #
+# Copyright (c) 2026 Catena-X Automotive Network e.V.
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -18,13 +19,35 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
 kind: tck
-syntax: v2
+syntax: v1-alpha
 
-id: certificate-management-tck
+id: certificate-management-tck-v0.0.1
+
+metadata:
+  name: "Certificate Management TCK"
+  version: "v0.0.1"
+  description: >
+    Validate CCMAPI certificate management workflow per CX-0135 v3.1.0:
+    (1) Validate CX-0135 catalog policy constraints
+    (2) Request certificate from provider and validate payload
+    (3) Send feedback notification and await acknowledgment
+    (4) Verify error handling for unknown certificate types
+  authors:
+    - name: Certificate Management Expert Group
+      email: ccm-eg@catena-x.net
+      company: Catena-X Automotive Network e.V.
+  copyright_holders:
+    - "2026 Catena-X Automotive Network e.V."
+  license: LicenseRef-Proprietary
+  standards:
+    - id: CX-0135
+      version: v3.1.0
+  tags:
+    - CCM
 
 dataspace:
   ecosystem: Catena-X
@@ -34,40 +57,19 @@ infrastructure:
   engine:
     connector:
       required: true
-    dtr:
-      required: false
+      standard:
+        - id: CX-0018
+          version: v4.2.0
   sut:
     connector:
       required: true
-    dtr:
-      required: true
-
-metadata:
-  name: "Certificate Management TCK"
-  version: "v0.0.1"
-  description: >
-    Validate CCMAPI certificate management workflow per CX-0135 v3.1.0:
-    (1) Request certificate from provider
-    (2) Validate certificate payload against schema
-    (3) Await provider feedback callback
-    (4) Send feedback notification and await acknowledgment
-    (5) Expose TestLab as provider and verify SUT consumer behavior
-  authors:
-    - name: Certificate Management Expert Group
-  copyright_holders:
-    - "2026 Contributors to the Eclipse Foundation"
-  license: Apache-2.0
-  standards:
-    - id: CX-0135
-      version: v3.1.0
-  tags:
-    - CCM
-  dataspace_version: saturn
+      standard:
+        - id: CX-0018
+          version: v4.2.0
 
 env:
   variables:
-    - id: provider_bpn
-      description: BPN-L of the SUT organization acting as the certificate provider.
+    - id: sut_counter_party_id
       uses: variable/type/string
       with:
         source: input
@@ -75,25 +77,8 @@ env:
       returns:
         value:
           type: string
-    - id: consumer_bpn
-      description: BPN-L of the TestLab engine connector acting as the certificate consumer.
-      uses: variable/type/string
-      with:
-        source: input
-        scope: engine
-      returns:
-        value:
-          type: string
-    - id: certificate_type
-      description: Type of the business partner certificate to request (e.g. iso9001, iso14001). Defaults to iso9001.
-      uses: variable/type/string
-      with:
-        value: iso9001
-      returns:
-        value:
-          type: string
-    - id: location_bpns
-      description: BPN-S of the SUT physical location (used in certificate availability checks).
+
+    - id: sut_counter_party_address
       uses: variable/type/string
       with:
         source: input
@@ -101,53 +86,17 @@ env:
       returns:
         value:
           type: string
-    - id: testlab_management_url
-      description: Base URL of the TestLab engine connector management API (used to register mock callbacks).
-      uses: variable/type/string
-      with:
-        source: input
-        scope: engine
-      returns:
-        value:
-          type: string
-    - id: testlab_dsp_url
-      description: DSP endpoint URL of the TestLab engine connector (provider address for inbound notifications).
-      uses: variable/type/string
-      with:
-        source: input
-        scope: engine
-      returns:
-        value:
-          type: string
-    - id: testlab_mock_base_url
-      description: Base URL of the TestLab mock server reachable by the SUT for async callbacks.
-      uses: variable/type/string
-      with:
-        source: input
-        scope: engine
-      returns:
-        value:
-          type: string
-    - id: sut_response_timeout
-      description: Maximum seconds to wait for an asynchronous SUT response. Defaults to 300.
-      uses: variable/type/integer
-      with:
-        value: 300
-      returns:
-        value:
-          type: integer
+
     - id: ccm_usage_policy
       uses: config/connector/policy
       name: Required CCMAPI Usage Policy
       with:
+        source: value
         value:
           permissions:
             - action: use
               constraints:
                 and:
-                  - left_operand: Membership
-                    operator: eq
-                    right_operand: "active"
                   - left_operand: UsagePurpose
                     operator: isAnyOf
                     right_operand: "cx.ccm.base:1"
@@ -158,35 +107,20 @@ env:
         policy:
           type: object
           class: Policy
+
   schemas:
     - id: certificate_schema
-      source: business_partner_certificate_schema.json
-    - id: bpc_v310_schema
-      source: bpc-v3.1.0.json
+      source: business_partner_certificate_schema-v3.0.1.json
+
   testdata:
-    - id: available_notification_body
-      source: available_notification_body.json
-      type: application/json
-    - id: certificate_available_response
-      source: certificate_available_response.json
-      type: application/json
-    - id: error_unknown_cert_type_body
-      source: error_unknown_cert_type_body.json
-      type: application/json
-    - id: expose_available_notification_body
-      source: expose_available_notification_body.json
-      type: application/json
-    - id: expose_certificate_data_response
-      source: expose_certificate_data_response.json
-      type: application/json
-    - id: push_certificate_body
-      source: push_certificate_body.json
-      type: application/json
     - id: request_certificate_body
       source: request_certificate_body.json
       type: application/json
     - id: send_feedback_body
       source: send_feedback_body.json
+      type: application/json
+    - id: error_unknown_cert_type_body
+      source: error_unknown_cert_type_body.json
       type: application/json
 
 tests:
@@ -194,17 +128,7 @@ tests:
     name: Validate CX-0135 catalog policy constraints
   - id: request_certificate.yaml
     name: Request a certificate via CCMAPI
-  - id: certificate_asset_validation.yaml
-    name: Validate the exposed certificate asset and its usage policy
-  - id: validate_payload.yaml
-    name: Validate certificate payload against the schema
-  - id: push_certificate.yaml
-    name: Push a certificate and verify the feedback callback
-  - id: available_notification.yaml
-    name: Send an available notification and verify acknowledgment
-  - id: send_feedback.yaml
-    name: Send feedback notification and await acknowledgment
-  - id: expose_testlab_asset.yaml
-    name: Expose TestLab as provider and verify SUT consumer behavior
+  - id: send_feedback_notification.yaml
+    name: Send a feedback notification and await acknowledgment
   - id: error_handling.yaml
     name: Verify error handling for unknown certificate types

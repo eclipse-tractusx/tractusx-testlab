@@ -1,6 +1,7 @@
 ################################################################################
-# Eclipse Tractus-X - Tractus-X TestLab
+# Catena-X - Test Suite
 #
+# Copyright (c) 2026 Catena-X Automotive Network e.V.
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -18,37 +19,36 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
 kind: test
-syntax: v2
+syntax: v1-alpha
 
+namespace: certificate-management-tck-v0.0.1
 id: catalog-policy-validation
-namespace: ccm-v0.0.1
 
 metadata:
   name: "Catalog Policy Validation"
-  version: "1.0"
+  version: "v1.0.0"
   description: >
     Validate CX-0135 catalog requirements: exactly one CCMAPI asset per BPNL
     and mandatory usage policy constraints (UsagePurpose: cx.ccm.base:1,
     FrameworkAgreement: DataExchangeGovernance:1.0).
 
 execution:
-  - id: pull_data_1
-    uses: connector/pull_data_filtered
-    name: Query catalog for CCMAPI assets and validate policy matches expected constraints
+  - id: pull_ccmapi_endpoint
+    uses: connector/consumer/pull_data_filtered
+    name: Query catalog for CCMAPI assets and obtain dataplane credentials
     with:
-      connector_service: ${{ infrastructure.engine.connector }}
-      counter_party_address: ${{ infrastructure.sut.connector.counter_party_address }}
-      counter_party_id: ${{ infrastructure.sut.connector.counter_party_id }}
-      policy: ${{ env.ccm_usage_policy.policy }}
+      counter_party_address: "${{ env.sut_counter_party_address.value }}"
+      counter_party_id: "${{ env.sut_counter_party_id.value }}"
+      policy: "${{ env.ccm_usage_policy.policy }}"
       filters:
-        - operand_left: "'http://purl.org/dc/terms/type'.'@id'"
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/type"
           operator: "="
           operand_right: "https://w3id.org/catenax/taxonomy#CCMAPI"
-        - operand_left: "'http://purl.org/dc/terms/subject'.'@id'"
+        - operand_left: "http://purl.org/dc/terms/subject"
           operator: "="
           operand_right: "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
         - operand_left: "https://w3id.org/catenax/ontology/common#version"
@@ -60,18 +60,8 @@ execution:
         class: AuthToken
       dataplane_url:
         type: string
-        class: DataplaneUrl
-
-  - id: assert_edr_token_1
-    uses: validate/assert
-    name: EDR authorization token must be obtained
-    with:
-      input: "${{ steps.pull_data_1.edr_token }}"
-      operator: not_null
-
-  - id: assert_dataplane_url_1
-    uses: validate/assert
-    name: Dataplane URL must be returned
-    with:
-      input: "${{ steps.pull_data_1.dataplane_url }}"
-      operator: not_null
+    validate:
+      - uses: validate/assert
+        with: { input: edr_token, operator: not_null }
+      - uses: validate/assert
+        with: { input: dataplane_url, operator: not_null }

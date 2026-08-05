@@ -83,7 +83,7 @@ class TestCompilerValidation:
         # Arrange
         script = _minimal_script()
         script["execution"] = [
-            {"uses": "export_variable", "with": {"name": "test_var"}},
+            {"uses": "util/export_env", "with": {"name": "test_var"}},
         ]
         script_path = _write_yaml(tmp_path, script)
         compiler = Compiler()

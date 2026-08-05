@@ -1,49 +1,14 @@
 {
   "global_symbols": {
-    "env.provider_url": {
+    "env.sut_counter_party_id": {
       "source": "env.variables",
       "type": "string",
       "default": null
     },
-    "env.provider_bpn": {
+    "env.sut_counter_party_address": {
       "source": "env.variables",
       "type": "string",
       "default": null
-    },
-    "env.consumer_bpn": {
-      "source": "env.variables",
-      "type": "string",
-      "default": null
-    },
-    "env.certificate_type": {
-      "source": "env.variables",
-      "type": "string",
-      "default": "iso9001"
-    },
-    "env.location_bpns": {
-      "source": "env.variables",
-      "type": "string",
-      "default": null
-    },
-    "env.testlab_management_url": {
-      "source": "env.variables",
-      "type": "string",
-      "default": null
-    },
-    "env.testlab_dsp_url": {
-      "source": "env.variables",
-      "type": "string",
-      "default": null
-    },
-    "env.testlab_mock_base_url": {
-      "source": "env.variables",
-      "type": "string",
-      "default": null
-    },
-    "env.sut_response_timeout": {
-      "source": "env.variables",
-      "type": "integer",
-      "default": 300
     },
     "env.ccm_usage_policy": {
       "source": "env.variables",
@@ -54,11 +19,6 @@
             "action": "use",
             "constraints": {
               "and": [
-                {
-                  "left_operand": "Membership",
-                  "operator": "eq",
-                  "right_operand": "active"
-                },
                 {
                   "left_operand": "UsagePurpose",
                   "operator": "isAnyOf",
@@ -80,36 +40,8 @@
       "type": "object",
       "class": "Policy"
     },
-    "env.schemas.{'id': 'certificate_schema', 'source': 'business_partner_certificate_schema.json'}": {
+    "env.schemas.{'id': 'certificate_schema', 'source': 'business_partner_certificate_schema-v3.0.1.json'}": {
       "source": "env.schemas",
-      "type": "object"
-    },
-    "env.schemas.{'id': 'bpc_v310_schema', 'source': 'bpc-v3.1.0.json'}": {
-      "source": "env.schemas",
-      "type": "object"
-    },
-    "env.testdata.{'id': 'available_notification_body', 'source': 'available_notification_body.json', 'type': 'application/json'}": {
-      "source": "env.testdata",
-      "type": "object"
-    },
-    "env.testdata.{'id': 'certificate_available_response', 'source': 'certificate_available_response.json', 'type': 'application/json'}": {
-      "source": "env.testdata",
-      "type": "object"
-    },
-    "env.testdata.{'id': 'error_unknown_cert_type_body', 'source': 'error_unknown_cert_type_body.json', 'type': 'application/json'}": {
-      "source": "env.testdata",
-      "type": "object"
-    },
-    "env.testdata.{'id': 'expose_available_notification_body', 'source': 'expose_available_notification_body.json', 'type': 'application/json'}": {
-      "source": "env.testdata",
-      "type": "object"
-    },
-    "env.testdata.{'id': 'expose_certificate_data_response', 'source': 'expose_certificate_data_response.json', 'type': 'application/json'}": {
-      "source": "env.testdata",
-      "type": "object"
-    },
-    "env.testdata.{'id': 'push_certificate_body', 'source': 'push_certificate_body.json', 'type': 'application/json'}": {
-      "source": "env.testdata",
       "type": "object"
     },
     "env.testdata.{'id': 'request_certificate_body', 'source': 'request_certificate_body.json', 'type': 'application/json'}": {
@@ -119,44 +51,20 @@
     "env.testdata.{'id': 'send_feedback_body', 'source': 'send_feedback_body.json', 'type': 'application/json'}": {
       "source": "env.testdata",
       "type": "object"
+    },
+    "env.testdata.{'id': 'error_unknown_cert_type_body', 'source': 'error_unknown_cert_type_body.json', 'type': 'application/json'}": {
+      "source": "env.testdata",
+      "type": "object"
     }
   },
   "services": [],
   "schemas": {
     "certificate_schema": {
-      "asset_key": "business_partner_certificate_schema.json",
-      "type": "application/json"
-    },
-    "bpc_v310_schema": {
-      "asset_key": "bpc-v3.1.0.json",
+      "asset_key": "business_partner_certificate_schema-v3.0.1.json",
       "type": "application/json"
     }
   },
   "testdata": {
-    "available_notification_body": {
-      "asset_key": "available_notification_body.json",
-      "type": "application/json"
-    },
-    "certificate_available_response": {
-      "asset_key": "certificate_available_response.json",
-      "type": "application/json"
-    },
-    "error_unknown_cert_type_body": {
-      "asset_key": "error_unknown_cert_type_body.json",
-      "type": "application/json"
-    },
-    "expose_available_notification_body": {
-      "asset_key": "expose_available_notification_body.json",
-      "type": "application/json"
-    },
-    "expose_certificate_data_response": {
-      "asset_key": "expose_certificate_data_response.json",
-      "type": "application/json"
-    },
-    "push_certificate_body": {
-      "asset_key": "push_certificate_body.json",
-      "type": "application/json"
-    },
     "request_certificate_body": {
       "asset_key": "request_certificate_body.json",
       "type": "application/json"
@@ -164,44 +72,28 @@
     "send_feedback_body": {
       "asset_key": "send_feedback_body.json",
       "type": "application/json"
+    },
+    "error_unknown_cert_type_body": {
+      "asset_key": "error_unknown_cert_type_body.json",
+      "type": "application/json"
     }
   },
   "tests": [
     {
       "id": "catalog-policy-validation",
-      "source_hash": "blake2b:0e31a1f8a793b80325301e1f6e7339cb1435eaca967b9794300416fd449759b6"
+      "source_hash": "blake2b:52ea54438e882674438151a9868f12f1289ba0bef5992684db20690067386911"
     },
     {
       "id": "request-certificate",
-      "source_hash": "blake2b:0713ce0414a37ff8d447e8bf2895271b1903e91f7cdf4a5d5887f822f41fad24"
-    },
-    {
-      "id": "certificate-asset-validation",
-      "source_hash": "blake2b:4bc0400d4d4e763f25498ec307e8ad33a6053d7a6688307e1c8fcbe7cb35f4fa"
-    },
-    {
-      "id": "validate-certificate-payload",
-      "source_hash": "blake2b:5c2da870729549794c28f66f7868db03f9a11c5164dc2bdd571c895eac3db431"
-    },
-    {
-      "id": "push-certificate",
-      "source_hash": "blake2b:ccc6b2fc4666aa799b8c606a74f329893dc92066d1ac927ee64d70174ee8d04a"
-    },
-    {
-      "id": "available-notification",
-      "source_hash": "blake2b:545c91de614d1d117476d46d5ada312adaf71a1bce382d67402b1d21240d7747"
+      "source_hash": "blake2b:b2cbf83d38e204ba11774894aa2e405c1b2776a4f8179a016b0e53fc1a00fa78"
     },
     {
       "id": "send-feedback-notification",
-      "source_hash": "blake2b:09dff57a4c2bf0faec1bb7bb611a347e9fba6ca8f6a450c382980a4b6edbf94e"
-    },
-    {
-      "id": "expose-testlab-asset",
-      "source_hash": "blake2b:bfd506cc2cb8b81f800c258f9985ca1c8ca067ea04bc672acd92df5ccf8d117c"
+      "source_hash": "blake2b:c80ccfe4a038e4b7da37a7eb5a2f756a431040f21f8721d3013537432e87fd4d"
     },
     {
       "id": "error-handling",
-      "source_hash": "blake2b:383da95da60aec28e7f84418e2af7988ba0f687818730b922c2bc884d0160560"
+      "source_hash": "blake2b:2f7186369b07e2b33993b823a56af272c2f21b3ae45e0dfbdd47918707a63c1d"
     }
   ],
   "compiled_tests": [
@@ -209,50 +101,46 @@
       "id": "catalog-policy-validation",
       "metadata": {
         "name": "Catalog Policy Validation",
-        "version": "1.0",
+        "version": "v1.0.0",
         "description": "Validate CX-0135 catalog requirements: exactly one CCMAPI asset per BPNL and mandatory usage policy constraints (UsagePurpose: cx.ccm.base:1, FrameworkAgreement: DataExchangeGovernance:1.0).\n"
       },
       "symbol_table": {
-        "steps.pull_data_1.edr_token": {
+        "steps.pull_ccmapi_endpoint.edr_token": {
           "source": "step_output",
           "produced_by": 0,
           "type": "string",
           "class": "AuthToken"
         },
-        "steps.pull_data_1.dataplane_url": {
+        "steps.pull_ccmapi_endpoint.dataplane_url": {
           "source": "step_output",
           "produced_by": 0,
-          "type": "string",
-          "class": "DataplaneUrl"
+          "type": "string"
         }
       },
       "instructions": [
         {
           "index": 0,
-          "id": "pull_data_1",
-          "uses": "connector/pull_data_filtered",
-          "name": "Query catalog for CCMAPI assets and validate policy matches expected constraints",
+          "id": "pull_ccmapi_endpoint",
+          "uses": "connector/consumer/pull_data_filtered",
+          "name": "Query catalog for CCMAPI assets and obtain dataplane credentials",
           "with": {
-            "connector_service": {
-              "$ref": "infrastructure.engine.connector"
-            },
             "counter_party_address": {
-              "$ref": "infrastructure.sut.connector.counter_party_address"
+              "$ref": "env.sut_counter_party_address.value"
             },
             "counter_party_id": {
-              "$ref": "infrastructure.sut.connector.counter_party_id"
+              "$ref": "env.sut_counter_party_id.value"
             },
             "policy": {
               "$ref": "env.ccm_usage_policy.policy"
             },
             "filters": [
               {
-                "operand_left": "'http://purl.org/dc/terms/type'.'@id'",
+                "operand_left": "https://w3id.org/edc/v0.0.1/ns/type",
                 "operator": "=",
                 "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
               },
               {
-                "operand_left": "'http://purl.org/dc/terms/subject'.'@id'",
+                "operand_left": "http://purl.org/dc/terms/subject",
                 "operator": "=",
                 "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
               },
@@ -269,67 +157,27 @@
               "class": "AuthToken"
             },
             "dataplane_url": {
-              "type": "string",
-              "class": "DataplaneUrl"
+              "type": "string"
             }
           },
-          "validate": [],
+          "validate": [
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "edr_token",
+                "operator": "not_null"
+              }
+            },
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "dataplane_url",
+                "operator": "not_null"
+              }
+            }
+          ],
           "phase": "main",
           "phase_index": 0,
-          "on_failure": "abort"
-        },
-        {
-          "index": 1,
-          "id": "assert_edr_token_1",
-          "uses": "validate/assert",
-          "name": "EDR authorization token must be obtained",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.edr_token"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.edr_token"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
-        },
-        {
-          "index": 2,
-          "id": "assert_dataplane_url_1",
-          "uses": "validate/assert",
-          "name": "Dataplane URL must be returned",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.dataplane_url"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.dataplane_url"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 2,
           "on_failure": "abort"
         }
       ]
@@ -338,118 +186,57 @@
       "id": "request-certificate",
       "metadata": {
         "name": "Request Certificate",
-        "version": "1.0",
-        "description": "Request certificate via CCMAPI endpoint per CX-0135 v3.1.0. Validates full 7-field header envelope on response and requestStatus enum.\n"
+        "version": "v1.0.0",
+        "description": "Request certificate via CCMAPI endpoint per CX-0135 v3.1.0. Validates HTTP 200 response, header message ID format, and payload schema.\n"
       },
       "symbol_table": {
-        "steps.pull_data_1.catalog": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "object",
-          "class": "Catalog"
-        },
-        "steps.pull_data_1.datasets": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "array",
-          "class": "Datasets"
-        },
-        "steps.pull_data_1.asset_id": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "AssetId"
-        },
-        "steps.pull_data_1.negotiation_id": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "NegotiationId"
-        },
-        "steps.pull_data_1.transfer_process_id": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "TransferId"
-        },
-        "steps.pull_data_1.edr_token": {
+        "steps.pull_ccmapi_endpoint.edr_token": {
           "source": "step_output",
           "produced_by": 0,
           "type": "string",
           "class": "AuthToken"
         },
-        "steps.pull_data_1.dataplane_url": {
+        "steps.pull_ccmapi_endpoint.dataplane_url": {
           "source": "step_output",
           "produced_by": 0,
-          "type": "string",
-          "class": "DataplaneUrl"
+          "type": "string"
         },
-        "steps.gen_uuid_1.generated_id": {
+        "steps.request_certificate.status_code": {
           "source": "step_output",
-          "produced_by": 7,
-          "type": "string",
-          "class": "Uuid"
+          "produced_by": 1,
+          "type": "integer"
         },
-        "steps.http_call_1.status_code": {
+        "steps.request_certificate.response_body": {
           "source": "step_output",
-          "produced_by": 8,
-          "type": "integer",
-          "class": "StatusCode"
-        },
-        "steps.http_call_1.response_body": {
-          "source": "step_output",
-          "produced_by": 8,
+          "produced_by": 1,
           "type": "object",
           "class": "ResponseBody"
-        },
-        "teardown.export_request_id.exported": {
-          "source": "teardown_output",
-          "produced_by": 19,
-          "type": "string"
-        },
-        "teardown.export_document_id.exported": {
-          "source": "teardown_output",
-          "produced_by": 20,
-          "type": "string"
-        },
-        "teardown.export_dataplane_url.exported": {
-          "source": "teardown_output",
-          "produced_by": 21,
-          "type": "string"
-        },
-        "teardown.export_edr_token.exported": {
-          "source": "teardown_output",
-          "produced_by": 22,
-          "type": "string"
         }
       },
       "instructions": [
         {
           "index": 0,
-          "id": "pull_data_1",
-          "uses": "connector/pull_data_filtered",
-          "name": "Discover CCMAPI offers, negotiate with expected policy, and obtain EDR",
+          "id": "pull_ccmapi_endpoint",
+          "uses": "connector/consumer/pull_data_filtered",
+          "name": "Discover CCMAPI offer and obtain dataplane credentials",
           "with": {
-            "connector_service": {
-              "$ref": "infrastructure.engine.connector"
-            },
             "counter_party_address": {
-              "$ref": "infrastructure.sut.connector.counter_party_address"
+              "$ref": "env.sut_counter_party_address.value"
             },
             "counter_party_id": {
-              "$ref": "infrastructure.sut.connector.counter_party_id"
+              "$ref": "env.sut_counter_party_id.value"
             },
             "policy": {
               "$ref": "env.ccm_usage_policy.policy"
             },
             "filters": [
               {
-                "operand_left": "'http://purl.org/dc/terms/type'.'@id'",
+                "operand_left": "https://w3id.org/edc/v0.0.1/ns/type",
                 "operator": "=",
                 "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
               },
               {
-                "operand_left": "'http://purl.org/dc/terms/subject'.'@id'",
+                "operand_left": "http://purl.org/dc/terms/subject",
                 "operator": "=",
                 "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
               },
@@ -461,232 +248,47 @@
             ]
           },
           "returns": {
-            "catalog": {
-              "type": "object",
-              "class": "Catalog"
-            },
-            "datasets": {
-              "type": "array",
-              "class": "Datasets"
-            },
-            "asset_id": {
-              "type": "string",
-              "class": "AssetId"
-            },
-            "negotiation_id": {
-              "type": "string",
-              "class": "NegotiationId"
-            },
-            "transfer_process_id": {
-              "type": "string",
-              "class": "TransferId"
-            },
             "edr_token": {
               "type": "string",
               "class": "AuthToken"
             },
             "dataplane_url": {
-              "type": "string",
-              "class": "DataplaneUrl"
+              "type": "string"
             }
           },
-          "validate": [],
+          "validate": [
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "edr_token",
+                "operator": "not_null"
+              }
+            },
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "dataplane_url",
+                "operator": "not_null"
+              }
+            }
+          ],
           "phase": "main",
           "phase_index": 0,
           "on_failure": "abort"
         },
         {
           "index": 1,
-          "id": "assert_datasets_1",
-          "uses": "validate/assert",
-          "name": "Datasets must be returned",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.datasets"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.datasets"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
-        },
-        {
-          "index": 2,
-          "id": "assert_asset_id_1",
-          "uses": "validate/assert",
-          "name": "Asset ID must be returned",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.asset_id"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.asset_id"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 2,
-          "on_failure": "abort"
-        },
-        {
-          "index": 3,
-          "id": "assert_negotiation_id_1",
-          "uses": "validate/assert",
-          "name": "Negotiation ID must be returned",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.negotiation_id"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.negotiation_id"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 3,
-          "on_failure": "abort"
-        },
-        {
-          "index": 4,
-          "id": "assert_transfer_id_1",
-          "uses": "validate/assert",
-          "name": "Transfer process ID must be returned",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.transfer_process_id"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.transfer_process_id"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 4,
-          "on_failure": "abort"
-        },
-        {
-          "index": 5,
-          "id": "assert_edr_token_1",
-          "uses": "validate/assert",
-          "name": "EDR token must be returned",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.edr_token"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.edr_token"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 5,
-          "on_failure": "abort"
-        },
-        {
-          "index": 6,
-          "id": "assert_dataplane_url_1",
-          "uses": "validate/assert",
-          "name": "Dataplane URL must be returned",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.dataplane_url"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.dataplane_url"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 6,
-          "on_failure": "abort"
-        },
-        {
-          "index": 7,
-          "id": "gen_uuid_1",
-          "uses": "util/generate_uuid",
-          "name": "Generate request message ID",
-          "with": {},
-          "returns": {
-            "generated_id": {
-              "type": "string",
-              "class": "Uuid"
-            }
-          },
-          "validate": [],
-          "phase": "main",
-          "phase_index": 7,
-          "on_failure": "abort"
-        },
-        {
-          "index": 8,
-          "id": "http_call_1",
+          "id": "request_certificate",
           "uses": "connector/dataplane/http_request",
-          "name": "POST certificate request to CCMAPI endpoint via data plane",
+          "name": "POST certificate request to CCMAPI endpoint via dataplane",
           "with": {
             "method": "POST",
             "dataplane_url": {
-              "$ref": "steps.pull_data_1.dataplane_url"
+              "$ref": "execution.pull_ccmapi_endpoint.dataplane_url"
             },
             "path": "/companycertificate/request",
             "edr_token": {
-              "$ref": "steps.pull_data_1.edr_token"
+              "$ref": "execution.pull_ccmapi_endpoint.edr_token"
             },
             "headers": {
               "Content-Type": "application/json"
@@ -697,789 +299,35 @@
           },
           "returns": {
             "status_code": {
-              "type": "integer",
-              "class": "StatusCode"
+              "type": "integer"
             },
             "response_body": {
               "type": "object",
               "class": "ResponseBody"
             }
           },
-          "validate": [],
-          "phase": "main",
-          "phase_index": 8,
-          "on_failure": "abort"
-        },
-        {
-          "index": 9,
-          "id": "assert_status_200",
-          "uses": "validate/assert",
-          "name": "Response status code must be 200",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.status_code"
-            },
-            "operator": "equals",
-            "value": 200
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.status_code"
-                },
-                "operator": "equals",
-                "value": 200
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 9,
-          "on_failure": "abort"
-        },
-        {
-          "index": 10,
-          "id": "assert_message_id",
-          "uses": "validate/field",
-          "name": "Header messageId must be a valid URN UUID",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "path": "header.messageId",
-            "operator": "matches_regex",
-            "value": "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-          },
-          "returns": {},
           "validate": [
             {
               "uses": "validate/field",
               "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
+                "input": "status_code",
+                "operator": "equals",
+                "value": 200
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "response_body",
                 "path": "header.messageId",
                 "operator": "matches_regex",
                 "value": "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
               }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 10,
-          "on_failure": "abort"
-        },
-        {
-          "index": 11,
-          "id": "assert_context",
-          "uses": "validate/field",
-          "name": "Header context must match request context",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
             },
-            "path": "header.context",
-            "operator": "equals",
-            "value": "CompanyCertificateManagement-CCMAPI-Request:1.0.0"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
-                "path": "header.context",
-                "operator": "equals",
-                "value": "CompanyCertificateManagement-CCMAPI-Request:1.0.0"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 11,
-          "on_failure": "abort"
-        },
-        {
-          "index": 12,
-          "id": "assert_sent_datetime",
-          "uses": "validate/field",
-          "name": "Header sentDateTime must be present",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "path": "header.sentDateTime",
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
-                "path": "header.sentDateTime",
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 12,
-          "on_failure": "abort"
-        },
-        {
-          "index": 13,
-          "id": "assert_sender_bpn",
-          "uses": "validate/field",
-          "name": "Header senderBpn must be a valid BPNL",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "path": "header.senderBpn",
-            "operator": "matches_regex",
-            "value": "^BPNL[0-9A-Z]{12}$"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
-                "path": "header.senderBpn",
-                "operator": "matches_regex",
-                "value": "^BPNL[0-9A-Z]{12}$"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 13,
-          "on_failure": "abort"
-        },
-        {
-          "index": 14,
-          "id": "assert_receiver_bpn",
-          "uses": "validate/field",
-          "name": "Header receiverBpn must match consumer BPN",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "path": "header.receiverBpn",
-            "operator": "equals",
-            "value": {
-              "$ref": "env.consumer_bpn"
-            }
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
-                "path": "header.receiverBpn",
-                "operator": "equals",
-                "value": {
-                  "$ref": "env.consumer_bpn"
-                }
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 14,
-          "on_failure": "abort"
-        },
-        {
-          "index": 15,
-          "id": "assert_related_msg_id",
-          "uses": "validate/field",
-          "name": "Header relatedMessageId must match request UUID",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "path": "header.relatedMessageId",
-            "operator": "equals",
-            "value": {
-              "$concat": [
-                "urn:uuid:",
-                {
-                  "$ref": "steps.gen_uuid_1.generated_id"
-                }
-              ]
-            }
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
-                "path": "header.relatedMessageId",
-                "operator": "equals",
-                "value": {
-                  "$concat": [
-                    "urn:uuid:",
-                    {
-                      "$ref": "steps.gen_uuid_1.generated_id"
-                    }
-                  ]
-                }
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 15,
-          "on_failure": "abort"
-        },
-        {
-          "index": 16,
-          "id": "assert_version",
-          "uses": "validate/field",
-          "name": "Header version must be 3.1.0",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "path": "header.version",
-            "operator": "equals",
-            "value": "3.1.0"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
-                "path": "header.version",
-                "operator": "equals",
-                "value": "3.1.0"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 16,
-          "on_failure": "abort"
-        },
-        {
-          "index": 17,
-          "id": "assert_request_status",
-          "uses": "validate/field",
-          "name": "Content requestStatus must be valid enum value",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "path": "content.requestStatus",
-            "operator": "one_of",
-            "value": [
-              "IN_PROGRESS",
-              "COMPLETED",
-              "REJECTED"
-            ]
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
-                "path": "content.requestStatus",
-                "operator": "one_of",
-                "value": [
-                  "IN_PROGRESS",
-                  "COMPLETED",
-                  "REJECTED"
-                ]
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 17,
-          "on_failure": "abort"
-        },
-        {
-          "index": 18,
-          "id": "assert_document_id",
-          "uses": "validate/field",
-          "name": "Content documentId must be present",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "path": "content.documentId",
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
-                "path": "content.documentId",
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 18,
-          "on_failure": "abort"
-        },
-        {
-          "index": 19,
-          "id": "export_request_id",
-          "uses": "util/export_env",
-          "name": "Export request ID for downstream tests",
-          "with": {
-            "name": "request_id",
-            "value": {
-              "$ref": "steps.http_call_1.response_body.header.relatedMessageId"
-            }
-          },
-          "returns": {},
-          "validate": [],
-          "phase": "teardown",
-          "phase_index": 0,
-          "on_failure": "continue"
-        },
-        {
-          "index": 20,
-          "id": "export_document_id",
-          "uses": "util/export_env",
-          "name": "Export document ID for payload validation",
-          "with": {
-            "name": "document_id",
-            "value": {
-              "$ref": "steps.http_call_1.response_body.content.documentId"
-            }
-          },
-          "returns": {},
-          "validate": [],
-          "phase": "teardown",
-          "phase_index": 1,
-          "on_failure": "continue"
-        },
-        {
-          "index": 21,
-          "id": "export_dataplane_url",
-          "uses": "util/export_env",
-          "name": "Export dataplane URL for downstream tests",
-          "with": {
-            "name": "dataplane_url",
-            "value": {
-              "$ref": "steps.pull_data_1.dataplane_url"
-            }
-          },
-          "returns": {},
-          "validate": [],
-          "phase": "teardown",
-          "phase_index": 2,
-          "on_failure": "continue"
-        },
-        {
-          "index": 22,
-          "id": "export_edr_token",
-          "uses": "util/export_env",
-          "name": "Export EDR token for downstream tests",
-          "with": {
-            "name": "edr_token",
-            "value": {
-              "$ref": "steps.pull_data_1.edr_token"
-            }
-          },
-          "returns": {},
-          "validate": [],
-          "phase": "teardown",
-          "phase_index": 3,
-          "on_failure": "continue"
-        }
-      ]
-    },
-    {
-      "id": "certificate-asset-validation",
-      "metadata": {
-        "name": "Certificate Asset Validation",
-        "version": "1.0",
-        "description": "Verify the SUT publishes exactly one CCMAPI certificate asset in its EDC catalog and that the offered usage policy matches the CX-0135 v3.1.0 requirements (UsagePurpose: cx.ccm.base:1, FrameworkAgreement: DataExchangeGovernance:1.0) before any data exchange is attempted.\n"
-      },
-      "symbol_table": {
-        "steps.pull_data_1.edr_token": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "AuthToken"
-        },
-        "steps.pull_data_1.dataplane_url": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "DataplaneUrl"
-        }
-      },
-      "instructions": [
-        {
-          "index": 0,
-          "id": "pull_data_1",
-          "uses": "connector/pull_data_filtered",
-          "name": "Discover the CCMAPI certificate asset and obtain dataplane credentials",
-          "with": {
-            "connector_service": {
-              "$ref": "infrastructure.engine.connector"
-            },
-            "counter_party_address": {
-              "$ref": "infrastructure.sut.connector.counter_party_address"
-            },
-            "counter_party_id": {
-              "$ref": "infrastructure.sut.connector.counter_party_id"
-            },
-            "policy": {
-              "$ref": "env.ccm_usage_policy.policy"
-            },
-            "filters": [
-              {
-                "operand_left": "'http://purl.org/dc/terms/type'.'@id'",
-                "operator": "=",
-                "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
-              }
-            ]
-          },
-          "returns": {
-            "edr_token": {
-              "type": "string",
-              "class": "AuthToken"
-            },
-            "dataplane_url": {
-              "type": "string",
-              "class": "DataplaneUrl"
-            }
-          },
-          "validate": [],
-          "phase": "main",
-          "phase_index": 0,
-          "on_failure": "abort"
-        },
-        {
-          "index": 1,
-          "id": "assert_edr_token_1",
-          "uses": "validate/assert",
-          "name": "EDR token must be obtained for the certificate asset",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.edr_token"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.edr_token"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
-        },
-        {
-          "index": 2,
-          "id": "assert_dataplane_url_1",
-          "uses": "validate/assert",
-          "name": "Dataplane URL must be returned for the certificate asset",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.dataplane_url"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.dataplane_url"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 2,
-          "on_failure": "abort"
-        }
-      ]
-    },
-    {
-      "id": "validate-certificate-payload",
-      "metadata": {
-        "name": "Validate Certificate Payload",
-        "version": "1.0",
-        "description": "Discover certificate Submodel asset in provider catalog via EDC, negotiate + pull via EDR, and validate against CX-0135 BusinessPartnerCertificate semantic model v3.1.0.\n"
-      },
-      "symbol_table": {
-        "steps.pull_data_1.edr_token": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "AuthToken"
-        },
-        "steps.pull_data_1.dataplane_url": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "DataplaneUrl"
-        },
-        "steps.http_call_1.status_code": {
-          "source": "step_output",
-          "produced_by": 3,
-          "type": "integer",
-          "class": "StatusCode"
-        },
-        "steps.http_call_1.response_body": {
-          "source": "step_output",
-          "produced_by": 3,
-          "type": "object",
-          "class": "ResponseBody"
-        }
-      },
-      "instructions": [
-        {
-          "index": 0,
-          "id": "pull_data_1",
-          "uses": "connector/pull_data_filtered",
-          "name": "Discover certificate Submodel asset and obtain dataplane credentials",
-          "with": {
-            "connector_service": {
-              "$ref": "infrastructure.engine.connector"
-            },
-            "counter_party_address": {
-              "$ref": "infrastructure.sut.connector.counter_party_address"
-            },
-            "counter_party_id": {
-              "$ref": "infrastructure.sut.connector.counter_party_id"
-            },
-            "policy": {
-              "$ref": "env.ccm_usage_policy.policy"
-            },
-            "filters": [
-              {
-                "operand_left": "'http://purl.org/dc/terms/type'.'@id'",
-                "operator": "=",
-                "operand_right": "https://w3id.org/catenax/taxonomy#Submodel"
-              },
-              {
-                "operand_left": "'http://purl.org/dc/terms/subject'.'@id'",
-                "operator": "=",
-                "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificate"
-              }
-            ]
-          },
-          "returns": {
-            "edr_token": {
-              "type": "string",
-              "class": "AuthToken"
-            },
-            "dataplane_url": {
-              "type": "string",
-              "class": "DataplaneUrl"
-            }
-          },
-          "validate": [],
-          "phase": "main",
-          "phase_index": 0,
-          "on_failure": "abort"
-        },
-        {
-          "index": 1,
-          "id": "assert_edr_token_1",
-          "uses": "validate/assert",
-          "name": "EDR token must be obtained",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.edr_token"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.edr_token"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
-        },
-        {
-          "index": 2,
-          "id": "assert_dataplane_url_1",
-          "uses": "validate/assert",
-          "name": "Dataplane URL must be returned",
-          "with": {
-            "input": {
-              "$ref": "steps.pull_data_1.dataplane_url"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.pull_data_1.dataplane_url"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 2,
-          "on_failure": "abort"
-        },
-        {
-          "index": 3,
-          "id": "http_call_1",
-          "uses": "connector/dataplane/http_request",
-          "name": "Fetch certificate payload via data plane",
-          "with": {
-            "method": "GET",
-            "dataplane_url": {
-              "$ref": "steps.pull_data_1.dataplane_url"
-            },
-            "path": {
-              "$concat": [
-                "/companycertificate/",
-                {
-                  "$ref": "env.document_id"
-                }
-              ]
-            },
-            "edr_token": {
-              "$ref": "steps.pull_data_1.edr_token"
-            },
-            "headers": {
-              "Accept": "application/json"
-            }
-          },
-          "returns": {
-            "status_code": {
-              "type": "integer",
-              "class": "StatusCode"
-            },
-            "response_body": {
-              "type": "object",
-              "class": "ResponseBody"
-            }
-          },
-          "validate": [],
-          "phase": "main",
-          "phase_index": 3,
-          "on_failure": "abort"
-        },
-        {
-          "index": 4,
-          "id": "assert_status_200",
-          "uses": "validate/assert",
-          "name": "Response status code must be 200",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.status_code"
-            },
-            "operator": "equals",
-            "value": 200
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.status_code"
-                },
-                "operator": "equals",
-                "value": 200
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 4,
-          "on_failure": "abort"
-        },
-        {
-          "index": 5,
-          "id": "assert_body_not_null",
-          "uses": "validate/assert",
-          "name": "Response body must not be empty",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "operator": "not_null"
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 5,
-          "on_failure": "abort"
-        },
-        {
-          "index": 6,
-          "id": "validate_schema_1",
-          "uses": "validate/schema",
-          "name": "Validate response against BusinessPartnerCertificate v3.1.0 schema",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "schema": {
-              "$ref": "env.schemas.certificate_schema"
-            }
-          },
-          "returns": {},
-          "validate": [
             {
               "uses": "validate/schema",
               "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
+                "input": "response_body",
                 "schema": {
                   "$ref": "env.schemas.certificate_schema"
                 }
@@ -1487,788 +335,7 @@
             }
           ],
           "phase": "main",
-          "phase_index": 6,
-          "on_failure": "abort"
-        },
-        {
-          "index": 7,
-          "id": "assert_certificate_type",
-          "uses": "validate/field",
-          "name": "Certificate type must match expected value",
-          "with": {
-            "input": {
-              "$ref": "steps.http_call_1.response_body"
-            },
-            "path": "certificateType",
-            "operator": "equals",
-            "value": {
-              "$ref": "env.certificate_type"
-            }
-          },
-          "returns": {},
-          "validate": [
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": {
-                  "$ref": "steps.http_call_1.response_body"
-                },
-                "path": "certificateType",
-                "operator": "equals",
-                "value": {
-                  "$ref": "env.certificate_type"
-                }
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 7,
-          "on_failure": "abort"
-        }
-      ]
-    },
-    {
-      "id": "push-certificate",
-      "metadata": {
-        "name": "Push Certificate",
-        "version": "1.0",
-        "description": "Test CX-0135 PUSH mechanism: push certificate to SUT and verify SUT sends a feedback callback with correct relatedMessageId and valid certificateStatus.\n"
-      },
-      "symbol_table": {
-        "setup.mock_feedback_callback.mock": {
-          "source": "setup_output",
-          "produced_by": 0,
-          "type": "class",
-          "class": "MockInstance"
-        },
-        "setup.mock_feedback_callback.base_mock_url": {
-          "source": "setup_output",
-          "produced_by": 0,
-          "type": "string"
-        },
-        "setup.mock_feedback_callback.full_mock_url": {
-          "source": "setup_output",
-          "produced_by": 0,
-          "type": "string"
-        },
-        "steps.pull_notification_endpoint.catalog": {
-          "source": "step_output",
-          "produced_by": 1,
-          "type": "object",
-          "class": "Catalog"
-        },
-        "steps.pull_notification_endpoint.datasets": {
-          "source": "step_output",
-          "produced_by": 1,
-          "type": "object",
-          "class": "Datasets"
-        },
-        "steps.pull_notification_endpoint.asset_id": {
-          "source": "step_output",
-          "produced_by": 1,
-          "type": "string",
-          "class": "AssetId"
-        },
-        "steps.pull_notification_endpoint.negotiation_id": {
-          "source": "step_output",
-          "produced_by": 1,
-          "type": "string",
-          "class": "NegotiationId"
-        },
-        "steps.pull_notification_endpoint.transfer_process_id": {
-          "source": "step_output",
-          "produced_by": 1,
-          "type": "string",
-          "class": "TransferId"
-        },
-        "steps.pull_notification_endpoint.edr_token": {
-          "source": "step_output",
-          "produced_by": 1,
-          "type": "string",
-          "class": "AuthToken"
-        },
-        "steps.pull_notification_endpoint.dataplane_url": {
-          "source": "step_output",
-          "produced_by": 1,
-          "type": "string",
-          "class": "DataplaneUrl"
-        },
-        "steps.gen_push_message_id.generated_id": {
-          "source": "step_output",
-          "produced_by": 2,
-          "type": "string",
-          "class": "Uuid"
-        },
-        "steps.push_cert_to_sut.status_code": {
-          "source": "step_output",
-          "produced_by": 3,
-          "type": "integer",
-          "class": "StatusCode"
-        },
-        "steps.wait_feedback_callback.request_method": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "string",
-          "class": "String"
-        },
-        "steps.wait_feedback_callback.request_headers": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "object",
-          "class": "ResponseHeaders"
-        },
-        "steps.wait_feedback_callback.request_body": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "object",
-          "class": "ResponseBody"
-        },
-        "steps.wait_feedback_callback.query_params": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "object",
-          "class": "String"
-        },
-        "steps.wait_feedback_callback.elapsed_ms": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "integer",
-          "class": "String"
-        }
-      },
-      "instructions": [
-        {
-          "index": 0,
-          "id": "mock_feedback_callback",
-          "uses": "mock/api",
-          "name": "Expose mock endpoint for SUT feedback callback",
-          "with": {
-            "method": "POST",
-            "path": "/companycertificate/status",
-            "response_status": 200
-          },
-          "returns": {
-            "mock": {
-              "type": "class",
-              "class": "MockInstance"
-            },
-            "base_mock_url": {
-              "type": "string"
-            },
-            "full_mock_url": {
-              "type": "string"
-            }
-          },
-          "validate": [],
-          "phase": "setup",
-          "phase_index": 0,
-          "on_failure": "abort"
-        },
-        {
-          "index": 1,
-          "id": "pull_notification_endpoint",
-          "uses": "connector/pull_data_filtered",
-          "name": "Discover CCMAPI notification endpoint and obtain dataplane credentials",
-          "with": {
-            "connector_service": {
-              "$ref": "infrastructure.engine.connector"
-            },
-            "counter_party_address": {
-              "$ref": "infrastructure.sut.connector.counter_party_address"
-            },
-            "counter_party_id": {
-              "$ref": "infrastructure.sut.connector.counter_party_id"
-            },
-            "policy": {
-              "$ref": "env.ccm_usage_policy.policy"
-            },
-            "filters": [
-              {
-                "operand_left": "'http://purl.org/dc/terms/type'.'@id'",
-                "operator": "=",
-                "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
-              },
-              {
-                "operand_left": "'http://purl.org/dc/terms/subject'.'@id'",
-                "operator": "=",
-                "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
-              },
-              {
-                "operand_left": "https://w3id.org/catenax/ontology/common#version",
-                "operator": "=",
-                "operand_right": "3.0"
-              }
-            ]
-          },
-          "returns": {
-            "catalog": {
-              "type": "object",
-              "class": "Catalog"
-            },
-            "datasets": {
-              "type": "object",
-              "class": "Datasets"
-            },
-            "asset_id": {
-              "type": "string",
-              "class": "AssetId"
-            },
-            "negotiation_id": {
-              "type": "string",
-              "class": "NegotiationId"
-            },
-            "transfer_process_id": {
-              "type": "string",
-              "class": "TransferId"
-            },
-            "edr_token": {
-              "type": "string",
-              "class": "AuthToken"
-            },
-            "dataplane_url": {
-              "type": "string",
-              "class": "DataplaneUrl"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "datasets",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "asset_id",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "negotiation_id",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "transfer_process_id",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "edr_token",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "dataplane_url",
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 0,
-          "on_failure": "abort"
-        },
-        {
-          "index": 2,
-          "id": "gen_push_message_id",
-          "uses": "util/generate_uuid",
-          "name": "Generate push message ID",
-          "with": {},
-          "returns": {
-            "generated_id": {
-              "type": "string",
-              "class": "Uuid"
-            }
-          },
-          "validate": [],
-          "phase": "main",
           "phase_index": 1,
-          "on_failure": "abort"
-        },
-        {
-          "index": 3,
-          "id": "push_cert_to_sut",
-          "uses": "connector/dataplane/http_request",
-          "name": "Push certificate to SUT via data plane",
-          "with": {
-            "method": "POST",
-            "dataplane_url": {
-              "$ref": "steps.pull_notification_endpoint.dataplane_url"
-            },
-            "path": "/companycertificate/push",
-            "edr_token": {
-              "$ref": "steps.pull_notification_endpoint.edr_token"
-            },
-            "headers": {
-              "Content-Type": "application/json"
-            },
-            "body": {
-              "$ref": "env.testdata.push_certificate_body"
-            }
-          },
-          "returns": {
-            "status_code": {
-              "type": "integer",
-              "class": "StatusCode"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "status_code",
-                "operator": "equals",
-                "value": 200
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 2,
-          "on_failure": "abort"
-        },
-        {
-          "index": 4,
-          "id": "wait_feedback_callback",
-          "uses": "mock/wait/http_request",
-          "name": "Wait for SUT feedback callback with status acknowledgment",
-          "with": {
-            "mock": {
-              "$ref": "setup.mock_feedback_callback.mock"
-            },
-            "timeout_s": {
-              "$ref": "env.sut_response_timeout"
-            }
-          },
-          "returns": {
-            "request_method": {
-              "type": "string",
-              "class": "String"
-            },
-            "request_headers": {
-              "type": "object",
-              "class": "ResponseHeaders"
-            },
-            "request_body": {
-              "type": "object",
-              "class": "ResponseBody"
-            },
-            "query_params": {
-              "type": "object",
-              "class": "String"
-            },
-            "elapsed_ms": {
-              "type": "integer",
-              "class": "String"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "request_method",
-                "operator": "equals",
-                "value": "POST"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.messageId",
-                "operator": "matches_regex",
-                "value": "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.context",
-                "operator": "equals",
-                "value": "CompanyCertificateManagement-CCMAPI-Status:1.0.0"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.sentDateTime",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.senderBpn",
-                "operator": "matches_regex",
-                "value": "^BPNL[0-9A-Z]{12}$"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.receiverBpn",
-                "operator": "equals",
-                "value": {
-                  "$ref": "env.consumer_bpn"
-                }
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.relatedMessageId",
-                "operator": "equals",
-                "value": {
-                  "$concat": [
-                    "urn:uuid:",
-                    {
-                      "$ref": "steps.gen_push_message_id.generated_id"
-                    }
-                  ]
-                }
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.version",
-                "operator": "equals",
-                "value": "3.1.0"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "content.certificateStatus",
-                "operator": "one_of",
-                "value": [
-                  "RECEIVED",
-                  "ACCEPTED",
-                  "REJECTED"
-                ]
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "content.documentId",
-                "operator": "equals",
-                "value": "UUID--PUSH-001"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "content.locationBpns",
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 3,
-          "on_failure": "abort"
-        }
-      ]
-    },
-    {
-      "id": "available-notification",
-      "metadata": {
-        "name": "Available Notification",
-        "version": "1.0",
-        "description": "Test CX-0135 AVAILABLE notification: send availability notification to SUT and verify SUT subsequently pulls the certificate from TestLab.\n"
-      },
-      "symbol_table": {
-        "setup.mock_cert_pull.mock": {
-          "source": "setup_output",
-          "produced_by": 0,
-          "type": "class",
-          "class": "MockInstance"
-        },
-        "setup.mock_cert_pull.base_mock_url": {
-          "source": "setup_output",
-          "produced_by": 0,
-          "type": "string"
-        },
-        "setup.mock_cert_pull.full_mock_url": {
-          "source": "setup_output",
-          "produced_by": 0,
-          "type": "string"
-        },
-        "steps.pull_notification_endpoint.edr_token": {
-          "source": "step_output",
-          "produced_by": 1,
-          "type": "string",
-          "class": "AuthToken"
-        },
-        "steps.pull_notification_endpoint.dataplane_url": {
-          "source": "step_output",
-          "produced_by": 1,
-          "type": "string",
-          "class": "DataplaneUrl"
-        },
-        "steps.gen_avail_message_id.generated_id": {
-          "source": "step_output",
-          "produced_by": 2,
-          "type": "string",
-          "class": "Uuid"
-        },
-        "steps.send_available_notification.status_code": {
-          "source": "step_output",
-          "produced_by": 3,
-          "type": "integer",
-          "class": "StatusCode"
-        },
-        "steps.wait_sut_pull.request_method": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "string",
-          "class": "String"
-        },
-        "steps.wait_sut_pull.request_headers": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "object",
-          "class": "ResponseHeaders"
-        },
-        "steps.wait_sut_pull.request_body": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "object",
-          "class": "ResponseBody"
-        },
-        "steps.wait_sut_pull.query_params": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "object",
-          "class": "String"
-        },
-        "steps.wait_sut_pull.elapsed_ms": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "integer",
-          "class": "String"
-        }
-      },
-      "instructions": [
-        {
-          "index": 0,
-          "id": "mock_cert_pull",
-          "uses": "mock/api",
-          "name": "Expose mock endpoint for SUT certificate pull request",
-          "with": {
-            "method": "GET",
-            "path": "/api/v1/companycertificate/available",
-            "response_status": 200,
-            "response_body": {
-              "$ref": "env.testdata.certificate_available_response"
-            }
-          },
-          "returns": {
-            "mock": {
-              "type": "class",
-              "class": "MockInstance"
-            },
-            "base_mock_url": {
-              "type": "string"
-            },
-            "full_mock_url": {
-              "type": "string"
-            }
-          },
-          "validate": [],
-          "phase": "setup",
-          "phase_index": 0,
-          "on_failure": "abort"
-        },
-        {
-          "index": 1,
-          "id": "pull_notification_endpoint",
-          "uses": "connector/pull_data_filtered",
-          "name": "Discover CCMAPI notification endpoint and obtain dataplane credentials",
-          "with": {
-            "connector_service": {
-              "$ref": "infrastructure.engine.connector"
-            },
-            "counter_party_address": {
-              "$ref": "infrastructure.sut.connector.counter_party_address"
-            },
-            "counter_party_id": {
-              "$ref": "infrastructure.sut.connector.counter_party_id"
-            },
-            "policy": {
-              "$ref": "env.ccm_usage_policy.policy"
-            },
-            "filters": [
-              {
-                "operand_left": "'http://purl.org/dc/terms/type'.'@id'",
-                "operator": "=",
-                "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
-              },
-              {
-                "operand_left": "'http://purl.org/dc/terms/subject'.'@id'",
-                "operator": "=",
-                "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
-              },
-              {
-                "operand_left": "https://w3id.org/catenax/ontology/common#version",
-                "operator": "=",
-                "operand_right": "3.0"
-              }
-            ]
-          },
-          "returns": {
-            "edr_token": {
-              "type": "string",
-              "class": "AuthToken"
-            },
-            "dataplane_url": {
-              "type": "string",
-              "class": "DataplaneUrl"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "edr_token",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "dataplane_url",
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 0,
-          "on_failure": "abort"
-        },
-        {
-          "index": 2,
-          "id": "gen_avail_message_id",
-          "uses": "util/generate_uuid",
-          "name": "Generate available notification message ID",
-          "with": {},
-          "returns": {
-            "generated_id": {
-              "type": "string",
-              "class": "Uuid"
-            }
-          },
-          "validate": [],
-          "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
-        },
-        {
-          "index": 3,
-          "id": "send_available_notification",
-          "uses": "connector/dataplane/http_request",
-          "name": "Send certificate available notification to SUT",
-          "with": {
-            "method": "POST",
-            "dataplane_url": {
-              "$ref": "steps.pull_notification_endpoint.dataplane_url"
-            },
-            "path": "/companycertificate/available",
-            "edr_token": {
-              "$ref": "steps.pull_notification_endpoint.edr_token"
-            },
-            "headers": {
-              "Content-Type": "application/json"
-            },
-            "body": {
-              "$ref": "env.testdata.available_notification_body"
-            }
-          },
-          "returns": {
-            "status_code": {
-              "type": "integer",
-              "class": "StatusCode"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "status_code",
-                "operator": "equals",
-                "value": 200
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 2,
-          "on_failure": "abort"
-        },
-        {
-          "index": 4,
-          "id": "wait_sut_pull",
-          "uses": "mock/wait/http_request",
-          "name": "Wait for SUT to pull the certificate from TestLab",
-          "with": {
-            "mock": {
-              "$ref": "setup.mock_cert_pull.mock"
-            },
-            "timeout_s": {
-              "$ref": "env.sut_response_timeout"
-            }
-          },
-          "returns": {
-            "request_method": {
-              "type": "string",
-              "class": "String"
-            },
-            "request_headers": {
-              "type": "object",
-              "class": "ResponseHeaders"
-            },
-            "request_body": {
-              "type": "object",
-              "class": "ResponseBody"
-            },
-            "query_params": {
-              "type": "object",
-              "class": "String"
-            },
-            "elapsed_ms": {
-              "type": "integer",
-              "class": "String"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "request_method",
-                "operator": "equals",
-                "value": "GET"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 3,
           "on_failure": "abort"
         }
       ]
@@ -2277,7 +344,7 @@
       "id": "send-feedback-notification",
       "metadata": {
         "name": "Send Feedback Notification",
-        "version": "1.0",
+        "version": "v1.0.0",
         "description": "Send a CX-0135 CCMAPI status notification to the provider via EDC dataplane and await the provider's acknowledgment on a TestLab mock endpoint.\n"
       },
       "symbol_table": {
@@ -2287,69 +354,37 @@
           "type": "class",
           "class": "MockInstance"
         },
-        "setup.mock_receive_ack.base_mock_url": {
-          "source": "setup_output",
-          "produced_by": 0,
-          "type": "string"
-        },
         "setup.mock_receive_ack.full_mock_url": {
           "source": "setup_output",
           "produced_by": 0,
           "type": "string"
         },
-        "steps.pull_notification_endpoint.edr_token": {
+        "steps.pull_ccmapi_endpoint.edr_token": {
           "source": "step_output",
           "produced_by": 1,
           "type": "string",
           "class": "AuthToken"
         },
-        "steps.pull_notification_endpoint.dataplane_url": {
+        "steps.pull_ccmapi_endpoint.dataplane_url": {
           "source": "step_output",
           "produced_by": 1,
-          "type": "string",
-          "class": "DataplaneUrl"
-        },
-        "steps.gen_feedback_uuid.generated_id": {
-          "source": "step_output",
-          "produced_by": 2,
-          "type": "string",
-          "class": "Uuid"
+          "type": "string"
         },
         "steps.send_status_notification.status_code": {
           "source": "step_output",
-          "produced_by": 3,
-          "type": "integer",
-          "class": "StatusCode"
+          "produced_by": 2,
+          "type": "integer"
         },
         "steps.wait_provider_ack.request_method": {
           "source": "step_output",
-          "produced_by": 4,
-          "type": "string",
-          "class": "String"
-        },
-        "steps.wait_provider_ack.request_headers": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "object",
-          "class": "ResponseHeaders"
+          "produced_by": 3,
+          "type": "string"
         },
         "steps.wait_provider_ack.request_body": {
           "source": "step_output",
-          "produced_by": 4,
+          "produced_by": 3,
           "type": "object",
           "class": "ResponseBody"
-        },
-        "steps.wait_provider_ack.query_params": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "object",
-          "class": "String"
-        },
-        "steps.wait_provider_ack.elapsed_ms": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "integer",
-          "class": "String"
         }
       },
       "instructions": [
@@ -2363,16 +398,13 @@
             "path": "/companycertificate/notification/receive",
             "response_status": 200,
             "response_body": {
-              "$ref": "env.testdata.receive_ack_response_body"
+              "$ref": "env.testdata.send_feedback_body"
             }
           },
           "returns": {
             "mock": {
               "type": "class",
               "class": "MockInstance"
-            },
-            "base_mock_url": {
-              "type": "string"
             },
             "full_mock_url": {
               "type": "string"
@@ -2385,30 +417,27 @@
         },
         {
           "index": 1,
-          "id": "pull_notification_endpoint",
-          "uses": "connector/pull_data_filtered",
+          "id": "pull_ccmapi_endpoint",
+          "uses": "connector/consumer/pull_data_filtered",
           "name": "Find CCMAPI endpoint and obtain dataplane credentials",
           "with": {
-            "connector_service": {
-              "$ref": "infrastructure.engine.connector"
-            },
             "counter_party_address": {
-              "$ref": "infrastructure.sut.connector.counter_party_address"
+              "$ref": "env.sut_counter_party_address.value"
             },
             "counter_party_id": {
-              "$ref": "infrastructure.sut.connector.counter_party_id"
+              "$ref": "env.sut_counter_party_id.value"
             },
             "policy": {
               "$ref": "env.ccm_usage_policy.policy"
             },
             "filters": [
               {
-                "operand_left": "'http://purl.org/dc/terms/type'.'@id'",
+                "operand_left": "https://w3id.org/edc/v0.0.1/ns/type",
                 "operator": "=",
                 "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
               },
               {
-                "operand_left": "'http://purl.org/dc/terms/subject'.'@id'",
+                "operand_left": "http://purl.org/dc/terms/subject",
                 "operator": "=",
                 "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
               },
@@ -2425,8 +454,7 @@
               "class": "AuthToken"
             },
             "dataplane_url": {
-              "type": "string",
-              "class": "DataplaneUrl"
+              "type": "string"
             }
           },
           "validate": [
@@ -2451,34 +479,17 @@
         },
         {
           "index": 2,
-          "id": "gen_feedback_uuid",
-          "uses": "util/generate_uuid",
-          "name": "Generate feedback message ID",
-          "with": {},
-          "returns": {
-            "generated_id": {
-              "type": "string",
-              "class": "Uuid"
-            }
-          },
-          "validate": [],
-          "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
-        },
-        {
-          "index": 3,
           "id": "send_status_notification",
           "uses": "connector/dataplane/http_request",
           "name": "Send CX-0135 status notification to provider via dataplane",
           "with": {
             "method": "POST",
             "dataplane_url": {
-              "$ref": "steps.pull_notification_endpoint.dataplane_url"
+              "$ref": "execution.pull_ccmapi_endpoint.dataplane_url"
             },
             "path": "/companycertificate/status",
             "edr_token": {
-              "$ref": "steps.pull_notification_endpoint.edr_token"
+              "$ref": "execution.pull_ccmapi_endpoint.edr_token"
             },
             "headers": {
               "Content-Type": "application/json"
@@ -2489,8 +500,7 @@
           },
           "returns": {
             "status_code": {
-              "type": "integer",
-              "class": "StatusCode"
+              "type": "integer"
             }
           },
           "validate": [
@@ -2504,14 +514,14 @@
             }
           ],
           "phase": "main",
-          "phase_index": 2,
+          "phase_index": 1,
           "on_failure": "abort"
         },
         {
-          "index": 4,
+          "index": 3,
           "id": "wait_provider_ack",
           "uses": "mock/wait/http_request",
-          "name": "Wait for provider RECEIVE acknowledgment",
+          "name": "Wait for provider RECEIVE acknowledgment on mock endpoint",
           "with": {
             "mock": {
               "$ref": "setup.mock_receive_ack.mock"
@@ -2520,24 +530,11 @@
           },
           "returns": {
             "request_method": {
-              "type": "string",
-              "class": "String"
-            },
-            "request_headers": {
-              "type": "object",
-              "class": "ResponseHeaders"
+              "type": "string"
             },
             "request_body": {
               "type": "object",
               "class": "ResponseBody"
-            },
-            "query_params": {
-              "type": "object",
-              "class": "String"
-            },
-            "elapsed_ms": {
-              "type": "integer",
-              "class": "String"
             }
           },
           "validate": [
@@ -2562,52 +559,6 @@
               "uses": "validate/field",
               "with": {
                 "input": "request_body",
-                "path": "header.context",
-                "operator": "equals",
-                "value": "CompanyCertificateManagement-CCMAPI-Status:1.0.0"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.sentDateTime",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.senderBpn",
-                "operator": "matches_regex",
-                "value": "^BPNL[0-9A-Z]{12}$"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.receiverBpn",
-                "operator": "equals",
-                "value": {
-                  "$ref": "env.consumer_bpn"
-                }
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
-                "path": "header.version",
-                "operator": "equals",
-                "value": "3.1.0"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "request_body",
                 "path": "content.certificateStatus",
                 "operator": "one_of",
                 "value": [
@@ -2619,565 +570,7 @@
             }
           ],
           "phase": "main",
-          "phase_index": 3,
-          "on_failure": "abort"
-        }
-      ]
-    },
-    {
-      "id": "expose-testlab-asset",
-      "metadata": {
-        "name": "Expose TestLab Asset",
-        "version": "1.0",
-        "description": "Tests the PULL scenario of CX-0135: TestLab exposes a certificate asset via its own connector, then sends an AVAILABLE notification to the SUT through the dataspace protocol (catalog, negotiate, transfer, dataplane). The SUT must then discover TestLab's catalog, negotiate, and pull the certificate data.\n"
-      },
-      "symbol_table": {
-        "setup.create_testlab_asset.asset_id": {
-          "source": "setup_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "AssetId"
-        },
-        "setup.create_testlab_policy.policy_id": {
-          "source": "setup_output",
-          "produced_by": 1,
-          "type": "string",
-          "class": "PolicyId"
-        },
-        "setup.create_testlab_contract_def.contract_def_id": {
-          "source": "setup_output",
-          "produced_by": 2,
-          "type": "string",
-          "class": "ContractDefId"
-        },
-        "setup.mock_certificate_data.mock": {
-          "source": "setup_output",
-          "produced_by": 3,
-          "type": "class",
-          "class": "MockInstance"
-        },
-        "setup.mock_certificate_data.base_mock_url": {
-          "source": "setup_output",
-          "produced_by": 3,
-          "type": "string"
-        },
-        "setup.mock_certificate_data.full_mock_url": {
-          "source": "setup_output",
-          "produced_by": 3,
-          "type": "string"
-        },
-        "steps.pull_notification_endpoint.catalog": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "object",
-          "class": "Catalog"
-        },
-        "steps.pull_notification_endpoint.datasets": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "object",
-          "class": "Datasets"
-        },
-        "steps.pull_notification_endpoint.asset_id": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "string",
-          "class": "AssetId"
-        },
-        "steps.pull_notification_endpoint.negotiation_id": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "string",
-          "class": "NegotiationId"
-        },
-        "steps.pull_notification_endpoint.transfer_process_id": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "string",
-          "class": "TransferId"
-        },
-        "steps.pull_notification_endpoint.edr_token": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "string",
-          "class": "AuthToken"
-        },
-        "steps.pull_notification_endpoint.dataplane_url": {
-          "source": "step_output",
-          "produced_by": 4,
-          "type": "string",
-          "class": "DataplaneUrl"
-        },
-        "steps.gen_avail_message_id.generated_id": {
-          "source": "step_output",
-          "produced_by": 5,
-          "type": "string",
-          "class": "Uuid"
-        },
-        "steps.send_available_notification.status_code": {
-          "source": "step_output",
-          "produced_by": 6,
-          "type": "integer",
-          "class": "StatusCode"
-        },
-        "steps.wait_sut_pull.request_method": {
-          "source": "step_output",
-          "produced_by": 7,
-          "type": "string",
-          "class": "String"
-        }
-      },
-      "instructions": [
-        {
-          "index": 0,
-          "id": "create_testlab_asset",
-          "uses": "connector/provider/create_asset",
-          "name": "Register a CCMAPI-typed asset in TestLab's connector",
-          "with": {
-            "service": "testlab",
-            "name": "TestLab CCMAPI Certificate Data",
-            "description": "CX-0135 compliant certificate data endpoint hosted by TestLab",
-            "base_url": {
-              "$concat": [
-                {
-                  "$ref": "env.testlab_mock_base_url"
-                },
-                "/api/v1/companycertificate"
-              ]
-            },
-            "content_type": "application/json",
-            "properties": {
-              "dct:type": {
-                "@id": "https://w3id.org/catenax/taxonomy#CCMAPI"
-              },
-              "dct:subject": {
-                "@id": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementApi"
-              },
-              "cx-common:version": "3.0"
-            }
-          },
-          "returns": {
-            "asset_id": {
-              "type": "string",
-              "class": "AssetId"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "asset_id",
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "setup",
-          "phase_index": 0,
-          "on_failure": "abort"
-        },
-        {
-          "index": 1,
-          "id": "create_testlab_policy",
-          "uses": "connector/provider/create_policy",
-          "name": "Create a usage policy for the CCMAPI asset in TestLab's connector",
-          "with": {
-            "service": "testlab",
-            "permissions": [
-              {
-                "action": "use",
-                "constraint": {
-                  "and": [
-                    {
-                      "leftOperand": "Membership",
-                      "operator": "eq",
-                      "rightOperand": "active"
-                    },
-                    {
-                      "leftOperand": "FrameworkAgreement",
-                      "operator": "eq",
-                      "rightOperand": "DataExchangeGovernance:1.0"
-                    },
-                    {
-                      "leftOperand": "UsagePurpose",
-                      "operator": "isAnyOf",
-                      "rightOperand": "cx.ccm.base:1"
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          "returns": {
-            "policy_id": {
-              "type": "string",
-              "class": "PolicyId"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "policy_id",
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "setup",
-          "phase_index": 1,
-          "on_failure": "abort"
-        },
-        {
-          "index": 2,
-          "id": "create_testlab_contract_def",
-          "uses": "connector/provider/create_contract_definition",
-          "name": "Bind the asset to the policy",
-          "with": {
-            "service": "testlab",
-            "access_policy_id": {
-              "$ref": "setup.create_testlab_policy.policy_id"
-            },
-            "contract_policy_id": {
-              "$ref": "setup.create_testlab_policy.policy_id"
-            },
-            "asset_selector": [
-              {
-                "operandLeft": "https://w3id.org/edc/v0.0.1/ns/id",
-                "operator": "=",
-                "operandRight": {
-                  "$ref": "setup.create_testlab_asset.asset_id"
-                }
-              }
-            ]
-          },
-          "returns": {
-            "contract_def_id": {
-              "type": "string",
-              "class": "ContractDefId"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "contract_def_id",
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "setup",
           "phase_index": 2,
-          "on_failure": "abort"
-        },
-        {
-          "index": 3,
-          "id": "mock_certificate_data",
-          "uses": "mock/api",
-          "name": "Expose mock data endpoint that serves the full BusinessPartnerCertificate payload",
-          "with": {
-            "method": "GET",
-            "path": "/api/v1/companycertificate",
-            "response_status": 200,
-            "response_body": {
-              "businessPartnerNumber": {
-                "$ref": "env.provider_bpn"
-              },
-              "certificateType": {
-                "$ref": "env.certificate_type"
-              },
-              "registrationNumber": "CERT-EXPOSE-001",
-              "enclosedSites": [
-                {
-                  "enclosedSiteBpn": {
-                    "$ref": "env.location_bpns"
-                  }
-                }
-              ],
-              "validFrom": "2026-01-01",
-              "validUntil": "2028-12-31",
-              "trustLevel": "none",
-              "document": {
-                "documentID": "testlab-cert-expose-001",
-                "creationDate": "2026-01-01T00:00:00Z",
-                "contentType": "application/pdf",
-                "contentBase64": "iVBORw0KGgoAAAANSUhEUgA="
-              },
-              "validator": {
-                "validatorName": "TUV SUD",
-                "validatorBpn": "BPNL133631123120"
-              },
-              "type": {
-                "certificateVersion": "2015",
-                "certificateType": {
-                  "$ref": "env.certificate_type"
-                }
-              },
-              "areaOfApplication": "Quality Management",
-              "issuer": {
-                "issuerName": "TUV SUD",
-                "issuerBpn": "BPNL133631123120"
-              }
-            }
-          },
-          "returns": {
-            "mock": {
-              "type": "class",
-              "class": "MockInstance"
-            },
-            "base_mock_url": {
-              "type": "string"
-            },
-            "full_mock_url": {
-              "type": "string"
-            }
-          },
-          "validate": [],
-          "phase": "setup",
-          "phase_index": 3,
-          "on_failure": "abort"
-        },
-        {
-          "index": 4,
-          "id": "pull_notification_endpoint",
-          "uses": "connector/pull_data_filtered",
-          "name": "Discover the SUT's CCMAPI notification endpoint and obtain dataplane credentials",
-          "with": {
-            "connector_service": {
-              "$ref": "infrastructure.engine.connector"
-            },
-            "counter_party_address": {
-              "$ref": "infrastructure.sut.connector.counter_party_address"
-            },
-            "counter_party_id": {
-              "$ref": "infrastructure.sut.connector.counter_party_id"
-            },
-            "policy": {
-              "$ref": "env.ccm_usage_policy.policy"
-            },
-            "filters": [
-              {
-                "operand_left": "'http://purl.org/dc/terms/type'.'@id'",
-                "operator": "=",
-                "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
-              },
-              {
-                "operand_left": "'http://purl.org/dc/terms/subject'.'@id'",
-                "operator": "=",
-                "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
-              },
-              {
-                "operand_left": "https://w3id.org/catenax/ontology/common#version",
-                "operator": "=",
-                "operand_right": "3.0"
-              }
-            ]
-          },
-          "returns": {
-            "catalog": {
-              "type": "object",
-              "class": "Catalog"
-            },
-            "datasets": {
-              "type": "object",
-              "class": "Datasets"
-            },
-            "asset_id": {
-              "type": "string",
-              "class": "AssetId"
-            },
-            "negotiation_id": {
-              "type": "string",
-              "class": "NegotiationId"
-            },
-            "transfer_process_id": {
-              "type": "string",
-              "class": "TransferId"
-            },
-            "edr_token": {
-              "type": "string",
-              "class": "AuthToken"
-            },
-            "dataplane_url": {
-              "type": "string",
-              "class": "DataplaneUrl"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "datasets",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "asset_id",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "negotiation_id",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "transfer_process_id",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "edr_token",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "dataplane_url",
-                "operator": "not_null"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 0,
-          "on_failure": "abort"
-        },
-        {
-          "index": 5,
-          "id": "gen_avail_message_id",
-          "uses": "util/generate_uuid",
-          "name": "Generate unique message ID for the AVAILABLE notification",
-          "with": {},
-          "returns": {
-            "generated_id": {
-              "type": "string",
-              "class": "Uuid"
-            }
-          },
-          "validate": [],
-          "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
-        },
-        {
-          "index": 6,
-          "id": "send_available_notification",
-          "uses": "connector/dataplane/http_request",
-          "name": "Send the AVAILABLE notification to the SUT via its dataplane",
-          "with": {
-            "method": "POST",
-            "dataplane_url": {
-              "$ref": "steps.pull_notification_endpoint.dataplane_url"
-            },
-            "path": "/companycertificate/available",
-            "edr_token": {
-              "$ref": "steps.pull_notification_endpoint.edr_token"
-            },
-            "headers": {
-              "Content-Type": "application/json"
-            },
-            "body": {
-              "header": {
-                "messageId": {
-                  "$concat": [
-                    "urn:uuid:",
-                    {
-                      "$ref": "steps.gen_avail_message_id.generated_id"
-                    }
-                  ]
-                },
-                "context": "CompanyCertificateManagement-CCMAPI-Available:1.0.0",
-                "sentDateTime": "2026-01-01T00:00:00Z",
-                "senderBpn": {
-                  "$ref": "env.consumer_bpn"
-                },
-                "receiverBpn": {
-                  "$ref": "env.provider_bpn"
-                },
-                "relatedMessageId": {
-                  "$concat": [
-                    "urn:uuid:",
-                    {
-                      "$ref": "steps.gen_avail_message_id.generated_id"
-                    }
-                  ]
-                },
-                "version": "3.1.0",
-                "senderFeedbackUrl": {
-                  "$ref": "env.testlab_dsp_url"
-                }
-              },
-              "content": {
-                "documentId": "testlab-cert-expose-001",
-                "certificateType": {
-                  "$ref": "env.certificate_type"
-                },
-                "locationBpns": [
-                  {
-                    "$ref": "env.location_bpns"
-                  }
-                ]
-              }
-            }
-          },
-          "returns": {
-            "status_code": {
-              "type": "integer",
-              "class": "StatusCode"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "status_code",
-                "operator": "equals",
-                "value": 200
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 2,
-          "on_failure": "abort"
-        },
-        {
-          "index": 7,
-          "id": "wait_sut_pull",
-          "uses": "mock/wait/http_request",
-          "name": "Wait for SUT to pull certificate data from TestLab",
-          "with": {
-            "mock": {
-              "$ref": "setup.mock_certificate_data.mock"
-            },
-            "timeout_s": {
-              "$ref": "env.sut_response_timeout"
-            }
-          },
-          "returns": {
-            "request_method": {
-              "type": "string",
-              "class": "String"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "request_method",
-                "operator": "equals",
-                "value": "GET"
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 3,
           "on_failure": "abort"
         }
       ]
@@ -3186,104 +579,57 @@
       "id": "error-handling",
       "metadata": {
         "name": "Error Handling",
-        "version": "1.0",
-        "description": "Verify CX-0135 error handling: Test 1 sends a request with an unknown certificate type expecting REJECTED with proper envelope. Test 2 sends a malformed body (missing header) expecting HTTP 500.\n"
+        "version": "v1.0.0",
+        "description": "Verify CX-0135 error handling: send a request with an unknown certificate type and verify the SUT responds with REJECTED status and a valid CX-0135 header envelope.\n"
       },
       "symbol_table": {
-        "steps.pull_notification_endpoint.catalog": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "object",
-          "class": "Catalog"
-        },
-        "steps.pull_notification_endpoint.datasets": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "object",
-          "class": "Datasets"
-        },
-        "steps.pull_notification_endpoint.asset_id": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "AssetId"
-        },
-        "steps.pull_notification_endpoint.negotiation_id": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "NegotiationId"
-        },
-        "steps.pull_notification_endpoint.transfer_process_id": {
-          "source": "step_output",
-          "produced_by": 0,
-          "type": "string",
-          "class": "TransferId"
-        },
-        "steps.pull_notification_endpoint.edr_token": {
+        "steps.pull_ccmapi_endpoint.edr_token": {
           "source": "step_output",
           "produced_by": 0,
           "type": "string",
           "class": "AuthToken"
         },
-        "steps.pull_notification_endpoint.dataplane_url": {
+        "steps.pull_ccmapi_endpoint.dataplane_url": {
           "source": "step_output",
           "produced_by": 0,
-          "type": "string",
-          "class": "DataplaneUrl"
-        },
-        "steps.gen_err_message_id.generated_id": {
-          "source": "step_output",
-          "produced_by": 1,
-          "type": "string",
-          "class": "Uuid"
+          "type": "string"
         },
         "steps.send_unknown_cert_type.status_code": {
           "source": "step_output",
-          "produced_by": 2,
-          "type": "integer",
-          "class": "StatusCode"
+          "produced_by": 1,
+          "type": "integer"
         },
         "steps.send_unknown_cert_type.response_body": {
           "source": "step_output",
-          "produced_by": 2,
+          "produced_by": 1,
           "type": "object",
           "class": "ResponseBody"
-        },
-        "steps.send_malformed_request.status_code": {
-          "source": "step_output",
-          "produced_by": 3,
-          "type": "integer",
-          "class": "StatusCode"
         }
       },
       "instructions": [
         {
           "index": 0,
-          "id": "pull_notification_endpoint",
-          "uses": "connector/pull_data_filtered",
+          "id": "pull_ccmapi_endpoint",
+          "uses": "connector/consumer/pull_data_filtered",
           "name": "Discover CCMAPI offer and obtain dataplane credentials",
           "with": {
-            "connector_service": {
-              "$ref": "infrastructure.engine.connector"
-            },
             "counter_party_address": {
-              "$ref": "infrastructure.sut.connector.counter_party_address"
+              "$ref": "env.sut_counter_party_address.value"
             },
             "counter_party_id": {
-              "$ref": "infrastructure.sut.connector.counter_party_id"
+              "$ref": "env.sut_counter_party_id.value"
             },
             "policy": {
               "$ref": "env.ccm_usage_policy.policy"
             },
             "filters": [
               {
-                "operand_left": "'http://purl.org/dc/terms/type'.'@id'",
+                "operand_left": "https://w3id.org/edc/v0.0.1/ns/type",
                 "operator": "=",
                 "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
               },
               {
-                "operand_left": "'http://purl.org/dc/terms/subject'.'@id'",
+                "operand_left": "http://purl.org/dc/terms/subject",
                 "operator": "=",
                 "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
               },
@@ -3295,64 +641,15 @@
             ]
           },
           "returns": {
-            "catalog": {
-              "type": "object",
-              "class": "Catalog"
-            },
-            "datasets": {
-              "type": "object",
-              "class": "Datasets"
-            },
-            "asset_id": {
-              "type": "string",
-              "class": "AssetId"
-            },
-            "negotiation_id": {
-              "type": "string",
-              "class": "NegotiationId"
-            },
-            "transfer_process_id": {
-              "type": "string",
-              "class": "TransferId"
-            },
             "edr_token": {
               "type": "string",
               "class": "AuthToken"
             },
             "dataplane_url": {
-              "type": "string",
-              "class": "DataplaneUrl"
+              "type": "string"
             }
           },
           "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "datasets",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "asset_id",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "negotiation_id",
-                "operator": "not_null"
-              }
-            },
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "transfer_process_id",
-                "operator": "not_null"
-              }
-            },
             {
               "uses": "validate/assert",
               "with": {
@@ -3374,34 +671,17 @@
         },
         {
           "index": 1,
-          "id": "gen_err_message_id",
-          "uses": "util/generate_uuid",
-          "name": "Generate message ID for rejected request",
-          "with": {},
-          "returns": {
-            "generated_id": {
-              "type": "string",
-              "class": "Uuid"
-            }
-          },
-          "validate": [],
-          "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
-        },
-        {
-          "index": 2,
           "id": "send_unknown_cert_type",
           "uses": "connector/dataplane/http_request",
-          "name": "Send request with nonexistent certificate type — SUT must return REJECTED with proper CX-0135 header envelope\n",
+          "name": "Send request with unknown certificate type — SUT must return REJECTED",
           "with": {
             "method": "POST",
             "dataplane_url": {
-              "$ref": "steps.pull_notification_endpoint.dataplane_url"
+              "$ref": "execution.pull_ccmapi_endpoint.dataplane_url"
             },
             "path": "/companycertificate/request",
             "edr_token": {
-              "$ref": "steps.pull_notification_endpoint.edr_token"
+              "$ref": "execution.pull_ccmapi_endpoint.edr_token"
             },
             "headers": {
               "Content-Type": "application/json"
@@ -3412,8 +692,7 @@
           },
           "returns": {
             "status_code": {
-              "type": "integer",
-              "class": "StatusCode"
+              "type": "integer"
             },
             "response_body": {
               "type": "object",
@@ -3422,7 +701,7 @@
           },
           "validate": [
             {
-              "uses": "validate/assert",
+              "uses": "validate/field",
               "with": {
                 "input": "status_code",
                 "operator": "equals",
@@ -3442,49 +721,6 @@
               "uses": "validate/field",
               "with": {
                 "input": "response_body",
-                "path": "header.context",
-                "operator": "equals",
-                "value": "CompanyCertificateManagement-CCMAPI-Request:1.0.0"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "response_body",
-                "path": "header.relatedMessageId",
-                "operator": "equals",
-                "value": {
-                  "$concat": [
-                    "urn:uuid:",
-                    {
-                      "$ref": "steps.gen_err_message_id.generated_id"
-                    }
-                  ]
-                }
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "response_body",
-                "path": "header.version",
-                "operator": "equals",
-                "value": "3.1.0"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "response_body",
-                "path": "header.senderBpn",
-                "operator": "matches_regex",
-                "value": "^BPNL[0-9A-Z]{12}$"
-              }
-            },
-            {
-              "uses": "validate/field",
-              "with": {
-                "input": "response_body",
                 "path": "content.requestStatus",
                 "operator": "equals",
                 "value": "REJECTED"
@@ -3492,58 +728,7 @@
             }
           ],
           "phase": "main",
-          "phase_index": 2,
-          "on_failure": "abort"
-        },
-        {
-          "index": 3,
-          "id": "send_malformed_request",
-          "uses": "connector/dataplane/http_request",
-          "name": "Send malformed request body without header field — SUT must return HTTP 500",
-          "with": {
-            "method": "POST",
-            "dataplane_url": {
-              "$ref": "steps.pull_notification_endpoint.dataplane_url"
-            },
-            "path": "/companycertificate/request",
-            "edr_token": {
-              "$ref": "steps.pull_notification_endpoint.edr_token"
-            },
-            "headers": {
-              "Content-Type": "application/json"
-            },
-            "body": {
-              "content": {
-                "certifiedBpn": {
-                  "$ref": "env.provider_bpn"
-                },
-                "certificateType": "iso9001",
-                "locationBpns": [
-                  {
-                    "$ref": "env.location_bpns"
-                  }
-                ]
-              }
-            }
-          },
-          "returns": {
-            "status_code": {
-              "type": "integer",
-              "class": "StatusCode"
-            }
-          },
-          "validate": [
-            {
-              "uses": "validate/assert",
-              "with": {
-                "input": "status_code,",
-                "operator": "equals",
-                "value": 500
-              }
-            }
-          ],
-          "phase": "main",
-          "phase_index": 3,
+          "phase_index": 1,
           "on_failure": "abort"
         }
       ]

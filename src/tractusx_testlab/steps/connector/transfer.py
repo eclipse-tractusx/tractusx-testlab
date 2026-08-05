@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@step("transfer_data", aliases=["initiate_transfer"])
+@step("connector/consumer/transfer_data")
 class TransferDataStep(BaseStep):
     async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
         consumer = context.get_consumer_service()

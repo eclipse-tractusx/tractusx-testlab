@@ -47,7 +47,7 @@ def _render(value: Any) -> str:
     return str(value)
 
 
-@step("util/log", aliases=["log"])
+@step("util/log")
 class LogStep(BaseStep):
     """Write a resolved value to stdout and the run log.
 

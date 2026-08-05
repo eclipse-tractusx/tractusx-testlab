@@ -116,12 +116,17 @@ class Loader:
             return self._load_package(path, player_private_key, compiler_public_key)
 
         if path.suffix == ".tck":
-            return self._load_tck_package(path)
+            return self._load_tck_package(path, player_private_key, compiler_public_key)
 
         return self._load_yaml(path)
 
-    def _load_tck_package(self, path: Path) -> Tck:
-        """Load an unencrypted .tck ZIP archive.
+    def _load_tck_package(
+        self,
+        path: Path,
+        player_private_key: Optional[bytes] = None,
+        compiler_public_key: Optional[bytes] = None,
+    ) -> Tck:
+        """Load a .tck ZIP archive — plain or encrypted (payload.enc format).
 
         Extracts ``tck-bundle.yaml`` from the archive and parses it
         using the standard YAML pipeline.  The archive is extracted to
@@ -131,6 +136,13 @@ class Loader:
             raise ValueError(
                 f"File has .tck extension but is not a valid ZIP archive: {path}"
             )
+
+        with zipfile.ZipFile(path, "r") as zf:
+            names = zf.namelist()
+
+        if "payload.enc" in names:
+            return self._load_encrypted_tck_package(path, player_private_key, compiler_public_key)
+
         extract_dir = Path(tempfile.mkdtemp(prefix="tck_"))
         with zipfile.ZipFile(path, "r") as zf:
             if _TCK_BUNDLE_ENTRY not in zf.namelist():
@@ -142,6 +154,60 @@ class Loader:
             zf.extractall(extract_dir)
 
         bundle_path = extract_dir / _TCK_BUNDLE_ENTRY
+        _verify_tck_integrity(extract_dir)
+        with open(bundle_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        return self._parse_data(data, source_path=path, base_dir=extract_dir)
+
+    def _load_encrypted_tck_package(
+        self,
+        path: Path,
+        player_private_key: Optional[bytes],
+        compiler_public_key: Optional[bytes],
+    ) -> Tck:
+        """Decrypt payload.enc, extract the TAR, and load tck-bundle.yaml."""
+        import base64
+        import io as _io
+        import tarfile
+
+        from tractusx_testlab.security.crypto.encryption import decrypt_package
+        from tractusx_testlab.security.crypto.signing import verify_signature
+
+        if player_private_key is None:
+            raise ValueError(
+                f"Package {path.name!r} is encrypted — provide --player-keys to load it."
+            )
+
+        with zipfile.ZipFile(path, "r") as zf:
+            names = zf.namelist()
+            manifest_raw = zf.read("manifest.yaml")
+            payload_raw = zf.read("payload.enc")
+            sig_raw = zf.read("signature.sig") if "signature.sig" in names else None
+
+        manifest = yaml.safe_load(manifest_raw)
+        players = manifest.get("security", {}).get("authorized_players", [])
+        if not players:
+            raise ValueError("Encrypted .tck has no authorized_players in manifest.")
+
+        enc_key = base64.b64decode(players[0]["encrypted_key"])
+        blob = base64.b64decode(payload_raw)
+        tar_bytes = decrypt_package(enc_key, blob[:12], blob[12:], player_private_key)
+
+        if compiler_public_key and sig_raw:
+            if not verify_signature(tar_bytes, base64.b64decode(sig_raw), compiler_public_key):
+                raise ValueError("Package signature verification failed — untrusted source.")
+
+        extract_dir = Path(tempfile.mkdtemp(prefix="tck_enc_"))
+        with tarfile.open(fileobj=_io.BytesIO(tar_bytes), mode="r:gz") as tf:
+            tf.extractall(extract_dir, filter="data")
+        _verify_tck_integrity(extract_dir)
+
+        bundle_path = extract_dir / _TCK_BUNDLE_ENTRY
+        if not bundle_path.exists():
+            raise ValueError(
+                f"Decrypted package is missing {_TCK_BUNDLE_ENTRY}. "
+                "Re-compile with the latest testlab compiler."
+            )
         with open(bundle_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
         return self._parse_data(data, source_path=path, base_dir=extract_dir)
@@ -152,7 +218,7 @@ class Loader:
         player_private_key: Optional[bytes],
         compiler_public_key: Optional[bytes],
     ) -> Tck:
-        """Load and verify a .stck archive."""
+        """Load and verify a .stck archive — fingerprint/checksum verification handled by Packager."""
         if player_private_key is None or compiler_public_key is None:
             raise ValueError(
                 "player_private_key and compiler_public_key are required "
@@ -188,3 +254,58 @@ class Loader:
         else:
             script_def = _SCRIPT_ADAPTER.validate_python(normalized)
             return Tck.from_single_script(script_def, base_dir=base_dir)
+
+
+def _verify_tck_integrity(extract_dir: Path) -> None:
+    """Verify fingerprint digest and package checksum of an extracted .tck directory."""
+    import hashlib
+
+    execution_path = extract_dir / "tck-execution.json"
+    manifest_path = extract_dir / "manifest.yaml"
+    if not execution_path.exists() or not manifest_path.exists():
+        return
+
+    execution_bytes = execution_path.read_bytes()
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = yaml.safe_load(f)
+
+    _check_fingerprint(execution_bytes, manifest)
+    _check_package_checksum(manifest, execution_bytes)
+
+
+def _check_fingerprint(execution_bytes: bytes, manifest: dict) -> None:
+    """Raise if blake2b(tck-execution.json) doesn't match compilation.fingerprint.digest."""
+    import hashlib
+
+    expected = manifest.get("compilation", {}).get("fingerprint", {}).get("digest", "")
+    if not expected:
+        return
+    _, _, hex_val = expected.partition(":")
+    actual = hashlib.blake2b(execution_bytes, digest_size=32).hexdigest()
+    if actual != hex_val:
+        raise ValueError(
+            f"Fingerprint mismatch — tck-execution.json was modified "
+            f"(expected {hex_val[:16]}…, got {actual[:16]}…)"
+        )
+
+
+def _check_package_checksum(manifest: dict, execution_bytes: bytes) -> None:
+    """Raise if the package checksum doesn't match the manifest + execution + asset digests."""
+    import hashlib
+
+    expected = manifest.get("package", {}).get("checksum", "")
+    if not expected:
+        return
+    manifest_copy = {**manifest, "package": {**manifest["package"], "checksum": ""}}
+    manifest_bytes = yaml.dump(manifest_copy, default_flow_style=False, sort_keys=False).encode("utf-8")
+    assets = manifest.get("assets", {})
+    all_entries = assets.get("schemas", []) + assets.get("testdata", [])
+    asset_digest_bytes = "".join(
+        e["digest"] for e in sorted(all_entries, key=lambda e: e["path"])
+    ).encode("utf-8")
+    actual = f"blake2b:{hashlib.blake2b(manifest_bytes + execution_bytes + asset_digest_bytes, digest_size=32).hexdigest()}"
+    if actual != expected:
+        raise ValueError(
+            f"Package checksum mismatch — package may be corrupted or tampered "
+            f"(expected {expected[:32]}…, got {actual[:32]}…)"
+        )

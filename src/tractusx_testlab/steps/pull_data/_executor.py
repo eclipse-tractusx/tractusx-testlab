@@ -37,8 +37,6 @@ from tractusx_testlab.steps.base import BaseStep, StepOutput
 from tractusx_testlab.steps.pull_data._constants import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
-    STEP_PULL_DATA_FILTERED,
-    STEP_PULL_DATA_FILTERED_BY_POLICY,
 )
 from tractusx_testlab.syntax.context_vars import DATAPLANE_ENDPOINT, EDR_TOKEN
 
@@ -46,14 +44,6 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 logger = logging.getLogger(__name__)
-
-
-class PullDataFiltered(BaseStep):
-    """Pull data with filter expression — SDK picks first matching policy."""
-
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
-        filter_expression = _build_filter_expression(params)
-        return await _do_dsp_flow(context, params, filter_expression, policies=None)
 
 
 # -- Policy format helpers ---------------------------------------------------
@@ -86,15 +76,6 @@ def _to_odrl_policy(value: object) -> object:
     if isinstance(value, list):
         return [_to_odrl_policy(item) for item in value]
     return value
-
-
-class PullDataFilteredByPolicy(BaseStep):
-    """Pull data with filter expression and explicit policy constraints."""
-
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
-        filter_expression = _build_filter_expression(params)
-        policies = params.get("policies") or params.get("policy_constraints")
-        return await _do_dsp_flow(context, params, filter_expression, policies=policies)
 
 
 # -- Shared helpers -----------------------------------------------------------
@@ -197,7 +178,7 @@ async def _do_dsp_flow(
 
 
 class ConnectorPullDataFiltered(BaseStep):
-    """``connector/pull_data_filtered`` — full DSP flow with optional policy filter.
+    """``connector/consumer/pull_data_filtered`` — full DSP flow with optional policy filter.
 
     The optional ``policy:`` param accepts the testlab simplified format
     (``permissions``/``constraints``/snake_case keys).  It is automatically

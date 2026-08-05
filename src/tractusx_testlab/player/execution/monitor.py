@@ -123,6 +123,18 @@ class ExecutionMonitor:
         """Emit event when a paused job resumes."""
         self._emit("job.resumed", job_id=job_id)
 
+    def on_package_verify_start(self, package: str, encrypted: bool) -> None:
+        """Emit event when package integrity verification begins."""
+        self._emit("tck.package.verify.start", package=package, encrypted=encrypted)
+
+    def on_package_verify_passed(self, package: str, checksum: str) -> None:
+        """Emit event when fingerprint and checksum verification succeeds."""
+        self._emit("tck.package.verify.passed", package=package, checksum=checksum)
+
+    def on_package_verify_failed(self, package: str, error: str) -> None:
+        """Emit event when package integrity verification fails."""
+        self._emit("tck.package.verify.failed", package=package, error=error)
+
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------

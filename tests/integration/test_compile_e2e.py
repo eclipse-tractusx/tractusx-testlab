@@ -213,7 +213,7 @@ class TestRunYamlEndpointE2E:
         single_test_yaml = (
             "name: bare-test\n"
             "steps:\n"
-            "  - type: http_request\n"
+            "  - type: http/http_request\n"
             "    params:\n"
             "      method: GET\n"
             "      url: http://localhost/ping\n"

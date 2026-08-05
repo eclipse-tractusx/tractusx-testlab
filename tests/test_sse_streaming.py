@@ -178,8 +178,8 @@ class TestSseStreaming:
     ) -> None:
         job = mock_player.jobs.create("tck")
         queue = _make_event_queue(
-            ("step.started", {"step_index": 0, "step_type": "create_asset"}),
-            ("step.completed", {"step_name": "create_asset", "status": "passed"}),
+            ("step.started", {"step_index": 0, "step_type": "connector/provider/create_asset"}),
+            ("step.completed", {"step_name": "connector/provider/create_asset", "status": "passed"}),
             ("job.completed", {"status": "completed"}),
         )
 
