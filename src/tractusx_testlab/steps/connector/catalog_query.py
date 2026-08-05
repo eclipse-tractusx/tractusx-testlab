@@ -69,9 +69,15 @@ __all__ = [
 ]
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/consumer/query_catalog
 # ---------------------------------------------------------------------------
+=======
+@step("connector/consumer/query_catalog")
+class QueryCatalogStep(BaseStep):
+    """Query a provider's catalog via the SDK connector consumer service."""
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class QueryCatalogParams(CounterPartyParams):
@@ -141,9 +147,15 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogPayload]):
         )
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/consumer/query_catalog_by_asset_id
 # ---------------------------------------------------------------------------
+=======
+@step("connector/consumer/query_catalog_by_asset_id")
+class QueryCatalogByAssetIdStep(BaseStep):
+    """Query the catalog filtered by a specific asset ID."""
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class QueryCatalogByAssetIdParams(StepParams):
@@ -213,6 +225,7 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogPay
         )
 
 
+<<<<<<< HEAD
 def _select_offer(catalog: Any, policies: list[dict]) -> QueryCatalogByAssetIdExports:
     """Pick the first offer whose policy is accepted, or export nothing."""
     if not catalog:
@@ -225,6 +238,11 @@ def _select_offer(catalog: Any, policies: list[dict]) -> QueryCatalogByAssetIdEx
         return QueryCatalogByAssetIdExports()
     target, policy = matches[0]
     return QueryCatalogByAssetIdExports(catalog_target=target, catalog_policy=policy)
+=======
+@step("connector/consumer/query_catalog_by_bpnl")
+class QueryCatalogByBpnlStep(BaseStep):
+    """Query the catalog using BPNL-based connector discovery."""
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 # ---------------------------------------------------------------------------

@@ -46,6 +46,7 @@ _logger = logging.getLogger(__name__)
 #: Metadata keys copied into the body when a script passes them alongside it.
 _NOTIFICATION_METADATA = ("notification_id", "sender_bpn", "recipient_bpn", "type", "status")
 
+<<<<<<< HEAD
 
 class ProviderParams(StepParams):
     """The provider a notification step talks to."""
@@ -134,6 +135,10 @@ class SendNotificationOutput(StepPayload):
 
 @step("notifications/send")
 class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutput]):
+=======
+@step("notifications/send")
+class SendNotificationStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Send a notification through the dataspace.
 
     Supports two modes:
@@ -208,6 +213,7 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
         )
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # notifications/discover_assets
 # ---------------------------------------------------------------------------
@@ -227,6 +233,10 @@ class NotificationAssetsOutput(StepValue[Any]):
 class DiscoverNotificationAssetsStep(
     BaseStep[DiscoverNotificationAssetsParams, NotificationAssetsOutput]
 ):
+=======
+@step("notifications/discover_assets")
+class DiscoverNotificationAssetsStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Discover notification assets in a provider catalog."""
 
     params_model = DiscoverNotificationAssetsParams

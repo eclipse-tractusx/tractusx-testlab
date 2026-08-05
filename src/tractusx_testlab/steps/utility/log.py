@@ -49,6 +49,7 @@ def _render(value: Any) -> str:
     return str(value)
 
 
+<<<<<<< HEAD
 class LogParams(StepParams):
     """Input contract of ``util/log``."""
 
@@ -68,6 +69,10 @@ class LogOutput(StepValue[Any]):
 
 @step("util/log")
 class LogStep(BaseStep[LogParams, LogOutput]):
+=======
+@step("util/log")
+class LogStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Write a resolved value to stdout and the run log.
 
     An authoring aid for inspecting what an expression resolved to; it asserts

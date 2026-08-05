@@ -42,6 +42,12 @@ if TYPE_CHECKING:
 
 import uuid
 
+<<<<<<< HEAD
+=======
+@step("submodels/upload")
+class UploadBackendDataStep(BaseStep):
+    """Upload sample data to the backend under a unique UUID path.
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 class UploadBackendDataParams(HttpTransportParams):
     """Input contract of ``submodels/upload``.

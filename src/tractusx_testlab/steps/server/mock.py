@@ -63,6 +63,7 @@ def _resolve_variables(obj: dict | list | str, context: "StepContext") -> dict |
     return obj
 
 
+<<<<<<< HEAD
 class MockEndpointParams(MockIdParams):
     """Input contract of ``mock/api``."""
 
@@ -93,6 +94,10 @@ class MockEndpointOutput(StepValue[str]):
 
 @step("mock/api")
 class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
+=======
+@step("mock/api")
+class MockEndpointStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Register a mock HTTP endpoint that returns a canned response.
 
     The returned URL is what a script hands to the system under test as its

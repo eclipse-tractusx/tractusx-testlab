@@ -53,6 +53,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/consumer/transfer_data
 # ---------------------------------------------------------------------------
@@ -131,6 +132,11 @@ class TransferDataStep(BaseStep[TransferDataParams, TransferDataOutput]):
     async def execute(
         self, params: TransferDataParams, context: "StepContext", definition: StepDefinitionV2
     ) -> StepOutput[TransferDataOutput]:
+=======
+@step("connector/consumer/transfer_data")
+class TransferDataStep(BaseStep):
+    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
         consumer = context.get_consumer_service()
         url = context.get_consumer_endpoint_url("transfer_processes")
 

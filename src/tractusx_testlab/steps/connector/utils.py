@@ -40,8 +40,14 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
+<<<<<<< HEAD
 class HttpRequestParams(HttpCallParams):
     """Input contract of ``http/http_request``."""
+=======
+@step("http/http_request")
+class HttpRequestStep(BaseStep):
+    """Execute a plain HTTP request.
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
     url: str = Field(description="Target URL.")
 

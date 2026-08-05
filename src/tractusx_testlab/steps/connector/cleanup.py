@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 #: Status reported when the connector answers a delete with no body.
 _DELETED = 204
 
+<<<<<<< HEAD
 
 # ---------------------------------------------------------------------------
 # connector/provider/delete_asset
@@ -61,6 +62,10 @@ class DeleteAssetParams(StepParams):
 
 @step("connector/provider/delete_asset")
 class DeleteAssetStep(BaseStep[DeleteAssetParams, NoOutput]):
+=======
+@step("connector/provider/delete_asset")
+class DeleteAssetStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Delete an asset from the provider connector."""
 
     params_model = DeleteAssetParams
@@ -83,6 +88,7 @@ class DeleteAssetStep(BaseStep[DeleteAssetParams, NoOutput]):
         )
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/provider/delete_policy
 # ---------------------------------------------------------------------------
@@ -99,6 +105,10 @@ class DeletePolicyParams(StepParams):
 
 @step("connector/provider/delete_policy")
 class DeletePolicyStep(BaseStep[DeletePolicyParams, NoOutput]):
+=======
+@step("connector/provider/delete_policy")
+class DeletePolicyStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Delete a policy definition from the provider connector."""
 
     params_model = DeletePolicyParams
@@ -121,9 +131,15 @@ class DeletePolicyStep(BaseStep[DeletePolicyParams, NoOutput]):
         )
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/provider/delete_contract_definition
 # ---------------------------------------------------------------------------
+=======
+@step("connector/provider/delete_contract_definition")
+class DeleteContractDefinitionStep(BaseStep):
+    """Delete a contract definition from the provider connector."""
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class DeleteContractDefinitionParams(StepParams):

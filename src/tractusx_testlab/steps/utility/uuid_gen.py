@@ -39,8 +39,14 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
+<<<<<<< HEAD
 class GenerateUuidParams(StepParams):
     """Input contract of ``util/generate_uuid``."""
+=======
+@step("util/generate_uuid")
+class GenerateUuidStep(BaseStep):
+    """Generate a random UUID v4.
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
     prefix: str = Field(
         default="",

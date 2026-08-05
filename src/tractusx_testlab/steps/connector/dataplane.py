@@ -51,9 +51,15 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/dataplane/http_request
 # ---------------------------------------------------------------------------
+=======
+@step("connector/dataplane/http_request")
+class DataplaneCallStep(BaseStep):
+    """Fetch data from a data-plane endpoint using an EDR token."""
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class DataplaneCallParams(HttpCallParams):
@@ -128,9 +134,15 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
         )
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/consumer/get_edr
 # ---------------------------------------------------------------------------
+=======
+@step("connector/consumer/get_edr")
+class GetEdrStep(BaseStep):
+    """Retrieve the EDR entry for a completed transfer."""
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class GetEdrParams(StepParams):

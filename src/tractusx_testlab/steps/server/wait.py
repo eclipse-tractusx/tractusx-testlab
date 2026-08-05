@@ -56,6 +56,7 @@ def _extract_path_from_endpoint_url(endpoint_url: str) -> str:
     return urlparse(endpoint_url).path
 
 
+<<<<<<< HEAD
 class WaitForCallParams(StepParams):
     """Input contract of ``mock/wait/http_request``."""
 
@@ -90,6 +91,10 @@ class InboundCallOutput(StepPayload):
 
 @step("mock/wait/http_request")
 class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
+=======
+@step("mock/wait/http_request")
+class WaitForCallStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Wait for an inbound HTTP request on a previously-registered mock endpoint.
 
     This is the other half of ``mock/api``: that step hands the system under

@@ -40,17 +40,74 @@ import tractusx_testlab.steps  # noqa: F401
 class TestStepRegistry:
     """Tests for the StepRegistry lookup mechanism."""
 
+<<<<<<< HEAD
+=======
+    def test_registry_has_export_variable_step(self) -> None:
+        cls = StepRegistry.get("util/export_env", "saturn")
+        assert cls is not None
+        assert issubclass(cls, BaseStep)
+
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     def test_registry_returns_none_for_unknown_step(self) -> None:
         cls = StepRegistry.get("nonexistent_step_xyz_123", "saturn")
         assert cls is None
 
     def test_registry_has_method_checks_existence(self) -> None:
+<<<<<<< HEAD
+=======
+        assert StepRegistry.has("util/export_env", "saturn") is True
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
         assert StepRegistry.has("fake_step_not_real", "saturn") is False
 
     def test_list_step_types_returns_nonempty(self) -> None:
         types = StepRegistry.list_step_types()
         assert len(types) > 0
+<<<<<<< HEAD
+=======
+        assert "util/export_env" in types
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
     def test_list_step_types_with_version_filter(self) -> None:
         types = StepRegistry.list_step_types("saturn")
         assert isinstance(types, list)
+<<<<<<< HEAD
+=======
+        assert "util/export_env" in types
+
+
+class TestExportVariableStep:
+    """Tests for the export_variable step executor."""
+
+    @pytest.mark.asyncio
+    async def test_export_variable_reads_from_context(self, mock_context: MagicMock) -> None:
+        # Arrange
+        mock_context.set_variable("my_var", "hello_world")
+        cls = StepRegistry.get("util/export_env", "saturn")
+        assert cls is not None
+        step_instance = cls()
+        definition = MagicMock()
+
+        # Act
+        output = await step_instance.execute(
+            {"name": "my_var"}, mock_context, definition
+        )
+
+        # Assert
+        assert isinstance(output, StepOutput)
+
+    @pytest.mark.asyncio
+    async def test_export_variable_with_missing_var(self, mock_context: MagicMock) -> None:
+        # Arrange
+        cls = StepRegistry.get("util/export_env", "saturn")
+        assert cls is not None
+        step_instance = cls()
+        definition = MagicMock()
+
+        # Act
+        output = await step_instance.execute(
+            {"name": "unset_var"}, mock_context, definition
+        )
+
+        # Assert
+        assert isinstance(output, StepOutput)
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)

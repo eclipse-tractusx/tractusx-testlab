@@ -43,8 +43,14 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
+<<<<<<< HEAD
 class DspFlowOutput(StepPayload):
     """What both DSP flow steps hand back: where the data is, and the token for it.
+=======
+@step("connector/consumer/do_dsp")
+class DoDspStep(BaseStep):
+    """Run the full DSP flow (catalog → negotiation → transfer) via the SDK."""
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
     Both fields are ``None`` when the flow did not complete — the step reports
     that as a 500 rather than raising, so a script can assert on it.
@@ -98,9 +104,15 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
         return _build_output(context, params, endpoint, token)
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/consumer/do_dsp_with_bpnl
 # ---------------------------------------------------------------------------
+=======
+@step("connector/consumer/do_dsp_with_bpnl")
+class DoDspWithBpnlStep(BaseStep):
+    """Run the full DSP flow using BPNL-based connector discovery via the SDK."""
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class DoDspWithBpnlParams(FilterExpressionParams):

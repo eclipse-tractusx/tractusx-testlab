@@ -61,6 +61,7 @@ def _as_id(value: Any, *keys: str) -> str:
     return str(value) if value else ""
 
 
+<<<<<<< HEAD
 def _create_or_conflict(create, **kwargs) -> tuple[Optional[dict], int]:
     """Run a provider create call, treating a 409 as "already there, carry on"."""
     try:
@@ -152,6 +153,12 @@ class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
         self, params: CreateAssetParams, context: "StepContext", definition: StepDefinitionV2
     ) -> StepOutput[CreateAssetOutput]:
         service_name = params.service_name()
+=======
+@step("connector/provider/create_asset")
+class CreateAssetStep(BaseStep):
+    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+        service_name = params.get("service") or params.get("connector_service") or None
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
         provider = context.get_provider_service(service_name)
         url = context.get_provider_endpoint_url("assets", service=service_name)
 
@@ -178,6 +185,7 @@ class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
         )
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/provider/create_policy
 # ---------------------------------------------------------------------------
@@ -222,6 +230,12 @@ class CreatePolicyStep(BaseStep[CreatePolicyParams, CreatePolicyOutput]):
         self, params: CreatePolicyParams, context: "StepContext", definition: StepDefinitionV2
     ) -> StepOutput[CreatePolicyOutput]:
         service_name = params.service_name()
+=======
+@step("connector/provider/create_policy")
+class CreatePolicyStep(BaseStep):
+    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+        service_name = params.get("service") or params.get("connector_service") or None
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
         provider = context.get_provider_service(service_name)
         url = context.get_provider_endpoint_url("policies", service=service_name)
         policy_id = params.policy_id or str(uuid.uuid4())
@@ -253,6 +267,7 @@ class CreatePolicyStep(BaseStep[CreatePolicyParams, CreatePolicyOutput]):
         )
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/provider/create_contract_definition
 # ---------------------------------------------------------------------------
@@ -317,6 +332,12 @@ class CreateContractDefinitionStep(
         definition: StepDefinitionV2,
     ) -> StepOutput[CreateContractDefinitionOutput]:
         service_name = params.service_name()
+=======
+@step("connector/provider/create_contract_definition")
+class CreateContractDefinitionStep(BaseStep):
+    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+        service_name = params.get("service") or params.get("connector_service") or None
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
         provider = context.get_provider_service(service_name)
         url = context.get_provider_endpoint_url("contract_definitions", service=service_name)
         contract_id = params.contract_id or str(uuid.uuid4())

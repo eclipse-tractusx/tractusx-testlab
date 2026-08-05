@@ -84,6 +84,7 @@ def _to_odrl_policy(value: object) -> object:
     return value
 
 
+<<<<<<< HEAD
 # -- Declared interface -------------------------------------------------------
 
 
@@ -148,6 +149,8 @@ class PullDataByPolicyOutput(PullDataOutput):
     )
 
 
+=======
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 # -- Shared helpers -----------------------------------------------------------
 
 
@@ -247,6 +250,11 @@ class PullDataFilteredParams(PullDataParams):
         converted = _to_odrl_policy(self.policy)
         return [converted] if isinstance(converted, dict) else converted
 
+<<<<<<< HEAD
+=======
+class ConnectorPullDataFiltered(BaseStep):
+    """``connector/consumer/pull_data_filtered`` — full DSP flow with optional policy filter.
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]):
     """Run the full DSP flow in one step, optionally constrained to one policy.

@@ -76,8 +76,14 @@ def _extract_offer_id(dataset: dict) -> str | None:
     return None
 
 
+<<<<<<< HEAD
 class ExtractDatasetParams(StepParams):
     """Input contract of ``connector/consumer/extract_dataset``.
+=======
+@step("connector/consumer/extract_dataset")
+class ExtractDatasetStep(BaseStep):
+    """Extract matching datasets from a catalog response by dct:type.
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
     ``source`` names the variable a catalog step published — typically the
     :class:`~tractusx_testlab.steps._contracts.CatalogPayload` returned by

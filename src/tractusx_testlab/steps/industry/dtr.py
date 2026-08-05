@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # Shared contract
 # ---------------------------------------------------------------------------
@@ -92,6 +93,10 @@ class CreateShellDescriptorParams(DtrParams):
 
 @step("dtr/create_shell_descriptor")
 class CreateShellDescriptorStep(BaseStep[CreateShellDescriptorParams, DescriptorPayload]):
+=======
+@step("dtr/create_shell_descriptor")
+class CreateShellDescriptorStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Create an AAS shell descriptor in the Digital Twin Registry."""
 
     params_model = CreateShellDescriptorParams
@@ -118,6 +123,7 @@ class CreateShellDescriptorStep(BaseStep[CreateShellDescriptorParams, Descriptor
         )
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # dtr/get_shell_descriptor
 # ---------------------------------------------------------------------------
@@ -131,6 +137,10 @@ class ShellDescriptorRefParams(DtrParams):
 
 @step("dtr/get_shell_descriptor")
 class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayload]):
+=======
+@step("dtr/get_shell_descriptor")
+class GetShellDescriptorStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Retrieve an AAS shell descriptor by ID."""
 
     params_model = ShellDescriptorRefParams
@@ -156,6 +166,7 @@ class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayloa
         )
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # dtr/create_submodel_descriptor
 # ---------------------------------------------------------------------------
@@ -173,6 +184,10 @@ class CreateSubmodelDescriptorParams(ShellDescriptorRefParams):
 class CreateSubmodelDescriptorStep(
     BaseStep[CreateSubmodelDescriptorParams, DescriptorPayload]
 ):
+=======
+@step("dtr/create_submodel_descriptor")
+class CreateSubmodelDescriptorStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Create a submodel descriptor under an AAS shell."""
 
     params_model = CreateSubmodelDescriptorParams
@@ -201,6 +216,7 @@ class CreateSubmodelDescriptorStep(
         )
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # dtr/delete_shell_descriptor
 # ---------------------------------------------------------------------------
@@ -208,6 +224,10 @@ class CreateSubmodelDescriptorStep(
 
 @step("dtr/delete_shell_descriptor")
 class DeleteShellDescriptorStep(BaseStep[ShellDescriptorRefParams, NoOutput]):
+=======
+@step("dtr/delete_shell_descriptor")
+class DeleteShellDescriptorStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Delete an AAS shell descriptor."""
 
     params_model = ShellDescriptorRefParams

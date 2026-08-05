@@ -40,9 +40,15 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/consumer/negotiate_contract
 # ---------------------------------------------------------------------------
+=======
+@step("connector/consumer/negotiate_contract")
+class NegotiateContractStep(BaseStep):
+    """Start an EDR contract negotiation with the provider via the SDK."""
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class NegotiateContractParams(CounterPartyParams):

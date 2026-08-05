@@ -32,8 +32,7 @@ import pytest
 import yaml
 
 from tractusx_testlab.compiler.compiler import Compiler
-from tractusx_testlab.compiler.validation.validator import ScriptValidator, ValidationResult
-from tractusx_testlab.scripting.parser import YamlParser
+from tractusx_testlab.compiler.validation.validator import ValidationResult
 
 
 # ---------------------------------------------------------------------------
@@ -48,17 +47,19 @@ def _write_yaml(tmp_path: Path, content: dict, name: str = "script.yaml") -> Pat
     return p
 
 
-def _minimal_script_dict(execution_steps: list | None = None) -> dict:
+def _minimal_script() -> dict:
+    """Return a minimal valid v2 script dict."""
     return {
         "syntax": "v1-alpha",
         "kind": "test",
         "id": "minimal-test",
-        "namespace": "minimal-tck",
+        "namespace": "testlab.test",
         "metadata": {"name": "Minimal Test", "version": "1.0"},
-        "execution": execution_steps or [{"uses": "util/generate_uuid", "name": "gen"}],
+        "execution": [],
     }
 
 
+<<<<<<< HEAD
 def _write_script(tmp_path: Path, execution_steps: list | None = None) -> Path:
     return _write_yaml(tmp_path, _minimal_script_dict(execution_steps))
 
@@ -112,22 +113,23 @@ def _write_tck(tmp_path: Path, execution_steps: list | None = None) -> Path:
     return _write_yaml(tmp_path, _tck_manifest("minimal-test.yaml"), "tck.yaml")
 
 
+=======
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
 
 class TestCompilerValidation:
-    """Tests for ScriptValidator.validate() and Compiler.validate()."""
+    """Tests for Compiler.validate()."""
 
     def test_validate_minimal_valid_script(self, tmp_path: Path) -> None:
         # Arrange
-        path = _write_script(tmp_path)
-        script = YamlParser.parse_script(path)
-        validator = ScriptValidator()
+        script_path = _write_yaml(tmp_path, _minimal_script())
+        compiler = Compiler()
 
         # Act
-        result = validator.validate(script)
+        result = compiler.validate(script_path)
 
         # Assert
         assert isinstance(result, ValidationResult)
@@ -137,27 +139,32 @@ class TestCompilerValidation:
         # Arrange
         script = _minimal_script()
         script["execution"] = [
+<<<<<<< HEAD
             {"uses": "util/generate_uuid", "id": "gen_id"},
+=======
+            {"uses": "util/export_env", "with": {"name": "test_var"}},
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
         ]
         script_path = _write_yaml(tmp_path, script)
         compiler = Compiler()
 
         # Act
-        result = validator.validate(script)
+        result = compiler.validate(script_path)
 
         # Assert
         assert result.valid is True
 
     def test_validate_rejects_unknown_step_type(self, tmp_path: Path) -> None:
         # Arrange
-        path = _write_script(tmp_path, execution_steps=[
-            {"uses": "nonexistent_step_type_xyz", "name": "bad"},
-        ])
-        script = YamlParser.parse_script(path)
-        validator = ScriptValidator()
+        script = _minimal_script()
+        script["execution"] = [
+            {"uses": "nonexistent_step_type_xyz"},
+        ]
+        script_path = _write_yaml(tmp_path, script)
+        compiler = Compiler()
 
         # Act
-        result = validator.validate(script)
+        result = compiler.validate(script_path)
 
         # Assert
         assert result.valid is False
@@ -165,28 +172,29 @@ class TestCompilerValidation:
 
     def test_validate_returns_issues_for_multiple_bad_steps(self, tmp_path: Path) -> None:
         # Arrange
-        path = _write_script(tmp_path, execution_steps=[
-            {"uses": "unknown_a", "name": "a"},
-            {"uses": "unknown_b", "name": "b"},
-        ])
-        script = YamlParser.parse_script(path)
-        validator = ScriptValidator()
+        script = _minimal_script()
+        script["execution"] = [
+            {"uses": "unknown_a"},
+            {"uses": "unknown_b"},
+        ]
+        script_path = _write_yaml(tmp_path, script)
+        compiler = Compiler()
 
         # Act
-        result = validator.validate(script)
+        result = compiler.validate(script_path)
 
         # Assert
         assert len(result.issues) >= 2
 
     def test_compile_raises_on_invalid_script(self, tmp_path: Path) -> None:
-        # Arrange — Compiler.validate() runs full pipeline including JSON schema;
-        # use the real CCM example which is known-valid.
-        from pathlib import Path as _Path
-        ccm_path = _Path("docs/examples/certificate-management-v2/raw/index.yaml")
-        if not ccm_path.exists():
-            pytest.skip("CCM example not found")
+        # Arrange
+        script = _minimal_script()
+        script["execution"] = [{"uses": "totally_bogus_step"}]
+        script_path = _write_yaml(tmp_path, script)
         compiler = Compiler()
 
         # Act & Assert
-        result = compiler.validate(ccm_path)
-        assert result.valid is True
+        from unittest.mock import MagicMock
+        identity = MagicMock()
+        with pytest.raises(ValueError, match="validation failed"):
+            compiler.compile(script_path, identity, {})

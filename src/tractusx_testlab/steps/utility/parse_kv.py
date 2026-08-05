@@ -66,6 +66,7 @@ def _parse(text: str, pair_sep: str, kv_sep: str) -> dict[str, str]:
     return result
 
 
+<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # util/parse_kv
 # ---------------------------------------------------------------------------
@@ -89,6 +90,10 @@ class ParseKvOutput(StepValue[Union[str, dict[str, str]]]):
 
 @step("util/parse_kv")
 class ParseKvStep(BaseStep[ParseKvParams, ParseKvOutput]):
+=======
+@step("util/parse_kv")
+class ParseKvStep(BaseStep):
+>>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Parse a delimited ``key=value`` string and optionally select one key.
 
     Pairs split on ``pair_separator`` and each pair on the *first*
