@@ -25,6 +25,7 @@ from tractusx_testlab.steps.assertions import AssertionEngine
 
 # Import step subpackages to trigger @step registrations
 import tractusx_testlab.steps.connector  # noqa: F401  — SDK + local connector steps
+import tractusx_testlab.steps.flow  # noqa: F401
 import tractusx_testlab.steps.industry  # noqa: F401
 import tractusx_testlab.steps.pull_data  # noqa: F401  — shortcut blocks (catalog→negotiate→transfer→EDR)
 import tractusx_testlab.steps.server  # noqa: F401

@@ -27,15 +27,22 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
+
+from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import (
+    DataAddressPayload,
+    DataplaneExports,
+    StepParams,
+    data_address_token,
+)
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.syntax.context_vars import (
-    DATAPLANE_ENDPOINT,
+    DATA_ADDRESS,
     EDR_ENTRY,
-    EDR_TOKEN,
     NEGOTIATION_ID,
     TRANSFER_ID,
 )
@@ -46,78 +53,143 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# connector/consumer/transfer_data
+# ---------------------------------------------------------------------------
+
+
+class TransferDataParams(StepParams):
+    """Input contract of ``connector/consumer/transfer_data``."""
+
+    negotiation_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Negotiation to collect the EDR for; falls back to the "
+            "'negotiation_id' context variable."
+        ),
+    )
+    verify: Optional[Any] = Field(
+        default=None,
+        description="TLS verification passed through to the SDK; None keeps its default.",
+    )
+
+
+class TransferDataOutput(StepPayload):
+    """Output contract of ``connector/consumer/transfer_data``.
+
+    Everything is ``None`` when the negotiation produced no EDR — the step
+    reports that as a 500 so a script can assert on it.
+    """
+
+    edr_entry: Optional[dict] = Field(
+        default=None, description="The EDR entry the negotiation produced."
+    )
+    data_address: Optional[str] = Field(
+        default=None, description="Data-plane URL the negotiated data is fetched from."
+    )
+    edr_token: Optional[str] = Field(
+        default=None, description="Authorization token for that data-plane URL."
+    )
+    data_address_raw: Optional[DataAddressPayload] = Field(
+        default=None,
+        description="The full data address document, for assertions on its other keys.",
+    )
+
+
+class TransferDataExports(DataplaneExports):
+    """Context variables published by ``connector/consumer/transfer_data``.
+
+    Extends the shared data-plane pair with the transfer's own identifiers, and
+    keeps ``data_address`` as an older spelling of ``dataplane_endpoint`` that
+    existing scripts still read.
+    """
+
+    transfer_id: Optional[str] = Field(
+        default=None, alias=TRANSFER_ID, description="ID of the transfer process."
+    )
+    edr_entry: Optional[dict] = Field(
+        default=None, alias=EDR_ENTRY, description="The EDR entry the negotiation produced."
+    )
+    data_address: Optional[str] = Field(
+        default=None, alias=DATA_ADDRESS, description="Older spelling of 'dataplane_endpoint'."
+    )
+
+
 @step("connector/consumer/transfer_data")
-class TransferDataStep(BaseStep):
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+class TransferDataStep(BaseStep[TransferDataParams, TransferDataOutput]):
+    """Collect the EDR for a negotiated contract and resolve its data address.
+
+    This is what turns a finished negotiation into something
+    ``connector/dataplane/http_request`` can call: it polls for the EDR entry,
+    then asks the connector for the data address that entry points at.
+    """
+
+    params_model = TransferDataParams
+    output_model = TransferDataOutput
+    exports_model = TransferDataExports
+
+    async def execute(
+        self, params: TransferDataParams, context: "StepContext", definition: StepDefinitionV2
+    ) -> StepOutput[TransferDataOutput]:
         consumer = context.get_consumer_service()
-        url = f"{context.get_consumer_base_url()}/v3/transferprocesses"
+        url = context.get_consumer_endpoint_url("transfer_processes")
 
-        negotiation_id = params.get("negotiation_id") or context.get_variable(NEGOTIATION_ID)
+        negotiation_id = params.negotiation_id or context.get_variable(NEGOTIATION_ID)
+        edr_entry = consumer.get_edr_entry(negotiation_id=negotiation_id, verify=params.verify)
 
-        edr_entry = consumer.get_edr_entry(
-            negotiation_id=negotiation_id,
-            verify=params.get("verify"),
+        transfer_id = _transfer_id(edr_entry)
+        data_address = _resolve_data_address(transfer_id, consumer, params.verify)
+        endpoint = (data_address or {}).get("endpoint")
+        auth_token = data_address_token(data_address)
+
+        value = TransferDataOutput(
+            edr_entry=edr_entry,
+            data_address=endpoint,
+            edr_token=auth_token,
+            data_address_raw=data_address,
         )
-
-        data_address_result = _resolve_data_address(edr_entry, consumer, context, params)
-        endpoint, auth_token = _extract_endpoint_and_token(data_address_result)
-
-        result_value = {
-            "edr_entry": edr_entry,
-            "data_address": endpoint,
-            "edr_token": auth_token,
-            "data_address_raw": data_address_result,
-        }
         return StepOutput(
-            value=result_value,
+            value=value,
             request=HttpRequest(method="POST", url=url),
             response=HttpResponse(
                 status_code=200 if edr_entry else 500,
-                body=result_value,
+                body={
+                    "edr_entry": edr_entry,
+                    "data_address": endpoint,
+                    "edr_token": auth_token,
+                    "data_address_raw": data_address,
+                },
+            ),
+            exports=TransferDataExports(
+                transfer_id=transfer_id,
+                edr_entry=edr_entry,
+                data_address=endpoint,
+                dataplane_endpoint=endpoint,
+                edr_token=auth_token,
             ),
         )
 
 
-def _resolve_data_address(edr_entry: dict | None, consumer, context: "StepContext", params: dict) -> dict | None:
-    """Resolve the EDR data address from the entry, storing variables in context."""
+def _transfer_id(edr_entry: Optional[dict]) -> Optional[str]:
+    """Read the transfer process ID from an EDR entry under either of its spellings."""
     if not edr_entry:
         return None
+    return edr_entry.get("transferProcessId") or edr_entry.get("@id")
 
-    transfer_process_id = edr_entry.get("transferProcessId") or edr_entry.get("@id")
-    context.set_variable(TRANSFER_ID, transfer_process_id)
-    context.set_variable(EDR_ENTRY, edr_entry)
 
-    try:
-        data_address_result = consumer.get_edr(
-            transfer_id=transfer_process_id,
-            verify=params.get("verify"),
-        )
-    except ConnectionError:
-        logger.warning("Failed to retrieve EDR data address for transfer %s", transfer_process_id)
+def _resolve_data_address(
+    transfer_id: Optional[str], consumer: Any, verify: Any
+) -> Optional[dict]:
+    """Ask the connector for the data address a transfer points at.
+
+    A connector that cannot be reached is reported as "no data address" rather
+    than aborting the step: the EDR entry itself is still worth returning, and
+    the 500 in the response says the transfer did not complete.
+    """
+    if not transfer_id:
         return None
-
-    if data_address_result:
-        _store_data_address_vars(data_address_result, context)
-
-    return data_address_result
-
-
-def _store_data_address_vars(data_address_result: dict, context: "StepContext") -> None:
-    """Store endpoint and auth token variables from a data address result."""
-    endpoint = data_address_result.get("endpoint")
-    auth_token = data_address_result.get("authorization") or data_address_result.get("authCode")
-    if endpoint:
-        context.set_variable("data_address", endpoint)
-        context.set_variable(DATAPLANE_ENDPOINT, endpoint)
-    if auth_token:
-        context.set_variable(EDR_TOKEN, auth_token)
-        context.set_variable("edr_token", auth_token)
-
-
-def _extract_endpoint_and_token(data_address_result: dict | None) -> tuple[str | None, str | None]:
-    """Extract endpoint and auth token from data address result."""
-    if not data_address_result:
-        return None, None
-    endpoint = data_address_result.get("endpoint")
-    auth_token = data_address_result.get("authorization") or data_address_result.get("authCode")
-    return endpoint, auth_token
+    try:
+        return consumer.get_edr(transfer_id=transfer_id, verify=verify)
+    except ConnectionError:
+        logger.warning("Failed to retrieve EDR data address for transfer %s", transfer_id)
+        return None

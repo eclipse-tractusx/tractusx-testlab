@@ -19,48 +19,49 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
-## It was reviewed and tested by a human committer.
 
-"""Variable export step for cross-script variable propagation."""
+"""Delay step — pauses test execution for a fixed duration."""
 
 from __future__ import annotations
 
-import logging
+import asyncio
 from typing import TYPE_CHECKING
+
+from pydantic import Field
 
 from tractusx_testlab.models import StepDefinitionV2
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import NoOutput
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
-logger = logging.getLogger(__name__)
 
-_EXPORT_NAMESPACE = "!"
+# ---------------------------------------------------------------------------
+# flow/delay
+# ---------------------------------------------------------------------------
 
 
-@step("util/export_env")
-class ExportVariableStep(BaseStep):
-    """Mark a context variable for export to downstream scripts.
+class DelayParams(StepParams):
+    """Input contract of ``flow/delay``."""
 
-    Stores the variable under ``!{script_name}:{var_name}`` so that
-    downstream scripts can retrieve it during cross-script resolution.
+    seconds: float = Field(default=1, ge=0, description="Seconds to wait.")
 
-    Params:
-        name (str): The variable name to export from the current context.
+
+@step("flow/delay")
+class DelayStep(BaseStep[DelayParams, NoOutput]):
+    """Pause test execution for a fixed duration.
+
+    Useful where a system under test needs a moment to reach the state the
+    next step asserts on and offers nothing to poll.
     """
 
+    params_model = DelayParams
+    output_model = NoOutput
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2
-    ) -> StepOutput:
-        var_name: str = params["name"]
-        value = context.get_variable(var_name)
-
-        script_name = context.job.current_script or "unknown"
-        export_key = f"{_EXPORT_NAMESPACE}{script_name}:{var_name}"
-        context.set_variable(export_key, value)
-
-        logger.info("Exported variable %s as %s", var_name, export_key)
-        return StepOutput(value=value)
+        self, params: DelayParams, context: "StepContext", definition: StepDefinitionV2
+    ) -> StepOutput[NoOutput]:
+        await asyncio.sleep(params.seconds)
+        return StepOutput(value=NoOutput(None))

@@ -56,14 +56,14 @@ class TestGenerateUuidStep:
     @pytest.mark.asyncio
     async def test_generates_valid_uuid(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
         step = GenerateUuidStep()
-        result = await step.execute({}, mock_context, definition)
+        result = await step.invoke({}, mock_context, definition)
         parsed = uuid.UUID(result.value["generated_id"])
         assert parsed.version == 4
 
     @pytest.mark.asyncio
     async def test_prepends_prefix(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
         step = GenerateUuidStep()
-        result = await step.execute({"prefix": "urn:uuid:"}, mock_context, definition)
+        result = await step.invoke({"prefix": "urn:uuid:"}, mock_context, definition)
         assert result.value["generated_id"].startswith("urn:uuid:")
         uuid.UUID(result.value["generated_id"].removeprefix("urn:uuid:"))
 
@@ -80,7 +80,7 @@ class TestJsonPathExtractStep:
     async def test_extracts_nested_value(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
         mock_context.variables["catalog"] = {"dcat:dataset": [{"id": "ds-1"}]}
         step = JsonPathExtractStep()
-        result = await step.execute(
+        result = await step.invoke(
             {"source": "catalog", "path": "dcat:dataset.0.id"}, mock_context, definition
         )
         assert result.value == "ds-1"
@@ -89,7 +89,7 @@ class TestJsonPathExtractStep:
     async def test_stores_in_variable(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
         mock_context.variables["data"] = {"key": "val"}
         step = JsonPathExtractStep()
-        await step.execute(
+        await step.invoke(
             {"source": "data", "path": "key", "store_in_variable": "extracted"},
             mock_context, definition,
         )
@@ -98,21 +98,21 @@ class TestJsonPathExtractStep:
     @pytest.mark.asyncio
     async def test_missing_source_raises_key_error(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
         step = JsonPathExtractStep()
-        with pytest.raises(KeyError, match="requires either 'source' or 'variable'"):
-            await step.execute({"path": "x"}, mock_context, definition)
+        with pytest.raises(ValueError, match="source: Field required"):
+            await step.invoke({"path": "x"}, mock_context, definition)
 
     @pytest.mark.asyncio
     async def test_nonexistent_variable_raises(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
         step = JsonPathExtractStep()
         with pytest.raises(KeyError, match="not found"):
-            await step.execute({"source": "missing", "path": "a"}, mock_context, definition)
+            await step.invoke({"source": "missing", "path": "a"}, mock_context, definition)
 
     @pytest.mark.asyncio
     async def test_path_no_match_raises(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
         mock_context.variables["obj"] = {"a": 1}
         step = JsonPathExtractStep()
         with pytest.raises(KeyError):
-            await step.execute({"source": "obj", "path": "nonexistent"}, mock_context, definition)
+            await step.invoke({"source": "obj", "path": "nonexistent"}, mock_context, definition)
 
 
 # ---------------------------------------------------------------------------
@@ -127,7 +127,7 @@ class TestValidateSemanticSchemaStep:
     async def test_valid_payload_passes(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
         mock_context.variables["payload"] = {"catenaXId": "x", "childItems": []}
         step = ValidateSemanticSchemaStep()
-        result = await step.execute(
+        result = await step.invoke(
             {"source": "payload", "schema_ref": "CX-0135"}, mock_context, definition
         )
         assert result.value["is_valid"] is True
@@ -137,7 +137,7 @@ class TestValidateSemanticSchemaStep:
     async def test_missing_keys_fails(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
         mock_context.variables["payload"] = {"catenaXId": "x"}
         step = ValidateSemanticSchemaStep()
-        result = await step.execute(
+        result = await step.invoke(
             {"source": "payload", "schema_ref": "CX-0135"}, mock_context, definition
         )
         assert result.value["is_valid"] is False
@@ -147,7 +147,7 @@ class TestValidateSemanticSchemaStep:
     async def test_unknown_schema_ref_empty_keys(self, mock_context: MagicMock, definition: StepDefinitionV2) -> None:
         mock_context.variables["payload"] = {"anything": 1}
         step = ValidateSemanticSchemaStep()
-        result = await step.execute(
+        result = await step.invoke(
             {"source": "payload", "schema_ref": "CX-9999"}, mock_context, definition
         )
         assert result.value["is_valid"] is True
@@ -160,7 +160,7 @@ class TestValidateSemanticSchemaStep:
         mock_context.variables["payload"] = [1, 2, 3]
         step = ValidateSemanticSchemaStep()
         with pytest.raises(TypeError, match="Expected dict"):
-            await step.execute(
+            await step.invoke(
                 {"source": "payload", "schema_ref": "CX-0135"}, mock_context, definition
             )
 
@@ -183,7 +183,7 @@ class TestQueryCatalogWithFiltersStep:
         mock_context.get_consumer_service.return_value = consumer
 
         step = QueryCatalogWithFiltersStep()
-        result = await step.execute(
+        result = await step.invoke(
             {"counter_party_address": "http://provider:8080", "filters": []},
             mock_context, definition,
         )
@@ -199,24 +199,47 @@ class TestQueryCatalogWithFiltersStep:
         mock_context.get_consumer_service.return_value = consumer
 
         step = QueryCatalogWithFiltersStep()
-        result = await step.execute(
+        result = await step.invoke(
             {"provider_url": "http://provider:8080"}, mock_context, definition,
         )
         assert result.value is None
         assert result.response.status_code == 500
 
-    def test_build_filter_expression_from_list(self) -> None:
+    @pytest.mark.asyncio
+    async def test_each_filter_is_translated_by_the_sdk(
+        self, mock_context: MagicMock, definition: StepDefinitionV2
+    ) -> None:
         consumer = MagicMock()
         consumer.get_filter_expression.side_effect = lambda key, value, operator: {
             "operandLeft": key, "operator": operator, "operandRight": value,
         }
-        filters = [{"operand_left": "type", "operator": "=", "operand_right": "cert"}]
-        result = QueryCatalogWithFiltersStep._build_filter_expression(consumer, filters)
-        assert result == [{"operandLeft": "type", "operator": "=", "operandRight": "cert"}]
+        consumer.get_catalog_with_filter.return_value = {"dcat:dataset": []}
+        mock_context.get_consumer_service.return_value = consumer
 
-    def test_build_filter_expression_empty_returns_empty_list(self) -> None:
+        await QueryCatalogWithFiltersStep().invoke(
+            {
+                "counter_party_address": "http://provider:8080",
+                "filters": [{"operand_left": "type", "operator": "=", "operand_right": "cert"}],
+            },
+            mock_context, definition,
+        )
+        assert consumer.get_catalog_with_filter.call_args.kwargs["filter_expression"] == [
+            {"operandLeft": "type", "operator": "=", "operandRight": "cert"}
+        ]
+
+    @pytest.mark.asyncio
+    async def test_no_filters_sends_an_empty_expression(
+        self, mock_context: MagicMock, definition: StepDefinitionV2
+    ) -> None:
         consumer = MagicMock()
-        assert QueryCatalogWithFiltersStep._build_filter_expression(consumer, []) == []
+        consumer.get_catalog_with_filter.return_value = {"dcat:dataset": []}
+        mock_context.get_consumer_service.return_value = consumer
+
+        await QueryCatalogWithFiltersStep().invoke(
+            {"counter_party_address": "http://provider:8080"}, mock_context, definition,
+        )
+        assert consumer.get_filter_expression.call_count == 0
+        assert consumer.get_catalog_with_filter.call_args.kwargs["filter_expression"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +267,7 @@ class TestSendNotificationStep:
         mock_client_cls.return_value = mock_client
 
         step = SendNotificationStep()
-        result = await step.execute(
+        result = await step.invoke(
             {"dataplane_url": "http://dp/notify", "edr_token": "tok", "content": {"msg": "hi"}},
             mock_context, definition,
         )
@@ -263,7 +286,7 @@ class TestSendNotificationStep:
         mock_context.get_notification_service = MagicMock(return_value=mock_service)
 
         step = SendNotificationStep()
-        result = await step.execute(
+        result = await step.invoke(
             {
                 "notification": {"header": {"context": "cx", "senderBpn": "B1", "receiverBpn": "B2"}, "content": {}},
                 "provider_bpn": "BPNL000000001",

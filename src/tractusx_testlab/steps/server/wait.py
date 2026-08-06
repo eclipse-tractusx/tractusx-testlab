@@ -28,12 +28,15 @@ from __future__ import annotations
 
 import logging
 from urllib.parse import urlparse
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from pydantic import Field, field_validator
 
 from tractusx_testlab.models import StepDefinitionV2
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import get_callback_manager
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import StepParams
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -53,27 +56,59 @@ def _extract_path_from_endpoint_url(endpoint_url: str) -> str:
     return urlparse(endpoint_url).path
 
 
+class WaitForCallParams(StepParams):
+    """Input contract of ``mock/wait/http_request``."""
+
+    endpoint_id: str = Field(
+        description=(
+            "A mock endpoint's URL, the ID it was registered under, or the path "
+            "itself — all three are accepted."
+        ),
+    )
+    method: str = Field(default="POST", description="HTTP method to wait for.")
+    timeout_s: float = Field(
+        default=_DEFAULT_TIMEOUT_S, gt=0, description="Seconds to wait before failing."
+    )
+
+    @field_validator("method")
+    @classmethod
+    def _uppercase_method(cls, value: str) -> str:
+        """Accept ``post`` as readily as ``POST``."""
+        return value.upper()
+
+
+class InboundCallOutput(StepPayload):
+    """The inbound request a mock endpoint received."""
+
+    method: str = Field(description="HTTP method of the inbound request.")
+    path: str = Field(description="Path the request arrived on.")
+    headers: dict[str, str] = Field(
+        default_factory=dict, description="Headers of the inbound request."
+    )
+    body: Any = Field(default=None, description="Body of the inbound request.")
+
+
 @step("mock/wait/http_request")
-class WaitForCallStep(BaseStep):
+class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
     """Wait for an inbound HTTP request on a previously-registered mock endpoint.
 
-    Params:
-        endpoint_id (str): Variable reference to a mock endpoint's output URL.
-        timeout_s (float): Seconds to wait before failing (default ``30``).
-
-    Output:
-        The request body received from the inbound call.
+    This is the other half of ``mock/api``: that step hands the system under
+    test a callback URL, and this one blocks until the SUT calls it, then hands
+    the request it made to the assertions.
 
     Raises:
         RuntimeError: If no ``CallbackManager`` is available or the wait times out.
     """
 
+    params_model = WaitForCallParams
+    output_model = InboundCallOutput
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2
-    ) -> StepOutput:
-        raw_endpoint_id: str = params["endpoint_id"]
-        method: str = params.get("method", "POST").upper()
-        timeout: float = float(params.get("timeout_s", _DEFAULT_TIMEOUT_S))
+        self, params: WaitForCallParams, context: "StepContext", definition: StepDefinitionV2
+    ) -> StepOutput[InboundCallOutput]:
+        raw_endpoint_id = params.endpoint_id
+        method = params.method
+        timeout = params.timeout_s
 
         manager = get_callback_manager()
         if manager is None:
@@ -106,9 +141,11 @@ class WaitForCallStep(BaseStep):
             )
 
         logger.info("Received callback on %s %s", method, full_path)
-        return StepOutput(value={
-            "method": result.method,
-            "path": result.path,
-            "headers": result.headers,
-            "body": result.payload,
-        })
+        return StepOutput(
+            value=InboundCallOutput(
+                method=result.method,
+                path=result.path,
+                headers=result.headers,
+                body=result.payload,
+            )
+        )

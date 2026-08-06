@@ -28,17 +28,23 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 import requests
+from pydantic import Field, field_validator
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import (
+    CounterPartyParams,
+    DataplaneExports,
+    FilterExpressionParams,
+    ServiceParams,
+)
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.steps.pull_data._constants import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
 )
-from tractusx_testlab.syntax.context_vars import DATAPLANE_ENDPOINT, EDR_TOKEN
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -78,52 +84,94 @@ def _to_odrl_policy(value: object) -> object:
     return value
 
 
+# -- Declared interface -------------------------------------------------------
+
+
+class PullDataParams(ServiceParams, CounterPartyParams, FilterExpressionParams):
+    """What both pull-data shortcuts take.
+
+    They run the whole DSP flow in one step, so they need everything the
+    separate catalog, negotiation, and transfer steps would each have taken.
+    """
+
+    max_wait: float = Field(
+        default=DEFAULT_MAX_WAIT,
+        ge=0,
+        description="Seconds to wait for the transfer to complete.",
+    )
+    poll_interval: float = Field(
+        default=DEFAULT_POLL_INTERVAL,
+        gt=0,
+        description="Seconds between transfer-state polls.",
+    )
+
+
+class PullDataOutput(StepPayload):
+    """Everything the DSP flow produced, from the catalog through to the token.
+
+    The endpoint and token appear twice under different names because scripts
+    written against either spelling still read this output.
+    """
+
+    endpoint: Optional[str] = Field(
+        default=None, description="Data-plane URL the negotiated data is fetched from."
+    )
+    edr_token: str = Field(default="", description="Authorization token for that URL.")
+    dataplane_url: str = Field(default="", description="Same as 'endpoint', as a string.")
+    token_prefix: Optional[str] = Field(
+        default=None,
+        description="First characters of the token, safe to log or assert on.",
+    )
+    catalog: dict = Field(
+        default_factory=dict, description="Catalog document the offer was taken from."
+    )
+    datasets: list[dict] = Field(
+        default_factory=list, description="Dataset offers in that catalog."
+    )
+    asset_id: str = Field(default="", description="Asset ID of the first offer.")
+    negotiation_id: Optional[str] = Field(
+        default=None, description="ID of the negotiation the flow ran."
+    )
+    transfer_process_id: Optional[str] = Field(
+        default=None, description="ID of the transfer process the flow ran."
+    )
+
+
+class PullDataByPolicyOutput(PullDataOutput):
+    """Adds the two aliases ``pull_data_filtered_by_policy`` also publishes."""
+
+    transfer_id: Optional[str] = Field(
+        default=None, description="Same as 'transfer_process_id'."
+    )
+    agreement_id: Optional[str] = Field(
+        default=None, description="Same as 'negotiation_id'."
+    )
+
+
 # -- Shared helpers -----------------------------------------------------------
-
-
-def _build_filter_expression(params: dict) -> list[dict]:
-    """Build SDK-compatible filter expression from step params."""
-    filters = params.get("filters", params.get("filter_expression", []))
-    if isinstance(filters, dict):
-        filters = [filters]
-    return [
-        {
-            "operandLeft": f.get("operand_left", f.get("operandLeft", "")),
-            "operator": f.get("operator", "="),
-            "operandRight": f.get("operand_right", f.get("operandRight", "")),
-        }
-        for f in filters
-        if isinstance(f, dict)
-    ]
 
 
 async def _do_dsp_flow(
     context: "StepContext",
-    params: dict,
-    filter_expression: list[dict],
-    policies: list[dict] | dict | None,
-) -> StepOutput:
-    """Execute the full DSP flow via the SDK's do_dsp()."""
-    if isinstance(policies, dict):
-        policies = [policies]
-    service_name: str | None = params.get("connector_service") or None
-    consumer = context.get_consumer_service(service_name)
-    counter_party_address = params.get("counter_party_address", "")
-    counter_party_id = params.get("counter_party_id", "")
-    max_wait = params.get("max_wait", DEFAULT_MAX_WAIT)
-    poll_interval = params.get("poll_interval", DEFAULT_POLL_INTERVAL)
+    params: PullDataParams,
+    policies: Optional[list[dict]],
+) -> tuple[PullDataOutput, HttpRequest, HttpResponse]:
+    """Execute the full DSP flow via the SDK and describe what it produced."""
+    consumer = context.get_consumer_service(params.service_name())
+    filter_expression = params.sdk_filter_expression()
+    counter_party_id = params.counter_party_id
 
     # Yield to event loop before blocking SDK call
     await asyncio.sleep(0)
 
     # Pre-fetch catalog to extract dataset metadata that tests may assert on.
     catalog: dict = {}
-    datasets: list = []
+    datasets: list[dict] = []
     asset_id: str = ""
     try:
         catalog = consumer.get_catalog_with_filter(
             counter_party_id=counter_party_id,
-            counter_party_address=counter_party_address,
+            counter_party_address=params.counter_party_address,
             filter_expression=filter_expression,
         ) or {}
         raw_datasets = catalog.get("dataset", [])
@@ -146,60 +194,139 @@ async def _do_dsp_flow(
     # transfer_process_id as a distinct return value.
     transfer_process_id = consumer.get_transfer_id(
         counter_party_id=counter_party_id,
-        counter_party_address=counter_party_address,
+        counter_party_address=params.counter_party_address,
         filter_expression=filter_expression,
         policies=policies,
-        max_wait=max_wait,
-        poll_interval=poll_interval,
+        max_wait=params.max_wait,
+        poll_interval=params.poll_interval,
     )
     endpoint, token = consumer.get_endpoint_with_token(transfer_id=transfer_process_id)
 
-    context.set_variable(DATAPLANE_ENDPOINT, endpoint)
-    context.set_variable(EDR_TOKEN, token)
+    value = PullDataOutput(
+        endpoint=endpoint,
+        edr_token=token or "",
+        dataplane_url=endpoint or "",
+        token_prefix=token[:10] + "..." if token else None,
+        catalog=catalog,
+        datasets=datasets,
+        asset_id=asset_id,
+        negotiation_id=transfer_process_id,
+        transfer_process_id=transfer_process_id,
+    )
+    request = HttpRequest(method="POST", url=params.counter_party_address)
+    response = HttpResponse(
+        status_code=200 if endpoint else 500,
+        body={"endpoint": endpoint},
+    )
+    return value, request, response
 
-    return StepOutput(
-        value={
-            "endpoint": endpoint,
-            "edr_token": token or "",
-            "dataplane_url": endpoint or "",
-            "token_prefix": token[:10] + "..." if token else None,
-            "catalog": catalog,
-            "datasets": datasets,
-            "asset_id": asset_id,
-            "negotiation_id": transfer_process_id,
-            "transfer_process_id": transfer_process_id,
-        },
-        request=HttpRequest(method="POST", url=counter_party_address),
-        response=HttpResponse(
-            status_code=200 if endpoint else 500,
-            body={"endpoint": endpoint},
+
+def _dataplane_exports(value: PullDataOutput) -> DataplaneExports:
+    """Publish the data-plane pair the dataplane step reads."""
+    return DataplaneExports(dataplane_endpoint=value.endpoint, edr_token=value.edr_token or None)
+
+
+# -- Steps --------------------------------------------------------------------
+
+
+class PullDataFilteredParams(PullDataParams):
+    """Input contract of ``connector/consumer/pull_data_filtered``."""
+
+    policy: Optional[Any] = Field(
+        default=None,
+        description=(
+            "Single policy the offer must satisfy, in ODRL or the testlab "
+            "simplified form; omitted means the SDK picks the first offer."
         ),
     )
 
+    def allowed_policies(self) -> Optional[list[dict]]:
+        """The policy as the SDK's allow-list argument, or None for "any offer"."""
+        if self.policy is None:
+            return None
+        converted = _to_odrl_policy(self.policy)
+        return [converted] if isinstance(converted, dict) else converted
 
-class ConnectorPullDataFiltered(BaseStep):
-    """``connector/consumer/pull_data_filtered`` — full DSP flow with optional policy filter.
 
-    The optional ``policy:`` param accepts the testlab simplified format
-    (``permissions``/``constraints``/snake_case keys).  It is automatically
-    converted to ODRL camelCase so the SDK's policy-comparison logic can use it
-    as an allow-list when filtering catalog assets.
+class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]):
+    """Run the full DSP flow in one step, optionally constrained to one policy.
 
-    When no policy is provided, ``policies=None`` is forwarded to ``do_dsp()``
-    so the SDK auto-discovers the first available catalog policy.
+    The ``policy:`` param accepts the testlab simplified format
+    (``permissions``/``constraints``/snake_case keys) and is converted to ODRL
+    camelCase, so the SDK's policy comparison can use it as an allow-list when
+    filtering catalog assets.  With no policy the SDK takes the first offer.
     """
 
+    params_model = PullDataFilteredParams
+    output_model = PullDataOutput
+    exports_model = DataplaneExports
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2,
-    ) -> StepOutput:
-        normalized = dict(params)
-        raw_policy = normalized.pop("policy", None)
-        normalized.pop("policies", None)
-        filter_expression = _build_filter_expression(normalized)
+        self,
+        params: PullDataFilteredParams,
+        context: "StepContext",
+        definition: StepDefinitionV2,
+    ) -> StepOutput[PullDataOutput]:
+        value, request, response = await _do_dsp_flow(
+            context, params, params.allowed_policies()
+        )
+        return StepOutput(
+            value=value,
+            request=request,
+            response=response,
+            exports=_dataplane_exports(value),
+        )
 
-        policies: list[dict] | None = None
-        if raw_policy is not None:
-            odrl_policy = _to_odrl_policy(raw_policy)
-            policies = [odrl_policy] if isinstance(odrl_policy, dict) else odrl_policy
 
-        return await _do_dsp_flow(context, normalized, filter_expression, policies=policies)
+class PullDataFilteredByPolicyParams(PullDataParams):
+    """Input contract of ``connector/consumer/pull_data_filtered_by_policy``."""
+
+    policies: list[dict] = Field(
+        min_length=1,
+        description="ODRL policies, any one of which the negotiated offer must satisfy.",
+    )
+
+    @field_validator("policies", mode="before")
+    @classmethod
+    def _one_policy_is_a_list_of_one(cls, value: Any) -> Any:
+        """A single policy document is as valid as a list holding it."""
+        return [value] if isinstance(value, dict) else value
+
+    def allowed_policies(self) -> list[dict]:
+        """The policies as the SDK's allow-list argument, in ODRL spelling."""
+        return [_to_odrl_policy(policy) for policy in self.policies]
+
+
+class ConnectorPullDataFilteredByPolicy(
+    BaseStep[PullDataFilteredByPolicyParams, PullDataByPolicyOutput]
+):
+    """Run the full DSP flow, accepting an offer that matches any of several policies.
+
+    Unlike ``pull_data_filtered`` (one optional, testlab-simplified ``policy``),
+    this variant requires ``policies``.  Simplified snake_case keys are still
+    normalised to ODRL camelCase, so either format is accepted.
+    """
+
+    params_model = PullDataFilteredByPolicyParams
+    output_model = PullDataByPolicyOutput
+    exports_model = DataplaneExports
+
+    async def execute(
+        self,
+        params: PullDataFilteredByPolicyParams,
+        context: "StepContext",
+        definition: StepDefinitionV2,
+    ) -> StepOutput[PullDataByPolicyOutput]:
+        value, request, response = await _do_dsp_flow(
+            context, params, params.allowed_policies()
+        )
+        return StepOutput(
+            value=PullDataByPolicyOutput(
+                **value.model_dump(exclude_unset=True),
+                transfer_id=value.transfer_process_id,
+                agreement_id=value.negotiation_id,
+            ),
+            request=request,
+            response=response,
+            exports=_dataplane_exports(value),
+        )

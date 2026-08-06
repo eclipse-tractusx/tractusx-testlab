@@ -28,9 +28,11 @@ from __future__ import annotations
 
 # -- Step type identifiers ----------------------------------------------------
 STEP_PULL_DATA_FILTERED = "connector/consumer/pull_data_filtered"
+STEP_PULL_DATA_FILTERED_BY_POLICY = "connector/consumer/pull_data_filtered_by_policy"
 
 STEP_TYPES: list[str] = [
     STEP_PULL_DATA_FILTERED,
+    STEP_PULL_DATA_FILTERED_BY_POLICY,
 ]
 
 # -- Default values -----------------------------------------------------------

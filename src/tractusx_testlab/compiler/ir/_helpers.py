@@ -45,7 +45,7 @@ def build_instructions(
         {id, field, type, class, produced_by, source} dicts.
     """
     setup_steps = test_data.get("setup", [])
-    main_steps = test_data.get("execution", test_data.get("steps", []))
+    main_steps = test_data.get("execution", [])
     teardown_steps = test_data.get("teardown", [])
 
     instructions: list[dict[str, Any]] = []
@@ -86,17 +86,6 @@ def _collect_step_symbols(
             "field": field_name,
             "type": field_def.get("type", "string") if isinstance(field_def, dict) else "string",
             "class": field_def.get("class", "") if isinstance(field_def, dict) else "",
-            "produced_by": global_index,
-            "source": source,
-        })
-
-    # Auto-add "exported" symbol for util/export_env steps
-    if step.get("uses") == "util/export_env" and not returns:
-        step_symbols.append({
-            "id": step.get("id", ""),
-            "field": "exported",
-            "type": "string",
-            "class": "",
             "produced_by": global_index,
             "source": source,
         })

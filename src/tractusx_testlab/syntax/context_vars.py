@@ -31,6 +31,7 @@ read the same keys.  Using constants prevents silent typo breakage.
 # Catalog query results
 CATALOG_TARGET = "catalog_target"
 CATALOG_POLICY = "catalog_policy"
+CATALOG_DATASETS = "datasets"
 
 # Contract negotiation
 NEGOTIATION_ID = "negotiation_id"
@@ -40,6 +41,8 @@ TRANSFER_ID = "transfer_id"
 EDR_ENTRY = "edr_entry"
 DATAPLANE_ENDPOINT = "dataplane_endpoint"
 EDR_TOKEN = "edr_token"
+#: Older spelling of DATAPLANE_ENDPOINT; ``transfer_data`` publishes both.
+DATA_ADDRESS = "data_address"
 
 # Backend data
 BACKEND_URL = "backend_url"

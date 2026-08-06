@@ -31,6 +31,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tests.conftest import attach_endpoint_url_stubs
 from tractusx_testlab.steps.connector.cleanup import (
     DeleteAssetStep,
     DeleteContractDefinitionStep,
@@ -62,7 +63,7 @@ def ctx() -> MagicMock:
     mock.get_variable = MagicMock(side_effect=_get)
     mock.variables = variables
     mock.get_provider_base_url.return_value = _BASE_URL
-    return mock
+    return attach_endpoint_url_stubs(mock)
 
 
 @pytest.fixture()
@@ -83,8 +84,8 @@ class TestDeleteAssetStep:
         ctx.get_provider_service.return_value = provider
 
         # Act
-        await DeleteAssetStep().execute(
-            params={"asset_id": "urn:asset:001"}, context=ctx, definition=definition
+        await DeleteAssetStep().invoke(
+            raw_params={"asset_id": "urn:asset:001"}, context=ctx, definition=definition
         )
 
         # Assert — SDK controller called with the right ID
@@ -99,8 +100,8 @@ class TestDeleteAssetStep:
         ctx.get_provider_service.return_value = provider
         ctx.set_variable("asset_id", "urn:asset:from-context")
 
-        await DeleteAssetStep().execute(
-            params={}, context=ctx, definition=definition
+        await DeleteAssetStep().invoke(
+            raw_params={}, context=ctx, definition=definition
         )
 
         provider.assets.delete.assert_called_once_with(oid="urn:asset:from-context")
@@ -113,8 +114,8 @@ class TestDeleteAssetStep:
         provider.assets.delete.return_value = _make_delete_response(204)
         ctx.get_provider_service.return_value = provider
 
-        output = await DeleteAssetStep().execute(
-            params={"asset_id": "urn:asset:001"}, context=ctx, definition=definition
+        output = await DeleteAssetStep().invoke(
+            raw_params={"asset_id": "urn:asset:001"}, context=ctx, definition=definition
         )
 
         assert output.response.status_code == 204
@@ -129,8 +130,8 @@ class TestDeleteAssetStep:
         provider.assets.delete.return_value = None
         ctx.get_provider_service.return_value = provider
 
-        output = await DeleteAssetStep().execute(
-            params={"asset_id": "urn:asset:001"}, context=ctx, definition=definition
+        output = await DeleteAssetStep().invoke(
+            raw_params={"asset_id": "urn:asset:001"}, context=ctx, definition=definition
         )
 
         assert output.response.status_code == 204
@@ -147,8 +148,8 @@ class TestDeletePolicyStep:
         provider.policies.delete.return_value = _make_delete_response(204)
         ctx.get_provider_service.return_value = provider
 
-        await DeletePolicyStep().execute(
-            params={"policy_id": "policy-uuid-001"}, context=ctx, definition=definition
+        await DeletePolicyStep().invoke(
+            raw_params={"policy_id": "policy-uuid-001"}, context=ctx, definition=definition
         )
 
         provider.policies.delete.assert_called_once_with(oid="policy-uuid-001")
@@ -162,8 +163,8 @@ class TestDeletePolicyStep:
         ctx.get_provider_service.return_value = provider
         ctx.set_variable("policy_id", "policy-from-context")
 
-        await DeletePolicyStep().execute(
-            params={}, context=ctx, definition=definition
+        await DeletePolicyStep().invoke(
+            raw_params={}, context=ctx, definition=definition
         )
 
         provider.policies.delete.assert_called_once_with(oid="policy-from-context")
@@ -176,8 +177,8 @@ class TestDeletePolicyStep:
         provider.policies.delete.return_value = _make_delete_response(204)
         ctx.get_provider_service.return_value = provider
 
-        output = await DeletePolicyStep().execute(
-            params={"policy_id": "policy-uuid-001"}, context=ctx, definition=definition
+        output = await DeletePolicyStep().invoke(
+            raw_params={"policy_id": "policy-uuid-001"}, context=ctx, definition=definition
         )
 
         assert output.response.status_code == 204
@@ -195,8 +196,8 @@ class TestDeleteContractDefinitionStep:
         provider.contract_definitions.delete.return_value = _make_delete_response(204)
         ctx.get_provider_service.return_value = provider
 
-        await DeleteContractDefinitionStep().execute(
-            params={"contract_definition_id": "contract-uuid-001"},
+        await DeleteContractDefinitionStep().invoke(
+            raw_params={"contract_definition_id": "contract-uuid-001"},
             context=ctx,
             definition=definition,
         )
@@ -212,8 +213,8 @@ class TestDeleteContractDefinitionStep:
         ctx.get_provider_service.return_value = provider
         ctx.set_variable("contract_definition_id", "contract-from-context")
 
-        await DeleteContractDefinitionStep().execute(
-            params={}, context=ctx, definition=definition
+        await DeleteContractDefinitionStep().invoke(
+            raw_params={}, context=ctx, definition=definition
         )
 
         provider.contract_definitions.delete.assert_called_once_with(oid="contract-from-context")
@@ -226,8 +227,8 @@ class TestDeleteContractDefinitionStep:
         provider.contract_definitions.delete.return_value = _make_delete_response(204)
         ctx.get_provider_service.return_value = provider
 
-        output = await DeleteContractDefinitionStep().execute(
-            params={"contract_definition_id": "contract-uuid-001"},
+        output = await DeleteContractDefinitionStep().invoke(
+            raw_params={"contract_definition_id": "contract-uuid-001"},
             context=ctx,
             definition=definition,
         )

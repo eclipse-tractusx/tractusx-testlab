@@ -26,95 +26,207 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
+
+from pydantic import ConfigDict, Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import NoOutput, StepParams
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
+# ---------------------------------------------------------------------------
+# Shared contract
+# ---------------------------------------------------------------------------
+
+
+class DtrParams(StepParams):
+    """What every Digital Twin Registry step accepts.
+
+    ``bpn`` selects the tenant the registry answers for; left out, the AAS
+    service uses whatever it was configured with.
+    """
+
+    bpn: Optional[str] = Field(
+        default=None, description="BPN the registry request is made on behalf of."
+    )
+
+
+class DescriptorPayload(StepPayload):
+    """An AAS descriptor as the registry returned it.
+
+    The shape is defined by the AAS specification rather than by testlab, so
+    the two keys every descriptor carries are named and the rest of the
+    document round-trips untouched.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    id: Optional[str] = Field(default=None, description="Identifier of the descriptor.")
+    id_short: Optional[str] = Field(
+        default=None, alias="idShort", description="Short, human-readable name."
+    )
+
+
+def _as_document(result: Any) -> Any:
+    """Render an SDK descriptor object as the plain document a script reads."""
+    return result.to_dict() if hasattr(result, "to_dict") else result
+
+
+# ---------------------------------------------------------------------------
+# dtr/create_shell_descriptor
+# ---------------------------------------------------------------------------
+
+
+class CreateShellDescriptorParams(DtrParams):
+    """Input contract of ``dtr/create_shell_descriptor``."""
+
+    shell_descriptor: dict = Field(
+        description="The AAS shell descriptor document to register."
+    )
+
+
 @step("dtr/create_shell_descriptor")
-class CreateShellDescriptorStep(BaseStep):
+class CreateShellDescriptorStep(BaseStep[CreateShellDescriptorParams, DescriptorPayload]):
     """Create an AAS shell descriptor in the Digital Twin Registry."""
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+    params_model = CreateShellDescriptorParams
+    output_model = DescriptorPayload
+
+    async def execute(
+        self,
+        params: CreateShellDescriptorParams,
+        context: "StepContext",
+        definition: StepDefinitionV2,
+    ) -> StepOutput[DescriptorPayload]:
         aas = context.get_aas_service()
         from tractusx_sdk.industry.models.aas.v3.base import ShellDescriptor
 
-        descriptor = ShellDescriptor(**params["shell_descriptor"])
-        bpn = params.get("bpn")
-
-        result = aas.create_asset_administration_shell_descriptor(descriptor, bpn=bpn)
+        descriptor = ShellDescriptor(**params.shell_descriptor)
+        result = aas.create_asset_administration_shell_descriptor(descriptor, bpn=params.bpn)
         url = f"{aas.aas_url}/shell-descriptors"
 
-        body = result.to_dict() if hasattr(result, "to_dict") else result
+        body = _as_document(result)
         return StepOutput(
-            value=body,
-            request=HttpRequest(method="POST", url=url, body=params["shell_descriptor"]),
+            value=DescriptorPayload.of(body),
+            request=HttpRequest(method="POST", url=url, body=params.shell_descriptor),
             response=HttpResponse(status_code=201, body=body),
         )
 
 
+# ---------------------------------------------------------------------------
+# dtr/get_shell_descriptor
+# ---------------------------------------------------------------------------
+
+
+class ShellDescriptorRefParams(DtrParams):
+    """Names an existing shell descriptor."""
+
+    aas_identifier: str = Field(description="Identifier of the AAS shell descriptor.")
+
+
 @step("dtr/get_shell_descriptor")
-class GetShellDescriptorStep(BaseStep):
+class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayload]):
     """Retrieve an AAS shell descriptor by ID."""
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+    params_model = ShellDescriptorRefParams
+    output_model = DescriptorPayload
+
+    async def execute(
+        self,
+        params: ShellDescriptorRefParams,
+        context: "StepContext",
+        definition: StepDefinitionV2,
+    ) -> StepOutput[DescriptorPayload]:
         aas = context.get_aas_service()
-        aas_id = params["aas_identifier"]
-        bpn = params.get("bpn")
+        result = aas.get_asset_administration_shell_descriptor_by_id(
+            params.aas_identifier, bpn=params.bpn
+        )
+        url = f"{aas.aas_url}/shell-descriptors/{params.aas_identifier}"
 
-        result = aas.get_asset_administration_shell_descriptor_by_id(aas_id, bpn=bpn)
-        url = f"{aas.aas_url}/shell-descriptors/{aas_id}"
-
-        body = result.to_dict() if hasattr(result, "to_dict") else result
+        body = _as_document(result)
         return StepOutput(
-            value=body,
+            value=DescriptorPayload.of(body),
             request=HttpRequest(method="GET", url=url),
             response=HttpResponse(status_code=200, body=body),
         )
 
 
+# ---------------------------------------------------------------------------
+# dtr/create_submodel_descriptor
+# ---------------------------------------------------------------------------
+
+
+class CreateSubmodelDescriptorParams(ShellDescriptorRefParams):
+    """Input contract of ``dtr/create_submodel_descriptor``."""
+
+    submodel_descriptor: dict = Field(
+        description="The submodel descriptor document to register under the shell."
+    )
+
+
 @step("dtr/create_submodel_descriptor")
-class CreateSubmodelDescriptorStep(BaseStep):
+class CreateSubmodelDescriptorStep(
+    BaseStep[CreateSubmodelDescriptorParams, DescriptorPayload]
+):
     """Create a submodel descriptor under an AAS shell."""
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+    params_model = CreateSubmodelDescriptorParams
+    output_model = DescriptorPayload
+
+    async def execute(
+        self,
+        params: CreateSubmodelDescriptorParams,
+        context: "StepContext",
+        definition: StepDefinitionV2,
+    ) -> StepOutput[DescriptorPayload]:
         aas = context.get_aas_service()
         from tractusx_sdk.industry.models.aas.v3.base import SubModelDescriptor
 
-        aas_id = params["aas_identifier"]
-        descriptor = SubModelDescriptor(**params["submodel_descriptor"])
-        bpn = params.get("bpn")
+        descriptor = SubModelDescriptor(**params.submodel_descriptor)
+        result = aas.create_submodel_descriptor(
+            params.aas_identifier, descriptor, bpn=params.bpn
+        )
+        url = f"{aas.aas_url}/shell-descriptors/{params.aas_identifier}/submodel-descriptors"
 
-        result = aas.create_submodel_descriptor(aas_id, descriptor, bpn=bpn)
-        url = f"{aas.aas_url}/shell-descriptors/{aas_id}/submodel-descriptors"
-
-        body = result.to_dict() if hasattr(result, "to_dict") else result
+        body = _as_document(result)
         return StepOutput(
-            value=body,
-            request=HttpRequest(method="POST", url=url, body=params["submodel_descriptor"]),
+            value=DescriptorPayload.of(body),
+            request=HttpRequest(method="POST", url=url, body=params.submodel_descriptor),
             response=HttpResponse(status_code=201, body=body),
         )
 
 
+# ---------------------------------------------------------------------------
+# dtr/delete_shell_descriptor
+# ---------------------------------------------------------------------------
+
+
 @step("dtr/delete_shell_descriptor")
-class DeleteShellDescriptorStep(BaseStep):
+class DeleteShellDescriptorStep(BaseStep[ShellDescriptorRefParams, NoOutput]):
     """Delete an AAS shell descriptor."""
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
-        aas = context.get_aas_service()
-        aas_id = params["aas_identifier"]
-        bpn = params.get("bpn")
+    params_model = ShellDescriptorRefParams
+    output_model = NoOutput
 
-        result = aas.delete_asset_administration_shell_descriptor(aas_id, bpn=bpn)
-        url = f"{aas.aas_url}/shell-descriptors/{aas_id}"
+    async def execute(
+        self,
+        params: ShellDescriptorRefParams,
+        context: "StepContext",
+        definition: StepDefinitionV2,
+    ) -> StepOutput[NoOutput]:
+        aas = context.get_aas_service()
+        result = aas.delete_asset_administration_shell_descriptor(
+            params.aas_identifier, bpn=params.bpn
+        )
+        url = f"{aas.aas_url}/shell-descriptors/{params.aas_identifier}"
 
         return StepOutput(
-            value=result,
+            value=NoOutput(None),
             request=HttpRequest(method="DELETE", url=url),
             response=HttpResponse(status_code=204, body=result),
         )

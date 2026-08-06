@@ -136,6 +136,7 @@ nav:
       - Executing Tests: specification/walkthrough/executing-tests.md
     - Reference:
       - YAML Script Format: specification/reference/yaml-format.md
+      - Step Reference: specification/reference/steps.md
       - Module Structure: specification/reference/module-structure.md
       - Package Format: specification/reference/package-format.md
       - Syntax:
@@ -193,6 +194,7 @@ nav:
     - Data Models: developer/data-models.md
     - Sync Layer: developer/sync-layer.md
     - Block Lifecycle: developer/block-lifecycle.md
+    - Creating a Step: developer/creating-a-step.md
     - Decision Records:
       - Overview: developer/decision-records/index.md
       - ADR-0000 Template: developer/decision-records/ADR-0000-template.md

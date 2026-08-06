@@ -146,7 +146,7 @@ class TestValidateSchemaStep:
     @pytest.mark.asyncio
     async def test_valid_payload_passes(self, context: StepContext) -> None:
         payload = {"holder": "BPNL000000000000"}
-        output = await self._step().execute(
+        output = await self._step().invoke(
             {"input": payload, "schema": _SCHEMA}, context, self._definition(),
         )
         assert output.value == payload
@@ -154,20 +154,20 @@ class TestValidateSchemaStep:
     @pytest.mark.asyncio
     async def test_missing_required_property_fails(self, context: StepContext) -> None:
         with pytest.raises(ValueError, match="'holder' is a required property"):
-            await self._step().execute(
+            await self._step().invoke(
                 {"input": {}, "schema": _SCHEMA}, context, self._definition(),
             )
 
     @pytest.mark.asyncio
     async def test_wrong_type_fails(self, context: StepContext) -> None:
         with pytest.raises(ValueError, match="Schema validation failed"):
-            await self._step().execute(
+            await self._step().invoke(
                 {"input": {"holder": 42}, "schema": _SCHEMA}, context, self._definition(),
             )
 
     @pytest.mark.asyncio
     async def test_json_string_payload_is_decoded(self, context: StepContext) -> None:
-        await self._step().execute(
+        await self._step().invoke(
             {"input": json.dumps({"holder": "BPNL1"}), "schema": _SCHEMA},
             context,
             self._definition(),
@@ -178,7 +178,7 @@ class TestValidateSchemaStep:
         self, context: StepContext,
     ) -> None:
         with pytest.raises(ValueError, match="not valid JSON"):
-            await self._step().execute(
+            await self._step().invoke(
                 {"input": {}, "schema": "${{ env.schemas.missing }}"},
                 context,
                 self._definition(),
@@ -186,5 +186,5 @@ class TestValidateSchemaStep:
 
     @pytest.mark.asyncio
     async def test_missing_schema_param_raises(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="requires a 'schema' parameter"):
-            await self._step().execute({"input": {}}, context, self._definition())
+        with pytest.raises(ValueError, match="schema: Field required"):
+            await self._step().invoke({"input": {}}, context, self._definition())

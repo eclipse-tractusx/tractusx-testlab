@@ -30,9 +30,11 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
+from pydantic import Field
+
 from tractusx_testlab.models import StepDefinitionV2
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepValue
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -47,27 +49,42 @@ def _render(value: Any) -> str:
     return str(value)
 
 
+class LogParams(StepParams):
+    """Input contract of ``util/log``."""
+
+    value: Any = Field(
+        default=None,
+        description="The value to show — typically a '${{ }}' expression.",
+    )
+    message: str = Field(
+        default="",
+        description="Label printed before the value; defaults to the step id.",
+    )
+
+
+class LogOutput(StepValue[Any]):
+    """The logged value, passed through unchanged."""
+
+
 @step("util/log")
-class LogStep(BaseStep):
+class LogStep(BaseStep[LogParams, LogOutput]):
     """Write a resolved value to stdout and the run log.
 
     An authoring aid for inspecting what an expression resolved to; it asserts
     nothing and always passes.  The value is echoed to stdout because the run
     report prints only step names, statuses, and errors.
-
-    Params:
-        value: The value to show — typically a ``${{ }}`` expression.
-        message: Optional label. Defaults to the step id.
     """
 
+    params_model = LogParams
+    output_model = LogOutput
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2,
-    ) -> StepOutput:
-        value = params.get("value")
-        label = params.get("message") or getattr(definition, "id", None) or "log"
-        rendered = _render(value)
+        self, params: LogParams, context: "StepContext", definition: StepDefinitionV2,
+    ) -> StepOutput[LogOutput]:
+        label = params.message or getattr(definition, "id", None) or "log"
+        rendered = _render(params.value)
 
         print(f"[log] {label}: {rendered}")
         logger.info("%s: %s", label, rendered)
 
-        return StepOutput(value=value)
+        return StepOutput(value=LogOutput(params.value))

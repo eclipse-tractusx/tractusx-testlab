@@ -502,32 +502,39 @@ Modularisation is optional; sub-modules are permitted.
 **Backend binding [SPEC]** — a step key maps to an annotated class in the Engine:
 
 ```python
+class CreateAssetParams(ServiceParams):
+    """Input contract of ``connector/provider/create_asset``."""
+
+    asset_id: str = Field(default="", description="ID to register the asset under.")
+    base_url: str = Field(default="", description="Backend URL the asset points at.")
+
+
+class CreateAssetOutput(StepPayload):
+    """Output contract of ``connector/provider/create_asset``."""
+
+    asset_id: str = Field(description="ID of the asset that now exists at the provider.")
+
+
 @step("connector/provider/create_asset")
-class CreateAssetStep(BaseStep):
-    async def execute(self, params: dict, context: "StepContext",
-                      definition: StepDefinition) -> StepOutput:
-        service_name = params.get("service")
-        provider = context.get_provider_service(service_name)
+class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
+    """Register an asset at the provider connector."""
+
+    params_model = CreateAssetParams
+    output_model = CreateAssetOutput
+
+    async def execute(self, params: CreateAssetParams, context: "StepContext",
+                      definition: StepDefinitionV2) -> StepOutput[CreateAssetOutput]:
+        provider = context.get_provider_service(params.service_name())
         url = f"{context.get_provider_base_url()}/v3/assets"
-        resolved = _normalize_asset_params(params)
-        result = provider.create_asset(
-            asset_id=resolved["asset_id"],
-            base_url=resolved.get("base_url", ""),
-            dct_type=resolved.get("dct_type"),
-            version=resolved.get("version", "3.0"),
-            semantic_id=resolved.get("semantic_id"),
-            proxy_params=resolved.get("proxy_params"),
-            headers=resolved.get("headers"),
-            private_properties=resolved.get("private_properties"),
-            context=resolved.get("context"),
+        result, http_status = _create_or_conflict(
+            provider.create_asset, asset_id=params.asset_id, base_url=params.base_url,
         )
-        asset_id = resolved["asset_id"]
         return StepOutput(
-            value=asset_id,
-            request=HttpRequest(method="POST", url=url, body=resolved),
+            value=CreateAssetOutput(asset_id=params.asset_id),
+            request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
             response=HttpResponse(
-                status_code=200 if result else 500,
-                body={"asset_id": asset_id, **(result if isinstance(result, dict) else {})},
+                status_code=http_status,
+                body={"asset_id": params.asset_id, **(result if isinstance(result, dict) else {})},
             ),
         )
 ```

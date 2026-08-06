@@ -31,6 +31,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tests.conftest import attach_endpoint_url_stubs
 from tractusx_testlab.steps.connector.do_dsp import DoDspStep, DoDspWithBpnlStep
 from tractusx_testlab.syntax.context_vars import DATAPLANE_ENDPOINT, EDR_TOKEN
 
@@ -55,7 +56,7 @@ def ctx() -> MagicMock:
     mock.get_variable = MagicMock(side_effect=_get)
     mock.variables = variables
     mock.get_consumer_base_url.return_value = _BASE_URL
-    return mock
+    return attach_endpoint_url_stubs(mock)
 
 
 @pytest.fixture()
@@ -74,8 +75,8 @@ class TestDoDspStep:
         ctx.get_consumer_service.return_value = consumer
 
         # Act
-        await DoDspStep().execute(
-            params={
+        await DoDspStep().invoke(
+            raw_params={
                 "counter_party_id": "BPNL000000000001",
                 "counter_party_address": "https://provider.example.com/dsp",
             },
@@ -95,8 +96,8 @@ class TestDoDspStep:
         ctx.get_consumer_service.return_value = consumer
 
         # Act
-        output = await DoDspStep().execute(
-            params={
+        output = await DoDspStep().invoke(
+            raw_params={
                 "counter_party_id": "BPNL000000000001",
                 "counter_party_address": "https://provider.example.com/dsp",
             },
@@ -113,8 +114,8 @@ class TestDoDspStep:
         consumer.do_dsp.return_value = (_ENDPOINT, _TOKEN)
         ctx.get_consumer_service.return_value = consumer
 
-        output = await DoDspStep().execute(
-            params={
+        output = await DoDspStep().invoke(
+            raw_params={
                 "counter_party_id": "BPNL000000000001",
                 "counter_party_address": "https://provider.example.com/dsp",
             },
@@ -130,8 +131,8 @@ class TestDoDspStep:
         consumer.do_dsp.return_value = (None, None)
         ctx.get_consumer_service.return_value = consumer
 
-        output = await DoDspStep().execute(
-            params={
+        output = await DoDspStep().invoke(
+            raw_params={
                 "counter_party_id": "BPNL000000000001",
                 "counter_party_address": "https://provider.example.com/dsp",
             },
@@ -151,8 +152,8 @@ class TestDoDspStep:
         policies = [{"@id": "policy-1"}]
 
         # Act
-        await DoDspStep().execute(
-            params={
+        await DoDspStep().invoke(
+            raw_params={
                 "counter_party_id": "BPNL000000000001",
                 "counter_party_address": "https://provider.example.com/dsp",
                 "filter_expression": filter_expr,
@@ -176,8 +177,8 @@ class TestDoDspStep:
         consumer.do_dsp.return_value = (None, None)
         ctx.get_consumer_service.return_value = consumer
 
-        await DoDspStep().execute(
-            params={
+        await DoDspStep().invoke(
+            raw_params={
                 "counter_party_id": "BPNL000000000001",
                 "counter_party_address": "https://provider.example.com/dsp",
             },
@@ -198,8 +199,8 @@ class TestDoDspWithBpnlStep:
         consumer.do_dsp_with_bpnl.return_value = (_ENDPOINT, _TOKEN)
         ctx.get_consumer_service.return_value = consumer
 
-        output = await DoDspWithBpnlStep().execute(
-            params={"bpnl": "BPNL000000000001"},
+        output = await DoDspWithBpnlStep().invoke(
+            raw_params={"bpnl": "BPNL000000000001"},
             context=ctx,
             definition=definition,
         )
@@ -216,8 +217,8 @@ class TestDoDspWithBpnlStep:
         ctx.get_consumer_service.return_value = consumer
         filter_expr = [{"operandLeft": "edc:id", "operator": "=", "operandRight": "asset-2"}]
 
-        await DoDspWithBpnlStep().execute(
-            params={
+        await DoDspWithBpnlStep().invoke(
+            raw_params={
                 "bpnl": "BPNL000000000002",
                 "counter_party_address": "https://provider.example.com/dsp",
                 "filter_expression": filter_expr,
@@ -240,8 +241,8 @@ class TestDoDspWithBpnlStep:
         consumer.do_dsp_with_bpnl.return_value = (None, None)
         ctx.get_consumer_service.return_value = consumer
 
-        output = await DoDspWithBpnlStep().execute(
-            params={"bpnl": "BPNL000000000001"},
+        output = await DoDspWithBpnlStep().invoke(
+            raw_params={"bpnl": "BPNL000000000001"},
             context=ctx,
             definition=definition,
         )

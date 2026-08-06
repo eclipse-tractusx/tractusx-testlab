@@ -32,7 +32,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from tractusx_testlab.server.callbacks import CallbackManager
-from tractusx_testlab.server.mock_registry import get_mock
+from tractusx_testlab.server.mock_registry import resolve_mock
 
 callback_router = APIRouter(tags=["testlab"])
 
@@ -62,9 +62,10 @@ async def callback_webhook(
     if method in ("POST", "PUT"):
         body = await request.json()
 
+    query_params = dict(request.query_params)
     matched = callbacks.resolve(full_path, method, headers, body)
     if not matched:
-        mock = get_mock(full_path, method)
+        mock = resolve_mock(full_path, method, headers=headers, query_params=query_params, body=body)
         if mock is not None:
             # Also resolve so wait_for_call steps receive the payload
             callbacks.resolve(full_path, method, headers, body)
@@ -72,7 +73,7 @@ async def callback_webhook(
         raise HTTPException(404, f"No listener registered for {method} {full_path}")
 
     # Check for a canned mock response to return
-    mock = get_mock(full_path, method)
+    mock = resolve_mock(full_path, method, headers=headers, query_params=query_params, body=body)
     if mock is not None:
         return JSONResponse(content=mock.body, status_code=mock.status_code)
 

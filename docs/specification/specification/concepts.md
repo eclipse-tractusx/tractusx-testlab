@@ -730,41 +730,64 @@ class ServiceManager:
 Predefined steps follow this pattern to support both managed-service and legacy-parameter modes:
 
 ```python
-class ProvisionAssetStep(BaseStep):
+class ProvisionAssetParams(ServiceParams):
+    """Input contract of ``provision_asset``.
+
+    ``service`` names a managed service (preferred); ``base_url`` is the
+    standalone path, where the step builds a one-off service itself.
+    """
+
+    asset_id: str = Field(description="ID to register the asset under.")
+    properties: dict = Field(default_factory=dict, description="Asset properties.")
+    base_url: str = Field(default="", description="Standalone mode: connector base URL.")
+    api_key: Optional[str] = Field(default=None, description="Standalone mode: API key.")
+
+    @model_validator(mode="after")
+    def _one_of_the_two_modes(self) -> "ProvisionAssetParams":
+        if not self.service and not self.base_url:
+            raise ValueError(
+                "provision_asset requires either 'service' (managed) "
+                "or 'base_url' + auth params (standalone)"
+            )
+        return self
+
+
+class ProvisionAssetOutput(StepPayload):
+    """Output contract of ``provision_asset``."""
+
+    asset_id: str = Field(description="ID of the asset that now exists at the provider.")
+
+
+class ProvisionAssetStep(BaseStep[ProvisionAssetParams, ProvisionAssetOutput]):
     """Provision a digital twin asset on a connector provider."""
+
+    params_model = ProvisionAssetParams
+    output_model = ProvisionAssetOutput
     expected_service_type = ServiceType.CONNECTOR_PROVIDER
 
-    async def execute(self, context: StepContext, **params) -> StepOutput:
-        # --- Service resolution ---
-        if "service" in params:
-            # Managed service path (preferred)
-            svc = context.get_service(params["service"])
-            actual_type = context.get_service_type(params["service"])
+    async def execute(self, params, context, definition) -> StepOutput[ProvisionAssetOutput]:
+        # --- Service resolution: the params model already rejected "neither" ---
+        if params.service:
+            svc = context.get_service(params.service)
+            actual_type = context.get_service_type(params.service)
             if actual_type != self.expected_service_type:
                 raise ServiceTypeMismatchError(
                     step="provision_asset",
                     expected=self.expected_service_type,
                     actual=actual_type,
                 )
-        elif "base_url" in params:
-            # Legacy standalone path — create one-off service
+        else:
             svc = ServiceFactory.get_connector_provider_service(
                 dataspace_version=context.dataspace_version,
-                base_url=params["base_url"],
-                api_key=params.get("api_key"),
-            )
-        else:
-            raise StepConfigError(
-                "provision_asset requires either 'service' (managed) "
-                "or 'base_url' + auth params (standalone)"
+                base_url=params.base_url,
+                api_key=params.api_key,
             )
 
         # --- Business logic ---
         asset_id = await svc.assets.create(
-            asset_id=params["asset_id"],
-            properties=params.get("properties", {}),
+            asset_id=params.asset_id, properties=params.properties,
         )
-        return StepOutput(asset_id=asset_id)
+        return StepOutput(value=ProvisionAssetOutput(asset_id=asset_id))
 ```
 
 ## Failure Policy Flow

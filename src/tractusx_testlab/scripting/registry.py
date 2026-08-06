@@ -58,6 +58,9 @@ class StepRegistry:
                 If ``None``, the step is available for all versions.
         """
         def decorator(cls: type["BaseStep"]) -> type["BaseStep"]:
+            # Stamp the canonical key onto the class so a step can describe its
+            # own contract (BaseStep.describe) without a registry lookup.
+            cls.step_type = step_type
             if dataspace_version:
                 key = (step_type, dataspace_version)
                 _REGISTRY[key] = cls

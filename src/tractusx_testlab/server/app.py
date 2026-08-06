@@ -40,7 +40,7 @@ from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.callbacks import CallbackManager
-from tractusx_testlab.server.mock_registry import get_mock, get_callback_manager, set_callback_manager
+from tractusx_testlab.server.mock_registry import get_callback_manager, resolve_mock, set_callback_manager
 from tractusx_testlab.server.storage import PackageStorage
 
 from tractusx_testlab.server.routes import router
@@ -105,7 +105,10 @@ def create_app(config: Optional[TestlabConfig] = None) -> FastAPI:
                 body = {}
 
         callbacks: CallbackManager = app.state.callbacks
-        mock = get_mock(full_path, method)
+        mock = resolve_mock(
+            full_path, method,
+            headers=headers, query_params=dict(request.query_params), body=body,
+        )
 
         # Resolve the callback listener (so wait_for_call steps unblock)
         matched = callbacks.resolve(full_path, method, headers, body)

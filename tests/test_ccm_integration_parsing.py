@@ -56,8 +56,8 @@ _CCM_TEST_FILES = {
 _CCM_STEP_TYPES = [
     "connector/provider/create_asset", "connector/provider/create_contract_definition",
     "connector/provider/create_policy", "connector/provider/delete_asset",
-    "connector/provider/delete_policy", "util/export_env", "util/generate_uuid",
-    "connector/dataplane/http_request", "util/load_schema", "mock/api",
+    "connector/provider/delete_policy", "util/generate_uuid",
+    "connector/dataplane/http_request", "mock/api",
     "connector/consumer/pull_data_filtered", "connector/consumer/query_catalog_with_filters",
     "mock/wait/http_request",
 ]

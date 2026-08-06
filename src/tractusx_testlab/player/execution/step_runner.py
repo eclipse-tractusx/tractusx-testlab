@@ -54,7 +54,7 @@ async def run_step(
     started_at = datetime.now(timezone.utc)
 
     try:
-        output = await step_instance.execute(params, context, step_def)
+        output = await step_instance.invoke(params, context, step_def)
 
         assertion_results: list[AssertionResult] = []
         if step_def.validate:

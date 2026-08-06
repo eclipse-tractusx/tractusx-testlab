@@ -35,11 +35,14 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
+
+from pydantic import Field
 
 from tractusx_testlab.models import StepDefinitionV2
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import StoreInVariableParams
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepValue
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -76,52 +79,63 @@ def _decode(text: str, *, url_safe: bool) -> str:
     return raw.decode(_ENCODINGS)
 
 
+# ---------------------------------------------------------------------------
+# util/base64
+# ---------------------------------------------------------------------------
+
+
+class Base64Params(StoreInVariableParams):
+    """Input contract of ``util/base64``."""
+
+    input: str = Field(description="The string to encode or decode.")
+    mode: Literal["encode", "decode"] = Field(
+        default="encode", description="Direction of the conversion."
+    )
+    url_safe: bool = Field(
+        default=False,
+        description=(
+            "Use the URL-safe alphabet ('-'/'_' instead of '+'/'/'). "
+            "Required for AAS/DTR identifiers."
+        ),
+    )
+    strip_padding: bool = Field(
+        default=False,
+        description=(
+            "When encoding, drop trailing '=' padding. Ignored when decoding, "
+            "where padding is always restored."
+        ),
+    )
+
+
+class Base64Output(StepValue[str]):
+    """The encoded or decoded string."""
+
+
 @step("util/base64")
-class Base64Step(BaseStep):
+class Base64Step(BaseStep[Base64Params, Base64Output]):
     """Encode or decode a string with base64 / base64url.
 
-    Params:
-        input (str): The string to encode or decode.
-        mode (str): ``encode`` (default) or ``decode``.
-        url_safe (bool): Use the URL-safe alphabet (``-``/``_`` instead of
-            ``+``/``/``). Required for AAS/DTR identifiers. Defaults to ``False``.
-        strip_padding (bool): When encoding, drop trailing ``=`` padding.
-            Ignored when decoding (padding is always restored). Defaults to
-            ``False``.
-        store_in_variable (str, optional): Context variable to store the result.
-
-    Output:
-        The encoded or decoded string.
+    The motivating case is the AAS Digital Twin Registry, whose API wants an
+    identifier base64url-encoded before it goes into a request path.
     """
 
+    params_model = Base64Params
+    output_model = Base64Output
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2,
-    ) -> StepOutput:
-        raw = params.get("input")
-        if raw is None:
-            raise KeyError("util/base64 requires an 'input' param")
-        if not isinstance(raw, str):
-            raise TypeError(
-                f"util/base64 expects a string input, got {type(raw).__name__}"
-            )
-
-        mode = params.get("mode", "encode")
-        url_safe = bool(params.get("url_safe", False))
-
-        if mode == "encode":
+        self, params: Base64Params, context: "StepContext", definition: StepDefinitionV2,
+    ) -> StepOutput[Base64Output]:
+        if params.mode == "encode":
             result = _encode(
-                raw, url_safe=url_safe, strip_padding=bool(params.get("strip_padding", False))
+                params.input, url_safe=params.url_safe, strip_padding=params.strip_padding
             )
-        elif mode == "decode":
-            result = _decode(raw, url_safe=url_safe)
         else:
-            raise ValueError(
-                f"util/base64 'mode' must be 'encode' or 'decode', got {mode!r}"
-            )
+            result = _decode(params.input, url_safe=params.url_safe)
 
-        store_in = params.get("store_in_variable")
-        if store_in:
-            context.set_variable(store_in, result)
+        if params.store_in_variable:
+            context.set_variable(params.store_in_variable, result)
 
-        logger.debug("base64 %s (url_safe=%s) -> %d chars", mode, url_safe, len(result))
-        return StepOutput(value=result)
+        logger.debug(
+            "base64 %s (url_safe=%s) -> %d chars", params.mode, params.url_safe, len(result)
+        )
+        return StepOutput(value=Base64Output(result))

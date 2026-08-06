@@ -29,10 +29,15 @@ from __future__ import annotations
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.pull_data._constants import (
     STEP_PULL_DATA_FILTERED,
+    STEP_PULL_DATA_FILTERED_BY_POLICY,
     STEP_TYPES,
 )
-from tractusx_testlab.steps.pull_data._executor import ConnectorPullDataFiltered
+from tractusx_testlab.steps.pull_data._executor import (
+    ConnectorPullDataFiltered,
+    ConnectorPullDataFilteredByPolicy,
+)
 
 __all__ = ["STEP_TYPES"]
 
 step(STEP_PULL_DATA_FILTERED)(ConnectorPullDataFiltered)
+step(STEP_PULL_DATA_FILTERED_BY_POLICY)(ConnectorPullDataFilteredByPolicy)

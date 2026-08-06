@@ -54,14 +54,14 @@ def _definition() -> StepDefinitionV2:
 class TestBase64Step:
     @pytest.mark.asyncio
     async def test_encode_standard(self, context: StepContext) -> None:
-        output = await Base64Step().execute(
+        output = await Base64Step().invoke(
             {"input": _AAS_ID}, context, _definition(),
         )
         assert output.value == _STD
 
     @pytest.mark.asyncio
     async def test_encode_url_safe(self, context: StepContext) -> None:
-        output = await Base64Step().execute(
+        output = await Base64Step().invoke(
             {"input": _AAS_ID, "url_safe": True}, context, _definition(),
         )
         assert output.value == _URLSAFE
@@ -70,14 +70,14 @@ class TestBase64Step:
 
     @pytest.mark.asyncio
     async def test_decode_standard(self, context: StepContext) -> None:
-        output = await Base64Step().execute(
+        output = await Base64Step().invoke(
             {"input": _STD, "mode": "decode"}, context, _definition(),
         )
         assert output.value == _AAS_ID
 
     @pytest.mark.asyncio
     async def test_decode_url_safe(self, context: StepContext) -> None:
-        output = await Base64Step().execute(
+        output = await Base64Step().invoke(
             {"input": _URLSAFE, "mode": "decode", "url_safe": True},
             context,
             _definition(),
@@ -86,14 +86,14 @@ class TestBase64Step:
 
     @pytest.mark.asyncio
     async def test_encode_strip_padding_then_decode(self, context: StepContext) -> None:
-        encoded = await Base64Step().execute(
+        encoded = await Base64Step().invoke(
             {"input": _AAS_ID, "url_safe": True, "strip_padding": True},
             context,
             _definition(),
         )
         assert not encoded.value.endswith("=")
         # Decode restores padding automatically.
-        decoded = await Base64Step().execute(
+        decoded = await Base64Step().invoke(
             {"input": encoded.value, "mode": "decode", "url_safe": True},
             context,
             _definition(),
@@ -103,15 +103,15 @@ class TestBase64Step:
     @pytest.mark.asyncio
     async def test_round_trip_unicode(self, context: StepContext) -> None:
         text = "Bauteil-Ännderung — 車両"
-        encoded = await Base64Step().execute({"input": text}, context, _definition())
-        decoded = await Base64Step().execute(
+        encoded = await Base64Step().invoke({"input": text}, context, _definition())
+        decoded = await Base64Step().invoke(
             {"input": encoded.value, "mode": "decode"}, context, _definition(),
         )
         assert decoded.value == text
 
     @pytest.mark.asyncio
     async def test_stores_in_variable(self, context: StepContext) -> None:
-        await Base64Step().execute(
+        await Base64Step().invoke(
             {"input": _AAS_ID, "url_safe": True, "store_in_variable": "aas_b64"},
             context,
             _definition(),
@@ -120,24 +120,24 @@ class TestBase64Step:
 
     @pytest.mark.asyncio
     async def test_missing_input_raises(self, context: StepContext) -> None:
-        with pytest.raises(KeyError, match="requires an 'input'"):
-            await Base64Step().execute({"mode": "encode"}, context, _definition())
+        with pytest.raises(ValueError, match="input: Field required"):
+            await Base64Step().invoke({"mode": "encode"}, context, _definition())
 
     @pytest.mark.asyncio
     async def test_non_string_input_raises(self, context: StepContext) -> None:
-        with pytest.raises(TypeError, match="expects a string input"):
-            await Base64Step().execute({"input": 123}, context, _definition())
+        with pytest.raises(ValueError, match="input: Input should be a valid string"):
+            await Base64Step().invoke({"input": 123}, context, _definition())
 
     @pytest.mark.asyncio
     async def test_invalid_mode_raises(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="must be 'encode' or 'decode'"):
-            await Base64Step().execute(
+        with pytest.raises(ValueError, match="mode: Input should be 'encode' or 'decode'"):
+            await Base64Step().invoke(
                 {"input": _AAS_ID, "mode": "flip"}, context, _definition(),
             )
 
     @pytest.mark.asyncio
     async def test_decode_invalid_base64_raises(self, context: StepContext) -> None:
         with pytest.raises(ValueError, match="not valid base64"):
-            await Base64Step().execute(
+            await Base64Step().invoke(
                 {"input": "!!!not base64!!!", "mode": "decode"}, context, _definition(),
             )

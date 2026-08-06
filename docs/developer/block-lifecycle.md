@@ -214,11 +214,13 @@ flowchart TD
 
 ```python
 @step("query_catalog", dataspace_version="saturn")
-class QueryCatalogSaturnStep(BaseStep): ...
+class QueryCatalogSaturnStep(BaseStep[QueryCatalogParams, CatalogPayload]): ...
 
 @step("query_catalog", dataspace_version="jupiter")
-class QueryCatalogJupiterStep(BaseStep): ...
+class QueryCatalogJupiterStep(BaseStep[QueryCatalogParams, CatalogPayload]): ...
 ```
+
+Both still declare `params_model` and `output_model` — the contract is per class, not per step key.
 
 Version-specific registrations always take priority over global ones.
 
@@ -226,36 +228,45 @@ Version-specific registrations always take priority over global ones.
 
 ## Stage 4: Step Executor (Python)
 
-The step executor is a Python class that implements the actual logic. It receives the resolved params (with `@variable` references substituted) and a runtime context that provides access to SDK services.
+The step executor is a Python class that implements the actual logic. It declares what it accepts, what it returns, and what it publishes; the runner validates the resolved params (with `@variable` references substituted) into that declaration before `execute` runs.
 
-**File:** `src/tractusx_testlab/steps/connector/consume.py`
+**File:** `src/tractusx_testlab/steps/connector/catalog_query.py`
 
 ```python
-from tractusx_sdk.extensions.testlab.scripting.registry import step
-from tractusx_sdk.extensions.testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.steps._contracts import CatalogDatasetsExports, CatalogPayload, CounterPartyParams
+from tractusx_testlab.steps.base import BaseStep, StepOutput
 
-@step("query_catalog")
-class QueryCatalogStep(BaseStep):
+
+class QueryCatalogParams(CounterPartyParams, FilterExpressionParams):
+    """Input contract of ``connector/consumer/query_catalog``."""
+
+
+@step("connector/consumer/query_catalog")
+class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogPayload]):
+    """Query a provider's catalog via the SDK connector consumer service."""
+
+    params_model = QueryCatalogParams
+    output_model = CatalogPayload
+    exports_model = CatalogDatasetsExports
+
     async def execute(self, params, context, definition):
         # 1. Get the SDK service instance from the runtime context
         consumer = context.get_consumer_service()
 
-        # 2. Read resolved parameters (variables already substituted)
-        counter_party_address = params["counter_party_address"]
-        filter_expression = params.get("filter_expression")
-
-        # 3. Call the tractusx-sdk method
+        # 2. Read validated parameters (variables already substituted, types checked)
         result = consumer.get_catalog_with_filter(
-            counter_party_id=params.get("counter_party_id", ""),
-            counter_party_address=counter_party_address,
-            filter_expression=filter_expression,
+            counter_party_id=params.counter_party_id,
+            counter_party_address=params.counter_party_address,
+            filter_expression=params.sdk_filter_expression(),
         )
 
-        # 4. Return structured output
+        # 3. Return the declared models — the payload, and the variables published
         return StepOutput(
-            value=result,
-            request=HttpRequest(method="POST", url=f"{base_url}/v3/catalog/request", body=params),
+            value=CatalogPayload.of(result),
+            request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
             response=HttpResponse(status_code=200 if result else 500, body=result),
+            exports=CatalogDatasetsExports(datasets=as_dataset_list(result)),
         )
 ```
 
@@ -263,9 +274,11 @@ class QueryCatalogStep(BaseStep):
 
 | Argument | Source | Content |
 |----------|--------|---------|
-| `params` | YAML `params:` section, with `@variables` resolved | `{"service": "testbed", "counter_party_address": "https://...", "filter": {...}}` |
+| `params` | YAML `params:` section with `@variables` resolved, validated into `params_model` | A `QueryCatalogParams` instance — read `params.counter_party_address`, not `params["counter_party_address"]` |
 | `context` | Runtime `StepContext` | Provides `get_consumer_service()`, `get_provider_service()`, `get_aas_service()`, `set_variable()`, `get_variable()` |
 | `definition` | Full `StepDefinition` model | Includes `validate`, `store_in_memory`, `on_failure`, `timeout_s` |
+
+Binding happens in `BaseStep.invoke()`, which is what the runner calls: it validates the params, runs `execute`, publishes the declared exports, and serialises the returned payload back to plain JSON data.
 
 **What the executor returns:**
 
@@ -583,10 +596,10 @@ The service type in YAML determines which SDK protocol version is used. Saturn u
 ```
 Step 1 output:  store_in_memory: { catalog: "$" }
 Step 2 input:   params: { data: "@catalog" }
-Runtime:        params["data"] = context.get_variable("catalog")  # resolved before execute()
+Runtime:        data = context.get_variable("catalog")  # resolved, then validated into params_model
 ```
 
-The runtime resolves `@variable` references before calling the step executor. The executor receives plain values, not variable references.
+The runtime resolves `@variable` references before calling the step executor, then validates the result into the step's `params_model`. The executor receives a typed model carrying plain values — no variable references, no raw dict.
 
 ---
 

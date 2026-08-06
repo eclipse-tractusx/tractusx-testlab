@@ -26,50 +26,83 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+import httpx
+from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import HttpTransportParams
+from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput, StepPayload
 from tractusx_testlab.syntax.context_vars import BACKEND_URL
-import httpx
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
+
 import uuid
 
-@step("submodels/upload")
-class UploadBackendDataStep(BaseStep):
-    """Upload sample data to the backend under a unique UUID path.
 
-    Generates a unique ``/urn:uuid:<uuid4>`` path so that each test run
-    gets its own backend resource — exactly like the TCK does.
+class UploadBackendDataParams(HttpTransportParams):
+    """Input contract of ``submodels/upload``.
 
-    Params:
-        backend_base_url (str): Backend base URL (without UUID suffix).
-        data (any): Payload to upload (sent as JSON).
-        headers (dict): Optional extra headers.
-
-    Stores in context:
-        ``backend_url`` — the full backend URL with the unique path.
+    Only the transport half of an HTTP call: the step always POSTs to a URL it
+    generates itself, so a ``method`` or ``url`` input would be a knob that
+    does nothing.
     """
 
-    async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2
-    ) -> StepOutput:
-        base = params["backend_base_url"].rstrip("/")
-        unique_url = f"{base}/urn:uuid:{uuid.uuid4()}"
-        data = params.get("data", {"test": True})
-        headers = {"Content-Type": "application/json", **(params.get("headers") or {})}
-        timeout = params.get("timeout", context.config.default_timeout_s)
+    backend_base_url: str = Field(description="Backend base URL, without the UUID suffix.")
+    data: Any = Field(
+        default_factory=lambda: {"test": True},
+        description="Payload to upload, sent as JSON.",
+    )
 
-        req = HttpRequest(method="POST", url=unique_url, headers=headers, body=data)
+
+class UploadBackendDataOutput(StepPayload):
+    """Output contract of ``submodels/upload``."""
+
+    backend_url: str = Field(description="Full backend URL the data was uploaded to.")
+    response: Any = Field(
+        default=None, description="Backend response body, parsed as JSON when it is JSON."
+    )
+
+
+class UploadBackendDataExports(StepExports):
+    """Context variables published by ``submodels/upload``."""
+
+    backend_url: str = Field(
+        alias=BACKEND_URL,
+        description="Full backend URL, for the asset that will point at this data.",
+    )
+
+
+@step("submodels/upload")
+class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataOutput]):
+    """Upload sample data to the backend under a unique UUID path.
+
+    Each run gets its own ``/urn:uuid:<uuid4>`` resource — exactly like the TCK
+    does — so repeated runs never collide, and the resulting URL is published
+    as ``backend_url`` for the asset that will point at it.
+    """
+
+    params_model = UploadBackendDataParams
+    output_model = UploadBackendDataOutput
+    exports_model = UploadBackendDataExports
+
+    async def execute(
+        self,
+        params: UploadBackendDataParams,
+        context: "StepContext",
+        definition: StepDefinitionV2,
+    ) -> StepOutput[UploadBackendDataOutput]:
+        unique_url = f"{params.backend_base_url.rstrip('/')}/urn:uuid:{uuid.uuid4()}"
+        headers = {"Content-Type": "application/json", **params.headers}
+        timeout = params.timeout_or(context.config.default_timeout_s)
 
         async with httpx.AsyncClient() as client:
-            resp = await client.post(unique_url, json=data, headers=headers, timeout=timeout)
-
-        # Store the unique URL so subsequent steps can reference it
-        context.set_variable(BACKEND_URL, unique_url)
+            resp = await client.post(
+                unique_url, json=params.data, headers=headers, timeout=timeout
+            )
 
         try:
             resp_body = resp.json()
@@ -77,11 +110,14 @@ class UploadBackendDataStep(BaseStep):
             resp_body = resp.text
 
         return StepOutput(
-            value={"backend_url": unique_url, "response": resp_body},
-            request=req,
+            value=UploadBackendDataOutput(backend_url=unique_url, response=resp_body),
+            request=HttpRequest(
+                method="POST", url=unique_url, headers=headers, body=params.data
+            ),
             response=HttpResponse(
                 status_code=resp.status_code,
                 headers=dict(resp.headers),
                 body=resp_body,
             ),
+            exports=UploadBackendDataExports(backend_url=unique_url),
         )
