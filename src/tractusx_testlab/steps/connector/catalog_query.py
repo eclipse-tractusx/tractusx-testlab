@@ -31,7 +31,6 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import Field, model_validator
 
-from tractusx_sdk.dataspace.tools.dsp_tools import DspTools
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (

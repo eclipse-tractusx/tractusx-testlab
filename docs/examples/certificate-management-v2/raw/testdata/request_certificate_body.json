@@ -1,11 +1,11 @@
 {
   "header": {
-    "messageId": "urn:uuid:${{ execution.gen_uuid_1.request_uuid }}",
+    "messageId": "urn:uuid:0b133a08-b03a-4f4f-b0f4-55bbbcf088f9",
     "context": "CompanyCertificateManagement-CCMAPI-Request:1.0.0",
     "sentDateTime": "2026-01-01T00:00:00Z",
     "senderBpn": "${{ env.consumer_bpn }}",
     "receiverBpn": "${{ env.provider_bpn }}",
-    "relatedMessageId": "urn:uuid:${{ execution.gen_uuid_1.request_uuid }}",
+    "relatedMessageId": "urn:uuid:0b133a08-b03a-4f4f-b0f4-55bbbcf088f9",
     "version": "3.1.0",
     "senderFeedbackUrl": "${{ env.testlab_dsp_url }}"
   },
