@@ -48,15 +48,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/consumer/query_catalog_with_filters
 # ---------------------------------------------------------------------------
-=======
-@step("connector/consumer/query_catalog_with_filters")
-class QueryCatalogWithFiltersStep(BaseStep):
-    """Query a provider's catalog with multiple filter expressions via the SDK."""
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class QueryCatalogWithFiltersParams(CounterPartyParams, FilterExpressionParams):
