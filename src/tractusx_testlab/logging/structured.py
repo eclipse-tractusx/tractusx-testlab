@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -49,6 +50,76 @@ class _JsonFormatter(logging.Formatter):
         if record.exc_info and record.exc_info[1]:
             entry["error"] = str(record.exc_info[1])
         return json.dumps(entry, default=str, separators=(",", ":"))
+
+
+class CliHandler(logging.StreamHandler):
+    """StreamHandler that formats structuredLogger records as human-readable text.
+    Attach to any logger like a normal handler::
+
+        handler = CliHandler()          # writes to stdout
+        handler = CliHandler(sys.stderr)
+        logger.addHandler(handler)
+    """
+
+    # Fallback used when no root console formatter is configured yet.
+    _FALLBACK_FMT = "%(asctime)s [%(levelname)-8s] [%(name)-15s] %(message)s"
+    _FALLBACK_DATEFMT = "%Y-%m-%d %H:%M:%S"
+
+    def __init__(self, stream: IO = sys.stdout) -> None:
+        super().__init__(stream)
+        # Inherit the engine's console formatter so logging.yml changes apply here too.
+        delegate = self._root_console_formatter()
+        if delegate is not None:
+            self.setFormatter(logging.Formatter(fmt=delegate._fmt, datefmt=delegate.datefmt))
+        else:
+            self.setFormatter(logging.Formatter(fmt=self._FALLBACK_FMT, datefmt=self._FALLBACK_DATEFMT))
+
+    @staticmethod
+    def _root_console_formatter() -> Optional[logging.Formatter]:
+        for handler in logging.getLogger().handlers:
+            if isinstance(handler, logging.StreamHandler) and handler.formatter is not None:
+                return handler.formatter
+        return None
+
+    @classmethod
+    def _build_inline_message(cls, base_msg: str, extra_data: dict[str, object]) -> str:
+        parts: list[str] = [base_msg]
+
+        # Add extra_data fields
+        if "tck" in extra_data:
+            parts.append(f"[{extra_data['tck']}]")
+        if "script" in extra_data:
+            parts.append(f"[{extra_data['script']}]")
+        if "step_type" in extra_data:
+            parts.append(f"[{extra_data['step_type']}]")
+        if "phase" in extra_data:
+            parts.append(f"[{extra_data['phase']}]")
+        if "status" in extra_data:
+            parts.append(f"[{extra_data['status']}]")
+        if "duration_s" in extra_data:
+            parts.append(f"[{extra_data['duration_s']}s]")
+        if "request" in extra_data:
+            parts.append(f"request:[{json.dumps(extra_data['request'], default=str)}]")
+        if "response" in extra_data:
+            parts.append(f"response:[{json.dumps(extra_data['response'], default=str)}]")
+        if "error" in extra_data:
+            parts.append(f"error:[{extra_data['error']}]")
+
+        return " ".join(parts)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if hasattr(record, "extra_data") or (record.exc_info and record.exc_info[1]):
+            record = logging.makeLogRecord(record.__dict__)
+            if hasattr(record, "extra_data"):
+                extra_data = dict(record.extra_data)  # type: ignore[attr-defined]
+                record.msg = self._build_inline_message(record.getMessage(), extra_data)
+
+                record.args = None
+            if record.exc_info and record.exc_info[1]:
+                record.msg = record.getMessage() + f" exception:[{record.exc_info[1]}]"
+                record.args = None
+                record.exc_info = None
+        super().emit(record)
 
 
 class StructuredLogger:
