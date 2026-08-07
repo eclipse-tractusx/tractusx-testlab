@@ -148,6 +148,11 @@ class Tck:
         """List of wrapped test scripts in this TCK."""
         return self._scripts
 
+    @property
+    def id(self) -> str:
+        """TCK ID from the manifest (used for logging and event payloads)."""
+        return self.definition.id
+
     def script_count(self) -> int:
         """Return the number of scripts in this TCK."""
         return len(self._scripts)

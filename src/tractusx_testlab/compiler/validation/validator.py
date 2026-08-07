@@ -28,9 +28,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
-from tractusx_testlab.models import ScriptDefinitionV2, StepDefinitionV2
+from pydantic import ValidationError
+
+from tractusx_testlab.models import ScriptDefinitionV2, StepDefinitionV2, TckDefinitionV2
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.syntax import defaults
 
@@ -66,6 +69,37 @@ _VAR_REF = re.compile(r"\$\{(\w+)}")
 
 class ScriptValidator:
     """Validates a ScriptDefinition for correctness before execution."""
+
+    def validate_tck(self, tck: TckDefinitionV2, base_dir: Path, version: Optional[str] = None) -> ValidationResult:
+        """Validate all test files referenced by a TCK manifest."""
+        combined = ValidationResult()
+        for entry in tck.tests:
+            test_path = base_dir / "tests" / entry.id
+            if not test_path.is_file():
+                combined.add_error(f"Referenced test file not found: tests/{entry.id}")
+                continue
+            from tractusx_testlab.scripting.parser import YamlParser
+            try:
+                script = YamlParser.parse_script(test_path)
+            except ValidationError as exc:
+                # Format kind: error log
+                issues = "; ".join(f"{e['loc'][0]}: {e['msg']}" for e in exc.errors())
+                combined.add_error(f"tests/{entry.id}: parse error — {issues}")
+                continue
+            except Exception as exc:  # noqa: BLE001
+                combined.add_error(f"tests/{entry.id}: failed to parse — {exc}")
+                continue
+            result = self.validate(script, version=version)
+            # Validate tck id and test namespace
+            if script.namespace != tck.id:
+                result.add_error(
+                    f"namespace '{script.namespace}' must match the TCK id '{tck.id}'.",
+                    field="namespace",
+                )
+            for issue in result.issues:
+                issue.message = f"tests/{entry.id}: {issue.message}"
+                combined.issues.append(issue)
+        return combined
 
     def validate(self, script: ScriptDefinitionV2, version: Optional[str] = None) -> ValidationResult:
         result = ValidationResult()
@@ -115,6 +149,9 @@ class ScriptValidator:
         # Check variable references in with_ params resolve
         self._check_var_refs(step_def.with_ or {}, idx, declared_vars, result)
 
+        # Enforce plain-string validate inputs for inline validate assertions.
+        self._validate_inline_assert_inputs(step_def, idx, result, phase)
+
         # If returns is set, auto-declare the output variables
         for key in (step_def.returns or {}):
             declared_vars.add(key)
@@ -136,3 +173,37 @@ class ScriptValidator:
                         )
             elif isinstance(value, dict):
                 self._check_var_refs(value, step_idx, declared, result)
+
+    def _validate_inline_assert_inputs(
+        self,
+        step_def: StepDefinitionV2,
+        step_idx: int,
+        result: ValidationResult,
+        phase: str,
+    ) -> None:
+        """Reject expression-based input values in inline validate assertions.
+        For ``validate/assert`` and ``validate/field`` blocks, ``with.input`` must
+        be a plain string path (e.g. ``"edr_token"``), not a ``${{ ... }}``
+        expression.
+        """
+        valid_keys = set(step_def.returns or {})
+        for assertion in step_def.validate or []:
+            if assertion.uses not in ("validate/assert", "validate/field"):
+                continue
+            input_value = (assertion.with_ or {}).get("input")
+            if not isinstance(input_value, str):
+                result.add_error(
+                    "'validate.with.input' must be a plain string.",
+                    step_index=step_idx,
+                    field="validate.with.input",
+                    phase=phase,
+                )
+                continue
+            if valid_keys and input_value not in valid_keys:
+                result.add_error(
+                    f"'validate.with.input' value '{input_value}' is not declared in "
+                    f"'returns'. Valid keys: {sorted(valid_keys)}.",
+                    step_index=step_idx,
+                    field="validate.with.input",
+                    phase=phase,
+                )

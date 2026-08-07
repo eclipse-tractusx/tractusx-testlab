@@ -67,6 +67,8 @@ def run(
     # Register all local step executors (triggers @step() decorators)
     import tractusx_testlab.steps  # noqa: F401
 
+    _compile_target_for_run(target)
+
     runtime_vars = _build_runtime_vars(config_file, var)
 
     if target.suffix == ".stck" and (player_keys is None or compiler_pub is None):
@@ -87,6 +89,26 @@ def run(
     result = _execute_with_progress(player, tck, runtime_vars, total_steps)
 
     _print_run_results(result, StepStatus, ScriptStatus)
+
+
+def _compile_target_for_run(target: Path) -> None:
+    """Compile YAML targets before execution; skip already-compiled packages."""
+    if target.suffix in (".tck", ".stck"):
+        return
+
+    from tractusx_testlab.cli.compile import compile as compile_command
+
+    typer.echo(f"Preparing run package from {target} ...")
+    compile_command(
+        script=target,
+        compiler_keys=None,
+        player_pub=None,
+        output=None,
+        version=None,
+        plain=False,
+        encrypt=False,
+    )
+    return
 
 
 def _build_runtime_vars(

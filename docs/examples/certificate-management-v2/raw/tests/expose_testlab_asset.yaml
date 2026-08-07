@@ -23,7 +23,7 @@ kind: test
 syntax: v2
 
 id: expose-testlab-asset
-namespace: ccm-v0.0.1
+namespace: certificate-management-tck
 
 metadata:
   name: "Expose TestLab Asset"

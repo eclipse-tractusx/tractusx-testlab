@@ -43,14 +43,14 @@ CCM_TESTS_DIR = CCM_DIR / "tests"
 
 _CCM_TEST_FILES = {
     "available_notification.yaml": 4,
-    "catalog_policy_validation.yaml": 3,
-    "certificate_asset_validation.yaml": 3,
+    "catalog_policy_validation.yaml": 1,
+    "certificate_asset_validation.yaml": 1,
     "error_handling.yaml": 4,
     "expose_testlab_asset.yaml": 4,
     "push_certificate.yaml": 4,
-    "request_certificate.yaml": 19,
+    "request_certificate.yaml": 3,
     "send_feedback.yaml": 4,
-    "validate_payload.yaml": 8,
+    "validate_payload.yaml": 2,
 }
 
 _CCM_STEP_TYPES = [

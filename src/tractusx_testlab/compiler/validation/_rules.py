@@ -109,6 +109,9 @@ def validate_tck_manifest(
         all_errors.extend(
             _reject_deprecated_verbs(test_data, f"tests/{test_file}")
         )
+        all_errors.extend(
+            _reject_validate_step(test_data, f"tests/{test_file}")
+        )
 
     if all_errors:
         error_list = "\n  - ".join(all_errors)
@@ -232,4 +235,27 @@ def _reject_deprecated_verbs(
                         f"Migrate to a complex variable in env.variables with "
                         f"'uses: config/connector/policy'."
                     )
+    return errors
+
+def _reject_validate_step(
+    test_data: dict[str, Any],
+    source_label: str,
+) -> list[str]:
+    """Reject steps that use deprecated verb prefixes (ADR-0021)."""
+    errors: list[str] = []
+    for phase in ("setup", "execution", "teardown"):
+        steps = test_data.get(phase, [])
+        if not isinstance(steps, list):
+            continue
+        for step in steps:
+            if not isinstance(step, dict):
+                continue
+            uses = step.get("uses", "")
+            if uses.startswith("validate/"):
+                step_id = step.get("id", "?")
+                errors.append(
+                    f"Rejected step '{step_id}' in {source_label}: "
+                    f"'{uses}' cannot be used as a standalone step. "
+                    "Place it under the parent step's 'validate:' block."
+                )
     return errors
