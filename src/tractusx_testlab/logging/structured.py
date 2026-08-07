@@ -81,18 +81,16 @@ class StructuredLogger:
         self._file_handler: Optional[logging.FileHandler] = None
         self._logs_dir = logs_dir
 
-        formatter = _JsonFormatter()
+        # Always enable console output stream
+        self._logger.addHandler(CliHandler(stream or sys.stdout))
 
-        # Stream handler (stdout by default)
-        sh = logging.StreamHandler(stream or sys.stdout)
-        sh.setFormatter(formatter)
-        self._logger.addHandler(sh)
+        json_formatter = _JsonFormatter()
 
         # Explicit file handler (optional, for backward compat)
         if log_file:
             log_file.parent.mkdir(parents=True, exist_ok=True)
             file_handler = logging.FileHandler(str(log_file), encoding="utf-8")
-            file_handler.setFormatter(formatter)
+            file_handler.setFormatter(json_formatter)
             self._logger.addHandler(file_handler)
             self._file_handler = file_handler
 
