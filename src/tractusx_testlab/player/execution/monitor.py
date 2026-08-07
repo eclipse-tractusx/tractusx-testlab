@@ -60,18 +60,18 @@ class ExecutionMonitor:
     # Events
     # ------------------------------------------------------------------
 
-    def on_job_started(self, job_id: str, tck: str) -> None:
+    def on_job_started(self, event: str, job_id: str, tck: str) -> None:
         """Emit event when a job execution begins."""
-        self._emit("job.started", job_id=job_id, tck=tck)
+        self._emit(event, job_id=job_id, tck=tck)
 
-    def on_script_started(self, job_id: str, script_name: str, index: int) -> None:
+    def on_script_started(self, event: str, job_id: str, script_name: str, index: int) -> None:
         """Emit event when a script within a job starts executing."""
-        self._emit("script.started", job_id=job_id, script=script_name, index=index)
+        self._emit(event, job_id=job_id, script=script_name, index=index)
 
-    def on_step_started(self, job_id: str, step_index: int, step_type: str, step_name: str = "", phase: str = "main") -> None:
+    def on_step_started(self, event: str, job_id: str, step_index: int, step_type: str, step_name: str = "", phase: str = "main") -> None:
         """Emit event when an individual step begins execution."""
         self._emit(
-            "step.started",
+            event,
             job_id=job_id,
             step_index=step_index,
             step_name=step_name,
@@ -80,7 +80,7 @@ class ExecutionMonitor:
             status="running",
         )
 
-    def on_step_completed(self, job_id: str, result: StepResult) -> None:
+    def on_step_completed(self, event: str, job_id: str, result: StepResult) -> None:
         """Emit event when a step finishes with its result details."""
         payload: dict[str, Any] = {
             "job_id": job_id,
@@ -96,32 +96,75 @@ class ExecutionMonitor:
             payload["response"] = result.response.model_dump(exclude_none=True)
         if result.error:
             payload["error"] = result.error
-        self._emit("step.completed", **payload)
+        self._emit(event, **payload)
 
-    def on_step_waiting(self, job_id: str, step_index: int, listener_url: str) -> None:
+    def on_step_waiting(self, event: str, job_id: str, step_index: int, listener_url: str) -> None:
         """Emit event when a step is waiting for an async callback."""
-        self._emit("step.waiting", job_id=job_id, step_index=step_index, listener_url=listener_url)
+        self._emit(event, job_id=job_id, step_index=step_index, listener_url=listener_url)
 
-    def on_script_completed(self, job_id: str, result: ScriptResult) -> None:
+    def on_script_completed(self, event: str, job_id: str, result: ScriptResult) -> None:
         """Emit event when a script finishes execution."""
         self._emit(
-            "script.completed",
+            event,
             job_id=job_id,
             script=result.script_name,
             status=result.status.value,
         )
 
-    def on_job_completed(self, job_id: str, status: JobStatus) -> None:
+    def on_job_completed(self, event: str, job_id: str, status: JobStatus) -> None:
         """Emit event when a job finishes with final status."""
-        self._emit("job.completed", job_id=job_id, status=status.value)
+        self._emit(event, job_id=job_id, status=status.value)
 
-    def on_job_paused(self, job_id: str) -> None:
+    def on_job_paused(self, event: str, job_id: str) -> None:
         """Emit event when a job is paused."""
-        self._emit("job.paused", job_id=job_id)
+        self._emit(event, job_id=job_id)
 
-    def on_job_resumed(self, job_id: str) -> None:
+    def on_job_resumed(self, event: str, job_id: str) -> None:
         """Emit event when a paused job resumes."""
-        self._emit("job.resumed", job_id=job_id)
+        self._emit(event, job_id=job_id)
+
+    def log_event(self, event_name: str, **payload: Any) -> None:
+        """Single external entry point — routes to the matching on_* method."""
+        event = self._get_tck_event(event_name, **payload)
+        if event_name == "job.started":
+            self.on_job_started(event, payload["job_id"], payload["tck_id"])
+        elif event_name == "script.started":
+            self.on_script_started(event, payload["job_id"], payload["script"], payload["index"])
+        elif event_name == "step.started":
+            self.on_step_started(
+                event,
+                payload["job_id"],
+                payload["step_index"],
+                payload["step_type"],
+                payload.get("step_name", ""),
+                payload.get("phase", "main"),
+            )
+        elif event_name == "step.completed":
+            self.on_step_completed(event, payload["job_id"], payload["result"])
+        elif event_name == "step.waiting":
+            self.on_step_waiting(event, payload["job_id"], payload["step_index"], payload["listener_url"])
+        elif event_name == "script.completed":
+            self.on_script_completed(event, payload["job_id"], payload["result"])
+        elif event_name == "job.completed":
+            self.on_job_completed(event, payload["job_id"], payload["status"])
+        elif event_name == "job.paused":
+            self.on_job_paused(event, payload["job_id"])
+        elif event_name == "job.resumed":
+            self.on_job_resumed(event, payload["job_id"])
+
+    def _get_tck_event(self, event_name: str, **payload: Any) -> str:
+        # tck_id may arrive as tck_id (steps) or tck (job.started alias).
+        tck_id = payload.get("tck_id") or payload.get("tck")
+        if not tck_id:
+            return "[" + event_name + "]"
+        parts: list[str] = [f"[{tck_id}"]
+        # script → test segment; step_id → step segment (raw id, not formatted name).
+        if payload.get("script") is not None:
+            parts.append(str(payload["script"]))
+        if payload.get("step_id") is not None:
+            parts.append(str(payload["step_id"]))
+        parts.append(event_name + "]")
+        return "/".join(parts)
 
     def on_package_verify_start(self, package: str, encrypted: bool) -> None:
         """Emit event when package integrity verification begins."""
@@ -149,4 +192,4 @@ class ExecutionMonitor:
                     self._background_tasks.add(task)
                     task.add_done_callback(self._background_tasks.discard)
             except (RuntimeError, TypeError, ValueError) as exc:
-                self._logger.warning("Callback failed for event '%s': %s", event, exc)
+                self._logger.warning(f"Callback failed for event '{event}': {exc}")

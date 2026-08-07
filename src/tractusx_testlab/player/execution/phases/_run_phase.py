@@ -82,10 +82,17 @@ async def _run_phase(
     for step_idx, step_def in enumerate(steps_source):
         await _handle_pause_gate(jobs, job_id, config)
 
-        step_name = _format_step_name(script.name, step_idx, step_def.uses, config.phase_label)
-        monitor.on_step_started(
-            job_id, step_idx, step_def.uses,
-            step_name=step_name, phase=config.phase_label,
+        step_name = _format_step_name(script.definition.id, step_idx, step_def.uses, config.phase_label, step_def.id)
+        monitor.log_event(
+            "step.started",
+            job_id=job_id,
+            tck_id=context.job.tck_id,
+            script=script.definition.id,
+            step_id=step_def.id,
+            step_index=step_idx,
+            step_type=step_def.uses,
+            step_name=step_name,
+            phase=config.phase_label,
         )
 
         if config.use_pause_gate and jobs is not None:
@@ -96,8 +103,7 @@ async def _run_phase(
         ):
             skipped = _make_skipped_result(step_name, step_def.uses, config.phase)
             results.append(skipped)
-            monitor.on_step_completed(job_id, skipped)
-            continue
+            monitor.log_event("step.completed", job_id=job_id, tck_id=context.job.tck_id, script=script.definition.id, step_id=step_def.id, result=skipped)
 
         failed = await _resolve_and_run_step(
             script, step_def, step_name, context, job_id, monitor, config, results,
@@ -133,13 +139,13 @@ async def _resolve_and_run_step(
     if step_cls is None:
         missing = _make_missing_step_result(step_name, step_def.uses, config.phase)
         results.append(missing)
-        monitor.on_step_completed(job_id, missing)
+        monitor.log_event("step.completed", job_id=job_id, tck_id=context.job.tck_id, script=script.definition.id, step_id=step_def.id, result=missing)
         return config.failure_policy == FailurePolicy.STOP
 
     step_result = await run_step(step_cls, step_def, step_name, context)
     step_result.phase = config.phase
     results.append(step_result)
-    monitor.on_step_completed(job_id, step_result)
+    monitor.log_event("step.completed", job_id=job_id, tck_id=context.job.tck_id, script=script.definition.id, step_id=step_def.id, result=step_result)
 
     if config.store_outputs:
         step_namespace = _PHASE_TO_V2_NAMESPACE.get(config.phase_label)
@@ -157,11 +163,12 @@ def _get_steps_for_phase(script: TestScript, phase: StepPhase) -> list:
     return script.definition.execution
 
 
-def _format_step_name(script_name: str, idx: int, step_type: str, phase_label: str) -> str:
-    """Format a human-readable step name."""
+def _format_step_name(script_name: str, idx: int, step_type: str, phase_label: str, step_id: str | None = None) -> str:
+    """Format a step identifier using step id when available, index otherwise."""
+    step_ref = step_id if step_id else f"{idx}"
     if phase_label == "main":
-        return f"{script_name}[{idx}]:{step_type}"
-    return f"{script_name}[{phase_label}:{idx}]:{step_type}"
+        return f"{script_name}[{step_ref}]:{step_type}"
+    return f"{script_name}[{phase_label}:{step_ref}]:{step_type}"
 
 
 def _make_skipped_result(step_name: str, step_type: str, phase: StepPhase) -> StepResult:

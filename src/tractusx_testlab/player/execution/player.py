@@ -135,7 +135,7 @@ class TestlabPlayer:
             if job is None:
                 raise ValueError(f"Job '{job_id}' not found in job manager")
         else:
-            job = self._jobs.create(tck.name)
+            job = self._jobs.create(tck.id)
         if runtime_vars:
             job.runtime_vars = runtime_vars
 
@@ -143,7 +143,7 @@ class TestlabPlayer:
 
         job_logger = self._logger.for_job(job.job_id)
         monitor = self._create_job_monitor(job_logger)
-        monitor.on_job_started(job.job_id, tck.name)
+        monitor.log_event("job.started", job_id=job.job_id, tck_id=tck.id)
 
         svc_mgr = ServiceManager()
         context = StepContext(services=svc_mgr, job=job, config=self._config)
@@ -222,8 +222,8 @@ class TestlabPlayer:
             if script.test_id in skip_ids:
                 skipped = make_intentionally_skipped_result(script)
                 script_results.append(skipped)
-                monitor.on_script_started(job.job_id, script.name, idx)
-                monitor.on_script_completed(job.job_id, skipped)
+                monitor.log_event("script.started", job_id=job.job_id, tck_id=job.tck_id, script=script.definition.id, index=idx)
+                monitor.log_event("script.completed", job_id=job.job_id, tck_id=job.tck_id, result=skipped)
                 continue
 
             # 2. Dependency skip — unmet deps produce a FAILED result.
@@ -232,16 +232,16 @@ class TestlabPlayer:
             if unmet_deps:
                 skipped_result = make_skipped_result(script, unmet_deps)
                 script_results.append(skipped_result)
-                monitor.on_script_started(job.job_id, script.name, idx)
-                monitor.on_script_completed(job.job_id, skipped_result)
+                monitor.log_event("script.started", job_id=job.job_id, tck_id=job.tck_id, script=script.definition.id, index=idx)
+                monitor.log_event("script.completed", job_id=job.job_id, tck_id=job.tck_id, result=skipped_result)
                 continue
 
-            monitor.on_script_started(job.job_id, script.name, idx)
+            monitor.log_event("script.started", job_id=job.job_id, tck_id=job.tck_id, script=script.definition.id, index=idx)
             job.current_script = script.name
 
             script_result = await run_script(script, context, job.job_id, monitor, self._jobs)
             script_results.append(script_result)
-            monitor.on_script_completed(job.job_id, script_result)
+            monitor.log_event("script.completed", job_id=job.job_id, tck_id=job.tck_id, result=script_result)
 
             if script_result.status == ScriptStatus.COMPLETED:
                 completed_tests.add(script.name)
