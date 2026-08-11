@@ -103,7 +103,7 @@ seven steps whose `output_model` is `NoOutput`:
 | `connector/provider/delete_asset` | 561 | `Type: any` | `Type: NoneType` |
 | `connector/provider/delete_contract_definition` | 583 | `Type: any` | `Type: NoneType` |
 | `connector/provider/delete_policy` | 603 | `Type: any` | `Type: NoneType` |
-| `dtr/delete_shell_descriptor` | 677 | `Type: any` | `Type: NoneType` |
+| `digital-twin/provider/delete_shell_descriptor` | 677 | `Type: any` | `Type: NoneType` |
 | `flow/delay` | 725 | `Type: any` | `Type: NoneType` |
 | `mock/discovery` | 828 | `Type: any` | `Type: NoneType` |
 | `mock/dtr` | 851 | `Type: any` | `Type: NoneType` |

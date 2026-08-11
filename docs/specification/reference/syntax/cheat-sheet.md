@@ -375,9 +375,27 @@ env:
         policy:
           type: object
           class: Policy
+
+    # Asset definition the provider steps provision
+    - id: api_asset
+      uses: config/connector/asset
+      name: API asset
+      with:
+        value:
+          name: CCMAPI Notification Asset
+          base_url: "https://backend.example.com/ccm"
+          properties:
+            dct:type:
+              "@id": "https://w3id.org/catenax/taxonomy#CCMAPI"
+            cx-common:version: "3.0"
+      returns:
+        asset:
+          type: object
+          class: Asset
 ```
 
-**Reference in tests:** `${{ env.sut_dsp_url.value }}`, `${{ env.usage_policy.policy }}`.
+**Reference in tests:** `${{ env.sut_dsp_url.value }}`, `${{ env.usage_policy.policy }}`,
+`${{ env.api_asset.asset }}`.
 
 ---
 
@@ -399,7 +417,7 @@ env:
 | `util/` | `util/generate_uuid`, `util/log`, `util/parse_kv`, `util/base64` |
 | `validate/` | `validate/assert`, `validate/field`, `validate/schema` |
 | `variable/` | `variable/type/string`, `variable/type/integer`, `variable/type/boolean` |
-| `config/` | `config/connector/policy` |
+| `config/` | `config/connector/policy`, `config/connector/asset` |
 | `service/` | `service/connector_service` |
 | _(no prefix)_ | `json_path_extract` |
 

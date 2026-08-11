@@ -138,7 +138,6 @@ steps:
     uses: connector/consumer/query_catalog
     name: Query SUT catalog
     with:
-      connector_service: ${{ env.services.testlab_connector.connector_service }}
       counter_party_address: ${{ env.sut_dsp_url }}
       filters:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/type"

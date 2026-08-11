@@ -64,8 +64,4 @@ execution:
       - uses: validate/assert
         with: { input: edr_token, operator: not_null }
       - uses: validate/assert
-<<<<<<< HEAD
         with: { input: dataplane_url, operator: not_null }
-=======
-        with: { input: dataplane_url, operator: not_null }
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)

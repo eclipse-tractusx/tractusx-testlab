@@ -62,12 +62,6 @@ Every block starts as a JSON file in `ide/public/blocks/`. This is the **single 
   "description": "Send a catalog request to the connector and retrieve available offers.",
   "params": [
     {
-      "name": "service",
-      "type": "service_ref",
-      "required": true,
-      "description": "EDC connector service to query"
-    },
-    {
       "name": "counter_party_address",
       "type": "string",
       "required": true,
@@ -93,7 +87,7 @@ Every block starts as a JSON file in `ide/public/blocks/`. This is the **single 
 |-------|-------|--------|
 | `type` | `"query_catalog"` | The step type name. This exact string links the block to its Python executor. |
 | `label` | `"Query Catalog"` | Text shown on the block in the Blockly workspace. |
-| `params` | 3 entries | Each becomes an input field on the block. `service_ref` renders as a dropdown of configured EDC services. |
+| `params` | 2 entries | Each becomes an input field on the block. The connector the step talks to is not among them: it is seeded into the run, not authored. |
 | `outputs` | 2 entries | `catalog` and `datasets` become auto-stored variables via `store_in_memory`. They appear in variable dropdowns of downstream blocks. |
 
 **How it reaches the browser:**
@@ -127,7 +121,6 @@ flowchart LR
 1. Reads block type `step_query_catalog` → strips prefix → `type: "query_catalog"`
 2. Reads `NAME` field → `name: "Ping Catalog"`
 3. For each param in the catalog entry, reads the connected value block:
-    - `service` (service_ref dropdown) → `params.service: "testbed"`
     - `counter_party_address` (value_string) → `params.counter_party_address: "@counter_party_address"`
     - `filter` (key_value_pair chain) → `params.filter: { ... }`
 4. Reads the EXPECT chain (assertion blocks) → `validate: [...]`
@@ -142,7 +135,6 @@ steps:
   - type: query_catalog
     name: Ping Catalog
     params:
-      service: testbed
       counter_party_address: "@counter_party_address"
       filter:
         filter_expression:
@@ -396,7 +388,7 @@ sequenceDiagram
 
     Note over IDE,EDC: Stage 2 — YAML Output
     User->>Blockly: Drag "Query Catalog" block
-    User->>Blockly: Connect service + filter inputs
+    User->>Blockly: Connect counter-party + filter inputs
     Blockly->>Sync: Workspace change event
     Sync->>Sync: workspaceToModel() → StepDefinition
     Sync->>Monaco: modelToYaml() → YAML string

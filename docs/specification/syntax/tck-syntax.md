@@ -277,7 +277,44 @@ env:
 | `variable/type/number` **[PROP]** | Scalar number | `value` |
 | `variable/type/bool` **[PROP]** | Boolean | `value` |
 | `variable/type/object` **[PROP]** | Structured object | `value` |
-| `config/connector/policy` | An ODRL policy used for catalog/negotiation | `policy` |
+| `config/connector/policy` | An ODRL policy used for provisioning/catalog/negotiation | `policy` |
+| `config/connector/asset` | An asset definition used for provisioning | `asset` |
+
+Policies and assets are **never inlined in a step**. Each is declared once here and passed to every
+step that needs it as a single input — `policy` on the consumer side
+(`connector/consumer/pull_data_filtered`) and both of them on the provider side:
+
+```yaml
+env:
+  variables:
+    - id: ccm_api_asset
+      uses: config/connector/asset
+      name: CCMAPI Asset
+      with:
+        source: value
+        value:
+          name: CCMAPI Notification Asset
+          base_url: "https://backend.example.com/ccm"
+          properties:
+            dct:type:
+              "@id": "https://w3id.org/catenax/taxonomy#CCMAPI"
+            cx-common:version: "3.0"
+      returns:
+        asset:
+          type: object
+          class: Asset
+
+# in a test
+- id: create_asset
+  uses: connector/provider/create_asset
+  with:
+    asset: "${{ env.ccm_api_asset.asset }}"
+
+- id: create_policy
+  uses: connector/provider/create_policy
+  with:
+    policy: "${{ env.ccm_usage_policy.policy }}"
+```
 
 #### 3.5.2 `env.schemas` **[SPEC]**
 
@@ -502,7 +539,6 @@ Modularisation is optional; sub-modules are permitted.
 **Backend binding [SPEC]** — a step key maps to an annotated class in the Engine:
 
 ```python
-<<<<<<< HEAD
 class CreateAssetParams(ServiceParams):
     """Input contract of ``connector/provider/create_asset``."""
 
@@ -524,7 +560,7 @@ class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
     output_model = CreateAssetOutput
 
     async def execute(self, params: CreateAssetParams, context: "StepContext",
-                      definition: StepDefinitionV2) -> StepOutput[CreateAssetOutput]:
+                      definition: StepDefinition) -> StepOutput[CreateAssetOutput]:
         provider = context.get_provider_service(params.service_name())
         url = f"{context.get_provider_base_url()}/v3/assets"
         result, http_status = _create_or_conflict(
@@ -536,34 +572,6 @@ class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
             response=HttpResponse(
                 status_code=http_status,
                 body={"asset_id": params.asset_id, **(result if isinstance(result, dict) else {})},
-=======
-@step("connector/provider/create_asset")
-class CreateAssetStep(BaseStep):
-    async def execute(self, params: dict, context: "StepContext",
-                      definition: StepDefinition) -> StepOutput:
-        service_name = params.get("service")
-        provider = context.get_provider_service(service_name)
-        url = f"{context.get_provider_base_url()}/v3/assets"
-        resolved = _normalize_asset_params(params)
-        result = provider.create_asset(
-            asset_id=resolved["asset_id"],
-            base_url=resolved.get("base_url", ""),
-            dct_type=resolved.get("dct_type"),
-            version=resolved.get("version", "3.0"),
-            semantic_id=resolved.get("semantic_id"),
-            proxy_params=resolved.get("proxy_params"),
-            headers=resolved.get("headers"),
-            private_properties=resolved.get("private_properties"),
-            context=resolved.get("context"),
-        )
-        asset_id = resolved["asset_id"]
-        return StepOutput(
-            value=asset_id,
-            request=HttpRequest(method="POST", url=url, body=resolved),
-            response=HttpResponse(
-                status_code=200 if result else 500,
-                body={"asset_id": asset_id, **(result if isinstance(result, dict) else {})},
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
             ),
         )
 ```

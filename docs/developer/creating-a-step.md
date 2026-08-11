@@ -78,7 +78,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepPayload
 
@@ -111,7 +111,7 @@ class CheckHealthStep(BaseStep[CheckHealthParams, CheckHealthOutput]):
         self,
         params: CheckHealthParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[CheckHealthOutput]:
         async with httpx.AsyncClient(timeout=params.timeout_s) as client:
             resp = await client.get(params.url)

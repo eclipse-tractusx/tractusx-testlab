@@ -178,7 +178,6 @@ The `policy:` param accepts the testlab simplified format (`permissions`/`constr
 | `filter_expression` | list of [FilterExpression](#filterexpression) | no | `[]` | `filters` | Filter criteria applied to the catalog request. |
 | `counter_party_address` | string | no | `''` | `provider_url` | DSP endpoint of the counter-party connector. |
 | `counter_party_id` | string | no | `''` | `bpnl` | BPN of the counter-party. |
-| `service` | string | no | `''` | `connector_service` | Name of the connector service to use; empty means the default one. |
 | `max_wait` | number | no | `60` | — | Seconds to wait for the transfer to complete. |
 | `poll_interval` | number | no | `2` | — | Seconds between transfer-state polls. |
 | `policy` | any | no | `None` | — | Single policy the offer must satisfy, in ODRL or the testlab simplified form; omitted means the SDK picks the first offer. |
@@ -221,7 +220,6 @@ Unlike `pull_data_filtered` (one optional, testlab-simplified `policy`), this va
 | `filter_expression` | list of [FilterExpression](#filterexpression) | no | `[]` | `filters` | Filter criteria applied to the catalog request. |
 | `counter_party_address` | string | no | `''` | `provider_url` | DSP endpoint of the counter-party connector. |
 | `counter_party_id` | string | no | `''` | `bpnl` | BPN of the counter-party. |
-| `service` | string | no | `''` | `connector_service` | Name of the connector service to use; empty means the default one. |
 | `max_wait` | number | no | `60` | — | Seconds to wait for the transfer to complete. |
 | `poll_interval` | number | no | `2` | — | Seconds between transfer-state polls. |
 | `policies` | list of object | yes | — | — | ODRL policies, any one of which the negotiated offer must satisfy. |
@@ -456,24 +454,14 @@ _Nothing._
 
 Register an asset at the provider connector.
 
-An asset that already exists is not an error: the connector answers 409 and the step reports the ID it would have created, so a script can be re-run against a provider it has already provisioned.
+What the asset *is* is not written into the step: it is configured once in the manifest's `env.variables` and handed to the step as a single `asset` input, so the same asset can be reused across tests. An asset that already exists is not an error: the connector answers 409 and the step reports the ID it would have created, so a script can be re-run against a provider it has already provisioned.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `service` | string | no | `''` | `connector_service` | Name of the connector service to use; empty means the default one. |
-| `asset_id` | string | no | `''` | — | Asset ID; derived from 'name', or a fresh UUID, when omitted. |
-| `name` | string | no | `''` | — | Human-readable asset name; its slug becomes the asset ID. |
-| `properties` | object | no | `{}` | — | CCM property block; 'dct:type' and 'cx-common:version' are read from it. |
-| `base_url` | string | no | `''` | — | Backend URL the asset proxies to. |
-| `dct_type` | string | no | `None` | — | Asset type as a DCT type IRI. |
-| `version` | string | no | `'3.0'` | — | Asset version. |
-| `semantic_id` | string | no | `None` | — | Semantic model IRI the asset's data conforms to. |
-| `proxy_params` | object | no | `None` | — | Data-plane proxy settings, e.g. path/method forwarding. |
-| `headers` | object | no | `None` | — | Headers the data plane sends to the backend. |
-| `private_properties` | object | no | `None` | — | Properties kept out of the published catalog. |
-| `context` | any | no | `None` | — | JSON-LD context override. |
+| `asset_id` | string | no | `''` | — | Asset ID; read from the asset config, derived from its 'name', or a fresh UUID, when omitted. |
+| `asset` | object | no | `{}` | — | The whole asset definition, as declared by a 'config/connector/asset' manifest variable and referenced as '${{ env.<id>.asset }}'. Carries 'base_url', 'dct_type' or 'properties', 'version', 'semantic_id', 'proxy_params', 'headers', 'private_properties' and an optional '@context'. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -497,7 +485,6 @@ This is the step that makes an asset appear in the provider's catalog; the asset
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `service` | string | no | `''` | `connector_service` | Name of the connector service to use; empty means the default one. |
 | `contract_id` | string | no | `''` | — | Contract definition ID; a fresh UUID is used when omitted. |
 | `usage_policy_id` | any | no | `''` | `contract_policy_id` | Policy governing what the consumer may do with the data. |
 | `access_policy_id` | any | no | `''` | — | Policy governing who may see the offer at all. |
@@ -519,18 +506,14 @@ _Nothing._
 
 Register an ODRL policy definition at the provider connector.
 
-As with `create_asset`, a 409 from the connector is reported as success against the existing policy rather than failing the step.
+The rules are not written into the step: the policy is configured once in the manifest's `env.variables` and handed to the step as a single `policy` input, so the same policy can be reused across tests. As with `create_asset`, a 409 from the connector is reported as success against the existing policy rather than failing the step.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `service` | string | no | `''` | `connector_service` | Name of the connector service to use; empty means the default one. |
 | `policy_id` | string | no | `''` | — | Policy ID; a fresh UUID is used when omitted. |
-| `context` | any | no | `None` | — | JSON-LD context override. |
-| `permissions` | list of object | no | `[]` | — | ODRL permission rules. |
-| `prohibitions` | list of object | no | `[]` | — | ODRL prohibition rules. |
-| `obligations` | list of object | no | `[]` | — | ODRL obligation rules. |
+| `policy` | object | no | `{}` | — | The whole ODRL policy, as declared by a 'config/connector/policy' manifest variable and referenced as '${{ env.<id>.policy }}'. Carries 'permissions', 'prohibitions', 'obligations' and an optional '@context'. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -558,7 +541,7 @@ Delete an asset from the provider connector.
 
 _This step produces no value — it acts, and there is nothing to read back._
 
-Type: any
+Type: NoneType
 
 **Publishes** — context variables available to later steps
 
@@ -580,7 +563,7 @@ Deleting this withdraws the offer from the catalog but leaves the asset and poli
 
 _This step produces no value — it acts, and there is nothing to read back._
 
-Type: any
+Type: NoneType
 
 **Publishes** — context variables available to later steps
 
@@ -600,13 +583,13 @@ Delete a policy definition from the provider connector.
 
 _This step produces no value — it acts, and there is nothing to read back._
 
-Type: any
+Type: NoneType
 
 **Publishes** — context variables available to later steps
 
 _Nothing._
 
-### `dtr/create_shell_descriptor`
+### `digital-twin/provider/create_shell_descriptor`
 
 Create an AAS shell descriptor in the Digital Twin Registry.
 
@@ -632,7 +615,7 @@ Additional keys sent by the counterpart are passed through unchanged.
 
 _Nothing._
 
-### `dtr/create_submodel_descriptor`
+### `digital-twin/provider/create_submodel_descriptor`
 
 Create a submodel descriptor under an AAS shell.
 
@@ -659,7 +642,7 @@ Additional keys sent by the counterpart are passed through unchanged.
 
 _Nothing._
 
-### `dtr/delete_shell_descriptor`
+### `digital-twin/provider/delete_shell_descriptor`
 
 Delete an AAS shell descriptor.
 
@@ -674,13 +657,13 @@ Delete an AAS shell descriptor.
 
 _This step produces no value — it acts, and there is nothing to read back._
 
-Type: any
+Type: NoneType
 
 **Publishes** — context variables available to later steps
 
 _Nothing._
 
-### `dtr/get_shell_descriptor`
+### `digital-twin/provider/get_shell_descriptor`
 
 Retrieve an AAS shell descriptor by ID.
 
@@ -706,6 +689,38 @@ Additional keys sent by the counterpart are passed through unchanged.
 
 _Nothing._
 
+### `digital-twin/submodel/upload`
+
+Upload sample data to the backend under a unique UUID path.
+
+Each run gets its own `/urn:uuid:<uuid4>` resource — exactly like the TCK does — so repeated runs never collide, and the resulting URL is published as `backend_url` for the asset that will point at it.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `backend_base_url` | string | yes | — | — | Backend base URL, without the UUID suffix. |
+| `data` | any | no | `{'test': True}` | — | Payload to upload, sent as JSON. |
+
+**Output** — the value assertions and `returns:` read
+
+_Output contract of `digital-twin/submodel/upload`._
+
+| Field | Type | Description |
+|---|---|---|
+| `backend_url` | string | Full backend URL the data was uploaded to. |
+| `response` | any | Backend response body, parsed as JSON when it is JSON. |
+
+**Publishes** — context variables available to later steps
+
+| Variable | Type | Description |
+|---|---|---|
+| `backend_url` | string | Full backend URL, for the asset that will point at this data. |
+
+A variable is left unset when its value could not be derived.
+
 ### `flow/delay`
 
 Pause test execution for a fixed duration.
@@ -722,7 +737,7 @@ Useful where a system under test needs a moment to reach the state the next step
 
 _This step produces no value — it acts, and there is nothing to read back._
 
-Type: any
+Type: NoneType
 
 **Publishes** — context variables available to later steps
 
@@ -738,7 +753,7 @@ The sequence stops at the first nested failure and the whole sequence is re-run,
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `steps` | list of [StepDefinitionV2](#stepdefinitionv2) | yes | — | — | Nested step definitions ('uses', 'with', 'validate', …) — the same shape used at the top level of a script. A nested step may itself be 'flow/retry'. |
+| `steps` | list of [StepDefinition](#stepdefinition) | yes | — | — | Nested step definitions ('uses', 'with', 'validate', …) — the same shape used at the top level of a script. A nested step may itself be 'flow/retry'. |
 | `max_attempts` | integer | no | `3` | — | Maximum number of attempts. |
 | `delay_s` | number | no | `1` | — | Seconds to wait between attempts. |
 
@@ -825,7 +840,7 @@ A consumer step can then resolve a counter-party's DSP endpoint from its BPN exa
 
 _This step produces no value — it acts, and there is nothing to read back._
 
-Type: any
+Type: NoneType
 
 **Publishes** — context variables available to later steps
 
@@ -848,7 +863,7 @@ Shells registered through the mock's own `POST /shell-descriptors` become retrie
 
 _This step produces no value — it acts, and there is nothing to read back._
 
-Type: any
+Type: NoneType
 
 **Publishes** — context variables available to later steps
 
@@ -883,7 +898,7 @@ _The inbound request a mock endpoint received._
 
 _Nothing._
 
-### `notifications/discover_assets`
+### `notification/consumer/discover_assets`
 
 Discover notification assets in a provider catalog.
 
@@ -905,7 +920,7 @@ Type: any
 
 _Nothing._
 
-### `notifications/send`
+### `notification/consumer/send`
 
 Send a notification through the dataspace.
 
@@ -926,7 +941,7 @@ Supports two modes: - **SDK mode** (canonical): `notification`, `provider_bpn`, 
 
 **Output** — the value assertions and `returns:` read
 
-_Output contract of `notifications/send`._
+_Output contract of `notification/consumer/send`._
 
 | Field | Type | Description |
 |---|---|---|
@@ -937,38 +952,6 @@ Additional keys sent by the counterpart are passed through unchanged.
 **Publishes** — context variables available to later steps
 
 _Nothing._
-
-### `submodels/upload`
-
-Upload sample data to the backend under a unique UUID path.
-
-Each run gets its own `/urn:uuid:<uuid4>` resource — exactly like the TCK does — so repeated runs never collide, and the resulting URL is published as `backend_url` for the asset that will point at it.
-
-**Inputs**
-
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
-| `backend_base_url` | string | yes | — | — | Backend base URL, without the UUID suffix. |
-| `data` | any | no | `{'test': True}` | — | Payload to upload, sent as JSON. |
-
-**Output** — the value assertions and `returns:` read
-
-_Output contract of `submodels/upload`._
-
-| Field | Type | Description |
-|---|---|---|
-| `backend_url` | string | Full backend URL the data was uploaded to. |
-| `response` | any | Backend response body, parsed as JSON when it is JSON. |
-
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `backend_url` | string | Full backend URL, for the asset that will point at this data. |
-
-A variable is left unset when its value could not be derived.
 
 ### `util/base64`
 
@@ -1245,9 +1228,9 @@ _Nothing._
 
 ## Nested objects
 
-### AssertionV2
+### Assertion
 
-Syntax v2 assertion using `uses` / `with` verb-form keys.
+Assertion using `uses` / `with` verb-form keys.
 
 | Field | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
@@ -1302,9 +1285,9 @@ Single output field declared in a step `returns` block.
 | `type` | string | yes | — | — |  |
 | `class` | string | no | `None` | — |  |
 
-### StepDefinitionV2
+### StepDefinition
 
-Syntax v2 step definition using `uses` and `with` verb-form keys.
+Step definition using `uses` and `with` verb-form keys.
 
 | Field | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
@@ -1313,7 +1296,7 @@ Syntax v2 step definition using `uses` and `with` verb-form keys.
 | `name` | string | no | `None` | — |  |
 | `with` | object | no | `None` | — |  |
 | `returns` | object | no | `None` | — |  |
-| `validate` | list of [AssertionV2](#assertionv2) | no | `None` | — |  |
+| `validate` | list of [Assertion](#assertion) | no | `None` | — |  |
 | `on_failure` | FailurePolicy | no | `<FailurePolicy.ABORT: 'ABORT'>` | — |  |
 | `timeout_s` | number | no | `None` | — |  |
 | `if` | string | no | `None` | — |  |

@@ -91,7 +91,7 @@ execution:
       edr_token: "${{ execution.pull_ccmapi_endpoint.edr_token }}"
       headers:
         Content-Type: "application/json"
-      body: "${{ env.testdata.send_feedback_body }}"
+      body: ${{ env.testdata.send_feedback_body }}
     returns:
       status_code:
         type: integer
@@ -100,30 +100,61 @@ execution:
         with: { input: status_code, operator: equals, value: 200 }
 
   - id: wait_provider_ack
-    uses: mock/wait/http_request
-    name: Wait for provider RECEIVE acknowledgment on mock endpoint
+    uses: wait/wait_for_call
+    name: Wait for provider RECEIVE acknowledgment
     with:
       mock: "${{ setup.mock_receive_ack.mock }}"
       timeout_s: 60
     returns:
-      request_method:
-        type: string
-      request_body:
+      callback_payload:
         type: object
-        class: ResponseBody
+        class: CallbackPayload
     validate:
-      - uses: validate/assert
-        with: { input: request_method, operator: equals, value: "POST" }
       - uses: validate/field
         with:
-          input: request_body
-          path: "header.messageId"
+          input: callback_payload
+          path: "method"
+          operator: equals
+          value: "POST"
+      - uses: validate/field
+        with:
+          input: callback_payload
+          path: "body.header.messageId"
           operator: matches_regex
           value: "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
       - uses: validate/field
         with:
-          input: request_body
-          path: "content.certificateStatus"
+          input: callback_payload
+          path: "body.header.context"
+          operator: equals
+          value: "CompanyCertificateManagement-CCMAPI-Status:1.0.0"
+      - uses: validate/field
+        with:
+          input: callback_payload
+          path: "body.header.sentDateTime"
+          operator: not_null
+      - uses: validate/field
+        with:
+          input: callback_payload
+          path: "body.header.senderBpn"
+          operator: matches_regex
+          value: "^BPNL[0-9A-Z]{12}$"
+      - uses: validate/field
+        with:
+          input: callback_payload
+          path: "body.header.receiverBpn"
+          operator: equals
+          value: "${{ env.consumer_bpn }}"
+      - uses: validate/field
+        with:
+          input: callback_payload
+          path: "body.header.version"
+          operator: equals
+          value: "3.1.0"
+      - uses: validate/field
+        with:
+          input: callback_payload
+          path: "body.content.certificateStatus"
           operator: one_of
           value: ["RECEIVED", "ACCEPTED", "REJECTED"]
 

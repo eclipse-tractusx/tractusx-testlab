@@ -267,7 +267,6 @@ steps:
   - type: send_notification
     name: notify_quality_alert
     params:
-      service: "provider"
       payload: { ... }
     store_in_memory:
       notification_id: "notificationId"

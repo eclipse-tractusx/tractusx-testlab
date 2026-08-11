@@ -104,7 +104,7 @@ There is no schema, no namespace object, no provenance, and no type information.
 `_context_seeder.py:49-56` documents a three-level priority: shared variables →
 `env.variables` → `runtime_vars`. **Level 1 never executes.**
 `getattr(tck.definition, "shared_variables", None)` always returns `None`, because
-`TckDefinitionV2` (`models/authoring/definitions.py:198`) has no such field — the
+`TckDefinition` (`models/authoring/definitions.py:198`) has no such field — the
 block is `env.variables`.
 
 The compiler validator still directs authors to it
