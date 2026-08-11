@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING
 import requests
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import HttpBodyOutput, HttpCallParams
 from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput
@@ -40,14 +40,8 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-<<<<<<< HEAD
 class HttpRequestParams(HttpCallParams):
     """Input contract of ``http/http_request``."""
-=======
-@step("http/http_request")
-class HttpRequestStep(BaseStep):
-    """Execute a plain HTTP request.
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
     url: str = Field(description="Target URL.")
 
@@ -78,7 +72,7 @@ class HttpRequestStep(BaseStep[HttpRequestParams, HttpBodyOutput]):
     exports_model = HttpRequestExports
 
     async def execute(
-        self, params: HttpRequestParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: HttpRequestParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
         timeout = params.timeout_or(context.config.default_timeout_s)
         payload = (

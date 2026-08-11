@@ -29,7 +29,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import tractusx_testlab.steps  # noqa: F401  (registers all built-in steps)
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.flow.retry import RetryStep
 from tractusx_testlab.steps.utility.log import LogStep
 
@@ -38,8 +38,8 @@ def _context() -> MagicMock:
     return MagicMock()
 
 
-def _step_def(**kwargs) -> StepDefinitionV2:
-    return StepDefinitionV2(id="s", uses="flow/retry", **kwargs)
+def _step_def(**kwargs) -> StepDefinition:
+    return StepDefinition(id="s", uses="flow/retry", **kwargs)
 
 
 class TestRetryStep:

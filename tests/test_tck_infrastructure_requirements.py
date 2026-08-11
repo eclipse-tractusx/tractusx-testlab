@@ -32,8 +32,8 @@ import pytest
 
 from tractusx_testlab.models.authoring.definitions import (
     MetadataDefinition,
-    ScriptDefinitionV2,
-    TckDefinitionV2,
+    ScriptDefinition,
+    TckDefinition,
     TckMetadataDefinition,
 )
 from tractusx_testlab.models.authoring.infrastructure import (
@@ -49,8 +49,8 @@ from tractusx_testlab.scripting.script import Tck, TestScript
 # ---------------------------------------------------------------------------
 
 def _make_tck(infrastructure: InfrastructureConfig | None = None) -> Tck:
-    tck_def = TckDefinitionV2(
-        syntax="v2",
+    tck_def = TckDefinition(
+        syntax="v1-alpha",
         id="test-tck",
         metadata=TckMetadataDefinition(name="Test TCK"),
         tests=[],
@@ -60,8 +60,8 @@ def _make_tck(infrastructure: InfrastructureConfig | None = None) -> Tck:
 
 
 def _make_script(infrastructure: InfrastructureConfig | None = None) -> TestScript:
-    script_def = ScriptDefinitionV2(
-        syntax="v2",
+    script_def = ScriptDefinition(
+        syntax="v1-alpha",
         id="test-script",
         namespace="test.ns",
         metadata=MetadataDefinition(name="Test Script"),

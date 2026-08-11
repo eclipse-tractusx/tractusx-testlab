@@ -35,7 +35,7 @@ from tractusx_testlab.security.crypto import generate_ed25519_keypair, generate_
 
 
 _VALID_SCRIPT_YAML = b"""\
-syntax: v2
+syntax: v1-alpha
 kind: test
 id: stck-smoke
 namespace: testlab.test

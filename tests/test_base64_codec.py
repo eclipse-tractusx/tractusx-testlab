@@ -30,7 +30,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.steps.utility.base64_codec import Base64Step
 
@@ -47,8 +47,8 @@ def context() -> StepContext:
     return StepContext(services=MagicMock(), job=MagicMock(), config=MagicMock())
 
 
-def _definition() -> StepDefinitionV2:
-    return StepDefinitionV2(id="b64", uses="util/base64")
+def _definition() -> StepDefinition:
+    return StepDefinition(id="b64", uses="util/base64")
 
 
 class TestBase64Step:

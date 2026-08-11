@@ -46,7 +46,7 @@ from tractusx_testlab.scripting.script import TestScript, Tck
 # ---------------------------------------------------------------------------
 
 def _make_script_def(script_id: str = "test-a") -> MagicMock:
-    """Return a minimal ScriptDefinitionV2 mock sufficient for TestScript."""
+    """Return a minimal ScriptDefinition mock sufficient for TestScript."""
     d = MagicMock()
     d.metadata.name = script_id.replace("-", " ").title()
     d.dataspace_version = "saturn"

@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.scripting.registry import StepRegistry, step
@@ -52,7 +52,7 @@ _ANY_VERSION = ""
 class RetryParams(StepParams):
     """Input contract of ``flow/retry``."""
 
-    steps: list[StepDefinitionV2] = Field(
+    steps: list[StepDefinition] = Field(
         min_length=1,
         description=(
             "Nested step definitions ('uses', 'with', 'validate', …) — the same "
@@ -81,7 +81,7 @@ class RetryStep(BaseStep[RetryParams, RetryOutput]):
     output_model = RetryOutput
 
     async def execute(
-        self, params: RetryParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: RetryParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[RetryOutput]:
         attempt = 1
         results = await _run_sequence(params.steps, context)
@@ -101,7 +101,7 @@ class RetryStep(BaseStep[RetryParams, RetryOutput]):
 
 
 async def _run_sequence(
-    nested_defs: list[StepDefinitionV2], context: "StepContext"
+    nested_defs: list[StepDefinition], context: "StepContext"
 ) -> list[StepResult]:
     """Run each nested step in order, stopping at the first failure."""
     from tractusx_testlab.player.execution.step_runner import run_step

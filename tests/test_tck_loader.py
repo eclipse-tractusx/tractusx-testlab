@@ -34,7 +34,7 @@ from tractusx_testlab.player.loading.loader import Loader, _TCK_BUNDLE_ENTRY
 
 
 _TCK_MANIFEST_YAML = """\
-syntax: v2
+syntax: v1-alpha
 kind: tck
 id: tck-smoke
 namespace: testlab.test
@@ -48,7 +48,7 @@ tests:
 """
 
 _TEST_SCRIPT_YAML = """\
-syntax: v2
+syntax: v1-alpha
 kind: test
 id: inline-test-one
 namespace: testlab.test

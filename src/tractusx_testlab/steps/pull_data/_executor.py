@@ -33,12 +33,11 @@ from typing import TYPE_CHECKING, Any, Optional
 import requests
 from pydantic import Field, field_validator
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.steps._contracts import (
     CounterPartyParams,
     DataplaneExports,
     FilterExpressionParams,
-    ServiceParams,
 )
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.steps.pull_data._constants import (
@@ -84,11 +83,10 @@ def _to_odrl_policy(value: object) -> object:
     return value
 
 
-<<<<<<< HEAD
 # -- Declared interface -------------------------------------------------------
 
 
-class PullDataParams(ServiceParams, CounterPartyParams, FilterExpressionParams):
+class PullDataParams(CounterPartyParams, FilterExpressionParams):
     """What both pull-data shortcuts take.
 
     They run the whole DSP flow in one step, so they need everything the
@@ -149,8 +147,6 @@ class PullDataByPolicyOutput(PullDataOutput):
     )
 
 
-=======
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 # -- Shared helpers -----------------------------------------------------------
 
 
@@ -160,7 +156,7 @@ async def _do_dsp_flow(
     policies: Optional[list[dict]],
 ) -> tuple[PullDataOutput, HttpRequest, HttpResponse]:
     """Execute the full DSP flow via the SDK and describe what it produced."""
-    consumer = context.get_consumer_service(params.service_name())
+    consumer = context.get_consumer_service()
     filter_expression = params.sdk_filter_expression()
     counter_party_id = params.counter_party_id
 
@@ -250,11 +246,6 @@ class PullDataFilteredParams(PullDataParams):
         converted = _to_odrl_policy(self.policy)
         return [converted] if isinstance(converted, dict) else converted
 
-<<<<<<< HEAD
-=======
-class ConnectorPullDataFiltered(BaseStep):
-    """``connector/consumer/pull_data_filtered`` — full DSP flow with optional policy filter.
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]):
     """Run the full DSP flow in one step, optionally constrained to one policy.
@@ -273,7 +264,7 @@ class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]
         self,
         params: PullDataFilteredParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[PullDataOutput]:
         value, request, response = await _do_dsp_flow(
             context, params, params.allowed_policies()
@@ -323,7 +314,7 @@ class ConnectorPullDataFilteredByPolicy(
         self,
         params: PullDataFilteredByPolicyParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[PullDataByPolicyOutput]:
         value, request, response = await _do_dsp_flow(
             context, params, params.allowed_policies()

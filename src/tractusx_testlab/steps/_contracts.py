@@ -31,7 +31,7 @@ types: ``query_catalog`` returns a :class:`CatalogPayload` and
 
 The mixins here are meant to be inherited by a step's own params model::
 
-    class CreateAssetParams(ServiceParams):
+    class QueryCatalogParams(CounterPartyParams):
         asset_id: str = ""
 """
 
@@ -63,23 +63,6 @@ class NoOutput(StepValue[None]):
 # ---------------------------------------------------------------------------
 # Parameter mixins
 # ---------------------------------------------------------------------------
-
-
-class ServiceParams(StepParams):
-    """Selects which configured connector service a step talks to.
-
-    Left empty, the step uses the script's default service.
-    """
-
-    service: str = Field(
-        default="",
-        validation_alias=AliasChoices("service", "connector_service"),
-        description="Name of the connector service to use; empty means the default one.",
-    )
-
-    def service_name(self) -> Optional[str]:
-        """The service name in the form the context lookup expects."""
-        return self.service or None
 
 
 class StoreInVariableParams(StepParams):
@@ -284,7 +267,7 @@ def data_address_token(data_address: Optional[dict]) -> Optional[str]:
 class HttpTransportParams(StepParams):
     """How a step reaches an HTTP server, regardless of what it sends.
 
-    Steps that build their own URL and verb — ``submodels/upload`` always POSTs
+    Steps that build their own URL and verb — ``digital-twin/submodel/upload`` always POSTs
     to a URL it generates — take only this half.
     """
 

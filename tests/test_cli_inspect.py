@@ -38,7 +38,7 @@ from tractusx_testlab.player.loading.loader import _TCK_BUNDLE_ENTRY
 runner = CliRunner()
 
 _TCK_BUNDLE_YAML = """\
-syntax: v2
+syntax: v1-alpha
 kind: tck
 id: tck-cli-inspect
 namespace: testlab.test
@@ -51,7 +51,7 @@ tests:
 """
 
 _SCRIPT_YAML = """\
-syntax: v2
+syntax: v1-alpha
 kind: test
 id: inspect-script
 namespace: testlab.test

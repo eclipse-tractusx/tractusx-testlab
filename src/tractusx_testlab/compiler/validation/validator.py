@@ -33,7 +33,7 @@ from typing import Optional
 
 from pydantic import ValidationError
 
-from tractusx_testlab.models import ScriptDefinitionV2, StepDefinitionV2, TckDefinitionV2
+from tractusx_testlab.models import ScriptDefinition, StepDefinition, TckDefinition
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.syntax import defaults
 
@@ -70,7 +70,7 @@ _VAR_REF = re.compile(r"\$\{(\w+)}")
 class ScriptValidator:
     """Validates a ScriptDefinition for correctness before execution."""
 
-    def validate_tck(self, tck: TckDefinitionV2, base_dir: Path, version: Optional[str] = None) -> ValidationResult:
+    def validate_tck(self, tck: TckDefinition, base_dir: Path, version: Optional[str] = None) -> ValidationResult:
         """Validate all test files referenced by a TCK manifest."""
         combined = ValidationResult()
         for entry in tck.tests:
@@ -101,11 +101,11 @@ class ScriptValidator:
                 combined.issues.append(issue)
         return combined
 
-    def validate(self, script: ScriptDefinitionV2, version: Optional[str] = None) -> ValidationResult:
+    def validate(self, script: ScriptDefinition, version: Optional[str] = None) -> ValidationResult:
         result = ValidationResult()
         declared_vars: set[str] = set()
 
-        # Collect variables declared in the script header (v2: in TCK env)
+        # Collect variables declared in the script header (in TCK env)
         declared_vars.update(getattr(script, "variables", {}))
 
         # Validate setup steps
@@ -120,7 +120,7 @@ class ScriptValidator:
 
     def _validate_step(
         self,
-        step_def: StepDefinitionV2,
+        step_def: StepDefinition,
         idx: int,
         declared_vars: set[str],
         version: Optional[str],
@@ -176,7 +176,7 @@ class ScriptValidator:
 
     def _validate_inline_assert_inputs(
         self,
-        step_def: StepDefinitionV2,
+        step_def: StepDefinition,
         step_idx: int,
         result: ValidationResult,
         phase: str,

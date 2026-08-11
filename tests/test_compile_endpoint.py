@@ -102,7 +102,7 @@ def client(app: FastAPI) -> TestClient:
 # ---------------------------------------------------------------------------
 
 _VALID_YAML = """\
-syntax: v2
+syntax: v1-alpha
 kind: test
 id: smoke-check
 namespace: testlab.smoke

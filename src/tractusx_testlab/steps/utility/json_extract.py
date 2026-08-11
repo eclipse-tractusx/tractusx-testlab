@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import AliasChoices, Field
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._checks.extraction import (
     _PREDICATE_RE,
@@ -106,15 +106,9 @@ def _extract_by_path(data: object, path: str) -> object:
     return current
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # util/json_path_extract
 # ---------------------------------------------------------------------------
-=======
-@step("util/json_path_extract")
-class JsonPathExtractStep(BaseStep):
-    """Extract a value from a context variable using dot-notation path.
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class JsonPathExtractParams(StoreInVariableParams):
@@ -154,7 +148,7 @@ class JsonPathExtractStep(BaseStep[JsonPathExtractParams, JsonPathExtractOutput]
         self,
         params: JsonPathExtractParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[JsonPathExtractOutput]:
         # ``source`` is normally a variable name (a string) that we look up.  But
         # a ``${{ }}`` expression resolves to the value itself before the step

@@ -26,12 +26,11 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
     DataAddressPayload,
@@ -40,6 +39,7 @@ from tractusx_testlab.steps._contracts import (
     data_address_token,
 )
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.connector.dataplane import fetch_data_address
 from tractusx_testlab.syntax.context_vars import (
     DATA_ADDRESS,
     EDR_ENTRY,
@@ -50,10 +50,7 @@ from tractusx_testlab.syntax.context_vars import (
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
-logger = logging.getLogger(__name__)
 
-
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/consumer/transfer_data
 # ---------------------------------------------------------------------------
@@ -121,8 +118,10 @@ class TransferDataStep(BaseStep[TransferDataParams, TransferDataOutput]):
     """Collect the EDR for a negotiated contract and resolve its data address.
 
     This is what turns a finished negotiation into something
-    ``connector/dataplane/http_request`` can call: it polls for the EDR entry,
-    then asks the connector for the data address that entry points at.
+    ``connector/dataplane/http_request`` can call: it resolves
+    ``negotiation_id`` down to a ``transfer_id``, then does exactly what
+    ``connector/consumer/get_edr`` does with one — the two steps share that
+    lookup rather than each fetching the data address their own way.
     """
 
     params_model = TransferDataParams
@@ -130,13 +129,8 @@ class TransferDataStep(BaseStep[TransferDataParams, TransferDataOutput]):
     exports_model = TransferDataExports
 
     async def execute(
-        self, params: TransferDataParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: TransferDataParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[TransferDataOutput]:
-=======
-@step("connector/consumer/transfer_data")
-class TransferDataStep(BaseStep):
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
         consumer = context.get_consumer_service()
         url = context.get_consumer_endpoint_url("transfer_processes")
 
@@ -144,7 +138,7 @@ class TransferDataStep(BaseStep):
         edr_entry = consumer.get_edr_entry(negotiation_id=negotiation_id, verify=params.verify)
 
         transfer_id = _transfer_id(edr_entry)
-        data_address = _resolve_data_address(transfer_id, consumer, params.verify)
+        data_address = fetch_data_address(consumer, transfer_id, params.verify)
         endpoint = (data_address or {}).get("endpoint")
         auth_token = data_address_token(data_address)
 
@@ -181,21 +175,3 @@ def _transfer_id(edr_entry: Optional[dict]) -> Optional[str]:
     if not edr_entry:
         return None
     return edr_entry.get("transferProcessId") or edr_entry.get("@id")
-
-
-def _resolve_data_address(
-    transfer_id: Optional[str], consumer: Any, verify: Any
-) -> Optional[dict]:
-    """Ask the connector for the data address a transfer points at.
-
-    A connector that cannot be reached is reported as "no data address" rather
-    than aborting the step: the EDR entry itself is still worth returning, and
-    the 500 in the response says the transfer did not complete.
-    """
-    if not transfer_id:
-        return None
-    try:
-        return consumer.get_edr(transfer_id=transfer_id, verify=verify)
-    except ConnectionError:
-        logger.warning("Failed to retrieve EDR data address for transfer %s", transfer_id)
-        return None

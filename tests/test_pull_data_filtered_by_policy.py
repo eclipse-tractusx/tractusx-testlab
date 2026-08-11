@@ -28,7 +28,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.steps.pull_data._executor import ConnectorPullDataFilteredByPolicy
 
@@ -48,12 +48,15 @@ def consumer() -> MagicMock:
 @pytest.fixture()
 def context(consumer: MagicMock) -> StepContext:
     ctx = StepContext(services=MagicMock(), job=MagicMock(), config=MagicMock())
-    ctx.services.get_consumer.return_value = consumer
+    # The connector is seeded into the run, so the step finds it by type rather
+    # than by a name it was handed.
+    ctx.services.service_names = ["connector"]
+    ctx.services.get.return_value = consumer
     return ctx
 
 
-def _definition() -> StepDefinitionV2:
-    return StepDefinitionV2(id="pull", uses="connector/consumer/pull_data_filtered_by_policy")
+def _definition() -> StepDefinition:
+    return StepDefinition(id="pull", uses="connector/consumer/pull_data_filtered_by_policy")
 
 
 class TestPullDataFilteredByPolicy:
@@ -62,7 +65,6 @@ class TestPullDataFilteredByPolicy:
         with pytest.raises(ValueError, match="policies: Field required"):
             await ConnectorPullDataFilteredByPolicy().invoke(
                 {
-                    "connector_service": "c",
                     "counter_party_id": "BPNL_PROVIDER",
                     "counter_party_address": "https://provider.example/dsp",
                     "filters": [],
@@ -75,7 +77,6 @@ class TestPullDataFilteredByPolicy:
     async def test_returns_edr_and_dataplane_url(self, context: StepContext, consumer: MagicMock) -> None:
         output = await ConnectorPullDataFilteredByPolicy().invoke(
             {
-                "connector_service": "c",
                 "counter_party_id": "BPNL_PROVIDER",
                 "counter_party_address": "https://provider.example/dsp",
                 "filters": [],
@@ -94,7 +95,6 @@ class TestPullDataFilteredByPolicy:
     async def test_normalizes_simplified_policy_keys(self, context: StepContext, consumer: MagicMock) -> None:
         await ConnectorPullDataFilteredByPolicy().invoke(
             {
-                "connector_service": "c",
                 "counter_party_id": "BPNL_PROVIDER",
                 "counter_party_address": "https://provider.example/dsp",
                 "filters": [],
@@ -110,7 +110,6 @@ class TestPullDataFilteredByPolicy:
     async def test_accepts_single_policy_dict(self, context: StepContext, consumer: MagicMock) -> None:
         await ConnectorPullDataFilteredByPolicy().invoke(
             {
-                "connector_service": "c",
                 "counter_party_id": "BPNL_PROVIDER",
                 "counter_party_address": "https://provider.example/dsp",
                 "filters": [],

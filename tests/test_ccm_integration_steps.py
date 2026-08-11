@@ -31,7 +31,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.connector.extract import ExtractDatasetStep
 from tractusx_testlab.steps.industry.semantic import ValidateSemanticSchemaStep
 from tractusx_testlab.steps.utility.json_extract import JsonPathExtractStep
@@ -45,13 +45,13 @@ def _make_mock_context(**variables: Any) -> MagicMock:
     return ctx
 
 
-def _make_step_definition(**overrides: Any) -> StepDefinitionV2:
-    """Create a minimal StepDefinitionV2 for step execution tests."""
+def _make_step_definition(**overrides: Any) -> StepDefinition:
+    """Create a minimal StepDefinition for step execution tests."""
     uses = overrides.pop("type", "test")
     name = overrides.pop("name", "test-step")
     params = overrides.pop("params", {})
     overrides.pop("validate", None)
-    return StepDefinitionV2(uses=uses, name=name, **{"with_": params} if params else {}, **overrides)
+    return StepDefinition(uses=uses, name=name, **{"with_": params} if params else {}, **overrides)
 
 
 class TestGenerateUuidStep:

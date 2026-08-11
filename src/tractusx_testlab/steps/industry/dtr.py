@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import ConfigDict, Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import NoOutput, StepParams
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # Shared contract
 # ---------------------------------------------------------------------------
@@ -79,24 +78,20 @@ def _as_document(result: Any) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# dtr/create_shell_descriptor
+# digital-twin/provider/create_shell_descriptor
 # ---------------------------------------------------------------------------
 
 
 class CreateShellDescriptorParams(DtrParams):
-    """Input contract of ``dtr/create_shell_descriptor``."""
+    """Input contract of ``digital-twin/provider/create_shell_descriptor``."""
 
     shell_descriptor: dict = Field(
         description="The AAS shell descriptor document to register."
     )
 
 
-@step("dtr/create_shell_descriptor")
+@step("digital-twin/provider/create_shell_descriptor")
 class CreateShellDescriptorStep(BaseStep[CreateShellDescriptorParams, DescriptorPayload]):
-=======
-@step("dtr/create_shell_descriptor")
-class CreateShellDescriptorStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Create an AAS shell descriptor in the Digital Twin Registry."""
 
     params_model = CreateShellDescriptorParams
@@ -106,7 +101,7 @@ class CreateShellDescriptorStep(BaseStep):
         self,
         params: CreateShellDescriptorParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         aas = context.get_aas_service()
         from tractusx_sdk.industry.models.aas.v3.base import ShellDescriptor
@@ -123,9 +118,8 @@ class CreateShellDescriptorStep(BaseStep):
         )
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
-# dtr/get_shell_descriptor
+# digital-twin/provider/get_shell_descriptor
 # ---------------------------------------------------------------------------
 
 
@@ -135,12 +129,8 @@ class ShellDescriptorRefParams(DtrParams):
     aas_identifier: str = Field(description="Identifier of the AAS shell descriptor.")
 
 
-@step("dtr/get_shell_descriptor")
+@step("digital-twin/provider/get_shell_descriptor")
 class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayload]):
-=======
-@step("dtr/get_shell_descriptor")
-class GetShellDescriptorStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Retrieve an AAS shell descriptor by ID."""
 
     params_model = ShellDescriptorRefParams
@@ -150,7 +140,7 @@ class GetShellDescriptorStep(BaseStep):
         self,
         params: ShellDescriptorRefParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         aas = context.get_aas_service()
         result = aas.get_asset_administration_shell_descriptor_by_id(
@@ -166,28 +156,23 @@ class GetShellDescriptorStep(BaseStep):
         )
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
-# dtr/create_submodel_descriptor
+# digital-twin/provider/create_submodel_descriptor
 # ---------------------------------------------------------------------------
 
 
 class CreateSubmodelDescriptorParams(ShellDescriptorRefParams):
-    """Input contract of ``dtr/create_submodel_descriptor``."""
+    """Input contract of ``digital-twin/provider/create_submodel_descriptor``."""
 
     submodel_descriptor: dict = Field(
         description="The submodel descriptor document to register under the shell."
     )
 
 
-@step("dtr/create_submodel_descriptor")
+@step("digital-twin/provider/create_submodel_descriptor")
 class CreateSubmodelDescriptorStep(
     BaseStep[CreateSubmodelDescriptorParams, DescriptorPayload]
 ):
-=======
-@step("dtr/create_submodel_descriptor")
-class CreateSubmodelDescriptorStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Create a submodel descriptor under an AAS shell."""
 
     params_model = CreateSubmodelDescriptorParams
@@ -197,7 +182,7 @@ class CreateSubmodelDescriptorStep(BaseStep):
         self,
         params: CreateSubmodelDescriptorParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         aas = context.get_aas_service()
         from tractusx_sdk.industry.models.aas.v3.base import SubModelDescriptor
@@ -216,18 +201,13 @@ class CreateSubmodelDescriptorStep(BaseStep):
         )
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
-# dtr/delete_shell_descriptor
+# digital-twin/provider/delete_shell_descriptor
 # ---------------------------------------------------------------------------
 
 
-@step("dtr/delete_shell_descriptor")
+@step("digital-twin/provider/delete_shell_descriptor")
 class DeleteShellDescriptorStep(BaseStep[ShellDescriptorRefParams, NoOutput]):
-=======
-@step("dtr/delete_shell_descriptor")
-class DeleteShellDescriptorStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Delete an AAS shell descriptor."""
 
     params_model = ShellDescriptorRefParams
@@ -237,7 +217,7 @@ class DeleteShellDescriptorStep(BaseStep):
         self,
         params: ShellDescriptorRefParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[NoOutput]:
         aas = context.get_aas_service()
         result = aas.delete_asset_administration_shell_descriptor(

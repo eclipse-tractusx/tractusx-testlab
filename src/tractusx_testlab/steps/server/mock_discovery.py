@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import MockRequest, MockResponse, register_mock
 from tractusx_testlab.steps._contracts import NoOutput
@@ -87,7 +87,7 @@ class MockDiscoveryStep(BaseStep[MockDiscoveryParams, NoOutput]):
     output_model = NoOutput
 
     async def execute(
-        self, params: MockDiscoveryParams, context: "StepContext", definition: StepDefinitionV2,
+        self, params: MockDiscoveryParams, context: "StepContext", definition: StepDefinition,
     ) -> StepOutput[NoOutput]:
         bpn_to_endpoint = params.mappings
 

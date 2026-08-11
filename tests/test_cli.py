@@ -52,7 +52,7 @@ tests: []
 _INVALID_YAML = "{{not valid yaml"
 
 _BAD_STEP_YAML = """\
-syntax: v2
+syntax: v1-alpha
 kind: tck
 id: bad-step-tck
 metadata:
@@ -151,7 +151,7 @@ class TestPrintReport:
     def test_print_report_with_error(self, tmp_path: Path) -> None:
         """Test report with a step that has an error."""
         yaml_content = """\
-syntax: v2
+syntax: v1-alpha
 kind: test
 id: error-test
 namespace: testlab.cli
@@ -173,7 +173,7 @@ execution:
     def test_print_report_with_assertions(self, tmp_path: Path) -> None:
         """Test report printing with step that uses noop executor and assertions."""
         yaml_content = """\
-syntax: v2
+syntax: v1-alpha
 kind: test
 id: noop-test
 namespace: testlab.cli

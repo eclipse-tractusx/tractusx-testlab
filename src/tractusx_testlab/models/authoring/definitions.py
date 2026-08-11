@@ -22,15 +22,15 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Syntax v2 authoring models — compile-time structures for scripts and TCKs.
+"""Syntax v1-alpha authoring models — compile-time structures for scripts and TCKs.
 
 All models follow the GitHub Actions-like verb-form YAML schema using ``uses``
-and ``with`` keys.  The discriminator field ``syntax`` routes to the correct versioned model via Pydantic Discriminated Unions.
+and ``with`` keys.  The ``syntax`` field pins the format version (``v1-alpha``).
 """
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -78,7 +78,7 @@ class ImportDefinition(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Syntax v2 models
+# Syntax v1-alpha models
 # ---------------------------------------------------------------------------
 
 class MetadataDefinition(BaseModel):
@@ -101,8 +101,8 @@ class ReturnFieldDefinition(BaseModel):
     cls: Optional[str] = Field(default=None, alias="class")
 
 
-class AssertionV2(BaseModel):
-    """Syntax v2 assertion using ``uses`` / ``with`` verb-form keys."""
+class Assertion(BaseModel):
+    """Assertion using ``uses`` / ``with`` verb-form keys."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -110,8 +110,8 @@ class AssertionV2(BaseModel):
     with_: Optional[dict[str, Any]] = Field(default=None, alias="with")
 
 
-class StepDefinitionV2(BaseModel):
-    """Syntax v2 step definition using ``uses`` and ``with`` verb-form keys."""
+class StepDefinition(BaseModel):
+    """Step definition using ``uses`` and ``with`` verb-form keys."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -120,26 +120,26 @@ class StepDefinitionV2(BaseModel):
     name: Optional[str] = None
     with_: Optional[dict[str, Any]] = Field(default=None, alias="with")
     returns: Optional[dict[str, ReturnFieldDefinition]] = None
-    validate: Optional[list[AssertionV2]] = None
+    validate: Optional[list[Assertion]] = None
     # Runtime control fields kept for execution-engine compatibility.
     on_failure: FailurePolicy = FailurePolicy.ABORT
     timeout_s: Optional[float] = None
     if_condition: Optional[str] = Field(default=None, alias="if")
 
 
-class ScriptDefinitionV2(BaseModel):
-    """Syntax v2 top-level test script definition."""
+class ScriptDefinition(BaseModel):
+    """Top-level test script definition."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     kind: Literal["test"] = "test"
-    syntax: Literal["v2"]
+    syntax: Literal["v1-alpha"]
     id: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,99}$")
     namespace: str
     metadata: MetadataDefinition
-    setup: list[StepDefinitionV2] = Field(default_factory=list)
-    execution: list[StepDefinitionV2] = Field(default_factory=list)
-    teardown: list[StepDefinitionV2] = Field(default_factory=list)
+    setup: list[StepDefinition] = Field(default_factory=list)
+    execution: list[StepDefinition] = Field(default_factory=list)
+    teardown: list[StepDefinition] = Field(default_factory=list)
     dataspace_version: Literal["saturn", "jupiter"] = "saturn"
     # Transition fields: allow dataspace/infrastructure on per-script level for
     # backward-compatible test suites that embed them inline.
@@ -195,13 +195,13 @@ class TckTestEntry(BaseModel):
     skippable: bool = False
 
 
-class TckDefinitionV2(BaseModel):
-    """Syntax v2 top-level TCK manifest definition."""
+class TckDefinition(BaseModel):
+    """Top-level TCK manifest definition."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     kind: Literal["tck"] = "tck"
-    syntax: Literal["v2"]
+    syntax: Literal["v1-alpha"]
     id: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,99}$")
     metadata: TckMetadataDefinition
     env: Optional[EnvDefinition] = None
@@ -211,16 +211,6 @@ class TckDefinitionV2(BaseModel):
     infrastructure: Optional[InfrastructureConfig] = None
 
 
-# ---------------------------------------------------------------------------
-# Discriminated union routing — single public type aliases, fail-fast on unknown syntax
-# ---------------------------------------------------------------------------
-
-ScriptDefinition = Annotated[
-    Union[ScriptDefinitionV2],
-    Field(discriminator="syntax"),
-]
-
-TckDefinition = Annotated[
-    Union[TckDefinitionV2],
-    Field(discriminator="syntax"),
-]
+# ``syntax`` is a plain ``Literal["v1-alpha"]`` on both models: there is exactly
+# one syntax version, so the field itself fail-fasts on anything else and no
+# discriminated-union routing is needed.

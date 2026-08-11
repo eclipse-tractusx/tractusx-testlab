@@ -31,7 +31,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from tractusx_testlab.models.authoring.definitions import AssertionV2
+from tractusx_testlab.models.authoring.definitions import Assertion
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
     ScriptStatus,
@@ -61,7 +61,7 @@ class HttpResponse(BaseModel):
 class AssertionResult(BaseModel):
     """Result of evaluating a single assertion against step output."""
 
-    assertion: AssertionV2
+    assertion: Assertion
     passed: bool
     expected: Optional[Any] = None
     actual: Optional[Any] = None

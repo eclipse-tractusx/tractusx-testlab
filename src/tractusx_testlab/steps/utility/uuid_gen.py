@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepPayload
 
@@ -39,14 +39,8 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-<<<<<<< HEAD
 class GenerateUuidParams(StepParams):
     """Input contract of ``util/generate_uuid``."""
-=======
-@step("util/generate_uuid")
-class GenerateUuidStep(BaseStep):
-    """Generate a random UUID v4.
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
     prefix: str = Field(
         default="",
@@ -78,7 +72,7 @@ class GenerateUuidStep(BaseStep[GenerateUuidParams, GenerateUuidOutput]):
         self,
         params: GenerateUuidParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[GenerateUuidOutput]:
         value = f"{params.prefix}{uuid.uuid4()}"
         return StepOutput(value=GenerateUuidOutput(generated_id=value, uuid=value))

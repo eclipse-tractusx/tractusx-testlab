@@ -50,7 +50,7 @@ def seed_context_variables(
 
     Priority (lowest → highest):
     1. Shared variables with defaults.
-    2. V2 ``env.variables`` static values (``source: value``).
+    2. ``env.variables`` static values (``source: value``).
     3. Operator-supplied ``runtime_vars`` (highest — overrides everything).
 
     Side effects: writes to *context* variables store and loads testdata files.
@@ -74,7 +74,7 @@ def seed_context_variables(
 
 
 def seed_env_variables(context: StepContext, tck: Tck) -> None:
-    """Seed V2 ``env.variables`` entries that carry a static ``with.value``."""
+    """Seed ``env.variables`` entries that carry a static ``with.value``."""
     env = getattr(tck.definition, "env", None)
     if env is None:
         return

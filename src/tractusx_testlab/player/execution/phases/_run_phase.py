@@ -40,8 +40,8 @@ from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.conditions import ConditionEvaluator
 
-# Maps internal phase_label to the V2 expression namespace (e.g. "steps.ID.field")
-_PHASE_TO_V2_NAMESPACE: dict[str, str] = {
+# Maps internal phase_label to the expression namespace (e.g. "steps.ID.field")
+_PHASE_TO_NAMESPACE: dict[str, str] = {
     "setup": "setup",
     "main": "steps",
     "cleanup": "teardown",
@@ -148,7 +148,7 @@ async def _resolve_and_run_step(
     monitor.log_event("step.completed", job_id=job_id, tck_id=context.job.tck_id, script=script.definition.id, step_id=step_def.id, result=step_result)
 
     if config.store_outputs:
-        step_namespace = _PHASE_TO_V2_NAMESPACE.get(config.phase_label)
+        step_namespace = _PHASE_TO_NAMESPACE.get(config.phase_label)
         store_step_outputs(step_def, step_result, context, step_namespace=step_namespace)
 
     return step_result.status == StepStatus.FAILED and config.failure_policy == FailurePolicy.STOP

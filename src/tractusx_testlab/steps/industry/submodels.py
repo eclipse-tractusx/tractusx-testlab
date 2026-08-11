@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import HttpTransportParams
 from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput, StepPayload
@@ -42,15 +42,9 @@ if TYPE_CHECKING:
 
 import uuid
 
-<<<<<<< HEAD
-=======
-@step("submodels/upload")
-class UploadBackendDataStep(BaseStep):
-    """Upload sample data to the backend under a unique UUID path.
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 class UploadBackendDataParams(HttpTransportParams):
-    """Input contract of ``submodels/upload``.
+    """Input contract of ``digital-twin/submodel/upload``.
 
     Only the transport half of an HTTP call: the step always POSTs to a URL it
     generates itself, so a ``method`` or ``url`` input would be a knob that
@@ -65,7 +59,7 @@ class UploadBackendDataParams(HttpTransportParams):
 
 
 class UploadBackendDataOutput(StepPayload):
-    """Output contract of ``submodels/upload``."""
+    """Output contract of ``digital-twin/submodel/upload``."""
 
     backend_url: str = Field(description="Full backend URL the data was uploaded to.")
     response: Any = Field(
@@ -74,7 +68,7 @@ class UploadBackendDataOutput(StepPayload):
 
 
 class UploadBackendDataExports(StepExports):
-    """Context variables published by ``submodels/upload``."""
+    """Context variables published by ``digital-twin/submodel/upload``."""
 
     backend_url: str = Field(
         alias=BACKEND_URL,
@@ -82,7 +76,7 @@ class UploadBackendDataExports(StepExports):
     )
 
 
-@step("submodels/upload")
+@step("digital-twin/submodel/upload")
 class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataOutput]):
     """Upload sample data to the backend under a unique UUID path.
 
@@ -99,7 +93,7 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
         self,
         params: UploadBackendDataParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[UploadBackendDataOutput]:
         unique_url = f"{params.backend_base_url.rstrip('/')}/urn:uuid:{uuid.uuid4()}"
         headers = {"Content-Type": "application/json", **params.headers}

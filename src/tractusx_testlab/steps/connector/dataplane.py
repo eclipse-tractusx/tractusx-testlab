@@ -26,12 +26,13 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 import requests
 from pydantic import AliasChoices, Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
     DataAddressPayload,
@@ -39,6 +40,7 @@ from tractusx_testlab.steps._contracts import (
     HttpBodyOutput,
     HttpCallParams,
     StepParams,
+    data_address_token,
 )
 from tractusx_testlab.steps.base import BaseStep, StepOutput
 from tractusx_testlab.syntax.context_vars import (
@@ -50,16 +52,12 @@ from tractusx_testlab.syntax.context_vars import (
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
+logger = logging.getLogger(__name__)
 
-<<<<<<< HEAD
+
 # ---------------------------------------------------------------------------
 # connector/dataplane/http_request
 # ---------------------------------------------------------------------------
-=======
-@step("connector/dataplane/http_request")
-class DataplaneCallStep(BaseStep):
-    """Fetch data from a data-plane endpoint using an EDR token."""
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class DataplaneCallParams(HttpCallParams):
@@ -109,7 +107,7 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
     output_model = HttpBodyOutput
 
     async def execute(
-        self, params: DataplaneCallParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: DataplaneCallParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
         url = params.endpoint_url(context.get_variable(DATAPLANE_ENDPOINT))
         token = params.token or context.get_variable(EDR_TOKEN)
@@ -134,15 +132,9 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
         )
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/consumer/get_edr
 # ---------------------------------------------------------------------------
-=======
-@step("connector/consumer/get_edr")
-class GetEdrStep(BaseStep):
-    """Retrieve the EDR entry for a completed transfer."""
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class GetEdrParams(StepParams):
@@ -155,6 +147,29 @@ class GetEdrParams(StepParams):
             "'transfer_id' context variable."
         ),
     )
+    verify: Optional[Any] = Field(
+        default=None,
+        description="TLS verification passed through to the SDK; None keeps its default.",
+    )
+
+
+def fetch_data_address(consumer: Any, transfer_id: Optional[str], verify: Any = None) -> Optional[dict]:
+    """Fetch the EDR data address for a transfer, or ``None`` if it cannot be read.
+
+    The one place that calls ``consumer.get_edr`` — ``connector/consumer/get_edr``
+    and ``connector/consumer/transfer_data`` both resolve a ``transfer_id`` and
+    then call this. An unreachable connector is reported as "no data address"
+    rather than raised: the caller still has whatever else it resolved (an EDR
+    entry, a negotiation), and a 404/500 in the step's response is how a script
+    asserts on the failure.
+    """
+    if not transfer_id:
+        return None
+    try:
+        return consumer.get_edr(transfer_id=transfer_id, verify=verify)
+    except ConnectionError:
+        logger.warning("Failed to retrieve EDR data address for transfer %s", transfer_id)
+        return None
 
 
 @step("connector/consumer/get_edr")
@@ -162,7 +177,9 @@ class GetEdrStep(BaseStep[GetEdrParams, DataAddressPayload]):
     """Retrieve the EDR data address for a completed transfer.
 
     Publishes the same data-plane pair as ``transfer_data``, so it can stand in
-    for that step when the transfer was started elsewhere.
+    for that step when the transfer was started elsewhere — ``transfer_data``
+    resolves a ``negotiation_id`` down to a ``transfer_id`` and then does exactly
+    what this step does.
     """
 
     params_model = GetEdrParams
@@ -170,13 +187,13 @@ class GetEdrStep(BaseStep[GetEdrParams, DataAddressPayload]):
     exports_model = DataplaneExports
 
     async def execute(
-        self, params: GetEdrParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: GetEdrParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[DataAddressPayload]:
         consumer = context.get_consumer_service()
         transfer_id = params.transfer_id or context.get_variable(TRANSFER_ID)
         url = context.get_consumer_endpoint_url("edrs", transfer_id, "dataaddress")
 
-        edr = consumer.get_edr(transfer_id=transfer_id)
+        edr = fetch_data_address(consumer, transfer_id, params.verify)
 
         return StepOutput(
             value=DataAddressPayload.of(edr),
@@ -184,6 +201,6 @@ class GetEdrStep(BaseStep[GetEdrParams, DataAddressPayload]):
             response=HttpResponse(status_code=200 if edr else 404, body=edr),
             exports=DataplaneExports(
                 dataplane_endpoint=(edr or {}).get("endpoint"),
-                edr_token=(edr or {}).get("authorization"),
+                edr_token=data_address_token(edr),
             ),
         )

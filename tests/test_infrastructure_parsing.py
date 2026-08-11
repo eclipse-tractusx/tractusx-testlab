@@ -19,7 +19,7 @@ from tractusx_testlab.scripting.parser import YamlParser
 
 def _doc() -> dict:
     return {
-        "syntax": "v2",
+        "syntax": "v1-alpha",
         "kind": "test",
         "id": "infra-doc",
         "namespace": "testlab.test",
@@ -56,7 +56,7 @@ class TestDataspaceParsing:
         from pydantic import ValidationError
 
         doc = _doc()
-        doc["dataspace"] = "saturn"  # legacy string form — must be a dict in v2
+        doc["dataspace"] = "saturn"  # legacy string form — must be a dict
 
         with pytest.raises(ValidationError):
             YamlParser.parse_script_from_dict(doc)

@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from pydantic import Field, model_validator
 
 from tractusx_sdk.dataspace.tools import DspTools
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
     DATASET_KEY,
@@ -114,7 +114,7 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogPayload]):
         self,
         params: QueryCatalogParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[CatalogPayload]:
         consumer = context.get_consumer_service()
         catalog = consumer.get_catalog_with_filter(
@@ -195,7 +195,7 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogPay
         self,
         params: QueryCatalogByAssetIdParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[CatalogPayload]:
         consumer = context.get_consumer_service()
         result = consumer.get_catalog_by_asset_id(
@@ -260,7 +260,7 @@ class QueryCatalogByBpnlStep(BaseStep[QueryCatalogByBpnlParams, CatalogPayload])
         self,
         params: QueryCatalogByBpnlParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[CatalogPayload]:
         consumer = context.get_consumer_service()
         result = consumer.get_catalog_with_bpnl(

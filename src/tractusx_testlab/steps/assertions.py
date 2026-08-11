@@ -35,7 +35,7 @@ from tractusx_testlab.models import (
     StepResult,
     ValueSource,
 )
-from tractusx_testlab.models.authoring.definitions import AssertionV2
+from tractusx_testlab.models.authoring.definitions import Assertion
 from tractusx_testlab.models.primitives.enums import AssertionType
 from tractusx_testlab.steps import _checks
 from tractusx_testlab.steps._checks.extraction import (
@@ -50,7 +50,7 @@ from tractusx_testlab.steps._checks.extraction import (
 )
 
 
-# Maps v2 assertion ``uses`` identifiers to ``AssertionType`` enum values.
+# Maps assertion ``uses`` identifiers to ``AssertionType`` enum values.
 _USES_TO_TYPE: dict[str, AssertionType] = {
     "assert/not_null": AssertionType.NOT_NULL,
     "assert/not_empty": AssertionType.NOT_EMPTY,
@@ -83,8 +83,8 @@ _USES_TO_TYPE: dict[str, AssertionType] = {
 }
 
 
-def _extract_params(assertion: AssertionV2) -> dict:
-    """Extract runtime parameters from an ``AssertionV2.with_`` dict."""
+def _extract_params(assertion: Assertion) -> dict:
+    """Extract runtime parameters from an ``Assertion.with_`` dict."""
     return assertion.with_ or {}
 
 
@@ -115,8 +115,8 @@ def _apply_inline_operator(operator: str, actual: object, expected: object) -> t
     return False, f"Unknown operator: {operator!r}"
 
 
-def _assertion_type(a: AssertionV2) -> AssertionType:
-    """Resolve AssertionType from ``AssertionV2.uses`` string."""
+def _assertion_type(a: Assertion) -> AssertionType:
+    """Resolve AssertionType from ``Assertion.uses`` string."""
     resolved = _USES_TO_TYPE.get(a.uses)
     if resolved is None:
         try:
@@ -131,7 +131,7 @@ class AssertionEngine:
 
     @staticmethod
     def evaluate(
-        assertions: list[AssertionV2],
+        assertions: list[Assertion],
         output: object,
         context_vars: Optional[dict[str, object]] = None,
     ) -> list[AssertionResult]:
@@ -142,7 +142,7 @@ class AssertionEngine:
 
     @staticmethod
     def _evaluate_one(
-        assertion: AssertionV2,
+        assertion: Assertion,
         output: object,
         context_vars: dict[str, object],
     ) -> AssertionResult:
@@ -187,13 +187,9 @@ class AssertionEngine:
             severity=severity,
         )
 
-    # ------------------------------------------------------------------
-    # Individual assertion checks — delegated to _checks module
-    # ------------------------------------------------------------------
-
     @staticmethod
     def _resolve_expected(
-        assertion: AssertionV2,
+        assertion: Assertion,
         a_type: AssertionType,
         params: dict,
         context_vars: dict[str, object],
@@ -220,7 +216,7 @@ class AssertionEngine:
 
     @staticmethod
     def _evaluate_inline_validate_assert(
-        assertion: "AssertionV2",
+        assertion: "Assertion",
         output: object,
         params: dict,
         context_vars: dict[str, object],
@@ -251,7 +247,7 @@ class AssertionEngine:
         return extract_path(output, path)
 
     # Keep old name as internal alias for backward compatibility
-    _extract_actual = extract_path
+    _extract_actual = staticmethod(extract_path)
 
     @staticmethod
     def has_hard_failure(results: list[AssertionResult]) -> bool:

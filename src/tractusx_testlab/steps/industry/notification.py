@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Any, Optional
 import httpx
 from pydantic import AliasChoices, ConfigDict, Field, model_validator
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import StepParams
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload, StepValue
@@ -46,7 +46,6 @@ _logger = logging.getLogger(__name__)
 #: Metadata keys copied into the body when a script passes them alongside it.
 _NOTIFICATION_METADATA = ("notification_id", "sender_bpn", "recipient_bpn", "type", "status")
 
-<<<<<<< HEAD
 
 class ProviderParams(StepParams):
     """The provider a notification step talks to."""
@@ -58,12 +57,12 @@ class ProviderParams(StepParams):
 
 
 # ---------------------------------------------------------------------------
-# notifications/send
+# notification/consumer/send
 # ---------------------------------------------------------------------------
 
 
 class SendNotificationParams(ProviderParams):
-    """Input contract of ``notifications/send``.
+    """Input contract of ``notification/consumer/send``.
 
     Two modes share one step.  Giving ``dataplane_url`` picks the direct mode,
     which POSTs straight at a data-plane the DSP flow already opened; leaving it
@@ -119,7 +118,7 @@ class SendNotificationParams(ProviderParams):
 
 
 class SendNotificationOutput(StepPayload):
-    """Output contract of ``notifications/send``.
+    """Output contract of ``notification/consumer/send``.
 
     Whatever the receiver answered, plus — in direct mode — the status code it
     answered with, so a script can assert on it without reaching into the HTTP
@@ -133,12 +132,8 @@ class SendNotificationOutput(StepPayload):
     )
 
 
-@step("notifications/send")
+@step("notification/consumer/send")
 class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutput]):
-=======
-@step("notifications/send")
-class SendNotificationStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Send a notification through the dataspace.
 
     Supports two modes:
@@ -153,7 +148,7 @@ class SendNotificationStep(BaseStep):
         self,
         params: SendNotificationParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[SendNotificationOutput]:
         if params.is_direct:
             return await self._execute_dataplane_direct(params)
@@ -213,14 +208,13 @@ class SendNotificationStep(BaseStep):
         )
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
-# notifications/discover_assets
+# notification/consumer/discover_assets
 # ---------------------------------------------------------------------------
 
 
 class DiscoverNotificationAssetsParams(ProviderParams):
-    """Input contract of ``notifications/discover_assets``."""
+    """Input contract of ``notification/consumer/discover_assets``."""
 
     timeout: float = Field(default=60, gt=0, description="Discovery timeout in seconds.")
 
@@ -229,14 +223,10 @@ class NotificationAssetsOutput(StepValue[Any]):
     """The notification datasets found in the provider's catalog."""
 
 
-@step("notifications/discover_assets")
+@step("notification/consumer/discover_assets")
 class DiscoverNotificationAssetsStep(
     BaseStep[DiscoverNotificationAssetsParams, NotificationAssetsOutput]
 ):
-=======
-@step("notifications/discover_assets")
-class DiscoverNotificationAssetsStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Discover notification assets in a provider catalog."""
 
     params_model = DiscoverNotificationAssetsParams
@@ -246,7 +236,7 @@ class DiscoverNotificationAssetsStep(BaseStep):
         self,
         params: DiscoverNotificationAssetsParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[NotificationAssetsOutput]:
         notif_service = context.get_notification_service()
         datasets = notif_service.discover_notification_assets(

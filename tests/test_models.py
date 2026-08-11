@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Tests for Pydantic definition models (V2: StepDefinitionV2, ScriptDefinitionV2, etc.)."""
+"""Tests for Pydantic definition models (StepDefinition, ScriptDefinition, etc.)."""
 
 from __future__ import annotations
 
@@ -30,12 +30,12 @@ import pytest
 from pydantic import ValidationError
 
 from tractusx_testlab.models.authoring.definitions import (
-    AssertionV2,
+    Assertion,
     MetadataDefinition,
-    ScriptDefinitionV2,
+    ScriptDefinition,
     ServiceDefinition,
-    StepDefinitionV2,
-    TckDefinitionV2,
+    StepDefinition,
+    TckDefinition,
     TckMetadataDefinition,
     TckTestEntry,
     VariableDefinition,
@@ -46,17 +46,17 @@ from tractusx_testlab.models.primitives.enums import (
 )
 
 
-class TestStepDefinitionV2:
-    """Tests for StepDefinitionV2 model validation."""
+class TestStepDefinition:
+    """Tests for StepDefinition model validation."""
 
     def test_minimal_step_only_requires_uses(self) -> None:
-        step = StepDefinitionV2(uses="connector/provider/create_asset")
+        step = StepDefinition(uses="connector/provider/create_asset")
         assert step.uses == "connector/provider/create_asset"
         assert step.with_ is None
         assert (step.validate or []) == []
 
     def test_step_with_all_fields(self) -> None:
-        step = StepDefinitionV2(
+        step = StepDefinition(
             uses="http/http_request",
             name="Call API",
             description="Calls an external API",
@@ -69,54 +69,54 @@ class TestStepDefinitionV2:
         assert step.timeout_s == 30.0
 
     def test_step_default_failure_policy_is_abort(self) -> None:
-        step = StepDefinitionV2(uses="any_step")
+        step = StepDefinition(uses="any_step")
         assert step.on_failure == FailurePolicy.ABORT
 
     def test_step_with_assertions(self) -> None:
-        step = StepDefinitionV2(
+        step = StepDefinition(
             uses="http/http_request",
             validate=[
-                AssertionV2(uses="assert/status_code", **{"with": {"value": 200}}),
-                AssertionV2(uses="assert/not_null", **{"with": {"output": "body"}}),
+                Assertion(uses="assert/status_code", **{"with": {"value": 200}}),
+                Assertion(uses="assert/not_null", **{"with": {"output": "body"}}),
             ],
         )
         assert len(step.validate) == 2
         assert step.validate[0].uses == "assert/status_code"
 
 
-class TestScriptDefinitionV2:
-    """Tests for ScriptDefinitionV2 model validation."""
+class TestScriptDefinition:
+    """Tests for ScriptDefinition model validation."""
 
     def test_minimal_script(self) -> None:
-        script = ScriptDefinitionV2(
-            syntax="v2",
+        script = ScriptDefinition(
+            syntax="v1-alpha",
             id="my-test-id",
             namespace="my-ns",
             metadata=MetadataDefinition(name="My Test"),
             execution=[],
         )
         assert script.metadata.name == "My Test"
-        assert script.syntax == "v2"
+        assert script.syntax == "v1-alpha"
 
     def test_script_with_steps(self) -> None:
-        script = ScriptDefinitionV2(
-            syntax="v2",
+        script = ScriptDefinition(
+            syntax="v1-alpha",
             id="s1",
             namespace="ns",
             metadata=MetadataDefinition(name="With Steps"),
-            execution=[StepDefinitionV2(uses="connector/provider/create_asset")],
+            execution=[StepDefinition(uses="connector/provider/create_asset")],
         )
         assert len(script.execution) == 1
 
     def test_script_all_phases(self) -> None:
-        script = ScriptDefinitionV2(
-            syntax="v2",
+        script = ScriptDefinition(
+            syntax="v1-alpha",
             id="full",
             namespace="ns",
             metadata=MetadataDefinition(name="Full"),
-            setup=[StepDefinitionV2(uses="connector/provider/create_asset")],
-            execution=[StepDefinitionV2(uses="http/http_request")],
-            teardown=[StepDefinitionV2(uses="connector/provider/delete_asset")],
+            setup=[StepDefinition(uses="connector/provider/create_asset")],
+            execution=[StepDefinition(uses="http/http_request")],
+            teardown=[StepDefinition(uses="connector/provider/delete_asset")],
         )
         assert len(script.setup) == 1
         assert len(script.execution) == 1
@@ -124,7 +124,7 @@ class TestScriptDefinitionV2:
 
     def test_script_missing_metadata_raises(self) -> None:
         with pytest.raises(ValidationError):
-            ScriptDefinitionV2(syntax="v2", id="x", namespace="ns")  # type: ignore[call-arg]
+            ScriptDefinition(syntax="v1-alpha", id="x", namespace="ns")  # type: ignore[call-arg]
 
 
 class TestServiceDefinition:
@@ -144,15 +144,15 @@ class TestServiceDefinition:
             ServiceDefinition(name="bad")  # type: ignore[call-arg]
 
 
-class TestTckDefinitionV2:
-    """Tests for TckDefinitionV2 model."""
+class TestTckDefinition:
+    """Tests for TckDefinition model."""
 
     def test_tck_minimal(self) -> None:
-        tck = TckDefinitionV2(
-            syntax="v2",
+        tck = TckDefinition(
+            syntax="v1-alpha",
             id="ccm-tck",
             metadata=TckMetadataDefinition(name="CCM TCK"),
             tests=[TckTestEntry(id="test.yaml")],
         )
         assert tck.metadata.name == "CCM TCK"
-        assert tck.syntax == "v2"
+        assert tck.syntax == "v1-alpha"

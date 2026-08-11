@@ -64,6 +64,19 @@ router.include_router(streaming_router)
 router.include_router(compile_router)
 router.include_router(callback_router)
 
+# Background task references — prevents garbage collection and logs exceptions
+_background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+
+
+def _on_task_done(task: asyncio.Task) -> None:  # type: ignore[type-arg]
+    """Remove completed task from the tracking set and log any unhandled exceptions."""
+    _background_tasks.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        _logger.exception("Background execution task failed: %s", exc, exc_info=exc)
+
 
 def _get_player(request: Request) -> TestlabPlayer:
     return request.app.state.player

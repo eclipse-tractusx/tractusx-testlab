@@ -38,7 +38,7 @@ from tractusx_testlab.scripting.script import Tck
 
 
 _SINGLE_SCRIPT_YAML = """\
-syntax: v2
+syntax: v1-alpha
 kind: test
 id: test-inspect-single
 namespace: testlab.test
@@ -72,7 +72,7 @@ teardown:
 """
 
 _TCK_WITH_TWO_SCRIPTS = """\
-syntax: v2
+syntax: v1-alpha
 kind: tck
 id: tck-inspect
 namespace: testlab.test
@@ -87,7 +87,7 @@ tests:
 """
 
 _SCRIPT_A_YAML = """\
-syntax: v2
+syntax: v1-alpha
 kind: test
 id: script-a
 namespace: testlab.test
@@ -101,7 +101,7 @@ execution:
 """
 
 _SCRIPT_B_YAML = """\
-syntax: v2
+syntax: v1-alpha
 kind: test
 id: script-b
 namespace: testlab.test

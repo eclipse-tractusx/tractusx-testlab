@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import jsonschema
 from pydantic import AliasChoices, Field
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepValue
 
@@ -129,7 +129,7 @@ class ValidateAssertStep(BaseStep[ValidateAssertParams, AssertedValueOutput]):
         self,
         params: ValidateAssertParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[AssertedValueOutput]:
         passed, message = _check(params.operator, params.input, params.value)
         if not passed:
@@ -168,7 +168,7 @@ class ValidateFieldStep(BaseStep[ValidateFieldParams, AssertedValueOutput]):
         self,
         params: ValidateFieldParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[AssertedValueOutput]:
         actual = _get_nested(params.input, params.path) if params.path else params.input
         passed, message = _check(params.operator, actual, params.value)
@@ -238,7 +238,7 @@ class ValidateSchemaStep(BaseStep[ValidateSchemaParams, ValidatedPayloadOutput])
         self,
         params: ValidateSchemaParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[ValidatedPayloadOutput]:
         payload = _coerce_json(params.input, "input")
         schema = _coerce_json(params.json_schema, "schema")

@@ -48,7 +48,7 @@ def _write_yaml(tmp_path: Path, content: dict, name: str = "script.yaml") -> Pat
 
 
 def _minimal_script() -> dict:
-    """Return a minimal valid v2 script dict."""
+    """Return a minimal valid script dict."""
     return {
         "syntax": "v1-alpha",
         "kind": "test",
@@ -59,7 +59,6 @@ def _minimal_script() -> dict:
     }
 
 
-<<<<<<< HEAD
 def _write_script(tmp_path: Path, execution_steps: list | None = None) -> Path:
     return _write_yaml(tmp_path, _minimal_script_dict(execution_steps))
 
@@ -77,9 +76,9 @@ def _write_yaml(tmp_path: Path, content: dict, name: str = "script.yaml") -> Pat
 
 
 def _test_script(execution_steps: list | None = None) -> dict:
-    """Return a minimal valid v2 test script dict."""
+    """Return a minimal valid test script dict."""
     return {
-        "syntax": "v2",
+        "syntax": "v1-alpha",
         "kind": "test",
         "id": "minimal-test",
         "namespace": "minimal-tck",
@@ -89,7 +88,7 @@ def _test_script(execution_steps: list | None = None) -> dict:
 
 
 def _tck_manifest(test_filename: str = "minimal-test.yaml") -> dict:
-    """Return a minimal valid v2 TCK manifest dict referencing one test file."""
+    """Return a minimal valid TCK manifest dict referencing one test file."""
     return {
         "syntax": "v1-alpha",
         "kind": "tck",
@@ -113,8 +112,6 @@ def _write_tck(tmp_path: Path, execution_steps: list | None = None) -> Path:
     return _write_yaml(tmp_path, _tck_manifest("minimal-test.yaml"), "tck.yaml")
 
 
-=======
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -139,11 +136,7 @@ class TestCompilerValidation:
         # Arrange
         script = _minimal_script()
         script["execution"] = [
-<<<<<<< HEAD
             {"uses": "util/generate_uuid", "id": "gen_id"},
-=======
-            {"uses": "util/export_env", "with": {"name": "test_var"}},
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
         ]
         script_path = _write_yaml(tmp_path, script)
         compiler = Compiler()

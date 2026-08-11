@@ -34,7 +34,7 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, ValidationError
 from tractusx_testlab.models import (
     HttpRequest,
     HttpResponse,
-    StepDefinitionV2,
+    StepDefinition,
 )
 
 if TYPE_CHECKING:
@@ -216,7 +216,7 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
         self,
         params: ParamsT,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[PayloadT]:
         """Run the step logic.
 
@@ -234,7 +234,7 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
         self,
         raw_params: dict,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[Any]:
         """Bind *raw_params* to the input contract, run the step, bind the output.
 

@@ -32,7 +32,7 @@ import yaml
 
 import tractusx_testlab.steps  # noqa: F401 — trigger @step registrations
 from tractusx_testlab.compiler.validation._expressions import resolve_expression
-from tractusx_testlab.models.authoring.definitions import AssertionV2, ServiceDefinition
+from tractusx_testlab.models.authoring.definitions import Assertion, ServiceDefinition
 from tractusx_testlab.models.authoring.infrastructure import DataspaceContext
 from tractusx_testlab.models.primitives.enums import ServiceType
 from tractusx_testlab.scripting import StepRegistry
@@ -111,18 +111,18 @@ class TestCcmIndexParsing:
 
 
 class TestCompactAssertionParsing:
-    """V2 AssertionV2 model construction with uses + with parameters."""
+    """Assertion model construction with uses + with parameters."""
 
     def test_not_null_assertion_sets_uses_and_output(self) -> None:
 
-        assertion = AssertionV2(uses="assert/not_null", **{"with": {"output": "body.certificateId"}})
+        assertion = Assertion(uses="assert/not_null", **{"with": {"output": "body.certificateId"}})
 
         assert assertion.uses == "assert/not_null"
         assert (assertion.with_ or {}).get("output") == "body.certificateId"
 
     def test_equals_assertion_sets_uses_value_and_output(self) -> None:
 
-        assertion = AssertionV2(uses="assert/equals", **{"with": {"output": "status", "value": 200}})
+        assertion = Assertion(uses="assert/equals", **{"with": {"output": "status", "value": 200}})
 
         assert assertion.uses == "assert/equals"
         assert (assertion.with_ or {}).get("value") == 200

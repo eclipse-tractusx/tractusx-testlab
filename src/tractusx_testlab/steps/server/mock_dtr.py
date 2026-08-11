@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import MockRequest, MockResponse, register_mock
 from tractusx_testlab.steps._contracts import NoOutput
@@ -98,7 +98,7 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
     output_model = NoOutput
 
     async def execute(
-        self, params: MockDtrParams, context: "StepContext", definition: StepDefinitionV2,
+        self, params: MockDtrParams, context: "StepContext", definition: StepDefinition,
     ) -> StepOutput[NoOutput]:
         shells: list[dict] = list(params.shells)
 

@@ -98,7 +98,7 @@ def store_step_outputs(
     """Persist step outputs into context variables when returns is configured.
 
     Stores each return field both flat (``field``) and, when *step_namespace* and
-    ``step_def.id`` are set, as a V2 namespaced key (``{ns}.{id}.{field}``).
+    ``step_def.id`` are set, as a namespaced key (``{ns}.{id}.{field}``).
     """
     if step_result.output is None:
         return

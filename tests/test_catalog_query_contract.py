@@ -28,7 +28,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.base import StepOutput
 from tractusx_testlab.steps.connector.catalog_query import (
     CatalogPayload,
@@ -55,8 +55,8 @@ _CATALOG = {
 }
 
 
-def _definition(uses: str) -> StepDefinitionV2:
-    return StepDefinitionV2(id="q", uses=uses)
+def _definition(uses: str) -> StepDefinition:
+    return StepDefinition(id="q", uses=uses)
 
 
 def _with_consumer(context: MagicMock, consumer: MagicMock) -> MagicMock:

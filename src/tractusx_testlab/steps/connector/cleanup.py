@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import NoOutput
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams
@@ -44,7 +44,6 @@ logger = logging.getLogger(__name__)
 #: Status reported when the connector answers a delete with no body.
 _DELETED = 204
 
-<<<<<<< HEAD
 
 # ---------------------------------------------------------------------------
 # connector/provider/delete_asset
@@ -62,17 +61,13 @@ class DeleteAssetParams(StepParams):
 
 @step("connector/provider/delete_asset")
 class DeleteAssetStep(BaseStep[DeleteAssetParams, NoOutput]):
-=======
-@step("connector/provider/delete_asset")
-class DeleteAssetStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Delete an asset from the provider connector."""
 
     params_model = DeleteAssetParams
     output_model = NoOutput
 
     async def execute(
-        self, params: DeleteAssetParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: DeleteAssetParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[NoOutput]:
         provider = context.get_provider_service()
         asset_id = params.asset_id or context.get_variable("asset_id")
@@ -88,7 +83,6 @@ class DeleteAssetStep(BaseStep):
         )
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/provider/delete_policy
 # ---------------------------------------------------------------------------
@@ -105,17 +99,13 @@ class DeletePolicyParams(StepParams):
 
 @step("connector/provider/delete_policy")
 class DeletePolicyStep(BaseStep[DeletePolicyParams, NoOutput]):
-=======
-@step("connector/provider/delete_policy")
-class DeletePolicyStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Delete a policy definition from the provider connector."""
 
     params_model = DeletePolicyParams
     output_model = NoOutput
 
     async def execute(
-        self, params: DeletePolicyParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: DeletePolicyParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[NoOutput]:
         provider = context.get_provider_service()
         policy_id = params.policy_id or context.get_variable("policy_id")
@@ -131,15 +121,9 @@ class DeletePolicyStep(BaseStep):
         )
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/provider/delete_contract_definition
 # ---------------------------------------------------------------------------
-=======
-@step("connector/provider/delete_contract_definition")
-class DeleteContractDefinitionStep(BaseStep):
-    """Delete a contract definition from the provider connector."""
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class DeleteContractDefinitionParams(StepParams):
@@ -169,7 +153,7 @@ class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, NoOu
         self,
         params: DeleteContractDefinitionParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[NoOutput]:
         provider = context.get_provider_service()
         contract_id = params.contract_definition_id or context.get_variable(

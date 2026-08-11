@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Optional
 
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
     CatalogDatasetsExports,
@@ -91,7 +91,7 @@ class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, Filter
         self,
         params: QueryCatalogWithFiltersParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[FilteredCatalogOutput]:
         consumer = context.get_consumer_service()
         filter_expression = [

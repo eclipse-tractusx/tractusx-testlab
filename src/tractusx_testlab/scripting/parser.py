@@ -39,13 +39,13 @@ from pydantic import TypeAdapter
 
 from tractusx_testlab.models.authoring.definitions import (
     ScriptDefinition,
-    ScriptDefinitionV2,
+    ScriptDefinition,
     TckDefinition,
-    TckDefinitionV2,
+    TckDefinition,
 )
 
-_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinitionV2] = TypeAdapter(ScriptDefinition)  # type: ignore[assignment]
-_TCK_ADAPTER: TypeAdapter[TckDefinitionV2] = TypeAdapter(TckDefinition)  # type: ignore[assignment]
+_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinition] = TypeAdapter(ScriptDefinition)  # type: ignore[assignment]
+_TCK_ADAPTER: TypeAdapter[TckDefinition] = TypeAdapter(TckDefinition)  # type: ignore[assignment]
 
 _INCLUDE_PREFIX = "!include "
 
@@ -63,36 +63,36 @@ def _normalize_discriminator(data: dict, path: Path) -> dict:
     """Validate that the ``syntax`` discriminator key is present."""
     if "syntax" not in data:
         raise ValueError(
-            f"Error in {path}: Missing mandatory field 'syntax'. Expected 'syntax: v2'."
+            f"Error in {path}: Missing mandatory field 'syntax'. Expected 'syntax: v1-alpha'."
         )
     return data
 
 
 class YamlParser:
-    """Parses YAML test scripts and TCK manifests into v2 definition models."""
+    """Parses YAML test scripts and TCK manifests into definition models."""
 
     @staticmethod
-    def parse_script(path: Path) -> ScriptDefinitionV2:
-        """Parse a script YAML file into a ``ScriptDefinitionV2``."""
+    def parse_script(path: Path) -> ScriptDefinition:
+        """Parse a script YAML file into a ``ScriptDefinition``."""
         data = _load_yaml(path)
         normalized = _normalize_discriminator(data, path)
         return _SCRIPT_ADAPTER.validate_python(normalized)
 
     @staticmethod
-    def parse_tck(path: Path) -> TckDefinitionV2:
-        """Parse a TCK manifest YAML file into a ``TckDefinitionV2``."""
+    def parse_tck(path: Path) -> TckDefinition:
+        """Parse a TCK manifest YAML file into a ``TckDefinition``."""
         data = _load_yaml(path)
         normalized = _normalize_discriminator(data, path)
         return _TCK_ADAPTER.validate_python(normalized)
 
     @staticmethod
-    def parse_script_from_dict(data: dict, path: Optional[Path] = None) -> ScriptDefinitionV2:
+    def parse_script_from_dict(data: dict, path: Optional[Path] = None) -> ScriptDefinition:
         """Parse a script from an already-loaded YAML dict."""
         normalized = _normalize_discriminator(data, path or Path("<dict>"))
         return _SCRIPT_ADAPTER.validate_python(normalized)
 
     @staticmethod
-    def parse_tck_from_dict(data: dict, path: Optional[Path] = None) -> TckDefinitionV2:
+    def parse_tck_from_dict(data: dict, path: Optional[Path] = None) -> TckDefinition:
         """Parse a TCK from an already-loaded YAML dict."""
         normalized = _normalize_discriminator(data, path or Path("<dict>"))
         return _TCK_ADAPTER.validate_python(normalized)

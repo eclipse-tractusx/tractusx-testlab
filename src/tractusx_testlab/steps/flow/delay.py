@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import NoOutput
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams
@@ -61,7 +61,7 @@ class DelayStep(BaseStep[DelayParams, NoOutput]):
     output_model = NoOutput
 
     async def execute(
-        self, params: DelayParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: DelayParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[NoOutput]:
         await asyncio.sleep(params.seconds)
         return StepOutput(value=NoOutput(None))

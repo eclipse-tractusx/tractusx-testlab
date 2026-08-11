@@ -39,7 +39,7 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import StoreInVariableParams
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepValue
@@ -79,7 +79,6 @@ def _decode(text: str, *, url_safe: bool) -> str:
     return raw.decode(_ENCODINGS)
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # util/base64
 # ---------------------------------------------------------------------------
@@ -114,10 +113,6 @@ class Base64Output(StepValue[str]):
 
 @step("util/base64")
 class Base64Step(BaseStep[Base64Params, Base64Output]):
-=======
-@step("util/base64")
-class Base64Step(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Encode or decode a string with base64 / base64url.
 
     The motivating case is the AAS Digital Twin Registry, whose API wants an
@@ -128,7 +123,7 @@ class Base64Step(BaseStep):
     output_model = Base64Output
 
     async def execute(
-        self, params: Base64Params, context: "StepContext", definition: StepDefinitionV2,
+        self, params: Base64Params, context: "StepContext", definition: StepDefinition,
     ) -> StepOutput[Base64Output]:
         if params.mode == "encode":
             result = _encode(

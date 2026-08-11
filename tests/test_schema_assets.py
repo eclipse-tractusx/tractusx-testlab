@@ -32,11 +32,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.models.authoring.definitions import (
     EnvDefinition,
     SchemaDefinition,
-    TckDefinitionV2,
+    TckDefinition,
     TckMetadataDefinition,
 )
 from tractusx_testlab.models.authoring.definitions import (
@@ -66,9 +66,9 @@ def context() -> StepContext:
 
 
 def _make_tck(base_dir: Path) -> Tck:
-    definition = TckDefinitionV2(
+    definition = TckDefinition(
         kind="tck",
-        syntax="v2",
+        syntax="v1-alpha",
         id="asset-tck",
         metadata=TckMetadataDefinition(name="Asset TCK", version="1.0.0"),
         env=EnvDefinition(
@@ -140,8 +140,8 @@ class TestValidateSchemaStep:
         return cls()
 
     @staticmethod
-    def _definition() -> StepDefinitionV2:
-        return StepDefinitionV2(id="validate_1", uses="validate/schema")
+    def _definition() -> StepDefinition:
+        return StepDefinition(id="validate_1", uses="validate/schema")
 
     @pytest.mark.asyncio
     async def test_valid_payload_passes(self, context: StepContext) -> None:

@@ -38,7 +38,7 @@ import yaml
 from fastapi import APIRouter, FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from tractusx_testlab.models.authoring.definitions import ScriptDefinitionV2, TckDefinitionV2
+from tractusx_testlab.models.authoring.definitions import ScriptDefinition, TckDefinition
 from tractusx_testlab.scripting.parser import YamlParser
 from tractusx_testlab.scripting.script import Tck, TestScript
 
@@ -69,17 +69,17 @@ def simple_tck_data(simple_tck_yaml: str) -> dict:
 
 
 class TestTckParseCompilePipeline:
-    """Verify the full parse → TckDefinitionV2 pipeline with a real YAML fixture."""
+    """Verify the full parse → TckDefinition pipeline with a real YAML fixture."""
 
     def test_parse_tck_from_dict_returns_tck_definition(
         self, simple_tck_data: dict,
     ) -> None:
-        """YamlParser.parse_tck_from_dict produces a valid TckDefinitionV2."""
+        """YamlParser.parse_tck_from_dict produces a valid TckDefinition."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)
 
-        assert isinstance(definition, TckDefinitionV2)
+        assert isinstance(definition, TckDefinition)
         assert definition.metadata.name == "simple-ping-test"
-        assert definition.syntax == "v2"
+        assert definition.syntax == "v1-alpha"
 
     def test_tck_definition_contains_test_paths(
         self, simple_tck_data: dict,

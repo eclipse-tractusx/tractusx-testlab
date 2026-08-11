@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import CounterPartyParams
 from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput, StepPayload
@@ -40,15 +40,9 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/consumer/negotiate_contract
 # ---------------------------------------------------------------------------
-=======
-@step("connector/consumer/negotiate_contract")
-class NegotiateContractStep(BaseStep):
-    """Start an EDR contract negotiation with the provider via the SDK."""
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class NegotiateContractParams(CounterPartyParams):
@@ -108,7 +102,7 @@ class NegotiateContractStep(BaseStep[NegotiateContractParams, NegotiationOutput]
         self,
         params: NegotiateContractParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[NegotiationOutput]:
         consumer = context.get_consumer_service()
         counter_party_address = params.counter_party_address or context.get_variable(

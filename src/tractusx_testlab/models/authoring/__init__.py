@@ -25,18 +25,18 @@
 """Authoring-time structures: script, step, service and TCK definitions."""
 
 from tractusx_testlab.models.authoring.definitions import (
-    AssertionV2,
+    Assertion,
     EnvDefinition,
     ImportDefinition,
     MetadataDefinition,
     ReturnFieldDefinition,
     SchemaDefinition,
     ScriptDefinition,
-    ScriptDefinitionV2,
+    ScriptDefinition,
     ServiceDefinition,
-    StepDefinitionV2,
+    StepDefinition,
     TckDefinition,
-    TckDefinitionV2,
+    TckDefinition,
     TckMetadataDefinition,
     TestDataDefinition,
     VariableDefinition,
@@ -49,7 +49,7 @@ from tractusx_testlab.models.authoring.infrastructure import (
 )
 
 __all__ = [
-    "AssertionV2",
+    "Assertion",
     "CapabilityRequirement",
     "DataspaceContext",
     "EnvDefinition",
@@ -59,12 +59,12 @@ __all__ = [
     "ReturnFieldDefinition",
     "SchemaDefinition",
     "ScriptDefinition",
-    "ScriptDefinitionV2",
+    "ScriptDefinition",
     "ServiceDefinition",
     "Standard",
-    "StepDefinitionV2",
+    "StepDefinition",
     "TckDefinition",
-    "TckDefinitionV2",
+    "TckDefinition",
     "TckMetadataDefinition",
     "TestDataDefinition",
     "VariableDefinition",

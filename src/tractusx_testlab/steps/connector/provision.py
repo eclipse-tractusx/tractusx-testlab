@@ -33,10 +33,9 @@ from typing import TYPE_CHECKING, Any, Optional
 from pydantic import AliasChoices, Field, field_validator, model_validator
 
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import ServiceParams
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -61,7 +60,26 @@ def _as_id(value: Any, *keys: str) -> str:
     return str(value) if value else ""
 
 
-<<<<<<< HEAD
+def _config_object(value: Any, key: str) -> dict:
+    """Read a config object that may arrive wrapped in the variable that holds it.
+
+    Wiring ``${{ env.ccm_asset }}`` instead of ``${{ env.ccm_asset.asset }}``
+    passes the whole variable, so the object is picked out of it here rather
+    than making every script spell out the return key.
+    """
+    if not isinstance(value, dict):
+        return {}
+    inner = value.get(key)
+    return inner if isinstance(inner, dict) else value
+
+
+def _iri(value: Any) -> Optional[str]:
+    """Read an IRI that may be spelled bare or as a JSON-LD ``{"@id": …}``."""
+    if isinstance(value, dict):
+        value = value.get("@id")
+    return str(value) if value else None
+
+
 def _create_or_conflict(create, **kwargs) -> tuple[Optional[dict], int]:
     """Run a provider create call, treating a 409 as "already there, carry on"."""
     try:
@@ -78,57 +96,67 @@ def _create_or_conflict(create, **kwargs) -> tuple[Optional[dict], int]:
 # ---------------------------------------------------------------------------
 
 
-class CreateAssetParams(ServiceParams):
+class CreateAssetParams(StepParams):
     """Input contract of ``connector/provider/create_asset``.
 
-    Accepts both spellings a script may use: the canonical flat one
+    The asset arrives as one object rather than as a dozen flat fields: it is
+    declared once in the manifest's ``env.variables`` with
+    ``uses: config/connector/asset`` and wired in as
+    ``asset: ${{ env.<id>.asset }}``.
+
+    Inside that object both spellings are accepted: the canonical flat one
     (``asset_id``, ``dct_type``, ``version``) and the CCM one (``name`` plus a
     ``properties`` block carrying ``dct:type`` and ``cx-common:version``).
     """
 
     asset_id: str = Field(
         default="",
-        description="Asset ID; derived from 'name', or a fresh UUID, when omitted.",
+        description=(
+            "Asset ID; read from the asset config, derived from its 'name', or a "
+            "fresh UUID, when omitted."
+        ),
     )
-    name: str = Field(
-        default="",
-        description="Human-readable asset name; its slug becomes the asset ID.",
-    )
-    properties: dict = Field(
+    asset: dict = Field(
         default_factory=dict,
-        description="CCM property block; 'dct:type' and 'cx-common:version' are read from it.",
+        description=(
+            "The whole asset definition, as declared by a 'config/connector/asset' "
+            "manifest variable and referenced as '${{ env.<id>.asset }}'. Carries "
+            "'base_url', 'dct_type' or 'properties', 'version', 'semantic_id', "
+            "'proxy_params', 'headers', 'private_properties' and an optional '@context'."
+        ),
     )
-    base_url: str = Field(default="", description="Backend URL the asset proxies to.")
-    dct_type: Optional[str] = Field(default=None, description="Asset type as a DCT type IRI.")
-    version: str = Field(default="3.0", description="Asset version.")
-    semantic_id: Optional[str] = Field(
-        default=None, description="Semantic model IRI the asset's data conforms to."
-    )
-    proxy_params: Optional[dict] = Field(
-        default=None, description="Data-plane proxy settings, e.g. path/method forwarding."
-    )
-    headers: Optional[dict] = Field(
-        default=None, description="Headers the data plane sends to the backend."
-    )
-    private_properties: Optional[dict] = Field(
-        default=None, description="Properties kept out of the published catalog."
-    )
-    context: Optional[Any] = Field(default=None, description="JSON-LD context override.")
+
+    @field_validator("asset", mode="before")
+    @classmethod
+    def _unwrap_asset(cls, value: Any) -> Any:
+        return _config_object(value, "asset")
 
     @model_validator(mode="after")
-    def _fill_from_ccm_shape(self) -> "CreateAssetParams":
-        """Derive the canonical fields the SDK wants from whichever shape arrived."""
-        if not self.asset_id:
-            self.asset_id = self.name.lower().replace(" ", "-") if self.name else str(uuid.uuid4())
-        if self.dct_type is None:
-            dct_type = self.properties.get("dct:type")
-            if isinstance(dct_type, dict):
-                dct_type = dct_type.get("@id", "")
-            self.dct_type = dct_type or None
-        ccm_version = self.properties.get("cx-common:version")
-        if ccm_version and "version" not in self.model_fields_set:
-            self.version = ccm_version
+    def _name_the_asset(self) -> "CreateAssetParams":
+        """Take the ID from the config, from its name's slug, or invent one."""
+        if self.asset_id:
+            return self
+        name = str(self.asset.get("name") or "")
+        self.asset_id = (
+            str(self.asset.get("asset_id") or "")
+            or name.lower().replace(" ", "-")
+            or str(uuid.uuid4())
+        )
         return self
+
+    def definition(self) -> dict[str, Any]:
+        """The SDK's ``create_asset`` arguments, read out of the asset config."""
+        properties = self.asset.get("properties") or {}
+        return {
+            "base_url": self.asset.get("base_url", ""),
+            "dct_type": _iri(self.asset.get("dct_type")) or _iri(properties.get("dct:type")),
+            "version": self.asset.get("version") or properties.get("cx-common:version") or "3.0",
+            "semantic_id": self.asset.get("semantic_id"),
+            "proxy_params": self.asset.get("proxy_params"),
+            "headers": self.asset.get("headers"),
+            "private_properties": self.asset.get("private_properties"),
+            "context": self.asset.get("@context", self.asset.get("context")),
+        }
 
 
 class CreateAssetOutput(StepPayload):
@@ -141,6 +169,10 @@ class CreateAssetOutput(StepPayload):
 class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
     """Register an asset at the provider connector.
 
+    What the asset *is* is not written into the step: it is configured once in
+    the manifest's ``env.variables`` and handed to the step as a single
+    ``asset`` input, so the same asset can be reused across tests.
+
     An asset that already exists is not an error: the connector answers 409 and
     the step reports the ID it would have created, so a script can be re-run
     against a provider it has already provisioned.
@@ -150,29 +182,13 @@ class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
     output_model = CreateAssetOutput
 
     async def execute(
-        self, params: CreateAssetParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: CreateAssetParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[CreateAssetOutput]:
-        service_name = params.service_name()
-=======
-@step("connector/provider/create_asset")
-class CreateAssetStep(BaseStep):
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
-        service_name = params.get("service") or params.get("connector_service") or None
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
-        provider = context.get_provider_service(service_name)
-        url = context.get_provider_endpoint_url("assets", service=service_name)
+        provider = context.get_provider_service()
+        url = context.get_provider_endpoint_url("assets")
 
         result, http_status = _create_or_conflict(
-            provider.create_asset,
-            asset_id=params.asset_id,
-            base_url=params.base_url,
-            dct_type=params.dct_type,
-            version=params.version,
-            semantic_id=params.semantic_id,
-            proxy_params=params.proxy_params,
-            headers=params.headers,
-            private_properties=params.private_properties,
-            context=params.context,
+            provider.create_asset, asset_id=params.asset_id, **params.definition()
         )
 
         return StepOutput(
@@ -185,28 +201,36 @@ class CreateAssetStep(BaseStep):
         )
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/provider/create_policy
 # ---------------------------------------------------------------------------
 
 
-class CreatePolicyParams(ServiceParams):
-    """Input contract of ``connector/provider/create_policy``."""
+class CreatePolicyParams(StepParams):
+    """Input contract of ``connector/provider/create_policy``.
+
+    The policy arrives as one object rather than as separate rule lists: it is
+    declared once in the manifest's ``env.variables`` with
+    ``uses: config/connector/policy`` and wired in as
+    ``policy: ${{ env.<id>.policy }}``.
+    """
 
     policy_id: str = Field(
         default="", description="Policy ID; a fresh UUID is used when omitted."
     )
-    context: Optional[Any] = Field(default=None, description="JSON-LD context override.")
-    permissions: list[dict] = Field(
-        default_factory=list, description="ODRL permission rules."
+    policy: dict = Field(
+        default_factory=dict,
+        description=(
+            "The whole ODRL policy, as declared by a 'config/connector/policy' "
+            "manifest variable and referenced as '${{ env.<id>.policy }}'. Carries "
+            "'permissions', 'prohibitions', 'obligations' and an optional '@context'."
+        ),
     )
-    prohibitions: list[dict] = Field(
-        default_factory=list, description="ODRL prohibition rules."
-    )
-    obligations: list[dict] = Field(
-        default_factory=list, description="ODRL obligation rules."
-    )
+
+    @field_validator("policy", mode="before")
+    @classmethod
+    def _unwrap_policy(cls, value: Any) -> Any:
+        return _config_object(value, "policy")
 
 
 class CreatePolicyOutput(StepPayload):
@@ -219,6 +243,10 @@ class CreatePolicyOutput(StepPayload):
 class CreatePolicyStep(BaseStep[CreatePolicyParams, CreatePolicyOutput]):
     """Register an ODRL policy definition at the provider connector.
 
+    The rules are not written into the step: the policy is configured once in
+    the manifest's ``env.variables`` and handed to the step as a single
+    ``policy`` input, so the same policy can be reused across tests.
+
     As with ``create_asset``, a 409 from the connector is reported as success
     against the existing policy rather than failing the step.
     """
@@ -227,24 +255,18 @@ class CreatePolicyStep(BaseStep[CreatePolicyParams, CreatePolicyOutput]):
     output_model = CreatePolicyOutput
 
     async def execute(
-        self, params: CreatePolicyParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: CreatePolicyParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[CreatePolicyOutput]:
-        service_name = params.service_name()
-=======
-@step("connector/provider/create_policy")
-class CreatePolicyStep(BaseStep):
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
-        service_name = params.get("service") or params.get("connector_service") or None
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
-        provider = context.get_provider_service(service_name)
-        url = context.get_provider_endpoint_url("policies", service=service_name)
+        provider = context.get_provider_service()
+        url = context.get_provider_endpoint_url("policies")
         policy_id = params.policy_id or str(uuid.uuid4())
 
+        policy = params.policy
         rules = {
-            "context": params.context,
-            "permissions": params.permissions,
-            "prohibitions": params.prohibitions,
-            "obligations": params.obligations,
+            "context": policy.get("@context", policy.get("context")),
+            "permissions": policy.get("permissions", []),
+            "prohibitions": policy.get("prohibitions", []),
+            "obligations": policy.get("obligations", []),
         }
 
         # Build the model to capture the serialized payload for debugging.
@@ -267,13 +289,12 @@ class CreatePolicyStep(BaseStep):
         )
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # connector/provider/create_contract_definition
 # ---------------------------------------------------------------------------
 
 
-class CreateContractDefinitionParams(ServiceParams):
+class CreateContractDefinitionParams(StepParams):
     """Input contract of ``connector/provider/create_contract_definition``.
 
     The three ID fields accept either a bare ID or the whole output object of
@@ -329,17 +350,10 @@ class CreateContractDefinitionStep(
         self,
         params: CreateContractDefinitionParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[CreateContractDefinitionOutput]:
-        service_name = params.service_name()
-=======
-@step("connector/provider/create_contract_definition")
-class CreateContractDefinitionStep(BaseStep):
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
-        service_name = params.get("service") or params.get("connector_service") or None
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
-        provider = context.get_provider_service(service_name)
-        url = context.get_provider_endpoint_url("contract_definitions", service=service_name)
+        provider = context.get_provider_service()
+        url = context.get_provider_endpoint_url("contract_definitions")
         contract_id = params.contract_id or str(uuid.uuid4())
 
         result, http_status = _create_or_conflict(

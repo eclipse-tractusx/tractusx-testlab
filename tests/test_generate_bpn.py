@@ -28,7 +28,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.steps.utility.generate_bpn import (
     GenerateBpnOutput,
@@ -42,8 +42,8 @@ def context() -> StepContext:
     return StepContext(services=MagicMock(), job=MagicMock(), config=MagicMock())
 
 
-def _definition() -> StepDefinitionV2:
-    return StepDefinitionV2(id="gen", uses="util/generate_bpn")
+def _definition() -> StepDefinition:
+    return StepDefinition(id="gen", uses="util/generate_bpn")
 
 
 class TestGenerateBpnStep:

@@ -29,21 +29,15 @@ from __future__ import annotations
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.pull_data._constants import (
     STEP_PULL_DATA_FILTERED,
+    STEP_PULL_DATA_FILTERED_BY_POLICY,
     STEP_TYPES,
 )
-<<<<<<< HEAD
 from tractusx_testlab.steps.pull_data._executor import (
     ConnectorPullDataFiltered,
     ConnectorPullDataFilteredByPolicy,
 )
-=======
-from tractusx_testlab.steps.pull_data._executor import ConnectorPullDataFiltered
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
-__all__ = ["STEP_TYPES"]
+__all__ = ["STEP_TYPES", "STEP_PULL_DATA_FILTERED", "STEP_PULL_DATA_FILTERED_BY_POLICY"]
 
 step(STEP_PULL_DATA_FILTERED)(ConnectorPullDataFiltered)
-<<<<<<< HEAD
 step(STEP_PULL_DATA_FILTERED_BY_POLICY)(ConnectorPullDataFilteredByPolicy)
-=======
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)

@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import (
     MockResponse,
@@ -63,7 +63,6 @@ def _resolve_variables(obj: dict | list | str, context: "StepContext") -> dict |
     return obj
 
 
-<<<<<<< HEAD
 class MockEndpointParams(MockIdParams):
     """Input contract of ``mock/api``."""
 
@@ -94,10 +93,6 @@ class MockEndpointOutput(StepValue[str]):
 
 @step("mock/api")
 class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
-=======
-@step("mock/api")
-class MockEndpointStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Register a mock HTTP endpoint that returns a canned response.
 
     The returned URL is what a script hands to the system under test as its
@@ -109,7 +104,7 @@ class MockEndpointStep(BaseStep):
     output_model = MockEndpointOutput
 
     async def execute(
-        self, params: MockEndpointParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: MockEndpointParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[MockEndpointOutput]:
         resolved_body = _resolve_variables(params.response_body, context)
         register_mock(

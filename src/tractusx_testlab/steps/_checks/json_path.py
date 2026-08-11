@@ -29,13 +29,13 @@ from __future__ import annotations
 from typing import Any
 
 from tractusx_testlab.models import AssertionSeverity
-from tractusx_testlab.models.authoring.definitions import AssertionV2
+from tractusx_testlab.models.authoring.definitions import Assertion
 from tractusx_testlab.models.runtime.results import AssertionResult
 from tractusx_testlab.steps.utility.json_extract import _extract_by_path
 
 
 def evaluate_json_path_extract(
-    assertion: AssertionV2,
+    assertion: Assertion,
     output: Any,
     context_vars: dict,
     extract_actual_fn: Any,
@@ -82,7 +82,7 @@ def evaluate_json_path_extract(
     nested = params.get("validate") or params.get("nested_validate") or []
     if nested:
         nested_assertions = [
-            AssertionV2.model_validate(n) if isinstance(n, dict) else n
+            Assertion.model_validate(n) if isinstance(n, dict) else n
             for n in nested
         ]
         nested_results = evaluate_fn(nested_assertions, extracted, context_vars)

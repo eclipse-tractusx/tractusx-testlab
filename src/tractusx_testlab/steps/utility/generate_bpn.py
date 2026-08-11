@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import Field, field_validator
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepPayload
 
@@ -103,6 +103,6 @@ class GenerateBpnStep(BaseStep[GenerateBpnParams, GenerateBpnOutput]):
         self,
         params: GenerateBpnParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[GenerateBpnOutput]:
         return StepOutput(value=GenerateBpnOutput(bpn=_random_bpn(params.prefix)))

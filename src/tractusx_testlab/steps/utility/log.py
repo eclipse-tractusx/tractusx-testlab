@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepValue
 
@@ -49,7 +49,6 @@ def _render(value: Any) -> str:
     return str(value)
 
 
-<<<<<<< HEAD
 class LogParams(StepParams):
     """Input contract of ``util/log``."""
 
@@ -69,10 +68,6 @@ class LogOutput(StepValue[Any]):
 
 @step("util/log")
 class LogStep(BaseStep[LogParams, LogOutput]):
-=======
-@step("util/log")
-class LogStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Write a resolved value to stdout and the run log.
 
     An authoring aid for inspecting what an expression resolved to; it asserts
@@ -84,7 +79,7 @@ class LogStep(BaseStep):
     output_model = LogOutput
 
     async def execute(
-        self, params: LogParams, context: "StepContext", definition: StepDefinitionV2,
+        self, params: LogParams, context: "StepContext", definition: StepDefinition,
     ) -> StepOutput[LogOutput]:
         label = params.message or getattr(definition, "id", None) or "log"
         rendered = _render(params.value)

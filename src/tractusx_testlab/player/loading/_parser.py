@@ -38,15 +38,15 @@ from pydantic import TypeAdapter
 
 from tractusx_testlab.models.authoring.definitions import (
     ScriptDefinition,
-    ScriptDefinitionV2,
+    ScriptDefinition,
     TckDefinition,
-    TckDefinitionV2,
+    TckDefinition,
 )
 
 logger = logging.getLogger(__name__)
 
-_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinitionV2] = TypeAdapter(ScriptDefinition)  # type: ignore[assignment]
-_TCK_ADAPTER: TypeAdapter[TckDefinitionV2] = TypeAdapter(TckDefinition)  # type: ignore[assignment]
+_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinition] = TypeAdapter(ScriptDefinition)  # type: ignore[assignment]
+_TCK_ADAPTER: TypeAdapter[TckDefinition] = TypeAdapter(TckDefinition)  # type: ignore[assignment]
 
 
 def _load_yaml(path: Path) -> dict:
@@ -62,19 +62,19 @@ def _normalize_discriminator(data: dict, path: Path) -> dict:
     """Validate that the ``syntax`` discriminator key is present."""
     if "syntax" not in data:
         raise ValueError(
-            f"Error in {path}: Missing mandatory field 'syntax'. Expected 'syntax: v2'."
+            f"Error in {path}: Missing mandatory field 'syntax'. Expected 'syntax: v1-alpha'."
         )
     return data
 
 
-def parse_script_file(path: Path) -> ScriptDefinitionV2:
+def parse_script_file(path: Path) -> ScriptDefinition:
     """Load and parse a single script YAML file using strict syntax routing."""
     data = _load_yaml(path)
     normalized = _normalize_discriminator(data, path)
     return _SCRIPT_ADAPTER.validate_python(normalized)
 
 
-def parse_tck_file(path: Path) -> TckDefinitionV2:
+def parse_tck_file(path: Path) -> TckDefinition:
     """Load and parse a TCK manifest YAML file using strict syntax routing."""
     data = _load_yaml(path)
     normalized = _normalize_discriminator(data, path)

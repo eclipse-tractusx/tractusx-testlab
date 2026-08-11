@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import get_callback_manager
 from tractusx_testlab.steps._contracts import StepParams
@@ -56,7 +56,6 @@ def _extract_path_from_endpoint_url(endpoint_url: str) -> str:
     return urlparse(endpoint_url).path
 
 
-<<<<<<< HEAD
 class WaitForCallParams(StepParams):
     """Input contract of ``mock/wait/http_request``."""
 
@@ -91,10 +90,6 @@ class InboundCallOutput(StepPayload):
 
 @step("mock/wait/http_request")
 class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
-=======
-@step("mock/wait/http_request")
-class WaitForCallStep(BaseStep):
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
     """Wait for an inbound HTTP request on a previously-registered mock endpoint.
 
     This is the other half of ``mock/api``: that step hands the system under
@@ -109,7 +104,7 @@ class WaitForCallStep(BaseStep):
     output_model = InboundCallOutput
 
     async def execute(
-        self, params: WaitForCallParams, context: "StepContext", definition: StepDefinitionV2
+        self, params: WaitForCallParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[InboundCallOutput]:
         raw_endpoint_id = params.endpoint_id
         method = params.method

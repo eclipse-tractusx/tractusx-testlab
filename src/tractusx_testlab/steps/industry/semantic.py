@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepPayload
 
@@ -60,15 +60,9 @@ def _validate_keys(data: dict, required_keys: list[str]) -> tuple[bool, list[str
     return len(missing) == 0, missing
 
 
-<<<<<<< HEAD
 # ---------------------------------------------------------------------------
 # validate/semantic_schema
 # ---------------------------------------------------------------------------
-=======
-@step("validate/semantic_schema")
-class ValidateSemanticSchemaStep(BaseStep):
-    """Validate a JSON payload against expected top-level keys for a semantic model.
->>>>>>> 4151bc2 (Refactor step identifiers for consistency and clarity)
 
 
 class ValidateSemanticSchemaParams(StepParams):
@@ -110,7 +104,7 @@ class ValidateSemanticSchemaStep(
         self,
         params: ValidateSemanticSchemaParams,
         context: "StepContext",
-        definition: StepDefinitionV2,
+        definition: StepDefinition,
     ) -> StepOutput[SemanticSchemaOutput]:
         data = context.get_variable(params.source)
         if data is None:

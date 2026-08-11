@@ -28,7 +28,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps.utility.validate_path import ValidatePathStep
@@ -39,8 +39,8 @@ def context() -> StepContext:
     return StepContext(services=MagicMock(), job=MagicMock(), config=MagicMock())
 
 
-def _definition() -> StepDefinitionV2:
-    return StepDefinitionV2(id="check", uses="util/validate_path")
+def _definition() -> StepDefinition:
+    return StepDefinition(id="check", uses="util/validate_path")
 
 
 class TestValidatePathStep:

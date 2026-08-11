@@ -35,7 +35,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.steps._checks.extraction import _split_path, extract_path
 from tractusx_testlab.steps.base import StepOutput
@@ -172,8 +172,8 @@ class TestJsonPathExtractPredicates:
         return ctx
 
     @staticmethod
-    def _definition() -> StepDefinitionV2:
-        return StepDefinitionV2(id="get_href", uses="util/json_path_extract")
+    def _definition() -> StepDefinition:
+        return StepDefinition(id="get_href", uses="util/json_path_extract")
 
     @pytest.mark.asyncio
     async def test_extracts_href_via_nested_predicates(self, context: StepContext) -> None:
