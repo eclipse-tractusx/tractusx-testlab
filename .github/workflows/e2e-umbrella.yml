@@ -1,0 +1,361 @@
+###############################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+###############################################################
+
+# E2E: testlab's compile -> validate -> run pipeline against a REAL,
+# ephemeral Eclipse Tractus-X dataspace.
+#
+# No external cluster or secrets are needed: a `kind` (Kubernetes-in-Docker)
+# cluster is created inside the runner itself and torn down at the end of the
+# job, so the whole environment is "in-memory" for the run's lifetime.
+#
+# Deployed via Tractus-X Umbrella's "decentralized identityhub" profile
+#   https://github.com/eclipse-tractusx/tractus-x-umbrella/blob/main/charts/umbrella/values-adopter-decentralized-identityhub.yaml
+# this gives:
+#   - two EDC connectors ("provider" / BPNL000000000001, "consumer" /
+#     BPNL000000000002), each fronted by its own Tractus-X IdentityHub for
+#     DID/VC-based IATP trust — the "in-memory identity hub" side of the ask
+#   - a Digital Twin Registry on the provider by default; the workflow also
+#     flips one on for the consumer (--set overrides below) so both
+#     participants have one, matching "two EDCs and DTRs"
+#   - a BDRS directory service + issuer service, both pre-seeded with the
+#     Catena-X membership / DataExchangeGovernance:1.0 VC claims the two
+#     participants need to pass ODRL policy checks out of the box
+#
+# testlab plays the "engine" role bound to the consumer connector; the
+# provider connector + its DTR play the "sut" (system under test) role — see
+# tests/e2e/connector-dtr-smoke/ for the TCK this workflow compiles,
+# validates and runs, and tests/e2e/README.md for how to reproduce locally.
+#
+# Chart internals (ingress paths, subchart defaults) can drift between
+# umbrella releases; where a value isn't pinned by the values file itself
+# (the DTR's ingress host) this workflow discovers it at deploy time instead
+# of hardcoding a guess, and fails fast with a clear message if it can't.
+
+name: E2E - Umbrella Dataspace
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *" # nightly — this job is heavy (kind + a full Helm deploy)
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/tractusx_testlab/steps/connector/**"
+      - "src/tractusx_testlab/steps/industry/**"
+      - "src/tractusx_testlab/services/**"
+      - "src/tractusx_testlab/player/**"
+      - "src/tractusx_testlab/compiler/**"
+      - "src/tractusx_testlab/cli/**"
+      - "tests/e2e/**"
+      - ".github/workflows/e2e-umbrella.yml"
+
+env:
+  UMBRELLA_NAMESPACE: umbrella
+  UMBRELLA_CHART_VERSION: "" # pin a specific version once one is known-good; empty = latest from the dev repo
+  KIND_VERSION: "v0.24.0"
+  KUBECTL_VERSION: "v1.29.0"
+  HELM_VERSION: "3.14.0"
+  TCK_INDEX: tests/e2e/connector-dtr-smoke/index.yaml
+  TCK_CONFIG: tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml
+  TCK_OUT: dist/testlab-e2e-connector-dtr-smoke.tck
+
+jobs:
+  e2e-umbrella:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      # ------------------------------------------------------------------
+      # 1. TestLab itself
+      # ------------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install testlab
+        run: poetry install --no-interaction
+
+      # ------------------------------------------------------------------
+      # 2. Ephemeral Kubernetes cluster (kind, in-runner — "in-memory")
+      # ------------------------------------------------------------------
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "${{ env.KUBECTL_VERSION }}"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "${{ env.HELM_VERSION }}"
+
+      - name: Create kind cluster
+        run: |
+          curl -Lo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          chmod +x ./kind
+          cat <<'EOF' > kind-config.yaml
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          nodes:
+            - role: control-plane
+              kubeadmConfigPatches:
+                - |
+                  kind: InitConfiguration
+                  nodeRegistration:
+                    kubeletExtraArgs:
+                      node-labels: "ingress-ready=true"
+              extraPortMappings:
+                - containerPort: 80
+                  hostPort: 80
+                  protocol: TCP
+                - containerPort: 443
+                  hostPort: 443
+                  protocol: TCP
+          EOF
+          ./kind create cluster --name tck-e2e --config kind-config.yaml --wait 5m
+
+      - name: Install ingress-nginx (kind provider)
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+          kubectl wait --namespace ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=120s
+
+      - name: Point dataspace hostnames at the runner
+        run: |
+          # Hostnames fixed by values-adopter-decentralized-identityhub.yaml.
+          sudo tee -a /etc/hosts >/dev/null <<'EOF'
+          127.0.0.1 provider.local
+          127.0.0.1 provider.intranet
+          127.0.0.1 consumer.local
+          127.0.0.1 consumer.intranet
+          127.0.0.1 bdrs-server.tx.test
+          127.0.0.1 issuerservice.local
+          EOF
+
+      # ------------------------------------------------------------------
+      # 3. Deploy the dataspace: two EDCs, two IdentityHubs, DTR(s)
+      # ------------------------------------------------------------------
+      - name: Add Tractus-X Helm repo
+        run: |
+          helm repo add tractusx-dev https://eclipse-tractusx.github.io/charts/dev
+          helm repo update
+
+      - name: Deploy Tractus-X Umbrella (decentralized IdentityHub profile)
+        run: |
+          VERSION_FLAG=()
+          if [ -n "${UMBRELLA_CHART_VERSION}" ]; then
+            VERSION_FLAG=(--version "${UMBRELLA_CHART_VERSION}")
+          fi
+          helm install umbrella tractusx-dev/umbrella "${VERSION_FLAG[@]}" \
+            --namespace "${UMBRELLA_NAMESPACE}" --create-namespace \
+            -f https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/main/charts/umbrella/values-adopter-decentralized-identityhub.yaml \
+            --set edc-consumer.tx-data-provider.digital-twin-bundle.enabled=true \
+            --set edc-consumer.tx-data-provider.data-persistence-layer-bundle.enabled=true \
+            --timeout 20m --wait
+        # The two --set overrides turn on a DTR for the "consumer" participant
+        # too (the profile only enables one for "provider" by default), so
+        # the deployed dataspace genuinely has two EDCs *and* two DTRs. If a
+        # future chart release renames these subchart keys, this step is
+        # where to fix it — `helm show values tractusx-dev/umbrella` lists
+        # the current tree.
+
+      - name: Deploy in-cluster echo backend
+        run: |
+          # Minimal HTTP backend the SUT's data plane proxies pulls to. Kept
+          # cluster-internal (no ingress) — the EDC data plane reaches it
+          # over the cluster network, nothing external is required.
+          kubectl run tck-echo --image=traefik/whoami:v1.10 \
+            --namespace "${UMBRELLA_NAMESPACE}" --port=80
+          kubectl expose pod/tck-echo --namespace "${UMBRELLA_NAMESPACE}" \
+            --port=80 --name=tck-echo
+          kubectl wait --namespace "${UMBRELLA_NAMESPACE}" \
+            --for=condition=ready pod/tck-echo --timeout=60s
+
+      - name: Show dataspace pods
+        run: |
+          # `helm install --wait` above is the real readiness gate (it tracks
+          # every resource in the release, not just these labels). This is
+          # just a status dump for the log — component label values can
+          # differ by subchart, so it's informational rather than fatal.
+          kubectl get pods -n "${UMBRELLA_NAMESPACE}" -o wide
+          kubectl get pods -n "${UMBRELLA_NAMESPACE}" \
+            -o custom-columns='NAME:.metadata.name,READY:.status.containerStatuses[*].ready,PHASE:.status.phase' || true
+
+      # ------------------------------------------------------------------
+      # 4. Discover what the chart didn't pin, then sanity-check reachability
+      # ------------------------------------------------------------------
+      - name: Discover DTR ingress host
+        run: |
+          set -euo pipefail
+          DTR_HOST="$(kubectl get ingress -n "${UMBRELLA_NAMESPACE}" -o json \
+            | jq -r '[.items[] | select(.metadata.name | test("dtr|digital-twin|registry"; "i"))][0].spec.rules[0].host // empty')"
+          if [ -z "${DTR_HOST}" ]; then
+            echo "::error::Could not find a Digital Twin Registry ingress in namespace ${UMBRELLA_NAMESPACE}."
+            echo "Ingresses present:"
+            kubectl get ingress -n "${UMBRELLA_NAMESPACE}"
+            exit 1
+          fi
+          echo "Discovered DTR ingress host: ${DTR_HOST}"
+          echo "DTR_HOST=${DTR_HOST}" >> "$GITHUB_ENV"
+          echo "${DTR_HOST}" | sudo tee -a /etc/hosts >/dev/null || true
+          echo "127.0.0.1 ${DTR_HOST}" | sudo tee -a /etc/hosts >/dev/null
+
+      - name: Preflight — check connector and DTR reachability
+        run: |
+          set -x
+          curl -sS -o /dev/null -w "provider mgmt:  %{http_code}\n" -H "X-Api-Key: password" "http://provider.intranet/management/v3/assets/request" -X POST -d '{}' -H "Content-Type: application/json" || true
+          curl -sS -o /dev/null -w "consumer mgmt:  %{http_code}\n" -H "X-Api-Key: password" "http://consumer.intranet/management/v3/assets/request" -X POST -d '{}' -H "Content-Type: application/json" || true
+          curl -sS -o /dev/null -w "provider dsp:   %{http_code}\n" "http://provider.local/api/v1/dsp" || true
+          curl -sS -o /dev/null -w "provider dtr:   %{http_code}\n" "http://${DTR_HOST}/api/v3.0/shell-descriptors" || true
+          echo "Non-zero / non-'000' codes above mean the endpoint is reachable; the exact status is validated by the TCK run itself."
+
+      # ------------------------------------------------------------------
+      # 5. Provision the SUT — via the Tractus-X SDK, not testlab
+      # ------------------------------------------------------------------
+      # testlab's own connector/provider/* steps can't be pointed at the SUT
+      # reliably: with only infrastructure.* bindings seeded (no explicit
+      # `services:` block), get_provider_service() returns the FIRST
+      # connector-family service registered, which is always the engine's
+      # (services/_factory.py's is_type_compatible() treats CONNECTOR_CONSUMER
+      # and CONNECTOR_PROVIDER as mutually compatible). So the asset, both
+      # policies and the contract definition the TCK negotiates for are
+      # provisioned here instead, using the same tractusx-sdk service client
+      # testlab itself wraps — this also mirrors a real certification run,
+      # where the operator prepares the SUT and testlab only certifies it.
+      - name: Seed SUT connector with test data (Tractus-X SDK)
+        run: |
+          poetry run python - <<'PY'
+          from tractusx_sdk.dataspace.services.connector.service_factory import ServiceFactory
+
+          provider = ServiceFactory.get_connector_provider_service(
+              dataspace_version="saturn",
+              base_url="http://provider.intranet",
+              dma_path="/management",
+              headers={"Content-Type": "application/json", "X-Api-Key": "password"},
+          )
+
+          def create_or_conflict(create, **kwargs):
+              try:
+                  create(**kwargs)
+              except ValueError as exc:
+                  if "409" not in str(exc):
+                      raise
+                  print(f"  already exists, continuing: {kwargs.get('policy_id') or kwargs.get('asset_id') or kwargs.get('contract_id')}")
+
+          usage_policy_permissions = [{
+              "action": "use",
+              "constraints": {"and": [
+                  {"left_operand": "Membership", "operator": "eq", "right_operand": "active"},
+                  {"left_operand": "FrameworkAgreement", "operator": "eq", "right_operand": "DataExchangeGovernance:1.0"},
+              ]},
+          }]
+          access_policy_permissions = [{
+              "action": "use",
+              "constraints": {"left_operand": "Membership", "operator": "eq", "right_operand": "active"},
+          }]
+
+          print("Creating access policy ...")
+          create_or_conflict(provider.create_policy, policy_id="testlab-e2e-smoke-access-policy", permissions=access_policy_permissions)
+          print("Creating usage policy ...")
+          create_or_conflict(provider.create_policy, policy_id="testlab-e2e-smoke-usage-policy", permissions=usage_policy_permissions)
+          print("Creating asset ...")
+          create_or_conflict(
+              provider.create_asset,
+              asset_id="testlab-e2e-smoke-asset",
+              base_url="http://tck-echo.umbrella.svc.cluster.local",
+              dct_type="https://w3id.org/catenax/taxonomy#TestData",
+              version="1.0",
+          )
+          print("Publishing contract definition ...")
+          create_or_conflict(
+              provider.create_contract,
+              contract_id="testlab-e2e-smoke-contract",
+              usage_policy_id="testlab-e2e-smoke-usage-policy",
+              access_policy_id="testlab-e2e-smoke-access-policy",
+              asset_id="testlab-e2e-smoke-asset",
+          )
+          print("SUT seeded.")
+          PY
+        # Values here (asset id, policy shape) must stay in sync with
+        # tests/e2e/connector-dtr-smoke/index.yaml's `usage_policy` variable
+        # and the filter_expression in tests/connector_negotiation.yaml.
+
+      # ------------------------------------------------------------------
+      # 6. testlab: validate -> compile -> run, against the live dataspace
+      # ------------------------------------------------------------------
+      - name: testlab validate
+        run: poetry run testlab validate "${TCK_INDEX}"
+
+      - name: testlab compile
+        run: |
+          mkdir -p dist
+          poetry run testlab compile "${TCK_INDEX}" --output "${TCK_OUT}"
+
+      - name: testlab run — connector negotiation + DTR round-trip
+        run: |
+          poetry run testlab run "${TCK_OUT}" \
+            --config "${TCK_CONFIG}" \
+            --var "infrastructure.sut.dtr.base_url=http://${DTR_HOST}" \
+            --logs-dir logs/e2e
+
+      # ------------------------------------------------------------------
+      # 7. Diagnostics + cleanup
+      # ------------------------------------------------------------------
+      - name: Collect cluster diagnostics on failure
+        if: failure()
+        run: |
+          mkdir -p ci-logs
+          kubectl get pods -n "${UMBRELLA_NAMESPACE}" -o wide > ci-logs/pods.txt
+          kubectl describe pods -n "${UMBRELLA_NAMESPACE}" > ci-logs/pods-describe.txt
+          kubectl get ingress -n "${UMBRELLA_NAMESPACE}" -o yaml > ci-logs/ingress.yaml
+          for sel in controlplane dataplane identityhub; do
+            kubectl logs -n "${UMBRELLA_NAMESPACE}" -l "app.kubernetes.io/component=${sel}" --all-containers --tail=1000 \
+              > "ci-logs/${sel}.log" 2>&1 || true
+          done
+
+      - name: Upload testlab logs and execution traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testlab-e2e-run-${{ github.run_id }}
+          path: logs/e2e
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload cluster diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: umbrella-diagnostics-${{ github.run_id }}
+          path: ci-logs/
+          retention-days: 14
+
+      - name: Delete kind cluster
+        if: always()
+        run: ./kind delete cluster --name tck-e2e || true

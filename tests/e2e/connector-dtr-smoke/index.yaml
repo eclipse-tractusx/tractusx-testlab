@@ -1,0 +1,115 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+# Self-hosted smoke TCK for the `.github/workflows/e2e-umbrella.yml` pipeline.
+#
+# Purpose: exercise testlab's own compile -> validate -> run pipeline against
+# two REAL Eclipse Tractus-X EDC connectors and a real Digital Twin Registry,
+# deployed ephemerally in CI via the Tractus-X Umbrella "decentralized
+# identityhub" profile (see docs/README.md in this directory). It is not a
+# business-capability certification TCK — it certifies testlab itself.
+#
+# The SUT's test asset + policies + contract definition are seeded directly
+# by the workflow (via the Tractus-X SDK), not by this TCK: with only
+# `infrastructure.*` bindings seeded (no explicit `services:` block),
+# `connector/provider/*` steps resolve through get_provider_service(), which
+# returns the FIRST connector-family service registered — the engine's, not
+# the SUT's, since CONNECTOR_CONSUMER and CONNECTOR_PROVIDER are mutually
+# "compatible" types in services/_factory.py's is_type_compatible(). Confirmed
+# with a local dry run. This TCK therefore only exercises what testlab can
+# actually reach as the "engine": DSP-mediated calls to the SUT's public
+# endpoints (query/negotiate/transfer) and the SUT's DTR (unambiguous, since
+# no engine.dtr is ever seeded) — which also mirrors a real certification run,
+# where the operator provisions the SUT and testlab only certifies it.
+
+kind: tck
+syntax: v1-alpha
+
+id: testlab-e2e-connector-dtr-smoke
+
+metadata:
+  name: "TestLab E2E Smoke — Connector & DTR"
+  version: "v1.0.0"
+  description: >
+    Round-trips a real DSP contract negotiation and a real Digital Twin
+    Registry write/read against the two EDC connectors + DTR that
+    e2e-umbrella.yml deploys via Tractus-X Umbrella. Used as testlab's own
+    CI signal, not as a published certification TCK.
+  authors:
+    - name: TestLab Maintainers
+      email: testlab@eclipse-tractusx.org
+      company: Eclipse Tractus-X
+  copyright_holders:
+    - "2026 Contributors to the Eclipse Foundation"
+  license: Apache-2.0
+  standards:
+    - id: TESTLAB-INTERNAL
+      version: v1.0.0
+  tags:
+    - internal
+    - e2e
+    - smoke
+
+dataspace:
+  ecosystem: Catena-X
+  version: saturn
+
+infrastructure:
+  engine:
+    connector:
+      required: true
+  sut:
+    connector:
+      required: true
+    dtr:
+      required: true
+
+env:
+  variables:
+    # Must match the usage policy the workflow seeds on the SUT connector
+    # (see e2e-umbrella.yml, step "Seed SUT connector with test data") —
+    # this is what the negotiation is allowed to accept, not what creates it.
+    - id: usage_policy
+      uses: config/connector/policy
+      name: Framework-agreement usage policy
+      with:
+        source: value
+        value:
+          permissions:
+            - action: use
+              constraints:
+                and:
+                  - left_operand: Membership
+                    operator: eq
+                    right_operand: active
+                  - left_operand: FrameworkAgreement
+                    operator: eq
+                    right_operand: "DataExchangeGovernance:1.0"
+      returns:
+        policy:
+          type: object
+          class: Policy
+
+tests:
+  - id: connector_negotiation.yaml
+    name: Negotiate and pull data across the two live EDC connectors
+  - id: dtr_roundtrip.yaml
+    name: Write and read back a shell descriptor on the SUT's Digital Twin Registry
