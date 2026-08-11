@@ -219,6 +219,7 @@ nav:
         - ADR-0011 Environment and Services: developer/decision-records/shared/ADR-0011-environment-and-services.md
         - ADR-0018 Unified Variables Model: developer/decision-records/shared/ADR-0018-unified-variables-model.md
         - ADR-0021 Remove Precondition Concept: developer/decision-records/shared/ADR-0021-remove-precondition-concept.md
+        - ADR-0025 Assertions Read Declared Returns: developer/decision-records/shared/ADR-0025-assertions-read-declared-returns.md
   - Contributing:
     - Guidelines: contributing/index.md
 
