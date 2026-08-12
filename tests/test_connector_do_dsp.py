@@ -148,7 +148,8 @@ class TestDoDspStep:
         consumer = MagicMock()
         consumer.do_dsp.return_value = (_ENDPOINT, _TOKEN)
         ctx.get_consumer_service.return_value = consumer
-        filter_expr = [{"operandLeft": "edc:id", "operator": "=", "operandRight": "asset-1"}]
+        filter_expr = [{"operand_left": "edc:id", "operator": "=", "operand_right": "asset-1"}]
+        sdk_filter_expr = [{"operandLeft": "edc:id", "operator": "=", "operandRight": "asset-1"}]
         policies = [{"@id": "policy-1"}]
 
         # Act
@@ -156,7 +157,7 @@ class TestDoDspStep:
             raw_params={
                 "counter_party_id": "BPNL000000000001",
                 "counter_party_address": "https://provider.example.com/dsp",
-                "filter_expression": filter_expr,
+                "filters": filter_expr,
                 "policies": policies,
             },
             context=ctx,
@@ -167,7 +168,7 @@ class TestDoDspStep:
         consumer.do_dsp.assert_called_once_with(
             counter_party_id="BPNL000000000001",
             counter_party_address="https://provider.example.com/dsp",
-            filter_expression=filter_expr,
+            filter_expression=sdk_filter_expr,
             policies=policies,
         )
 
@@ -215,13 +216,14 @@ class TestDoDspWithBpnlStep:
         consumer = MagicMock()
         consumer.do_dsp_with_bpnl.return_value = (_ENDPOINT, _TOKEN)
         ctx.get_consumer_service.return_value = consumer
-        filter_expr = [{"operandLeft": "edc:id", "operator": "=", "operandRight": "asset-2"}]
+        filter_expr = [{"operand_left": "edc:id", "operator": "=", "operand_right": "asset-2"}]
+        sdk_filter_expr = [{"operandLeft": "edc:id", "operator": "=", "operandRight": "asset-2"}]
 
         await DoDspWithBpnlStep().invoke(
             raw_params={
                 "bpnl": "BPNL000000000002",
                 "counter_party_address": "https://provider.example.com/dsp",
-                "filter_expression": filter_expr,
+                "filters": filter_expr,
                 "policies": None,
             },
             context=ctx,
@@ -231,7 +233,7 @@ class TestDoDspWithBpnlStep:
         consumer.do_dsp_with_bpnl.assert_called_once_with(
             bpnl="BPNL000000000002",
             counter_party_address="https://provider.example.com/dsp",
-            filter_expression=filter_expr,
+            filter_expression=sdk_filter_expr,
             policies=None,
         )
 

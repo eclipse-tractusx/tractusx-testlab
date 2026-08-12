@@ -200,7 +200,7 @@ class TestQueryCatalogWithFiltersStep:
 
         step = QueryCatalogWithFiltersStep()
         result = await step.invoke(
-            {"provider_url": "http://provider:8080"}, mock_context, definition,
+            {"counter_party_address": "http://provider:8080"}, mock_context, definition,
         )
         assert result.value is None
         assert result.response.status_code == 500

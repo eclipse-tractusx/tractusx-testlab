@@ -43,7 +43,7 @@ execution:
     with:
       counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
       counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
-      filter_expression:
+      filters:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
           operator: "="
           operand_right: "testlab-e2e-smoke-asset"

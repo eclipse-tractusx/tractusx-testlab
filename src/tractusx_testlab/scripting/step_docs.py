@@ -27,9 +27,9 @@ the reference page is generated from them rather than written by hand — a
 parameter that is renamed in code cannot go stale in the docs.
 
 Fields are read from ``model_fields`` rather than ``model_json_schema()``
-because JSON Schema drops ``AliasChoices``, and the legacy spellings a step
-still accepts (``provider_url`` for ``counter_party_address``) are exactly what
-a script author needs to see.
+because JSON Schema drops alias information, and the exact spelling a step
+accepts (``schema:`` for the field declared as ``json_schema``) is exactly
+what a script author needs to see.
 """
 
 from __future__ import annotations

@@ -209,9 +209,9 @@ class ValidateSchemaParams(StepParams):
         default=None, description="The payload to validate — an object, a list, or a JSON string."
     )
     # Declared as ``json_schema`` because a field literally named ``schema``
-    # shadows a deprecated ``BaseModel`` method; scripts still write ``schema:``.
+    # shadows a deprecated ``BaseModel`` method; scripts write ``schema:`` only.
     json_schema: Any = Field(
-        validation_alias=AliasChoices("schema", "json_schema"),
+        validation_alias="schema",
         serialization_alias="schema",
         description=(
             "A JSON Schema document, typically '${{ env.schemas.<id> }}', which "

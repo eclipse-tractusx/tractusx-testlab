@@ -80,20 +80,14 @@ class StoreInVariableParams(StepParams):
 
 
 class CounterPartyParams(StepParams):
-    """The counter-party a DSP request is addressed to.
-
-    ``provider_url``/``bpnl`` are the legacy spellings kept working by the
-    aliases; both resolve to the same two fields.
-    """
+    """The counter-party a DSP request is addressed to."""
 
     counter_party_address: str = Field(
         default="",
-        validation_alias=AliasChoices("counter_party_address", "provider_url"),
         description="DSP endpoint of the counter-party connector.",
     )
     counter_party_id: str = Field(
         default="",
-        validation_alias=AliasChoices("counter_party_id", "bpnl"),
         description="BPN of the counter-party.",
     )
 
@@ -107,21 +101,19 @@ class FilterExpression(BaseModel):
     """One catalog filter criterion.
 
     Scripts and IDE blocks write snake_case; the connector management API
-    expects camelCase, so the two spellings are accepted on the way in and the
-    camelCase form is what gets serialised on the way out.
+    expects camelCase, so the camelCase form exists only on serialisation —
+    input accepts the snake_case spelling alone.
     """
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     operand_left: str = Field(
-        validation_alias=AliasChoices("operand_left", "operandLeft"),
         serialization_alias="operandLeft",
         description="Left-hand property of the criterion, e.g. 'https://w3id.org/edc/v0.0.1/ns/id'.",
     )
     operator: str = Field(default="=", description="Comparison operator.")
     operand_right: Any = Field(
         default="",
-        validation_alias=AliasChoices("operand_right", "operandRight"),
         serialization_alias="operandRight",
         description="Value the left-hand property is compared against.",
     )
@@ -131,33 +123,17 @@ class FilterExpression(BaseModel):
         return self.model_dump(by_alias=True)
 
 
-class CatalogFilter(BaseModel):
-    """Nested ``filter:`` block — an alternative spelling of ``filter_expression``."""
-
-    model_config = ConfigDict(populate_by_name=True, extra="allow")
-
-    filter_expression: list[FilterExpression] = Field(
-        default_factory=list,
-        description="Filter criteria applied to the catalog request.",
-    )
-
-
 class FilterExpressionParams(StepParams):
-    """Adds catalog filter criteria to a step's inputs.
+    """Adds catalog filter criteria to a step's inputs."""
 
-    ``filters`` is the spelling the IDE blocks emit and ``filter_expression``
-    the one the SDK uses; a script may write either.
-    """
-
-    filter_expression: list[FilterExpression] = Field(
+    filters: list[FilterExpression] = Field(
         default_factory=list,
-        validation_alias=AliasChoices("filter_expression", "filters"),
         description="Filter criteria applied to the catalog request.",
     )
 
     def sdk_filter_expression(self) -> list[dict]:
         """The filter criteria in the dict shape the SDK expects."""
-        return [entry.to_sdk() for entry in self.filter_expression]
+        return [entry.to_sdk() for entry in self.filters]
 
 
 # ---------------------------------------------------------------------------

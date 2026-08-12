@@ -98,7 +98,7 @@ class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, Filter
             consumer.get_filter_expression(
                 key=entry.operand_left, value=entry.operand_right, operator=entry.operator
             )
-            for entry in params.filter_expression
+            for entry in params.filters
         ]
 
         catalog = consumer.get_catalog_with_filter(

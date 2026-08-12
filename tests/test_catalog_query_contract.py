@@ -72,14 +72,6 @@ def _with_consumer(context: MagicMock, consumer: MagicMock) -> MagicMock:
 
 
 class TestQueryCatalogParams:
-    def test_legacy_provider_url_alias_is_accepted(self) -> None:
-        params = QueryCatalogParams.model_validate({"provider_url": "http://p/dsp"})
-        assert params.counter_party_address == "http://p/dsp"
-
-    def test_legacy_bpnl_alias_is_accepted(self) -> None:
-        params = QueryCatalogParams.model_validate({"bpnl": "BPNL01"})
-        assert params.counter_party_id == "BPNL01"
-
     def test_canonical_names_are_accepted(self) -> None:
         params = QueryCatalogParams.model_validate(
             {"counter_party_address": "http://p/dsp", "counter_party_id": "BPNL01"}
@@ -89,20 +81,21 @@ class TestQueryCatalogParams:
             "BPNL01",
         )
 
-    def test_nested_filter_block_fills_filter_expression(self) -> None:
+    def test_filters_are_parsed_into_expressions(self) -> None:
         params = QueryCatalogParams.model_validate(
-            {"filter": {"filter_expression": [{"operand_left": "id", "operand_right": "a"}]}}
+            {"filters": [{"operand_left": "id", "operand_right": "a"}]}
         )
-        assert params.filter_expression[0].operand_left == "id"
+        assert params.filters[0].operand_left == "id"
 
-    def test_flat_filter_expression_wins_over_nested(self) -> None:
+    def test_filters_serialise_to_the_sdk_camel_case(self) -> None:
         params = QueryCatalogParams.model_validate(
-            {
-                "filter_expression": [{"operand_left": "flat", "operand_right": "a"}],
-                "filter": {"filter_expression": [{"operand_left": "nested", "operand_right": "b"}]},
-            }
+            {"filters": [{"operand_left": "id", "operand_right": "a"}]}
         )
-        assert params.filter_expression[0].operand_left == "flat"
+        assert params.filters[0].to_sdk() == {
+            "operandLeft": "id",
+            "operator": "=",
+            "operandRight": "a",
+        }
 
     def test_missing_required_asset_id_is_reported(self) -> None:
         with pytest.raises(ValueError, match="asset_id"):
@@ -128,11 +121,9 @@ class TestFilterExpression:
             "operandRight": "asset-1",
         }
 
-    def test_camel_case_input_is_also_accepted(self) -> None:
-        expression = FilterExpression.model_validate(
-            {"operandLeft": "id", "operandRight": "asset-1"}
-        )
-        assert expression.to_sdk()["operandLeft"] == "id"
+    def test_camel_case_input_is_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            FilterExpression.model_validate({"operandLeft": "id", "operandRight": "asset-1"})
 
     def test_operator_defaults_to_equality(self) -> None:
         assert FilterExpression.model_validate({"operand_left": "id"}).operator == "="
@@ -194,7 +185,7 @@ class TestQueryCatalogStep:
         consumer = MagicMock()
         consumer.get_catalog_with_filter.return_value = _CATALOG
         await QueryCatalogStep().invoke(
-            {"filter_expression": [{"operand_left": "id", "operand_right": "asset-1"}]},
+            {"filters": [{"operand_left": "id", "operand_right": "asset-1"}]},
             _with_consumer(mock_context, consumer),
             _definition("connector/consumer/query_catalog"),
         )

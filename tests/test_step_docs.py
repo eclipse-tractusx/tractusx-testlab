@@ -78,14 +78,8 @@ class TestTypeName:
 
 
 class TestFieldRendering:
-    def test_alias_choices_are_all_reported(self) -> None:
-        from tractusx_testlab.steps.connector.catalog_query import QueryCatalogParams
-
-        field = QueryCatalogParams.model_fields["counter_party_address"]
-        assert accepted_names("counter_party_address", field) == [
-            "counter_party_address",
-            "provider_url",
-        ]
+    def test_an_aliased_field_reports_its_accepted_spelling(self) -> None:
+        assert accepted_names("aliased", _Sample.model_fields["aliased"]) == ["legacy_name"]
 
     def test_a_field_without_an_alias_reports_only_its_name(self) -> None:
         assert accepted_names("plain", _Sample.model_fields["plain"]) == ["plain"]
@@ -119,8 +113,9 @@ class TestRenderCatalog:
     def test_each_step_gets_a_heading(self, page: str) -> None:
         assert "### `connector/consumer/query_catalog`" in page
 
-    def test_inputs_table_documents_legacy_spellings(self, page: str) -> None:
-        assert "`provider_url`" in page
+    def test_inputs_table_documents_canonical_spellings(self, page: str) -> None:
+        assert "`counter_party_address`" in page
+        assert "`provider_url`" not in page
 
     def test_exports_are_documented_as_published_variables(self, page: str) -> None:
         assert "**Publishes**" in page

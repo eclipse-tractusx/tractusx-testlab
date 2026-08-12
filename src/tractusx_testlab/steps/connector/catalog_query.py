@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
 from tractusx_sdk.dataspace.tools import DspTools
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
@@ -37,7 +37,6 @@ from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
     DATASET_KEY,
     CatalogDatasetsExports,
-    CatalogFilter,
     CatalogPayload,
     CounterPartyParams,
     FilterExpression,
@@ -54,7 +53,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "DATASET_KEY",
-    "CatalogFilter",
     "CatalogPayload",
     "CounterPartyParams",
     "FilterExpression",
@@ -77,21 +75,10 @@ __all__ = [
 class QueryCatalogParams(CounterPartyParams):
     """Input contract of ``connector/consumer/query_catalog``."""
 
-    filter_expression: list[FilterExpression] = Field(
+    filters: list[FilterExpression] = Field(
         default_factory=list,
         description="Filter criteria applied to the catalog request.",
     )
-    filter: Optional[CatalogFilter] = Field(
-        default=None,
-        description="Nested form of 'filter_expression'; used only when the flat field is empty.",
-    )
-
-    @model_validator(mode="after")
-    def _hoist_nested_filter(self) -> "QueryCatalogParams":
-        """Let the nested ``filter:`` block stand in for a flat ``filter_expression``."""
-        if not self.filter_expression and self.filter is not None:
-            self.filter_expression = self.filter.filter_expression
-        return self
 
 
 #: ``query_catalog`` publishes exactly the offers every catalog step publishes.
@@ -120,7 +107,7 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogPayload]):
         catalog = consumer.get_catalog_with_filter(
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
-            filter_expression=[entry.to_sdk() for entry in params.filter_expression],
+            filter_expression=[entry.to_sdk() for entry in params.filters],
         )
 
         url = context.get_consumer_endpoint_url("catalogs", "request")
@@ -240,7 +227,7 @@ class QueryCatalogByBpnlParams(StepParams):
         default=None,
         description="DSP endpoint; when omitted it is resolved from the BPN by discovery.",
     )
-    filter_expression: list[FilterExpression] = Field(
+    filters: list[FilterExpression] = Field(
         default_factory=list,
         description="Filter criteria applied to the catalog request.",
     )
@@ -266,7 +253,7 @@ class QueryCatalogByBpnlStep(BaseStep[QueryCatalogByBpnlParams, CatalogPayload])
         result = consumer.get_catalog_with_bpnl(
             bpnl=params.bpnl,
             counter_party_address=params.counter_party_address,
-            filter_expression=[entry.to_sdk() for entry in params.filter_expression] or None,
+            filter_expression=[entry.to_sdk() for entry in params.filters] or None,
         )
         url = context.get_consumer_endpoint_url("catalogs", "request")
         return StepOutput(
