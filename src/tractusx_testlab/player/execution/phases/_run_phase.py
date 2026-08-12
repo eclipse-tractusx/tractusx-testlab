@@ -40,11 +40,15 @@ from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.conditions import ConditionEvaluator
 
-# Maps internal phase_label to the expression namespace (e.g. "steps.ID.field")
+# Maps a phase label to the expression namespace (e.g. "steps.ID.field").
+#
+# The label is the script's own key for the phase — the one an author writes and
+# the one ``step_started`` reports — so only ``main`` differs from it, because
+# the namespace a step is read under is ``steps``, not ``main``.
 _PHASE_TO_NAMESPACE: dict[str, str] = {
     "setup": "setup",
     "main": "steps",
-    "cleanup": "teardown",
+    "teardown": "teardown",
 }
 
 
