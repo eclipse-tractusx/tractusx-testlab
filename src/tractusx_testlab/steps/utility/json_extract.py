@@ -30,7 +30,7 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any
 
-from pydantic import AliasChoices, Field
+from pydantic import Field
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
@@ -114,11 +114,10 @@ def _extract_by_path(data: object, path: str) -> object:
 class JsonPathExtractParams(StoreInVariableParams):
     """Input contract of ``util/json_path_extract``."""
 
-    source: Any = Field(
-        validation_alias=AliasChoices("source", "variable"),
+    input: Any = Field(
         description=(
             "Either the name of the context variable holding the data "
-            "(e.g. 'response_body'), or the data itself when a '${{ }}' "
+            "(e.g. 'datasets'), or the data itself when a '${{ }}' "
             "expression is passed — it resolves before the step runs."
         ),
     )
@@ -150,11 +149,11 @@ class JsonPathExtractStep(BaseStep[JsonPathExtractParams, JsonPathExtractOutput]
         context: "StepContext",
         definition: StepDefinition,
     ) -> StepOutput[JsonPathExtractOutput]:
-        # ``source`` is normally a variable name (a string) that we look up.  But
+        # ``input`` is normally a variable name (a string) that we look up.  But
         # a ``${{ }}`` expression resolves to the value itself before the step
         # runs, so a dict/list arriving here is the data, not a name — use it
         # directly rather than attempting an unhashable dict lookup.
-        source = params.source
+        source = params.input
         if isinstance(source, str):
             data = context.get_variable(source)
             if data is None:

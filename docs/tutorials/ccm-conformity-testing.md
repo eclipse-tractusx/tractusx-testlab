@@ -106,7 +106,6 @@ Each `test:` entry points to a YAML file with `kind: test`. Tests declare depend
 | `negotiate` | Negotiate an EDC contract for an asset |
 | `initiate_transfer` | Get dataplane access credentials (EDR token) |
 | `http_call` | Make HTTP requests to dataplane endpoints |
-| `validate_semantic_schema` | Validate JSON against a SAMM semantic model |
 | `json_path_extract` | Extract values from JSON using a path expression |
 | `mock_endpoint` | Expose a temporary HTTP endpoint for callbacks |
 | `wait_for_call` | Block until a mock endpoint receives a request |

@@ -178,7 +178,7 @@ class TestJsonPathExtractPredicates:
     @pytest.mark.asyncio
     async def test_extracts_href_via_nested_predicates(self, context: StepContext) -> None:
         output = await JsonPathExtractStep().invoke(
-            {"source": "dt_body", "path": _HREF_PATH, "store_in_variable": "href"},
+            {"input": "dt_body", "path": _HREF_PATH, "store_in_variable": "href"},
             context,
             self._definition(),
         )
@@ -190,7 +190,7 @@ class TestJsonPathExtractPredicates:
         path = "submodelDescriptors[idShort=Missing].id"
         with pytest.raises(KeyError, match="No element in 'submodelDescriptors'"):
             await JsonPathExtractStep().invoke(
-                {"source": "dt_body", "path": path}, context, self._definition(),
+                {"input": "dt_body", "path": path}, context, self._definition(),
             )
 
     @pytest.mark.asyncio
@@ -201,7 +201,7 @@ class TestJsonPathExtractPredicates:
         # arrives as the dict itself rather than a variable name.  This must not
         # raise ``TypeError: unhashable type: dict``.
         output = await JsonPathExtractStep().invoke(
-            {"source": SHELL_DESCRIPTOR, "path": _HREF_PATH},
+            {"input": SHELL_DESCRIPTOR, "path": _HREF_PATH},
             context,
             self._definition(),
         )
@@ -211,13 +211,13 @@ class TestJsonPathExtractPredicates:
     async def test_missing_named_source_raises_key_error(self, context: StepContext) -> None:
         with pytest.raises(KeyError, match="Context variable 'nope' not found"):
             await JsonPathExtractStep().invoke(
-                {"source": "nope", "path": "a"}, context, self._definition(),
+                {"input": "nope", "path": "a"}, context, self._definition(),
             )
 
     @pytest.mark.asyncio
     async def test_numeric_index_still_works(self, context: StepContext) -> None:
         output = await JsonPathExtractStep().invoke(
-            {"source": "dt_body", "path": "submodelDescriptors.0.idShort"},
+            {"input": "dt_body", "path": "submodelDescriptors.0.idShort"},
             context,
             self._definition(),
         )

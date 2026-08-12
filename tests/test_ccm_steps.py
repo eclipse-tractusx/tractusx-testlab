@@ -34,7 +34,6 @@ import pytest
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.connector.catalog_filter import QueryCatalogWithFiltersStep
 from tractusx_testlab.steps.industry.notification import SendNotificationStep
-from tractusx_testlab.steps.industry.semantic import ValidateSemanticSchemaStep
 from tractusx_testlab.steps.utility.json_extract import JsonPathExtractStep
 from tractusx_testlab.steps.utility.uuid_gen import GenerateUuidStep
 
@@ -81,7 +80,7 @@ class TestJsonPathExtractStep:
         mock_context.variables["catalog"] = {"dcat:dataset": [{"id": "ds-1"}]}
         step = JsonPathExtractStep()
         result = await step.invoke(
-            {"source": "catalog", "path": "dcat:dataset.0.id"}, mock_context, definition
+            {"input": "catalog", "path": "dcat:dataset.0.id"}, mock_context, definition
         )
         assert result.value == "ds-1"
 
@@ -90,79 +89,29 @@ class TestJsonPathExtractStep:
         mock_context.variables["data"] = {"key": "val"}
         step = JsonPathExtractStep()
         await step.invoke(
-            {"source": "data", "path": "key", "store_in_variable": "extracted"},
+            {"input": "data", "path": "key", "store_in_variable": "extracted"},
             mock_context, definition,
         )
         assert mock_context.variables["extracted"] == "val"
 
     @pytest.mark.asyncio
-    async def test_missing_source_raises_key_error(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_missing_input_raises_key_error(self, mock_context: MagicMock, definition: StepDefinition) -> None:
         step = JsonPathExtractStep()
-        with pytest.raises(ValueError, match="source: Field required"):
+        with pytest.raises(ValueError, match="input: Field required"):
             await step.invoke({"path": "x"}, mock_context, definition)
 
     @pytest.mark.asyncio
     async def test_nonexistent_variable_raises(self, mock_context: MagicMock, definition: StepDefinition) -> None:
         step = JsonPathExtractStep()
         with pytest.raises(KeyError, match="not found"):
-            await step.invoke({"source": "missing", "path": "a"}, mock_context, definition)
+            await step.invoke({"input": "missing", "path": "a"}, mock_context, definition)
 
     @pytest.mark.asyncio
     async def test_path_no_match_raises(self, mock_context: MagicMock, definition: StepDefinition) -> None:
         mock_context.variables["obj"] = {"a": 1}
         step = JsonPathExtractStep()
         with pytest.raises(KeyError):
-            await step.invoke({"source": "obj", "path": "nonexistent"}, mock_context, definition)
-
-
-# ---------------------------------------------------------------------------
-# ValidateSemanticSchemaStep
-# ---------------------------------------------------------------------------
-
-
-class TestValidateSemanticSchemaStep:
-    """Tests for validate/semantic_schema step."""
-
-    @pytest.mark.asyncio
-    async def test_valid_payload_passes(self, mock_context: MagicMock, definition: StepDefinition) -> None:
-        mock_context.variables["payload"] = {"catenaXId": "x", "childItems": []}
-        step = ValidateSemanticSchemaStep()
-        result = await step.invoke(
-            {"source": "payload", "schema_ref": "CX-0135"}, mock_context, definition
-        )
-        assert result.value["is_valid"] is True
-        assert result.value["missing_keys"] == []
-
-    @pytest.mark.asyncio
-    async def test_missing_keys_fails(self, mock_context: MagicMock, definition: StepDefinition) -> None:
-        mock_context.variables["payload"] = {"catenaXId": "x"}
-        step = ValidateSemanticSchemaStep()
-        result = await step.invoke(
-            {"source": "payload", "schema_ref": "CX-0135"}, mock_context, definition
-        )
-        assert result.value["is_valid"] is False
-        assert "childItems" in result.value["missing_keys"]
-
-    @pytest.mark.asyncio
-    async def test_unknown_schema_ref_empty_keys(self, mock_context: MagicMock, definition: StepDefinition) -> None:
-        mock_context.variables["payload"] = {"anything": 1}
-        step = ValidateSemanticSchemaStep()
-        result = await step.invoke(
-            {"source": "payload", "schema_ref": "CX-9999"}, mock_context, definition
-        )
-        assert result.value["is_valid"] is True
-        assert result.value["checked_keys"] == []
-
-    @pytest.mark.asyncio
-    async def test_non_dict_source_raises_type_error(
-        self, mock_context: MagicMock, definition: StepDefinition
-    ) -> None:
-        mock_context.variables["payload"] = [1, 2, 3]
-        step = ValidateSemanticSchemaStep()
-        with pytest.raises(TypeError, match="Expected dict"):
-            await step.invoke(
-                {"source": "payload", "schema_ref": "CX-0135"}, mock_context, definition
-            )
+            await step.invoke({"input": "obj", "path": "nonexistent"}, mock_context, definition)
 
 
 # ---------------------------------------------------------------------------

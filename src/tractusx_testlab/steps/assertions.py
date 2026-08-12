@@ -112,7 +112,81 @@ def _apply_inline_operator(operator: str, actual: object, expected: object) -> t
         import re
         passed = isinstance(actual, str) and bool(re.search(str(expected), actual))
         return passed, f"Pattern {expected!r} not matched in {actual!r}"
+    if operator in _MEMBERSHIP_OPERATORS:
+        return _apply_membership_operator(operator, actual, expected)
+    if operator in _ORDERING_OPERATORS:
+        return _apply_ordering_operator(operator, actual, expected)
+    if operator in _SIZE_OPERATORS:
+        return _apply_size_operator(operator, actual, expected)
     return False, f"Unknown operator: {operator!r}"
+
+
+#: ``is_null`` is the ``flow/if`` spelling of ``null``; both mean the same test.
+_NULL_ALIASES = {"is_null": "null"}
+
+_MEMBERSHIP_OPERATORS = frozenset({"one_of", "none_of", "has_key", "not_has_key"})
+_ORDERING_OPERATORS = frozenset({"gt", "gte", "lt", "lte"})
+_SIZE_OPERATORS = frozenset({"length_equals", "length_gt", "length_lt"})
+
+
+def _apply_membership_operator(
+    operator: str, actual: object, expected: object
+) -> tuple[bool, str]:
+    """Apply the operators that ask whether something is part of something else."""
+    if operator == "one_of":
+        allowed = expected if isinstance(expected, (list, tuple, set)) else [expected]
+        return actual in allowed, f"Expected {actual!r} to be one of {expected!r}"
+    if operator == "none_of":
+        excluded = expected if isinstance(expected, (list, tuple, set)) else [expected]
+        return actual not in excluded, f"Expected {actual!r} to be none of {expected!r}"
+    has_key = isinstance(actual, dict) and expected in actual
+    if operator == "has_key":
+        return has_key, f"Expected {actual!r} to have key {expected!r}"
+    return not has_key, f"Expected {actual!r} to NOT have key {expected!r}"
+
+
+def _apply_ordering_operator(
+    operator: str, actual: object, expected: object
+) -> tuple[bool, str]:
+    """Apply the numeric comparisons, treating a non-number as "does not compare"."""
+    try:
+        left, right = float(actual), float(expected)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False, f"Cannot compare {actual!r} with {expected!r} numerically"
+    comparisons = {
+        "gt": left > right,
+        "gte": left >= right,
+        "lt": left < right,
+        "lte": left <= right,
+    }
+    return comparisons[operator], f"Expected {actual!r} {operator} {expected!r}"
+
+
+def _apply_size_operator(
+    operator: str, actual: object, expected: object
+) -> tuple[bool, str]:
+    """Apply the length comparisons, treating a sizeless value as "no length"."""
+    try:
+        length = len(actual)  # type: ignore[arg-type]
+        wanted = int(expected)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False, f"Cannot measure the length of {actual!r} against {expected!r}"
+    comparisons = {
+        "length_equals": length == wanted,
+        "length_gt": length > wanted,
+        "length_lt": length < wanted,
+    }
+    return comparisons[operator], f"Expected length {length} {operator} {wanted}"
+
+
+def apply_operator(operator: str, actual: object, expected: object) -> tuple[bool, str]:
+    """Compare *actual* against *expected*, the way an assertion does.
+
+    ``flow/if`` decides a branch on the same comparisons a ``validate:`` block
+    asserts with, so both go through here rather than each growing their own
+    table of operators that would drift apart.
+    """
+    return _apply_inline_operator(_NULL_ALIASES.get(operator, operator), actual, expected)
 
 
 def _assertion_type(a: Assertion) -> AssertionType:
@@ -242,9 +316,15 @@ class AssertionEngine:
         )
 
     @staticmethod
-    def extract_path(output: object, path: Optional[str]) -> object:
-        """Extract a value from a nested dict/list/object using dot-separated *path*."""
-        return extract_path(output, path)
+    def extract_path(
+        output: object, path: Optional[str], declared: Optional[frozenset[str]] = None
+    ) -> object:
+        """Extract a value from a nested dict/list/object using dot-separated *path*.
+
+        *declared* restricts which first segments resolve — see
+        :func:`~tractusx_testlab.steps._checks.extraction.extract_path`.
+        """
+        return extract_path(output, path, declared)
 
     # Keep old name as internal alias for backward compatibility
     _extract_actual = staticmethod(extract_path)

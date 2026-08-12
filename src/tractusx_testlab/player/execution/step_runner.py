@@ -34,6 +34,7 @@ from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
+from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.assertions import AssertionEngine
 from tractusx_testlab.models.runtime.results import AssertionResult, AssertionSummary, ScriptResult, StepResult
@@ -107,13 +108,20 @@ def store_step_outputs(
     if not returns:
         return
 
+    from tractusx_testlab.steps._checks.extraction import declared_names
     from tractusx_testlab.steps.base import StepOutput
     raw = step_result.output
     full_output: Any = StepOutput(value=raw, request=step_result.request, response=step_result.response) if not isinstance(raw, StepOutput) else raw
 
+    # A `returns:` name is only readable when the step declared it, so a typo
+    # or a guess at the step's internals fails here rather than as a `None`
+    # several steps later.
+    step_cls = StepRegistry.get(step_def.uses, "")
+    declared = declared_names(step_cls) if step_cls is not None else None
+
     step_id = getattr(step_def, "id", None)
     for var_name in returns:
-        value = AssertionEngine.extract_path(full_output, var_name)
+        value = AssertionEngine.extract_path(full_output, var_name, declared)
         context.set_variable(var_name, value)
         if step_id and step_namespace:
             context.set_variable(f"{step_namespace}.{step_id}.{var_name}", value)

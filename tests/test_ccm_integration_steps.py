@@ -21,7 +21,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Integration tests: CCM step execution (UUID, JSON path, extract dataset, semantic schema)."""
+"""Integration tests: CCM step execution (UUID, JSON path, extract dataset)."""
 
 from __future__ import annotations
 
@@ -33,7 +33,6 @@ import pytest
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.connector.extract import ExtractDatasetStep
-from tractusx_testlab.steps.industry.semantic import ValidateSemanticSchemaStep
 from tractusx_testlab.steps.utility.json_extract import JsonPathExtractStep
 from tractusx_testlab.steps.utility.uuid_gen import GenerateUuidStep
 
@@ -92,7 +91,7 @@ class TestJsonPathExtractStep:
         definition = _make_step_definition(type="util/json_path_extract")
 
         output = await step_instance.invoke(
-            {"source": "source_data", "path": "a.b.0.id"}, ctx, definition,
+            {"input": "source_data", "path": "a.b.0.id"}, ctx, definition,
         )
 
         assert output.value == "found-it"
@@ -106,7 +105,7 @@ class TestJsonPathExtractStep:
 
         with pytest.raises(KeyError, match="not found"):
             await step_instance.invoke(
-                {"source": "nonexistent", "path": "any"}, ctx, definition,
+                {"input": "nonexistent", "path": "any"}, ctx, definition,
             )
 
 
@@ -157,52 +156,3 @@ class TestExtractDatasetStep:
         assert output.value["datasets"] == []
         assert output.value["offer_id"] is None
         assert output.value["asset_id"] is None
-
-
-class TestValidateSemanticSchemaStep:
-    @pytest.mark.asyncio
-    async def test_validate_semantic_schema_valid_payload(self) -> None:
-
-        payload = {"catenaXId": "urn:uuid:123", "childItems": []}
-        ctx = _make_mock_context(payload=payload)
-        step_instance = ValidateSemanticSchemaStep()
-        definition = _make_step_definition(type="validate/semantic_schema")
-
-        output = await step_instance.invoke(
-            {"source": "payload", "schema_ref": "CX-0135"}, ctx, definition,
-        )
-
-        assert output.value["is_valid"] is True, "Valid payload should pass validation"
-        assert output.value["missing_keys"] == []
-
-    @pytest.mark.asyncio
-    async def test_validate_semantic_schema_invalid_payload(self) -> None:
-
-        payload = {"someOtherKey": "value"}
-        ctx = _make_mock_context(payload=payload)
-        step_instance = ValidateSemanticSchemaStep()
-        definition = _make_step_definition(type="validate/semantic_schema")
-
-        output = await step_instance.invoke(
-            {"source": "payload", "schema_ref": "CX-0135"}, ctx, definition,
-        )
-
-        assert output.value["is_valid"] is False, "Invalid payload should fail validation"
-        assert "catenaXId" in output.value["missing_keys"]
-        assert "childItems" in output.value["missing_keys"]
-
-    @pytest.mark.asyncio
-    async def test_validate_semantic_schema_custom_keys(self) -> None:
-
-        payload = {"myKey": "present"}
-        ctx = _make_mock_context(payload=payload)
-        step_instance = ValidateSemanticSchemaStep()
-        definition = _make_step_definition(type="validate/semantic_schema")
-
-        output = await step_instance.invoke(
-            {"source": "payload", "schema_ref": "CUSTOM", "required_keys": ["myKey"]},
-            ctx, definition,
-        )
-
-        assert output.value["is_valid"] is True
-        assert output.value["schema_ref"] == "CUSTOM"

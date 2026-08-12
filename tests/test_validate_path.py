@@ -51,7 +51,7 @@ class TestValidatePathStep:
     async def test_extracts_value_by_variable_and_path(self, context: StepContext) -> None:
         context.set_variable("response_body", {"content": {"status": "READY"}})
         output = await ValidatePathStep().invoke(
-            {"variable": "response_body", "path": "content.status"}, context, _definition(),
+            {"input": "response_body", "path": "content.status"}, context, _definition(),
         )
         assert output.value == "READY"
 
@@ -59,5 +59,5 @@ class TestValidatePathStep:
     async def test_missing_variable_raises(self, context: StepContext) -> None:
         with pytest.raises(KeyError, match="not found"):
             await ValidatePathStep().invoke(
-                {"variable": "does_not_exist", "path": "a.b"}, context, _definition(),
+                {"input": "does_not_exist", "path": "a.b"}, context, _definition(),
             )
