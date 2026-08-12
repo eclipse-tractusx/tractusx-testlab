@@ -116,8 +116,9 @@ def finalize_job(
     job.result = result
     if result.passed:
         jobs.complete(job.job_id)
-        monitor.log_event("job.completed", job_id=job.job_id, tck_id=job.tck_id, status=JobStatus.COMPLETED)
+        monitor.on_job_completed(job.job_id)
     else:
-        jobs.fail(job.job_id, "One or more scripts failed")
-        monitor.log_event("job.completed", job_id=job.job_id, tck_id=job.tck_id, status=JobStatus.FAILED)
+        reason = "One or more scripts failed"
+        jobs.fail(job.job_id, reason)
+        monitor.on_job_failed(job.job_id, error=reason)
     job_logger.close()

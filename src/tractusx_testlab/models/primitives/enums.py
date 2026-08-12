@@ -187,3 +187,30 @@ class ScriptKind(str, enum.Enum):
     """Explicit type discriminator for YAML files, following the Kubernetes ``kind:`` convention."""
     TEST = "test"
     TCK = "tck"
+
+
+class EventKind(str, enum.Enum):
+    """Discriminator identifying the semantic kind of an execution event.
+
+    Every event published by the execution engine's :class:`ExecutionMonitor`
+    carries its ``kind`` so a consumer (IDE, CLI, log sink) can decide what
+    happened by reading this field directly, instead of sniffing ``step_type``
+    or other free-text values. The SSE wire event name is derived from the
+    kind value by turning its single underscore into a dot, e.g.
+    ``step_completed`` -> ``step.completed``.
+    """
+
+    JOB_STARTED = "job_started"
+    JOB_PAUSED = "job_paused"
+    JOB_RESUMED = "job_resumed"
+    JOB_COMPLETED = "job_completed"
+    JOB_FAILED = "job_failed"
+    JOB_CANCELLED = "job_cancelled"
+    SCRIPT_STARTED = "script_started"
+    SCRIPT_COMPLETED = "script_completed"
+    STEP_STARTED = "step_started"
+    STEP_COMPLETED = "step_completed"
+    STEP_FAILED = "step_failed"
+    STEP_SKIPPED = "step_skipped"
+    STEP_WAITING = "step_waiting"
+    ASSERTION_RESULT = "assertion_result"

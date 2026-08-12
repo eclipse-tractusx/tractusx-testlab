@@ -250,6 +250,7 @@ async def cancel_job(job_id: str, player: PlayerDep) -> JSONResponse:
     if job is None:
         raise HTTPException(404, f"Job '{job_id}' not found")
     player.jobs.cancel(job_id)
+    player.monitor.on_job_cancelled(job_id)
     return JSONResponse(content={"job_id": job_id, "status": "CANCELLED"})
 
 
@@ -269,6 +270,7 @@ async def pause_job(job_id: str, player: PlayerDep) -> JSONResponse:
     if job.status != JobStatus.RUNNING:
         raise HTTPException(409, f"Job '{job_id}' is not running (status: {job.status.value})")
     player.jobs.pause(job_id)
+    player.monitor.on_job_paused(job_id)
     return JSONResponse(content={"job_id": job_id, "status": "PAUSED"})
 
 
@@ -288,4 +290,5 @@ async def resume_job(job_id: str, player: PlayerDep) -> JSONResponse:
     if job.status != JobStatus.PAUSED:
         raise HTTPException(409, f"Job '{job_id}' is not paused (status: {job.status.value})")
     player.jobs.resume(job_id)
+    player.monitor.on_job_resumed(job_id)
     return JSONResponse(content={"job_id": job_id, "status": "RUNNING"})
