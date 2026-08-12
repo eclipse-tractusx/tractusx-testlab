@@ -214,6 +214,12 @@ def compare(engine: dict, blocks: list[dict]) -> dict:
     matched = set()
     for block in blocks:
         uses = block.get("uses")
+        if uses is None:
+            # A block with no ``uses`` composes a parameter of another block and
+            # is never emitted as a step — the filter and condition expressions.
+            # Declaring a ``uses`` for one is what made them look like steps the
+            # engine had lost; the absence of the key is the honest statement.
+            continue
         resolved = NAME_MAP.get(uses, uses)
         step = engine.get(resolved)
         if step is None:
