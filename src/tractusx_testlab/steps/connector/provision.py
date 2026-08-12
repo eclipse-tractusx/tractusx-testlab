@@ -160,6 +160,32 @@ class CreateAssetParams(StepParams):
         }
 
 
+def _register_asset(
+    context: "StepContext", asset_id: str, definition: dict[str, Any], request_body: Any
+) -> StepOutput[CreateAssetOutput]:
+    """Create an asset at the provider and report what happened.
+
+    The one place either asset step reaches the connector: the raw step hands
+    over the config it was given, the wizard hands over the config it
+    assembled, and both get the same call and the same 409 handling.
+    """
+    provider = context.get_provider_service()
+    url = context.get_provider_endpoint_url("assets")
+
+    result, http_status = _create_or_conflict(
+        provider.create_asset, asset_id=asset_id, **definition
+    )
+
+    return StepOutput(
+        value=CreateAssetOutput(asset_id=asset_id),
+        request=HttpRequest(method="POST", url=url, body=request_body),
+        response=HttpResponse(
+            status_code=http_status,
+            body={"asset_id": asset_id, **(result if isinstance(result, dict) else {})},
+        ),
+    )
+
+
 class CreateAssetOutput(StepPayload):
     """Output contract of ``connector/provider/create_asset``."""
 
@@ -185,20 +211,74 @@ class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
     async def execute(
         self, params: CreateAssetParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[CreateAssetOutput]:
-        provider = context.get_provider_service()
-        url = context.get_provider_endpoint_url("assets")
-
-        result, http_status = _create_or_conflict(
-            provider.create_asset, asset_id=params.asset_id, **params.definition()
+        return _register_asset(
+            context, params.asset_id, params.definition(), params.model_dump(mode="json")
         )
 
-        return StepOutput(
-            value=CreateAssetOutput(asset_id=params.asset_id),
-            request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
-            response=HttpResponse(
-                status_code=http_status,
-                body={"asset_id": params.asset_id, **(result if isinstance(result, dict) else {})},
-            ),
+
+# ---------------------------------------------------------------------------
+# connector/provider/wizard/create_asset
+# ---------------------------------------------------------------------------
+
+
+class WizardCreateAssetParams(StepParams):
+    """Input contract of ``connector/provider/wizard/create_asset``.
+
+    The same asset as ``connector/provider/create_asset`` registers, described
+    field by field instead of as one document — for a script written by hand or
+    by the IDE's form, where there is no reusable asset config to point at.
+    """
+
+    asset_id: str = Field(
+        default="", description="Asset ID; derived from 'name', or a fresh UUID, when omitted."
+    )
+    name: str = Field(description="Human-readable asset name.")
+    description: str = Field(default="", description="What the asset offers.")
+    base_url: str = Field(description="URL of the data source behind the asset.")
+    content_type: str = Field(
+        default="", description="MIME type of the data, e.g. 'application/json'."
+    )
+    properties: dict = Field(
+        default_factory=dict,
+        description=(
+            "Further EDC asset properties, e.g. 'dct:type' or 'cx-common:version'."
+        ),
+    )
+
+    def asset_config(self) -> dict[str, Any]:
+        """The asset document these fields describe."""
+        properties = {**self.properties}
+        for key, value in (
+            ("name", self.name),
+            ("description", self.description),
+            ("contenttype", self.content_type),
+        ):
+            if value:
+                properties.setdefault(key, value)
+        return {"name": self.name, "base_url": self.base_url, "properties": properties}
+
+
+@step("connector/provider/wizard/create_asset")
+class WizardCreateAssetStep(BaseStep[WizardCreateAssetParams, CreateAssetOutput]):
+    """Register an asset described field by field rather than as a document.
+
+    The guided sibling of ``connector/provider/create_asset``: it assembles the
+    asset document from its fields and hands it to the same registration, so
+    the two steps cannot drift apart in what they actually create.
+    """
+
+    params_model = WizardCreateAssetParams
+    output_model = CreateAssetOutput
+
+    async def execute(
+        self, params: WizardCreateAssetParams, context: "StepContext", definition: StepDefinition
+    ) -> StepOutput[CreateAssetOutput]:
+        assembled = CreateAssetParams(asset_id=params.asset_id, asset=params.asset_config())
+        return _register_asset(
+            context,
+            assembled.asset_id,
+            assembled.definition(),
+            params.model_dump(mode="json"),
         )
 
 
@@ -258,36 +338,100 @@ class CreatePolicyStep(BaseStep[CreatePolicyParams, CreatePolicyOutput]):
     async def execute(
         self, params: CreatePolicyParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[CreatePolicyOutput]:
-        provider = context.get_provider_service()
-        url = context.get_provider_endpoint_url("policies")
-        policy_id = params.policy_id or str(uuid.uuid4())
+        return _register_policy(context, params.policy_id, params.policy)
 
-        policy = params.policy
-        rules = {
-            "context": policy.get("@context", policy.get("context")),
-            "permissions": policy.get("permissions", []),
-            "prohibitions": policy.get("prohibitions", []),
-            "obligations": policy.get("obligations", []),
+
+def _register_policy(
+    context: "StepContext", policy_id: str, policy: dict
+) -> StepOutput[CreatePolicyOutput]:
+    """Create a policy definition at the provider and report what happened.
+
+    The one place either policy step reaches the connector, so the raw step and
+    its wizard sibling cannot drift apart in what they register.
+    """
+    provider = context.get_provider_service()
+    url = context.get_provider_endpoint_url("policies")
+    policy_id = policy_id or str(uuid.uuid4())
+
+    rules = {
+        "context": policy.get("@context", policy.get("context")),
+        "permissions": policy.get("permissions", []),
+        "prohibitions": policy.get("prohibitions", []),
+        "obligations": policy.get("obligations", []),
+    }
+
+    # Build the model to capture the serialized payload for debugging.
+    policy_model = ModelFactory.get_policy_model(
+        dataspace_version=provider.dataspace_version, oid=policy_id, **rules
+    )
+    request_body = json.loads(policy_model.to_data())
+
+    result, http_status = _create_or_conflict(
+        provider.create_policy, policy_id=policy_id, **rules
+    )
+
+    return StepOutput(
+        value=CreatePolicyOutput(policy_id=policy_id),
+        request=HttpRequest(method="POST", url=url, body=request_body),
+        response=HttpResponse(
+            status_code=http_status,
+            body={"policy_id": policy_id, **(result if isinstance(result, dict) else {})},
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# connector/provider/wizard/create_policy
+# ---------------------------------------------------------------------------
+
+
+class WizardCreatePolicyParams(StepParams):
+    """Input contract of ``connector/provider/wizard/create_policy``.
+
+    The same ODRL policy as ``connector/provider/create_policy`` registers,
+    written as its three rule lists instead of as one document.
+    """
+
+    policy_id: str = Field(
+        default="", description="Policy ID; a fresh UUID is used when omitted."
+    )
+    permissions: list[dict] = Field(
+        description="ODRL permission rules: what the consumer is allowed to do."
+    )
+    prohibitions: list[dict] = Field(
+        default_factory=list, description="ODRL prohibition rules."
+    )
+    obligations: list[dict] = Field(
+        default_factory=list, description="ODRL obligation rules."
+    )
+
+    def policy_document(self) -> dict:
+        """The ODRL policy these rule lists describe."""
+        return {
+            "permissions": self.permissions,
+            "prohibitions": self.prohibitions,
+            "obligations": self.obligations,
         }
 
-        # Build the model to capture the serialized payload for debugging.
-        policy_model = ModelFactory.get_policy_model(
-            dataspace_version=provider.dataspace_version, oid=policy_id, **rules
-        )
-        request_body = json.loads(policy_model.to_data())
 
-        result, http_status = _create_or_conflict(
-            provider.create_policy, policy_id=policy_id, **rules
-        )
+@step("connector/provider/wizard/create_policy")
+class WizardCreatePolicyStep(BaseStep[WizardCreatePolicyParams, CreatePolicyOutput]):
+    """Register an ODRL policy written as rule lists rather than as a document.
 
-        return StepOutput(
-            value=CreatePolicyOutput(policy_id=policy_id),
-            request=HttpRequest(method="POST", url=url, body=request_body),
-            response=HttpResponse(
-                status_code=http_status,
-                body={"policy_id": policy_id, **(result if isinstance(result, dict) else {})},
-            ),
-        )
+    The guided sibling of ``connector/provider/create_policy``, registering
+    through the same call.
+    """
+
+    params_model = WizardCreatePolicyParams
+    output_model = CreatePolicyOutput
+
+    async def execute(
+        self,
+        params: WizardCreatePolicyParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[CreatePolicyOutput]:
+        return _register_policy(context, params.policy_id, params.policy_document())
 
 
 # ---------------------------------------------------------------------------

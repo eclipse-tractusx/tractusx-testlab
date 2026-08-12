@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from typing import TYPE_CHECKING, Any, Optional
 
 import requests
@@ -121,19 +122,96 @@ class CreateShellDescriptorStep(BaseStep[CreateShellDescriptorParams, Descriptor
         context: "StepContext",
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
-        aas = context.get_aas_service()
-        from tractusx_sdk.industry.models.aas.v3.base import ShellDescriptor
+        return _register_shell(context, params.shell_descriptor, params.bpn)
 
-        descriptor = ShellDescriptor(**params.shell_descriptor)
-        result = aas.create_asset_administration_shell_descriptor(descriptor, bpn=params.bpn)
-        url = f"{aas.aas_url}/shell-descriptors"
 
-        body = _as_document(result)
-        return StepOutput(
-            value=DescriptorPayload.of(body),
-            request=HttpRequest(method="POST", url=url, body=params.shell_descriptor),
-            response=HttpResponse(status_code=201, body=body),
-        )
+def _register_shell(
+    context: "StepContext", shell_descriptor: dict, bpn: Optional[str]
+) -> StepOutput[DescriptorPayload]:
+    """Register a shell descriptor, whether it was written out or assembled.
+
+    The one place either shell-creation step reaches the registry, so the two
+    cannot drift apart in what they register.
+    """
+    from tractusx_sdk.industry.models.aas.v3.base import ShellDescriptor
+
+    aas = context.get_aas_service()
+    result = aas.create_asset_administration_shell_descriptor(
+        ShellDescriptor(**shell_descriptor), bpn=bpn
+    )
+    url = f"{aas.aas_url}/shell-descriptors"
+
+    body = _as_document(result)
+    return StepOutput(
+        value=DescriptorPayload.of(body),
+        request=HttpRequest(method="POST", url=url, body=shell_descriptor),
+        response=HttpResponse(status_code=201, body=body),
+    )
+
+
+# ---------------------------------------------------------------------------
+# digital-twin/provider/wizard/create_shell_descriptor
+# ---------------------------------------------------------------------------
+
+
+class WizardCreateShellDescriptorParams(DtrParams):
+    """Input contract of ``digital-twin/provider/wizard/create_shell_descriptor``.
+
+    The same shell as ``digital-twin/provider/create_shell_descriptor``
+    registers, described field by field instead of as one AAS document.
+    """
+
+    id: str = Field(
+        default="", description="Shell identifier; a fresh URN UUID when omitted."
+    )
+    id_short: str = Field(description="Short, human-readable name for the shell.")
+    global_asset_id: str = Field(
+        default="", description="Global asset ID the twin represents, as a URN."
+    )
+    specific_asset_ids: list[dict] = Field(
+        default_factory=list,
+        description="Identifiers the shell can be looked up by, as {name, value} pairs.",
+    )
+    submodel_descriptors: list[dict] = Field(
+        default_factory=list,
+        description="Submodel descriptors to attach as the shell is created.",
+    )
+
+    def shell_document(self) -> dict:
+        """The AAS shell descriptor these fields describe."""
+        document: dict[str, Any] = {
+            "id": self.id or f"urn:uuid:{uuid.uuid4()}",
+            "idShort": self.id_short,
+        }
+        if self.global_asset_id:
+            document["globalAssetId"] = self.global_asset_id
+        if self.specific_asset_ids:
+            document["specificAssetIds"] = self.specific_asset_ids
+        if self.submodel_descriptors:
+            document["submodelDescriptors"] = self.submodel_descriptors
+        return document
+
+
+@step("digital-twin/provider/wizard/create_shell_descriptor")
+class WizardCreateShellDescriptorStep(
+    BaseStep[WizardCreateShellDescriptorParams, DescriptorPayload]
+):
+    """Register a shell descriptor described field by field.
+
+    The guided sibling of ``digital-twin/provider/create_shell_descriptor``,
+    registering through the same call.
+    """
+
+    params_model = WizardCreateShellDescriptorParams
+    output_model = DescriptorPayload
+
+    async def execute(
+        self,
+        params: WizardCreateShellDescriptorParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[DescriptorPayload]:
+        return _register_shell(context, params.shell_document(), params.bpn)
 
 
 # ---------------------------------------------------------------------------
@@ -202,20 +280,100 @@ class CreateSubmodelDescriptorStep(
         context: "StepContext",
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
-        aas = context.get_aas_service()
-        from tractusx_sdk.industry.models.aas.v3.base import SubModelDescriptor
-
-        descriptor = SubModelDescriptor(**params.submodel_descriptor)
-        result = aas.create_submodel_descriptor(
-            params.aas_identifier, descriptor, bpn=params.bpn
+        return _register_submodel(
+            context, params.aas_identifier, params.submodel_descriptor, params.bpn
         )
-        url = f"{aas.aas_url}/shell-descriptors/{params.aas_identifier}/submodel-descriptors"
 
-        body = _as_document(result)
-        return StepOutput(
-            value=DescriptorPayload.of(body),
-            request=HttpRequest(method="POST", url=url, body=params.submodel_descriptor),
-            response=HttpResponse(status_code=201, body=body),
+
+def _register_submodel(
+    context: "StepContext",
+    aas_identifier: str,
+    submodel_descriptor: dict,
+    bpn: Optional[str],
+) -> StepOutput[DescriptorPayload]:
+    """Attach a submodel descriptor, whether it was written out or assembled."""
+    from tractusx_sdk.industry.models.aas.v3.base import SubModelDescriptor
+
+    aas = context.get_aas_service()
+    result = aas.create_submodel_descriptor(
+        aas_identifier, SubModelDescriptor(**submodel_descriptor), bpn=bpn
+    )
+    url = f"{aas.aas_url}/shell-descriptors/{aas_identifier}/submodel-descriptors"
+
+    body = _as_document(result)
+    return StepOutput(
+        value=DescriptorPayload.of(body),
+        request=HttpRequest(method="POST", url=url, body=submodel_descriptor),
+        response=HttpResponse(status_code=201, body=body),
+    )
+
+
+# ---------------------------------------------------------------------------
+# digital-twin/provider/wizard/create_submodel_descriptor
+# ---------------------------------------------------------------------------
+
+#: The interface a Catena-X submodel is served over.
+_SUBMODEL_INTERFACE = "SUBMODEL-3.0"
+
+
+class WizardCreateSubmodelDescriptorParams(ShellDescriptorRefParams):
+    """Input contract of ``digital-twin/provider/wizard/create_submodel_descriptor``.
+
+    A submodel descriptor is mostly boilerplate around three facts: what the
+    submodel is called, which aspect model it follows, and where its data can
+    be fetched. This step takes those three and writes the rest.
+    """
+
+    id: str = Field(
+        default="", description="Submodel identifier; a fresh URN UUID when omitted."
+    )
+    id_short: str = Field(description="Short, human-readable name for the submodel.")
+    semantic_id: str = Field(description="URN of the aspect model the submodel follows.")
+    endpoint_url: str = Field(description="URL the submodel's data is served from.")
+
+    def submodel_document(self) -> dict:
+        """The AAS submodel descriptor these fields describe."""
+        return {
+            "id": self.id or f"urn:uuid:{uuid.uuid4()}",
+            "idShort": self.id_short,
+            "semanticId": {
+                "type": "ExternalReference",
+                "keys": [{"type": "GlobalReference", "value": self.semantic_id}],
+            },
+            "endpoints": [
+                {
+                    "interface": _SUBMODEL_INTERFACE,
+                    "protocolInformation": {
+                        "href": self.endpoint_url,
+                        "endpointProtocol": "HTTP",
+                        "endpointProtocolVersion": ["1.1"],
+                    },
+                }
+            ],
+        }
+
+
+@step("digital-twin/provider/wizard/create_submodel_descriptor")
+class WizardCreateSubmodelDescriptorStep(
+    BaseStep[WizardCreateSubmodelDescriptorParams, DescriptorPayload]
+):
+    """Attach a submodel descriptor described field by field.
+
+    The guided sibling of ``digital-twin/provider/create_submodel_descriptor``,
+    registering through the same call.
+    """
+
+    params_model = WizardCreateSubmodelDescriptorParams
+    output_model = DescriptorPayload
+
+    async def execute(
+        self,
+        params: WizardCreateSubmodelDescriptorParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[DescriptorPayload]:
+        return _register_submodel(
+            context, params.aas_identifier, params.submodel_document(), params.bpn
         )
 
 
