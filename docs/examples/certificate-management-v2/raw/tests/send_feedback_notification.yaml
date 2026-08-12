@@ -100,61 +100,62 @@ execution:
         with: { input: status_code, operator: equals, value: 200 }
 
   - id: wait_provider_ack
-    uses: wait/wait_for_call
+    uses: mock/wait/http_request
     name: Wait for provider RECEIVE acknowledgment
     with:
       mock: "${{ setup.mock_receive_ack.mock }}"
       timeout_s: 60
     returns:
-      callback_payload:
+      request_method:
+        type: string
+      request_body:
         type: object
         class: CallbackPayload
     validate:
-      - uses: validate/field
+      - uses: validate/assert
         with:
-          input: callback_payload
-          path: "method"
+          input: request_method
           operator: equals
           value: "POST"
       - uses: validate/field
         with:
-          input: callback_payload
-          path: "body.header.messageId"
+          input: request_body
+          path: "header.messageId"
           operator: matches_regex
           value: "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
       - uses: validate/field
         with:
-          input: callback_payload
-          path: "body.header.context"
+          input: request_body
+          path: "header.context"
           operator: equals
           value: "CompanyCertificateManagement-CCMAPI-Status:1.0.0"
       - uses: validate/field
         with:
-          input: callback_payload
-          path: "body.header.sentDateTime"
+          input: request_body
+          path: "header.sentDateTime"
           operator: not_null
       - uses: validate/field
         with:
-          input: callback_payload
-          path: "body.header.senderBpn"
+          input: request_body
+          path: "header.senderBpn"
           operator: matches_regex
           value: "^BPNL[0-9A-Z]{12}$"
       - uses: validate/field
         with:
-          input: callback_payload
-          path: "body.header.receiverBpn"
+          input: request_body
+          path: "header.receiverBpn"
           operator: equals
           value: "${{ env.consumer_bpn }}"
       - uses: validate/field
         with:
-          input: callback_payload
-          path: "body.header.version"
+          input: request_body
+          path: "header.version"
           operator: equals
           value: "3.1.0"
       - uses: validate/field
         with:
-          input: callback_payload
-          path: "body.content.certificateStatus"
+          input: request_body
+          path: "content.certificateStatus"
           operator: one_of
           value: ["RECEIVED", "ACCEPTED", "REJECTED"]
 

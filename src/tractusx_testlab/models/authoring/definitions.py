@@ -134,7 +134,11 @@ class ScriptDefinition(BaseModel):
 
     kind: Literal["test"] = "test"
     syntax: Literal["v1-alpha"]
-    id: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,99}$")
+    id: str = Field(
+        # Dots are allowed so an id can carry the version it was cut at,
+        # e.g. "certificate-management-tck-v0.0.1".
+        pattern=r"^[a-z][a-z0-9_.-]{0,99}$"
+    )
     namespace: str
     metadata: MetadataDefinition
     setup: list[StepDefinition] = Field(default_factory=list)
@@ -202,7 +206,11 @@ class TckDefinition(BaseModel):
 
     kind: Literal["tck"] = "tck"
     syntax: Literal["v1-alpha"]
-    id: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,99}$")
+    id: str = Field(
+        # Dots are allowed so an id can carry the version it was cut at,
+        # e.g. "certificate-management-tck-v0.0.1".
+        pattern=r"^[a-z][a-z0-9_.-]{0,99}$"
+    )
     metadata: TckMetadataDefinition
     env: Optional[EnvDefinition] = None
     tests: list[TckTestEntry] = Field(default_factory=list)

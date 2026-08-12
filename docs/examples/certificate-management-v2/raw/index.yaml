@@ -58,14 +58,14 @@ infrastructure:
     connector:
       required: true
       standard:
-        - id: CX-0018
-          version: v4.2.0
+        id: CX-0018
+        version: v4.2.0
   sut:
     connector:
       required: true
       standard:
-        - id: CX-0018
-          version: v4.2.0
+        id: CX-0018
+        version: v4.2.0
 
 env:
   variables:

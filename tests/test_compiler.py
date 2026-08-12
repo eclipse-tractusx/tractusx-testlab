@@ -54,7 +54,11 @@ def _minimal_script() -> dict:
         "kind": "test",
         "id": "minimal-test",
         "namespace": "testlab.test",
-        "metadata": {"name": "Minimal Test", "version": "1.0"},
+        "metadata": {
+            "name": "Minimal Test",
+            "version": "1.0",
+            "description": "A minimal test script.",
+        },
         "execution": [],
     }
 
@@ -82,8 +86,13 @@ def _test_script(execution_steps: list | None = None) -> dict:
         "kind": "test",
         "id": "minimal-test",
         "namespace": "minimal-tck",
-        "metadata": {"name": "Minimal Test", "version": "1.0"},
-        "execution": execution_steps or [{"uses": "util/generate_uuid", "name": "gen"}],
+        "metadata": {
+            "name": "Minimal Test",
+            "version": "1.0",
+            "description": "A minimal test script.",
+        },
+        "execution": execution_steps if execution_steps is not None
+        else [{"id": "gen", "uses": "util/generate_uuid", "name": "gen"}],
     }
 
 
@@ -96,10 +105,13 @@ def _tck_manifest(test_filename: str = "minimal-test.yaml") -> dict:
         "metadata": {
             "name": "Minimal TCK",
             "version": "1.0",
+            "description": "A minimal TCK manifest.",
+            "standards": [{"id": "CX-0000", "version": "v1.0.0"}],
             "authors": [],
             "copyright_holders": [],
             "license": "Apache-2.0",
         },
+        "env": {"variables": [], "schemas": [], "assets": []},
         "tests": [{"id": test_filename}],
     }
 
@@ -120,9 +132,9 @@ def _write_tck(tmp_path: Path, execution_steps: list | None = None) -> Path:
 class TestCompilerValidation:
     """Tests for Compiler.validate()."""
 
-    def test_validate_minimal_valid_script(self, tmp_path: Path) -> None:
+    def test_validate_minimal_valid_tck(self, tmp_path: Path) -> None:
         # Arrange
-        script_path = _write_yaml(tmp_path, _minimal_script())
+        script_path = _write_tck(tmp_path)
         compiler = Compiler()
 
         # Act
@@ -132,13 +144,11 @@ class TestCompilerValidation:
         assert isinstance(result, ValidationResult)
         assert result.valid is True
 
-    def test_validate_script_with_steps(self, tmp_path: Path) -> None:
+    def test_validate_tck_with_steps(self, tmp_path: Path) -> None:
         # Arrange
-        script = _minimal_script()
-        script["execution"] = [
-            {"uses": "util/generate_uuid", "id": "gen_id"},
-        ]
-        script_path = _write_yaml(tmp_path, script)
+        script_path = _write_tck(
+            tmp_path, [{"id": "gen_id", "uses": "util/generate_uuid", "name": "gen"}]
+        )
         compiler = Compiler()
 
         # Act
@@ -149,11 +159,7 @@ class TestCompilerValidation:
 
     def test_validate_rejects_unknown_step_type(self, tmp_path: Path) -> None:
         # Arrange
-        script = _minimal_script()
-        script["execution"] = [
-            {"uses": "nonexistent_step_type_xyz"},
-        ]
-        script_path = _write_yaml(tmp_path, script)
+        script_path = _write_tck(tmp_path, [{"id": "bad", "uses": "nonexistent_step_type_xyz", "name": "bad"}])
         compiler = Compiler()
 
         # Act
@@ -165,12 +171,13 @@ class TestCompilerValidation:
 
     def test_validate_returns_issues_for_multiple_bad_steps(self, tmp_path: Path) -> None:
         # Arrange
-        script = _minimal_script()
-        script["execution"] = [
-            {"uses": "unknown_a"},
-            {"uses": "unknown_b"},
-        ]
-        script_path = _write_yaml(tmp_path, script)
+        script_path = _write_tck(
+            tmp_path,
+            [
+                {"id": "a", "uses": "unknown_a", "name": "a"},
+                {"id": "b", "uses": "unknown_b", "name": "b"},
+            ],
+        )
         compiler = Compiler()
 
         # Act
@@ -181,13 +188,11 @@ class TestCompilerValidation:
 
     def test_compile_raises_on_invalid_script(self, tmp_path: Path) -> None:
         # Arrange
-        script = _minimal_script()
-        script["execution"] = [{"uses": "totally_bogus_step"}]
-        script_path = _write_yaml(tmp_path, script)
+        script_path = _write_tck(tmp_path, [{"id": "bogus", "uses": "totally_bogus_step", "name": "bogus"}])
         compiler = Compiler()
 
         # Act & Assert
         from unittest.mock import MagicMock
         identity = MagicMock()
-        with pytest.raises(ValueError, match="validation failed"):
+        with pytest.raises(ValueError, match="[Vv]alidation failed"):
             compiler.compile(script_path, identity, {})

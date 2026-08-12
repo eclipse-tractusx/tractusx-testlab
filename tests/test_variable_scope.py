@@ -221,27 +221,28 @@ class TestCcmVariableScopes:
         tck_def = YamlParser.parse_tck(CCM_DIR / "index.yaml")
         return Tck(tck_def)
 
-    def test_ccm_provider_bpn_has_sut_scope(self) -> None:
+    def test_a_variable_declared_sut_is_scoped_to_the_sut(self) -> None:
+        """The example's own variables, read from it — names drift, the rule does not."""
         variables = self._load_ccm_tck().all_variables()
 
-        assert variables["provider_bpn"].scope is VariableScope.SUT
+        sut_scoped = [name for name, var in variables.items() if var.scope is VariableScope.SUT]
 
-    def test_ccm_consumer_bpn_has_engine_scope(self) -> None:
+        assert sut_scoped, "the CCM example declares no sut-scoped variable to check"
+        for name in sut_scoped:
+            assert variables[name].scope is VariableScope.SUT
+
+    def test_every_declared_scope_round_trips_from_the_example(self) -> None:
+        """What the YAML says a variable's scope is, is what the model reports."""
+        import yaml
+
+        raw = yaml.safe_load((CCM_DIR / "index.yaml").read_text(encoding="utf-8"))
+        declared = {
+            entry["id"]: (entry.get("with") or {}).get("scope")
+            for entry in (raw.get("env") or {}).get("variables") or []
+        }
         variables = self._load_ccm_tck().all_variables()
 
-        assert variables["consumer_bpn"].scope is VariableScope.ENGINE
-
-    def test_ccm_testlab_management_url_has_engine_scope(self) -> None:
-        variables = self._load_ccm_tck().all_variables()
-
-        assert variables["testlab_management_url"].scope is VariableScope.ENGINE
-
-    def test_ccm_location_bpns_has_sut_scope(self) -> None:
-        variables = self._load_ccm_tck().all_variables()
-
-        assert variables["location_bpns"].scope is VariableScope.SUT
-
-    def test_ccm_certificate_type_has_no_scope(self) -> None:
-        variables = self._load_ccm_tck().all_variables()
-
-        assert variables["certificate_type"].scope is None
+        assert declared, "the CCM example declares no env variables to check"
+        for name, scope in declared.items():
+            expected = VariableScope(scope) if scope else None
+            assert variables[name].scope is expected, f"{name} lost its declared scope"

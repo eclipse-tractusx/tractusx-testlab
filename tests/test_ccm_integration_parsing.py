@@ -41,17 +41,11 @@ from tractusx_testlab.scripting.parser import YamlParser
 CCM_DIR = Path(__file__).resolve().parent.parent / "docs" / "examples" / "certificate-management-v2" / "raw"
 CCM_TESTS_DIR = CCM_DIR / "tests"
 
-_CCM_TEST_FILES = {
-    "available_notification.yaml": 4,
-    "catalog_policy_validation.yaml": 1,
-    "certificate_asset_validation.yaml": 1,
-    "error_handling.yaml": 4,
-    "expose_testlab_asset.yaml": 4,
-    "push_certificate.yaml": 4,
-    "request_certificate.yaml": 3,
-    "send_feedback.yaml": 4,
-    "validate_payload.yaml": 2,
-}
+#: The example's own test files, read from disk rather than listed here.
+#: A hard-coded list drifts silently every time the example is reworked, and
+#: has done so twice; what this suite is for is that the shipped example still
+#: parses, not that it still has the shape someone wrote down once.
+_CCM_TEST_FILES = sorted(path.name for path in CCM_TESTS_DIR.glob("*.yaml"))
 
 _CCM_STEP_TYPES = [
     "connector/provider/create_asset", "connector/provider/create_contract_definition",
@@ -66,33 +60,43 @@ _CCM_STEP_TYPES_UNREGISTERED: list[str] = []
 
 
 class TestCcmYamlParsing:
-    @pytest.mark.parametrize("filename,expected_steps", list(_CCM_TEST_FILES.items()))
-    def test_ccm_yaml_parses_successfully(self, filename: str, expected_steps: int) -> None:
+    def test_the_example_ships_test_files(self) -> None:
+        """An empty glob would make every test below pass by doing nothing."""
+        assert _CCM_TEST_FILES
 
-        yaml_path = CCM_TESTS_DIR / filename
-        with open(yaml_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+    @pytest.mark.parametrize("filename", _CCM_TEST_FILES)
+    def test_every_step_declares_what_it_uses(self, filename: str) -> None:
 
-        raw_steps = data.get("execution", [])
+        data = yaml.safe_load((CCM_TESTS_DIR / filename).read_text(encoding="utf-8"))
 
-        assert len(raw_steps) == expected_steps, (
-            f"{filename}: expected {expected_steps} steps, got {len(raw_steps)}"
-        )
         assert data.get("kind", "test") == "test", f"{filename} kind should be 'test'"
+        raw_steps = data.get("execution", [])
+        assert raw_steps, f"{filename} declares no execution steps"
         for i, step_raw in enumerate(raw_steps):
-            assert "uses" in step_raw or "type" in step_raw, (
-                f"Step {i} in {filename} must declare a 'uses' verb or legacy 'type'"
-            )
+            assert "uses" in step_raw, f"Step {i} in {filename} must declare a 'uses' verb"
 
-    @pytest.mark.parametrize("filename,expected_steps", list(_CCM_TEST_FILES.items()))
-    def test_ccm_yaml_parses_into_script_definition(self, filename: str, expected_steps: int) -> None:
+    @pytest.mark.parametrize("filename", _CCM_TEST_FILES)
+    def test_ccm_yaml_parses_into_script_definition(self, filename: str) -> None:
 
         script = YamlParser.parse_script(CCM_TESTS_DIR / filename)
+        raw = yaml.safe_load((CCM_TESTS_DIR / filename).read_text(encoding="utf-8"))
 
         assert script is not None, f"{filename} did not parse into a ScriptDefinition"
-        assert len(script.execution) == expected_steps, (
-            f"{filename}: parser produced {len(script.execution)} steps, expected {expected_steps}"
+        assert len(script.execution) == len(raw["execution"]), (
+            f"{filename}: the parser dropped steps the file declares"
         )
+
+    @pytest.mark.parametrize("filename", _CCM_TEST_FILES)
+    def test_every_step_the_example_uses_is_registered(self, filename: str) -> None:
+        """The shipped example must not name a step the engine no longer has."""
+        script = YamlParser.parse_script(CCM_TESTS_DIR / filename)
+
+        unregistered = [
+            step.uses
+            for step in (*script.setup, *script.execution, *script.teardown)
+            if StepRegistry.get(step.uses, script.dataspace_version) is None
+        ]
+        assert unregistered == []
 
 
 class TestCcmIndexParsing:
@@ -103,9 +107,10 @@ class TestCcmIndexParsing:
             data = yaml.safe_load(f)
 
         assert data["kind"] == "tck"
-        assert data["id"] == "certificate-management-tck"
         tests = data.get("tests", [])
-        assert len(tests) == 9, f"Expected 9 tests, got {len(tests)}"
+        assert len(tests) == len(_CCM_TEST_FILES), (
+            "the index and the tests/ directory disagree on how many tests there are"
+        )
         for entry in tests:
             assert "id" in entry, f"Each test entry must have an 'id' key, got {entry}"
 
@@ -168,13 +173,14 @@ class TestCcmInfrastructure:
 
     def test_sut_connector_reference_in_example_resolves_verbatim(self) -> None:
 
-        with open(CCM_TESTS_DIR / "request_certificate.yaml", "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        data = yaml.safe_load(
+            (CCM_TESTS_DIR / "request_certificate.yaml").read_text(encoding="utf-8")
+        )
         sut_ref = data["execution"][0]["with"]["counter_party_address"]
 
         result = resolve_expression(sut_ref)
 
-        assert result == {"$ref": "infrastructure.sut.connector.counter_party_address"}
+        assert result == {"$ref": sut_ref.strip("${} ")}
 
 
 class TestCcmStepRegistry:

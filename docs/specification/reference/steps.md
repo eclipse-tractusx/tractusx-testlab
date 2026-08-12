@@ -4,7 +4,7 @@
 
 Every step declares its interface as Pydantic models, and this page is generated from them, so it cannot drift from the implementation.
 
-44 steps.
+49 steps.
 
 ## Steps
 
@@ -18,10 +18,10 @@ Publishes the resulting data-plane address so `connector/dataplane/http_request`
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `filter_expression` | list of [FilterExpression](#filterexpression) | no | `[]` | `filters` | Filter criteria applied to the catalog request. |
-| `counter_party_address` | string | no | `''` | `provider_url` | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | `bpnl` | BPN of the counter-party. |
-| `policies` | list of object | no | `[]` | — | ODRL policies the negotiation is allowed to accept. |
+| `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
+| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `expected_policies` | list of object | no | `[]` | — | ODRL policies the negotiation is allowed to accept. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -36,7 +36,7 @@ _What both DSP flow steps hand back: where the data is, and the token for it._
 
 | Variable | Type | Description |
 |---|---|---|
-| `dataplane_endpoint` | string | Data-plane URL the negotiated data is fetched from. |
+| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
 | `edr_token` | string | Authorization token for that data-plane URL. |
 
 A variable is left unset when its value could not be derived.
@@ -51,10 +51,10 @@ Publishes the same data-plane address as `do_dsp`.
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `filter_expression` | list of [FilterExpression](#filterexpression) | no | `[]` | `filters` | Filter criteria applied to the catalog request. |
+| `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
 | `bpnl` | string | yes | — | — | BPN used to discover the counter-party's connector. |
 | `counter_party_address` | string | no | `None` | — | DSP endpoint; when omitted it is resolved from the BPN by discovery. |
-| `policies` | list of object | no | `None` | — | ODRL policies the negotiation is allowed to accept. |
+| `expected_policies` | list of object | no | `None` | — | ODRL policies the negotiation is allowed to accept. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -69,7 +69,7 @@ _What both DSP flow steps hand back: where the data is, and the token for it._
 
 | Variable | Type | Description |
 |---|---|---|
-| `dataplane_endpoint` | string | Data-plane URL the negotiated data is fetched from. |
+| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
 | `edr_token` | string | Authorization token for that data-plane URL. |
 
 A variable is left unset when its value could not be derived.
@@ -105,13 +105,14 @@ _Nothing._
 
 Retrieve the EDR data address for a completed transfer.
 
-Publishes the same data-plane pair as `transfer_data`, so it can stand in for that step when the transfer was started elsewhere.
+Publishes the same data-plane pair as `initiate_transfer`, so it can stand in for that step when the transfer was started elsewhere — a PULL `initiate_transfer` resolves a `negotiation_id` down to a `transfer_id` and then does exactly what this step does.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `transfer_id` | string | no | `None` | — | Transfer process to read the EDR of; falls back to the 'transfer_id' context variable. |
+| `verify` | any | no | `None` | — | TLS verification passed through to the SDK; None keeps its default. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -129,39 +130,87 @@ Additional keys sent by the counterpart are passed through unchanged.
 
 | Variable | Type | Description |
 |---|---|---|
-| `dataplane_endpoint` | string | Data-plane URL the negotiated data is fetched from. |
+| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
 | `edr_token` | string | Authorization token for that data-plane URL. |
 
 A variable is left unset when its value could not be derived.
 
-### `connector/consumer/negotiate_contract`
+### `connector/consumer/initiate_transfer`
 
-Start an EDR contract negotiation with the provider via the SDK.
+Start a data transfer for a contract that has already been negotiated.
 
-Returns as soon as the negotiation is accepted — it does not wait for it to finish; `transfer_data` is what polls for the resulting EDR.
+A PULL transfer turns a finished negotiation into something `connector/dataplane/http_request` can call: it resolves `negotiation_id` down to a `transfer_id`, then does exactly what `connector/consumer/get_edr` does with one — the two steps share that lookup rather than each fetching the data address their own way. A PUSH transfer instead asks the connector to deliver the data to a destination of the script's choosing, and waits for that transfer to settle.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `counter_party_address` | string | no | `''` | `provider_url` | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | `bpnl` | BPN of the counter-party. |
-| `target` | any | no | `None` | — | Asset ID to negotiate for; falls back to the 'catalog_target' context variable. |
-| `policy` | any | no | `None` | — | ODRL policy to negotiate under; falls back to the 'catalog_policy' context variable. |
+| `transfer_type` | string | no | `'HttpData-PULL'` | — | How the data moves: 'HttpData-PULL' (the consumer fetches it) or a '-PUSH' type such as 'HttpData-PUSH' or 'AmazonS3-PUSH'. |
+| `negotiation_id` | string | no | `None` | — | PULL only — negotiation to collect the EDR for; falls back to the 'negotiation_id' context variable. |
+| `agreement_id` | string | no | `None` | — | PUSH only — contract agreement the transfer runs under; falls back to the 'agreement_id' context variable. |
+| `data_destination` | object | no | `None` | — | PUSH only — the EDC data address the provider pushes to. |
+| `counter_party_address` | string | no | `''` | — | PUSH only — DSP endpoint of the provider; falls back to 'provider_address'. |
+| `max_wait` | number | no | `30.0` | — | PUSH only — seconds to wait for the transfer to reach a final state. |
+| `poll_interval` | number | no | `1.0` | — | PUSH only — seconds between two transfer state reads. |
+| `verify` | any | no | `None` | — | TLS verification passed through to the SDK; None keeps its default. |
 
 **Output** — the value assertions and `returns:` read
 
-_Output contract of `connector/consumer/negotiate_contract`._
+_Output contract of `connector/consumer/initiate_transfer`._
+
+| Field | Type | Description |
+|---|---|---|
+| `transfer_id` | string | ID of the transfer process. |
+| `state` | string | State the transfer settled at, e.g. 'STARTED' or 'COMPLETED'. |
+| `edr_entry` | object | PULL only — the EDR entry the negotiation produced. |
+| `data_address` | string | PULL only — data-plane URL the data is fetched from. |
+| `edr_token` | string | PULL only — authorization token for that data-plane URL. |
+| `data_address_raw` | [DataAddressPayload](#dataaddresspayload) | PULL only — the full data address document, for assertions on its other keys. |
+
+**Publishes** — context variables available to later steps
+
+| Variable | Type | Description |
+|---|---|---|
+| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
+| `edr_token` | string | Authorization token for that data-plane URL. |
+| `transfer_id` | string | ID of the transfer process. |
+| `edr_entry` | object | The EDR entry the negotiation produced. |
+
+A variable is left unset when its value could not be derived.
+
+### `connector/consumer/negotiate`
+
+Negotiate a contract with the provider and wait for the outcome.
+
+The SDK starts the negotiation and answers with its ID straight away; this step then polls the negotiation until it finalises or terminates, so what it publishes is the settled outcome rather than "accepted for processing".
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
+| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `asset_id` | any | no | `None` | — | Asset ID to negotiate for; falls back to the 'catalog_asset_id' context variable. |
+| `policy` | any | no | `None` | — | ODRL policy to negotiate under; falls back to the 'catalog_policy' context variable. |
+| `max_wait` | number | no | `30.0` | — | Seconds to wait for the negotiation to reach a final state. |
+| `poll_interval` | number | no | `1.0` | — | Seconds between two negotiation state reads. |
+
+**Output** — the value assertions and `returns:` read
+
+_Output contract of `connector/consumer/negotiate`._
 
 | Field | Type | Description |
 |---|---|---|
 | `negotiation_id` | string | ID of the started negotiation. |
+| `agreement_id` | string | ID of the contract agreement, once the negotiation finalised. |
+| `state` | string | State the negotiation settled at, e.g. 'FINALIZED' or 'TERMINATED'. |
 
 **Publishes** — context variables available to later steps
 
 | Variable | Type | Description |
 |---|---|---|
 | `negotiation_id` | string | ID the transfer step polls for the resulting EDR. |
+| `agreement_id` | string | ID a PUSH transfer is started from. |
 
 A variable is left unset when its value could not be derived.
 
@@ -175,12 +224,12 @@ The `policy:` param accepts the testlab simplified format (`permissions`/`constr
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `filter_expression` | list of [FilterExpression](#filterexpression) | no | `[]` | `filters` | Filter criteria applied to the catalog request. |
-| `counter_party_address` | string | no | `''` | `provider_url` | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | `bpnl` | BPN of the counter-party. |
+| `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
+| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
 | `max_wait` | number | no | `60` | — | Seconds to wait for the transfer to complete. |
 | `poll_interval` | number | no | `2` | — | Seconds between transfer-state polls. |
-| `policy` | any | no | `None` | — | Single policy the offer must satisfy, in ODRL or the testlab simplified form; omitted means the SDK picks the first offer. |
+| `expected_policies` | any | no | `None` | — | Policies the offer must satisfy, in ODRL or the testlab simplified form, as one document or a list; omitted means the SDK picks the first offer. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -188,21 +237,21 @@ _Everything the DSP flow produced, from the catalog through to the token._
 
 | Field | Type | Description |
 |---|---|---|
-| `endpoint` | string | Data-plane URL the negotiated data is fetched from. |
+| `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
 | `edr_token` | string | Authorization token for that URL. |
-| `dataplane_url` | string | Same as 'endpoint', as a string. |
 | `token_prefix` | string | First characters of the token, safe to log or assert on. |
 | `catalog` | object | Catalog document the offer was taken from. |
 | `datasets` | list of object | Dataset offers in that catalog. |
 | `asset_id` | string | Asset ID of the first offer. |
 | `negotiation_id` | string | ID of the negotiation the flow ran. |
-| `transfer_process_id` | string | ID of the transfer process the flow ran. |
+| `agreement_id` | string | ID of the contract agreement the negotiation produced. |
+| `transfer_id` | string | ID of the transfer process the flow ran. |
 
 **Publishes** — context variables available to later steps
 
 | Variable | Type | Description |
 |---|---|---|
-| `dataplane_endpoint` | string | Data-plane URL the negotiated data is fetched from. |
+| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
 | `edr_token` | string | Authorization token for that data-plane URL. |
 
 A variable is left unset when its value could not be derived.
@@ -211,42 +260,40 @@ A variable is left unset when its value could not be derived.
 
 Run the full DSP flow, accepting an offer that matches any of several policies.
 
-Unlike `pull_data_filtered` (one optional, testlab-simplified `policy`), this variant requires `policies`. Simplified snake_case keys are still normalised to ODRL camelCase, so either format is accepted.
+Unlike `pull_data_filtered`, where `expected_policies` is optional and "no policies" means "take the first offer", this variant requires them. Simplified snake_case keys are still normalised to ODRL camelCase, so either format is accepted.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `filter_expression` | list of [FilterExpression](#filterexpression) | no | `[]` | `filters` | Filter criteria applied to the catalog request. |
-| `counter_party_address` | string | no | `''` | `provider_url` | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | `bpnl` | BPN of the counter-party. |
+| `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
+| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
 | `max_wait` | number | no | `60` | — | Seconds to wait for the transfer to complete. |
 | `poll_interval` | number | no | `2` | — | Seconds between transfer-state polls. |
-| `policies` | list of object | yes | — | — | ODRL policies, any one of which the negotiated offer must satisfy. |
+| `expected_policies` | list of object | yes | — | — | ODRL policies, any one of which the negotiated offer must satisfy. |
 
 **Output** — the value assertions and `returns:` read
 
-_Adds the two aliases `pull_data_filtered_by_policy` also publishes._
+_Everything the DSP flow produced, from the catalog through to the token._
 
 | Field | Type | Description |
 |---|---|---|
-| `endpoint` | string | Data-plane URL the negotiated data is fetched from. |
+| `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
 | `edr_token` | string | Authorization token for that URL. |
-| `dataplane_url` | string | Same as 'endpoint', as a string. |
 | `token_prefix` | string | First characters of the token, safe to log or assert on. |
 | `catalog` | object | Catalog document the offer was taken from. |
 | `datasets` | list of object | Dataset offers in that catalog. |
 | `asset_id` | string | Asset ID of the first offer. |
 | `negotiation_id` | string | ID of the negotiation the flow ran. |
-| `transfer_process_id` | string | ID of the transfer process the flow ran. |
-| `transfer_id` | string | Same as 'transfer_process_id'. |
-| `agreement_id` | string | Same as 'negotiation_id'. |
+| `agreement_id` | string | ID of the contract agreement the negotiation produced. |
+| `transfer_id` | string | ID of the transfer process the flow ran. |
 
 **Publishes** — context variables available to later steps
 
 | Variable | Type | Description |
 |---|---|---|
-| `dataplane_endpoint` | string | Data-plane URL the negotiated data is fetched from. |
+| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
 | `edr_token` | string | Authorization token for that data-plane URL. |
 
 A variable is left unset when its value could not be derived.
@@ -255,29 +302,24 @@ A variable is left unset when its value could not be derived.
 
 Query a provider's catalog via the SDK connector consumer service.
 
-Returns the catalog document itself and publishes its offers as `datasets` for downstream steps.
+Returns the catalog document and its offers side by side, so a `returns:` block reads `datasets` rather than the JSON-LD `dcat:dataset` key, and publishes the same offers for downstream steps.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `counter_party_address` | string | no | `''` | `provider_url` | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | `bpnl` | BPN of the counter-party. |
-| `filter_expression` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
-| `filter` | [CatalogFilter](#catalogfilter) | no | `None` | — | Nested form of 'filter_expression'; used only when the flat field is empty. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
+| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
 
 **Output** — the value assertions and `returns:` read
 
-_A provider's DCAT catalog._
+_What every catalog query returns: the document, and its offers as a list._
 
 | Field | Type | Description |
 |---|---|---|
-| `@context` | any | JSON-LD context. |
-| `@id` | string | Catalog ID. |
-| `@type` | any | JSON-LD type. |
-| `dcat:dataset` | any | Dataset offers — a list, or a bare object when there is exactly one. |
-
-Additional keys sent by the counterpart are passed through unchanged.
+| `catalog` | [CatalogPayload](#catalogpayload) | The provider's catalog document, unchanged. |
+| `datasets` | list of object | Dataset offers from the catalog, always as a list. |
 
 **Publishes** — context variables available to later steps
 
@@ -291,7 +333,7 @@ A variable is left unset when its value could not be derived.
 
 Query the catalog filtered by a specific asset ID.
 
-Publishes the first offer matching `policies` as `catalog_target` / `catalog_policy` for the negotiation step that follows.
+Publishes the first offer matching `expected_policies` as `catalog_asset_id` / `catalog_policy` for the negotiation step that follows.
 
 **Inputs**
 
@@ -300,26 +342,22 @@ Publishes the first offer matching `policies` as `catalog_target` / `catalog_pol
 | `counter_party_id` | string | yes | — | — | BPN of the counter-party. |
 | `counter_party_address` | string | yes | — | — | DSP endpoint of the counter-party connector. |
 | `asset_id` | string | yes | — | — | Asset ID the catalog is filtered by. |
-| `policies` | list of object | no | `[]` | — | Policies accepted for the returned offer; the first match is exported. |
+| `expected_policies` | list of object | no | `[]` | — | Policies accepted for the returned offer; the first match is exported. |
 
 **Output** — the value assertions and `returns:` read
 
-_A provider's DCAT catalog._
+_What every catalog query returns: the document, and its offers as a list._
 
 | Field | Type | Description |
 |---|---|---|
-| `@context` | any | JSON-LD context. |
-| `@id` | string | Catalog ID. |
-| `@type` | any | JSON-LD type. |
-| `dcat:dataset` | any | Dataset offers — a list, or a bare object when there is exactly one. |
-
-Additional keys sent by the counterpart are passed through unchanged.
+| `catalog` | [CatalogPayload](#catalogpayload) | The provider's catalog document, unchanged. |
+| `datasets` | list of object | Dataset offers from the catalog, always as a list. |
 
 **Publishes** — context variables available to later steps
 
 | Variable | Type | Description |
 |---|---|---|
-| `catalog_target` | any | Asset ID of the first offer whose policy is accepted. |
+| `catalog_asset_id` | any | Asset ID of the first offer whose policy is expected. |
 | `catalog_policy` | any | The accepted ODRL policy of that offer. |
 
 A variable is left unset when its value could not be derived.
@@ -336,20 +374,16 @@ Publishes no context variables.
 |---|---|---|---|---|---|
 | `bpnl` | string | yes | — | — | BPN used to discover the counter-party's connector. |
 | `counter_party_address` | string | no | `None` | — | DSP endpoint; when omitted it is resolved from the BPN by discovery. |
-| `filter_expression` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
+| `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
 
 **Output** — the value assertions and `returns:` read
 
-_A provider's DCAT catalog._
+_What every catalog query returns: the document, and its offers as a list._
 
 | Field | Type | Description |
 |---|---|---|
-| `@context` | any | JSON-LD context. |
-| `@id` | string | Catalog ID. |
-| `@type` | any | JSON-LD type. |
-| `dcat:dataset` | any | Dataset offers — a list, or a bare object when there is exactly one. |
-
-Additional keys sent by the counterpart are passed through unchanged.
+| `catalog` | [CatalogPayload](#catalogpayload) | The provider's catalog document, unchanged. |
+| `datasets` | list of object | Dataset offers from the catalog, always as a list. |
 
 **Publishes** — context variables available to later steps
 
@@ -365,17 +399,17 @@ Filter criteria are translated by the SDK's own `get_filter_expression`, so they
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `filter_expression` | list of [FilterExpression](#filterexpression) | no | `[]` | `filters` | Filter criteria applied to the catalog request. |
-| `counter_party_address` | string | no | `''` | `provider_url` | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | `bpnl` | BPN of the counter-party. |
+| `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
+| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
 
 **Output** — the value assertions and `returns:` read
 
-_The catalog and its offers, side by side._
+_What every catalog query returns: the document, and its offers as a list._
 
 | Field | Type | Description |
 |---|---|---|
-| `catalog` | [CatalogPayload](#catalogpayload) | The provider's catalog document. |
+| `catalog` | [CatalogPayload](#catalogpayload) | The provider's catalog document, unchanged. |
 | `datasets` | list of object | Dataset offers from the catalog, always as a list. |
 
 **Publishes** — context variables available to later steps
@@ -383,42 +417,6 @@ _The catalog and its offers, side by side._
 | Variable | Type | Description |
 |---|---|---|
 | `datasets` | list of object | Dataset offers from the catalog, always as a list. |
-
-A variable is left unset when its value could not be derived.
-
-### `connector/consumer/transfer_data`
-
-Collect the EDR for a negotiated contract and resolve its data address.
-
-This is what turns a finished negotiation into something `connector/dataplane/http_request` can call: it polls for the EDR entry, then asks the connector for the data address that entry points at.
-
-**Inputs**
-
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `negotiation_id` | string | no | `None` | — | Negotiation to collect the EDR for; falls back to the 'negotiation_id' context variable. |
-| `verify` | any | no | `None` | — | TLS verification passed through to the SDK; None keeps its default. |
-
-**Output** — the value assertions and `returns:` read
-
-_Output contract of `connector/consumer/transfer_data`._
-
-| Field | Type | Description |
-|---|---|---|
-| `edr_entry` | object | The EDR entry the negotiation produced. |
-| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. |
-| `data_address_raw` | [DataAddressPayload](#dataaddresspayload) | The full data address document, for assertions on its other keys. |
-
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `dataplane_endpoint` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. |
-| `transfer_id` | string | ID of the transfer process. |
-| `edr_entry` | object | The EDR entry the negotiation produced. |
-| `data_address` | string | Older spelling of 'dataplane_endpoint'. |
 
 A variable is left unset when its value could not be derived.
 
@@ -426,7 +424,7 @@ A variable is left unset when its value could not be derived.
 
 Fetch data from a data-plane endpoint using an EDR token.
 
-This is the far end of the DSP flow: `do_dsp` or `transfer_data` publishes where the data is and how to authorize for it, and this step reads exactly those two variables.
+This is the far end of the DSP flow: `do_dsp` or `initiate_transfer` publishes where the data is and how to authorize for it, and this step reads exactly those two variables.
 
 **Inputs**
 
@@ -436,9 +434,9 @@ This is the far end of the DSP flow: `do_dsp` or `transfer_data` publishes where
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
 | `method` | string | no | `'GET'` | — | HTTP method. |
 | `body` | any | no | `None` | — | Request body; dicts are sent as JSON. |
-| `dataplane_url` | any | no | `None` | `url`, `endpoint` | Data-plane URL, or a data address object to read it from; falls back to the 'dataplane_endpoint' context variable. |
+| `dataplane_url` | any | no | `None` | — | Data-plane URL, or a data address object to read it from; falls back to the 'data_address' context variable. |
 | `path` | string | no | `''` | — | Path appended to the data-plane URL. |
-| `edr_token` | string | no | `None` | `token` | EDR authorization token; falls back to the 'edr_token' context variable. |
+| `edr_token` | string | no | `None` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -477,18 +475,19 @@ _Nothing._
 
 ### `connector/provider/create_contract_definition`
 
-Publish an asset by binding it to an access and a usage policy.
+Publish assets by binding them to an access and a contract policy.
 
-This is the step that makes an asset appear in the provider's catalog; the asset and both policies must already exist.
+This is the step that makes an asset appear in the provider's catalog; the assets and both policies must already exist. The SDK's own `create_contract` only ever offers a single asset, so the definition is built here and posted through the contract-definition controller.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `contract_id` | string | no | `''` | — | Contract definition ID; a fresh UUID is used when omitted. |
-| `usage_policy_id` | any | no | `''` | `contract_policy_id` | Policy governing what the consumer may do with the data. |
+| `contract_definition_id` | string | no | `''` | — | Contract definition ID; a fresh UUID is used when omitted. |
+| `contract_policy_id` | any | no | `''` | — | Policy governing what the consumer may do with the data. |
 | `access_policy_id` | any | no | `''` | — | Policy governing who may see the offer at all. |
-| `asset_id` | any | no | `''` | — | Asset the contract definition offers. |
+| `asset_id` | any | no | `''` | — | Single asset the contract definition offers; ignored when 'asset_selector' is given. |
+| `asset_selector` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Criteria selecting which assets the definition offers, for a definition that covers more than one. Wins over 'asset_id'. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -496,7 +495,7 @@ _Output contract of `connector/provider/create_contract_definition`._
 
 | Field | Type | Description |
 |---|---|---|
-| `contract_def_id` | string | ID of the contract definition that now exists at the provider. |
+| `contract_definition_id` | string | ID of the contract definition that now exists at the provider. |
 
 **Publishes** — context variables available to later steps
 
@@ -584,6 +583,91 @@ Delete a policy definition from the provider connector.
 _This step produces no value — it acts, and there is nothing to read back._
 
 Type: NoneType
+
+**Publishes** — context variables available to later steps
+
+_Nothing._
+
+### `connector/provider/wizard/create_asset`
+
+Register an asset described field by field rather than as a document.
+
+The guided sibling of `connector/provider/create_asset`: it assembles the asset document from its fields and hands it to the same registration, so the two steps cannot drift apart in what they actually create.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `asset_id` | string | no | `''` | — | Asset ID; derived from 'name', or a fresh UUID, when omitted. |
+| `name` | string | yes | — | — | Human-readable asset name. |
+| `description` | string | no | `''` | — | What the asset offers. |
+| `base_url` | string | yes | — | — | URL of the data source behind the asset. |
+| `content_type` | string | no | `''` | — | MIME type of the data, e.g. 'application/json'. |
+| `properties` | object | no | `{}` | — | Further EDC asset properties, e.g. 'dct:type' or 'cx-common:version'. |
+
+**Output** — the value assertions and `returns:` read
+
+_Output contract of `connector/provider/create_asset`._
+
+| Field | Type | Description |
+|---|---|---|
+| `asset_id` | string | ID of the asset that now exists at the provider. |
+
+**Publishes** — context variables available to later steps
+
+_Nothing._
+
+### `connector/provider/wizard/create_policy`
+
+Register an ODRL policy written as rule lists rather than as a document.
+
+The guided sibling of `connector/provider/create_policy`, registering through the same call.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `policy_id` | string | no | `''` | — | Policy ID; a fresh UUID is used when omitted. |
+| `permissions` | list of object | yes | — | — | ODRL permission rules: what the consumer is allowed to do. |
+| `prohibitions` | list of object | no | `[]` | — | ODRL prohibition rules. |
+| `obligations` | list of object | no | `[]` | — | ODRL obligation rules. |
+
+**Output** — the value assertions and `returns:` read
+
+_Output contract of `connector/provider/create_policy`._
+
+| Field | Type | Description |
+|---|---|---|
+| `policy_id` | string | ID of the policy that now exists at the provider. |
+
+**Publishes** — context variables available to later steps
+
+_Nothing._
+
+### `digital-twin-registry/consumer/dataplane/lookup_shell`
+
+Search a counterparty's registry for shells matching specific asset IDs.
+
+This is the consumer's half of the DTR contract, and it is a different thing from `digital-twin/provider/get_shell_descriptor`: that one reads a known shell out of the registry the run was seeded with, this one searches somebody else's over a negotiated data plane. The lookup returns identifiers, so each one is then read back as a descriptor — a script that only needs the identifiers reads `shell_ids` and ignores the rest.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `specific_asset_ids` | list of [SpecificAssetId](#specificassetid) | yes | — | — | Criteria the shell must match; all of them have to. |
+| `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'data_address' context variable. |
+| `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
+
+**Output** — the value assertions and `returns:` read
+
+_Output contract of `digital-twin-registry/consumer/dataplane/lookup_shell`._
+
+| Field | Type | Description |
+|---|---|---|
+| `shell_ids` | list of string | Identifiers of the shells that matched. |
+| `shell_descriptors` | list of object | The descriptor document of each matching shell. |
 
 **Publishes** — context variables available to later steps
 
@@ -689,6 +773,70 @@ Additional keys sent by the counterpart are passed through unchanged.
 
 _Nothing._
 
+### `digital-twin/provider/wizard/create_shell_descriptor`
+
+Register a shell descriptor described field by field.
+
+The guided sibling of `digital-twin/provider/create_shell_descriptor`, registering through the same call.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `bpn` | string | no | `None` | — | BPN the registry request is made on behalf of. |
+| `id` | string | no | `''` | — | Shell identifier; a fresh URN UUID when omitted. |
+| `id_short` | string | yes | — | — | Short, human-readable name for the shell. |
+| `global_asset_id` | string | no | `''` | — | Global asset ID the twin represents, as a URN. |
+| `specific_asset_ids` | list of object | no | `[]` | — | Identifiers the shell can be looked up by, as {name, value} pairs. |
+| `submodel_descriptors` | list of object | no | `[]` | — | Submodel descriptors to attach as the shell is created. |
+
+**Output** — the value assertions and `returns:` read
+
+_An AAS descriptor as the registry returned it._
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Identifier of the descriptor. |
+| `idShort` | string | Short, human-readable name. |
+
+Additional keys sent by the counterpart are passed through unchanged.
+
+**Publishes** — context variables available to later steps
+
+_Nothing._
+
+### `digital-twin/provider/wizard/create_submodel_descriptor`
+
+Attach a submodel descriptor described field by field.
+
+The guided sibling of `digital-twin/provider/create_submodel_descriptor`, registering through the same call.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `bpn` | string | no | `None` | — | BPN the registry request is made on behalf of. |
+| `aas_identifier` | string | yes | — | — | Identifier of the AAS shell descriptor. |
+| `id` | string | no | `''` | — | Submodel identifier; a fresh URN UUID when omitted. |
+| `id_short` | string | yes | — | — | Short, human-readable name for the submodel. |
+| `semantic_id` | string | yes | — | — | URN of the aspect model the submodel follows. |
+| `endpoint_url` | string | yes | — | — | URL the submodel's data is served from. |
+
+**Output** — the value assertions and `returns:` read
+
+_An AAS descriptor as the registry returned it._
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Identifier of the descriptor. |
+| `idShort` | string | Short, human-readable name. |
+
+Additional keys sent by the counterpart are passed through unchanged.
+
+**Publishes** — context variables available to later steps
+
+_Nothing._
+
 ### `digital-twin/submodel/upload`
 
 Upload sample data to the backend under a unique UUID path.
@@ -743,6 +891,35 @@ Type: NoneType
 
 _Nothing._
 
+### `flow/if`
+
+Run one of two nested sequences depending on a set of conditions.
+
+A step's own `if:` decides whether that one step runs; this decides between two sequences, and says afterwards which one it picked — a script asserting on `branch_taken` can prove the flow went the way it meant to, which "the steps in the other branch were skipped" never quite shows. The conditions are evaluated once, before either branch starts, using the same comparisons a `validate:` block asserts with.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `conditions` | list of [Condition](#condition) | yes | — | — | Comparisons evaluated before a branch is chosen. |
+| `match` | `all` \| `any` | no | `'all'` | — | Whether every condition must hold ('all') or just one ('any'). |
+| `then` | list of [StepDefinition](#stepdefinition) | yes | — | — | Nested step definitions run when the condition holds — the same shape used at the top level of a script. |
+| `else` | list of [StepDefinition](#stepdefinition) | no | `[]` | — | Nested step definitions run when it does not; omitted means the step does nothing in that case. |
+
+**Output** — the value assertions and `returns:` read
+
+_Which way the step went, and what the branch it took produced._
+
+| Field | Type | Description |
+|---|---|---|
+| `condition_result` | boolean | How the condition evaluated. |
+| `branch_taken` | `then` \| `else` \| `none` | The branch that ran; 'none' when the condition was false and no 'else' was given. |
+| `outputs` | list of any | Outputs of the nested steps that ran, in order. |
+
+**Publishes** — context variables available to later steps
+
+_Nothing._
+
 ### `flow/retry`
 
 Run a nested list of steps, retrying the whole sequence on failure.
@@ -782,6 +959,7 @@ Useful for backend data upload/delete or any ad-hoc HTTP call during a test flow
 | `method` | string | no | `'GET'` | — | HTTP method. |
 | `body` | any | no | `None` | — | Request body; dicts are sent as JSON. |
 | `url` | string | yes | — | — | Target URL. |
+| `query_params` | object | no | `{}` | — | Query string parameters appended to the URL. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -801,7 +979,7 @@ A variable is left unset when its value could not be derived.
 
 Register a mock HTTP endpoint that returns a canned response.
 
-The returned URL is what a script hands to the system under test as its callback address; `mock/wait/http_request` then blocks until the SUT calls it.
+`full_mock_url` is what a script hands to the system under test as its callback address; `mock` is what it hands to `mock/wait/http_request`, which then blocks until the SUT calls it.
 
 **Inputs**
 
@@ -812,12 +990,17 @@ The returned URL is what a script hands to the system under test as its callback
 | `method` | string | no | `'POST'` | — | HTTP method the mock answers on. |
 | `response_status` | integer | no | `200` | — | Status code the mock returns. |
 | `response_body` | any | no | `{}` | — | JSON body the mock returns; '@name' strings resolve to context variables. |
+| `response_headers` | object | no | `{}` | — | Headers the mock returns alongside the body. |
 
 **Output** — the value assertions and `returns:` read
 
-_The full callback URL of the registered endpoint._
+_The mock that now exists, and the two URLs a script needs from it._
 
-Type: string
+| Field | Type | Description |
+|---|---|---|
+| `mock` | [MockInstance](#mockinstance) | The registered mock, as 'mock/wait/http_request' takes it. |
+| `base_mock_url` | string | Root URL of the testlab mock server. |
+| `full_mock_url` | string | Address to hand the system under test — root plus the mock's path. |
 
 **Publishes** — context variables available to later steps
 
@@ -879,8 +1062,7 @@ This is the other half of `mock/api`: that step hands the system under test a ca
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `endpoint_id` | string | yes | — | — | A mock endpoint's URL, the ID it was registered under, or the path itself — all three are accepted. |
-| `method` | string | no | `'POST'` | — | HTTP method to wait for. |
+| `mock` | [MockInstance](#mockinstance) | yes | — | — | The mock to wait on, as returned by the step that registered it. |
 | `timeout_s` | number | no | `30.0` | — | Seconds to wait before failing. |
 
 **Output** — the value assertions and `returns:` read
@@ -889,10 +1071,12 @@ _The inbound request a mock endpoint received._
 
 | Field | Type | Description |
 |---|---|---|
-| `method` | string | HTTP method of the inbound request. |
-| `path` | string | Path the request arrived on. |
-| `headers` | object | Headers of the inbound request. |
-| `body` | any | Body of the inbound request. |
+| `request_method` | string | HTTP method of the inbound request. |
+| `request_path` | string | Path the request arrived on. |
+| `request_headers` | object | Headers of the inbound request. |
+| `request_query_params` | object | Query string parameters of the inbound request. |
+| `request_body` | any | Body of the inbound request. |
+| `elapsed_ms` | integer | Milliseconds spent waiting before the request arrived. |
 
 **Publishes** — context variables available to later steps
 
@@ -1039,7 +1223,7 @@ Numeric segments index into lists (`datasets.0.id`) and a `key[field=value]` seg
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `store_in_variable` | string | no | `''` | — | Name of a context variable to also store the result in. |
-| `source` | any | yes | — | `variable` | Either the name of the context variable holding the data (e.g. 'response_body'), or the data itself when a '${{ }}' expression is passed — it resolves before the step runs. |
+| `input` | any | yes | — | — | Either the name of the context variable holding the data (e.g. 'datasets'), or the data itself when a '${{ }}' expression is passed — it resolves before the step runs. |
 | `path` | string | yes | — | — | Dot-notation path to the desired value, e.g. 'datasets.0.id'. |
 
 **Output** — the value assertions and `returns:` read
@@ -1112,7 +1296,7 @@ Identical to `util/json_path_extract` — same inputs, same output — under a n
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `store_in_variable` | string | no | `''` | — | Name of a context variable to also store the result in. |
-| `source` | any | yes | — | `variable` | Either the name of the context variable holding the data (e.g. 'response_body'), or the data itself when a '${{ }}' expression is passed — it resolves before the step runs. |
+| `input` | any | yes | — | — | Either the name of the context variable holding the data (e.g. 'datasets'), or the data itself when a '${{ }}' expression is passed — it resolves before the step runs. |
 | `path` | string | yes | — | — | Dot-notation path to the desired value, e.g. 'datasets.0.id'. |
 
 **Output** — the value assertions and `returns:` read
@@ -1185,42 +1369,13 @@ Raises `ValueError` on failure so the runner marks the step as FAILED.
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `input` | any | no | `None` | — | The payload to validate — an object, a list, or a JSON string. |
-| `schema` | any | yes | — | `json_schema` | A JSON Schema document, typically '${{ env.schemas.<id> }}', which the player seeds from the TCK 'env.schemas' block. |
+| `schema` | any | yes | — | — | A JSON Schema document, typically '${{ env.schemas.<id> }}', which the player seeds from the TCK 'env.schemas' block. |
 
 **Output** — the value assertions and `returns:` read
 
 _The validated payload, parsed from JSON when it arrived as a string._
 
 Type: any
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
-### `validate/semantic_schema`
-
-Check a payload for the top-level keys a Catena-X semantic model requires.
-
-Unlike `validate/schema` this does not fail the step — it reports what it found, so a script can assert on `is_valid` or inspect `missing_keys`.
-
-**Inputs**
-
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `source` | string | yes | — | — | Name of the context variable holding the JSON data. |
-| `schema_ref` | string | yes | — | — | Schema reference identifier, e.g. 'CX-0135'. |
-| `required_keys` | list of string | no | `[]` | — | Overrides the keys the schema reference is known to require. |
-
-**Output** — the value assertions and `returns:` read
-
-_Which required keys the payload carried, and which it was missing._
-
-| Field | Type | Description |
-|---|---|---|
-| `is_valid` | boolean | True when no required key is missing. |
-| `schema_ref` | string | The schema reference that was checked. |
-| `missing_keys` | list of string | Required keys absent from the payload. |
-| `checked_keys` | list of string | Every key the payload was checked for. |
 
 **Publishes** — context variables available to later steps
 
@@ -1237,14 +1392,6 @@ Assertion using `uses` / `with` verb-form keys.
 | `uses` | string | yes | — | — |  |
 | `with` | object | no | `None` | — |  |
 
-### CatalogFilter
-
-Nested `filter:` block — an alternative spelling of `filter_expression`.
-
-| Field | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `filter_expression` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
-
 ### CatalogPayload
 
 A provider's DCAT catalog.
@@ -1256,6 +1403,19 @@ A provider's DCAT catalog.
 | `@type` | any | no | `None` | — | JSON-LD type. |
 | `dcat:dataset` | any | no | `None` | — | Dataset offers — a list, or a bare object when there is exactly one. |
 
+Additional keys sent by the counterpart are passed through unchanged.
+
+### Condition
+
+One comparison the branch is decided on.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `input` | any | no | `None` | — | The value to test, usually a previous step's output. |
+| `path` | string | no | `''` | — | Dot-notation path into the input, e.g. 'content.state'; empty tests it whole. |
+| `operator` | string | no | `'not_null'` | — | Comparison applied to the value. |
+| `value` | any | no | `None` | — | What the value is compared against; unused by unary operators. |
+
 ### DataAddressPayload
 
 An EDR data address — where negotiated data is fetched and with what token.
@@ -1266,15 +1426,29 @@ An EDR data address — where negotiated data is fetched and with what token.
 | `authorization` | string | no | `None` | — | Authorization token for that URL. |
 | `authCode` | string | no | `None` | — | Legacy spelling of 'authorization' used by older connectors. |
 
+Additional keys sent by the counterpart are passed through unchanged.
+
 ### FilterExpression
 
 One catalog filter criterion.
 
 | Field | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `operand_left` | string | yes | — | `operandLeft` | Left-hand property of the criterion, e.g. 'https://w3id.org/edc/v0.0.1/ns/id'. |
+| `operand_left` | string | yes | — | — | Left-hand property of the criterion, e.g. 'https://w3id.org/edc/v0.0.1/ns/id'. |
 | `operator` | string | no | `'='` | — | Comparison operator. |
-| `operand_right` | any | no | `''` | `operandRight` | Value the left-hand property is compared against. |
+| `operand_right` | any | no | `''` | — | Value the left-hand property is compared against. |
+
+### MockInstance
+
+A registered mock, as the steps that use it later need to see it.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `endpoint_id` | string | no | `''` | — | Identifier the mock was registered under, when it was given one. |
+| `path` | string | yes | — | — | Path the mock listens on. |
+| `method` | string | yes | — | — | HTTP method the mock answers. |
+| `base_mock_url` | string | yes | — | — | Root URL of the testlab mock server. |
+| `full_mock_url` | string | yes | — | — | Address the system under test calls — root plus path. |
 
 ### ReturnFieldDefinition
 
@@ -1284,6 +1458,17 @@ Single output field declared in a step `returns` block.
 |---|---|---|---|---|---|
 | `type` | string | yes | — | — |  |
 | `class` | string | no | `None` | — |  |
+
+### SpecificAssetId
+
+One `specificAssetIds` criterion a shell is searched by.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `name` | string | yes | — | — | Name of the asset identifier, e.g. 'partInstanceId'. |
+| `value` | string | yes | — | — | Value that identifier must have. |
+
+Additional keys sent by the counterpart are passed through unchanged.
 
 ### StepDefinition
 
