@@ -38,8 +38,8 @@ from tractusx_testlab.server.mock_registry import (
     get_callback_manager,
     register_mock,
 )
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepValue
-from tractusx_testlab.steps.server._contracts import MockIdParams
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.server._contracts import MockIdParams, MockInstance
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -73,6 +73,9 @@ class MockEndpointParams(MockIdParams):
         default_factory=dict,
         description="JSON body the mock returns; '@name' strings resolve to context variables.",
     )
+    response_headers: dict[str, str] = Field(
+        default_factory=dict, description="Headers the mock returns alongside the body."
+    )
 
     @field_validator("method")
     @classmethod
@@ -87,17 +90,25 @@ class MockEndpointParams(MockIdParams):
         return value if value.startswith("/") else f"/{value}"
 
 
-class MockEndpointOutput(StepValue[str]):
-    """The full callback URL of the registered endpoint."""
+class MockEndpointOutput(StepPayload):
+    """The mock that now exists, and the two URLs a script needs from it."""
+
+    mock: MockInstance = Field(
+        description="The registered mock, as 'mock/wait/http_request' takes it."
+    )
+    base_mock_url: str = Field(description="Root URL of the testlab mock server.")
+    full_mock_url: str = Field(
+        description="Address to hand the system under test — root plus the mock's path."
+    )
 
 
 @step("mock/api")
 class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
     """Register a mock HTTP endpoint that returns a canned response.
 
-    The returned URL is what a script hands to the system under test as its
-    callback address; ``mock/wait/http_request`` then blocks until the SUT calls
-    it.
+    ``full_mock_url`` is what a script hands to the system under test as its
+    callback address; ``mock`` is what it hands to
+    ``mock/wait/http_request``, which then blocks until the SUT calls it.
     """
 
     params_model = MockEndpointParams
@@ -110,7 +121,11 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
         register_mock(
             params.path,
             params.method,
-            MockResponse(status_code=params.response_status, body=resolved_body),
+            MockResponse(
+                status_code=params.response_status,
+                body=resolved_body,
+                headers=params.response_headers,
+            ),
         )
 
         # Pre-register a callback listener so wait_for_call can block on it
@@ -118,11 +133,24 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
         if callback_manager is not None:
             callback_manager.register(params.path, params.method)
 
-        endpoint_url = f"http://localhost:{context.config.server_port}{params.path}"
-        params.publish_url(endpoint_url, context)
+        base_url = f"http://localhost:{context.config.server_port}"
+        full_url = f"{base_url}{params.path}"
+        params.publish_url(full_url, context)
 
         logger.info(
             "Registered mock endpoint %s %s -> %d",
             params.method, params.path, params.response_status,
         )
-        return StepOutput(value=MockEndpointOutput(endpoint_url))
+        return StepOutput(
+            value=MockEndpointOutput(
+                mock=MockInstance(
+                    endpoint_id=params.id,
+                    path=params.path,
+                    method=params.method,
+                    base_mock_url=base_url,
+                    full_mock_url=full_url,
+                ),
+                base_mock_url=base_url,
+                full_mock_url=full_url,
+            )
+        )

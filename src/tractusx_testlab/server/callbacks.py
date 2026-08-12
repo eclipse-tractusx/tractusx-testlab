@@ -93,7 +93,14 @@ class CallbackManager:
         finally:
             self._listeners.pop(key, None)
 
-    def resolve(self, path: str, method: str, headers: dict, payload: Any) -> bool:
+    def resolve(
+        self,
+        path: str,
+        method: str,
+        headers: dict,
+        payload: Any,
+        query_params: dict | None = None,
+    ) -> bool:
         """Called by the webhook route when a request matches a listener.
 
         Returns True if a listener was waiting or the result was buffered.
@@ -104,6 +111,7 @@ class CallbackManager:
             path=path,
             method=method,
             headers=headers,
+            query_params=query_params or {},
             payload=payload,
             received_at=datetime.now(timezone.utc),
         )

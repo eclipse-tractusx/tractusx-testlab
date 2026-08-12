@@ -44,6 +44,10 @@ class HttpRequestParams(HttpCallParams):
     """Input contract of ``http/http_request``."""
 
     url: str = Field(description="Target URL.")
+    query_params: dict[str, str] = Field(
+        default_factory=dict,
+        description="Query string parameters appended to the URL.",
+    )
 
 
 class HttpRequestExports(StepExports):
@@ -79,7 +83,12 @@ class HttpRequestStep(BaseStep[HttpRequestParams, HttpBodyOutput]):
             {"data": params.body} if isinstance(params.body, str) else {"json": params.body}
         )
         resp = requests.request(
-            params.method, params.url, headers=params.headers, timeout=timeout, **payload
+            params.method,
+            params.url,
+            headers=params.headers,
+            params=params.query_params or None,
+            timeout=timeout,
+            **payload,
         )
 
         try:
@@ -94,7 +103,10 @@ class HttpRequestStep(BaseStep[HttpRequestParams, HttpBodyOutput]):
         return StepOutput(
             value=HttpBodyOutput(resp_body),
             request=HttpRequest(
-                method=params.method, url=params.url, headers=params.headers, body=params.body
+                method=params.method,
+                url=resp.url,
+                headers=params.headers,
+                body=params.body,
             ),
             response=HttpResponse(
                 status_code=resp.status_code,

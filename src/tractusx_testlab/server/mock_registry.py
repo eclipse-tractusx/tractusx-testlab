@@ -44,6 +44,7 @@ class MockResponse:
 
     status_code: int
     body: Any = field(default_factory=dict)
+    headers: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

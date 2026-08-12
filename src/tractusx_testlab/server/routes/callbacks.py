@@ -63,18 +63,22 @@ async def callback_webhook(
         body = await request.json()
 
     query_params = dict(request.query_params)
-    matched = callbacks.resolve(full_path, method, headers, body)
+    matched = callbacks.resolve(full_path, method, headers, body, query_params)
     if not matched:
         mock = resolve_mock(full_path, method, headers=headers, query_params=query_params, body=body)
         if mock is not None:
             # Also resolve so wait_for_call steps receive the payload
-            callbacks.resolve(full_path, method, headers, body)
-            return JSONResponse(content=mock.body, status_code=mock.status_code)
+            callbacks.resolve(full_path, method, headers, body, query_params)
+            return JSONResponse(
+                content=mock.body, status_code=mock.status_code, headers=mock.headers or None
+            )
         raise HTTPException(404, f"No listener registered for {method} {full_path}")
 
     # Check for a canned mock response to return
     mock = resolve_mock(full_path, method, headers=headers, query_params=query_params, body=body)
     if mock is not None:
-        return JSONResponse(content=mock.body, status_code=mock.status_code)
+        return JSONResponse(
+            content=mock.body, status_code=mock.status_code, headers=mock.headers or None
+        )
 
     return JSONResponse(content={"status": "received"})

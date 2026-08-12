@@ -94,6 +94,7 @@ class CallbackResult(BaseModel):
     path: str
     method: str = "POST"
     headers: dict = Field(default_factory=dict)
+    query_params: dict = Field(default_factory=dict)
     payload: Optional[Any] = None
     received_at: Optional[datetime] = None
     timed_out: bool = False

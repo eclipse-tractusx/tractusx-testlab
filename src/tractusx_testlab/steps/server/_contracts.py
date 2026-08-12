@@ -26,12 +26,29 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from tractusx_testlab.steps._contracts import StepParams
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
+
+
+class MockInstance(BaseModel):
+    """A registered mock, as the steps that use it later need to see it.
+
+    ``mock/wait/http_request`` waits on a mock rather than on a URL it has to
+    take apart again, so what ``mock/api`` returns is the mock itself: where it
+    listens, for what, and at which address the system under test can reach it.
+    """
+
+    endpoint_id: str = Field(
+        default="", description="Identifier the mock was registered under, when it was given one."
+    )
+    path: str = Field(description="Path the mock listens on.")
+    method: str = Field(description="HTTP method the mock answers.")
+    base_mock_url: str = Field(description="Root URL of the testlab mock server.")
+    full_mock_url: str = Field(description="Address the system under test calls — root plus path.")
 
 
 class MockIdParams(StepParams):
