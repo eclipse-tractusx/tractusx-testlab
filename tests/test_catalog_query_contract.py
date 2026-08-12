@@ -31,6 +31,7 @@ import pytest
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.base import StepOutput
 from tractusx_testlab.steps.connector.catalog_query import (
+    CatalogOutput,
     CatalogPayload,
     FilterExpression,
     QueryCatalogByAssetIdParams,
@@ -158,13 +159,13 @@ class TestCatalogPayload:
     def test_absent_json_ld_keys_are_not_invented(self) -> None:
         """A catalog without ``@type`` must not come back carrying ``"@type": null``."""
         output = QueryCatalogStep.bind_output(
-            StepOutput(value=CatalogPayload.of({"@id": "c1", "dcat:dataset": []}))
+            StepOutput(value=CatalogOutput(catalog={"@id": "c1", "dcat:dataset": []}))
         )
-        assert output.value == {"@id": "c1", "dcat:dataset": []}
+        assert output.value["catalog"] == {"@id": "c1", "dcat:dataset": []}
 
     def test_a_raw_catalog_is_not_accepted_as_the_step_value(self) -> None:
         """The document has to be bound to the contract, not just look like it."""
-        with pytest.raises(TypeError, match="declares output_model=CatalogPayload"):
+        with pytest.raises(TypeError, match="declares output_model=CatalogOutput"):
             QueryCatalogStep.bind_output(StepOutput(value={"@id": "c1"}))
 
 
@@ -178,7 +179,8 @@ class TestQueryCatalogStep:
             _with_consumer(mock_context, consumer),
             _definition("connector/consumer/query_catalog"),
         )
-        assert output.value == _CATALOG
+        assert output.value["catalog"] == _CATALOG
+        assert output.value["datasets"] == [_DATASET]
 
     @pytest.mark.asyncio
     async def test_filters_reach_the_sdk_in_camel_case(self, mock_context: MagicMock) -> None:
@@ -334,5 +336,5 @@ class TestDeclaredContracts:
             "counter_party_id",
             "counter_party_address",
             "asset_id",
-            "policies",
+            "expected_policies",
         }

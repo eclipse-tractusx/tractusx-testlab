@@ -27,20 +27,18 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
-
-from pydantic import Field
+from typing import TYPE_CHECKING
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
     CatalogDatasetsExports,
-    CatalogPayload,
+    CatalogOutput,
     CounterPartyParams,
     FilterExpressionParams,
     as_dataset_list,
 )
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.base import BaseStep, StepOutput
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -57,25 +55,8 @@ class QueryCatalogWithFiltersParams(CounterPartyParams, FilterExpressionParams):
     """Input contract of ``connector/consumer/query_catalog_with_filters``."""
 
 
-class FilteredCatalogOutput(StepPayload):
-    """The catalog and its offers, side by side.
-
-    Unlike ``query_catalog``, which returns the catalog document itself, this
-    step wraps it — kept as is because scripts read ``catalog.`` and
-    ``datasets.`` paths off this output.
-    """
-
-    catalog: Optional[CatalogPayload] = Field(
-        default=None, description="The provider's catalog document."
-    )
-    datasets: list[dict] = Field(
-        default_factory=list,
-        description="Dataset offers from the catalog, always as a list.",
-    )
-
-
 @step("connector/consumer/query_catalog_with_filters")
-class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, FilteredCatalogOutput]):
+class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, CatalogOutput]):
     """Query a provider's catalog with multiple filter expressions via the SDK.
 
     Filter criteria are translated by the SDK's own ``get_filter_expression``,
@@ -84,7 +65,7 @@ class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, Filter
     """
 
     params_model = QueryCatalogWithFiltersParams
-    output_model = FilteredCatalogOutput
+    output_model = CatalogOutput
     exports_model = CatalogDatasetsExports
 
     async def execute(
@@ -92,7 +73,7 @@ class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, Filter
         params: QueryCatalogWithFiltersParams,
         context: "StepContext",
         definition: StepDefinition,
-    ) -> StepOutput[FilteredCatalogOutput]:
+    ) -> StepOutput[CatalogOutput]:
         consumer = context.get_consumer_service()
         filter_expression = [
             consumer.get_filter_expression(
@@ -119,7 +100,7 @@ class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, Filter
 
         datasets = as_dataset_list(catalog)
         return StepOutput(
-            value=FilteredCatalogOutput(catalog=catalog, datasets=datasets),
+            value=CatalogOutput(catalog=catalog, datasets=datasets),
             request=request,
             response=HttpResponse(status_code=200, body=catalog),
             exports=CatalogDatasetsExports(datasets=datasets),

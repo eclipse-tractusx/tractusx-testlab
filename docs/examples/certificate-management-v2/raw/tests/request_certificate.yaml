@@ -42,7 +42,7 @@ execution:
     with:
       counter_party_address: "${{ env.sut_counter_party_address.value }}"
       counter_party_id: "${{ env.sut_counter_party_id.value }}"
-      policy: "${{ env.ccm_usage_policy.policy }}"
+      expected_policies: "${{ env.ccm_usage_policy.policy }}"
       filters:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/type"
           operator: "="

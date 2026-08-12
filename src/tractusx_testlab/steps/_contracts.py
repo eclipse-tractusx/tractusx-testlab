@@ -168,6 +168,24 @@ class CatalogPayload(StepPayload):
     )
 
 
+class CatalogOutput(StepPayload):
+    """What every catalog query returns: the document, and its offers as a list.
+
+    The raw catalog is a JSON-LD document whose offers live under
+    ``dcat:dataset`` — a key no script should have to spell.  Wrapping it means
+    a ``returns:`` block reads ``catalog`` for the document and ``datasets`` for
+    the offers, whichever shape the provider sent them in.
+    """
+
+    catalog: Optional[CatalogPayload] = Field(
+        default=None, description="The provider's catalog document, unchanged."
+    )
+    datasets: list[dict] = Field(
+        default_factory=list,
+        description="Dataset offers from the catalog, always as a list.",
+    )
+
+
 class CatalogDatasetsExports(StepExports):
     """The offers a catalog query publishes for the steps that follow it."""
 

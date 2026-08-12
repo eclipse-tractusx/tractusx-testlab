@@ -273,6 +273,11 @@ def render_shared_models(step_classes: list[type[BaseStep]]) -> list[str]:
             ["Field", "Type", "Required", "Default", "Also accepts", "Description"],
             with_aliases=True,
         )
+        if model.model_config.get("extra") == "allow":
+            lines += [
+                "Additional keys sent by the counterpart are passed through unchanged.",
+                "",
+            ]
     return lines
 
 

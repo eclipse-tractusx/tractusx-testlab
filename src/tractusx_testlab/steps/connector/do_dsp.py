@@ -66,7 +66,7 @@ class DspFlowOutput(StepPayload):
 class DoDspParams(CounterPartyParams, FilterExpressionParams):
     """Input contract of ``connector/consumer/do_dsp``."""
 
-    policies: list[dict] = Field(
+    expected_policies: list[dict] = Field(
         default_factory=list,
         description="ODRL policies the negotiation is allowed to accept.",
     )
@@ -93,7 +93,7 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
             filter_expression=params.sdk_filter_expression(),
-            policies=params.policies,
+            policies=params.expected_policies,
         )
         return _build_output(context, params, endpoint, token)
 
@@ -116,7 +116,7 @@ class DoDspWithBpnlParams(FilterExpressionParams):
         default=None,
         description="DSP endpoint; when omitted it is resolved from the BPN by discovery.",
     )
-    policies: Optional[list[dict]] = Field(
+    expected_policies: Optional[list[dict]] = Field(
         default=None,
         description="ODRL policies the negotiation is allowed to accept.",
     )
@@ -141,7 +141,7 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
             bpnl=params.bpnl,
             counter_party_address=params.counter_party_address,
             filter_expression=params.sdk_filter_expression() or None,
-            policies=params.policies,
+            policies=params.expected_policies,
         )
         return _build_output(context, params, endpoint, token)
 

@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING, Any, Optional
 import requests
 from pydantic import Field, field_validator
 
+from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.steps._contracts import (
     CounterPartyParams,
@@ -49,6 +50,9 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 logger = logging.getLogger(__name__)
+
+#: The EDR-entry property naming the transfer process it belongs to.
+_TRANSFER_PROCESS_ID_KEY = "transferProcessId"
 
 
 # -- Policy format helpers ---------------------------------------------------
@@ -108,15 +112,15 @@ class PullDataParams(CounterPartyParams, FilterExpressionParams):
 class PullDataOutput(StepPayload):
     """Everything the DSP flow produced, from the catalog through to the token.
 
-    The endpoint and token appear twice under different names because scripts
-    written against either spelling still read this output.
+    The three identifiers are the flow's own: they come from the EDR entry the
+    negotiation produced, so ``agreement_id`` really is the agreement and not
+    another spelling of the transfer.
     """
 
-    endpoint: Optional[str] = Field(
+    dataplane_url: Optional[str] = Field(
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
     edr_token: str = Field(default="", description="Authorization token for that URL.")
-    dataplane_url: str = Field(default="", description="Same as 'endpoint', as a string.")
     token_prefix: Optional[str] = Field(
         default=None,
         description="First characters of the token, safe to log or assert on.",
@@ -131,19 +135,11 @@ class PullDataOutput(StepPayload):
     negotiation_id: Optional[str] = Field(
         default=None, description="ID of the negotiation the flow ran."
     )
-    transfer_process_id: Optional[str] = Field(
-        default=None, description="ID of the transfer process the flow ran."
-    )
-
-
-class PullDataByPolicyOutput(PullDataOutput):
-    """Adds the two aliases ``pull_data_filtered_by_policy`` also publishes."""
-
-    transfer_id: Optional[str] = Field(
-        default=None, description="Same as 'transfer_process_id'."
-    )
     agreement_id: Optional[str] = Field(
-        default=None, description="Same as 'negotiation_id'."
+        default=None, description="ID of the contract agreement the negotiation produced."
+    )
+    transfer_id: Optional[str] = Field(
+        default=None, description="ID of the transfer process the flow ran."
     )
 
 
@@ -189,9 +185,10 @@ async def _do_dsp_flow(
         )
         counter_party_id = catalog_participant_id
 
-    # Full DSP flow: use get_transfer_id + get_endpoint_with_token to expose
-    # transfer_process_id as a distinct return value.
-    transfer_process_id = consumer.get_transfer_id(
+    # Full DSP flow: use get_transfer_id + get_endpoint_with_token so the
+    # transfer id is a return value of its own, and so the SDK's connection
+    # cache still spares a re-negotiation for a repeated pull.
+    transfer_id = consumer.get_transfer_id(
         counter_party_id=counter_party_id,
         counter_party_address=params.counter_party_address,
         filter_expression=filter_expression,
@@ -199,30 +196,65 @@ async def _do_dsp_flow(
         max_wait=params.max_wait,
         poll_interval=params.poll_interval,
     )
-    endpoint, token = consumer.get_endpoint_with_token(transfer_id=transfer_process_id)
+    endpoint, token = consumer.get_endpoint_with_token(transfer_id=transfer_id)
+    edr_entry = _edr_entry_of(consumer, transfer_id)
 
     value = PullDataOutput(
-        endpoint=endpoint,
+        dataplane_url=endpoint,
         edr_token=token or "",
-        dataplane_url=endpoint or "",
         token_prefix=token[:10] + "..." if token else None,
         catalog=catalog,
         datasets=datasets,
         asset_id=asset_id,
-        negotiation_id=transfer_process_id,
-        transfer_process_id=transfer_process_id,
+        negotiation_id=edr_entry.get("contractNegotiationId"),
+        agreement_id=edr_entry.get("agreementId"),
+        transfer_id=transfer_id,
     )
     request = HttpRequest(method="POST", url=params.counter_party_address)
     response = HttpResponse(
         status_code=200 if endpoint else 500,
-        body={"endpoint": endpoint},
+        body={"dataplane_url": endpoint},
     )
     return value, request, response
 
 
+def _edr_entry_of(consumer: Any, transfer_id: Optional[str]) -> dict:
+    """Read the EDR entry a transfer belongs to, for the identifiers it carries.
+
+    ``get_transfer_id`` hands back only the transfer, but the negotiation and
+    the agreement behind it are what a script asserts on and what the
+    ``agreement_id`` output is for. The entry is looked up the same way the SDK
+    looks one up by negotiation, filtered by transfer instead.
+    """
+    if not transfer_id:
+        return {}
+    try:
+        query = ModelFactory.get_queryspec_model(
+            dataspace_version=consumer.dataspace_version,
+            filter_expression=[
+                consumer.get_filter_expression(
+                    key=_TRANSFER_PROCESS_ID_KEY, operator="=", value=transfer_id
+                )
+            ],
+        )
+        response = consumer.edrs.query(query)
+    except Exception as exc:  # noqa: BLE001 — an unreadable entry is not a failed pull
+        logger.debug("Could not read the EDR entry for transfer %s: %s", transfer_id, exc)
+        return {}
+    if response is None or getattr(response, "status_code", 0) != 200:
+        return {}
+    try:
+        entries = response.json()
+    except ValueError:
+        return {}
+    return entries[-1] if isinstance(entries, list) and entries else {}
+
+
 def _dataplane_exports(value: PullDataOutput) -> DataplaneExports:
     """Publish the data-plane pair the dataplane step reads."""
-    return DataplaneExports(data_address=value.endpoint, edr_token=value.edr_token or None)
+    return DataplaneExports(
+        data_address=value.dataplane_url, edr_token=value.edr_token or None
+    )
 
 
 # -- Steps --------------------------------------------------------------------
@@ -231,19 +263,20 @@ def _dataplane_exports(value: PullDataOutput) -> DataplaneExports:
 class PullDataFilteredParams(PullDataParams):
     """Input contract of ``connector/consumer/pull_data_filtered``."""
 
-    policy: Optional[Any] = Field(
+    expected_policies: Optional[Any] = Field(
         default=None,
         description=(
-            "Single policy the offer must satisfy, in ODRL or the testlab "
-            "simplified form; omitted means the SDK picks the first offer."
+            "Policies the offer must satisfy, in ODRL or the testlab simplified "
+            "form, as one document or a list; omitted means the SDK picks the "
+            "first offer."
         ),
     )
 
     def allowed_policies(self) -> Optional[list[dict]]:
-        """The policy as the SDK's allow-list argument, or None for "any offer"."""
-        if self.policy is None:
+        """The policies as the SDK's allow-list argument, or None for "any offer"."""
+        if self.expected_policies is None:
             return None
-        converted = _to_odrl_policy(self.policy)
+        converted = _to_odrl_policy(self.expected_policies)
         return [converted] if isinstance(converted, dict) else converted
 
 
@@ -280,12 +313,12 @@ class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]
 class PullDataFilteredByPolicyParams(PullDataParams):
     """Input contract of ``connector/consumer/pull_data_filtered_by_policy``."""
 
-    policies: list[dict] = Field(
+    expected_policies: list[dict] = Field(
         min_length=1,
         description="ODRL policies, any one of which the negotiated offer must satisfy.",
     )
 
-    @field_validator("policies", mode="before")
+    @field_validator("expected_policies", mode="before")
     @classmethod
     def _one_policy_is_a_list_of_one(cls, value: Any) -> Any:
         """A single policy document is as valid as a list holding it."""
@@ -293,21 +326,22 @@ class PullDataFilteredByPolicyParams(PullDataParams):
 
     def allowed_policies(self) -> list[dict]:
         """The policies as the SDK's allow-list argument, in ODRL spelling."""
-        return [_to_odrl_policy(policy) for policy in self.policies]
+        return [_to_odrl_policy(policy) for policy in self.expected_policies]
 
 
 class ConnectorPullDataFilteredByPolicy(
-    BaseStep[PullDataFilteredByPolicyParams, PullDataByPolicyOutput]
+    BaseStep[PullDataFilteredByPolicyParams, PullDataOutput]
 ):
     """Run the full DSP flow, accepting an offer that matches any of several policies.
 
-    Unlike ``pull_data_filtered`` (one optional, testlab-simplified ``policy``),
-    this variant requires ``policies``.  Simplified snake_case keys are still
-    normalised to ODRL camelCase, so either format is accepted.
+    Unlike ``pull_data_filtered``, where ``expected_policies`` is optional and
+    "no policies" means "take the first offer", this variant requires them.
+    Simplified snake_case keys are still normalised to ODRL camelCase, so either
+    format is accepted.
     """
 
     params_model = PullDataFilteredByPolicyParams
-    output_model = PullDataByPolicyOutput
+    output_model = PullDataOutput
     exports_model = DataplaneExports
 
     async def execute(
@@ -315,16 +349,12 @@ class ConnectorPullDataFilteredByPolicy(
         params: PullDataFilteredByPolicyParams,
         context: "StepContext",
         definition: StepDefinition,
-    ) -> StepOutput[PullDataByPolicyOutput]:
+    ) -> StepOutput[PullDataOutput]:
         value, request, response = await _do_dsp_flow(
             context, params, params.allowed_policies()
         )
         return StepOutput(
-            value=PullDataByPolicyOutput(
-                **value.model_dump(exclude_unset=True),
-                transfer_id=value.transfer_process_id,
-                agreement_id=value.negotiation_id,
-            ),
+            value=value,
             request=request,
             response=response,
             exports=_dataplane_exports(value),

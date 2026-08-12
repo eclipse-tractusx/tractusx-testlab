@@ -42,7 +42,33 @@ def consumer() -> MagicMock:
     }
     svc.get_transfer_id.return_value = "transfer-1"
     svc.get_endpoint_with_token.return_value = ("http://dataplane.example", "token-abc")
+    svc.dataspace_version = "jupiter"
+    svc.get_filter_expression.return_value = {
+        "operandLeft": "transferProcessId", "operator": "=", "operandRight": "transfer-1",
+    }
+    # The EDR entry is where the negotiation and the agreement behind a
+    # transfer are named — the step reads its ids off exactly this document.
+    svc.edrs.query.return_value = _Response(
+        [
+            {
+                "transferProcessId": "transfer-1",
+                "contractNegotiationId": "negotiation-1",
+                "agreementId": "agreement-1",
+            }
+        ]
+    )
     return svc
+
+
+class _Response:
+    """The bare shape of the ``requests.Response`` the EDR controller returns."""
+
+    def __init__(self, body: list) -> None:
+        self.status_code = 200
+        self._body = body
+
+    def json(self) -> list:
+        return self._body
 
 
 @pytest.fixture()
@@ -80,7 +106,7 @@ class TestPullDataFilteredByPolicy:
                 "counter_party_id": "BPNL_PROVIDER",
                 "counter_party_address": "https://provider.example/dsp",
                 "filters": [],
-                "policies": [{"permission": [{"action": "use"}]}],
+                "expected_policies": [{"permission": [{"action": "use"}]}],
             },
             context,
             _definition(),
@@ -88,7 +114,8 @@ class TestPullDataFilteredByPolicy:
         assert output.value["edr_token"] == "token-abc"
         assert output.value["dataplane_url"] == "http://dataplane.example"
         assert output.value["transfer_id"] == "transfer-1"
-        assert output.value["agreement_id"] == "transfer-1"
+        assert output.value["agreement_id"] == "agreement-1"
+        assert output.value["negotiation_id"] == "negotiation-1"
         assert output.value["asset_id"] == "asset-1"
 
     @pytest.mark.asyncio
@@ -98,7 +125,7 @@ class TestPullDataFilteredByPolicy:
                 "counter_party_id": "BPNL_PROVIDER",
                 "counter_party_address": "https://provider.example/dsp",
                 "filters": [],
-                "policies": [{"permissions": [{"action": "use", "constraints": []}]}],
+                "expected_policies": [{"permissions": [{"action": "use", "constraints": []}]}],
             },
             context,
             _definition(),
@@ -113,7 +140,7 @@ class TestPullDataFilteredByPolicy:
                 "counter_party_id": "BPNL_PROVIDER",
                 "counter_party_address": "https://provider.example/dsp",
                 "filters": [],
-                "policies": {"permission": [{"action": "use"}]},
+                "expected_policies": {"permission": [{"action": "use"}]},
             },
             context,
             _definition(),
