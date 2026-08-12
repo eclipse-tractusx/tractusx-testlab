@@ -56,6 +56,37 @@ data: {"kind":"step_completed","job_id":"…","script":"…","step_id":"…","re
   `job.cancelled`.
 - A `:keepalive` comment is sent every 15 seconds while idle.
 
+### The CloudEvents envelope
+
+A service that persists or forwards these events wraps each one in a CloudEvents
+1.0 envelope — `cx-test-suite-engine` does, for its trace file and its own SSE
+stream. The envelope adds an identity and a position; it does **not** rename
+anything, and `data` is the event verbatim, `kind` included.
+
+Its `id` is a **path to where in the run the event happened**, so it is
+deterministic and readable rather than an opaque hash:
+
+```text
+<tck-id>/<script>/<phase>/<step-id>/<nested…>/<event-name>
+```
+
+```text
+ccm-tck/catalog-policy-validation/execution/negotiate_offer/step.failed
+ccm-tck/catalog-policy-validation/execution/negotiate_offer/0/assertion.result
+ccm-tck/job.started
+```
+
+Every segment is omitted when the event has no such context — a job event is
+just `<tck-id>/<event-name>` — so the id says exactly as much as is true. The
+segments between the step and the event name are the nesting inside it: an
+assertion's `index` within the step's `validate:` block, and, for a step that
+runs steps of its own (`flow/if`, `flow/retry`), each nested step id in turn.
+
+Two events therefore share an id only if they are the same event, which is what
+makes the id usable as a key: a consumer can address a step's outcome without
+having tracked the stream from the beginning, and re-running the same TCK
+produces the same ids for the same steps.
+
 ## Event kinds
 
 ### Job lifecycle
@@ -173,7 +204,7 @@ result already carries its status and its steps.
 | `step_index` | integer | Its position in the phase, from 0. |
 | `step_type` | string | What the step *is* — `connector/consumer/negotiate`. Never an outcome. |
 | `step_name` | string | Display name the engine composed for it. |
-| `phase` | string | `setup`, `main` or `teardown`. |
+| `phase` | string | `setup`, `execution` or `teardown` — the script's own three keys. |
 
 ```json
 {
@@ -184,7 +215,7 @@ result already carries its status and its steps.
   "step_index": 1,
   "step_type": "connector/consumer/negotiate",
   "step_name": "[2/6] negotiate_offer",
-  "phase": "main"
+  "phase": "execution"
 }
 ```
 
@@ -246,6 +277,7 @@ assertion-shaped step types.
 | `script` | string | |
 | `step_id` | string \| null | The step the assertion was evaluated on. |
 | `step_name` | string | |
+| `index` | integer | Position in the step's `validate:` block, from 0. |
 | `assertion` | `AssertionResult` | `passed`, `expected`, `actual`, `message`, `severity`. |
 
 ```json
@@ -255,6 +287,7 @@ assertion-shaped step types.
   "script": "catalog-policy-validation",
   "step_id": "negotiate_offer",
   "step_name": "[2/6] negotiate_offer",
+  "index": 0,
   "assertion": {
     "passed": false,
     "expected": 200,

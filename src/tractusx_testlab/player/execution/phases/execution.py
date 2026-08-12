@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Main phase runner — stops on first failure, evaluates conditions."""
+"""Execution phase runner — stops on first failure, evaluates conditions."""
 
 from __future__ import annotations
 
@@ -39,9 +39,9 @@ from tractusx_testlab.player.execution.phases._run_phase import (
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.scripting.script import TestScript
 
-_MAIN_CONFIG = PhaseConfig(
+_EXECUTION_CONFIG = PhaseConfig(
     phase=StepPhase.EXECUTION,
-    phase_label="main",
+    phase_label="execution",
     failure_policy=FailurePolicy.STOP,
     evaluate_conditions=True,
     use_pause_gate=True,
@@ -49,7 +49,7 @@ _MAIN_CONFIG = PhaseConfig(
 )
 
 
-async def run_main(
+async def run_execution(
     script: TestScript,
     context: StepContext,
     job_id: str,
@@ -57,4 +57,4 @@ async def run_main(
     jobs: JobManager,
 ) -> tuple[list[StepResult], ScriptStatus]:
     """Run main steps; stops on first failure."""
-    return await _run_phase(script, context, job_id, monitor, jobs, _MAIN_CONFIG)
+    return await _run_phase(script, context, job_id, monitor, jobs, _EXECUTION_CONFIG)

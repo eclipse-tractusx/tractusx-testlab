@@ -165,6 +165,12 @@ class AssertionResultEvent(_ExecutionEvent):
     script: str
     step_id: Optional[str] = None
     step_name: str
+    #: Position in the step's ``validate:`` block, from 0.
+    #
+    #: Two assertions on one step are otherwise indistinguishable — the same
+    #: ``uses`` twice is ordinary — so without this a consumer can only tell them
+    #: apart by arrival order, and an event id cannot name one at all.
+    index: int = 0
     assertion: AssertionResult
 
 

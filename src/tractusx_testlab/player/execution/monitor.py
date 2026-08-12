@@ -155,12 +155,13 @@ class ExecutionMonitor:
         derived from ``result.status`` — the one place that status lives —
         so a consumer never has to sniff ``step_type`` to know what happened.
         """
-        for assertion_result in result.assertions:
+        for index, assertion_result in enumerate(result.assertions):
             self._publish(AssertionResultEvent(
                 job_id=job_id,
                 script=script,
                 step_id=step_id,
                 step_name=result.step_name,
+                index=index,
                 assertion=assertion_result,
             ))
 

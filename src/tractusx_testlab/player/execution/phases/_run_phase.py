@@ -42,12 +42,13 @@ from tractusx_testlab.steps.conditions import ConditionEvaluator
 
 # Maps a phase label to the expression namespace (e.g. "steps.ID.field").
 #
-# The label is the script's own key for the phase — the one an author writes and
-# the one ``step_started`` reports — so only ``main`` differs from it, because
-# the namespace a step is read under is ``steps``, not ``main``.
+# The label is the script's own key for the phase — the one an author writes,
+# the one ``step_started`` reports, and the one an event id is built from. Only
+# ``execution`` differs here, because the namespace its steps are read under is
+# ``steps``; a namespace is not a phase name.
 _PHASE_TO_NAMESPACE: dict[str, str] = {
     "setup": "setup",
-    "main": "steps",
+    "execution": "steps",
     "teardown": "teardown",
 }
 
@@ -171,7 +172,7 @@ def _get_steps_for_phase(script: TestScript, phase: StepPhase) -> list:
 def _format_step_name(script_name: str, idx: int, step_type: str, phase_label: str, step_id: str | None = None) -> str:
     """Format a step identifier using step id when available, index otherwise."""
     step_ref = step_id if step_id else f"{idx}"
-    if phase_label == "main":
+    if phase_label == "execution":
         return f"{script_name}[{step_ref}]:{step_type}"
     return f"{script_name}[{phase_label}:{step_ref}]:{step_type}"
 

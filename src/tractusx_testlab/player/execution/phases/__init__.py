@@ -25,7 +25,7 @@
 """Phase execution package — setup, main, and teardown runners."""
 
 from tractusx_testlab.player.execution.phases.setup import run_setup
-from tractusx_testlab.player.execution.phases.main import run_main
+from tractusx_testlab.player.execution.phases.execution import run_execution
 from tractusx_testlab.player.execution.phases.teardown import run_teardown
 
-__all__ = ["run_setup", "run_main", "run_teardown"]
+__all__ = ["run_setup", "run_execution", "run_teardown"]
