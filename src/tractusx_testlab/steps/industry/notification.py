@@ -31,7 +31,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 import httpx
-from pydantic import AliasChoices, ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
@@ -78,17 +78,14 @@ class SendNotificationParams(ProviderParams):
     )
     dataplane_url: Optional[str] = Field(
         default=None,
-        validation_alias=AliasChoices("dataplane_url", "endpoint_url"),
         description="Direct mode: data-plane URL to POST to; its presence selects that mode.",
     )
     edr_token: str = Field(
         default="",
-        validation_alias=AliasChoices("edr_token", "auth_token"),
         description="Direct mode: authorization token for that data-plane URL.",
     )
     content: Optional[dict] = Field(
         default=None,
-        validation_alias=AliasChoices("content", "payload"),
         description="Direct mode: the notification body.",
     )
     timeout: float = Field(default=30, gt=0, description="Request timeout in seconds.")

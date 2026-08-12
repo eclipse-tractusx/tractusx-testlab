@@ -29,6 +29,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 from tractusx_testlab.models import HttpResponse, StepDefinition
 from tractusx_testlab.player.execution.step_runner import store_step_outputs
@@ -200,6 +201,17 @@ class TestIfStep:
             }
         )
         assert len(params.otherwise) == 1
+
+    def test_the_python_attribute_name_is_not_a_second_spelling(self) -> None:
+        """``otherwise:`` in a script would be ``else:`` under another name."""
+        with pytest.raises(ValidationError, match="otherwise"):
+            IfStep.params_model.model_validate(
+                {
+                    "conditions": [{"input": "x"}],
+                    "then": [_log("a")],
+                    "otherwise": [_log("b")],
+                }
+            )
 
 
 # ---------------------------------------------------------------------------

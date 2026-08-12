@@ -35,6 +35,7 @@ from typing import Any, Optional
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 from tractusx_testlab.steps.connector.dataplane import DataplaneCallParams
 from tractusx_testlab.steps.connector.negotiate import NegotiateStep
@@ -189,9 +190,14 @@ class TestNegotiate:
         assert output.value["state"] is None
 
     def test_target_is_no_longer_an_accepted_spelling(self) -> None:
-        """C10 — the field is ``asset_id`` and nothing else."""
-        params = NegotiateStep.params_model(target="urn:asset:1")
-        assert params.asset_id is None
+        """C10 — the field is ``asset_id`` and nothing else.
+
+        Under C47 the old spelling does not merely fail to bind: it is
+        rejected, so a script still saying ``target:`` is told so rather than
+        negotiating for nothing.
+        """
+        with pytest.raises(ValidationError, match="target"):
+            NegotiateStep.params_model(target="urn:asset:1")
 
 
 # ---------------------------------------------------------------------------
@@ -358,13 +364,13 @@ class TestDataplaneCallParams:
         assert (params.dataplane_url, params.edr_token) == (_ENDPOINT, _TOKEN)
 
     @pytest.mark.parametrize("spelling", ["url", "endpoint"])
-    def test_the_old_url_spellings_no_longer_bind(self, spelling: str) -> None:
-        params = DataplaneCallParams(**{spelling: _ENDPOINT})
-        assert params.dataplane_url is None
+    def test_the_old_url_spellings_are_rejected(self, spelling: str) -> None:
+        with pytest.raises(ValidationError, match=spelling):
+            DataplaneCallParams(**{spelling: _ENDPOINT})
 
-    def test_the_old_token_spelling_no_longer_binds(self) -> None:
-        params = DataplaneCallParams(token=_TOKEN)
-        assert params.edr_token is None
+    def test_the_old_token_spelling_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="token"):
+            DataplaneCallParams(token=_TOKEN)
 
     def test_a_data_address_object_resolves_to_its_endpoint(self) -> None:
         params = DataplaneCallParams(dataplane_url={"endpoint": _ENDPOINT})

@@ -31,6 +31,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 from tests.conftest import attach_endpoint_url_stubs
 from tractusx_testlab.models import StepDefinition
@@ -108,11 +109,10 @@ class TestOneNameBothDirections:
         )
         assert output.value["contract_definition_id"] == _sent(provider)["@id"]
 
-    def test_the_old_spellings_no_longer_bind(self) -> None:
-        params = CreateContractDefinitionParams(
-            contract_id="cd-1", usage_policy_id="cp-1"
-        )
-        assert (params.contract_definition_id, params.contract_policy_id) == ("", "")
+    @pytest.mark.parametrize("spelling", ["contract_id", "usage_policy_id"])
+    def test_the_old_spellings_are_rejected(self, spelling: str) -> None:
+        with pytest.raises(ValidationError, match=spelling):
+            CreateContractDefinitionParams(**{spelling: "x"})
 
 
 class TestPolicyWiring:

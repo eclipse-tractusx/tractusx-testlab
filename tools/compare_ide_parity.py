@@ -130,7 +130,12 @@ def _type_name(field: Any) -> str:
 def _describe_model(model: Optional[type[BaseModel]]) -> dict:
     if model is None:
         return {"extra": None, "fields": {}}
-    populate = bool(model.model_config.get("populate_by_name", False))
+    # ``validate_by_name`` is the field-name switch pydantic actually reads;
+    # ``populate_by_name`` is its older name and only a default for it.  A model
+    # that turns the new one off to keep its attribute name unbindable would
+    # still look permissive if only the old one were consulted.
+    config = model.model_config
+    populate = bool(config.get("validate_by_name", config.get("populate_by_name", False)))
     return {
         "extra": model.model_config.get("extra", "ignore"),
         "fields": {
@@ -231,7 +236,13 @@ def compare(engine: dict, blocks: list[dict]) -> dict:
             field_name = lookup[name]
             consumed.add(field_name)
             field = step["params"]["fields"][field_name]
-            bound.append({"ide": name, "engine": field_name, "via_alias": name != field_name})
+            # A second *spelling* is the divergence, not a spelling that merely
+            # differs from the Python attribute.  ``flow/if`` accepts ``else:``
+            # and only ``else:``; the field has to be called something else
+            # because ``else`` is a keyword, and that is not two names for one
+            # thing.  A field that accepts more than one key is.
+            bound.append({"ide": name, "engine": field_name,
+                          "via_alias": len(field["accepts"]) > 1})
             if bool(param.get("required")) != field["required"]:
                 required_drift.append(name)
 
@@ -265,6 +276,17 @@ def compare(engine: dict, blocks: list[dict]) -> dict:
 # -- Reporting ----------------------------------------------------------------
 
 
+def _consequence(params_extra: str) -> str:
+    """What actually happens to a `with:` key the step does not declare.
+
+    Since C47 every ``StepParams`` is ``extra="forbid"``, so an unknown key is
+    a validation error naming the key rather than a value quietly discarded.
+    The tool still reads the real config, so a step that ever loosened back to
+    ``allow`` would report itself as the silent one it is.
+    """
+    return "rejected" if params_extra == "forbid" else "SILENTLY DROPPED"
+
+
 def report(result: dict) -> int:
     rows = result["rows"]
     matched = [r for r in rows if r["kind"] == "matched"]
@@ -282,8 +304,8 @@ def report(result: dict) -> int:
         + [f"   {r['uses']} -> NOTHING ({r['label']})" for r in unresolvable],
     )
     section(
-        "B. IDE params the engine silently drops",
-        [f"   {r['uses']} [extra={r['params_extra']}]: "
+        "B. IDE params the engine does not accept",
+        [f"   {r['uses']} [{_consequence(r['params_extra'])}]: "
          + ", ".join(f"{p['name']}{'*' if p['required'] else ''}" for p in r["dropped_params"])
          for r in matched if r["dropped_params"]],
     )

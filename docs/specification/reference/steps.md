@@ -1118,9 +1118,9 @@ Supports two modes: - **SDK mode** (canonical): `notification`, `provider_bpn`, 
 | `provider_dsp_url` | string | no | `''` | — | DSP endpoint of the receiving participant's connector. |
 | `notification` | object | no | `None` | — | SDK mode: the notification document to send. |
 | `endpoint_path` | string | no | `''` | — | SDK mode: path appended to the notification endpoint. |
-| `dataplane_url` | string | no | `None` | `endpoint_url` | Direct mode: data-plane URL to POST to; its presence selects that mode. |
-| `edr_token` | string | no | `''` | `auth_token` | Direct mode: authorization token for that data-plane URL. |
-| `content` | object | no | `None` | `payload` | Direct mode: the notification body. |
+| `dataplane_url` | string | no | `None` | — | Direct mode: data-plane URL to POST to; its presence selects that mode. |
+| `edr_token` | string | no | `''` | — | Direct mode: authorization token for that data-plane URL. |
+| `content` | object | no | `None` | — | Direct mode: the notification body. |
 | `timeout` | number | no | `30` | — | Request timeout in seconds. |
 
 **Output** — the value assertions and `returns:` read

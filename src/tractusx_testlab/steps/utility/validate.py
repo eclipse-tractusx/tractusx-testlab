@@ -30,7 +30,7 @@ import re
 from typing import TYPE_CHECKING, Any, Literal
 
 import jsonschema
-from pydantic import AliasChoices, Field
+from pydantic import ConfigDict, Field
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
@@ -203,7 +203,15 @@ def _coerce_json(value: Any, label: str) -> Any:
 
 
 class ValidateSchemaParams(StepParams):
-    """Input contract of ``validate/schema``."""
+    """Input contract of ``validate/schema``.
+
+    ``validate_by_name`` is off for the same reason as on ``flow/if``: the
+    attribute cannot be called ``schema``, and leaving the attribute name
+    bindable would make ``json_schema:`` a second accepted spelling of the one
+    key scripts actually write.
+    """
+
+    model_config = ConfigDict(extra="forbid", validate_by_name=False)
 
     input: Any = Field(
         default=None, description="The payload to validate — an object, a list, or a JSON string."

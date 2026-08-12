@@ -86,7 +86,16 @@ class Condition(BaseModel):
 
 
 class IfParams(StepParams):
-    """Input contract of ``flow/if``."""
+    """Input contract of ``flow/if``.
+
+    ``validate_by_name`` is off because ``else`` is a Python keyword and cannot
+    be a field name: the attribute has to be called something else.  Leaving the
+    attribute name bindable would make ``otherwise:`` a second accepted spelling
+    of ``else:``, which is the one thing this contract does not allow.  ``else``
+    is the script keyword; ``otherwise`` is only how Python spells the field.
+    """
+
+    model_config = ConfigDict(extra="forbid", validate_by_name=False)
 
     conditions: list[Condition] = Field(
         min_length=1,

@@ -85,9 +85,14 @@ class TestGenerateBpnStep:
         assert isinstance(output.value, dict)
 
     @pytest.mark.asyncio
-    async def test_unknown_params_are_tolerated(self, context: StepContext) -> None:
-        output = await GenerateBpnStep().invoke({"unknown": 1}, context, _definition())
-        assert output.value["bpn"].startswith("BPNL")
+    async def test_an_unknown_param_is_rejected(self, context: StepContext) -> None:
+        """C47 — a ``with:`` key no step declares is a mistake, not a no-op.
+
+        ``invoke`` re-raises the binding failure as a ``ValueError`` naming the
+        step, so the script author is told which step rejected which key.
+        """
+        with pytest.raises(ValueError, match="unknown"):
+            await GenerateBpnStep().invoke({"unknown": 1}, context, _definition())
 
 
 class TestGenerateBpnContract:

@@ -44,13 +44,17 @@ if TYPE_CHECKING:
 class StepParams(BaseModel):
     """Declared input contract of a step — one field per accepted ``with:`` key.
 
-    Unknown keys are kept rather than rejected, so a script written against a
-    newer revision of a step still runs against an older engine.  A step that
-    wants the stricter behaviour overrides ``model_config`` with
-    ``extra="forbid"``.
+    Unknown keys are rejected.  A ``with:`` key the step does not declare is a
+    mistake in the script — a typo, or a name from a revision that no longer
+    exists — and silently dropping it is how a script comes to look like it
+    configured something it never configured.  Rejecting it surfaces the
+    mistake at validation time, where the author can still see it.
+
+    This is why the engine and the IDE have to agree on parameter names down to
+    the spelling: there is no longer a spelling that is merely ignored.
     """
 
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class StepPayload(BaseModel):
