@@ -84,30 +84,33 @@ counted as a divergence like any other. It is the mildest class, because it
 fails no run today; it is still two names for one field, and the whole point of
 this exercise is that there be one. A field whose single accepted key merely
 differs from its Python attribute name is not class G — see
-[what is left](#what-is-left-by-class).
+[how each class was closed](#how-each-class-was-closed).
 
 ## Where the counts stand
 
-The engine side of the migration is complete. Every divergence that remains is
-in the block catalog.
-
-Measured by the tool, the breaking count went from **62** before the migration
-to **35**, across 33 of the catalog's blocks:
+**The migration is complete on both sides.** Measured by the tool, the breaking
+count went from **62** before it to **0**, across 38 blocks:
 
 | Class | Gated | Count |
 | --- | --- | ---: |
-| **A** — `uses:` does not resolve | yes | 5 |
-| **B** — IDE parameters the engine does not accept | yes | 22 |
-| **C** — IDE returns the engine never produces | yes | 8 |
+| **A** — `uses:` does not resolve | yes | 0 |
+| **B** — IDE parameters the engine does not accept | yes | 0 |
+| **C** — IDE returns the engine never produces | yes | 0 |
 | **G** — parameters that bind only through an alias | yes | 0 |
-| **D** — required in IDE, optional in engine | no | 15 steps |
-| **E** — engine parameters the IDE does not offer | no | 20 steps |
-| **F** — engine steps with no IDE block | no | 18 |
+| **D** — required in IDE, optional in engine | no | 11 steps |
+| **E** — engine parameters the IDE does not offer | no | 10 steps |
+| **F** — engine steps with no IDE block | no | 11 |
 
-Classes **D**, **E** and **F** are not breaks and are not gated on. **E** and
-**F** grew over the migration because the engine gained capability the catalog
-has not caught up with yet — the wizard composer steps, the DTR dataplane
-lookup, PUSH transfers.
+Classes **D**, **E** and **F** are not breaks and are not gated on. Most of what
+is left in **F** is deliberate: the DSP-level steps (`do_dsp`, `get_edr`,
+`extract_dataset`, the two narrower catalog queries) are the pieces the
+`pull_data_filtered` shortcuts already compose, and a catalog offering both would
+offer two ways to write one flow. The rest are genuine gaps — the three provider
+`delete_*` steps a teardown phase wants, and the two notification steps.
+
+`--check` therefore exits zero today, and the useful question about this page is
+no longer "how far apart are they" but "what stops them drifting again" — see
+[keeping it from drifting](#keeping-it-from-drifting-again).
 
 The failure severity ranks A > B > C:
 
@@ -121,32 +124,28 @@ The failure severity ranks A > B > C:
 - **C fails at a distance.** The variable is `None`, and the error shows up in
   whichever later step consumed it.
 
-## What is left, by class
+## How each class was closed
 
-Run the tool for the current list; this is the shape of it.
+**A — `uses:` values that resolved to nothing.** The three
+`digital-twin-registry/*` blocks emitted pre-rename ids and were repointed at
+`digital-twin/provider/*`, with the lookup split onto the separate dataplane
+step, because how the registry is reached is part of which step it is. The other
+two were never steps at all: `connector/consumer/filter_expression` and
+`flow/condition` compose a parameter of the block they plug into. Both now
+declare no `uses`, and the tool reads the absence of the key as "not a step"
+rather than as a step it cannot find.
 
-**A — five `uses:` values do not resolve.** The three
-`digital-twin-registry/*` blocks still emit the pre-rename ids and are repointed
-at `digital-twin/provider/*` (and, for the lookup, split onto the separate
-dataplane step). `connector/consumer/filter_expression` is not a break — it is a
-structural composer block that emits no step of its own. `flow/condition` is:
-the block exists in the toolbox and names a step the engine never had; the
-engine's conditional is `flow/if`.
+**B — parameters the engine rejected.** Two kinds. The `create_asset` /
+`create_policy` / `register_shell` / `add_submodel` forms sent the *flat fields*
+of a document the engine takes whole; each split into a guided block targeting
+the `wizard/` step id that assembles the document, and a plain block passing the
+document through. The rest were stale spellings — `offer_id`, `filter`,
+`contract_def_id`, `source`, and the `asset_id` that `initiate_transfer` never
+took.
 
-**B — twenty-two parameters are rejected.** Two kinds. The `create_asset` /
-`create_policy` / `register_shell` / `add_submodel` forms send the *flat fields*
-of a document the engine takes whole; those blocks become composer blocks
-feeding the wizard steps the engine now registers
-(`connector/provider/wizard/create_asset`,
-`connector/provider/wizard/create_policy`,
-`digital-twin/provider/wizard/create_shell_descriptor`,
-`digital-twin/provider/wizard/create_submodel_descriptor`). The rest are stale
-spellings — `offer_id`, `filter`, `contract_def_id`, `source`, and the
-`asset_id` that `initiate_transfer` never took.
-
-**C — eight returns resolve to nothing.** All stale output names on the DTR
-blocks, plus `contract_def_id`, `transfer_process_id` and `query_params`, each
-of which the engine now publishes under exactly one other name.
+**C — returns that resolved to nothing.** The DTR blocks' output names, plus
+`contract_def_id`, `transfer_process_id` and `query_params`, each of which the
+engine publishes under exactly one other name.
 
 **G — none.** The last three engine aliases (`notification/consumer/send`'s
 `endpoint_url`, `auth_token` and `payload`) are gone. Two fields still carry a
@@ -270,3 +269,14 @@ for class C: a `returns:` name is resolved only against what the step declared.
 Generating the block catalog from the registry would close class A the same way.
 The comparison tool is then what catches a catalog that was hand-edited or left
 stale, which is a narrower job than the one it does today.
+
+The IDE side has stopped holding a second copy of these names, which is what
+made drift possible in the first place. `runtimeStepRegistry.ts` — a hand-carried
+snapshot of every step this engine registers, pinned at v0.0.5-alpha — is
+deleted, along with the `stepAliases.ts` table that translated superseded
+spellings on import and the `KNOWN_DRIFT` allowlist that had to grow every time
+a block was *corrected* to disagree with the stale snapshot. What the IDE checks
+for itself is now only what it can prove without this repository: one
+unambiguous wire name per block, no two blocks claiming the same step, and a
+composer block declaring no `uses`. Everything about whether those names are
+right is measured here, against the live registry.
