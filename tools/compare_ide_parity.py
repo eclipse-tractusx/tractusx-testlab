@@ -83,8 +83,6 @@ from tractusx_testlab.scripting.registry import StepRegistry  # noqa: E402
 # the right is what actually resolves.  An entry here is a class-A finding that
 # the tool follows through so the fields underneath it can still be compared.
 NAME_MAP = {
-    "connector/consumer/negotiate": "connector/consumer/negotiate_contract",
-    "connector/consumer/initiate_transfer": "connector/consumer/transfer_data",
     "digital-twin-registry/register_shell": "digital-twin/provider/create_shell_descriptor",
     "digital-twin-registry/add_submodel": "digital-twin/provider/create_submodel_descriptor",
     "digital-twin-registry/lookup_shell": "digital-twin/provider/get_shell_descriptor",

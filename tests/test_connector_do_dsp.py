@@ -33,7 +33,7 @@ import pytest
 
 from tests.conftest import attach_endpoint_url_stubs
 from tractusx_testlab.steps.connector.do_dsp import DoDspStep, DoDspWithBpnlStep
-from tractusx_testlab.syntax.context_vars import DATAPLANE_ENDPOINT, EDR_TOKEN
+from tractusx_testlab.syntax.context_vars import DATA_ADDRESS, EDR_TOKEN
 
 _ENDPOINT = "https://provider.example.com/data"
 _TOKEN = "Bearer eyJhbGciOiJSUzI1NiJ9.test"
@@ -85,7 +85,7 @@ class TestDoDspStep:
         )
 
         # Assert — context variables
-        assert ctx.variables[DATAPLANE_ENDPOINT] == _ENDPOINT
+        assert ctx.variables[DATA_ADDRESS] == _ENDPOINT
         assert ctx.variables[EDR_TOKEN] == _TOKEN
 
     @pytest.mark.asyncio
@@ -187,7 +187,7 @@ class TestDoDspStep:
             definition=definition,
         )
 
-        assert DATAPLANE_ENDPOINT not in ctx.variables
+        assert DATA_ADDRESS not in ctx.variables
         assert EDR_TOKEN not in ctx.variables
 
 
@@ -206,7 +206,7 @@ class TestDoDspWithBpnlStep:
             definition=definition,
         )
 
-        assert ctx.variables[DATAPLANE_ENDPOINT] == _ENDPOINT
+        assert ctx.variables[DATA_ADDRESS] == _ENDPOINT
         assert ctx.variables[EDR_TOKEN] == _TOKEN
         assert output.value == {"endpoint": _ENDPOINT, "token": _TOKEN}
         assert output.response.status_code == 200

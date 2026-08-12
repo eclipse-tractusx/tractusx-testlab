@@ -30,7 +30,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 import requests
-from pydantic import AliasChoices, Field
+from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
@@ -44,7 +44,7 @@ from tractusx_testlab.steps._contracts import (
 )
 from tractusx_testlab.steps.base import BaseStep, StepOutput
 from tractusx_testlab.syntax.context_vars import (
-    DATAPLANE_ENDPOINT,
+    DATA_ADDRESS,
     EDR_TOKEN,
     TRANSFER_ID,
 )
@@ -63,30 +63,27 @@ logger = logging.getLogger(__name__)
 class DataplaneCallParams(HttpCallParams):
     """Input contract of ``connector/dataplane/http_request``.
 
-    Left alone, both the endpoint and the token come from whichever step
-    completed the transfer — that is the ``dataplane_endpoint``/``edr_token``
-    pair declared by
+    Left alone, both the URL and the token come from whichever step completed
+    the transfer — that is the ``data_address``/``edr_token`` pair declared by
     :class:`~tractusx_testlab.steps._contracts.DataplaneExports`.
     """
 
-    endpoint: Any = Field(
+    dataplane_url: Any = Field(
         default=None,
-        validation_alias=AliasChoices("dataplane_url", "url", "endpoint"),
         description=(
             "Data-plane URL, or a data address object to read it from; falls back "
-            "to the 'dataplane_endpoint' context variable."
+            "to the 'data_address' context variable."
         ),
     )
     path: str = Field(default="", description="Path appended to the data-plane URL.")
-    token: Optional[str] = Field(
+    edr_token: Optional[str] = Field(
         default=None,
-        validation_alias=AliasChoices("edr_token", "token"),
         description="EDR authorization token; falls back to the 'edr_token' context variable.",
     )
 
-    def endpoint_url(self, fallback: Any) -> str:
-        """The URL to call, resolved from whichever form the endpoint arrived in."""
-        endpoint = self.endpoint or fallback
+    def resolved_url(self, fallback: Any) -> str:
+        """The URL to call, resolved from whichever form the data address arrived in."""
+        endpoint = self.dataplane_url or fallback
         if isinstance(endpoint, dict):
             endpoint = endpoint.get("endpoint") or endpoint.get("baseUrl")
         if not self.path:
@@ -98,7 +95,7 @@ class DataplaneCallParams(HttpCallParams):
 class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
     """Fetch data from a data-plane endpoint using an EDR token.
 
-    This is the far end of the DSP flow: ``do_dsp`` or ``transfer_data``
+    This is the far end of the DSP flow: ``do_dsp`` or ``initiate_transfer``
     publishes where the data is and how to authorize for it, and this step
     reads exactly those two variables.
     """
@@ -109,8 +106,8 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
     async def execute(
         self, params: DataplaneCallParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
-        url = params.endpoint_url(context.get_variable(DATAPLANE_ENDPOINT))
-        token = params.token or context.get_variable(EDR_TOKEN)
+        url = params.resolved_url(context.get_variable(DATA_ADDRESS))
+        token = params.edr_token or context.get_variable(EDR_TOKEN)
         headers = {"Authorization": token, **params.headers}
         timeout = params.timeout_or(context.config.default_timeout_s)
 
@@ -157,8 +154,8 @@ def fetch_data_address(consumer: Any, transfer_id: Optional[str], verify: Any = 
     """Fetch the EDR data address for a transfer, or ``None`` if it cannot be read.
 
     The one place that calls ``consumer.get_edr`` — ``connector/consumer/get_edr``
-    and ``connector/consumer/transfer_data`` both resolve a ``transfer_id`` and
-    then call this. An unreachable connector is reported as "no data address"
+    and ``connector/consumer/initiate_transfer`` both resolve a ``transfer_id``
+    and then call this. An unreachable connector is reported as "no data address"
     rather than raised: the caller still has whatever else it resolved (an EDR
     entry, a negotiation), and a 404/500 in the step's response is how a script
     asserts on the failure.
@@ -176,10 +173,10 @@ def fetch_data_address(consumer: Any, transfer_id: Optional[str], verify: Any = 
 class GetEdrStep(BaseStep[GetEdrParams, DataAddressPayload]):
     """Retrieve the EDR data address for a completed transfer.
 
-    Publishes the same data-plane pair as ``transfer_data``, so it can stand in
-    for that step when the transfer was started elsewhere — ``transfer_data``
-    resolves a ``negotiation_id`` down to a ``transfer_id`` and then does exactly
-    what this step does.
+    Publishes the same data-plane pair as ``initiate_transfer``, so it can stand
+    in for that step when the transfer was started elsewhere — a PULL
+    ``initiate_transfer`` resolves a ``negotiation_id`` down to a ``transfer_id``
+    and then does exactly what this step does.
     """
 
     params_model = GetEdrParams
@@ -200,7 +197,7 @@ class GetEdrStep(BaseStep[GetEdrParams, DataAddressPayload]):
             request=HttpRequest(method="GET", url=url),
             response=HttpResponse(status_code=200 if edr else 404, body=edr),
             exports=DataplaneExports(
-                dataplane_endpoint=(edr or {}).get("endpoint"),
+                data_address=(edr or {}).get("endpoint"),
                 edr_token=data_address_token(edr),
             ),
         )

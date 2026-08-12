@@ -162,5 +162,5 @@ def _build_output(
             status_code=200 if endpoint else 500,
             body={"endpoint": endpoint, "token": token},
         ),
-        exports=DataplaneExports(dataplane_endpoint=endpoint, edr_token=token),
+        exports=DataplaneExports(data_address=endpoint, edr_token=token),
     )

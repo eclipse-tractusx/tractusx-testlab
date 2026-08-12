@@ -29,20 +29,20 @@ read the same keys.  Using constants prevents silent typo breakage.
 """
 
 # Catalog query results
-CATALOG_TARGET = "catalog_target"
+CATALOG_ASSET_ID = "catalog_asset_id"
 CATALOG_POLICY = "catalog_policy"
 CATALOG_DATASETS = "datasets"
 
 # Contract negotiation
 NEGOTIATION_ID = "negotiation_id"
+AGREEMENT_ID = "agreement_id"
 
 # Transfer / EDR
 TRANSFER_ID = "transfer_id"
 EDR_ENTRY = "edr_entry"
-DATAPLANE_ENDPOINT = "dataplane_endpoint"
-EDR_TOKEN = "edr_token"
-#: Older spelling of DATAPLANE_ENDPOINT; ``transfer_data`` publishes both.
+#: Data-plane URL a completed transfer publishes; the only name for it.
 DATA_ADDRESS = "data_address"
+EDR_TOKEN = "edr_token"
 
 # Backend data
 BACKEND_URL = "backend_url"

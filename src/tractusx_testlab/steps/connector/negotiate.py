@@ -34,28 +34,39 @@ from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import CounterPartyParams
 from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput, StepPayload
-from tractusx_testlab.syntax.context_vars import CATALOG_POLICY, CATALOG_TARGET, NEGOTIATION_ID
+from tractusx_testlab.steps.connector._polling import (
+    DEFAULT_MAX_WAIT,
+    DEFAULT_POLL_INTERVAL,
+    NEGOTIATION_TERMINAL,
+    poll_until_terminal,
+)
+from tractusx_testlab.syntax.context_vars import (
+    AGREEMENT_ID,
+    CATALOG_ASSET_ID,
+    CATALOG_POLICY,
+    NEGOTIATION_ID,
+)
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
 # ---------------------------------------------------------------------------
-# connector/consumer/negotiate_contract
+# connector/consumer/negotiate
 # ---------------------------------------------------------------------------
 
 
-class NegotiateContractParams(CounterPartyParams):
-    """Input contract of ``connector/consumer/negotiate_contract``.
+class NegotiateParams(CounterPartyParams):
+    """Input contract of ``connector/consumer/negotiate``.
 
     Every field falls back to what an earlier catalog step published, so a
     script that ran ``query_catalog_by_asset_id`` first can leave them all out.
     """
 
-    target: Optional[Any] = Field(
+    asset_id: Optional[Any] = Field(
         default=None,
         description=(
-            "Asset ID to negotiate for; falls back to the 'catalog_target' "
+            "Asset ID to negotiate for; falls back to the 'catalog_asset_id' "
             "context variable."
         ),
     )
@@ -66,41 +77,63 @@ class NegotiateContractParams(CounterPartyParams):
             "context variable."
         ),
     )
+    max_wait: float = Field(
+        default=DEFAULT_MAX_WAIT,
+        description="Seconds to wait for the negotiation to reach a final state.",
+    )
+    poll_interval: float = Field(
+        default=DEFAULT_POLL_INTERVAL,
+        description="Seconds between two negotiation state reads.",
+    )
 
 
 class NegotiationOutput(StepPayload):
-    """Output contract of ``connector/consumer/negotiate_contract``."""
+    """Output contract of ``connector/consumer/negotiate``."""
 
     negotiation_id: Optional[str] = Field(
         default=None, description="ID of the started negotiation."
     )
+    agreement_id: Optional[str] = Field(
+        default=None,
+        description="ID of the contract agreement, once the negotiation finalised.",
+    )
+    state: Optional[str] = Field(
+        default=None,
+        description="State the negotiation settled at, e.g. 'FINALIZED' or 'TERMINATED'.",
+    )
 
 
 class NegotiationExports(StepExports):
-    """Context variables published by ``connector/consumer/negotiate_contract``."""
+    """Context variables published by ``connector/consumer/negotiate``."""
 
     negotiation_id: Optional[str] = Field(
         default=None,
         alias=NEGOTIATION_ID,
         description="ID the transfer step polls for the resulting EDR.",
     )
+    agreement_id: Optional[str] = Field(
+        default=None,
+        alias=AGREEMENT_ID,
+        description="ID a PUSH transfer is started from.",
+    )
 
 
-@step("connector/consumer/negotiate_contract")
-class NegotiateContractStep(BaseStep[NegotiateContractParams, NegotiationOutput]):
-    """Start an EDR contract negotiation with the provider via the SDK.
+@step("connector/consumer/negotiate")
+class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
+    """Negotiate a contract with the provider and wait for the outcome.
 
-    Returns as soon as the negotiation is accepted — it does not wait for it to
-    finish; ``transfer_data`` is what polls for the resulting EDR.
+    The SDK starts the negotiation and answers with its ID straight away; this
+    step then polls the negotiation until it finalises or terminates, so what it
+    publishes is the settled outcome rather than "accepted for processing".
     """
 
-    params_model = NegotiateContractParams
+    params_model = NegotiateParams
     output_model = NegotiationOutput
     exports_model = NegotiationExports
 
     async def execute(
         self,
-        params: NegotiateContractParams,
+        params: NegotiateParams,
         context: "StepContext",
         definition: StepDefinition,
     ) -> StepOutput[NegotiationOutput]:
@@ -113,17 +146,32 @@ class NegotiateContractStep(BaseStep[NegotiateContractParams, NegotiationOutput]
         negotiation_id = consumer.start_edr_negotiation(
             counter_party_id=counter_party_id,
             counter_party_address=counter_party_address,
-            target=params.target or context.get_variable(CATALOG_TARGET),
+            target=params.asset_id or context.get_variable(CATALOG_ASSET_ID),
             policy=params.policy or context.get_variable(CATALOG_POLICY),
         )
 
+        negotiation = await poll_until_terminal(
+            getattr(consumer, "contract_negotiations", None),
+            negotiation_id or "",
+            NEGOTIATION_TERMINAL,
+            max_wait=params.max_wait,
+            poll_interval=params.poll_interval,
+        )
+        agreement_id = negotiation.get("contractAgreementId")
+        state = negotiation.get("state")
+
+        value = NegotiationOutput(
+            negotiation_id=negotiation_id, agreement_id=agreement_id, state=state
+        )
         url = context.get_consumer_endpoint_url("edrs")
         return StepOutput(
-            value=NegotiationOutput(negotiation_id=negotiation_id),
+            value=value,
             request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
             response=HttpResponse(
                 status_code=200 if negotiation_id else 500,
-                body={"negotiation_id": negotiation_id},
+                body=value.model_dump(mode="json"),
             ),
-            exports=NegotiationExports(negotiation_id=negotiation_id),
+            exports=NegotiationExports(
+                negotiation_id=negotiation_id, agreement_id=agreement_id
+            ),
         )

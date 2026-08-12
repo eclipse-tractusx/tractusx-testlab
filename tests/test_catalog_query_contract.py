@@ -42,7 +42,7 @@ from tractusx_testlab.steps.connector.catalog_query import (
 from tractusx_testlab.syntax.context_vars import (
     CATALOG_DATASETS,
     CATALOG_POLICY,
-    CATALOG_TARGET,
+    CATALOG_ASSET_ID,
 )
 
 _DATASET = {"@id": "offer-abc", "odrl:hasPolicy": {"@id": "policy-1"}}
@@ -260,7 +260,7 @@ class TestQueryCatalogByAssetIdExports:
         await QueryCatalogByAssetIdStep().invoke(
             self._params(), ctx, _definition("connector/consumer/query_catalog_by_asset_id")
         )
-        assert (ctx.get_variable(CATALOG_TARGET), ctx.get_variable(CATALOG_POLICY)) == (
+        assert (ctx.get_variable(CATALOG_ASSET_ID), ctx.get_variable(CATALOG_POLICY)) == (
             "asset-1",
             {"@id": "policy-1"},
         )
@@ -282,7 +282,7 @@ class TestQueryCatalogByAssetIdExports:
         await QueryCatalogByAssetIdStep().invoke(
             self._params(), ctx, _definition("connector/consumer/query_catalog_by_asset_id")
         )
-        assert not ctx.has_variable(CATALOG_TARGET)
+        assert not ctx.has_variable(CATALOG_ASSET_ID)
 
     @pytest.mark.asyncio
     async def test_malformed_catalog_does_not_fail_the_step(
@@ -303,7 +303,7 @@ class TestQueryCatalogByAssetIdExports:
             self._params(), ctx, _definition("connector/consumer/query_catalog_by_asset_id")
         )
         assert output.response.status_code == 200
-        assert not ctx.has_variable(CATALOG_TARGET)
+        assert not ctx.has_variable(CATALOG_ASSET_ID)
 
 
 # ---------------------------------------------------------------------------
@@ -323,7 +323,7 @@ class TestDeclaredContracts:
 
     def test_export_names_match_the_context_var_constants(self) -> None:
         exports = QueryCatalogByAssetIdStep.describe().exports_schema
-        assert set(exports["properties"]) == {CATALOG_TARGET, CATALOG_POLICY}
+        assert set(exports["properties"]) == {CATALOG_ASSET_ID, CATALOG_POLICY}
 
     def test_a_step_without_exports_declares_none(self) -> None:
         assert QueryCatalogByBpnlStep.describe().exports_schema is None

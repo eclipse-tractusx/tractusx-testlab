@@ -245,7 +245,7 @@ When two steps talk about the same thing, they share one model rather than each 
 | `ServiceParams` | selecting which configured connector service to talk to |
 | `HttpTransportParams` / `HttpCallParams` | headers and timeout, plus method and body |
 | `CatalogPayload`, `DataAddressPayload` | DSP documents |
-| `DataplaneExports` | the `dataplane_endpoint` / `edr_token` pair the data-plane step reads |
+| `DataplaneExports` | the `data_address` / `edr_token` pair the data-plane step reads |
 | `NoOutput` | a step that produces nothing |
 
 Inherit the mixins into your own params model:

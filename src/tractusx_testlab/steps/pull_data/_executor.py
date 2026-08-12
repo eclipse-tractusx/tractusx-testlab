@@ -222,7 +222,7 @@ async def _do_dsp_flow(
 
 def _dataplane_exports(value: PullDataOutput) -> DataplaneExports:
     """Publish the data-plane pair the dataplane step reads."""
-    return DataplaneExports(dataplane_endpoint=value.endpoint, edr_token=value.edr_token or None)
+    return DataplaneExports(data_address=value.endpoint, edr_token=value.edr_token or None)
 
 
 # -- Steps --------------------------------------------------------------------

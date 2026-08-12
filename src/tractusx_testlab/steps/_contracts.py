@@ -44,7 +44,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from tractusx_testlab.steps.base import StepExports, StepParams, StepPayload, StepValue
 from tractusx_testlab.syntax.context_vars import (
     CATALOG_DATASETS,
-    DATAPLANE_ENDPOINT,
+    DATA_ADDRESS,
     EDR_TOKEN,
 )
 
@@ -198,9 +198,9 @@ class DataplaneExports(StepExports):
     any step that produces them declares them through this model.
     """
 
-    dataplane_endpoint: Optional[str] = Field(
+    data_address: Optional[str] = Field(
         default=None,
-        alias=DATAPLANE_ENDPOINT,
+        alias=DATA_ADDRESS,
         description="Data-plane URL the negotiated data is fetched from.",
     )
     edr_token: Optional[str] = Field(

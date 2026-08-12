@@ -38,15 +38,15 @@ from tractusx_testlab.steps.connector.catalog_query import (
     QueryCatalogStep,
 )
 from tractusx_testlab.steps.connector.do_dsp import DoDspStep, DoDspWithBpnlStep
-from tractusx_testlab.steps.connector.negotiate import NegotiateContractStep
-from tractusx_testlab.steps.connector.transfer import TransferDataStep
+from tractusx_testlab.steps.connector.negotiate import NegotiateStep
+from tractusx_testlab.steps.connector.transfer import InitiateTransferStep
 
 __all__ = [
     "QueryCatalogStep",
     "QueryCatalogByAssetIdStep",
     "QueryCatalogByBpnlStep",
-    "NegotiateContractStep",
-    "TransferDataStep",
+    "NegotiateStep",
+    "InitiateTransferStep",
     "DoDspStep",
     "DoDspWithBpnlStep",
 ]

@@ -505,8 +505,8 @@ Every block type maps to an SDK capability through this chain:
 | Block (IDE) | Step Type | Step Executor | SDK Service | SDK Method |
 |-------------|-----------|---------------|-------------|------------|
 | Query Catalog | `query_catalog` | `QueryCatalogStep` | `BaseConnectorService` | `get_catalog_with_filter()` |
-| Negotiate Contract | `negotiate_contract` | `NegotiateContractStep` | `BaseConnectorService` | `start_edr_negotiation()` |
-| Transfer Data | `transfer_data` | `TransferDataStep` | `BaseConnectorService` | `get_edr_entry()` |
+| Negotiate Contract | `negotiate` | `NegotiateStep` | `BaseConnectorService` | `start_edr_negotiation()` |
+| Initiate Transfer | `initiate_transfer` | `InitiateTransferStep` | `BaseConnectorService` | `get_edr_entry()` |
 | Create Asset | `create_asset` | `CreateAssetStep` | `BaseConnectorService` | `create_asset()` |
 | Create Policy | `create_policy` | `CreatePolicyStep` | `BaseConnectorService` | `create_policy()` |
 | Create Contract Def | `create_contract_definition` | `CreateContractDefinitionStep` | `BaseConnectorService` | `create_contract()` |

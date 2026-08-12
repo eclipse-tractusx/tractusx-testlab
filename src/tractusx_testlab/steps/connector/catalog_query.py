@@ -44,7 +44,7 @@ from tractusx_testlab.steps._contracts import (
     as_dataset_list,
 )
 from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput
-from tractusx_testlab.syntax.context_vars import CATALOG_POLICY, CATALOG_TARGET
+from tractusx_testlab.syntax.context_vars import CATALOG_ASSET_ID, CATALOG_POLICY
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -151,12 +151,12 @@ class QueryCatalogByAssetIdExports(StepExports):
     """Context variables published by ``connector/consumer/query_catalog_by_asset_id``.
 
     Both stay unset when no offer matches ``policies`` — selection is
-    best-effort here and ``negotiate_contract`` is what reports the failure.
+    best-effort here and ``negotiate`` is what reports the failure.
     """
 
-    catalog_target: Optional[Any] = Field(
+    catalog_asset_id: Optional[Any] = Field(
         default=None,
-        alias=CATALOG_TARGET,
+        alias=CATALOG_ASSET_ID,
         description="Asset ID of the first offer whose policy is accepted.",
     )
     catalog_policy: Optional[Any] = Field(
@@ -170,7 +170,7 @@ class QueryCatalogByAssetIdExports(StepExports):
 class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogPayload]):
     """Query the catalog filtered by a specific asset ID.
 
-    Publishes the first offer matching ``policies`` as ``catalog_target`` /
+    Publishes the first offer matching ``policies`` as ``catalog_asset_id`` /
     ``catalog_policy`` for the negotiation step that follows.
     """
 
@@ -210,8 +210,8 @@ def _select_offer(catalog: Any, policies: list[dict]) -> QueryCatalogByAssetIdEx
         return QueryCatalogByAssetIdExports()
     if not matches:
         return QueryCatalogByAssetIdExports()
-    target, policy = matches[0]
-    return QueryCatalogByAssetIdExports(catalog_target=target, catalog_policy=policy)
+    asset_id, policy = matches[0]
+    return QueryCatalogByAssetIdExports(catalog_asset_id=asset_id, catalog_policy=policy)
 
 
 # ---------------------------------------------------------------------------

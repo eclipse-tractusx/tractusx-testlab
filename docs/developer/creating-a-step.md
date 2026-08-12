@@ -285,7 +285,7 @@ Return a `StepExports` instance from `execute`; do not call `context.set_variabl
 
 ```python
 class NegotiationExports(StepExports):
-    """Context variables published by ``connector/consumer/negotiate_contract``."""
+    """Context variables published by ``connector/consumer/negotiate``."""
 
     negotiation_id: Optional[str] = Field(
         default=None,
@@ -322,7 +322,7 @@ Shared models live in `tractusx_testlab.steps._contracts`:
 | `HttpBodyOutput` | value | a response body — parsed JSON, or text |
 | `NoOutput` | value | a step that produces nothing |
 | `CatalogDatasetsExports` | exports | the `datasets` a catalog query publishes |
-| `DataplaneExports` | exports | the `dataplane_endpoint` / `edr_token` pair |
+| `DataplaneExports` | exports | the `data_address` / `edr_token` pair |
 
 Mock-server steps additionally share `MockIdParams` and `RequiredMockIdParams` from `tractusx_testlab.steps.server._contracts`.
 
@@ -401,7 +401,7 @@ async def test_rejects_a_missing_url(self, context: StepContext) -> None:
 
 async def test_publishes_the_endpoint_for_later_steps(self, context: StepContext) -> None:
     await DoDspStep().invoke({...}, context, _definition())
-    assert context.get_variable(DATAPLANE_ENDPOINT) == "https://dataplane.example"
+    assert context.get_variable(DATA_ADDRESS) == "https://dataplane.example"
 
 
 async def test_absent_keys_are_not_invented(self) -> None:
