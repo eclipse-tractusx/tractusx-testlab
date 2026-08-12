@@ -1,0 +1,263 @@
+#################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the
+# License for the specific language govern in permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
+
+"""Contract tests for the Digital Twin Registry steps."""
+
+from __future__ import annotations
+
+import base64
+import json
+from typing import Any, Optional
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.steps.base import StepOutput
+from tractusx_testlab.steps.industry.dtr import (
+    DescriptorPayload,
+    GetShellDescriptorStep,
+    ShellLookupParams,
+    ShellLookupStep,
+)
+from tractusx_testlab.syntax.context_vars import DATA_ADDRESS, EDR_TOKEN
+
+_DATAPLANE = "https://provider.example.com/api/public"
+_TOKEN = "Bearer eyJhbGciOiJSUzI1NiJ9.test"
+_SHELL_ID = "urn:uuid:11111111-2222-3333-4444-555555555555"
+_DESCRIPTOR = {"id": _SHELL_ID, "idShort": "twin-a", "specificAssetIds": []}
+
+
+class _Response:
+    def __init__(self, status_code: int = 200, body: Any = None) -> None:
+        self.status_code = status_code
+        self.headers: dict[str, str] = {}
+        self._body = body
+
+    def json(self) -> Any:
+        if self._body is None:
+            raise ValueError("no body")
+        return self._body
+
+
+def _definition() -> StepDefinition:
+    return StepDefinition(
+        id="lookup", uses="digital-twin-registry/consumer/dataplane/lookup_shell"
+    )
+
+
+@pytest.fixture()
+def context(mock_context: MagicMock) -> MagicMock:
+    mock_context.config.default_timeout_s = 30
+    return mock_context
+
+
+def _params(**overrides: Any) -> dict:
+    return {
+        "specific_asset_ids": [{"name": "partInstanceId", "value": "SN-111"}],
+        "dataplane_url": _DATAPLANE,
+        "edr_token": _TOKEN,
+        **overrides,
+    }
+
+
+def _responses(*bodies: Optional[_Response]) -> list:
+    return list(bodies)
+
+
+# ---------------------------------------------------------------------------
+# C37 — one spelling on the way out
+# ---------------------------------------------------------------------------
+
+
+class TestDescriptorSerialisation:
+    def test_the_aas_camel_case_is_accepted_on_the_way_in(self) -> None:
+        assert DescriptorPayload.of(_DESCRIPTOR).id_short == "twin-a"
+
+    def test_only_the_snake_case_spelling_is_written_on_the_way_out(self) -> None:
+        output = GetShellDescriptorStep.bind_output(
+            StepOutput(value=DescriptorPayload.of(_DESCRIPTOR))
+        )
+        assert output.value["id_short"] == "twin-a"
+        assert "idShort" not in output.value
+
+    def test_keys_the_registry_added_are_kept(self) -> None:
+        output = GetShellDescriptorStep.bind_output(
+            StepOutput(value=DescriptorPayload.of(_DESCRIPTOR))
+        )
+        assert output.value["specificAssetIds"] == []
+
+
+# ---------------------------------------------------------------------------
+# C04 / C27 — the consumer-side lookup
+# ---------------------------------------------------------------------------
+
+
+class TestAssetIdEncoding:
+    def test_each_criterion_travels_base64url_encoded(self) -> None:
+        params = ShellLookupParams.model_validate(_params())
+        (encoded,) = params.asset_id_query()
+        decoded = json.loads(base64.urlsafe_b64decode(encoded + "==").decode())
+        assert decoded == {"name": "partInstanceId", "value": "SN-111"}
+
+    def test_every_criterion_gets_its_own_value(self) -> None:
+        params = ShellLookupParams.model_validate(
+            _params(
+                specific_asset_ids=[
+                    {"name": "partInstanceId", "value": "SN-111"},
+                    {"name": "manufacturerId", "value": "BPNL01"},
+                ]
+            )
+        )
+        assert len(params.asset_id_query()) == 2
+
+    def test_a_criterion_the_aas_spec_adds_is_kept(self) -> None:
+        """``externalSubjectId`` scopes a criterion to one partner."""
+        params = ShellLookupParams.model_validate(
+            _params(
+                specific_asset_ids=[
+                    {
+                        "name": "partInstanceId",
+                        "value": "SN-111",
+                        "externalSubjectId": {"keys": []},
+                    }
+                ]
+            )
+        )
+        (encoded,) = params.asset_id_query()
+        decoded = json.loads(base64.urlsafe_b64decode(encoded + "==").decode())
+        assert "externalSubjectId" in decoded
+
+    def test_a_lookup_with_no_criteria_is_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            ShellLookupParams.model_validate(_params(specific_asset_ids=[]))
+
+
+class TestShellLookup:
+    @pytest.mark.asyncio
+    async def test_returns_the_matching_ids_and_their_descriptors(
+        self, context: MagicMock
+    ) -> None:
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(
+                _Response(200, {"result": [_SHELL_ID]}), _Response(200, _DESCRIPTOR)
+            ),
+        ):
+            output = await ShellLookupStep().invoke(_params(), context, _definition())
+
+        assert output.value["shell_ids"] == [_SHELL_ID]
+        assert output.value["shell_descriptors"] == [_DESCRIPTOR]
+
+    @pytest.mark.asyncio
+    async def test_the_lookup_is_addressed_to_the_registry_behind_the_dataplane(
+        self, context: MagicMock
+    ) -> None:
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(_Response(200, {"result": []})),
+        ) as get:
+            await ShellLookupStep().invoke(_params(), context, _definition())
+
+        url, kwargs = get.call_args.args[0], get.call_args.kwargs
+        assert url == f"{_DATAPLANE}/lookup/shells"
+        assert kwargs["headers"]["Authorization"] == _TOKEN
+        assert len(kwargs["params"]["assetIds"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_the_dataplane_pair_falls_back_to_what_the_transfer_published(
+        self, context: MagicMock
+    ) -> None:
+        """A script that ran ``initiate_transfer`` first passes neither."""
+        context.set_variable(DATA_ADDRESS, _DATAPLANE)
+        context.set_variable(EDR_TOKEN, _TOKEN)
+
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(_Response(200, {"result": []})),
+        ) as get:
+            await ShellLookupStep().invoke(
+                {"specific_asset_ids": [{"name": "partInstanceId", "value": "SN-111"}]},
+                context,
+                _definition(),
+            )
+
+        assert get.call_args.args[0] == f"{_DATAPLANE}/lookup/shells"
+        assert get.call_args.kwargs["headers"]["Authorization"] == _TOKEN
+
+    @pytest.mark.asyncio
+    async def test_a_bare_list_answer_is_read_the_same_way(
+        self, context: MagicMock
+    ) -> None:
+        """Registries older than the AAS v3 paging shape answer with the list."""
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(_Response(200, [_SHELL_ID]), _Response(200, _DESCRIPTOR)),
+        ):
+            output = await ShellLookupStep().invoke(_params(), context, _definition())
+
+        assert output.value["shell_ids"] == [_SHELL_ID]
+
+    @pytest.mark.asyncio
+    async def test_a_failed_lookup_is_reported_not_raised(self, context: MagicMock) -> None:
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(_Response(403, None)),
+        ):
+            output = await ShellLookupStep().invoke(_params(), context, _definition())
+
+        assert output.response.status_code == 403
+        assert output.value["shell_ids"] == []
+
+    @pytest.mark.asyncio
+    async def test_a_shell_the_registry_will_not_hand_over_leaves_its_id_behind(
+        self, context: MagicMock
+    ) -> None:
+        """The identifier stays readable, so a script can assert on the gap."""
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(
+                _Response(200, {"result": [_SHELL_ID]}), _Response(404, None)
+            ),
+        ):
+            output = await ShellLookupStep().invoke(_params(), context, _definition())
+
+        assert output.value["shell_ids"] == [_SHELL_ID]
+        assert output.value["shell_descriptors"] == []
+
+    @pytest.mark.asyncio
+    async def test_each_descriptor_is_read_by_its_encoded_identifier(
+        self, context: MagicMock
+    ) -> None:
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(
+                _Response(200, {"result": [_SHELL_ID]}), _Response(200, _DESCRIPTOR)
+            ),
+        ) as get:
+            await ShellLookupStep().invoke(_params(), context, _definition())
+
+        descriptor_url = get.call_args_list[1].args[0]
+        encoded = descriptor_url.rsplit("/", 1)[-1]
+        assert base64.urlsafe_b64decode(encoded + "==").decode() == _SHELL_ID
