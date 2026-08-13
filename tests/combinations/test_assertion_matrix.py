@@ -344,3 +344,178 @@ class TestSchemaValidationInAChain:
 
         assert not outcome.passed
         assert "attempts" in outcome.assertion_messages("fetch")[0]
+
+
+class TestAnAssertionReferencesWhatTheRunProduced:
+    """``${{ … }}`` inside a ``validate:`` block resolves like anywhere else.
+
+    Only the step's own ``with:`` used to be resolved. An assertion comparing
+    against an earlier step's return, or naming a schema declared in ``env``,
+    therefore received its own template text — and reported a mismatch against
+    a string nobody wrote, which reads exactly like a real failure of the
+    system under test.
+    """
+
+    async def test_a_value_reference_is_resolved_before_comparing(
+        self, harness: Harness, http: HttpDouble
+    ) -> None:
+        http.json_route("GET", "/state", {"id": "part-1"})
+        base = http.start()
+        harness.seed(expected_id="part-1")
+
+        outcome = await harness.run(
+            {
+                "id": "fetch",
+                "uses": "http/http_request",
+                "with": {"method": "GET", "url": f"{base}/state"},
+                "returns": {"response_body": {"type": "object"}},
+                "validate": [
+                    {
+                        "uses": "validate/field/equals",
+                        "with": {
+                            "input": "response_body",
+                            "path": "id",
+                            "value": "${{ env.expected_id }}",
+                        },
+                    }
+                ],
+            }
+        )
+
+        assert outcome.passed, outcome.assertion_messages("fetch")
+
+    async def test_a_mismatch_reports_the_resolved_value_not_the_reference(
+        self, harness: Harness, http: HttpDouble
+    ) -> None:
+        """The message a TCK author reads has to name what was compared."""
+        http.json_route("GET", "/state", {"id": "part-2"})
+        base = http.start()
+        harness.seed(expected_id="part-1")
+
+        outcome = await harness.run(
+            {
+                "id": "fetch",
+                "uses": "http/http_request",
+                "with": {"method": "GET", "url": f"{base}/state"},
+                "returns": {"response_body": {"type": "object"}},
+                "validate": [
+                    {
+                        "uses": "validate/field/equals",
+                        "with": {
+                            "input": "response_body",
+                            "path": "id",
+                            "value": "${{ env.expected_id }}",
+                        },
+                    }
+                ],
+            }
+        )
+
+        message = outcome.assertion_messages("fetch")[0]
+        assert "part-1" in message and "part-2" in message
+        assert "${{" not in message
+
+    async def test_an_earlier_steps_return_is_comparable(
+        self, harness: Harness, http: HttpDouble
+    ) -> None:
+        """A reference resolves the name a ``returns:`` block declared.
+
+        ``response_body.id`` is declared as such, so it exists as a name. A
+        reference is a flat lookup, not a walk — see the test below.
+        """
+        http.json_route("POST", "/parts", {"id": "part-1"}, status=201)
+        http.json_route("GET", "/parts", {"id": "part-1"})
+        base = http.start()
+
+        outcome = await harness.run(
+            {
+                "id": "create",
+                "uses": "http/http_request",
+                "with": {"method": "POST", "url": f"{base}/parts", "body": {}},
+                "returns": {"response_body.id": {"type": "string"}},
+            },
+            {
+                "id": "read_back",
+                "uses": "http/http_request",
+                "with": {"method": "GET", "url": f"{base}/parts"},
+                "returns": {"response_body": {"type": "object"}},
+                "validate": [
+                    {
+                        "uses": "validate/field/equals",
+                        "with": {
+                            "input": "response_body",
+                            "path": "id",
+                            "value": "${{ execution.create.response_body.id }}",
+                        },
+                    }
+                ],
+            },
+        )
+
+        assert outcome.passed, outcome.assertion_messages("read_back")
+
+    async def test_a_schema_declared_in_env_is_resolved(
+        self, harness: Harness, http: HttpDouble
+    ) -> None:
+        """``${{ env.schemas.<id> }}`` is the form the IDE documents and emits."""
+        http.json_route("GET", "/subject", SUBJECT)
+        base = http.start()
+        harness.seed(
+            **{
+                "schemas.state_schema": {
+                    "type": "object",
+                    "required": ["state", "attempts"],
+                }
+            }
+        )
+
+        outcome = await harness.run(
+            {
+                "id": "fetch",
+                "uses": "http/http_request",
+                "with": {"method": "GET", "url": f"{base}/subject"},
+                "returns": {"response_body": {"type": "object"}},
+                "validate": [
+                    {
+                        "uses": "validate/schema",
+                        "with": {
+                            "input": "response_body",
+                            "schema": "${{ env.schemas.state_schema }}",
+                        },
+                    }
+                ],
+            }
+        )
+
+        assert outcome.passed, outcome.assertion_messages("fetch")
+
+
+    async def test_a_path_not_declared_in_returns_does_not_resolve(
+        self, harness: Harness, http: HttpDouble
+    ) -> None:
+        """A reference is a name, not a path — the walk happens in ``returns:``.
+
+        ``${{ execution.create.response_body.id }}`` finds nothing unless
+        ``response_body.id`` was declared, because resolution looks the whole
+        dotted string up as one key. Harmless for authored TCKs — the IDE only
+        offers a block's declared outputs, so it never writes a deeper path —
+        and pinned here so it is a known edge rather than a surprise.
+        """
+        http.json_route("POST", "/parts", {"id": "part-1"}, status=201)
+        base = http.start()
+
+        outcome = await harness.run(
+            {
+                "id": "create",
+                "uses": "http/http_request",
+                "with": {"method": "POST", "url": f"{base}/parts", "body": {}},
+                "returns": {"response_body": {"type": "object"}},
+            },
+            {
+                "id": "echo",
+                "uses": "util/log",
+                "with": {"value": "${{ execution.create.response_body.id }}"},
+            },
+        )
+
+        assert outcome.output("echo") == "${{ execution.create.response_body.id }}"

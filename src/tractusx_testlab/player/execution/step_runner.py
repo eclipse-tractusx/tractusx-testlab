@@ -46,6 +46,27 @@ from tractusx_testlab.player.execution._phase_runners import (
 )
 
 
+def _resolve_assertions(assertions: list[Any], context: StepContext) -> list[Any]:
+    """Resolve ``${{ … }}`` references in each assertion's ``with:`` block.
+
+    A ``validate:`` entry compares against things the run produced — a value an
+    earlier step returned, a schema declared in ``env`` — and writes them the
+    way every other value is written. Only the step's own ``with:`` used to be
+    resolved, so those references reached the comparison as their own template
+    text: the check then failed against a string nobody wrote, and said so in a
+    message that read like a real mismatch.
+
+    ``input`` is unaffected: it names one of the step's returns and carries no
+    reference to resolve.
+    """
+    return [
+        assertion.model_copy(
+            update={"with_": resolve_params(assertion.with_ or {}, context)}
+        )
+        for assertion in assertions
+    ]
+
+
 async def run_step(
     step_cls: type, step_def: Any, step_name: str, context: StepContext,
 ) -> StepResult:
@@ -61,7 +82,11 @@ async def run_step(
         if step_def.validate:
             assertion_results = [
                 AssertionResult.model_validate(ar.model_dump())
-                for ar in AssertionEngine.evaluate(step_def.validate, output, context.variables)
+                for ar in AssertionEngine.evaluate(
+                    _resolve_assertions(step_def.validate, context),
+                    output,
+                    context.variables,
+                )
             ]
 
         finished_at = datetime.now(timezone.utc)

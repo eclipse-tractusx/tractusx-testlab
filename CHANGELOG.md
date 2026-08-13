@@ -101,6 +101,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- `${{ … }}` references inside a `validate:` block are resolved before the
+  comparison runs. Only a step's own `with:` was resolved, so an assertion
+  comparing against an earlier step's return — or naming a schema with
+  `${{ env.schemas.<id> }}`, the form the IDE emits — received its own template
+  text and reported a mismatch against a string nobody wrote
 - `validate/schema` inside a `validate:` block validates the payload against the
   schema. It was unrecognised inline and fell back to an exact comparison
   against `None`, so a conforming payload failed with a misleading message

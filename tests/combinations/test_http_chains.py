@@ -110,8 +110,8 @@ class TestRequestThenExtract:
         outcome = await harness.run(
             {
                 "id": "mint",
-                "uses": "util/generate_uuid",
-                "returns": {"value": {"type": "string"}},
+                "uses": "util/generate_bpn",
+                "returns": {"bpn": {"type": "string"}},
             },
             {
                 "id": "create",
@@ -119,16 +119,16 @@ class TestRequestThenExtract:
                 "with": {
                     "method": "POST",
                     "url": f"{base}/twins",
-                    "body": {"id": "urn:uuid:${{ execution.mint.value }}", "idShort": "axle"},
+                    "body": {"id": "urn:bpn:${{ execution.mint.bpn }}", "idShort": "axle"},
                 },
                 "returns": {"status_code": {"type": "integer"}},
             },
         )
 
-        minted = outcome.output("mint")
+        minted = outcome.output("mint")["bpn"]
         assert outcome.variables["status_code"] == 201
         assert http.calls_to("POST", "/twins")[0].body == {
-            "id": f"urn:uuid:{minted}",
+            "id": f"urn:bpn:{minted}",
             "idShort": "axle",
         }
 

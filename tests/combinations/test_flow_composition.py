@@ -347,7 +347,7 @@ class TestWhatANestedStepPublishes:
                     "then": [
                         {
                             "id": "mint",
-                            "uses": "util/generate_uuid",
+                            "uses": "util/generate_bpn",
                             "returns": {"value": {"type": "string"}},
                         }
                     ],
@@ -372,7 +372,7 @@ class TestWhatANestedStepPublishes:
                 "uses": "flow/if",
                 "with": {
                     "conditions": [{"input": "go", "operator": "not_null"}],
-                    "then": [{"id": "mint", "uses": "util/generate_uuid"}],
+                    "then": [{"id": "mint", "uses": "util/generate_bpn"}],
                 },
                 "returns": {"outputs": {"type": "array"}},
             },
@@ -492,7 +492,7 @@ class TestDelayBetweenSteps:
         outcome = await harness.run(
             {
                 "id": "mint",
-                "uses": "util/generate_uuid",
+                "uses": "util/generate_bpn",
                 "returns": {"value": {"type": "string"}},
             },
             {"id": "wait", "uses": "flow/delay", "with": {"seconds": 0.01}},
