@@ -1193,11 +1193,9 @@ _No fields._
 
 **Output** — the value assertions and `returns:` read
 
-_Output contract of `util/generate_uuid`._
+_The generated identifier — the output *is* the UUID string._
 
-| Field | Type | Description |
-|---|---|---|
-| `uuid` | string | The generated identifier. |
+Type: string
 
 ### `util/json_path_extract`
 

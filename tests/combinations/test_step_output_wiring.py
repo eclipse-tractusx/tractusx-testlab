@@ -26,6 +26,11 @@
 This is the seam the per-step contract tests cannot see. Each step here is
 already known to produce what it declares; what is under test is the name the
 next step has to spell to get it, and whether spelling it wrong is noticed.
+
+``util/generate_bpn`` is the producer throughout — a step with one named field
+on an object payload, which is the ordinary shape. Nothing here depends on
+*which* name that is, so a step contract changing underneath does not quietly
+turn these into tests of something else.
 """
 
 from __future__ import annotations
@@ -37,6 +42,15 @@ from combinations.harness import Harness
 pytestmark = pytest.mark.asyncio
 
 
+def _mint(step_id: str = "mint") -> dict:
+    """A producer step declaring one return."""
+    return {
+        "id": step_id,
+        "uses": "util/generate_bpn",
+        "returns": {"bpn": {"type": "string"}},
+    }
+
+
 class TestTheExecutionNamespace:
     """A prior step is read as ``${{ execution.<id>.<field> }}``.
 
@@ -44,80 +58,62 @@ class TestTheExecutionNamespace:
     The engine published under ``steps.`` instead until this was tested: the
     reference resolved to nothing, and — worse — an unresolved reference is
     left as its own template text, so the *literal* string
-    ``${{ execution.mint.uuid }}`` was handed to the next step as its value.
+    ``${{ execution.mint.bpn }}`` was handed to the next step as its value.
     """
 
     async def test_a_step_reads_the_previous_steps_return(
         self, harness: Harness
     ) -> None:
         outcome = await harness.run(
-            {
-                "id": "mint",
-                "uses": "util/generate_uuid",
-                "returns": {"uuid": {"type": "string"}},
-            },
+            _mint(),
             {
                 "id": "echo",
                 "uses": "util/log",
-                "with": {"value": "${{ execution.mint.uuid }}"},
-                "returns": {"value": {"type": "string"}},
+                "with": {"value": "${{ execution.mint.bpn }}"},
             },
         )
 
-        minted = outcome.output("mint")["uuid"]
-        assert outcome.output("echo") == minted
+        assert outcome.output("echo") == outcome.output("mint")["bpn"]
 
     async def test_the_reference_is_not_left_as_its_own_text(
         self, harness: Harness
     ) -> None:
         """The failure this guards against did not look like a failure."""
         outcome = await harness.run(
-            {
-                "id": "mint",
-                "uses": "util/generate_uuid",
-                "returns": {"uuid": {"type": "string"}},
-            },
+            _mint(),
             {
                 "id": "echo",
                 "uses": "util/log",
-                "with": {"value": "${{ execution.mint.uuid }}"},
+                "with": {"value": "${{ execution.mint.bpn }}"},
             },
         )
         assert "${{" not in str(outcome.output("echo"))
 
     async def test_the_flat_name_resolves_too(self, harness: Harness) -> None:
-        """``returns`` also publishes the bare name, for a single producer."""
+        """A step's field is also readable under its bare name."""
         outcome = await harness.run(
-            {
-                "id": "mint",
-                "uses": "util/generate_uuid",
-                "returns": {"uuid": {"type": "string"}},
-            },
-            {
-                "id": "echo",
-                "uses": "util/log",
-                "with": {"value": "${{ env.uuid }}"},
-            },
+            _mint(),
+            {"id": "echo", "uses": "util/log", "with": {"value": "${{ env.bpn }}"}},
         )
-        assert outcome.output("echo") == outcome.output("mint")["uuid"]
+        assert outcome.output("echo") == outcome.output("mint")["bpn"]
 
     async def test_a_second_producer_takes_the_flat_name_over(
         self, harness: Harness
     ) -> None:
         """Why the qualified form exists: the flat one is last-writer-wins."""
         outcome = await harness.run(
-            {"id": "first", "uses": "util/generate_uuid", "returns": {"uuid": {"type": "string"}}},
-            {"id": "second", "uses": "util/generate_uuid", "returns": {"uuid": {"type": "string"}}},
-            {"id": "flat", "uses": "util/log", "with": {"value": "${{ env.uuid }}"}},
+            _mint("first"),
+            _mint("second"),
+            {"id": "flat", "uses": "util/log", "with": {"value": "${{ env.bpn }}"}},
             {
                 "id": "qualified",
                 "uses": "util/log",
-                "with": {"value": "${{ execution.first.uuid }}"},
+                "with": {"value": "${{ execution.first.bpn }}"},
             },
         )
 
-        assert outcome.output("flat") == outcome.output("second")["uuid"]
-        assert outcome.output("qualified") == outcome.output("first")["uuid"]
+        assert outcome.output("flat") == outcome.output("second")["bpn"]
+        assert outcome.output("qualified") == outcome.output("first")["bpn"]
 
 
 class TestWhatDoesNotResolve:
@@ -128,32 +124,27 @@ class TestWhatDoesNotResolve:
     ) -> None:
         """Without ``returns:``, the value exists — but only under its bare name.
 
-        Every step publishes its own fields as it runs, so ``uuid`` is set
+        Every step publishes its own fields as it runs, so ``bpn`` is set
         either way. The ``execution.<id>.<field>`` name is what ``returns:``
         buys, and it is the only one a second producer cannot overwrite.
         """
-        outcome = await harness.run(
-            {"id": "mint", "uses": "util/generate_uuid"},
-        )
-        assert outcome.variables["uuid"]
-        assert "execution.mint.uuid" not in outcome.variables
+        outcome = await harness.run({"id": "mint", "uses": "util/generate_bpn"})
+
+        assert outcome.variables["bpn"]
+        assert "execution.mint.bpn" not in outcome.variables
 
     async def test_a_name_the_step_never_declared_resolves_to_nothing(
         self, harness: Harness
     ) -> None:
-        """``generate_uuid`` publishes ``uuid`` and nothing else.
-
-        Reading its dropped ``generated_id`` alias must not quietly find the
-        value under the old name.
-        """
+        """A guess at a step's internals must not find anything."""
         outcome = await harness.run(
             {
                 "id": "mint",
-                "uses": "util/generate_uuid",
-                "returns": {"generated_id": {"type": "string"}},
+                "uses": "util/generate_bpn",
+                "returns": {"business_partner_number": {"type": "string"}},
             },
         )
-        assert outcome.variables["generated_id"] is None
+        assert outcome.variables["business_partner_number"] is None
 
     async def test_an_unresolved_reference_is_passed_on_as_its_own_text(
         self, harness: Harness
@@ -169,10 +160,10 @@ class TestWhatDoesNotResolve:
             {
                 "id": "echo",
                 "uses": "util/log",
-                "with": {"value": "${{ execution.never_ran.uuid }}"},
+                "with": {"value": "${{ execution.never_ran.bpn }}"},
             },
         )
-        assert outcome.output("echo") == "${{ execution.never_ran.uuid }}"
+        assert outcome.output("echo") == "${{ execution.never_ran.bpn }}"
 
 
 class TestReadingInsideAnOutput:
@@ -220,25 +211,54 @@ class TestPhasesPublishUnderTheirOwnName:
     async def test_a_phase_publishes_under_its_own_name(
         self, harness: Harness, phase: str, namespace: str
     ) -> None:
-        outcome = await harness.run(
-            {"id": "mint", "uses": "util/generate_uuid", "returns": {"uuid": {"type": "string"}}},
-            phase=phase,
-        )
-        assert f"{namespace}.mint.uuid" in outcome.variables
+        outcome = await harness.run(_mint(), phase=phase)
+        assert f"{namespace}.mint.bpn" in outcome.variables
 
     async def test_execution_reads_what_setup_published(
         self, harness: Harness
     ) -> None:
         """The ordinary shape of a TCK: set something up, then use it."""
-        await harness.run(
-            {"id": "mint", "uses": "util/generate_uuid", "returns": {"uuid": {"type": "string"}}},
-            phase="setup",
-        )
+        await harness.run(_mint(), phase="setup")
         outcome = await harness.run(
             {
                 "id": "echo",
                 "uses": "util/log",
-                "with": {"value": "${{ setup.mint.uuid }}"},
+                "with": {"value": "${{ setup.mint.bpn }}"},
             },
         )
-        assert outcome.output("echo") == harness.context.get_variable("setup.mint.uuid")
+        assert outcome.output("echo") == harness.context.get_variable("setup.mint.bpn")
+
+
+class TestAWithKeyTheStepDoesNotDeclare:
+    """An unknown ``with:`` key is refused, not dropped.
+
+    This is what makes the IDE↔engine parameter check worth running: if a block
+    emitted a parameter the engine had since renamed, the step fails outright
+    rather than running on with the value silently discarded.
+    """
+
+    async def test_an_unknown_parameter_fails_the_step(
+        self, harness: Harness
+    ) -> None:
+        outcome = await harness.run(
+            {
+                "id": "parse",
+                "uses": "util/parse_kv",
+                "with": {"input": "a=1", "seperator": ";"},
+            },
+        )
+
+        assert not outcome.passed
+        assert "seperator" in (outcome.error("parse") or "")
+
+    async def test_the_error_names_the_step_it_came_from(
+        self, harness: Harness
+    ) -> None:
+        outcome = await harness.run(
+            {
+                "id": "parse",
+                "uses": "util/parse_kv",
+                "with": {"input": "a=1", "nonesuch": 1},
+            },
+        )
+        assert "util/parse_kv" in (outcome.error("parse") or "")

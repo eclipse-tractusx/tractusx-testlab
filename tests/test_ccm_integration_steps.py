@@ -64,8 +64,8 @@ class TestGenerateUuidStep:
         output = await step_instance.invoke({}, ctx, definition)
 
         assert output.value is not None, "StepOutput must have a value"
-        parsed = uuid.UUID(output.value["uuid"], version=4)
-        assert str(parsed) == output.value["uuid"], "Output must be a valid UUID v4 string"
+        parsed = uuid.UUID(output.value, version=4)
+        assert str(parsed) == output.value, "Output must be a valid UUID v4 string"
 
 
 class TestJsonPathExtractStep:

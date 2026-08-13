@@ -303,7 +303,7 @@ class TestWhatANestedStepPublishes:
 
     Two different mechanisms publish a step's output, and only one of them
     descends into a branch. Every step publishes its own fields flatly as it
-    runs (``BaseStep.publish_output``), so ``uuid`` is set from inside a
+    runs (``BaseStep.publish_output``), so ``bpn`` is set from inside a
     branch; the *namespaced* ``execution.<id>.<field>`` name is written by the
     phase runner, which never looks inside ``flow/if`` or ``flow/retry``.
 
@@ -324,20 +324,20 @@ class TestWhatANestedStepPublishes:
                     "then": [
                         {
                             "id": "mint",
-                            "uses": "util/generate_uuid",
-                            "returns": {"uuid": {"type": "string"}},
+                            "uses": "util/generate_bpn",
+                            "returns": {"bpn": {"type": "string"}},
                         }
                     ],
                 },
             },
         )
 
-        assert outcome.variables["uuid"]
+        assert outcome.variables["bpn"]
 
     async def test_a_nested_step_is_not_reachable_by_its_id(
         self, harness: Harness
     ) -> None:
-        """``${{ execution.mint.uuid }}`` does not resolve from inside a branch."""
+        """``${{ execution.mint.value }}`` does not resolve from inside a branch."""
         outcome = await harness.run(
             {
                 "id": "branch",
@@ -348,7 +348,7 @@ class TestWhatANestedStepPublishes:
                         {
                             "id": "mint",
                             "uses": "util/generate_uuid",
-                            "returns": {"uuid": {"type": "string"}},
+                            "returns": {"value": {"type": "string"}},
                         }
                     ],
                 },
@@ -356,12 +356,12 @@ class TestWhatANestedStepPublishes:
             {
                 "id": "echo",
                 "uses": "util/log",
-                "with": {"value": "${{ execution.mint.uuid }}"},
+                "with": {"value": "${{ execution.mint.value }}"},
             },
         )
 
-        assert "execution.mint.uuid" not in outcome.variables
-        assert outcome.output("echo") == "${{ execution.mint.uuid }}"
+        assert "execution.mint.value" not in outcome.variables
+        assert outcome.output("echo") == "${{ execution.mint.value }}"
 
     async def test_the_wrapper_carries_the_nested_outputs_instead(
         self, harness: Harness
@@ -379,7 +379,7 @@ class TestWhatANestedStepPublishes:
             {
                 "id": "read",
                 "uses": "util/json_path_extract",
-                "with": {"input": "${{ execution.branch.outputs }}", "path": "0.uuid"},
+                "with": {"input": "${{ execution.branch.outputs }}", "path": "0"},
             },
         )
 
@@ -493,15 +493,15 @@ class TestDelayBetweenSteps:
             {
                 "id": "mint",
                 "uses": "util/generate_uuid",
-                "returns": {"uuid": {"type": "string"}},
+                "returns": {"value": {"type": "string"}},
             },
             {"id": "wait", "uses": "flow/delay", "with": {"seconds": 0.01}},
             {
                 "id": "echo",
                 "uses": "util/log",
-                "with": {"value": "${{ execution.mint.uuid }}"},
+                "with": {"value": "${{ execution.mint.value }}"},
             },
         )
 
         assert outcome.passed, outcome.failures
-        assert outcome.output("echo") == outcome.output("mint")["uuid"]
+        assert outcome.output("echo") == outcome.output("mint")

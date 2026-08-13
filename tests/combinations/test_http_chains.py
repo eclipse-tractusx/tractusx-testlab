@@ -111,7 +111,7 @@ class TestRequestThenExtract:
             {
                 "id": "mint",
                 "uses": "util/generate_uuid",
-                "returns": {"uuid": {"type": "string"}},
+                "returns": {"value": {"type": "string"}},
             },
             {
                 "id": "create",
@@ -119,13 +119,13 @@ class TestRequestThenExtract:
                 "with": {
                     "method": "POST",
                     "url": f"{base}/twins",
-                    "body": {"id": "urn:uuid:${{ execution.mint.uuid }}", "idShort": "axle"},
+                    "body": {"id": "urn:uuid:${{ execution.mint.value }}", "idShort": "axle"},
                 },
                 "returns": {"status_code": {"type": "integer"}},
             },
         )
 
-        minted = outcome.output("mint")["uuid"]
+        minted = outcome.output("mint")
         assert outcome.variables["status_code"] == 201
         assert http.calls_to("POST", "/twins")[0].body == {
             "id": f"urn:uuid:{minted}",

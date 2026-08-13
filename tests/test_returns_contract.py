@@ -50,7 +50,7 @@ def _errors_for(uses: str, returns: dict) -> list[str]:
 
 class TestReturnsAreChecked:
     def test_a_declared_output_is_accepted(self) -> None:
-        assert _errors_for("util/generate_uuid", {"uuid": {"type": "string"}}) == []
+        assert _errors_for("util/generate_uuid", {"value": {"type": "string"}}) == []
 
     def test_a_name_the_step_never_publishes_is_rejected(self) -> None:
         errors = _errors_for("util/generate_uuid", {"not_a_real_output": {"type": "string"}})
@@ -59,7 +59,7 @@ class TestReturnsAreChecked:
 
     def test_the_error_names_what_the_step_does_publish(self) -> None:
         errors = _errors_for("util/generate_uuid", {"nope": {"type": "string"}})
-        assert "uuid" in errors[0]
+        assert "value" in errors[0]
 
     def test_universal_returns_are_readable_on_any_step(self) -> None:
         # Every step carries the response envelope whatever else it declares.

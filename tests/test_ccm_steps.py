@@ -53,25 +53,14 @@ class TestGenerateUuidStep:
     """Tests for util/generate_uuid step."""
 
     @pytest.mark.asyncio
-    async def test_generates_valid_uuid(self, mock_context: MagicMock, definition: StepDefinition) -> None:
-        step = GenerateUuidStep()
-        result = await step.invoke({}, mock_context, definition)
-        parsed = uuid.UUID(result.value["uuid"])
-        assert parsed.version == 4
-
-    @pytest.mark.asyncio
-    async def test_publishes_the_identifier_under_exactly_one_key(
+    async def test_the_output_is_the_uuid_value_itself(
         self, mock_context: MagicMock, definition: StepDefinition
     ) -> None:
-        """One value, one key.
-
-        The step used to publish the same identifier twice, as 'uuid' and again
-        as 'generated_id'; a second spelling is a second thing to keep in step
-        and buys a script nothing.
-        """
-        result = await GenerateUuidStep().invoke({}, mock_context, definition)
-
-        assert list(result.value) == ["uuid"]
+        """No object around it: the step's value IS the generated identifier."""
+        step = GenerateUuidStep()
+        result = await step.invoke({}, mock_context, definition)
+        parsed = uuid.UUID(result.value)
+        assert parsed.version == 4
 
 
 # ---------------------------------------------------------------------------
