@@ -40,15 +40,18 @@ from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.conditions import ConditionEvaluator
 
-# Maps a phase label to the expression namespace (e.g. "steps.ID.field").
+# Maps a phase label to the expression namespace (e.g. "execution.ID.field").
 #
-# The label is the script's own key for the phase — the one an author writes,
-# the one ``step_started`` reports, and the one an event id is built from. Only
-# ``execution`` differs here, because the namespace its steps are read under is
-# ``steps``; a namespace is not a phase name.
+# The namespace is the phase's own name, for every phase. It used to differ for
+# the execution phase, whose steps published under ``steps.`` while authors —
+# and the syntax reference (§5.2), and the IDE that emits from it — wrote
+# ``${{ execution.<id>.<field> }}``. Nothing reported the mismatch: an
+# unresolvable reference is left as its own template text, so the *literal*
+# string ``${{ execution.mint.uuid }}`` was passed to the next step as if it
+# were the value.
 _PHASE_TO_NAMESPACE: dict[str, str] = {
     "setup": "setup",
-    "execution": "steps",
+    "execution": "execution",
     "teardown": "teardown",
 }
 

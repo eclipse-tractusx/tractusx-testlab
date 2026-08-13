@@ -46,9 +46,9 @@ def _resolve_expr(expr: str, context: "StepContext") -> object:
 
     Resolution rules:
     - ``env.X`` → context variable ``X``
-    - ``steps.ID.FIELD``, ``setup.ID.FIELD``, ``infrastructure.X.Y…`` → flat
-      context lookup of the full dotted path (set by store_step_outputs or
-      seeded by the player).
+    - ``execution.ID.FIELD``, ``setup.ID.FIELD``, ``teardown.ID.FIELD``,
+      ``infrastructure.X.Y…`` → flat context lookup of the full dotted path
+      (set by store_step_outputs or seeded by the player).
     - Anything else → flat context lookup as-is.
     """
     expr = expr.strip()
