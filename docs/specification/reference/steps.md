@@ -376,7 +376,6 @@ What the asset *is* is not written into the step: it is configured once in the m
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `asset_id` | string | no | `''` | — | Asset ID; read from the asset config, derived from its 'name', or a fresh UUID, when omitted. |
 | `asset` | object | no | `{}` | — | The whole asset definition, as declared by a 'config/connector/asset' manifest variable and referenced as '${{ env.<id>.asset }}'. Carries 'base_url', 'dct_type' or 'properties', 'version', 'semantic_id', 'proxy_params', 'headers', 'private_properties' and an optional '@context'. |
 
 **Output** — the value assertions and `returns:` read
@@ -421,8 +420,7 @@ The rules are not written into the step: the policy is configured once in the ma
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `policy_id` | string | no | `''` | — | Policy ID; a fresh UUID is used when omitted. |
-| `policy` | object | no | `{}` | — | The whole ODRL policy, as declared by a 'config/connector/policy' manifest variable and referenced as '${{ env.<id>.policy }}'. Carries 'permissions', 'prohibitions', 'obligations' and an optional '@context'. |
+| `policy` | object | no | `{}` | — | The whole ODRL policy, as declared by a 'config/connector/policy' manifest variable and referenced as '${{ env.<id>.policy }}'. Carries 'permissions', 'prohibitions', 'obligations', an optional '@context' and an optional 'policy_id'; a fresh UUID names the policy without one. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -1052,14 +1050,10 @@ The token request with the `client_credentials` grant pinned: the client id and 
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
 | `token_url` | string | yes | — | — | Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'. |
-| `grant_type` | `client_credentials` | no | `'client_credentials'` | — |  |
 | `client_id` | string | no | `''` | — | OAuth2 client identifier. |
 | `client_secret` | string | no | `''` | — | OAuth2 client secret; omit for a public client. |
 | `client_auth` | `post` \| `basic` | no | `'post'` | — | How the client authenticates: 'post' sends client_id/client_secret as form fields, 'basic' sends them in an HTTP Basic Authorization header. |
 | `scope` | string | no | `''` | — | Space-separated scopes to request; omitted from the request when empty. |
-| `username` | string | no | `''` | — | Resource-owner username — required by the 'password' grant. |
-| `password` | string | no | `''` | — | Resource-owner password — required by the 'password' grant. |
-| `refresh_token` | string | no | `''` | — | Refresh token to exchange — required by the 'refresh_token' grant. |
 | `extra_fields` | object | no | `{}` | — | Additional form fields merged into the token request, e.g. 'audience' or 'resource'. |
 
 **Output** — the value assertions and `returns:` read
@@ -1080,7 +1074,7 @@ Additional keys sent by the counterpart are passed through unchanged.
 
 Obtain a token on behalf of a resource owner by username and password.
 
-The token request with the `password` grant pinned; the inherited validator still insists on `username` and `password`.
+The token request with the `password` grant pinned; `username` and `password` are required inputs.
 
 **Inputs**
 
@@ -1089,15 +1083,13 @@ The token request with the `password` grant pinned; the inherited validator stil
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
 | `token_url` | string | yes | — | — | Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'. |
-| `grant_type` | `password` | no | `'password'` | — |  |
 | `client_id` | string | no | `''` | — | OAuth2 client identifier. |
 | `client_secret` | string | no | `''` | — | OAuth2 client secret; omit for a public client. |
 | `client_auth` | `post` \| `basic` | no | `'post'` | — | How the client authenticates: 'post' sends client_id/client_secret as form fields, 'basic' sends them in an HTTP Basic Authorization header. |
 | `scope` | string | no | `''` | — | Space-separated scopes to request; omitted from the request when empty. |
-| `username` | string | no | `''` | — | Resource-owner username — required by the 'password' grant. |
-| `password` | string | no | `''` | — | Resource-owner password — required by the 'password' grant. |
-| `refresh_token` | string | no | `''` | — | Refresh token to exchange — required by the 'refresh_token' grant. |
 | `extra_fields` | object | no | `{}` | — | Additional form fields merged into the token request, e.g. 'audience' or 'resource'. |
+| `username` | string | yes | — | — | Resource-owner username. |
+| `password` | string | yes | — | — | Resource-owner password. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -1117,7 +1109,7 @@ Additional keys sent by the counterpart are passed through unchanged.
 
 Exchange a refresh token for a fresh access token.
 
-The token request with the `refresh_token` grant pinned; the inherited validator still insists on `refresh_token`.
+The token request with the `refresh_token` grant pinned; `refresh_token` is a required input.
 
 **Inputs**
 
@@ -1126,15 +1118,12 @@ The token request with the `refresh_token` grant pinned; the inherited validator
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
 | `token_url` | string | yes | — | — | Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'. |
-| `grant_type` | `refresh_token` | no | `'refresh_token'` | — |  |
 | `client_id` | string | no | `''` | — | OAuth2 client identifier. |
 | `client_secret` | string | no | `''` | — | OAuth2 client secret; omit for a public client. |
 | `client_auth` | `post` \| `basic` | no | `'post'` | — | How the client authenticates: 'post' sends client_id/client_secret as form fields, 'basic' sends them in an HTTP Basic Authorization header. |
 | `scope` | string | no | `''` | — | Space-separated scopes to request; omitted from the request when empty. |
-| `username` | string | no | `''` | — | Resource-owner username — required by the 'password' grant. |
-| `password` | string | no | `''` | — | Resource-owner password — required by the 'password' grant. |
-| `refresh_token` | string | no | `''` | — | Refresh token to exchange — required by the 'refresh_token' grant. |
 | `extra_fields` | object | no | `{}` | — | Additional form fields merged into the token request, e.g. 'audience' or 'resource'. |
+| `refresh_token` | string | yes | — | — | Refresh token to exchange for a fresh access token. |
 
 **Output** — the value assertions and `returns:` read
 

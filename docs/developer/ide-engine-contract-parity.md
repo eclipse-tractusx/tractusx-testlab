@@ -97,12 +97,26 @@ count went from **62** before it to **0**, across 53 blocks:
 | **B** — IDE parameters the engine does not accept | yes | 0 |
 | **C** — IDE returns the engine never produces | yes | 0 |
 | **G** — parameters that bind only through an alias | yes | 0 |
-| **D** — required in IDE, optional in engine | no | 11 steps |
-| **E** — engine parameters the IDE does not offer | no | 10 steps |
+| **D** — required in IDE, optional in engine | no | 33 steps |
+| **E** — engine parameters the IDE does not offer | no | 5 steps |
 | **F** — engine steps with no IDE block | no | 0 |
 
-Classes **D**, **E** and **F** are not breaks and are not gated on. **F** is now
-empty: every registered step has a block, so the catalog and the registry hold
+Classes **D**, **E** and **F** are not breaks and are not gated on.
+
+What **E** still holds is deliberate, and all five entries are the same
+pattern: `mock/api`'s `id` and the four `store_in_variable`s name a context
+variable *from the script*, so a later hand-written step can read the value
+under a name the author chose. The IDE wires outputs by dragging them, which
+is that mechanism with a better interface; offering the field as well would
+put two ways of naming one value on the same block. The rest of **E** was
+closed from whichever side over- or under-declared: the OAuth2 steps stopped
+inheriting every other grant's credentials (and `grant_type`, pinned by the
+step name, stopped being an input at all); `create_asset` and `create_policy`
+dropped their `asset_id`/`policy_id` overrides, so the ID comes from the
+asset or policy document alone; and `http_call` and `generate_uuid` gained
+the `timeout` and `prefix` their engine steps already accepted.
+
+**F** is now empty: every registered step has a block, so the catalog and the registry hold
 the same 53 ids.
 
 Closing it reversed an earlier judgement worth recording. The DSP-level steps

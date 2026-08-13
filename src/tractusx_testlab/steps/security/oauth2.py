@@ -39,10 +39,10 @@ the grant names are the public step names.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional
 
 import requests
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
@@ -71,17 +71,18 @@ def _redacted(form: dict[str, str]) -> dict[str, str]:
 class OAuth2GetTokenParams(HttpTransportParams):
     """The shared input contract of the ``security/oauth2/*`` steps.
 
-    ``grant_type`` is pinned by each registered step's params subclass, so the
-    step name a script uses is the grant it gets.
+    The grant is the step name, not an input: each registered step's params
+    subclass pins ``grant_type`` as a class attribute, and declares the
+    credential fields of that grant alone — the ``client_credentials`` step
+    does not know a ``username`` exists.
     """
+
+    #: The grant this params class requests — set by each registered subclass.
+    grant_type: ClassVar[str]
 
     token_url: str = Field(
         description="Token endpoint URL of the authorization server, "
         "e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'.",
-    )
-    grant_type: Literal["client_credentials", "password", "refresh_token"] = Field(
-        default="client_credentials",
-        description="OAuth2 grant to request the token with.",
     )
     client_id: str = Field(default="", description="OAuth2 client identifier.")
     client_secret: str = Field(
@@ -97,30 +98,15 @@ class OAuth2GetTokenParams(HttpTransportParams):
         default="",
         description="Space-separated scopes to request; omitted from the request when empty.",
     )
-    username: str = Field(
-        default="", description="Resource-owner username — required by the 'password' grant."
-    )
-    password: str = Field(
-        default="", description="Resource-owner password — required by the 'password' grant."
-    )
-    refresh_token: str = Field(
-        default="",
-        description="Refresh token to exchange — required by the 'refresh_token' grant.",
-    )
     extra_fields: dict[str, str] = Field(
         default_factory=dict,
         description="Additional form fields merged into the token request, "
         "e.g. 'audience' or 'resource'.",
     )
 
-    @model_validator(mode="after")
-    def _grant_has_its_credentials(self) -> "OAuth2GetTokenParams":
-        """Each grant names the fields it cannot run without."""
-        if self.grant_type == "password" and not (self.username and self.password):
-            raise ValueError("The 'password' grant requires both username and password.")
-        if self.grant_type == "refresh_token" and not self.refresh_token:
-            raise ValueError("The 'refresh_token' grant requires refresh_token.")
-        return self
+    def credential_fields(self) -> dict[str, str]:
+        """The grant-specific credentials, from the subclass that declares them."""
+        return {}
 
     def form_fields(self) -> dict[str, str]:
         """The urlencoded body of the token request, per RFC 6749 §4."""
@@ -131,11 +117,7 @@ class OAuth2GetTokenParams(HttpTransportParams):
                 form["client_secret"] = self.client_secret
         if self.scope:
             form["scope"] = self.scope
-        if self.grant_type == "password":
-            form["username"] = self.username
-            form["password"] = self.password
-        if self.grant_type == "refresh_token":
-            form["refresh_token"] = self.refresh_token
+        form.update(self.credential_fields())
         form.update(self.extra_fields)
         return form
 
@@ -241,26 +223,40 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
 # ---------------------------------------------------------------------------
 #
 # Each grant is its own step name, matching the IDE's one-block-per-grant
-# catalog.  Each pins ``grant_type`` as a Literal default, so a script cannot
-# name the ``client_credentials`` step and then ask it for a password grant.
+# catalog.  Each pins ``grant_type`` as a class attribute — not an input, so a
+# script cannot name the ``client_credentials`` step and then ask it for a
+# password grant — and declares only the credential fields its grant reads.
 
 
 class OAuth2ClientCredentialsParams(OAuth2GetTokenParams):
     """Input contract of ``security/oauth2/client_credentials``."""
 
-    grant_type: Literal["client_credentials"] = "client_credentials"
+    grant_type: ClassVar[str] = "client_credentials"
 
 
 class OAuth2PasswordParams(OAuth2GetTokenParams):
     """Input contract of ``security/oauth2/password``."""
 
-    grant_type: Literal["password"] = "password"
+    grant_type: ClassVar[str] = "password"
+
+    username: str = Field(min_length=1, description="Resource-owner username.")
+    password: str = Field(min_length=1, description="Resource-owner password.")
+
+    def credential_fields(self) -> dict[str, str]:
+        return {"username": self.username, "password": self.password}
 
 
 class OAuth2RefreshTokenParams(OAuth2GetTokenParams):
     """Input contract of ``security/oauth2/refresh_token``."""
 
-    grant_type: Literal["refresh_token"] = "refresh_token"
+    grant_type: ClassVar[str] = "refresh_token"
+
+    refresh_token: str = Field(
+        min_length=1, description="Refresh token to exchange for a fresh access token."
+    )
+
+    def credential_fields(self) -> dict[str, str]:
+        return {"refresh_token": self.refresh_token}
 
 
 @step("security/oauth2/client_credentials")
@@ -278,8 +274,8 @@ class OAuth2ClientCredentialsStep(OAuth2GetTokenStep):
 class OAuth2PasswordStep(OAuth2GetTokenStep):
     """Obtain a token on behalf of a resource owner by username and password.
 
-    The token request with the ``password`` grant pinned; the inherited
-    validator still insists on ``username`` and ``password``.
+    The token request with the ``password`` grant pinned; ``username`` and
+    ``password`` are required inputs.
     """
 
     params_model = OAuth2PasswordParams
@@ -289,8 +285,8 @@ class OAuth2PasswordStep(OAuth2GetTokenStep):
 class OAuth2RefreshTokenStep(OAuth2GetTokenStep):
     """Exchange a refresh token for a fresh access token.
 
-    The token request with the ``refresh_token`` grant pinned; the inherited
-    validator still insists on ``refresh_token``.
+    The token request with the ``refresh_token`` grant pinned;
+    ``refresh_token`` is a required input.
     """
 
     params_model = OAuth2RefreshTokenParams

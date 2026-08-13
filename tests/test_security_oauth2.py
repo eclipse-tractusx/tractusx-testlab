@@ -94,7 +94,7 @@ class TestRegistration:
     async def test_a_step_cannot_be_asked_for_another_grant(
         self, context: StepContext
     ) -> None:
-        """The grant is the step name; a contradicting ``grant_type`` is refused."""
+        """The grant is the step name; ``grant_type`` is not even an input key."""
         with pytest.raises(ValueError, match="grant_type"):
             await OAuth2ClientCredentialsStep().invoke(
                 {"token_url": _TOKEN_URL, "grant_type": "password"},
@@ -249,7 +249,7 @@ class TestOAuth2PasswordStep:
     async def test_password_grant_without_credentials_fails_validation(
         self, context: StepContext
     ) -> None:
-        with pytest.raises(ValueError, match="username and password"):
+        with pytest.raises(ValueError, match="username"):
             await OAuth2PasswordStep().invoke(
                 {"token_url": _TOKEN_URL},
                 context,

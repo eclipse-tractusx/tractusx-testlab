@@ -30,7 +30,7 @@ import json
 import uuid
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator
 
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
@@ -110,13 +110,6 @@ class CreateAssetParams(StepParams):
     ``properties`` block carrying ``dct:type`` and ``cx-common:version``).
     """
 
-    asset_id: str = Field(
-        default="",
-        description=(
-            "Asset ID; read from the asset config, derived from its 'name', or a "
-            "fresh UUID, when omitted."
-        ),
-    )
     asset: dict = Field(
         default_factory=dict,
         description=(
@@ -132,18 +125,14 @@ class CreateAssetParams(StepParams):
     def _unwrap_asset(cls, value: Any) -> Any:
         return _config_object(value, "asset")
 
-    @model_validator(mode="after")
-    def _name_the_asset(self) -> "CreateAssetParams":
-        """Take the ID from the config, from its name's slug, or invent one."""
-        if self.asset_id:
-            return self
+    def derived_asset_id(self) -> str:
+        """The ID from the config, from its name's slug, or a fresh one."""
         name = str(self.asset.get("name") or "")
-        self.asset_id = (
+        return (
             str(self.asset.get("asset_id") or "")
             or name.lower().replace(" ", "-")
             or str(uuid.uuid4())
         )
-        return self
 
     def definition(self) -> dict[str, Any]:
         """The SDK's ``create_asset`` arguments, read out of the asset config."""
@@ -212,7 +201,7 @@ class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
         self, params: CreateAssetParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[CreateAssetOutput]:
         return _register_asset(
-            context, params.asset_id, params.definition(), params.model_dump(mode="json")
+            context, params.derived_asset_id(), params.definition(), params.model_dump(mode="json")
         )
 
 
@@ -273,10 +262,10 @@ class WizardCreateAssetStep(BaseStep[WizardCreateAssetParams, CreateAssetOutput]
     async def execute(
         self, params: WizardCreateAssetParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[CreateAssetOutput]:
-        assembled = CreateAssetParams(asset_id=params.asset_id, asset=params.asset_config())
+        assembled = CreateAssetParams(asset=params.asset_config())
         return _register_asset(
             context,
-            assembled.asset_id,
+            params.asset_id or assembled.derived_asset_id(),
             assembled.definition(),
             params.model_dump(mode="json"),
         )
@@ -296,15 +285,13 @@ class CreatePolicyParams(StepParams):
     ``policy: ${{ env.<id>.policy }}``.
     """
 
-    policy_id: str = Field(
-        default="", description="Policy ID; a fresh UUID is used when omitted."
-    )
     policy: dict = Field(
         default_factory=dict,
         description=(
             "The whole ODRL policy, as declared by a 'config/connector/policy' "
             "manifest variable and referenced as '${{ env.<id>.policy }}'. Carries "
-            "'permissions', 'prohibitions', 'obligations' and an optional '@context'."
+            "'permissions', 'prohibitions', 'obligations', an optional '@context' "
+            "and an optional 'policy_id'; a fresh UUID names the policy without one."
         ),
     )
 
@@ -338,7 +325,8 @@ class CreatePolicyStep(BaseStep[CreatePolicyParams, CreatePolicyOutput]):
     async def execute(
         self, params: CreatePolicyParams, context: "StepContext", definition: StepDefinition
     ) -> StepOutput[CreatePolicyOutput]:
-        return _register_policy(context, params.policy_id, params.policy)
+        policy_id = str(params.policy.get("policy_id") or "")
+        return _register_policy(context, policy_id, params.policy)
 
 
 def _register_policy(

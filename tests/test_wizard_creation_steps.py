@@ -159,7 +159,7 @@ class TestWizardCreatePolicy:
 
         provider.create_policy.reset_mock()
         await CreatePolicyStep().invoke(
-            {"policy_id": "p-1", "policy": {"permissions": [{"action": "use"}]}},
+            {"policy": {"policy_id": "p-1", "permissions": [{"action": "use"}]}},
             connector_context,
             _definition("connector/provider/create_policy"),
         )
