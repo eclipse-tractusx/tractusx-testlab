@@ -62,9 +62,9 @@ def _script(base_url: str) -> str:
 
         setup:
           - id: seed_id
-            uses: util/generate_bpn
+            uses: util/generate_uuid
             returns:
-              bpn:
+              value:
                 type: string
 
         execution:
@@ -74,7 +74,7 @@ def _script(base_url: str) -> str:
               method: POST
               url: {base_url}/parts
               body:
-                partner: "${{{{ setup.seed_id.bpn }}}}"
+                partner: "${{{{ setup.seed_id.value }}}}"
             returns:
               status_code:
                 type: integer
@@ -234,7 +234,7 @@ class TestTheDocumentRuns:
         base = parts_api.start()
         outcomes = await self._run(harness, base)
 
-        minted = outcomes["setup"].output("seed_id")["bpn"]
+        minted = outcomes["setup"].output("seed_id")
         assert parts_api.calls_to("POST", "/parts")[0].body == {"partner": minted}
 
     async def test_teardown_deletes_what_execution_created(

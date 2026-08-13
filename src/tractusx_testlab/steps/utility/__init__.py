@@ -23,7 +23,6 @@
 """Utility steps: UUID generation, JSON extraction, validation, and other helpers."""
 
 import tractusx_testlab.steps.utility.base64_codec  # noqa: F401
-import tractusx_testlab.steps.utility.generate_bpn  # noqa: F401
 import tractusx_testlab.steps.utility.json_extract  # noqa: F401
 import tractusx_testlab.steps.utility.log  # noqa: F401
 import tractusx_testlab.steps.utility.parse_kv  # noqa: F401

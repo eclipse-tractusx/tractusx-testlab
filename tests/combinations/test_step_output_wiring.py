@@ -27,10 +27,9 @@ This is the seam the per-step contract tests cannot see. Each step here is
 already known to produce what it declares; what is under test is the name the
 next step has to spell to get it, and whether spelling it wrong is noticed.
 
-``util/generate_bpn`` is the producer throughout — a step with one named field
-on an object payload, which is the ordinary shape. Nothing here depends on
-*which* name that is, so a step contract changing underneath does not quietly
-turn these into tests of something else.
+``util/generate_uuid`` is the producer throughout: it needs nothing, and it
+answers differently every call, which is what makes "the second producer took
+the name over" a fact rather than a coincidence.
 """
 
 from __future__ import annotations
@@ -46,8 +45,8 @@ def _mint(step_id: str = "mint") -> dict:
     """A producer step declaring one return."""
     return {
         "id": step_id,
-        "uses": "util/generate_bpn",
-        "returns": {"bpn": {"type": "string"}},
+        "uses": "util/generate_uuid",
+        "returns": {"value": {"type": "string"}},
     }
 
 
@@ -58,7 +57,7 @@ class TestTheExecutionNamespace:
     The engine published under ``steps.`` instead until this was tested: the
     reference resolved to nothing, and — worse — an unresolved reference is
     left as its own template text, so the *literal* string
-    ``${{ execution.mint.bpn }}`` was handed to the next step as its value.
+    ``${{ execution.mint.value }}`` was handed to the next step as its value.
     """
 
     async def test_a_step_reads_the_previous_steps_return(
@@ -69,11 +68,11 @@ class TestTheExecutionNamespace:
             {
                 "id": "echo",
                 "uses": "util/log",
-                "with": {"value": "${{ execution.mint.bpn }}"},
+                "with": {"value": "${{ execution.mint.value }}"},
             },
         )
 
-        assert outcome.output("echo") == outcome.output("mint")["bpn"]
+        assert outcome.output("echo") == outcome.output("mint")
 
     async def test_the_reference_is_not_left_as_its_own_text(
         self, harness: Harness
@@ -84,7 +83,7 @@ class TestTheExecutionNamespace:
             {
                 "id": "echo",
                 "uses": "util/log",
-                "with": {"value": "${{ execution.mint.bpn }}"},
+                "with": {"value": "${{ execution.mint.value }}"},
             },
         )
         assert "${{" not in str(outcome.output("echo"))
@@ -93,9 +92,9 @@ class TestTheExecutionNamespace:
         """A step's field is also readable under its bare name."""
         outcome = await harness.run(
             _mint(),
-            {"id": "echo", "uses": "util/log", "with": {"value": "${{ env.bpn }}"}},
+            {"id": "echo", "uses": "util/log", "with": {"value": "${{ env.value }}"}},
         )
-        assert outcome.output("echo") == outcome.output("mint")["bpn"]
+        assert outcome.output("echo") == outcome.output("mint")
 
     async def test_a_second_producer_takes_the_flat_name_over(
         self, harness: Harness
@@ -104,16 +103,16 @@ class TestTheExecutionNamespace:
         outcome = await harness.run(
             _mint("first"),
             _mint("second"),
-            {"id": "flat", "uses": "util/log", "with": {"value": "${{ env.bpn }}"}},
+            {"id": "flat", "uses": "util/log", "with": {"value": "${{ env.value }}"}},
             {
                 "id": "qualified",
                 "uses": "util/log",
-                "with": {"value": "${{ execution.first.bpn }}"},
+                "with": {"value": "${{ execution.first.value }}"},
             },
         )
 
-        assert outcome.output("flat") == outcome.output("second")["bpn"]
-        assert outcome.output("qualified") == outcome.output("first")["bpn"]
+        assert outcome.output("flat") == outcome.output("second")
+        assert outcome.output("qualified") == outcome.output("first")
 
 
 class TestWhatDoesNotResolve:
@@ -124,14 +123,31 @@ class TestWhatDoesNotResolve:
     ) -> None:
         """Without ``returns:``, the value exists — but only under its bare name.
 
-        Every step publishes its own fields as it runs, so ``bpn`` is set
-        either way. The ``execution.<id>.<field>`` name is what ``returns:``
-        buys, and it is the only one a second producer cannot overwrite.
+        A step with an object payload publishes each of its fields as it runs,
+        so ``full_mock_url`` is set either way. The ``execution.<id>.<field>``
+        name is what ``returns:`` buys, and it is the only one a second
+        producer cannot overwrite.
         """
-        outcome = await harness.run({"id": "mint", "uses": "util/generate_bpn"})
+        outcome = await harness.run(
+            {"id": "endpoint", "uses": "mock/api", "with": {"path": "/callback"}}
+        )
 
-        assert outcome.variables["bpn"]
-        assert "execution.mint.bpn" not in outcome.variables
+        assert outcome.variables["full_mock_url"]
+        assert "execution.endpoint.full_mock_url" not in outcome.variables
+
+    async def test_a_bare_value_has_no_field_name_to_publish_under(
+        self, harness: Harness
+    ) -> None:
+        """Which is why ``returns:`` is the only way to name one.
+
+        ``util/generate_uuid`` returns the UUID itself, not an object with a
+        field in it, so there is nothing to publish flatly — the value is
+        reachable through ``returns:`` and through assertions, and nowhere else.
+        """
+        outcome = await harness.run({"id": "mint", "uses": "util/generate_uuid"})
+
+        assert outcome.output("mint")
+        assert "value" not in outcome.variables
 
     async def test_a_name_the_step_never_declared_resolves_to_nothing(
         self, harness: Harness
@@ -140,11 +156,11 @@ class TestWhatDoesNotResolve:
         outcome = await harness.run(
             {
                 "id": "mint",
-                "uses": "util/generate_bpn",
-                "returns": {"business_partner_number": {"type": "string"}},
+                "uses": "util/generate_uuid",
+                "returns": {"generated_id": {"type": "string"}},
             },
         )
-        assert outcome.variables["business_partner_number"] is None
+        assert outcome.variables["generated_id"] is None
 
     async def test_an_unresolved_reference_is_passed_on_as_its_own_text(
         self, harness: Harness
@@ -160,10 +176,10 @@ class TestWhatDoesNotResolve:
             {
                 "id": "echo",
                 "uses": "util/log",
-                "with": {"value": "${{ execution.never_ran.bpn }}"},
+                "with": {"value": "${{ execution.never_ran.value }}"},
             },
         )
-        assert outcome.output("echo") == "${{ execution.never_ran.bpn }}"
+        assert outcome.output("echo") == "${{ execution.never_ran.value }}"
 
 
 class TestReadingInsideAnOutput:
@@ -212,7 +228,7 @@ class TestPhasesPublishUnderTheirOwnName:
         self, harness: Harness, phase: str, namespace: str
     ) -> None:
         outcome = await harness.run(_mint(), phase=phase)
-        assert f"{namespace}.mint.bpn" in outcome.variables
+        assert f"{namespace}.mint.value" in outcome.variables
 
     async def test_execution_reads_what_setup_published(
         self, harness: Harness
@@ -223,10 +239,10 @@ class TestPhasesPublishUnderTheirOwnName:
             {
                 "id": "echo",
                 "uses": "util/log",
-                "with": {"value": "${{ setup.mint.bpn }}"},
+                "with": {"value": "${{ setup.mint.value }}"},
             },
         )
-        assert outcome.output("echo") == harness.context.get_variable("setup.mint.bpn")
+        assert outcome.output("echo") == harness.context.get_variable("setup.mint.value")
 
 
 class TestAWithKeyTheStepDoesNotDeclare:

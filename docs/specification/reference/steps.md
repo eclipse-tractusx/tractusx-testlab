@@ -4,7 +4,7 @@
 
 Every step declares its interface as Pydantic models, and this page is generated from them, so it cannot drift from the implementation.
 
-56 steps.
+55 steps.
 
 ## Steps
 
@@ -1160,26 +1160,6 @@ The motivating case is the AAS Digital Twin Registry, whose API wants an identif
 _The encoded or decoded string._
 
 Type: string
-
-### `util/generate_bpn`
-
-Generate a random, well-formed Business Partner Number (BPN).
-
-The result is syntactically valid — prefix, ten alphanumeric characters and two derived check characters — but belongs to no real business partner, so it suits tests that need an identifier no live participant will collide with. A fresh BPN is produced on every call.
-
-**Inputs**
-
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `prefix` | `BPNL` \| `BPNS` \| `BPNA` | no | `'BPNL'` | — | BPN type prefix: legal entity (BPNL), site (BPNS), or address (BPNA). |
-
-**Output** — the value assertions and `returns:` read
-
-_Output contract of `util/generate_bpn`._
-
-| Field | Type | Description |
-|---|---|---|
-| `bpn` | string | The generated Business Partner Number. |
 
 ### `util/generate_uuid`
 

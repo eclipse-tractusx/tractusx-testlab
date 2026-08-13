@@ -78,16 +78,19 @@ steps read back as parameter fallbacks.
 A complete declaration looks like this:
 
 ```python
-class GenerateBpnParams(StepParams):
-    prefix: Literal["BPNL", "BPNS", "BPNA"] = "BPNL"
+class ExtractDatasetParams(StepParams):
+    datasets: list[dict]
+    dct_type: str
 
-class GenerateBpnOutput(StepPayload):
-    bpn: str
+class ExtractDatasetOutput(StepPayload):
+    dataset: Optional[dict] = None
+    offer_id: Optional[str] = None
+    asset_id: Optional[str] = None
 
-@step("util/generate_bpn")
-class GenerateBpnStep(BaseStep[GenerateBpnParams, GenerateBpnOutput]):
-    params_model = GenerateBpnParams
-    output_model = GenerateBpnOutput
+@step("connector/consumer/extract_dataset")
+class ExtractDatasetStep(BaseStep[ExtractDatasetParams, ExtractDatasetOutput]):
+    params_model = ExtractDatasetParams
+    output_model = ExtractDatasetOutput
 ```
 
 `BaseStep.describe()` projects these models into a machine-readable `StepContract`

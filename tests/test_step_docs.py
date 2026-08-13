@@ -99,7 +99,7 @@ class TestToMarkdown:
         assert to_markdown("use ``datasets`` here") == "use `datasets` here"
 
     def test_sphinx_roles_are_unwrapped(self) -> None:
-        assert to_markdown("see :class:`GenerateBpnParams`") == "see `GenerateBpnParams`"
+        assert to_markdown("see :class:`GenerateUuidParams`") == "see `GenerateUuidParams`"
 
     def test_plain_text_is_untouched(self) -> None:
         assert to_markdown("nothing to do") == "nothing to do"
@@ -108,7 +108,7 @@ class TestToMarkdown:
 class TestRenderCatalog:
     @pytest.fixture(scope="class")
     def page(self) -> str:
-        return render_catalog(["connector/consumer/query_catalog", "util/generate_bpn"])
+        return render_catalog(["connector/consumer/query_catalog", "util/generate_uuid"])
 
     def test_each_step_gets_a_heading(self, page: str) -> None:
         assert "### `connector/consumer/query_catalog`" in page

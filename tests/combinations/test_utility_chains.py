@@ -193,13 +193,13 @@ class TestEncodingAndBack:
         outcome = await harness.run(
             {
                 "id": "mint",
-                "uses": "util/generate_bpn",
-                "returns": {"bpn": {"type": "string"}},
+                "uses": "util/generate_uuid",
+                "returns": {"value": {"type": "string"}},
             },
             {
                 "id": "encode",
                 "uses": "util/base64",
-                "with": {"input": "${{ execution.mint.bpn }}", "mode": "encode"},
+                "with": {"input": "${{ execution.mint.value }}", "mode": "encode"},
                 "returns": {"value": {"type": "string"}},
             },
             {
@@ -210,7 +210,7 @@ class TestEncodingAndBack:
         )
 
         assert outcome.passed, [(r.step_name, r.error) for r in outcome.failures]
-        assert outcome.output("decode") == outcome.output("mint")["bpn"]
+        assert outcome.output("decode") == outcome.output("mint")
 
     async def test_an_encoded_id_is_what_the_url_carries(
         self, harness: Harness, http: HttpDouble

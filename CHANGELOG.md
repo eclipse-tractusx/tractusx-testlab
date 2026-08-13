@@ -99,6 +99,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   somewhere the step never meant to write; an engine without one fails the step
   with a `StepConfigError` instead of posting nowhere
 
+### Removed
+
+- `util/generate_bpn`. A BPN is not a value a conformance test invents: it
+  identifies a real participant, and the one under test comes from the run's
+  environment, not from a generator inside the script. A test that minted its
+  own asserted against a partner nobody is.
+
 ### Fixed
 
 - `${{ … }}` references inside a `validate:` block are resolved before the

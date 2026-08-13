@@ -148,16 +148,18 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
     A step declares its interface by parameterising the base class and pointing
     the two model attributes at the declaring models::
 
-        class GenerateBpnParams(StepParams):
-            prefix: Literal["BPNL", "BPNS", "BPNA"] = "BPNL"
+        class ExtractDatasetParams(StepParams):
+            datasets: list[dict]
+            dct_type: str
 
-        class GenerateBpnOutput(StepPayload):
-            bpn: str
+        class ExtractDatasetOutput(StepPayload):
+            dataset: Optional[dict] = None
+            asset_id: Optional[str] = None
 
-        @step("util/generate_bpn")
-        class GenerateBpnStep(BaseStep[GenerateBpnParams, GenerateBpnOutput]):
-            params_model = GenerateBpnParams
-            output_model = GenerateBpnOutput
+        @step("connector/consumer/extract_dataset")
+        class ExtractDatasetStep(BaseStep[ExtractDatasetParams, ExtractDatasetOutput]):
+            params_model = ExtractDatasetParams
+            output_model = ExtractDatasetOutput
 
     The runner calls :meth:`invoke`, which validates the raw ``with:`` mapping
     into ``params_model`` before ``execute`` runs and serialises the payload
@@ -170,7 +172,7 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
     ``output_model = NoOutput``.
     """
 
-    #: Canonical step key from the ``@step`` decorator (e.g. ``util/generate_bpn``).
+    #: Canonical step key from the ``@step`` decorator (e.g. ``util/generate_uuid``).
     step_type: ClassVar[str] = ""
     #: Input contract — the keys this step accepts under ``with:``.
     params_model: ClassVar[type[StepParams]]

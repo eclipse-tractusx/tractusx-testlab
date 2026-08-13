@@ -323,16 +323,17 @@ class TestWhatANestedStepPublishes:
                     "conditions": [{"input": "go", "operator": "not_null"}],
                     "then": [
                         {
-                            "id": "mint",
-                            "uses": "util/generate_bpn",
-                            "returns": {"bpn": {"type": "string"}},
+                            "id": "endpoint",
+                            "uses": "mock/api",
+                            "with": {"path": "/callback"},
+                            "returns": {"full_mock_url": {"type": "string"}},
                         }
                     ],
                 },
             },
         )
 
-        assert outcome.variables["bpn"]
+        assert outcome.variables["full_mock_url"]
 
     async def test_a_nested_step_is_not_reachable_by_its_id(
         self, harness: Harness
@@ -347,7 +348,7 @@ class TestWhatANestedStepPublishes:
                     "then": [
                         {
                             "id": "mint",
-                            "uses": "util/generate_bpn",
+                            "uses": "util/generate_uuid",
                             "returns": {"value": {"type": "string"}},
                         }
                     ],
@@ -372,7 +373,7 @@ class TestWhatANestedStepPublishes:
                 "uses": "flow/if",
                 "with": {
                     "conditions": [{"input": "go", "operator": "not_null"}],
-                    "then": [{"id": "mint", "uses": "util/generate_bpn"}],
+                    "then": [{"id": "mint", "uses": "util/generate_uuid"}],
                 },
                 "returns": {"outputs": {"type": "array"}},
             },
@@ -492,7 +493,7 @@ class TestDelayBetweenSteps:
         outcome = await harness.run(
             {
                 "id": "mint",
-                "uses": "util/generate_bpn",
+                "uses": "util/generate_uuid",
                 "returns": {"value": {"type": "string"}},
             },
             {"id": "wait", "uses": "flow/delay", "with": {"seconds": 0.01}},
