@@ -68,6 +68,16 @@ class CallbackManager:
             if buffered is not None:
                 future.set_result(buffered)
 
+    def has_listener(self, path: str, method: str) -> bool:
+        """Whether a listener slot exists for *path*/*method*.
+
+        Asked by the inbound routes before they accept a request: ``resolve``
+        buffers a call nothing is waiting for and reports success for it, which
+        is right for a race between the SUT and the script but wrong for an
+        address the script never opened.
+        """
+        return self._key(path, method) in self._listeners
+
     async def wait(self, path: str, method: str, timeout_s: float) -> CallbackResult:
         """Block until a callback arrives at *path*/*method* or *timeout_s* elapses."""
         key = self._key(path, method)

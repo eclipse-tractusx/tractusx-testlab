@@ -110,6 +110,14 @@ def create_app(config: Optional[TestlabConfig] = None) -> FastAPI:
             headers=headers, query_params=dict(request.query_params), body=body,
         )
 
+        # A path no step opened is refused. `resolve` buffers a call nothing is
+        # waiting for and reports success for it — right when the SUT beats the
+        # script to its own wait step, wrong for an address that was never
+        # registered: the SUT is told 200 for a call that reached nobody, and
+        # the script then waits out its timeout on the address it did open.
+        if mock is None and not callbacks.has_listener(full_path, method):
+            raise HTTPException(404, f"No mock or listener for {method} {full_path}")
+
         # Resolve the callback listener (so wait_for_call steps unblock)
         matched = callbacks.resolve(
             full_path, method, headers, body, dict(request.query_params)

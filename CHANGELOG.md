@@ -108,6 +108,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- An inbound call to a path no step registered is refused with 404. The mock
+  server buffered it and answered 200 instead: a system under test calling a
+  callback address that does not exist was told it had succeeded, while the
+  script waited out its timeout on the address it did open, and every stray
+  request accumulated in the buffer where a later listener on the same path
+  could pick it up
 - `${{ … }}` references inside a `validate:` block are resolved before the
   comparison runs. Only a step's own `with:` was resolved, so an assertion
   comparing against an earlier step's return — or naming a schema with

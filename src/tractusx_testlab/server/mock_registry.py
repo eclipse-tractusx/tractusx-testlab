@@ -117,3 +117,17 @@ def set_callback_manager(manager: "CallbackManager") -> None:
 def get_callback_manager() -> Optional["CallbackManager"]:
     """Return the active ``CallbackManager``, or ``None``."""
     return _callback_manager
+
+
+def clear_callback_manager() -> None:
+    """Drop the active ``CallbackManager``, cancelling anything waiting on it.
+
+    The manager holds futures bound to the event loop that registered them, so
+    one that outlives its loop resolves nothing and reports "attached to a
+    different loop" instead. The counterpart to :func:`clear_mocks`: both clear
+    the module state a run leaves behind.
+    """
+    global _callback_manager
+    if _callback_manager is not None:
+        _callback_manager.clear()
+    _callback_manager = None
