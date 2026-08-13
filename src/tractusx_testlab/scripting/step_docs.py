@@ -218,15 +218,6 @@ def render_step(step_cls: type[BaseStep]) -> list[str]:
     lines += ["_" + _docstring(step_cls.output_model) + "_", ""]
     lines += _output_shape(step_cls.output_model)
 
-    lines += ["**Publishes** — context variables available to later steps", ""]
-    if step_cls.exports_model is not None:
-        lines += _table(
-            step_cls.exports_model, ["Variable", "Type", "Description"], with_aliases=False
-        )
-        lines += ["A variable is left unset when its value could not be derived.", ""]
-    else:
-        lines += ["_Nothing._", ""]
-
     return lines
 
 
@@ -246,18 +237,23 @@ def _output_shape(model: type[BaseModel]) -> list[str]:
 
 
 def _root_annotation(model: type[BaseModel]) -> Any:
-    """The type a `StepValue` wraps."""
+    """The type a `StepValue` wraps.
+
+    Pydantic resolves `StepValue[None]` to a root annotation of either `None`
+    or `NoneType` depending on import order; both mean the same thing, so both
+    render as `NoneType` — otherwise the generated page would not be
+    reproducible.
+    """
     root = model.model_fields.get("root")
-    return root.annotation if root is not None else Any
+    annotation = root.annotation if root is not None else Any
+    return _NONE_TYPE if annotation is None else annotation
 
 
 def render_shared_models(step_classes: list[type[BaseStep]]) -> list[str]:
     """Render the nested objects referenced by the documented steps, once each."""
     collected: list[type[BaseModel]] = []
     for step_cls in step_classes:
-        for model in (step_cls.params_model, step_cls.output_model, step_cls.exports_model):
-            if model is None:
-                continue
+        for model in (step_cls.params_model, step_cls.output_model):
             for nested in nested_models(model):
                 if nested not in collected:
                     collected.append(nested)

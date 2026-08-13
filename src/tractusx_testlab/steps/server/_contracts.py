@@ -56,8 +56,7 @@ class MockIdParams(StepParams):
 
     The ID doubles as a context variable name for steps that publish a URL, so
     what it stands for comes from the script rather than from the step — which
-    is why it cannot be a declared
-    :class:`~tractusx_testlab.steps.base.StepExports` field.
+    is why it cannot be a declared output field.
     """
 
     id: str = Field(

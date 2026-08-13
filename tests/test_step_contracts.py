@@ -39,7 +39,6 @@ from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps._contracts import NoOutput
 from tractusx_testlab.steps.base import (
     BaseStep,
-    StepExports,
     StepOutput,
     StepParams,
     StepPayload,
@@ -67,11 +66,6 @@ class TestDeclaredSteps:
     def test_step_declares_its_output(self, step_type: str) -> None:
         output_model = _step_class(step_type).output_model
         assert issubclass(output_model, (StepPayload, StepValue))
-
-    @pytest.mark.parametrize("step_type", _ALL_STEP_TYPES)
-    def test_declared_exports_are_a_step_exports_model(self, step_type: str) -> None:
-        exports_model = _step_class(step_type).exports_model
-        assert exports_model is None or issubclass(exports_model, StepExports)
 
     @pytest.mark.parametrize("step_type", _ALL_STEP_TYPES)
     def test_contract_is_describable(self, step_type: str) -> None:

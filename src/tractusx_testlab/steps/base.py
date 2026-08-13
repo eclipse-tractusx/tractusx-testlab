@@ -99,32 +99,11 @@ class StepValue(RootModel[RootT], Generic[RootT]):
     """
 
 
-class StepExports(BaseModel):
-    """Context variables a step publishes for later steps to read.
-
-    A step's return value is only half of what it produces: steps also hand
-    data to the rest of the script through context variables, and until those
-    are declared here that half of the interface is invisible.  Field names are
-    the variable names, so they must match the constants in
-    ``syntax.context_vars``.
-
-    A field left ``None`` is not published, which is how a best-effort export
-    stays absent rather than being written as null.
-
-    Variables are published under each field's alias when it has one, so a
-    field can carry ``alias=SOME_CONTEXT_VAR`` and let the constant stay the
-    single source of truth for the name.
-    """
-
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
-
-
 class StepContract(BaseModel):
     """Machine-readable description of a step's declared interface.
 
     Produced by :meth:`BaseStep.describe` for documentation generation and
-    script validation.  ``exports_schema`` is ``None`` when the step publishes
-    no context variables; the other two are always present, because every step
+    script validation.  Both schemas are always present, because every step
     declares its inputs and its output.
     """
 
@@ -132,7 +111,6 @@ class StepContract(BaseModel):
     description: str = ""
     params_schema: dict = Field(default_factory=dict)
     output_schema: dict = Field(default_factory=dict)
-    exports_schema: Optional[dict] = None
 
 
 ParamsT = TypeVar("ParamsT")
@@ -142,25 +120,23 @@ PayloadT = TypeVar("PayloadT")
 class StepOutput(Generic[PayloadT]):
     """Structured output of a step execution.
 
-    ``value`` is what assertions and ``returns:`` read; ``exports`` is what the
-    step publishes into the run context for later steps.  Returning exports
-    here — rather than calling ``context.set_variable`` inside ``execute`` — is
-    what keeps them part of the declared contract.
+    ``value`` is what assertions and ``returns:`` read, and it is also what the
+    step publishes into the run context: every top-level field of the output is
+    written as a context variable after the step runs, so a step's return value
+    is the whole of its interface — there is no separate export channel.
     """
 
-    __slots__ = ("value", "request", "response", "exports")
+    __slots__ = ("value", "request", "response")
 
     def __init__(
         self,
         value: Any = None,
         request: Optional[HttpRequest] = None,
         response: Optional[HttpResponse] = None,
-        exports: Optional[StepExports] = None,
     ):
         self.value = value
         self.request = request
         self.response = response
-        self.exports = exports
 
 
 class BaseStep(ABC, Generic[ParamsT, PayloadT]):
@@ -201,8 +177,6 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
     #: Output contract — a :class:`StepPayload` for an object, a
     #: :class:`StepValue` for a bare value.
     output_model: ClassVar[type[Union[StepPayload, StepValue]]]
-    #: Context variables published by this step; ``None`` means it publishes none.
-    exports_model: ClassVar[Optional[type[StepExports]]] = None
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Refuse to define a step that does not say what comes in and what goes out.
@@ -245,9 +219,11 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
         This is the entry point the runner uses; ``execute`` is the part a step
         implements.
         """
-        output = await self.execute(self.bind_params(raw_params), context, definition)
-        self.publish_exports(output, context)
-        return self.bind_output(output)
+        output = self.bind_output(
+            await self.execute(self.bind_params(raw_params), context, definition)
+        )
+        self.publish_output(output, context)
+        return output
 
     @classmethod
     def bind_params(cls, raw_params: dict) -> Any:
@@ -292,20 +268,26 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
         return output
 
     @classmethod
-    def publish_exports(cls, output: StepOutput[Any], context: "StepContext") -> None:
-        """Write the step's declared exports into the run context.
+    def publish_output(cls, output: StepOutput[Any], context: "StepContext") -> None:
+        """Write every top-level field of the step's output into the run context.
 
-        Fields that are ``None`` are skipped, so a best-effort export that could
-        not be derived leaves the variable unset rather than nulled.
+        A step publishes all of its return outputs, always: each key of the
+        serialised output value becomes a context variable of the same name, so
+        a later step reads a field exactly as the producing step declared it.
+        Keys whose value is ``None`` are skipped — a field a step could not
+        derive leaves the variable unset rather than nulling out what an
+        earlier step published.
+
+        A bare value (:class:`StepValue`) that is not an object has no field
+        names to publish under; it stays reachable through assertions and
+        ``returns:``.
         """
-        exports = output.exports
-        if exports is None:
+        value = output.value
+        if not isinstance(value, dict):
             return
-        if cls.exports_model is not None and not isinstance(exports, cls.exports_model):
-            exports = cls.exports_model.model_validate(exports)
-        for name, value in exports.model_dump(by_alias=True).items():
-            if value is not None:
-                context.set_variable(name, value)
+        for name, item in value.items():
+            if item is not None:
+                context.set_variable(name, item)
 
     @classmethod
     def describe(cls) -> StepContract:
@@ -315,7 +297,6 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
             description=(cls.__doc__ or "").strip(),
             params_schema=cls.params_model.model_json_schema(),
             output_schema=cls.output_model.model_json_schema(),
-            exports_schema=cls.exports_model.model_json_schema() if cls.exports_model else None,
         )
 
     async def cleanup(self, context: "StepContext") -> None:

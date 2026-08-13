@@ -35,7 +35,7 @@ from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.scripting.registry import StepRegistry, step
 from tractusx_testlab.steps._checks.extraction import extract_path
-from tractusx_testlab.steps.assertions import apply_operator
+from tractusx_testlab.steps.assertions import AssertOperator, apply_operator
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepPayload
 
 if TYPE_CHECKING:
@@ -70,7 +70,7 @@ class Condition(BaseModel):
         default="",
         description="Dot-notation path into the input, e.g. 'content.state'; empty tests it whole.",
     )
-    operator: str = Field(
+    operator: AssertOperator = Field(
         default="not_null", description="Comparison applied to the value."
     )
     value: Any = Field(

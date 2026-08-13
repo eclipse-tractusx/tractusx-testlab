@@ -19,6 +19,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
 
 """Contract models shared by more than one step.
 
@@ -41,15 +43,16 @@ from typing import Any, Optional
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
-from tractusx_testlab.steps.base import StepExports, StepParams, StepPayload, StepValue
-from tractusx_testlab.syntax.context_vars import (
-    CATALOG_DATASETS,
-    DATA_ADDRESS,
-    EDR_TOKEN,
-)
+from tractusx_testlab.steps.base import StepParams, StepPayload, StepValue
 
 #: JSON-LD key holding the dataset offers of a DCAT catalog.
 DATASET_KEY = "dcat:dataset"
+
+#: The waiting every step declaring ``max_wait`` and ``poll_interval`` defaults
+#: to, in seconds — one pair of numbers for the whole catalog, so an author who
+#: learns the wait on one step has learned it on all of them.
+DEFAULT_MAX_WAIT = 60.0
+DEFAULT_POLL_INTERVAL = 1.0
 
 
 class NoOutput(StepValue[None]):
@@ -58,6 +61,18 @@ class NoOutput(StepValue[None]):
     Declaring it is the point: "no output" and "output not declared yet" look
     the same to a script author unless one of them says so.
     """
+
+
+class DeletionOutput(StepPayload):
+    """What a delete step publishes: the status the server answered it with.
+
+    A delete has no document to hand back, but it does have an outcome, and the
+    outcome *is* the status code — 204 for a resource that was there, 404 for
+    one that was not.  That distinction is the point of a teardown assertion,
+    so the code is a declared output and not a field of the HTTP record alone.
+    """
+
+    status_code: int = Field(description="HTTP status the delete was answered with.")
 
 
 # ---------------------------------------------------------------------------
@@ -69,8 +84,8 @@ class StoreInVariableParams(StepParams):
     """Adds the ``store_in_variable`` escape hatch to a step's inputs.
 
     The variable name comes from the script rather than from the step, so it
-    cannot be declared in a :class:`~tractusx_testlab.steps.base.StepExports`
-    model the way a fixed export is — the step writes it directly.
+    cannot be a declared output field the way a fixed name is — the step
+    writes it directly.
     """
 
     store_in_variable: str = Field(
@@ -186,16 +201,6 @@ class CatalogOutput(StepPayload):
     )
 
 
-class CatalogDatasetsExports(StepExports):
-    """The offers a catalog query publishes for the steps that follow it."""
-
-    datasets: Optional[list[dict]] = Field(
-        default=None,
-        alias=CATALOG_DATASETS,
-        description="Dataset offers from the catalog, always as a list.",
-    )
-
-
 def as_dataset_list(catalog: Optional[dict]) -> list[dict]:
     """Return a catalog's datasets, normalising the single-offer object form."""
     datasets = (catalog or {}).get(DATASET_KEY, [])
@@ -207,25 +212,6 @@ def as_dataset_list(catalog: Optional[dict]) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Data-plane access
 # ---------------------------------------------------------------------------
-
-
-class DataplaneExports(StepExports):
-    """The data-plane address every step that completes a transfer publishes.
-
-    ``connector/dataplane/http_request`` reads exactly these two variables, so
-    any step that produces them declares them through this model.
-    """
-
-    data_address: Optional[str] = Field(
-        default=None,
-        alias=DATA_ADDRESS,
-        description="Data-plane URL the negotiated data is fetched from.",
-    )
-    edr_token: Optional[str] = Field(
-        default=None,
-        alias=EDR_TOKEN,
-        description="Authorization token for that data-plane URL.",
-    )
 
 
 class DataAddressPayload(StepPayload):

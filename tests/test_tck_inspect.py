@@ -55,10 +55,10 @@ execution:
     uses: connector/request_catalog
     name: Request Catalog
     validate:
-      - uses: assert/status_code
-        with: {expected: 200}
-      - uses: assert/not_empty
-        with: {field: datasets}
+      - uses: validate/assert/equals
+        with: {input: status_code, value: 200}
+      - uses: validate/assert/not_empty
+        with: {input: datasets}
   - id: exec_step_two
     uses: http/http_request
     name: HTTP Call
@@ -67,8 +67,8 @@ teardown:
     uses: connector/provider/delete_asset
     name: Delete Asset
     validate:
-      - uses: assert/status_code
-        with: {expected: 204}
+      - uses: validate/assert/equals
+        with: {input: status_code, value: 204}
 """
 
 _TCK_WITH_TWO_SCRIPTS = """\

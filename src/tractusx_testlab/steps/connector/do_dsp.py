@@ -34,26 +34,29 @@ from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
     CounterPartyParams,
-    DataplaneExports,
     FilterExpressionParams,
+    StepParams,
 )
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
+#: ``dct:type`` the Catena-X standards mark a Digital Twin Registry asset with.
+DTR_DCT_TYPE = "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
+
 
 class DspFlowOutput(StepPayload):
-    """What both DSP flow steps hand back: where the data is, and the token for it.
+    """What every DSP flow step hands back: where the data is, and the token for it.
 
     Both fields are ``None`` when the flow did not complete — the step reports
     that as a 500 rather than raising, so a script can assert on it.
     """
 
-    endpoint: Optional[str] = Field(
+    dataplane_url: Optional[str] = Field(
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
-    token: Optional[str] = Field(
+    edr_token: Optional[str] = Field(
         default=None, description="Authorization token for that data-plane URL."
     )
 
@@ -76,14 +79,13 @@ class DoDspParams(CounterPartyParams, FilterExpressionParams):
 class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
     """Run the full DSP flow (catalog → negotiation → transfer) via the SDK.
 
-    Publishes the resulting data-plane address so
+    Returns the resulting data-plane address so
     ``connector/dataplane/http_request`` can fetch the data without any further
     wiring.
     """
 
     params_model = DoDspParams
     output_model = DspFlowOutput
-    exports_model = DataplaneExports
 
     async def execute(
         self, params: DoDspParams, context: "StepContext", definition: StepDefinition
@@ -126,12 +128,11 @@ class DoDspWithBpnlParams(FilterExpressionParams):
 class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
     """Run the full DSP flow using BPNL-based connector discovery via the SDK.
 
-    Publishes the same data-plane address as ``do_dsp``.
+    Returns the same data-plane address as ``do_dsp``.
     """
 
     params_model = DoDspWithBpnlParams
     output_model = DspFlowOutput
-    exports_model = DataplaneExports
 
     async def execute(
         self, params: DoDspWithBpnlParams, context: "StepContext", definition: StepDefinition
@@ -146,21 +147,71 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
         return _build_output(context, params, endpoint, token)
 
 
+# ---------------------------------------------------------------------------
+# connector/discover/digital-twin-registry/auth
+# ---------------------------------------------------------------------------
+
+
+class DiscoverDtrAuthParams(CounterPartyParams):
+    """Input contract of ``connector/discover/digital-twin-registry/auth``.
+
+    ``expected_policies`` stays ``None`` rather than defaulting to empty: the
+    SDK reads ``None`` as "no preference" and an empty list as "match nothing".
+    """
+
+    dct_type: str = Field(
+        default=DTR_DCT_TYPE,
+        description="`dct:type` the registry asset is offered under in the catalog.",
+    )
+    expected_policies: Optional[list[dict]] = Field(
+        default=None,
+        description="ODRL policies the negotiation is allowed to accept.",
+    )
+
+
+@step("connector/discover/digital-twin-registry/auth")
+class DiscoverDtrAuthStep(BaseStep[DiscoverDtrAuthParams, DspFlowOutput]):
+    """Get authorization to a counterparty's Digital Twin Registry.
+
+    Finds the registry asset in the counterparty's catalog by its standard
+    ``dct:type``, negotiates it, and publishes the resulting ``dataplane_url``
+    and ``edr_token`` — exactly what the
+    ``digital-twin-registry/consumer/dataplane/*`` steps read.
+    """
+
+    params_model = DiscoverDtrAuthParams
+    output_model = DspFlowOutput
+
+    async def execute(
+        self,
+        params: DiscoverDtrAuthParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[DspFlowOutput]:
+        consumer = context.get_consumer_service()
+        endpoint, token = consumer.do_dsp_by_dct_type(
+            counter_party_id=params.counter_party_id,
+            counter_party_address=params.counter_party_address,
+            dct_type=params.dct_type,
+            policies=params.expected_policies,
+        )
+        return _build_output(context, params, endpoint, token)
+
+
 def _build_output(
     context: "StepContext",
-    params: FilterExpressionParams,
+    params: StepParams,
     endpoint: Optional[str],
     token: Optional[str],
 ) -> StepOutput[DspFlowOutput]:
-    """Report the data-plane address both flow steps end at."""
-    value = DspFlowOutput(endpoint=endpoint, token=token)
+    """Report the data-plane address every flow step ends at."""
+    value = DspFlowOutput(dataplane_url=endpoint, edr_token=token)
     url = context.get_consumer_endpoint_url("edrs")
     return StepOutput(
         value=value,
         request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
         response=HttpResponse(
             status_code=200 if endpoint else 500,
-            body={"endpoint": endpoint, "token": token},
+            body=value.model_dump(mode="json"),
         ),
-        exports=DataplaneExports(data_address=endpoint, edr_token=token),
     )

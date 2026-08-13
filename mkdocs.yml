@@ -135,32 +135,15 @@ nav:
       - Compiling Packages: specification/walkthrough/compiling-packages.md
       - Executing Tests: specification/walkthrough/executing-tests.md
     - Reference:
-      - YAML Script Format: specification/reference/yaml-format.md
       - Step Reference: specification/reference/steps.md
-      - Module Structure: specification/reference/module-structure.md
-      - Package Format: specification/reference/package-format.md
-      - Syntax:
-        - Overview: specification/reference/syntax/index.md
-        - Tests: specification/reference/syntax/tests.md
-        - TCKs: specification/reference/syntax/tcks.md
-        - Services: specification/reference/syntax/services.md
-        - Assertions: specification/reference/syntax/assertions.md
-        - Conditions: specification/reference/syntax/conditions.md
-        - Dependencies & Outputs: specification/reference/syntax/dependencies-and-outputs.md
-        - Advanced Step Types: specification/reference/syntax/advanced-steps.md
-        - Cheat Sheet: specification/reference/syntax/cheat-sheet.md
+      - Syntax Cheat Sheet: specification/reference/syntax/cheat-sheet.md
+      - TCK Syntax: specification/syntax/tck-syntax.md
   - Tutorials:
     - Getting Started: tutorials/index.md
-    - Create a Block: tutorials/create-block.md
-    - Create a Block Category: tutorials/create-block-category.md
     - Create a Step Executor: tutorials/create-step-executor.md
     - Add a Service Type: tutorials/add-service-type.md
     - Add an Assertion Type: tutorials/add-assertion-type.md
-    - Add an Example Project: tutorials/add-example-project.md
-    - Add a Template: tutorials/add-template.md
-    - Modify the Sync Flow: tutorials/modify-sync-flow.md
     - Add a Validation Rule: tutorials/add-validation-rule.md
-    - Add a Component: tutorials/add-component.md
     - Development Workflow: tutorials/development-workflow.md
     - Debugging: tutorials/debugging.md
     - CCM Conformity Testing: tutorials/ccm-conformity-testing.md
@@ -169,32 +152,22 @@ nav:
       - Business Guide: tutorials/ccm-business-guide.md
       - Developer Guide: tutorials/ccm-developer-guide.md
       - Architecture Guide: tutorials/ccm-architecture-guide.md
-    - Quick Reference: tutorials/quick-reference.md
   - API Reference:
     - Overview: api-reference/index.md
-    - Block & Assertion Reference: api-reference/blocks.md
-    - Blocks:
-      - Mock: api-reference/blocks/mock.md
-      - Wait (Moved): api-reference/blocks/wait.md
-      - Function: api-reference/blocks/function.md
-      - Flow: api-reference/blocks/flow.md
-      - EDC Connector: api-reference/blocks/edc-connector.md
-      - Digital Twin Registry: api-reference/blocks/dtr.md
-      - HTTP: api-reference/blocks/http.md
-      - Validation: api-reference/blocks/validation.md
-      - TCK Manifest: api-reference/blocks/manifest.md
   - Developer:
     - Overview: developer/index.md
     - Product Scope: developer/product-scope.md
     - Architecture: developer/architecture.md
     - AI-Assisted Development: developer/ai-development.md
-    - State Management: developer/state-management.md
-    - Block System: developer/block-system.md
-    - Components: developer/components.md
+    - Step Contracts:
+      - Single Source of Truth: developer/step-contracts.md
+      - IDE-Engine Contract Parity: developer/ide-engine-contract-parity.md
+      - Contract Conflict Decisions: developer/contract-conflict-decisions.md
+      - Contract Migration Plan: developer/contract-migration-plan.md
     - Data Models: developer/data-models.md
-    - Sync Layer: developer/sync-layer.md
     - Block Lifecycle: developer/block-lifecycle.md
     - Creating a Step: developer/creating-a-step.md
+    - Execution Events: developer/execution-events.md
     - Environment Injection Analysis: developer/environment-injection-analysis.md
     - Step Reference Drift Report: developer/step-reference-drift-report.md
     - Decision Records:

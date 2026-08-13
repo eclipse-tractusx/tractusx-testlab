@@ -83,6 +83,7 @@ class ConfigLoader:
             "MAX_UPLOAD_BYTES": "max_upload_bytes",
             "DEFAULT_TIMEOUT_S": "default_timeout_s",
             "LIBRARY_PATH": "library_path",
+            "SUBMODEL_BACKEND_URL": "submodel_backend_url",
         }
         for env_suffix, field_name in mappings.items():
             value = os.environ.get(f"{_ENV_PREFIX}{env_suffix}")

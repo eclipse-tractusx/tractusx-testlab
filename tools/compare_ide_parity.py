@@ -92,7 +92,7 @@ NAME_MAP = {
 # ``StepOutput`` slots, ``HttpResponse`` attributes, and the two aliases
 # hard-coded in ``steps/_checks/extraction.py``.
 UNIVERSAL_RETURNS = {
-    "value", "request", "response", "exports",
+    "value", "request", "response",
     "status_code", "headers", "body", "duration_ms",
     "response_body", "response_headers",
 }
@@ -160,7 +160,6 @@ def read_engine() -> dict:
         engine[step_type] = {
             "params": _describe_model(getattr(cls, "params_model", None)),
             "output": _describe_model(getattr(cls, "output_model", None)),
-            "exports": _describe_model(getattr(cls, "exports_model", None)),
         }
     return engine
 
@@ -200,12 +199,10 @@ def _input_lookup(params: dict) -> dict[str, str]:
 def _readable_names(step: dict) -> dict[str, dict]:
     """Names a ``returns:`` block can read — outputs are dumped ``by_alias``."""
     readable: dict[str, dict] = {}
-    for kind in ("output", "exports"):
-        for name, field in step[kind]["fields"].items():
-            # Exports publish under the field name; outputs under the alias.
-            wire = name if kind == "exports" else (field["accepts"][0] if field["accepts"] else name)
-            readable.setdefault(wire, {"type": field["type"], "where": []})
-            readable[wire]["where"].append(kind)
+    for name, field in step["output"]["fields"].items():
+        wire = field["accepts"][0] if field["accepts"] else name
+        readable.setdefault(wire, {"type": field["type"], "where": []})
+        readable[wire]["where"].append("output")
     return readable
 
 

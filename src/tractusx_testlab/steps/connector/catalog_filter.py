@@ -32,7 +32,6 @@ from typing import TYPE_CHECKING
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
-    CatalogDatasetsExports,
     CatalogOutput,
     CounterPartyParams,
     FilterExpressionParams,
@@ -66,7 +65,6 @@ class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, Catalo
 
     params_model = QueryCatalogWithFiltersParams
     output_model = CatalogOutput
-    exports_model = CatalogDatasetsExports
 
     async def execute(
         self,
@@ -103,5 +101,4 @@ class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, Catalo
             value=CatalogOutput(catalog=catalog, datasets=datasets),
             request=request,
             response=HttpResponse(status_code=200, body=catalog),
-            exports=CatalogDatasetsExports(datasets=datasets),
         )

@@ -44,14 +44,14 @@ flowchart LR
 
 | Component | Technology | Role |
 |-----------|-----------|------|
-| **IDE** | React 19, Blockly 12, TypeScript | Visual test authoring and real-time execution monitoring |
+| **IDE** | React 19, Blockly 12, TypeScript (separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository) | Visual test authoring and real-time execution monitoring |
 | **Backend** | Python 3.12, FastAPI | YAML parsing, test orchestration, step execution |
 | **Mock Server** | Embedded FastAPI | Callback endpoints, canned responses for inbound SUT calls |
 | **SUT** | Any CX-0135 implementation | The system being validated |
 
 ## Execution Architecture
 
-When a user clicks Execute in the IDE, this sequence runs:
+When a user clicks Execute in the IDE (or runs `testlab run` from the CLI), this sequence runs:
 
 ```mermaid
 sequenceDiagram
@@ -82,6 +82,8 @@ sequenceDiagram
 
 ### IDE → Backend handoff
 
+The IDE frontend lives in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository; this engine repository exposes the HTTP API it talks to.
+
 1. `ExecuteButton.handleExecute()` converts the Blockly workspace to YAML via `modelToYaml()`
 2. `useExecutionStore.execute(yaml)` sends `POST /testlab/test-execution/run`
 3. The backend returns HTTP 202 with a `job_id`
@@ -95,13 +97,13 @@ sequenceDiagram
 2. Each test reference resolves to a `Script` (setup steps + main steps + teardown steps)
 3. The `Player` calls `topological_sort(scripts)` to order scripts by `depends_on` edges
 4. For each script: run setup → run main steps → run teardown (even if main steps fail)
-5. Per step: resolve `@variable` references → call `step.execute()` → evaluate assertions → store outputs
+5. Per step: resolve `${{ }}` references → execute the step → evaluate `validate:` assertions → publish the step's declared `returns:` outputs into the run context
 
 ## Test Orchestration Design
 
 ### Why topological sorting?
 
-Tests declare dependencies via `import_variable`. For example, `validate_payload` imports `document_id` from `request_certificate`. The player builds a dependency graph and runs scripts in an order that satisfies all imports.
+Tests declare dependencies via `depends_on`. For example, `validate_payload` depends on `request_certificate` and reads the `document_id` output it publishes. The player builds a dependency graph and runs scripts in an order that satisfies all dependencies.
 
 ```mermaid
 flowchart TD
@@ -124,11 +126,11 @@ Variables propagate through three mechanisms:
 
 | Mechanism | Scope | Example |
 |-----------|-------|---------|
-| `store_in_variable` | Within a single script | `json_path_extract` stores `ccmapi_asset_id` |
-| `store_in_memory` | Within a single script | `http_call_dataplane` stores `document_id` from response |
-| `export_variable` / `import_variable` | Across scripts | `request_certificate` exports `request_id`; `send_feedback` imports it |
+| Declared `returns:` outputs | Published automatically to the run context after each step | `connector/dataplane/http_request` publishes `status_code` and `response_body`; later steps read `${{ execution.<step_id>.<output> }}` |
+| `store_in_variable` parameter | Explicit capture into a named context variable (on util steps such as `util/json_path_extract`, `util/base64`, `util/parse_kv`) | `util/json_path_extract` stores `ccmapi_asset_id` |
+| Script output promotion | Across scripts | When a script completes, the player promotes its declared output variables into the shared run context for downstream scripts (`depends_on` ordering guarantees they exist) |
 
-All variables use `@name` syntax in YAML. The step runner resolves them from the execution context before calling the step executor.
+Steps reference variables with `${{ }}` interpolation (e.g. `${{ env.sut_counter_party_address.value }}` or `${{ execution.pull_ccmapi_endpoint.edr_token }}`). The step runner resolves them from the execution context before calling the step executor.
 
 ### Callback handling
 
@@ -136,7 +138,7 @@ The CCM suite uses asynchronous callbacks: the SUT processes a request and later
 
 ```mermaid
 sequenceDiagram
-    participant Step as mock_endpoint step
+    participant Step as mock/api step
     participant CM as CallbackManager
     participant Mock as Mock Server
     participant SUT as SUT
@@ -150,8 +152,8 @@ sequenceDiagram
     CM-->>Step: callback body (future resolved)
 ```
 
-1. `mock_endpoint` registers an `asyncio.Future` for a specific HTTP path
-2. The step blocks waiting for the future to resolve
+1. `mock/api` registers an `asyncio.Future` for a specific HTTP path
+2. A subsequent `mock/wait/http_request` step blocks waiting for the future to resolve
 3. When the SUT sends an HTTP request to the mock server at that path, the mock server resolves the future
 4. The mock server also returns a canned response to the SUT
 5. The original step unblocks with the received callback body
@@ -162,14 +164,14 @@ Each CX-0135 requirement maps to a specific test and step type:
 
 | CX-0135 Requirement | Test | Step Type | What Is Validated |
 |---------------------|------|-----------|-------------------|
-| §2.1.1.1 REQUEST mechanism | `request_certificate` | `http_call_dataplane` | POST with header+content envelope returns 200 |
-| §3.1 Semantic model | `validate_payload` | `validate_schema` | Payload matches BusinessPartnerCertificate v3.1.0 |
-| §2.1.1.3 FEEDBACK inbound | `await_feedback_callback` | `wait_for_call` | SUT sends callback to `/companycertificate/status` |
-| §2.1.1.3 FEEDBACK outbound | `send_feedback` | `http_call_dataplane` | Feedback notification via EDC data plane |
-| §2.1.1.2 PUSH mechanism | `push_certificate` | `http_call_dataplane` | Push via data plane to `/companycertificate/push` |
-| §2.1.1.4 AVAILABLE notification | `available_notification` | `http_call_dataplane` | Notification to `/companycertificate/available` |
-| §2.1.4.1 Provider asset exposure | `expose_testlab_asset` | `create_asset` + `wait_for_call` | SUT discovers and pulls from TestLab EDC |
-| §2.1.1.1.4 Error handling | `error_handling` | `http_call_dataplane` | REJECTED status in response envelope |
+| §2.1.1.1 REQUEST mechanism | `request_certificate` | `connector/dataplane/http_request` | POST with header+content envelope returns 200 |
+| §3.1 Semantic model | `validate_payload` | `validate/schema` | Payload matches BusinessPartnerCertificate v3.1.0 |
+| §2.1.1.3 FEEDBACK inbound | `await_feedback_callback` | `mock/wait/http_request` | SUT sends callback to `/companycertificate/status` |
+| §2.1.1.3 FEEDBACK outbound | `send_feedback` | `connector/dataplane/http_request` | Feedback notification via EDC data plane |
+| §2.1.1.2 PUSH mechanism | `push_certificate` | `connector/dataplane/http_request` | Push via data plane to `/companycertificate/push` |
+| §2.1.1.4 AVAILABLE notification | `available_notification` | `connector/dataplane/http_request` | Notification to `/companycertificate/available` |
+| §2.1.4.1 Provider asset exposure | `expose_testlab_asset` | `connector/provider/create_asset` + `mock/wait/http_request` | SUT discovers and pulls from TestLab EDC |
+| §2.1.1.1.4 Error handling | `error_handling` | `connector/dataplane/http_request` | REJECTED status in response envelope |
 
 ### Dataspace protocol mapping
 
@@ -177,10 +179,12 @@ Every test that communicates with the SUT follows the standard EDC flow:
 
 | DSP Phase | TestLab Step Type | Purpose |
 |-----------|-------------------|---------|
-| Catalog discovery | `query_catalog` | Find the CCMAPI asset in the provider's catalog |
-| Contract negotiation | `negotiate` | Agree on usage policies (e.g., `cx.ccm.base:1`) |
-| Transfer initiation | `initiate_transfer` | Get an EDR with data plane auth credentials |
-| Data plane call | `http_call_dataplane` | Send the actual CCMAPI message via the EDR |
+| Catalog discovery | `connector/consumer/query_catalog` | Find the CCMAPI asset in the provider's catalog |
+| Contract negotiation | `connector/consumer/negotiate` | Agree on usage policies (e.g., `cx.ccm.base:1`) |
+| Transfer initiation | `connector/consumer/initiate_transfer` | Get an EDR with data plane auth credentials |
+| Data plane call | `connector/dataplane/http_request` | Send the actual CCMAPI message via the EDR |
+
+The `connector/consumer/pull_data_filtered` step bundles the first three phases (filtered catalog query, policy check, negotiation, and EDR retrieval) into a single step — the shipped CCM suite uses it.
 
 ## Mock Server Architecture
 
@@ -188,7 +192,7 @@ The embedded mock server serves two purposes: it provides canned responses to th
 
 ### Registration flow
 
-The `mock_endpoint` step type registers both a canned response and a callback future:
+The `mock/api` step type registers both a canned response and a callback future:
 
 ```python
 # Simplified — actual implementation in step executors
@@ -201,9 +205,9 @@ When the SUT hits the mock path, the server:
 1. Returns the canned response to the SUT (so the SUT sees a valid response)
 2. Resolves the future with the request body (so the test step can assert on it)
 
-### wait_for_call
+### mock/wait/http_request
 
-The `wait_for_call` step blocks on the registered future with a configurable timeout (`sut_response_timeout`). If the SUT never calls back, the step fails with a timeout error.
+The `mock/wait/http_request` step blocks on the registered future with a configurable timeout. If the SUT never calls back, the step fails with a timeout error.
 
 ## SUT Stub Architecture
 
@@ -262,28 +266,28 @@ Add routes in `app.py`, response builders in `responses.py`. See `stubs/ccm-sut/
 
 ### Adding a new standard's test suite
 
-1. Create a directory under `ide/public/examples/` (e.g., `quality-management-v1.0/`)
+1. Create a directory for the suite — the shipped reference lives at `docs/examples/certificate-management-v2/raw/` in this repository
 2. Write an `index.yaml` with `kind: tck`, metadata, variables, and test references
 3. Write individual test YAML files with `kind: test`
-4. Add the example to the IDE's example project list
+4. To surface it in the visual IDE, add it to the example project list in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository
 
 ### Creating custom step executors
 
-Implement a new step executor in `src/tractusx_testlab/steps/` that inherits from the base step executor protocol. Register it in the step executor registry with a unique `type` string.
+Implement a new step executor in `src/tractusx_testlab/steps/` and register it with the `@step()` decorator under a unique id following the `<category>/<module>/<function>` scheme. See [Create a Step Executor](create-step-executor.md).
 
 ### Adding new assertion types
 
-Define a new assertion type in the assertion evaluator. Each assertion receives the step output and evaluates a condition (e.g., `EQUALS`, `NOT_NULL`, `ASSERT_FIELD`, `SCHEMA_VALID`).
+Assertions are validation steps (`validate/assert`, `validate/field`, `validate/schema`) that read a step's declared `returns:` outputs and evaluate an operator (e.g., `equals`, `not_null`, `matches_regex`). See [Add an Assertion Type](add-assertion-type.md) for extending them.
 
 ### CI/CD integration
 
 Run the test suite headless via CLI:
 
 ```bash
-testlab run index.yaml --config run-config.yaml --output results.json
+testlab run index.yaml --config run-config.yaml
 ```
 
-Parse `results.json` for pass/fail status in your CI pipeline.
+The command prints per-script and per-step results to stdout and exits non-zero on failure; detailed logs (including the execution trace) are written to the `--logs-dir` directory (default `./logs`). Use the exit code for pass/fail status in your CI pipeline.
 
 ## Design Decisions
 
@@ -293,7 +297,7 @@ Parse `results.json` for pass/fail status in your CI pipeline.
 | YAML over JSON for tests | Human-readable, supports comments, familiar to DevOps | Project convention |
 | Topological sort over linear | Enables parallel-safe independent tests, enforces dependencies | Player design |
 | `asyncio.Future` for callbacks | Native async/await integration, no polling, timeout support | Mock server design |
-| `@variable` syntax | Distinct from shell `${var}`, readable in YAML without escaping | [Specification](../specification/reference/yaml-format.md) |
+| `${{ }}` interpolation | GitHub-Actions-style references, explicit about their source (`env.`, `execution.`) | [Specification](../specification/syntax/tck-syntax.md) |
 
 ## Next Steps
 

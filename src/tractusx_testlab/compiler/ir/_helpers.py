@@ -110,7 +110,6 @@ def _build_instruction(
             resolved_returns[field_name] = {"type": "string"}
 
     validate = _build_validate_block(step)
-    on_failure = "continue" if phase == "teardown" else step.get("on_failure", "abort")
 
     return {
         "index": index,
@@ -122,7 +121,6 @@ def _build_instruction(
         "validate": validate,
         "phase": phase,
         "phase_index": phase_index,
-        "on_failure": on_failure,
     }
 
 

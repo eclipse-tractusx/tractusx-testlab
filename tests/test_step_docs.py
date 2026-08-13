@@ -117,12 +117,11 @@ class TestRenderCatalog:
         assert "`counter_party_address`" in page
         assert "`provider_url`" not in page
 
-    def test_exports_are_documented_as_published_variables(self, page: str) -> None:
-        assert "**Publishes**" in page
+    def test_the_published_offers_are_documented_as_output_fields(self, page: str) -> None:
         assert "`datasets`" in page
 
-    def test_a_step_without_exports_says_so(self, page: str) -> None:
-        assert "_Nothing._" in page
+    def test_the_exports_channel_is_gone_from_the_page(self, page: str) -> None:
+        assert "**Publishes**" not in page
 
     def test_nested_models_are_rendered_once(self, page: str) -> None:
         assert page.count("### FilterExpression") == 1

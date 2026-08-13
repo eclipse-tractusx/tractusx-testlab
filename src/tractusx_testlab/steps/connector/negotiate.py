@@ -33,7 +33,7 @@ from pydantic import Field
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import CounterPartyParams
-from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput, StepPayload
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.steps.connector._polling import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
@@ -41,10 +41,8 @@ from tractusx_testlab.steps.connector._polling import (
     poll_until_terminal,
 )
 from tractusx_testlab.syntax.context_vars import (
-    AGREEMENT_ID,
     CATALOG_ASSET_ID,
     CATALOG_POLICY,
-    NEGOTIATION_ID,
 )
 
 if TYPE_CHECKING:
@@ -103,33 +101,17 @@ class NegotiationOutput(StepPayload):
     )
 
 
-class NegotiationExports(StepExports):
-    """Context variables published by ``connector/consumer/negotiate``."""
-
-    negotiation_id: Optional[str] = Field(
-        default=None,
-        alias=NEGOTIATION_ID,
-        description="ID the transfer step polls for the resulting EDR.",
-    )
-    agreement_id: Optional[str] = Field(
-        default=None,
-        alias=AGREEMENT_ID,
-        description="ID a PUSH transfer is started from.",
-    )
-
-
 @step("connector/consumer/negotiate")
 class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
     """Negotiate a contract with the provider and wait for the outcome.
 
     The SDK starts the negotiation and answers with its ID straight away; this
     step then polls the negotiation until it finalises or terminates, so what it
-    publishes is the settled outcome rather than "accepted for processing".
+    returns is the settled outcome rather than "accepted for processing".
     """
 
     params_model = NegotiateParams
     output_model = NegotiationOutput
-    exports_model = NegotiationExports
 
     async def execute(
         self,
@@ -170,8 +152,5 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
             response=HttpResponse(
                 status_code=200 if negotiation_id else 500,
                 body=value.model_dump(mode="json"),
-            ),
-            exports=NegotiationExports(
-                negotiation_id=negotiation_id, agreement_id=agreement_id
             ),
         )

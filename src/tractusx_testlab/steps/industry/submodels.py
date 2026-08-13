@@ -31,11 +31,15 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models import (
+    HttpRequest,
+    HttpResponse,
+    StepConfigError,
+    StepDefinition,
+)
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import HttpTransportParams
-from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput, StepPayload
-from tractusx_testlab.syntax.context_vars import BACKEND_URL
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -48,10 +52,12 @@ class UploadBackendDataParams(HttpTransportParams):
 
     Only the transport half of an HTTP call: the step always POSTs to a URL it
     generates itself, so a ``method`` or ``url`` input would be a knob that
-    does nothing.
+    does nothing. The submodel server is the one the engine is seeded with
+    (``submodel_backend_url``), not one a script picks — a test that could send
+    the data anywhere would be testing the address it was given rather than the
+    provider's own backend.
     """
 
-    backend_base_url: str = Field(description="Backend base URL, without the UUID suffix.")
     data: Any = Field(
         default_factory=lambda: {"test": True},
         description="Payload to upload, sent as JSON.",
@@ -67,27 +73,21 @@ class UploadBackendDataOutput(StepPayload):
     )
 
 
-class UploadBackendDataExports(StepExports):
-    """Context variables published by ``digital-twin/submodel/upload``."""
-
-    backend_url: str = Field(
-        alias=BACKEND_URL,
-        description="Full backend URL, for the asset that will point at this data.",
-    )
-
-
 @step("digital-twin/submodel/upload")
 class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataOutput]):
-    """Upload sample data to the backend under a unique UUID path.
+    """Upload sample data to the engine's submodel server under a unique UUID path.
 
     Each run gets its own ``/urn:uuid:<uuid4>`` resource — exactly like the TCK
     does — so repeated runs never collide, and the resulting URL is published
     as ``backend_url`` for the asset that will point at it.
+
+    The server it posts to comes from the engine configuration
+    (``submodel_backend_url``, ``TESTLAB_SUBMODEL_BACKEND_URL``); an engine
+    without one cannot run this step, and says so rather than posting nowhere.
     """
 
     params_model = UploadBackendDataParams
     output_model = UploadBackendDataOutput
-    exports_model = UploadBackendDataExports
 
     async def execute(
         self,
@@ -95,7 +95,15 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
         context: "StepContext",
         definition: StepDefinition,
     ) -> StepOutput[UploadBackendDataOutput]:
-        unique_url = f"{params.backend_base_url.rstrip('/')}/urn:uuid:{uuid.uuid4()}"
+        backend_base_url = (context.config.submodel_backend_url or "").strip()
+        if not backend_base_url:
+            raise StepConfigError(
+                definition.uses,
+                "no submodel server is configured; set submodel_backend_url "
+                "(TESTLAB_SUBMODEL_BACKEND_URL) on the engine",
+            )
+
+        unique_url = f"{backend_base_url.rstrip('/')}/urn:uuid:{uuid.uuid4()}"
         headers = {"Content-Type": "application/json", **params.headers}
         timeout = params.timeout_or(context.config.default_timeout_s)
 
@@ -119,5 +127,4 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
                 headers=dict(resp.headers),
                 body=resp_body,
             ),
-            exports=UploadBackendDataExports(backend_url=unique_url),
         )

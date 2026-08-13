@@ -56,15 +56,29 @@ class TestGenerateUuidStep:
     async def test_generates_valid_uuid(self, mock_context: MagicMock, definition: StepDefinition) -> None:
         step = GenerateUuidStep()
         result = await step.invoke({}, mock_context, definition)
-        parsed = uuid.UUID(result.value["generated_id"])
+        parsed = uuid.UUID(result.value["uuid"])
         assert parsed.version == 4
 
     @pytest.mark.asyncio
     async def test_prepends_prefix(self, mock_context: MagicMock, definition: StepDefinition) -> None:
         step = GenerateUuidStep()
         result = await step.invoke({"prefix": "urn:uuid:"}, mock_context, definition)
-        assert result.value["generated_id"].startswith("urn:uuid:")
-        uuid.UUID(result.value["generated_id"].removeprefix("urn:uuid:"))
+        assert result.value["uuid"].startswith("urn:uuid:")
+        uuid.UUID(result.value["uuid"].removeprefix("urn:uuid:"))
+
+    @pytest.mark.asyncio
+    async def test_publishes_the_identifier_under_exactly_one_key(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
+        """One value, one key.
+
+        The step used to publish the same identifier twice, as 'uuid' and again
+        as 'generated_id'; a second spelling is a second thing to keep in step
+        and buys a script nothing.
+        """
+        result = await GenerateUuidStep().invoke({}, mock_context, definition)
+
+        assert list(result.value) == ["uuid"]
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +222,41 @@ class TestSendNotificationStep:
         mock_resp.status_code = 200
         mock_resp.content = b'{"ok": true}'
         mock_resp.json.return_value = {"ok": True}
+        mock_resp.headers = {"content-type": "application/json"}
+
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_resp
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+
+        step = SendNotificationStep()
+        result = await step.invoke(
+            {
+                "dataplane_url": "http://dp",
+                "edr_token": "tok",
+                "endpoint_path": "/notify",
+                "notification": {"msg": "hi"},
+            },
+            mock_context, definition,
+        )
+        assert result.value["status_code"] == 200
+        assert result.value["response_body"] == {"ok": True}
+        assert result.value["response_headers"] == {"content-type": "application/json"}
+        mock_client.post.assert_called_once()
+        assert mock_client.post.call_args.args[0] == "http://dp/notify"
+        assert mock_client.post.call_args.kwargs["json"] == {"msg": "hi"}
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient")
+    async def test_direct_mode_still_accepts_content_as_the_body(
+        self, mock_client_cls: MagicMock, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 201
+        mock_resp.content = b"{}"
+        mock_resp.json.return_value = {}
+        mock_resp.headers = {}
 
         mock_client = AsyncMock()
         mock_client.post.return_value = mock_resp
@@ -220,8 +269,8 @@ class TestSendNotificationStep:
             {"dataplane_url": "http://dp/notify", "edr_token": "tok", "content": {"msg": "hi"}},
             mock_context, definition,
         )
-        assert result.value["status_code"] == 200
-        mock_client.post.assert_called_once()
+        assert result.value["status_code"] == 201
+        assert mock_client.post.call_args.kwargs["json"] == {"msg": "hi"}
 
     @pytest.mark.asyncio
     @patch("tractusx_sdk.industry.models.notifications.notification.Notification")
@@ -238,10 +287,77 @@ class TestSendNotificationStep:
         result = await step.invoke(
             {
                 "notification": {"header": {"context": "cx", "senderBpn": "B1", "receiverBpn": "B2"}, "content": {}},
-                "provider_bpn": "BPNL000000001",
-                "provider_dsp_url": "http://provider/dsp",
+                "counter_party_id": "BPNL000000001",
+                "counter_party_address": "http://provider/dsp",
             },
             mock_context, definition,
         )
-        assert result.value == {"status": "sent"}
+        assert result.value["status"] == "sent"
+        assert result.value["response_body"] == {"status": "sent"}
+        assert result.value["status_code"] == 200
         mock_service.send_notification.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("tractusx_sdk.industry.models.notifications.notification.Notification")
+    async def test_sdk_mode_sends_the_document_written_as_content(
+        self, mock_notif_cls: MagicMock, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
+        """'content' is the older spelling of 'notification' — in both modes.
+
+        It used to be honoured only on the direct path, so an SDK-mode script
+        that wrote 'content' sent an empty notification and got a 200 for it.
+        """
+        mock_notif_cls.return_value = MagicMock(to_data=MagicMock(return_value={}))
+        mock_service = MagicMock()
+        mock_service.send_notification.return_value = {"status": "sent"}
+        mock_context.get_notification_service = MagicMock(return_value=mock_service)
+        document = {"header": {"context": "cx", "senderBpn": "B1", "receiverBpn": "B2"}}
+
+        await SendNotificationStep().invoke(
+            {
+                "content": document,
+                "counter_party_id": "BPNL000000001",
+                "counter_party_address": "http://provider/dsp",
+            },
+            mock_context, definition,
+        )
+
+        mock_notif_cls.assert_called_once_with(**document)
+
+    @pytest.mark.asyncio
+    @patch("tractusx_sdk.industry.models.notifications.notification.Notification")
+    async def test_sdk_mode_threads_every_declared_input_into_the_sdk_call(
+        self, mock_notif_cls: MagicMock, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
+        """A declared input that never reaches the SDK is a lie in the contract."""
+        mock_notif_cls.return_value = MagicMock(to_data=MagicMock(return_value={}))
+        mock_service = MagicMock()
+        mock_service.send_notification.return_value = {}
+        mock_context.get_notification_service = MagicMock(return_value=mock_service)
+
+        await SendNotificationStep().invoke(
+            {
+                "notification": {"header": {"context": "cx"}},
+                "counter_party_id": "BPNL000000001",
+                "counter_party_address": "http://provider/dsp",
+                "endpoint_path": "/notify",
+                "timeout": 12,
+            },
+            mock_context, definition,
+        )
+
+        kwargs = mock_service.send_notification.call_args.kwargs
+        assert kwargs["provider_bpn"] == "BPNL000000001"
+        assert kwargs["provider_dsp_url"] == "http://provider/dsp"
+        assert kwargs["endpoint_path"] == "/notify"
+        assert kwargs["timeout"] == 12
+
+    @pytest.mark.asyncio
+    async def test_a_send_with_neither_notification_nor_content_is_rejected(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
+        """Neither mode can invent the document it is asked to send."""
+        with pytest.raises(ValueError, match="'notification' is required"):
+            await SendNotificationStep().invoke(
+                {"counter_party_id": "BPNL000000001"}, mock_context, definition
+            )

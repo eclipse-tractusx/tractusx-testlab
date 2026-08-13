@@ -34,7 +34,7 @@ from pydantic import Field
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import HttpBodyOutput, HttpCallParams
-from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput
+from tractusx_testlab.steps.base import BaseStep, StepOutput
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -50,30 +50,18 @@ class HttpRequestParams(HttpCallParams):
     )
 
 
-class HttpRequestExports(StepExports):
-    """Context variables published by ``http/http_request``.
-
-    The step also spreads a JSON object response across context variables, one
-    per top-level key.  Those names come from the server rather than from the
-    step, so they cannot be declared here — only ``status_code`` can.
-    """
-
-    status_code: int = Field(description="Status code of the response.")
-
-
 @step("http/http_request")
 class HttpRequestStep(BaseStep[HttpRequestParams, HttpBodyOutput]):
     """Execute a plain HTTP request.
 
     Useful for backend data upload/delete or any ad-hoc HTTP call during a test
-    flow.  A JSON object response is additionally spread across context
-    variables, one per top-level key, so a following step can read a field by
-    its own name.
+    flow.  The output is the response body itself, so a JSON object response is
+    published across context variables one per top-level key — the same way
+    every step publishes its return outputs.
     """
 
     params_model = HttpRequestParams
     output_model = HttpBodyOutput
-    exports_model = HttpRequestExports
 
     async def execute(
         self, params: HttpRequestParams, context: "StepContext", definition: StepDefinition
@@ -96,10 +84,6 @@ class HttpRequestStep(BaseStep[HttpRequestParams, HttpBodyOutput]):
         except (ValueError, TypeError):
             resp_body = resp.text
 
-        if isinstance(resp_body, dict):
-            for key, val in resp_body.items():
-                context.set_variable(key, val)
-
         return StepOutput(
             value=HttpBodyOutput(resp_body),
             request=HttpRequest(
@@ -113,5 +97,4 @@ class HttpRequestStep(BaseStep[HttpRequestParams, HttpBodyOutput]):
                 headers=dict(resp.headers),
                 body=resp_body,
             ),
-            exports=HttpRequestExports(status_code=resp.status_code),
         )

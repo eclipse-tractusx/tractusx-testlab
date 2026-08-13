@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Unit tests for DoDspStep and DoDspWithBpnlStep."""
+"""Unit tests for DoDspStep, DoDspWithBpnlStep, and DiscoverDtrAuthStep."""
 
 from __future__ import annotations
 
@@ -32,8 +32,13 @@ from unittest.mock import MagicMock
 import pytest
 
 from tests.conftest import attach_endpoint_url_stubs
-from tractusx_testlab.steps.connector.do_dsp import DoDspStep, DoDspWithBpnlStep
-from tractusx_testlab.syntax.context_vars import DATA_ADDRESS, EDR_TOKEN
+from tractusx_testlab.steps.connector.do_dsp import (
+    DTR_DCT_TYPE,
+    DiscoverDtrAuthStep,
+    DoDspStep,
+    DoDspWithBpnlStep,
+)
+from tractusx_testlab.syntax.context_vars import DATAPLANE_URL, EDR_TOKEN
 
 _ENDPOINT = "https://provider.example.com/data"
 _TOKEN = "Bearer eyJhbGciOiJSUzI1NiJ9.test"
@@ -85,7 +90,7 @@ class TestDoDspStep:
         )
 
         # Assert — context variables
-        assert ctx.variables[DATA_ADDRESS] == _ENDPOINT
+        assert ctx.variables[DATAPLANE_URL] == _ENDPOINT
         assert ctx.variables[EDR_TOKEN] == _TOKEN
 
     @pytest.mark.asyncio
@@ -106,7 +111,7 @@ class TestDoDspStep:
         )
 
         # Assert — output shape
-        assert output.value == {"endpoint": _ENDPOINT, "token": _TOKEN}
+        assert output.value == {"dataplane_url": _ENDPOINT, "edr_token": _TOKEN}
 
     @pytest.mark.asyncio
     async def test_status_200_on_success(self, ctx: MagicMock, definition: MagicMock) -> None:
@@ -187,7 +192,7 @@ class TestDoDspStep:
             definition=definition,
         )
 
-        assert DATA_ADDRESS not in ctx.variables
+        assert DATAPLANE_URL not in ctx.variables
         assert EDR_TOKEN not in ctx.variables
 
 
@@ -206,9 +211,9 @@ class TestDoDspWithBpnlStep:
             definition=definition,
         )
 
-        assert ctx.variables[DATA_ADDRESS] == _ENDPOINT
+        assert ctx.variables[DATAPLANE_URL] == _ENDPOINT
         assert ctx.variables[EDR_TOKEN] == _TOKEN
-        assert output.value == {"endpoint": _ENDPOINT, "token": _TOKEN}
+        assert output.value == {"dataplane_url": _ENDPOINT, "edr_token": _TOKEN}
         assert output.response.status_code == 200
 
     @pytest.mark.asyncio
@@ -250,3 +255,93 @@ class TestDoDspWithBpnlStep:
         )
 
         assert output.response.status_code == 500
+
+
+class TestDiscoverDtrAuthStep:
+    """Tests for DiscoverDtrAuthStep — DTR access via SDK consumer.do_dsp_by_dct_type()."""
+
+    @pytest.mark.asyncio
+    async def test_stores_endpoint_and_token_in_context(self, ctx: MagicMock, definition: MagicMock) -> None:
+        consumer = MagicMock()
+        consumer.do_dsp_by_dct_type.return_value = (_ENDPOINT, _TOKEN)
+        ctx.get_consumer_service.return_value = consumer
+
+        output = await DiscoverDtrAuthStep().invoke(
+            raw_params={
+                "counter_party_id": "BPNL000000000001",
+                "counter_party_address": "https://provider.example.com/dsp",
+            },
+            context=ctx,
+            definition=definition,
+        )
+
+        assert ctx.variables[DATAPLANE_URL] == _ENDPOINT
+        assert ctx.variables[EDR_TOKEN] == _TOKEN
+        assert output.value == {"dataplane_url": _ENDPOINT, "edr_token": _TOKEN}
+        assert output.response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_filters_by_the_standard_dct_type_by_default(self, ctx: MagicMock, definition: MagicMock) -> None:
+        consumer = MagicMock()
+        consumer.do_dsp_by_dct_type.return_value = (_ENDPOINT, _TOKEN)
+        ctx.get_consumer_service.return_value = consumer
+
+        await DiscoverDtrAuthStep().invoke(
+            raw_params={
+                "counter_party_id": "BPNL000000000001",
+                "counter_party_address": "https://provider.example.com/dsp",
+            },
+            context=ctx,
+            definition=definition,
+        )
+
+        consumer.do_dsp_by_dct_type.assert_called_once_with(
+            counter_party_id="BPNL000000000001",
+            counter_party_address="https://provider.example.com/dsp",
+            dct_type=DTR_DCT_TYPE,
+            policies=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_passes_overridden_dct_type_and_policies_to_sdk(self, ctx: MagicMock, definition: MagicMock) -> None:
+        consumer = MagicMock()
+        consumer.do_dsp_by_dct_type.return_value = (_ENDPOINT, _TOKEN)
+        ctx.get_consumer_service.return_value = consumer
+        policies = [{"@id": "policy-1"}]
+
+        await DiscoverDtrAuthStep().invoke(
+            raw_params={
+                "counter_party_id": "BPNL000000000002",
+                "counter_party_address": "https://provider.example.com/dsp",
+                "dct_type": "https://w3id.org/catenax/taxonomy#OTHER",
+                "expected_policies": policies,
+            },
+            context=ctx,
+            definition=definition,
+        )
+
+        consumer.do_dsp_by_dct_type.assert_called_once_with(
+            counter_party_id="BPNL000000000002",
+            counter_party_address="https://provider.example.com/dsp",
+            dct_type="https://w3id.org/catenax/taxonomy#OTHER",
+            policies=policies,
+        )
+
+    @pytest.mark.asyncio
+    async def test_status_500_when_endpoint_is_none(self, ctx: MagicMock, definition: MagicMock) -> None:
+        consumer = MagicMock()
+        consumer.do_dsp_by_dct_type.return_value = (None, None)
+        ctx.get_consumer_service.return_value = consumer
+
+        output = await DiscoverDtrAuthStep().invoke(
+            raw_params={
+                "counter_party_id": "BPNL000000000001",
+                "counter_party_address": "https://provider.example.com/dsp",
+            },
+            context=ctx,
+            definition=definition,
+        )
+
+        assert output.response.status_code == 500
+        assert DATAPLANE_URL not in ctx.variables
+        assert EDR_TOKEN not in ctx.variables

@@ -9,6 +9,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `between`, `one_of`, `none_of`, `has_key`, `not_has_key`, `length_equals`,
+  `length_gt` and `length_lt` are part of the ratified assertion operator set —
+  the same twenty operators the IDE offers, resolved through one table shared by
+  `validate/*` assertions, the registered `validate/*` steps and `flow/if`
+  conditions
+- `validate/assert/<operator>` is accepted as a spelling of `validate/assert`
+  with `operator:`, giving the deleted `assert/<operator>` names a home in the
+  surviving namespace
+- The three connector delete steps and `digital-twin/provider/delete_shell_descriptor`
+  publish `status_code`, so a TCK can assert on a deletion's outcome (204 vs 404)
+  instead of asserting on nothing
+- `notification/consumer/send` honours `content` in SDK mode; a script writing
+  it previously sent an empty notification and got a 200 back for it
+
+- `security/oauth2/client_credentials`, `security/oauth2/password` and
+  `security/oauth2/refresh_token` steps — one step per grant, matching the
+  IDE's one-block-per-grant Security catalog. Each pins its grant, so the step
+  name a script uses is the grant it gets; the former mixed
+  `security/oauth2/get_token` step (grant selected by a `grant_type`
+  parameter) is removed in their favour
+- `digital-twin-registry/consumer/dataplane/get_shell_descriptors` takes the
+  AAS v3 paging controls `limit` and `cursor`, and hands the next page's
+  cursor back alongside the descriptors — the same paging
+  `lookup_shells_by_asset_link` already offered
 - Initial repository setup following TRG 2.03 release guidelines
 - `validate/schema` step performing full JSON Schema validation of a payload
   against a schema declared in `env.schemas`
@@ -21,8 +45,74 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `util/base64` step for encoding/decoding strings with base64 / base64url, e.g.
   building a base64url `aas_identifier` for the AAS DTR
 - `util/log` step for echoing a resolved value while authoring a test
+- `digital-twin-registry/consumer/dataplane/lookup_shells_by_asset_link` step,
+  searching a counterparty's registry through `POST /lookup/shellsByAssetLink`.
+  The same search `lookup_shell` performs, with the criteria in the request body
+  instead of base64url-encoded `assetIds` query values, so a lookup with many
+  criteria is no longer bounded by the URL length; the paged answer's cursor
+  comes back alongside the identifiers and their descriptors, and `limit` /
+  `cursor` read the page after it. `mock/dtr` serves the endpoint too
+
+### Changed
+
+- **Breaking.** `validate/*` is the whole assertion vocabulary. The `assert/*`
+  family (`assert/equals`, `assert/not_null`, `assert/status_code`, …) and the
+  flat `NOT_NULL` / `EQUALS` spellings are removed; `validate/assert`,
+  `validate/field` and `validate/schema` are what a `validate:` block writes.
+  Per [ADR-0025](docs/developer/decision-records/shared/ADR-0025-assertions-read-declared-returns.md)
+- **Breaking.** `util/generate_uuid` publishes `uuid` only; the duplicate
+  `generated_id` key for the same value is removed. One output, one key
+- **Breaking.** The null operator is spelled `is_null`, and the ordered
+  comparisons are `gt` / `gte` / `lt` / `lte` — the operator names the IDE
+  already emits. `null`, `greater_than`, `less_than`, `greater_or_equal` and
+  `less_or_equal` are no longer accepted
+- `max_wait` defaults to 60 seconds and `poll_interval` to 1 across every step
+  that polls, matching what the IDE's blocks show. The two constant modules that
+  declared the same names with different values now derive from one declaration
+- `steps/assertions.py` is now the `steps/assertions/` package — the operator
+  table, the `uses:` vocabulary and the engine are separate modules
+
+- `digital-twin/provider/wizard/create_submodel_descriptor` takes the endpoint's
+  `interface` — the one key CX-0002 leaves a choice in — as an optional param
+  defaulting to `SUBMODEL-3.0`. The rest of the endpoint is fixed by the
+  standard and written rather than asked for: `endpointProtocol` (`HTTP`),
+  `endpointProtocolVersion` (`["1.1"]`), `subprotocol` (`DSP`) and
+  `subprotocolBodyEncoding` (`plain`). Its `endpoint_url` is renamed `href`,
+  the name CX-0002 and the descriptor it writes both use, and the href now
+  follows the chosen interface: a `SUBMODEL-VALUE-3.X` interface appends
+  `/submodel/$value` to it (just `/$value` when the URL already ends in
+  `/submodel`, nothing when it already carries a `$`-segment), and a
+  `SUBMODEL-3.X` interface strips a pasted `$`-suffix back off, so the
+  descriptor reaches the registry in the spelling CX-0002 mandates either way.
+  `id_short` is optional, and an omitted one leaves `idShort` out of the
+  descriptor rather than writing an empty name. A step naming no interface
+  produces the exact document it did before
+- `digital-twin/provider/wizard/create_submodel_descriptor` takes `asset_id` and
+  `dsp_endpoint`, both required, and writes them into the descriptor's
+  `subprotocolBody` (`id=…;dspEndpoint=…`, `subprotocol: DSP`, encoding `plain`).
+  The guided step used to describe the submodel's endpoint with a bare `href`,
+  so the descriptor it assembled told a consumer where the data sits but not
+  which offer to negotiate for it
+- `digital-twin/submodel/upload` no longer takes `backend_base_url`. The
+  submodel server is the engine's own, seeded as `submodel_backend_url`
+  (`TESTLAB_SUBMODEL_BACKEND_URL`), so a script cannot redirect the upload
+  somewhere the step never meant to write; an engine without one fails the step
+  with a `StepConfigError` instead of posting nowhere
 
 ### Fixed
+
+- `validate/schema` inside a `validate:` block validates the payload against the
+  schema. It was unrecognised inline and fell back to an exact comparison
+  against `None`, so a conforming payload failed with a misleading message
+- `validate/field` descends its `path` inside `input`. The path was read and
+  discarded, so the assertion checked the whole output rather than the field
+  the author named
+- An assertion naming an unknown check or an unknown operator is a compile
+  error, and a failure that names the vocabulary at run time. Both previously
+  fell back to an exact comparison that frequently passed
+- A `returns:` name the step never publishes is a compile error naming what the
+  step does publish. It previously compiled and resolved to nothing, surfacing
+  as an empty variable several steps later
 
 - Path extraction no longer drops predicate values containing `.`/`;`/`#` and
   can traverse into lists after the first segment

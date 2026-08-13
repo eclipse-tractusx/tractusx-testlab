@@ -36,7 +36,6 @@ from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
     DataAddressPayload,
-    DataplaneExports,
     StepParams,
     data_address_token,
 )
@@ -51,9 +50,7 @@ from tractusx_testlab.steps.connector._polling import (
 from tractusx_testlab.steps.connector.dataplane import fetch_data_address
 from tractusx_testlab.syntax.context_vars import (
     AGREEMENT_ID,
-    EDR_ENTRY,
     NEGOTIATION_ID,
-    TRANSFER_ID,
 )
 
 if TYPE_CHECKING:
@@ -154,29 +151,15 @@ class InitiateTransferOutput(StepPayload):
     edr_entry: Optional[dict] = Field(
         default=None, description="PULL only — the EDR entry the negotiation produced."
     )
-    data_address: Optional[str] = Field(
+    dataplane_url: Optional[str] = Field(
         default=None, description="PULL only — data-plane URL the data is fetched from."
     )
     edr_token: Optional[str] = Field(
         default=None, description="PULL only — authorization token for that data-plane URL."
     )
-    data_address_raw: Optional[DataAddressPayload] = Field(
+    data_address: Optional[DataAddressPayload] = Field(
         default=None,
         description="PULL only — the full data address document, for assertions on its other keys.",
-    )
-
-
-class InitiateTransferExports(DataplaneExports):
-    """Context variables published by ``connector/consumer/initiate_transfer``.
-
-    Extends the shared data-plane pair with the transfer's own identifiers.
-    """
-
-    transfer_id: Optional[str] = Field(
-        default=None, alias=TRANSFER_ID, description="ID of the transfer process."
-    )
-    edr_entry: Optional[dict] = Field(
-        default=None, alias=EDR_ENTRY, description="The EDR entry the negotiation produced."
     )
 
 
@@ -196,7 +179,6 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
 
     params_model = InitiateTransferParams
     output_model = InitiateTransferOutput
-    exports_model = InitiateTransferExports
 
     async def execute(
         self, params: InitiateTransferParams, context: "StepContext", definition: StepDefinition
@@ -227,9 +209,9 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
             transfer_id=transfer_id,
             state=(transfer or {}).get("state"),
             edr_entry=edr_entry,
-            data_address=endpoint,
+            dataplane_url=endpoint,
             edr_token=data_address_token(data_address),
-            data_address_raw=data_address,
+            data_address=data_address,
         )
         return StepOutput(
             value=value,
@@ -238,12 +220,6 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
             ),
             response=HttpResponse(
                 status_code=200 if edr_entry else 500, body=value.model_dump(mode="json")
-            ),
-            exports=InitiateTransferExports(
-                transfer_id=transfer_id,
-                edr_entry=edr_entry,
-                data_address=endpoint,
-                edr_token=value.edr_token,
             ),
         )
 
@@ -284,7 +260,6 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
                 status_code=getattr(response, "status_code", 500) if transfer_id else 500,
                 body=value.model_dump(mode="json"),
             ),
-            exports=InitiateTransferExports(transfer_id=transfer_id),
         )
 
 

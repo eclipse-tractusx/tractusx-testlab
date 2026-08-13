@@ -62,9 +62,8 @@ Two consequences worth internalising:
 | `StepParams` | one field per accepted `with:` key | `extra="allow"` — unknown keys are kept, so a script written against a newer step still runs on an older engine |
 | `StepPayload` | one field per key of the returned object | `extra="forbid"` — the fields are the public surface |
 | `StepValue[T]` | the output *is* a bare value, not an object | a Pydantic `RootModel`; no fields to declare |
-| `StepExports` | context variables published for later steps | `extra="forbid"`, `populate_by_name=True` |
 
-All four live in `tractusx_testlab.steps.base`.
+All three live in `tractusx_testlab.steps.base`.
 
 ## A minimal step
 
@@ -157,57 +156,53 @@ class Base64Params(StepParams):
     mode: Literal["encode", "decode"] = Field(default="encode", description="Direction.")
 ```
 
-### Accepting more than one spelling
+### One spelling per parameter
 
-Scripts in the wild use legacy names. Accept them with `AliasChoices` — the canonical name first, and the reference page lists the rest under "Also accepts":
+Every parameter has exactly **one canonical name** — no aliases, no legacy spellings. A script that uses an old name is migrated, not accommodated (see [Step Contracts](step-contracts.md) for why the rule exists). Declare the field once, under the name scripts write:
 
 ```python
 class CounterPartyParams(StepParams):
+    """The counter-party a DSP request is addressed to."""
+
     counter_party_address: str = Field(
         default="",
-        validation_alias=AliasChoices("counter_party_address", "provider_url"),
         description="DSP endpoint of the counter-party connector.",
+    )
+    counter_party_id: str = Field(
+        default="",
+        description="BPN of the counter-party.",
     )
 ```
 
 ### Normalising shapes
 
-When a parameter legitimately arrives in more than one shape, fold it in a validator so `execute` sees one shape. Two patterns from the codebase:
+When a parameter legitimately arrives in more than one shape, fold it in a validator so `execute` sees one shape. A pattern from the codebase:
 
 ```python
 class PullDataFilteredByPolicyParams(PullDataParams):
-    policies: list[dict] = Field(min_length=1, description="...")
+    expected_policies: list[dict] = Field(
+        min_length=1,
+        description="ODRL policies, any one of which the negotiated offer must satisfy.",
+    )
 
-    @field_validator("policies", mode="before")
+    @field_validator("expected_policies", mode="before")
     @classmethod
     def _one_policy_is_a_list_of_one(cls, value: Any) -> Any:
         """A single policy document is as valid as a list holding it."""
         return [value] if isinstance(value, dict) else value
-
-
-class QueryCatalogParams(CounterPartyParams):
-    filter_expression: list[FilterExpression] = Field(default_factory=list)
-    filter: Optional[CatalogFilter] = Field(default=None)
-
-    @model_validator(mode="after")
-    def _hoist_nested_filter(self) -> "QueryCatalogParams":
-        """Let the nested ``filter:`` block stand in for a flat ``filter_expression``."""
-        if not self.filter_expression and self.filter is not None:
-            self.filter_expression = self.filter.filter_expression
-        return self
 ```
 
-Give the params model helper methods when a value needs converting for a downstream API. `sdk_filter_expression()` and `service_name()` exist for exactly that, and they keep `execute` about the step's logic rather than about reshaping its own inputs.
+Give the params model helper methods when a value needs converting for a downstream API. `sdk_filter_expression()` and `timeout_or()` exist for exactly that, and they keep `execute` about the step's logic rather than about reshaping its own inputs.
 
 ### Fields named like Pydantic attributes
 
-`schema` shadows a `BaseModel` attribute and warns. Declare the field under another name and alias it back, so scripts keep writing `schema:`:
+`schema` shadows a `BaseModel` attribute and warns. Declare the field under another name and alias it back, so scripts write `schema:` and only `schema:` — the alias is the one spelling, not a second one:
 
 ```python
-json_schema: dict = Field(
-    validation_alias=AliasChoices("schema", "json_schema"),
+json_schema: Any = Field(
+    validation_alias="schema",
     serialization_alias="schema",
-    description="JSON Schema the payload is validated against.",
+    description="A JSON Schema document the payload is validated against.",
 )
 ```
 
@@ -277,52 +272,37 @@ if not catalog:
     )
 ```
 
-## Declaring published variables
+## Published outputs
 
-A step's return value is only half of what it produces. Steps also hand data to later steps through context variables, and until those are declared, that half of the interface is invisible.
+Every step publishes all of its return outputs, always: after the step runs, each top-level field of the output becomes a context variable of the same name. There is no separate export channel and nothing extra to declare — the output model *is* the whole interface. Do not call `context.set_variable` yourself.
 
-Return a `StepExports` instance from `execute`; do not call `context.set_variable` yourself. Field names are variable names, so alias them to the constants in `syntax.context_vars` and let the constant stay the single source of truth:
+Two consequences follow:
 
-```python
-class NegotiationExports(StepExports):
-    """Context variables published by ``connector/consumer/negotiate``."""
-
-    negotiation_id: Optional[str] = Field(
-        default=None,
-        alias=NEGOTIATION_ID,
-        description="ID the transfer step polls for the resulting EDR.",
-    )
-
-# in execute():
-return StepOutput(..., exports=NegotiationExports(negotiation_id=negotiation_id))
-```
-
-A field left `None` is **not published** — that is how a best-effort export stays absent rather than being written as null.
+- **Name output fields for their readers.** A downstream step that falls back to a context variable reads it under the producing step's field name — `negotiate` returns `negotiation_id`, so `initiate_transfer` falls back to the `negotiation_id` variable. The constants in `syntax.context_vars` record these shared names; point both sides at the constant.
+- **A `None` value leaves the variable unset** — that is how a best-effort field stays absent rather than nulling out what an earlier step published. (It still appears as null in the output itself when you set it explicitly.)
 
 ### The escape hatch
 
-Some variable names come from the script, not the step: `store_in_variable`, or `mock/api`'s `id`. Those cannot be `StepExports` fields, because the step does not know the name. Declare them as *parameters* and write them directly. `StoreInVariableParams` and `MockIdParams` exist for this; both say so in their docstrings, which is what keeps the exception visible instead of looking like an oversight.
+Some variable names come from the script, not the step: `store_in_variable`, or `mock/api`'s `id`. Those cannot be output fields, because the step does not know the name. Declare them as *parameters* and write them directly. `StoreInVariableParams` and `MockIdParams` exist for this; both say so in their docstrings, which is what keeps the exception visible instead of looking like an oversight.
 
 ## Reusing a contract another step already declares
 
-When two steps talk about the same thing, they share one model. Sharing is what makes the wiring visible: `do_dsp` publishes `DataplaneExports`, `connector/dataplane/http_request` reads exactly those variables, and both say so in their types.
+When two steps talk about the same thing, they share one model. Sharing is what makes the wiring visible: every transfer-completing step returns the `dataplane_url` / `edr_token` pair, `connector/dataplane/http_request` reads exactly those variables, and both say so in their types.
 
 Shared models live in `tractusx_testlab.steps._contracts`:
 
 | Model | Kind | Use it for |
 |---|---|---|
-| `ServiceParams` | params mixin | `service` — which configured connector service to talk to; `service_name()` |
-| `CounterPartyParams` | params mixin | `counter_party_address` / `counter_party_id`, with their legacy spellings |
-| `FilterExpressionParams` | params mixin | catalog filter criteria; `sdk_filter_expression()` |
+| `CounterPartyParams` | params mixin | `counter_party_address` / `counter_party_id` |
+| `FilterExpressionParams` | params mixin | catalog `filters` criteria; `sdk_filter_expression()` |
 | `StoreInVariableParams` | params mixin | the `store_in_variable` escape hatch |
 | `HttpTransportParams` | params mixin | `headers`, `timeout`, `timeout_or(default)` |
 | `HttpCallParams` | params mixin | the above plus `method` and `body` |
-| `CatalogPayload` | payload | a provider's DCAT catalog |
-| `DataAddressPayload` | payload | an EDR data address; `data_address_token()` reads its token under either spelling |
+| `CatalogPayload` | payload | a provider's DCAT catalog, bound with `.of()` |
+| `CatalogOutput` | payload | `catalog` + `datasets` side by side — the output of every `query_catalog*` step |
+| `DataAddressPayload` | payload | an EDR data address; the `data_address_token()` helper reads its auth token |
 | `HttpBodyOutput` | value | a response body — parsed JSON, or text |
 | `NoOutput` | value | a step that produces nothing |
-| `CatalogDatasetsExports` | exports | the `datasets` a catalog query publishes |
-| `DataplaneExports` | exports | the `data_address` / `edr_token` pair |
 
 Mock-server steps additionally share `MockIdParams` and `RequiredMockIdParams` from `tractusx_testlab.steps.server._contracts`.
 
@@ -332,7 +312,10 @@ Compose them by inheritance:
 class DoDspParams(CounterPartyParams, FilterExpressionParams):
     """Input contract of ``connector/consumer/do_dsp``."""
 
-    policies: list[dict] = Field(default_factory=list, description="...")
+    expected_policies: list[dict] = Field(
+        default_factory=list,
+        description="ODRL policies the negotiation is allowed to accept.",
+    )
 ```
 
 Add to `_contracts.py` when a second step needs the same thing — not in anticipation of one. A mixin used once is just indirection.
@@ -349,8 +332,8 @@ class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]): ...
 Register with a version constraint when behaviour differs by dataspace version. Version-specific registrations take priority over global ones:
 
 ```python
-@step("query_catalog", dataspace_version="saturn")
-class QueryCatalogSaturnStep(BaseStep[QueryCatalogParams, CatalogPayload]): ...
+@step("connector/consumer/query_catalog", dataspace_version="saturn")
+class QueryCatalogSaturnStep(BaseStep[QueryCatalogParams, CatalogOutput]): ...
 ```
 
 The decorator only runs if the module is imported. Add your module to its subpackage's `__init__.py`:
@@ -414,7 +397,7 @@ async def test_absent_keys_are_not_invented(self) -> None:
 
 `StepContext` uses `__slots__` and cannot be monkeypatched; use the shared `mock_context` fixture from `tests/conftest.py` when you need to stub services.
 
-`tests/test_step_contracts.py` runs over *every* registered step automatically — inputs are a `StepParams`, output is a `StepPayload` or `StepValue`, exports are a `StepExports`, and the contract is describable with a non-empty docstring. Your new step is covered by it the moment it registers, so give it a real docstring: the first paragraph becomes its summary on the reference page.
+`tests/test_step_contracts.py` runs over *every* registered step automatically — inputs are a `StepParams`, output is a `StepPayload` or `StepValue`, and the contract is describable with a non-empty docstring. Your new step is covered by it the moment it registers, so give it a real docstring: the first paragraph becomes its summary on the reference page.
 
 ## Regenerating the reference
 
@@ -423,20 +406,20 @@ testlab docs           # rewrites docs/specification/reference/steps.md
 testlab docs --check   # CI runs this; fails if the page is out of date
 ```
 
-Your step appears automatically with its parameters, defaults, accepted aliases, output fields, and published variables. Nested models are rendered once, in a shared section.
+Your step appears automatically with its parameters, defaults, output fields, and published variables. Nested models are rendered once, in a shared section.
 
-The generator reads `model_fields`, not `model_json_schema()`, because JSON Schema drops `AliasChoices` — and the legacy spellings a step still accepts are exactly what a script author needs to see. Write field descriptions as full sentences; they are the documentation.
+The generator reads `model_fields`, not `model_json_schema()`, because JSON Schema drops alias information — and an aliased spelling (a reserved word like `schema:`, or an export's context-variable name) is exactly what a script author needs to see. Write field descriptions as full sentences; they are the documentation.
 
 ## Checklist
 
 - [ ] Params model declares every `with:` key, with descriptions and constraints
-- [ ] Legacy spellings accepted via `AliasChoices`
+- [ ] Each parameter has exactly one canonical spelling — no aliases
 - [ ] Output model is the right kind — `StepPayload`, `StepValue`, or `NoOutput`
 - [ ] Documents from a counterpart bound with `.of()`, `extra="allow"`
 - [ ] Every field the payload should publish is passed explicitly, not left to a default
 - [ ] Fixed-name context variables returned as `exports`, aliased to `context_vars` constants
 - [ ] Shared contracts reused rather than re-declared
-- [ ] `@step("...")` key matches the block JSON's `type`
+- [ ] `@step("...")` id follows the `<category>/<module>/<function>` naming scheme
 - [ ] Module imported from its subpackage `__init__.py`
 - [ ] Class and model docstrings written — they are the reference page
 - [ ] Tests call `invoke()` and assert on plain data
@@ -446,4 +429,4 @@ The generator reads `model_fields`, not `model_json_schema()`, because JSON Sche
 
 - [Create a Step Executor](../tutorials/create-step-executor.md) — the same material as a worked example
 - [Step Reference](../specification/reference/steps.md) — the generated catalogue of every step
-- [Block Lifecycle](block-lifecycle.md) — how a block in the IDE becomes a step execution
+- [Block Lifecycle](block-lifecycle.md) — how a step travels from YAML through the registry and executor to an SDK call

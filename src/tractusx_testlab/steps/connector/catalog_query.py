@@ -36,7 +36,6 @@ from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
     DATASET_KEY,
-    CatalogDatasetsExports,
     CatalogOutput,
     CatalogPayload,
     CounterPartyParams,
@@ -44,8 +43,7 @@ from tractusx_testlab.steps._contracts import (
     StepParams,
     as_dataset_list,
 )
-from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput
-from tractusx_testlab.syntax.context_vars import CATALOG_ASSET_ID, CATALOG_POLICY
+from tractusx_testlab.steps.base import BaseStep, StepOutput
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -54,16 +52,15 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "DATASET_KEY",
+    "CatalogOfferOutput",
     "CatalogOutput",
     "CatalogPayload",
     "CounterPartyParams",
     "FilterExpression",
-    "QueryCatalogByAssetIdExports",
     "QueryCatalogByAssetIdParams",
     "QueryCatalogByAssetIdStep",
     "QueryCatalogByBpnlParams",
     "QueryCatalogByBpnlStep",
-    "QueryCatalogExports",
     "QueryCatalogParams",
     "QueryCatalogStep",
 ]
@@ -83,22 +80,17 @@ class QueryCatalogParams(CounterPartyParams):
     )
 
 
-#: ``query_catalog`` publishes exactly the offers every catalog step publishes.
-QueryCatalogExports = CatalogDatasetsExports
-
-
 @step("connector/consumer/query_catalog")
 class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogOutput]):
     """Query a provider's catalog via the SDK connector consumer service.
 
     Returns the catalog document and its offers side by side, so a ``returns:``
     block reads ``datasets`` rather than the JSON-LD ``dcat:dataset`` key, and
-    publishes the same offers for downstream steps.
+    downstream steps read the same offers.
     """
 
     params_model = QueryCatalogParams
     output_model = CatalogOutput
-    exports_model = QueryCatalogExports
 
     async def execute(
         self,
@@ -128,7 +120,6 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogOutput]):
             value=CatalogOutput(catalog=catalog, datasets=datasets),
             request=request,
             response=HttpResponse(status_code=200, body=catalog),
-            exports=QueryCatalogExports(datasets=datasets),
         )
 
 
@@ -151,43 +142,41 @@ class QueryCatalogByAssetIdParams(StepParams):
     )
 
 
-class QueryCatalogByAssetIdExports(StepExports):
-    """Context variables published by ``connector/consumer/query_catalog_by_asset_id``.
+class CatalogOfferOutput(CatalogOutput):
+    """Output contract of ``connector/consumer/query_catalog_by_asset_id``.
 
-    Both stay unset when no offer matches ``expected_policies`` — selection is
-    best-effort here and ``negotiate`` is what reports the failure.
+    Extends the catalog document with the offer it selected.  Both selection
+    fields stay unset when no offer matches ``expected_policies`` — selection
+    is best-effort here and ``negotiate`` is what reports the failure.
     """
 
     catalog_asset_id: Optional[Any] = Field(
         default=None,
-        alias=CATALOG_ASSET_ID,
         description="Asset ID of the first offer whose policy is expected.",
     )
     catalog_policy: Optional[Any] = Field(
         default=None,
-        alias=CATALOG_POLICY,
         description="The accepted ODRL policy of that offer.",
     )
 
 
 @step("connector/consumer/query_catalog_by_asset_id")
-class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOutput]):
+class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOfferOutput]):
     """Query the catalog filtered by a specific asset ID.
 
-    Publishes the first offer matching ``expected_policies`` as ``catalog_asset_id`` /
+    Returns the first offer matching ``expected_policies`` as ``catalog_asset_id`` /
     ``catalog_policy`` for the negotiation step that follows.
     """
 
     params_model = QueryCatalogByAssetIdParams
-    output_model = CatalogOutput
-    exports_model = QueryCatalogByAssetIdExports
+    output_model = CatalogOfferOutput
 
     async def execute(
         self,
         params: QueryCatalogByAssetIdParams,
         context: "StepContext",
         definition: StepDefinition,
-    ) -> StepOutput[CatalogOutput]:
+    ) -> StepOutput[CatalogOfferOutput]:
         consumer = context.get_consumer_service()
         result = consumer.get_catalog_by_asset_id(
             counter_party_id=params.counter_party_id,
@@ -196,26 +185,30 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOut
         )
         url = context.get_consumer_endpoint_url("catalogs", "request")
 
+        value = CatalogOfferOutput(catalog=result, datasets=as_dataset_list(result))
+        offer = _select_offer(result, params.expected_policies)
+        if offer is not None:
+            value.catalog_asset_id, value.catalog_policy = offer
+
         return StepOutput(
-            value=CatalogOutput(catalog=result, datasets=as_dataset_list(result)),
+            value=value,
             request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
             response=HttpResponse(status_code=200 if result else 500, body=result),
-            exports=_select_offer(result, params.expected_policies),
         )
 
 
-def _select_offer(catalog: Any, expected_policies: list[dict]) -> QueryCatalogByAssetIdExports:
-    """Pick the first offer matching ``expected_policies``, or export nothing."""
+def _select_offer(catalog: Any, expected_policies: list[dict]) -> Optional[tuple[Any, Any]]:
+    """Pick the first offer matching ``expected_policies``, or nothing."""
     if not catalog:
-        return QueryCatalogByAssetIdExports()
+        return None
     try:
         matches = DspTools.filter_assets_and_policies(catalog=catalog, allowed_policies=expected_policies)
     except (KeyError, TypeError, ValueError, IndexError):
-        return QueryCatalogByAssetIdExports()
+        return None
     if not matches:
-        return QueryCatalogByAssetIdExports()
+        return None
     asset_id, policy = matches[0]
-    return QueryCatalogByAssetIdExports(catalog_asset_id=asset_id, catalog_policy=policy)
+    return asset_id, policy
 
 
 # ---------------------------------------------------------------------------
@@ -239,10 +232,7 @@ class QueryCatalogByBpnlParams(StepParams):
 
 @step("connector/consumer/query_catalog_by_bpnl")
 class QueryCatalogByBpnlStep(BaseStep[QueryCatalogByBpnlParams, CatalogOutput]):
-    """Query the catalog using BPNL-based connector discovery.
-
-    Publishes no context variables.
-    """
+    """Query the catalog using BPNL-based connector discovery."""
 
     params_model = QueryCatalogByBpnlParams
     output_model = CatalogOutput

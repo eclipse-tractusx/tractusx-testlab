@@ -38,7 +38,21 @@ import logging
 import time
 from typing import Any, Optional
 
+# The waiting defaults are declared once in ``steps._contracts`` and re-exported
+# here, so the connector steps keep importing them from the module they poll
+# with and no two steps can drift into different waits.
+from tractusx_testlab.steps._contracts import DEFAULT_MAX_WAIT, DEFAULT_POLL_INTERVAL
+
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "DEFAULT_MAX_WAIT",
+    "DEFAULT_POLL_INTERVAL",
+    "NEGOTIATION_TERMINAL",
+    "TRANSFER_TERMINAL",
+    "poll_until_terminal",
+    "read_entity",
+]
 
 #: Contract-negotiation states no further polling can change.
 NEGOTIATION_TERMINAL = frozenset({"FINALIZED", "TERMINATED"})
@@ -47,12 +61,6 @@ NEGOTIATION_TERMINAL = frozenset({"FINALIZED", "TERMINATED"})
 #: ``STARTED`` is terminal for a PULL transfer — the EDR exists from then on —
 #: and ``COMPLETED`` is what a PUSH transfer settles at.
 TRANSFER_TERMINAL = frozenset({"STARTED", "COMPLETED", "TERMINATED", "SUSPENDED"})
-
-#: How long a step waits for a state machine to settle, in seconds.
-DEFAULT_MAX_WAIT = 30.0
-
-#: How long a step waits between two state reads, in seconds.
-DEFAULT_POLL_INTERVAL = 1.0
 
 
 def read_entity(controller: Any, oid: str, verify: Any = None) -> Optional[dict]:

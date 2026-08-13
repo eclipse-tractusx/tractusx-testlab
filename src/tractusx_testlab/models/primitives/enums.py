@@ -64,42 +64,11 @@ class JobStatus(str, enum.Enum):
     TIMED_OUT = "TIMED_OUT"
 
 
-class AssertionType(str, enum.Enum):
-    """Supported assertion comparison operators."""
-
-    EXACT = "EXACT"
-    SCHEMA = "SCHEMA"
-    CONTAINS = "CONTAINS"
-    REGEX = "REGEX"
-    NOT_CONTAINS = "NOT_CONTAINS"
-    STATUS_CODE = "STATUS_CODE"
-    NOT_NULL = "NOT_NULL"
-    NOT_EMPTY = "NOT_EMPTY"
-    EQUALS = "EQUALS"
-    NOT_EQUALS = "NOT_EQUALS"
-    SCHEMA_VALIDATION = "SCHEMA_VALIDATION"
-    GREATER_THAN = "GREATER_THAN"
-    LESS_THAN = "LESS_THAN"
-    GREATER_OR_EQUAL = "GREATER_OR_EQUAL"
-    LESS_OR_EQUAL = "LESS_OR_EQUAL"
-    BETWEEN = "BETWEEN"
-    ASSERT_FIELD = "ASSERT_FIELD"
-    JSON_PATH_EXTRACT = "json_path_extract"
-
-
 class AssertionSeverity(str, enum.Enum):
     """Whether assertion failure aborts (HARD) or just warns (SOFT)."""
 
     HARD = "HARD"
     SOFT = "SOFT"
-
-
-class FailurePolicy(str, enum.Enum):
-    """Determines behavior when a step fails."""
-
-    ABORT = "ABORT"
-    CONTINUE = "CONTINUE"
-    SKIP_REST = "SKIP_REST"
 
 
 class ValueSource(str, enum.Enum):

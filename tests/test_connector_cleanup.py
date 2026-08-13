@@ -245,3 +245,76 @@ class TestDeleteContractDefinitionStep:
         await DeleteContractDefinitionStep().cleanup(ctx)
 
         provider.contract_definitions.delete.assert_not_called()
+
+
+#: The three delete steps, with the controller each one drives and the input
+#: naming the resource — the same contract three times over.
+_DELETE_STEPS = [
+    (DeleteAssetStep, "assets", "asset_id", "urn:asset:001"),
+    (DeletePolicyStep, "policies", "policy_id", "policy-uuid-001"),
+    (
+        DeleteContractDefinitionStep,
+        "contract_definitions",
+        "contract_definition_id",
+        "contract-uuid-001",
+    ),
+]
+
+
+class TestDeleteStepsPublishStatusCode:
+    """Every delete step publishes the connector's answer as ``status_code``.
+
+    A teardown asserts that the resource was really there (204) rather than
+    already gone (404), so the code has to be a *declared* output — readable
+    through ``returns:`` and published as a context variable — and not only a
+    field of the HTTP record a script cannot name.
+    """
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status", [204, 404])
+    @pytest.mark.parametrize(("step_cls", "controller", "param", "oid"), _DELETE_STEPS)
+    async def test_declares_the_status_the_connector_answered(
+        self,
+        ctx: MagicMock,
+        definition: MagicMock,
+        step_cls: Any,
+        controller: str,
+        param: str,
+        oid: str,
+        status: int,
+    ) -> None:
+        # Arrange
+        provider = MagicMock()
+        getattr(provider, controller).delete.return_value = _make_delete_response(status)
+        ctx.get_provider_service.return_value = provider
+
+        # Act
+        output = await step_cls().invoke(
+            raw_params={param: oid}, context=ctx, definition=definition
+        )
+
+        # Assert — the status is the whole of the output, and it is published
+        assert output.value == {"status_code": status}
+        assert ctx.variables["status_code"] == status
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(("step_cls", "controller", "param", "oid"), _DELETE_STEPS)
+    async def test_reports_204_when_the_controller_answers_with_nothing(
+        self,
+        ctx: MagicMock,
+        definition: MagicMock,
+        step_cls: Any,
+        controller: str,
+        param: str,
+        oid: str,
+    ) -> None:
+        """Some SDK versions return None from a successful delete."""
+        provider = MagicMock()
+        getattr(provider, controller).delete.return_value = None
+        ctx.get_provider_service.return_value = provider
+
+        output = await step_cls().invoke(
+            raw_params={param: oid}, context=ctx, definition=definition
+        )
+
+        assert output.value == {"status_code": 204}

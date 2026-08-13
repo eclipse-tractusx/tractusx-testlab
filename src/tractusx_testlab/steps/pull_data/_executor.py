@@ -37,7 +37,6 @@ from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.steps._contracts import (
     CounterPartyParams,
-    DataplaneExports,
     FilterExpressionParams,
 )
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
@@ -250,13 +249,6 @@ def _edr_entry_of(consumer: Any, transfer_id: Optional[str]) -> dict:
     return entries[-1] if isinstance(entries, list) and entries else {}
 
 
-def _dataplane_exports(value: PullDataOutput) -> DataplaneExports:
-    """Publish the data-plane pair the dataplane step reads."""
-    return DataplaneExports(
-        data_address=value.dataplane_url, edr_token=value.edr_token or None
-    )
-
-
 # -- Steps --------------------------------------------------------------------
 
 
@@ -291,7 +283,6 @@ class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]
 
     params_model = PullDataFilteredParams
     output_model = PullDataOutput
-    exports_model = DataplaneExports
 
     async def execute(
         self,
@@ -302,12 +293,7 @@ class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]
         value, request, response = await _do_dsp_flow(
             context, params, params.allowed_policies()
         )
-        return StepOutput(
-            value=value,
-            request=request,
-            response=response,
-            exports=_dataplane_exports(value),
-        )
+        return StepOutput(value=value, request=request, response=response)
 
 
 class PullDataFilteredByPolicyParams(PullDataParams):
@@ -342,7 +328,6 @@ class ConnectorPullDataFilteredByPolicy(
 
     params_model = PullDataFilteredByPolicyParams
     output_model = PullDataOutput
-    exports_model = DataplaneExports
 
     async def execute(
         self,
@@ -353,9 +338,4 @@ class ConnectorPullDataFilteredByPolicy(
         value, request, response = await _do_dsp_flow(
             context, params, params.allowed_policies()
         )
-        return StepOutput(
-            value=value,
-            request=request,
-            response=response,
-            exports=_dataplane_exports(value),
-        )
+        return StepOutput(value=value, request=request, response=response)

@@ -22,7 +22,12 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
 ## It was reviewed and tested by a human committer.
 
-"""Resource cleanup steps — delete assets, policies, and contract definitions."""
+"""Resource cleanup steps — delete assets, policies, and contract definitions.
+
+Each of the three publishes the status the connector answered its delete with,
+under the shared ``status_code`` output, so a teardown asserts on the outcome
+the same way whichever resource it tore down.
+"""
 
 from __future__ import annotations
 
@@ -33,7 +38,7 @@ from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import NoOutput
+from tractusx_testlab.steps._contracts import DeletionOutput
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams
 
 if TYPE_CHECKING:
@@ -41,7 +46,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-#: Status reported when the connector answers a delete with no body.
+#: Status reported when the connector answers a delete with nothing at all —
+#: no response object to read a code off, which the SDK reports as a plain None.
 _DELETED = 204
 
 
@@ -60,15 +66,15 @@ class DeleteAssetParams(StepParams):
 
 
 @step("connector/provider/delete_asset")
-class DeleteAssetStep(BaseStep[DeleteAssetParams, NoOutput]):
+class DeleteAssetStep(BaseStep[DeleteAssetParams, DeletionOutput]):
     """Delete an asset from the provider connector."""
 
     params_model = DeleteAssetParams
-    output_model = NoOutput
+    output_model = DeletionOutput
 
     async def execute(
         self, params: DeleteAssetParams, context: "StepContext", definition: StepDefinition
-    ) -> StepOutput[NoOutput]:
+    ) -> StepOutput[DeletionOutput]:
         provider = context.get_provider_service()
         asset_id = params.asset_id or context.get_variable("asset_id")
         url = context.get_provider_endpoint_url("assets", asset_id)
@@ -77,7 +83,7 @@ class DeleteAssetStep(BaseStep[DeleteAssetParams, NoOutput]):
         status = result.status_code if result is not None else _DELETED
 
         return StepOutput(
-            value=NoOutput(None),
+            value=DeletionOutput(status_code=status),
             request=HttpRequest(method="DELETE", url=url),
             response=HttpResponse(status_code=status, body=None),
         )
@@ -98,15 +104,15 @@ class DeletePolicyParams(StepParams):
 
 
 @step("connector/provider/delete_policy")
-class DeletePolicyStep(BaseStep[DeletePolicyParams, NoOutput]):
+class DeletePolicyStep(BaseStep[DeletePolicyParams, DeletionOutput]):
     """Delete a policy definition from the provider connector."""
 
     params_model = DeletePolicyParams
-    output_model = NoOutput
+    output_model = DeletionOutput
 
     async def execute(
         self, params: DeletePolicyParams, context: "StepContext", definition: StepDefinition
-    ) -> StepOutput[NoOutput]:
+    ) -> StepOutput[DeletionOutput]:
         provider = context.get_provider_service()
         policy_id = params.policy_id or context.get_variable("policy_id")
         url = context.get_provider_endpoint_url("policies", policy_id)
@@ -115,7 +121,7 @@ class DeletePolicyStep(BaseStep[DeletePolicyParams, NoOutput]):
         status = result.status_code if result is not None else _DELETED
 
         return StepOutput(
-            value=NoOutput(None),
+            value=DeletionOutput(status_code=status),
             request=HttpRequest(method="DELETE", url=url),
             response=HttpResponse(status_code=status, body=None),
         )
@@ -139,7 +145,7 @@ class DeleteContractDefinitionParams(StepParams):
 
 
 @step("connector/provider/delete_contract_definition")
-class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, NoOutput]):
+class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, DeletionOutput]):
     """Delete a contract definition from the provider connector.
 
     Deleting this withdraws the offer from the catalog but leaves the asset and
@@ -147,14 +153,14 @@ class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, NoOu
     """
 
     params_model = DeleteContractDefinitionParams
-    output_model = NoOutput
+    output_model = DeletionOutput
 
     async def execute(
         self,
         params: DeleteContractDefinitionParams,
         context: "StepContext",
         definition: StepDefinition,
-    ) -> StepOutput[NoOutput]:
+    ) -> StepOutput[DeletionOutput]:
         provider = context.get_provider_service()
         contract_id = params.contract_definition_id or context.get_variable(
             "contract_definition_id"
@@ -165,7 +171,7 @@ class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, NoOu
         status = result.status_code if result is not None else _DELETED
 
         return StepOutput(
-            value=NoOutput(None),
+            value=DeletionOutput(status_code=status),
             request=HttpRequest(method="DELETE", url=url),
             response=HttpResponse(status_code=status, body=None),
         )

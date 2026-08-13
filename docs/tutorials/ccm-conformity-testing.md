@@ -37,144 +37,165 @@ The CX-0135 standard defines how Catena-X participants exchange company certific
 
 ## CCM Test Suite Overview
 
-The suite contains five tests executed in sequence. Each test builds on outputs from previous tests.
+The shipped suite (`docs/examples/certificate-management-v2/` in this repository) contains four independent tests:
 
 | Test | Purpose |
 |------|---------|
-| `request_certificate` | Query provider catalog, negotiate contract, POST certificate request |
-| `validate_payload` | Fetch certificate and validate against BusinessPartnerCertificate v3.1.0 schema |
-| `await_feedback_callback` | Expose callback endpoint; wait for provider to POST status feedback |
-| `send_feedback` | Send feedback notification via EDC dataplane; await provider acknowledgment |
-| `expose_testlab_asset` | Register CCMAPI asset in TestLab EDC; verify SUT discovers and pulls data |
+| `catalog_policy_validation` | Discover the CCMAPI offer and validate the CX-0135 catalog policy constraints |
+| `request_certificate` | Query provider catalog, negotiate contract, POST certificate request, validate the payload against the BusinessPartnerCertificate schema |
+| `send_feedback_notification` | Send feedback notification via EDC dataplane; await provider acknowledgment on a mock endpoint |
+| `error_handling` | POST a request with an unknown certificate type and verify the rejection response |
 
 ### Test Flow
 
 ```mermaid
 flowchart TD
-    A[request_certificate] --> B[validate_payload]
-    A --> C[await_feedback_callback]
-    A --> D[send_feedback]
-    B --> D
-    C --> D
-    D --> E[expose_testlab_asset]
+    A[catalog_policy_validation]
+    B[request_certificate]
+    C[send_feedback_notification]
+    D[error_handling]
 
     A:::step
     B:::step
     C:::step
     D:::step
-    E:::step
     classDef step fill:#f8961e,stroke:#333,color:#000
 ```
+
+The tests are independent — none reads another test's outputs. When a suite does need ordering, tests declare `depends_on` and the player runs them in topological order.
 
 ## Test Suite Structure
 
 ### Index file and test references
 
-The suite uses an `index.yaml` file that declares metadata, variables, and references individual test files:
+The suite uses an `index.yaml` file that declares metadata, environment variables, and references individual test files. The shipped suite lives at `docs/examples/certificate-management-v2/raw/` in this repository:
 
 ```yaml
 kind: tck
-name: certificate-management
-version: "1.0"
+syntax: v1-alpha
+id: certificate-management-tck-v0.0.1
 
-standards:
-  - id: CX-0135
-    version: "2.4.0"
+metadata:
+  name: "Certificate Management TCK"
+  version: "v0.0.1"
+  standards:
+    - id: CX-0135
+      version: v3.1.0
 
-variables:
-  provider_address:
-    type: str
-    description: Provider EDC DSP endpoint
-    runtime: true
-  # ... more variables
+env:
+  variables:
+    - id: sut_counter_party_address
+      uses: variable/type/string
+      with:
+        source: input   # supplied at execution time
+        scope: sut      # the SUT operator provides it
+      returns:
+        value:
+          type: string
+  # ... schemas and testdata
 
 tests:
-  - test: tests/request_certificate.yaml
-    description: Query provider catalog for CCMAPI offer
-  - test: tests/validate_payload.yaml
-    description: Validate certificate payload against schema
+  - id: request_certificate.yaml
+    name: Request a certificate via CCMAPI
+  - id: send_feedback_notification.yaml
+    name: Send a feedback notification and await acknowledgment
 ```
 
-Each `test:` entry points to a YAML file with `kind: test`. Tests declare dependencies using `depends_on` to share outputs.
+Each `tests:` entry points to a YAML file with `kind: test`. Tests that read outputs published by earlier tests declare `depends_on`.
 
 ### Step types used in CCM
 
 | Step Type | When to Use |
 |-----------|-------------|
-| `query_catalog` | Discover assets in an EDC connector's catalog |
-| `extract_dataset` | Extract asset/offer IDs from a catalog response |
-| `negotiate` | Negotiate an EDC contract for an asset |
-| `initiate_transfer` | Get dataplane access credentials (EDR token) |
-| `http_call` | Make HTTP requests to dataplane endpoints |
-| `json_path_extract` | Extract values from JSON using a path expression |
-| `mock_endpoint` | Expose a temporary HTTP endpoint for callbacks |
-| `wait_for_call` | Block until a mock endpoint receives a request |
-| `create_asset` | Register an asset in an EDC connector |
-| `create_policy` | Create an access/contract policy |
-| `create_contract_definition` | Link an asset to policies via a contract definition |
-| `send_notification` | Send a CX notification through the EDC dataplane |
-| `generate_uuid` | Generate a random UUID |
+| `connector/consumer/query_catalog` | Discover assets in an EDC connector's catalog |
+| `connector/consumer/extract_dataset` | Extract asset/offer IDs from a catalog response |
+| `connector/consumer/negotiate` | Negotiate an EDC contract for an asset |
+| `connector/consumer/initiate_transfer` | Get dataplane access credentials (EDR token) |
+| `connector/consumer/pull_data_filtered` | Filtered catalog query, policy check, negotiation, and EDR retrieval in one step |
+| `connector/dataplane/http_request` | Make HTTP requests to dataplane endpoints |
+| `util/json_path_extract` | Extract values from JSON using a path expression |
+| `mock/api` | Expose a temporary HTTP endpoint for callbacks |
+| `mock/wait/http_request` | Block until a mock endpoint receives a request |
+| `connector/provider/create_asset` | Register an asset in an EDC connector |
+| `connector/provider/create_policy` | Create an access/contract policy |
+| `connector/provider/create_contract_definition` | Link an asset to policies via a contract definition |
+| `notification/consumer/send` | Send a CX notification through the EDC dataplane |
+| `util/generate_uuid` | Generate a random UUID |
 
 ### Variable flow between steps
 
-Variables flow through two mechanisms:
+Variables flow through three mechanisms:
 
-1. **`store_in_memory`** — saves step outputs into named variables:
-
-    ```yaml
-    store_in_memory:
-      contract_agreement_id: "agreement_id"
-    ```
-
-2. **`@variable_name`** — references a stored variable in subsequent steps:
+1. **Declared `returns:` outputs** — every step declares its outputs, and the engine publishes them into the run context automatically. Later steps reference them with `${{ }}` interpolation:
 
     ```yaml
-    params:
-      agreement_id: "@contract_agreement_id"
+    - id: pull_ccmapi_endpoint
+      uses: connector/consumer/pull_data_filtered
+      # ...
+      returns:
+        edr_token:
+          type: string
+        dataplane_url:
+          type: string
+
+    - id: request_certificate
+      uses: connector/dataplane/http_request
+      with:
+        dataplane_url: "${{ execution.pull_ccmapi_endpoint.dataplane_url }}"
+        edr_token: "${{ execution.pull_ccmapi_endpoint.edr_token }}"
     ```
 
-3. **`depends_on`** — shares variables across test files:
+2. **`store_in_variable`** — util steps (`util/json_path_extract`, `util/base64`, `util/parse_kv`) can capture their result into a named context variable for later reference.
 
-    ```yaml
-    depends_on:
-      - file: tests/request_certificate.yaml
-        outputs:
-          - request_id
-    ```
+3. **`depends_on`** — orders tests so that outputs published by a completed test are available in the shared run context when a dependent test runs.
 
 ### Assertions
 
-Each step can include `validate` blocks with four assertion types:
+Each step can include a `validate:` block. Validations are themselves step invocations (`validate/assert`, `validate/field`, `validate/schema`) that read the step's declared `returns:` outputs:
 
 ```yaml
 validate:
-  - output: status_code
-    equals: 200              # exact match
-  - output: request_id
-    not_null: true           # value exists and is not null
-  - output: response_body
-    not_empty: true          # value is not empty string/list
-  - output: value
-    equals: "@certificate_type"  # match against a variable
+  - uses: validate/field
+    with: { input: status_code, operator: equals, value: 200 }
+  - uses: validate/assert
+    with: { input: edr_token, operator: not_null }
+  - uses: validate/field
+    with:
+      input: response_body
+      path: "header.messageId"
+      operator: matches_regex
+      value: "^urn:uuid:.*$"
+  - uses: validate/schema
+    with:
+      input: response_body
+      schema: "${{ env.schemas.certificate_schema }}"
 ```
 
-### Service configuration
+### Infrastructure configuration
 
-Tests declare EDC connector services with connection details:
+Tests never name their connector services — services are seeded at runtime from the manifest's `infrastructure:` declaration, and counter-party details arrive as `source: input` variables:
 
 ```yaml
-services:
-  - name: provider_edc
-    type: edc_connector_saturn
-    config:
-      management_url: "@provider_address"
+infrastructure:
+  engine:
+    connector:
+      required: true
+      standard:
+        id: CX-0018
+        version: v4.2.0
+  sut:
+    connector:
+      required: true
+      standard:
+        id: CX-0018
+        version: v4.2.0
 ```
 
 ### Adapting for other standards
 
 To create a test suite for a different Catena-X standard:
 
-1. Copy `ide/public/examples/certificate-management-v1.0/` to a new directory
+1. Copy `docs/examples/certificate-management-v2/raw/` (in this repository) to a new directory
 2. Update `index.yaml`: change `name`, `standards`, and `variables`
 3. Replace test files with steps matching your standard's API
 4. Keep the same patterns: catalog query → negotiate → transfer → call → assert
@@ -192,16 +213,16 @@ To create a test suite for a different Catena-X standard:
 
 The `TckResult` object contains the full execution tree:
 
-```
+```text
 TckResult
-├── status: PASSED | FAILED
+├── status: COMPLETED | FAILED
 ├── scripts: list[ScriptResult]
 │   ├── script_name: "request-certificate"
-│   ├── status: PASSED | FAILED
+│   ├── status: COMPLETED | FAILED
 │   ├── assertion_summary: {total, passed, failed_hard, failed_soft}
-│   └── steps: list[StepResult]
+│   └── execution: list[StepResult]
 │       ├── step_name: "POST certificate request"
-│       ├── status: PASSED | FAILED
+│       ├── status: PASSED | FAILED | SKIPPED
 │       ├── error: "Expected 200, got 403"
 │       └── assertions: list[AssertionResult]
 │           ├── passed: bool
@@ -213,8 +234,8 @@ TckResult
 
 When a test fails, check these fields on each `StepResult`:
 
-- **`step_name`** — which step failed (matches the `description` in YAML)
-- **`step_type`** — what kind of step it was (`http_call`, `negotiate`, etc.)
+- **`step_name`** — which step failed (matches the `name` in YAML)
+- **`step_type`** — what kind of step it was (`connector/dataplane/http_request`, `connector/consumer/negotiate`, etc.)
 - **`error`** — human-readable error message
 - **`assertions`** — list of individual assertion results with `expected` vs `actual`
 
@@ -224,19 +245,17 @@ When a test fails, check these fields on each `StepResult`:
 
 ```python
 import asyncio
+
+import tractusx_testlab.steps  # registers all step executors
 from tractusx_testlab.player.execution.player import TestlabPlayer
 
 async def run_ccm_tests():
     player = TestlabPlayer()
     result = await player.run(
-        "path/to/certificate-management-v1.0/index.yaml",
+        "docs/examples/certificate-management-v2/raw/index.yaml",
         runtime_vars={
-            "provider_address": "https://provider-edc.example.com/api/v1/dsp",
-            "provider_bpn": "BPNL000000000001",
-            "consumer_bpn": "BPNL000000000002",
-            "location_bpns": "BPNS000000000001",
-            "testlab_management_url": "https://testlab-edc.example.com/management",
-            "testlab_dsp_url": "https://testlab-edc.example.com/api/v1/dsp",
+            "sut_counter_party_id": "BPNL000000000001",
+            "sut_counter_party_address": "https://provider-edc.example.com/api/v1/dsp",
         },
     )
 
@@ -251,12 +270,12 @@ async def run_ccm_tests():
         print(f"    Assertions: {summary.passed}/{summary.total} passed")
 
         # Show failures
-        for step in script.steps:
+        for step in script.execution:
             if step.error:
                 print(f"    FAILED: {step.step_name} — {step.error}")
 
     # CI/CD exit code
-    return 0 if result.status.value == "PASSED" else 1
+    return 0 if result.status.value == "COMPLETED" else 1
 
 exit_code = asyncio.run(run_ccm_tests())
 raise SystemExit(exit_code)
@@ -271,6 +290,6 @@ from pathlib import Path
 from tractusx_testlab.compiler.compiler import Compiler
 
 compiler = Compiler()
-validation = compiler.validate(Path("path/to/index.yaml"))
-print(f"Valid: {validation}")
+result = compiler.validate(Path("docs/examples/certificate-management-v2/raw/index.yaml"))
+print(f"Valid: {result.valid}")
 ```

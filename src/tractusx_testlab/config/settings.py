@@ -42,5 +42,8 @@ class TestlabConfig(BaseModel):
     server_port: int = 8100
     max_upload_bytes: int = 52_428_800  # 50 MB
     default_timeout_s: float = 600.0
+    #: Root URL of the submodel server ``digital-twin/submodel/upload`` posts to.
+    #: Seeded with the engine, so a script never names the backend it writes to.
+    submodel_backend_url: str = ""
     vault: Optional[VaultConfig] = None
     library_path: Optional[Path] = None

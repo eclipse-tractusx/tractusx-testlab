@@ -4,7 +4,7 @@
 
 Every step declares its interface as Pydantic models, and this page is generated from them, so it cannot drift from the implementation.
 
-49 steps.
+56 steps.
 
 ## Steps
 
@@ -12,7 +12,7 @@ Every step declares its interface as Pydantic models, and this page is generated
 
 Run the full DSP flow (catalog → negotiation → transfer) via the SDK.
 
-Publishes the resulting data-plane address so `connector/dataplane/http_request` can fetch the data without any further wiring.
+Returns the resulting data-plane address so `connector/dataplane/http_request` can fetch the data without any further wiring.
 
 **Inputs**
 
@@ -25,27 +25,18 @@ Publishes the resulting data-plane address so `connector/dataplane/http_request`
 
 **Output** — the value assertions and `returns:` read
 
-_What both DSP flow steps hand back: where the data is, and the token for it._
+_What every DSP flow step hands back: where the data is, and the token for it._
 
 | Field | Type | Description |
 |---|---|---|
-| `endpoint` | string | Data-plane URL the negotiated data is fetched from. |
-| `token` | string | Authorization token for that data-plane URL. |
-
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
+| `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
 | `edr_token` | string | Authorization token for that data-plane URL. |
-
-A variable is left unset when its value could not be derived.
 
 ### `connector/consumer/do_dsp_with_bpnl`
 
 Run the full DSP flow using BPNL-based connector discovery via the SDK.
 
-Publishes the same data-plane address as `do_dsp`.
+Returns the same data-plane address as `do_dsp`.
 
 **Inputs**
 
@@ -58,34 +49,23 @@ Publishes the same data-plane address as `do_dsp`.
 
 **Output** — the value assertions and `returns:` read
 
-_What both DSP flow steps hand back: where the data is, and the token for it._
+_What every DSP flow step hands back: where the data is, and the token for it._
 
 | Field | Type | Description |
 |---|---|---|
-| `endpoint` | string | Data-plane URL the negotiated data is fetched from. |
-| `token` | string | Authorization token for that data-plane URL. |
-
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
+| `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
 | `edr_token` | string | Authorization token for that data-plane URL. |
-
-A variable is left unset when its value could not be derived.
 
 ### `connector/consumer/extract_dataset`
 
-Extract matching datasets from a catalog response by `dct:type`.
-
-A catalog offering exactly one dataset sends a bare object rather than a list; both forms are accepted here so a script does not have to care which one the provider chose.
+Extract the first matching dataset from catalog offers by `dct:type`.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `source` | string | yes | — | — | Context variable holding the catalog response. |
-| `dct_type` | string | yes | — | — | The 'dct:type' @id datasets are filtered by. |
+| `datasets` | list of object | yes | — | — | Dataset offers returned by a catalog query. |
+| `dct_type` | string | yes | — | — | The 'dct:type' @id used to select the dataset. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -93,19 +73,15 @@ _Output contract of `connector/consumer/extract_dataset`._
 
 | Field | Type | Description |
 |---|---|---|
-| `datasets` | list of object | Every dataset whose 'dct:type' matched. |
+| `dataset` | object | The first dataset whose 'dct:type' matched. |
 | `offer_id` | string | Policy/offer ID of the first match. |
 | `asset_id` | string | Asset ID of the first match. |
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ### `connector/consumer/get_edr`
 
 Retrieve the EDR data address for a completed transfer.
 
-Publishes the same data-plane pair as `initiate_transfer`, so it can stand in for that step when the transfer was started elsewhere — a PULL `initiate_transfer` resolves a `negotiation_id` down to a `transfer_id` and then does exactly what this step does.
+Returns the same data-plane pair as `initiate_transfer`, so it can stand in for that step when the transfer was started elsewhere — a PULL `initiate_transfer` resolves a `negotiation_id` down to a `transfer_id` and then does exactly what this step does.
 
 **Inputs**
 
@@ -116,24 +92,13 @@ Publishes the same data-plane pair as `initiate_transfer`, so it can stand in fo
 
 **Output** — the value assertions and `returns:` read
 
-_An EDR data address — where negotiated data is fetched and with what token._
+_Output contract of `connector/consumer/get_edr`._
 
 | Field | Type | Description |
 |---|---|---|
-| `endpoint` | string | Data-plane URL to fetch the data from. |
-| `authorization` | string | Authorization token for that URL. |
-| `authCode` | string | Legacy spelling of 'authorization' used by older connectors. |
-
-Additional keys sent by the counterpart are passed through unchanged.
-
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
+| `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
 | `edr_token` | string | Authorization token for that data-plane URL. |
-
-A variable is left unset when its value could not be derived.
+| `data_address` | [DataAddressPayload](#dataaddresspayload) | The full EDR data address document, unchanged. |
 
 ### `connector/consumer/initiate_transfer`
 
@@ -150,7 +115,7 @@ A PULL transfer turns a finished negotiation into something `connector/dataplane
 | `agreement_id` | string | no | `None` | — | PUSH only — contract agreement the transfer runs under; falls back to the 'agreement_id' context variable. |
 | `data_destination` | object | no | `None` | — | PUSH only — the EDC data address the provider pushes to. |
 | `counter_party_address` | string | no | `''` | — | PUSH only — DSP endpoint of the provider; falls back to 'provider_address'. |
-| `max_wait` | number | no | `30.0` | — | PUSH only — seconds to wait for the transfer to reach a final state. |
+| `max_wait` | number | no | `60.0` | — | PUSH only — seconds to wait for the transfer to reach a final state. |
 | `poll_interval` | number | no | `1.0` | — | PUSH only — seconds between two transfer state reads. |
 | `verify` | any | no | `None` | — | TLS verification passed through to the SDK; None keeps its default. |
 
@@ -163,26 +128,15 @@ _Output contract of `connector/consumer/initiate_transfer`._
 | `transfer_id` | string | ID of the transfer process. |
 | `state` | string | State the transfer settled at, e.g. 'STARTED' or 'COMPLETED'. |
 | `edr_entry` | object | PULL only — the EDR entry the negotiation produced. |
-| `data_address` | string | PULL only — data-plane URL the data is fetched from. |
+| `dataplane_url` | string | PULL only — data-plane URL the data is fetched from. |
 | `edr_token` | string | PULL only — authorization token for that data-plane URL. |
-| `data_address_raw` | [DataAddressPayload](#dataaddresspayload) | PULL only — the full data address document, for assertions on its other keys. |
-
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. |
-| `transfer_id` | string | ID of the transfer process. |
-| `edr_entry` | object | The EDR entry the negotiation produced. |
-
-A variable is left unset when its value could not be derived.
+| `data_address` | [DataAddressPayload](#dataaddresspayload) | PULL only — the full data address document, for assertions on its other keys. |
 
 ### `connector/consumer/negotiate`
 
 Negotiate a contract with the provider and wait for the outcome.
 
-The SDK starts the negotiation and answers with its ID straight away; this step then polls the negotiation until it finalises or terminates, so what it publishes is the settled outcome rather than "accepted for processing".
+The SDK starts the negotiation and answers with its ID straight away; this step then polls the negotiation until it finalises or terminates, so what it returns is the settled outcome rather than "accepted for processing".
 
 **Inputs**
 
@@ -192,7 +146,7 @@ The SDK starts the negotiation and answers with its ID straight away; this step 
 | `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
 | `asset_id` | any | no | `None` | — | Asset ID to negotiate for; falls back to the 'catalog_asset_id' context variable. |
 | `policy` | any | no | `None` | — | ODRL policy to negotiate under; falls back to the 'catalog_policy' context variable. |
-| `max_wait` | number | no | `30.0` | — | Seconds to wait for the negotiation to reach a final state. |
+| `max_wait` | number | no | `60.0` | — | Seconds to wait for the negotiation to reach a final state. |
 | `poll_interval` | number | no | `1.0` | — | Seconds between two negotiation state reads. |
 
 **Output** — the value assertions and `returns:` read
@@ -204,15 +158,6 @@ _Output contract of `connector/consumer/negotiate`._
 | `negotiation_id` | string | ID of the started negotiation. |
 | `agreement_id` | string | ID of the contract agreement, once the negotiation finalised. |
 | `state` | string | State the negotiation settled at, e.g. 'FINALIZED' or 'TERMINATED'. |
-
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `negotiation_id` | string | ID the transfer step polls for the resulting EDR. |
-| `agreement_id` | string | ID a PUSH transfer is started from. |
-
-A variable is left unset when its value could not be derived.
 
 ### `connector/consumer/pull_data_filtered`
 
@@ -227,8 +172,8 @@ The `policy:` param accepts the testlab simplified format (`permissions`/`constr
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
 | `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
 | `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
-| `max_wait` | number | no | `60` | — | Seconds to wait for the transfer to complete. |
-| `poll_interval` | number | no | `2` | — | Seconds between transfer-state polls. |
+| `max_wait` | number | no | `60.0` | — | Seconds to wait for the transfer to complete. |
+| `poll_interval` | number | no | `1.0` | — | Seconds between transfer-state polls. |
 | `expected_policies` | any | no | `None` | — | Policies the offer must satisfy, in ODRL or the testlab simplified form, as one document or a list; omitted means the SDK picks the first offer. |
 
 **Output** — the value assertions and `returns:` read
@@ -247,15 +192,6 @@ _Everything the DSP flow produced, from the catalog through to the token._
 | `agreement_id` | string | ID of the contract agreement the negotiation produced. |
 | `transfer_id` | string | ID of the transfer process the flow ran. |
 
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. |
-
-A variable is left unset when its value could not be derived.
-
 ### `connector/consumer/pull_data_filtered_by_policy`
 
 Run the full DSP flow, accepting an offer that matches any of several policies.
@@ -269,8 +205,8 @@ Unlike `pull_data_filtered`, where `expected_policies` is optional and "no polic
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
 | `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
 | `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
-| `max_wait` | number | no | `60` | — | Seconds to wait for the transfer to complete. |
-| `poll_interval` | number | no | `2` | — | Seconds between transfer-state polls. |
+| `max_wait` | number | no | `60.0` | — | Seconds to wait for the transfer to complete. |
+| `poll_interval` | number | no | `1.0` | — | Seconds between transfer-state polls. |
 | `expected_policies` | list of object | yes | — | — | ODRL policies, any one of which the negotiated offer must satisfy. |
 
 **Output** — the value assertions and `returns:` read
@@ -289,20 +225,11 @@ _Everything the DSP flow produced, from the catalog through to the token._
 | `agreement_id` | string | ID of the contract agreement the negotiation produced. |
 | `transfer_id` | string | ID of the transfer process the flow ran. |
 
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `data_address` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. |
-
-A variable is left unset when its value could not be derived.
-
 ### `connector/consumer/query_catalog`
 
 Query a provider's catalog via the SDK connector consumer service.
 
-Returns the catalog document and its offers side by side, so a `returns:` block reads `datasets` rather than the JSON-LD `dcat:dataset` key, and publishes the same offers for downstream steps.
+Returns the catalog document and its offers side by side, so a `returns:` block reads `datasets` rather than the JSON-LD `dcat:dataset` key, and downstream steps read the same offers.
 
 **Inputs**
 
@@ -321,19 +248,11 @@ _What every catalog query returns: the document, and its offers as a list._
 | `catalog` | [CatalogPayload](#catalogpayload) | The provider's catalog document, unchanged. |
 | `datasets` | list of object | Dataset offers from the catalog, always as a list. |
 
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `datasets` | list of object | Dataset offers from the catalog, always as a list. |
-
-A variable is left unset when its value could not be derived.
-
 ### `connector/consumer/query_catalog_by_asset_id`
 
 Query the catalog filtered by a specific asset ID.
 
-Publishes the first offer matching `expected_policies` as `catalog_asset_id` / `catalog_policy` for the negotiation step that follows.
+Returns the first offer matching `expected_policies` as `catalog_asset_id` / `catalog_policy` for the negotiation step that follows.
 
 **Inputs**
 
@@ -346,27 +265,18 @@ Publishes the first offer matching `expected_policies` as `catalog_asset_id` / `
 
 **Output** — the value assertions and `returns:` read
 
-_What every catalog query returns: the document, and its offers as a list._
+_Output contract of `connector/consumer/query_catalog_by_asset_id`._
 
 | Field | Type | Description |
 |---|---|---|
 | `catalog` | [CatalogPayload](#catalogpayload) | The provider's catalog document, unchanged. |
 | `datasets` | list of object | Dataset offers from the catalog, always as a list. |
-
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
 | `catalog_asset_id` | any | Asset ID of the first offer whose policy is expected. |
 | `catalog_policy` | any | The accepted ODRL policy of that offer. |
-
-A variable is left unset when its value could not be derived.
 
 ### `connector/consumer/query_catalog_by_bpnl`
 
 Query the catalog using BPNL-based connector discovery.
-
-Publishes no context variables.
 
 **Inputs**
 
@@ -384,10 +294,6 @@ _What every catalog query returns: the document, and its offers as a list._
 |---|---|---|
 | `catalog` | [CatalogPayload](#catalogpayload) | The provider's catalog document, unchanged. |
 | `datasets` | list of object | Dataset offers from the catalog, always as a list. |
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ### `connector/consumer/query_catalog_with_filters`
 
@@ -412,19 +318,11 @@ _What every catalog query returns: the document, and its offers as a list._
 | `catalog` | [CatalogPayload](#catalogpayload) | The provider's catalog document, unchanged. |
 | `datasets` | list of object | Dataset offers from the catalog, always as a list. |
 
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `datasets` | list of object | Dataset offers from the catalog, always as a list. |
-
-A variable is left unset when its value could not be derived.
-
 ### `connector/dataplane/http_request`
 
 Fetch data from a data-plane endpoint using an EDR token.
 
-This is the far end of the DSP flow: `do_dsp` or `initiate_transfer` publishes where the data is and how to authorize for it, and this step reads exactly those two variables.
+This is the far end of the DSP flow: `do_dsp` or `initiate_transfer` returns where the data is and how to authorize for it, and this step reads exactly those two variables.
 
 **Inputs**
 
@@ -434,7 +332,7 @@ This is the far end of the DSP flow: `do_dsp` or `initiate_transfer` publishes w
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
 | `method` | string | no | `'GET'` | — | HTTP method. |
 | `body` | any | no | `None` | — | Request body; dicts are sent as JSON. |
-| `dataplane_url` | any | no | `None` | — | Data-plane URL, or a data address object to read it from; falls back to the 'data_address' context variable. |
+| `dataplane_url` | any | no | `None` | — | Data-plane URL, or a data address object to read it from; falls back to the 'dataplane_url' context variable. |
 | `path` | string | no | `''` | — | Path appended to the data-plane URL. |
 | `edr_token` | string | no | `None` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
 
@@ -444,9 +342,29 @@ _A response body: parsed JSON when the server sent JSON, otherwise the raw text.
 
 Type: any
 
-**Publishes** — context variables available to later steps
+### `connector/discover/digital-twin-registry/auth`
 
-_Nothing._
+Get authorization to a counterparty's Digital Twin Registry.
+
+Finds the registry asset in the counterparty's catalog by its standard `dct:type`, negotiates it, and publishes the resulting `dataplane_url` and `edr_token` — exactly what the `digital-twin-registry/consumer/dataplane/*` steps read.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
+| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `dct_type` | string | no | `'https://w3id.org/catenax/taxonomy#DigitalTwinRegistry'` | — | `dct:type` the registry asset is offered under in the catalog. |
+| `expected_policies` | list of object | no | `None` | — | ODRL policies the negotiation is allowed to accept. |
+
+**Output** — the value assertions and `returns:` read
+
+_What every DSP flow step hands back: where the data is, and the token for it._
+
+| Field | Type | Description |
+|---|---|---|
+| `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
+| `edr_token` | string | Authorization token for that data-plane URL. |
 
 ### `connector/provider/create_asset`
 
@@ -468,10 +386,6 @@ _Output contract of `connector/provider/create_asset`._
 | Field | Type | Description |
 |---|---|---|
 | `asset_id` | string | ID of the asset that now exists at the provider. |
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ### `connector/provider/create_contract_definition`
 
@@ -497,10 +411,6 @@ _Output contract of `connector/provider/create_contract_definition`._
 |---|---|---|
 | `contract_definition_id` | string | ID of the contract definition that now exists at the provider. |
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `connector/provider/create_policy`
 
 Register an ODRL policy definition at the provider connector.
@@ -522,10 +432,6 @@ _Output contract of `connector/provider/create_policy`._
 |---|---|---|
 | `policy_id` | string | ID of the policy that now exists at the provider. |
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `connector/provider/delete_asset`
 
 Delete an asset from the provider connector.
@@ -538,13 +444,11 @@ Delete an asset from the provider connector.
 
 **Output** — the value assertions and `returns:` read
 
-_This step produces no value — it acts, and there is nothing to read back._
+_What a delete step publishes: the status the server answered it with._
 
-Type: NoneType
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
+| Field | Type | Description |
+|---|---|---|
+| `status_code` | integer | HTTP status the delete was answered with. |
 
 ### `connector/provider/delete_contract_definition`
 
@@ -560,13 +464,11 @@ Deleting this withdraws the offer from the catalog but leaves the asset and poli
 
 **Output** — the value assertions and `returns:` read
 
-_This step produces no value — it acts, and there is nothing to read back._
+_What a delete step publishes: the status the server answered it with._
 
-Type: NoneType
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
+| Field | Type | Description |
+|---|---|---|
+| `status_code` | integer | HTTP status the delete was answered with. |
 
 ### `connector/provider/delete_policy`
 
@@ -580,13 +482,11 @@ Delete a policy definition from the provider connector.
 
 **Output** — the value assertions and `returns:` read
 
-_This step produces no value — it acts, and there is nothing to read back._
+_What a delete step publishes: the status the server answered it with._
 
-Type: NoneType
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
+| Field | Type | Description |
+|---|---|---|
+| `status_code` | integer | HTTP status the delete was answered with. |
 
 ### `connector/provider/wizard/create_asset`
 
@@ -613,10 +513,6 @@ _Output contract of `connector/provider/create_asset`._
 |---|---|---|
 | `asset_id` | string | ID of the asset that now exists at the provider. |
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `connector/provider/wizard/create_policy`
 
 Register an ODRL policy written as rule lists rather than as a document.
@@ -640,9 +536,59 @@ _Output contract of `connector/provider/create_policy`._
 |---|---|---|
 | `policy_id` | string | ID of the policy that now exists at the provider. |
 
-**Publishes** — context variables available to later steps
+### `digital-twin-registry/consumer/dataplane/get_shell_descriptor`
 
-_Nothing._
+Retrieve one of a counterparty's shell descriptors by ID.
+
+The consumer-side reading of `digital-twin/provider/get_shell_descriptor`: the same registry document, reached through the data-plane URL and EDR token a transfer published instead of the registry the run was seeded with. A registry that answers anything but 200 yields an empty descriptor; the status code stays on the response for a script to assert on.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
+| `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
+| `aas_identifier` | string | yes | — | — | Identifier of the AAS shell descriptor. |
+
+**Output** — the value assertions and `returns:` read
+
+_An AAS descriptor as the registry returned it._
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Identifier of the descriptor. |
+| `idShort` | string | Short, human-readable name. |
+
+Additional keys sent by the counterpart are passed through unchanged.
+
+### `digital-twin-registry/consumer/dataplane/get_shell_descriptors`
+
+List a counterparty's shell descriptors over a negotiated data plane.
+
+The consumer-side reading of the registry's `GET /shell-descriptors` — the same collection a provider populates with `digital-twin/provider/create_shell_descriptor`, reached through the data-plane URL and EDR token a transfer published. The registry answers with whatever the counterparty's access rules let this consumer see; the answer is paged, so the cursor is returned alongside the descriptors.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
+| `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
+| `limit` | integer | no | `None` | — | Maximum number of entries the registry may return in one page; its own default applies when omitted. |
+| `cursor` | string | no | `None` | — | Cursor a previous page returned, to read the page after it. |
+
+**Output** — the value assertions and `returns:` read
+
+_One page of a shell lookup._
+
+| Field | Type | Description |
+|---|---|---|
+| `shell_ids` | list of string | Identifiers of the shells that matched. |
+| `shell_descriptors` | list of object | The descriptor document of each matching shell. |
+| `cursor` | string | Cursor of the next page, or null when this was the last one. |
 
 ### `digital-twin-registry/consumer/dataplane/lookup_shell`
 
@@ -656,22 +602,46 @@ This is the consumer's half of the DTR contract, and it is a different thing fro
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
-| `specific_asset_ids` | list of [SpecificAssetId](#specificassetid) | yes | — | — | Criteria the shell must match; all of them have to. |
-| `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'data_address' context variable. |
+| `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
 | `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
+| `specific_asset_ids` | list of [SpecificAssetId](#specificassetid) | yes | — | — | Criteria the shell must match; all of them have to. |
 
 **Output** — the value assertions and `returns:` read
 
-_Output contract of `digital-twin-registry/consumer/dataplane/lookup_shell`._
+_Shells a consumer-side registry read returned._
 
 | Field | Type | Description |
 |---|---|---|
 | `shell_ids` | list of string | Identifiers of the shells that matched. |
 | `shell_descriptors` | list of object | The descriptor document of each matching shell. |
 
-**Publishes** — context variables available to later steps
+### `digital-twin-registry/consumer/dataplane/lookup_shells_by_asset_link`
 
-_Nothing._
+Search a counterparty's registry through `POST /lookup/shellsByAssetLink`.
+
+The same search `digital-twin-registry/consumer/dataplane/lookup_shell` performs, addressed to the endpoint that carries the criteria in the request body instead of in base64url-encoded `assetIds` query values. That is what it is for: a query string has a length limit and a body does not, so a lookup with many criteria — or with long `externalSubjectId` scopes on them — is the case `GET /lookup/shells` cannot serve. The answer is paged, so the cursor is returned alongside the identifiers and their descriptors.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
+| `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
+| `limit` | integer | no | `None` | — | Maximum number of entries the registry may return in one page; its own default applies when omitted. |
+| `cursor` | string | no | `None` | — | Cursor a previous page returned, to read the page after it. |
+| `specific_asset_ids` | list of [SpecificAssetId](#specificassetid) | yes | — | — | Criteria the shell must match; all of them have to. |
+
+**Output** — the value assertions and `returns:` read
+
+_One page of a shell lookup._
+
+| Field | Type | Description |
+|---|---|---|
+| `shell_ids` | list of string | Identifiers of the shells that matched. |
+| `shell_descriptors` | list of object | The descriptor document of each matching shell. |
+| `cursor` | string | Cursor of the next page, or null when this was the last one. |
 
 ### `digital-twin/provider/create_shell_descriptor`
 
@@ -694,10 +664,6 @@ _An AAS descriptor as the registry returned it._
 | `idShort` | string | Short, human-readable name. |
 
 Additional keys sent by the counterpart are passed through unchanged.
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ### `digital-twin/provider/create_submodel_descriptor`
 
@@ -722,13 +688,11 @@ _An AAS descriptor as the registry returned it._
 
 Additional keys sent by the counterpart are passed through unchanged.
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `digital-twin/provider/delete_shell_descriptor`
 
 Delete an AAS shell descriptor.
+
+The status the registry answered with is published as `status_code`, so a teardown can assert that the twin was really there (204) rather than already gone (404).
 
 **Inputs**
 
@@ -739,13 +703,11 @@ Delete an AAS shell descriptor.
 
 **Output** — the value assertions and `returns:` read
 
-_This step produces no value — it acts, and there is nothing to read back._
+_What a delete step publishes: the status the server answered it with._
 
-Type: NoneType
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
+| Field | Type | Description |
+|---|---|---|
+| `status_code` | integer | HTTP status the delete was answered with. |
 
 ### `digital-twin/provider/get_shell_descriptor`
 
@@ -768,10 +730,6 @@ _An AAS descriptor as the registry returned it._
 | `idShort` | string | Short, human-readable name. |
 
 Additional keys sent by the counterpart are passed through unchanged.
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ### `digital-twin/provider/wizard/create_shell_descriptor`
 
@@ -801,10 +759,6 @@ _An AAS descriptor as the registry returned it._
 
 Additional keys sent by the counterpart are passed through unchanged.
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `digital-twin/provider/wizard/create_submodel_descriptor`
 
 Attach a submodel descriptor described field by field.
@@ -818,9 +772,12 @@ The guided sibling of `digital-twin/provider/create_submodel_descriptor`, regist
 | `bpn` | string | no | `None` | — | BPN the registry request is made on behalf of. |
 | `aas_identifier` | string | yes | — | — | Identifier of the AAS shell descriptor. |
 | `id` | string | no | `''` | — | Submodel identifier; a fresh URN UUID when omitted. |
-| `id_short` | string | yes | — | — | Short, human-readable name for the submodel. |
+| `id_short` | string | no | `''` | — | Short, human-readable name for the submodel. CX-0002 does not require one, so an omitted name is left out of the descriptor. |
 | `semantic_id` | string | yes | — | — | URN of the aspect model the submodel follows. |
-| `endpoint_url` | string | yes | — | — | URL the submodel's data is served from. |
+| `href` | string | yes | — | — | URL the submodel's data is served from, written to the endpoint's 'href'. Give the bare data URL: the '$'-suffix the chosen interface calls for is this step's to write. |
+| `asset_id` | string | yes | — | — | Asset ID the submodel is offered as — the subprotocol body's 'id'. |
+| `dsp_endpoint` | string | yes | — | — | DSP URL of the provider control plane the asset is negotiated through — the subprotocol body's 'dspEndpoint'. |
+| `interface` | string | no | `'SUBMODEL-3.0'` | — | AAS interface the endpoint implements — SUBMODEL-3.X, or SUBMODEL-VALUE-3.X when the href is directly callable as given. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -833,15 +790,11 @@ _An AAS descriptor as the registry returned it._
 
 Additional keys sent by the counterpart are passed through unchanged.
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `digital-twin/submodel/upload`
 
-Upload sample data to the backend under a unique UUID path.
+Upload sample data to the engine's submodel server under a unique UUID path.
 
-Each run gets its own `/urn:uuid:<uuid4>` resource — exactly like the TCK does — so repeated runs never collide, and the resulting URL is published as `backend_url` for the asset that will point at it.
+Each run gets its own `/urn:uuid:<uuid4>` resource — exactly like the TCK does — so repeated runs never collide, and the resulting URL is published as `backend_url` for the asset that will point at it. The server it posts to comes from the engine configuration (`submodel_backend_url`, `TESTLAB_SUBMODEL_BACKEND_URL`); an engine without one cannot run this step, and says so rather than posting nowhere.
 
 **Inputs**
 
@@ -849,7 +802,6 @@ Each run gets its own `/urn:uuid:<uuid4>` resource — exactly like the TCK does
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
-| `backend_base_url` | string | yes | — | — | Backend base URL, without the UUID suffix. |
 | `data` | any | no | `{'test': True}` | — | Payload to upload, sent as JSON. |
 
 **Output** — the value assertions and `returns:` read
@@ -860,14 +812,6 @@ _Output contract of `digital-twin/submodel/upload`._
 |---|---|---|
 | `backend_url` | string | Full backend URL the data was uploaded to. |
 | `response` | any | Backend response body, parsed as JSON when it is JSON. |
-
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `backend_url` | string | Full backend URL, for the asset that will point at this data. |
-
-A variable is left unset when its value could not be derived.
 
 ### `flow/delay`
 
@@ -886,10 +830,6 @@ Useful where a system under test needs a moment to reach the state the next step
 _This step produces no value — it acts, and there is nothing to read back._
 
 Type: NoneType
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ### `flow/if`
 
@@ -916,10 +856,6 @@ _Which way the step went, and what the branch it took produced._
 | `branch_taken` | `then` \| `else` \| `none` | The branch that ran; 'none' when the condition was false and no 'else' was given. |
 | `outputs` | list of any | Outputs of the nested steps that ran, in order. |
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `flow/retry`
 
 Run a nested list of steps, retrying the whole sequence on failure.
@@ -940,15 +876,11 @@ _The nested steps' outputs, in order, from the attempt that finally passed._
 
 Type: list of any
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `http/http_request`
 
 Execute a plain HTTP request.
 
-Useful for backend data upload/delete or any ad-hoc HTTP call during a test flow. A JSON object response is additionally spread across context variables, one per top-level key, so a following step can read a field by its own name.
+Useful for backend data upload/delete or any ad-hoc HTTP call during a test flow. The output is the response body itself, so a JSON object response is published across context variables one per top-level key — the same way every step publishes its return outputs.
 
 **Inputs**
 
@@ -966,14 +898,6 @@ Useful for backend data upload/delete or any ad-hoc HTTP call during a test flow
 _A response body: parsed JSON when the server sent JSON, otherwise the raw text._
 
 Type: any
-
-**Publishes** — context variables available to later steps
-
-| Variable | Type | Description |
-|---|---|---|
-| `status_code` | integer | Status code of the response. |
-
-A variable is left unset when its value could not be derived.
 
 ### `mock/api`
 
@@ -1002,10 +926,6 @@ _The mock that now exists, and the two URLs a script needs from it._
 | `base_mock_url` | string | Root URL of the testlab mock server. |
 | `full_mock_url` | string | Address to hand the system under test — root plus the mock's path. |
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `mock/discovery`
 
 Register a BPN Discovery Finder mock returning configured EDC endpoints.
@@ -1025,10 +945,6 @@ _This step produces no value — it acts, and there is nothing to read back._
 
 Type: NoneType
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `mock/dtr`
 
 Register a protocol-aware AAS Digital Twin Registry mock.
@@ -1047,10 +963,6 @@ Shells registered through the mock's own `POST /shell-descriptors` become retrie
 _This step produces no value — it acts, and there is nothing to read back._
 
 Type: NoneType
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ### `mock/wait/http_request`
 
@@ -1078,10 +990,6 @@ _The inbound request a mock endpoint received._
 | `request_body` | any | Body of the inbound request. |
 | `elapsed_ms` | integer | Milliseconds spent waiting before the request arrived. |
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `notification/consumer/discover_assets`
 
 Discover notification assets in a provider catalog.
@@ -1090,8 +998,8 @@ Discover notification assets in a provider catalog.
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `provider_bpn` | string | no | `''` | — | BPN of the receiving participant. |
-| `provider_dsp_url` | string | no | `''` | — | DSP endpoint of the receiving participant's connector. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
+| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
 | `timeout` | number | no | `60` | — | Discovery timeout in seconds. |
 
 **Output** — the value assertions and `returns:` read
@@ -1100,27 +1008,23 @@ _The notification datasets found in the provider's catalog._
 
 Type: any
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `notification/consumer/send`
 
 Send a notification through the dataspace.
 
-Supports two modes: - **SDK mode** (canonical): `notification`, `provider_bpn`, `provider_dsp_url` - **Dataplane-direct mode** (CCM): `dataplane_url`, `edr_token`, `content`
+Supports two modes: - **Dataplane-direct mode**: `dataplane_url`, `edr_token`, `endpoint_path`, `notification` — what the IDE's Send Notification block emits - **SDK mode**: `notification`, `counter_party_id`, `counter_party_address`
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `provider_bpn` | string | no | `''` | — | BPN of the receiving participant. |
-| `provider_dsp_url` | string | no | `''` | — | DSP endpoint of the receiving participant's connector. |
-| `notification` | object | no | `None` | — | SDK mode: the notification document to send. |
-| `endpoint_path` | string | no | `''` | — | SDK mode: path appended to the notification endpoint. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
+| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `notification` | object | no | `None` | — | The notification document to send. |
+| `endpoint_path` | string | no | `''` | — | Notification API path appended to the endpoint. |
 | `dataplane_url` | string | no | `None` | — | Direct mode: data-plane URL to POST to; its presence selects that mode. |
 | `edr_token` | string | no | `''` | — | Direct mode: authorization token for that data-plane URL. |
-| `content` | object | no | `None` | — | Direct mode: the notification body. |
+| `content` | object | no | `None` | — | Older spelling of 'notification' — the document to send. |
 | `timeout` | number | no | `30` | — | Request timeout in seconds. |
 
 **Output** — the value assertions and `returns:` read
@@ -1129,13 +1033,122 @@ _Output contract of `notification/consumer/send`._
 
 | Field | Type | Description |
 |---|---|---|
-| `status_code` | integer | Direct mode: status code the receiver answered with. |
+| `status_code` | integer | Status code the receiver answered with. |
+| `response_body` | any | Body the receiver answered with. |
+| `response_headers` | object | Headers the receiver answered with. |
 
 Additional keys sent by the counterpart are passed through unchanged.
 
-**Publishes** — context variables available to later steps
+### `security/oauth2/client_credentials`
 
-_Nothing._
+Obtain a token as the client itself — the machine-to-machine grant.
+
+The token request with the `client_credentials` grant pinned: the client id and secret are the whole credential, no resource owner is involved.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `token_url` | string | yes | — | — | Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'. |
+| `grant_type` | `client_credentials` | no | `'client_credentials'` | — |  |
+| `client_id` | string | no | `''` | — | OAuth2 client identifier. |
+| `client_secret` | string | no | `''` | — | OAuth2 client secret; omit for a public client. |
+| `client_auth` | `post` \| `basic` | no | `'post'` | — | How the client authenticates: 'post' sends client_id/client_secret as form fields, 'basic' sends them in an HTTP Basic Authorization header. |
+| `scope` | string | no | `''` | — | Space-separated scopes to request; omitted from the request when empty. |
+| `username` | string | no | `''` | — | Resource-owner username — required by the 'password' grant. |
+| `password` | string | no | `''` | — | Resource-owner password — required by the 'password' grant. |
+| `refresh_token` | string | no | `''` | — | Refresh token to exchange — required by the 'refresh_token' grant. |
+| `extra_fields` | object | no | `{}` | — | Additional form fields merged into the token request, e.g. 'audience' or 'resource'. |
+
+**Output** — the value assertions and `returns:` read
+
+_A token endpoint's response, per RFC 6749 §5.1._
+
+| Field | Type | Description |
+|---|---|---|
+| `access_token` | string | The bearer token to present to protected services. |
+| `token_type` | string | Type of the issued token, normally 'Bearer'. |
+| `expires_in` | integer | Lifetime of the access token in seconds. |
+| `scope` | string | Scopes the server actually granted. |
+| `refresh_token` | string | Refresh token, when the server issues one. |
+
+Additional keys sent by the counterpart are passed through unchanged.
+
+### `security/oauth2/password`
+
+Obtain a token on behalf of a resource owner by username and password.
+
+The token request with the `password` grant pinned; the inherited validator still insists on `username` and `password`.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `token_url` | string | yes | — | — | Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'. |
+| `grant_type` | `password` | no | `'password'` | — |  |
+| `client_id` | string | no | `''` | — | OAuth2 client identifier. |
+| `client_secret` | string | no | `''` | — | OAuth2 client secret; omit for a public client. |
+| `client_auth` | `post` \| `basic` | no | `'post'` | — | How the client authenticates: 'post' sends client_id/client_secret as form fields, 'basic' sends them in an HTTP Basic Authorization header. |
+| `scope` | string | no | `''` | — | Space-separated scopes to request; omitted from the request when empty. |
+| `username` | string | no | `''` | — | Resource-owner username — required by the 'password' grant. |
+| `password` | string | no | `''` | — | Resource-owner password — required by the 'password' grant. |
+| `refresh_token` | string | no | `''` | — | Refresh token to exchange — required by the 'refresh_token' grant. |
+| `extra_fields` | object | no | `{}` | — | Additional form fields merged into the token request, e.g. 'audience' or 'resource'. |
+
+**Output** — the value assertions and `returns:` read
+
+_A token endpoint's response, per RFC 6749 §5.1._
+
+| Field | Type | Description |
+|---|---|---|
+| `access_token` | string | The bearer token to present to protected services. |
+| `token_type` | string | Type of the issued token, normally 'Bearer'. |
+| `expires_in` | integer | Lifetime of the access token in seconds. |
+| `scope` | string | Scopes the server actually granted. |
+| `refresh_token` | string | Refresh token, when the server issues one. |
+
+Additional keys sent by the counterpart are passed through unchanged.
+
+### `security/oauth2/refresh_token`
+
+Exchange a refresh token for a fresh access token.
+
+The token request with the `refresh_token` grant pinned; the inherited validator still insists on `refresh_token`.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `token_url` | string | yes | — | — | Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'. |
+| `grant_type` | `refresh_token` | no | `'refresh_token'` | — |  |
+| `client_id` | string | no | `''` | — | OAuth2 client identifier. |
+| `client_secret` | string | no | `''` | — | OAuth2 client secret; omit for a public client. |
+| `client_auth` | `post` \| `basic` | no | `'post'` | — | How the client authenticates: 'post' sends client_id/client_secret as form fields, 'basic' sends them in an HTTP Basic Authorization header. |
+| `scope` | string | no | `''` | — | Space-separated scopes to request; omitted from the request when empty. |
+| `username` | string | no | `''` | — | Resource-owner username — required by the 'password' grant. |
+| `password` | string | no | `''` | — | Resource-owner password — required by the 'password' grant. |
+| `refresh_token` | string | no | `''` | — | Refresh token to exchange — required by the 'refresh_token' grant. |
+| `extra_fields` | object | no | `{}` | — | Additional form fields merged into the token request, e.g. 'audience' or 'resource'. |
+
+**Output** — the value assertions and `returns:` read
+
+_A token endpoint's response, per RFC 6749 §5.1._
+
+| Field | Type | Description |
+|---|---|---|
+| `access_token` | string | The bearer token to present to protected services. |
+| `token_type` | string | Type of the issued token, normally 'Bearer'. |
+| `expires_in` | integer | Lifetime of the access token in seconds. |
+| `scope` | string | Scopes the server actually granted. |
+| `refresh_token` | string | Refresh token, when the server issues one. |
+
+Additional keys sent by the counterpart are passed through unchanged.
 
 ### `util/base64`
 
@@ -1159,10 +1172,6 @@ _The encoded or decoded string._
 
 Type: string
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `util/generate_bpn`
 
 Generate a random, well-formed Business Partner Number (BPN).
@@ -1183,10 +1192,6 @@ _Output contract of `util/generate_bpn`._
 |---|---|---|
 | `bpn` | string | The generated Business Partner Number. |
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `util/generate_uuid`
 
 Generate a random UUID v4, optionally behind a prefix.
@@ -1205,12 +1210,7 @@ _Output contract of `util/generate_uuid`._
 
 | Field | Type | Description |
 |---|---|---|
-| `generated_id` | string | The generated identifier, including any prefix. |
-| `uuid` | string | The same value under its original name, kept for existing scripts. |
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
+| `uuid` | string | The generated identifier, including any prefix. |
 
 ### `util/json_path_extract`
 
@@ -1232,10 +1232,6 @@ _The value found at the path — whatever type the document holds there._
 
 Type: any
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `util/log`
 
 Write a resolved value to stdout and the run log.
@@ -1254,10 +1250,6 @@ An authoring aid for inspecting what an expression resolved to; it asserts nothi
 _The logged value, passed through unchanged._
 
 Type: any
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ### `util/parse_kv`
 
@@ -1281,10 +1273,6 @@ _The selected key's value when 'select' is given, else every parsed pair._
 
 Type: string \| object
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `util/validate_path`
 
 Extract a value from a step output by dot-path, for a `validate:` block to assert on.
@@ -1305,10 +1293,6 @@ _The value found at the path — whatever type the document holds there._
 
 Type: any
 
-**Publishes** — context variables available to later steps
-
-_Nothing._
-
 ### `validate/assert`
 
 Assert that a value satisfies an operator condition.
@@ -1320,7 +1304,7 @@ Raises `ValueError` on failure so the runner marks the step as FAILED.
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `input` | any | no | `None` | — | The value to validate. |
-| `operator` | `not_null` \| `null` \| `not_empty` \| `equals` \| `not_equals` \| `matches_regex` \| `contains` \| `not_contains` | no | `'not_null'` | — | Comparison applied to the value. |
+| `operator` | `not_null` \| `is_null` \| `not_empty` \| `equals` \| `not_equals` \| `contains` \| `not_contains` \| `matches_regex` \| `one_of` \| `none_of` \| `has_key` \| `not_has_key` \| `gt` \| `gte` \| `lt` \| `lte` \| `length_equals` \| `length_gt` \| `length_lt` \| `between` | no | `'not_null'` | — | Comparison applied to the value. |
 | `value` | any | no | `None` | — | Expected value; required for the operators that compare two operands. |
 
 **Output** — the value assertions and `returns:` read
@@ -1328,10 +1312,6 @@ Raises `ValueError` on failure so the runner marks the step as FAILED.
 _The value that was asserted on, passed through unchanged._
 
 Type: any
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ### `validate/field`
 
@@ -1344,7 +1324,7 @@ Raises `ValueError` on failure so the runner marks the step as FAILED.
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `input` | any | no | `None` | — | The value to validate. |
-| `operator` | `not_null` \| `null` \| `not_empty` \| `equals` \| `not_equals` \| `matches_regex` \| `contains` \| `not_contains` | no | `'not_null'` | — | Comparison applied to the value. |
+| `operator` | `not_null` \| `is_null` \| `not_empty` \| `equals` \| `not_equals` \| `contains` \| `not_contains` \| `matches_regex` \| `one_of` \| `none_of` \| `has_key` \| `not_has_key` \| `gt` \| `gte` \| `lt` \| `lte` \| `length_equals` \| `length_gt` \| `length_lt` \| `between` | no | `'not_null'` | — | Comparison applied to the value. |
 | `value` | any | no | `None` | — | Expected value; required for the operators that compare two operands. |
 | `path` | string | no | `''` | — | Dot-separated key path to the field, e.g. 'header.messageId'. Empty asserts on the whole object. |
 
@@ -1353,10 +1333,6 @@ Raises `ValueError` on failure so the runner marks the step as FAILED.
 _The value that was asserted on, passed through unchanged._
 
 Type: any
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ### `validate/schema`
 
@@ -1376,10 +1352,6 @@ Raises `ValueError` on failure so the runner marks the step as FAILED.
 _The validated payload, parsed from JSON when it arrived as a string._
 
 Type: any
-
-**Publishes** — context variables available to later steps
-
-_Nothing._
 
 ## Nested objects
 
@@ -1413,7 +1385,7 @@ One comparison the branch is decided on.
 |---|---|---|---|---|---|
 | `input` | any | no | `None` | — | The value to test, usually a previous step's output. |
 | `path` | string | no | `''` | — | Dot-notation path into the input, e.g. 'content.state'; empty tests it whole. |
-| `operator` | string | no | `'not_null'` | — | Comparison applied to the value. |
+| `operator` | `not_null` \| `is_null` \| `not_empty` \| `equals` \| `not_equals` \| `contains` \| `not_contains` \| `matches_regex` \| `one_of` \| `none_of` \| `has_key` \| `not_has_key` \| `gt` \| `gte` \| `lt` \| `lte` \| `length_equals` \| `length_gt` \| `length_lt` \| `between` | no | `'not_null'` | — | Comparison applied to the value. |
 | `value` | any | no | `None` | — | What the value is compared against; unused by unary operators. |
 
 ### DataAddressPayload
@@ -1482,6 +1454,5 @@ Step definition using `uses` and `with` verb-form keys.
 | `with` | object | no | `None` | — |  |
 | `returns` | object | no | `None` | — |  |
 | `validate` | list of [Assertion](#assertion) | no | `None` | — |  |
-| `on_failure` | FailurePolicy | no | `<FailurePolicy.ABORT: 'ABORT'>` | — |  |
 | `timeout_s` | number | no | `None` | — |  |
 | `if` | string | no | `None` | — |  |

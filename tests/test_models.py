@@ -41,7 +41,6 @@ from tractusx_testlab.models.authoring.definitions import (
     VariableDefinition,
 )
 from tractusx_testlab.models.primitives.enums import (
-    FailurePolicy,
     ServiceType,
 )
 
@@ -61,27 +60,21 @@ class TestStepDefinition:
             name="Call API",
             description="Calls an external API",
             **{"with": {"url": "http://example.com"}},
-            on_failure=FailurePolicy.CONTINUE,
             timeout_s=30.0,
         )
         assert step.name == "Call API"
-        assert step.on_failure == FailurePolicy.CONTINUE
         assert step.timeout_s == 30.0
-
-    def test_step_default_failure_policy_is_abort(self) -> None:
-        step = StepDefinition(uses="any_step")
-        assert step.on_failure == FailurePolicy.ABORT
 
     def test_step_with_assertions(self) -> None:
         step = StepDefinition(
             uses="http/http_request",
             validate=[
-                Assertion(uses="assert/status_code", **{"with": {"value": 200}}),
-                Assertion(uses="assert/not_null", **{"with": {"output": "body"}}),
+                Assertion(uses="validate/assert/equals", **{"with": {"input": "status_code", "value": 200}}),
+                Assertion(uses="validate/assert", **{"with": {"input": "response_body", "operator": "not_null"}}),
             ],
         )
         assert len(step.validate) == 2
-        assert step.validate[0].uses == "assert/status_code"
+        assert step.validate[0].uses == "validate/assert/equals"
 
 
 class TestScriptDefinition:

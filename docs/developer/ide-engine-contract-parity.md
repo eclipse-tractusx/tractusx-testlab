@@ -89,7 +89,7 @@ differs from its Python attribute name is not class G — see
 ## Where the counts stand
 
 **The migration is complete on both sides.** Measured by the tool, the breaking
-count went from **62** before it to **0**, across 38 blocks:
+count went from **62** before it to **0**, across 53 blocks:
 
 | Class | Gated | Count |
 | --- | --- | ---: |
@@ -99,14 +99,25 @@ count went from **62** before it to **0**, across 38 blocks:
 | **G** — parameters that bind only through an alias | yes | 0 |
 | **D** — required in IDE, optional in engine | no | 11 steps |
 | **E** — engine parameters the IDE does not offer | no | 10 steps |
-| **F** — engine steps with no IDE block | no | 11 |
+| **F** — engine steps with no IDE block | no | 0 |
 
-Classes **D**, **E** and **F** are not breaks and are not gated on. Most of what
-is left in **F** is deliberate: the DSP-level steps (`do_dsp`, `get_edr`,
-`extract_dataset`, the two narrower catalog queries) are the pieces the
-`pull_data_filtered` shortcuts already compose, and a catalog offering both would
-offer two ways to write one flow. The rest are genuine gaps — the three provider
-`delete_*` steps a teardown phase wants, and the two notification steps.
+Classes **D**, **E** and **F** are not breaks and are not gated on. **F** is now
+empty: every registered step has a block, so the catalog and the registry hold
+the same 53 ids.
+
+Closing it reversed an earlier judgement worth recording. The DSP-level steps
+(`connector/consumer/do_dsp`, `get_edr`, `extract_dataset`, the two narrower
+catalog queries) had been left out on the grounds that the `pull_data_filtered`
+shortcuts already compose them, and that offering both would offer two ways to
+write one flow. That reasoning does not survive contact with what the omission
+actually costs: a step the engine runs but the IDE cannot author is reachable
+only by hand-writing YAML, which is precisely the split the IDE exists to
+remove, and an author who needs the EDR of an already-completed transfer has no
+shortcut to reach for. Overlap between a shortcut and its pieces is a labelling
+problem — each block's label says which of the two it is — and labelling is the
+cheaper problem to have. The rest of what **F** held were plain gaps: the three
+provider `delete_*` steps a teardown phase wants, the two consumer-side registry
+reads, the two notification steps, and the OAuth2 token step.
 
 `--check` therefore exits zero today, and the useful question about this page is
 no longer "how far apart are they" but "what stops them drifting again" — see
@@ -196,9 +207,11 @@ aliases gone, the generated schema *is* the contract.
 hand-written registry will drift again, whatever this document concludes. Now
 that the schema is faithful, `public/blocks/*.json` should be emitted from the
 registry — one command, run in CI, output committed — so that classes A, B and C
-become impossible by construction rather than merely watched for. The remaining
-work is then only what a generator cannot invent: the genuine capability gaps in
-classes E and F, and the labels and grouping a human writes for the toolbox.
+become impossible by construction rather than merely watched for. Class F would
+go the same way — a generator emits a block per registered step, so a new step
+cannot arrive without one. The remaining work is then only what a generator
+cannot invent: the capability gaps in class E, and the labels, examples and
+toolbox grouping a human writes.
 
 ## Step ids
 

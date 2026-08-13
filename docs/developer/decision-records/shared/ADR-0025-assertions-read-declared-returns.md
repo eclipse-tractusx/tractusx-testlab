@@ -20,7 +20,7 @@
 
 ## Status
 
-Proposed
+Accepted — partially implemented; see *Implementation status*
 
 ## Date
 
@@ -58,7 +58,7 @@ back to `AssertionType(a.uses)` and then to `AssertionType.EXACT`, so a typo
 becomes an equality comparison against `None` and frequently passes.
 
 **The operators are implemented twice.** `_apply_inline_operator` in
-[`assertions.py`](../../../../src/tractusx_testlab/steps/assertions.py) serves
+[`assertions/`](../../../../src/tractusx_testlab/steps/assertions/) serves
 the inline path; `_check` in
 [`utility/validate.py`](../../../../src/tractusx_testlab/steps/utility/validate.py)
 serves the registered `validate/*` steps. Two tables that must agree, with
@@ -379,3 +379,65 @@ for it in the same commit.
   `0.0.6-alpha` there is no published contract to hold to.
 - `severity` keeps both its levels and its default (`hard`); only its casing
   changes.
+
+## Implementation status
+
+Landed 2026-08-13, alongside the IDE-side decisions recorded in
+`ide-backend-drift-decisions.md`. What this record specified and what shipped
+differ in three places, all deliberate.
+
+### What landed
+
+- **Decision 3 — the `validate/*` family.** `validate/assert`, `validate/field`
+  and `validate/schema` are the whole assertion vocabulary. `validate/field`
+  now descends `path` inside `input` instead of ignoring it, and
+  `validate/schema` is recognised inline instead of falling through to an exact
+  comparison against `None`.
+- **Decision 5 — one operator table.**
+  [`steps/assertions/operators.py`](../../../../src/tractusx_testlab/steps/assertions/operators.py)
+  is the single implementation. `validate/*` assertions, the registered
+  `validate/*` steps and `flow/if` conditions all resolve through it; the
+  duplicate table in `steps/utility/validate.py` is gone.
+- **The `assert/*` family and the flat `NOT_NULL` spellings are deleted**, along
+  with the `AssertionType` enum and the `_ASSERTION_CHECKS` dispatch that
+  existed only to serve them.
+- **Both silent fallbacks are gone.** An unresolvable `uses:` or an operator
+  outside the vocabulary is a compile error naming the vocabulary, and at run
+  time a failed assertion carrying the same message — never a quiet `EXACT`
+  comparison that passes.
+- **`returns:` names are checked against the step's declared outputs**
+  (`ScriptValidator._validate_returns`). This is decision 2's rule applied to
+  `returns:` as well as to `input:`; it is what makes an output a step never
+  publishes a compile error rather than an empty variable several steps later.
+
+### Where the implementation diverges from this record
+
+1. **The operator names are the ratified §5.4 set, not the list in decision 3.**
+   `is_null` rather than `null`, and `gt`/`gte`/`lt`/`lte` rather than
+   `greater_than`/`less_than`/`greater_or_equal`/`less_or_equal`. The IDE had
+   already ratified those spellings and its blocks emit them; matching the
+   engine to the authoring tool was the cheaper correction. The set is also
+   wider than the thirteen listed here — it adds `one_of`, `none_of`,
+   `has_key`, `not_has_key`, `length_equals`, `length_gt` and `length_lt`,
+   which the engine already implemented and the IDE already offered.
+
+2. **`validate/assert/<operator>` is accepted as well as
+   `validate/assert` + `operator:`.** Decision 3 argues against per-operator
+   blocks and that argument still holds for the *toolbox* — the IDE emits the
+   parameter form and only the parameter form. The suffix form exists so that
+   the deleted `assert/<operator>` names have a home in the surviving namespace
+   for hand-written scripts; both spellings resolve through the same table to
+   the same check, so there is one implementation, not two.
+
+3. **`@name` and `source: VARIABLE` still resolve.** Decision 4 removes them in
+   favour of `${{ }}`, which needs assertion `with:` blocks to pass through
+   `resolve_params` — a change to the compiler's expression pass rather than to
+   the assertion engine. It is not done.
+
+### Not yet implemented
+
+Decision 1 (returns resolved before assertions run), decision 4 (`${{ }}` as the
+only interpolation), decision 6 (inline assertions routed through the registered
+steps) and decision 7's loose ends — the `source:` → `input:` rename on
+`util/json_path_extract` and `util/validate_path`, `severity` as a declared
+field, and lower-case severity values.

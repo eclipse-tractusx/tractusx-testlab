@@ -38,7 +38,7 @@ from tractusx_testlab.models.authoring.infrastructure import (
     DataspaceContext,
     InfrastructureConfig,
 )
-from tractusx_testlab.models.primitives.enums import FailurePolicy, ServiceType, VariableScope, VariableSource
+from tractusx_testlab.models.primitives.enums import ServiceType, VariableScope, VariableSource
 
 
 # ---------------------------------------------------------------------------
@@ -122,7 +122,6 @@ class StepDefinition(BaseModel):
     returns: Optional[dict[str, ReturnFieldDefinition]] = None
     validate: Optional[list[Assertion]] = None
     # Runtime control fields kept for execution-engine compatibility.
-    on_failure: FailurePolicy = FailurePolicy.ABORT
     timeout_s: Optional[float] = None
     if_condition: Optional[str] = Field(default=None, alias="if")
 

@@ -28,7 +28,6 @@ SPDX-License-Identifier: CC-BY-4.0
 | `JobStatus` | `QUEUED`, `RUNNING`, `WAITING`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT` | Lifecycle state of a job (test execution) |
 | `AssertionType` | `EXACT`, `SCHEMA`, `CONTAINS`, `REGEX`, `STATUS_CODE` | Type of assertion check |
 | `AssertionSeverity` | `HARD`, `SOFT` | Whether assertion failure fails the step or is a warning |
-| `FailurePolicy` | `ABORT`, `CONTINUE`, `SKIP_REST` | Step failure handling behavior |
 | `ValueSource` | `INLINE`, `FILE`, `VARIABLE` | Where the expected assertion value originates |
 | `SdkCallMode` | `ALLOWLIST`, `OPEN` | SDK function invocation security mode |
 | `ServiceType` | `CONNECTOR_CONSUMER`, `CONNECTOR_PROVIDER`, `DTR` | Type of managed SDK service |
@@ -64,7 +63,6 @@ classDiagram
         +str type
         +str name
         +dict params
-        +FailurePolicy on_failure = ABORT
         +float timeout_s?
         +list~Assertion~ validate?
     }
@@ -426,7 +424,7 @@ stateDiagram-v2
     PENDING --> RUNNING : Player starts step
     RUNNING --> PASSED : Execution + assertions OK
     RUNNING --> FAILED : Exception or hard assertion fail
-    PENDING --> SKIPPED : skip_rest policy applied
+    PENDING --> SKIPPED : earlier step failed
     FAILED --> [*]
     PASSED --> [*]
     SKIPPED --> [*]

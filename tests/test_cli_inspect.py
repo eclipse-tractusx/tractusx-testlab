@@ -66,8 +66,8 @@ execution:
   - uses: http/http_request
     name: HTTP Request
     validate:
-      - uses: assert/status_code
-        with: {expected: 200}
+      - uses: validate/assert/equals
+        with: {input: status_code, value: 200}
 teardown:
   - uses: connector/provider/delete_asset
     name: Delete Asset

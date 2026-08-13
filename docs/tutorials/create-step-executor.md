@@ -25,7 +25,7 @@
 
 A step executor is the Python code that runs when a block is executed at runtime. Every block type needs a corresponding step executor.
 
-A step declares its interface: what it accepts under `with:`, what it returns, and which context variables it publishes. This is not optional — defining a `BaseStep` subclass without `params_model` and `output_model` raises a `TypeError` at import time. The declaration is also what generates the [step reference](../specification/reference/steps.md), so a parameter you rename in code cannot go stale in the docs.
+A step declares its interface: what it accepts under `with:` and what it returns. Every step publishes all of its return outputs — each top-level output field becomes a context variable of the same name. This is not optional — defining a `BaseStep` subclass without `params_model` and `output_model` raises a `TypeError` at import time. The declaration is also what generates the [step reference](../specification/reference/steps.md), so a parameter you rename in code cannot go stale in the docs.
 
 This page walks through one example end to end. For the rules behind it — every base class, the shared contract models, what fails and what it says — see [Creating a Step](../developer/creating-a-step.md).
 
@@ -39,7 +39,7 @@ steps/
 ├── industry/      # Industry layer steps (DTR, notifications, submodels)
 ├── server/        # Mock-server steps
 ├── utility/       # General-purpose helpers
-├── base.py        # BaseStep, StepParams, StepPayload, StepValue, StepExports
+├── base.py        # BaseStep, StepParams, StepPayload, StepValue
 ├── _contracts.py  # Contract models shared by more than one step
 ├── assertions.py  # Assertion evaluation engine
 └── conditions.py  # Conditional execution ("if" expressions)
@@ -54,10 +54,9 @@ Three models describe a step, and each answers a different question:
 | Model | Base class | Answers |
 |---|---|---|
 | `params_model` | `StepParams` | What keys does the script write under `with:`? |
-| `output_model` | `StepPayload` or `StepValue` | What does `returns:` and `validate:` read? |
-| `exports_model` | `StepExports` | What context variables do later steps get? |
+| `output_model` | `StepPayload` or `StepValue` | What does `returns:` and `validate:` read — and therefore which context variables do later steps get? |
 
-`params_model` and `output_model` are required. `exports_model` is omitted by a step that publishes nothing.
+Both are required. There is no separate export channel: every top-level output field is published as a context variable after the step runs, so later steps read your output under exactly the field names you declare.
 
 Pick the output base class by shape:
 
@@ -103,7 +102,7 @@ from pydantic import Field
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import StepParams
-from tractusx_testlab.steps.base import BaseStep, StepExports, StepOutput, StepPayload
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -129,23 +128,12 @@ class CheckHealthOutput(StepPayload):
     )
 
 
-class CheckHealthExports(StepExports):
-    """Context variables published by ``check_health``."""
-
-    health_status: Optional[str] = Field(
-        default=None,
-        alias="health_status",
-        description="The reported status, when the endpoint returned one.",
-    )
-
-
 @step("check_health")
 class CheckHealthStep(BaseStep[CheckHealthParams, CheckHealthOutput]):
     """Send a GET request to a health endpoint and report status and body."""
 
     params_model = CheckHealthParams
     output_model = CheckHealthOutput
-    exports_model = CheckHealthExports
 
     async def execute(
         self,
@@ -172,7 +160,6 @@ class CheckHealthStep(BaseStep[CheckHealthParams, CheckHealthOutput]):
                 headers=dict(resp.headers),
                 body=body,
             ),
-            exports=CheckHealthExports(health_status=status),
         )
 ```
 
@@ -183,7 +170,7 @@ class CheckHealthStep(BaseStep[CheckHealthParams, CheckHealthOutput]):
 3. **Decorate with `@step("type_name")`** — the string must match the block JSON's `type` field exactly
 4. **`execute` receives a validated model**, not a dict — read `params.url`, never `params["url"]`
 5. **Return the declared model** — `StepOutput(value=CheckHealthOutput(...))`. Raw data is refused even when it would validate, because the point is that the step commits to a shape
-6. **Publish variables through `exports`**, not `context.set_variable` — that is what keeps them part of the declared contract, and a `None` field is left unpublished rather than written as null
+6. **Publish variables through the output**, not `context.set_variable` — every top-level output field becomes a context variable automatically, and a `None` value leaves the variable unset rather than written as null
 7. **Use `logging`** — never `print()`
 8. **Access services via `context`** — e.g., `context.get_consumer_service(name)` for EDC connectors
 
@@ -245,7 +232,6 @@ When two steps talk about the same thing, they share one model rather than each 
 | `ServiceParams` | selecting which configured connector service to talk to |
 | `HttpTransportParams` / `HttpCallParams` | headers and timeout, plus method and body |
 | `CatalogPayload`, `DataAddressPayload` | DSP documents |
-| `DataplaneExports` | the `data_address` / `edr_token` pair the data-plane step reads |
 | `NoOutput` | a step that produces nothing |
 
 Inherit the mixins into your own params model:
@@ -283,7 +269,7 @@ Version-specific registrations take priority over global ones at runtime.
 
 ## Step 6 — Write a test
 
-Tests call `invoke()`, not `execute()`. `invoke()` is the entry point the runner uses: it validates the raw `with:` mapping into `params_model`, runs `execute`, publishes the exports, and serialises the output back to plain data — so a test that calls it exercises the same path a script does.
+Tests call `invoke()`, not `execute()`. `invoke()` is the entry point the runner uses: it validates the raw `with:` mapping into `params_model`, runs `execute`, serialises the output back to plain data, and publishes the output fields — so a test that calls it exercises the same path a script does.
 
 Create `tests/test_check_health.py`:
 

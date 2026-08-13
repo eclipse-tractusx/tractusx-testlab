@@ -250,7 +250,9 @@ class TestWizardCreateSubmodelDescriptor:
             aas_identifier="urn:uuid:1",
             id_short="serialPart",
             semantic_id="urn:samm:io.catenax.serial_part:3.0.0#SerialPart",
-            endpoint_url="https://dataplane.example.com/submodel",
+            href="https://dataplane.example.com/submodel",
+            asset_id="urn:uuid:asset",
+            dsp_endpoint="https://provider.example.com/api/v1/dsp",
         ).submodel_document()
         assert document["semanticId"]["keys"] == [
             {
@@ -259,17 +261,156 @@ class TestWizardCreateSubmodelDescriptor:
             }
         ]
 
-    def test_the_endpoint_url_becomes_the_submodel_endpoint(self) -> None:
+    def test_the_href_becomes_the_submodel_endpoint(self) -> None:
         document = WizardCreateSubmodelDescriptorParams(
             aas_identifier="urn:uuid:1",
             id_short="serialPart",
             semantic_id="urn:samm:x#Y",
-            endpoint_url="https://dataplane.example.com/submodel",
+            href="https://dataplane.example.com/submodel",
+            asset_id="urn:uuid:asset",
+            dsp_endpoint="https://provider.example.com/api/v1/dsp",
         ).submodel_document()
         (endpoint,) = document["endpoints"]
         assert endpoint["interface"] == "SUBMODEL-3.0"
         assert endpoint["protocolInformation"]["href"] == (
             "https://dataplane.example.com/submodel"
+        )
+
+    def test_the_asset_and_control_plane_become_the_subprotocol_body(self) -> None:
+        document = WizardCreateSubmodelDescriptorParams(
+            aas_identifier="urn:uuid:1",
+            id_short="serialPart",
+            semantic_id="urn:samm:x#Y",
+            href="https://dataplane.example.com/submodel",
+            asset_id="urn:uuid:asset",
+            dsp_endpoint="https://provider.example.com/api/v1/dsp",
+        ).submodel_document()
+        (endpoint,) = document["endpoints"]
+        protocol = endpoint["protocolInformation"]
+        assert protocol["subprotocol"] == "DSP"
+        assert protocol["subprotocolBodyEncoding"] == "plain"
+        assert protocol["subprotocolBody"] == (
+            "id=urn:uuid:asset;dspEndpoint=https://provider.example.com/api/v1/dsp"
+        )
+
+    def test_the_keys_the_standard_fixes_are_written_not_asked_for(self) -> None:
+        document = WizardCreateSubmodelDescriptorParams(
+            aas_identifier="urn:uuid:1",
+            semantic_id="urn:samm:x#Y",
+            href="https://dataplane.example.com/submodel",
+            asset_id="urn:uuid:asset",
+            dsp_endpoint="https://provider.example.com/api/v1/dsp",
+        ).submodel_document()
+        protocol = document["endpoints"][0]["protocolInformation"]
+        assert protocol["endpointProtocol"] == "HTTP"
+        assert protocol["endpointProtocolVersion"] == ["1.1"]
+        assert protocol["subprotocol"] == "DSP"
+        assert protocol["subprotocolBodyEncoding"] == "plain"
+
+    def test_an_omitted_id_short_is_left_out_of_the_descriptor(self) -> None:
+        """CX-0002 asks for no idShort, and an empty one is not a name."""
+        document = WizardCreateSubmodelDescriptorParams(
+            aas_identifier="urn:uuid:1",
+            semantic_id="urn:samm:x#Y",
+            href="https://dataplane.example.com/submodel",
+            asset_id="urn:uuid:asset",
+            dsp_endpoint="https://provider.example.com/api/v1/dsp",
+        ).submodel_document()
+        assert "idShort" not in document
+
+    def test_a_value_interface_appends_the_value_suffix(self) -> None:
+        document = WizardCreateSubmodelDescriptorParams(
+            aas_identifier="urn:uuid:1",
+            id_short="serialPart",
+            semantic_id="urn:samm:x#Y",
+            href="https://dataplane.example.com/api/public",
+            asset_id="urn:uuid:asset",
+            dsp_endpoint="https://provider.example.com/api/v1/dsp",
+            interface="SUBMODEL-VALUE-3.2",
+        ).submodel_document()
+        (endpoint,) = document["endpoints"]
+        assert endpoint["protocolInformation"]["href"] == (
+            "https://dataplane.example.com/api/public/submodel/$value"
+        )
+
+    def test_a_value_interface_completes_a_submodel_href(self) -> None:
+        document = WizardCreateSubmodelDescriptorParams(
+            aas_identifier="urn:uuid:1",
+            id_short="serialPart",
+            semantic_id="urn:samm:x#Y",
+            href="https://dataplane.example.com/submodel",
+            asset_id="urn:uuid:asset",
+            dsp_endpoint="https://provider.example.com/api/v1/dsp",
+            interface="SUBMODEL-VALUE-3.1",
+        ).submodel_document()
+        (endpoint,) = document["endpoints"]
+        assert endpoint["protocolInformation"]["href"] == (
+            "https://dataplane.example.com/submodel/$value"
+        )
+
+    def test_the_submodel_interface_drops_a_pasted_value_suffix(self) -> None:
+        document = WizardCreateSubmodelDescriptorParams(
+            aas_identifier="urn:uuid:1",
+            id_short="serialPart",
+            semantic_id="urn:samm:x#Y",
+            href="https://dataplane.example.com/submodel/$value",
+            asset_id="urn:uuid:asset",
+            dsp_endpoint="https://provider.example.com/api/v1/dsp",
+        ).submodel_document()
+        (endpoint,) = document["endpoints"]
+        assert endpoint["protocolInformation"]["href"] == (
+            "https://dataplane.example.com/submodel"
+        )
+
+    @pytest.mark.asyncio
+    async def test_the_suffix_is_on_the_href_the_registry_is_actually_sent(
+        self, dtr_context: MagicMock, aas: MagicMock
+    ) -> None:
+        """The concatenation has to survive the whole step, not just the model.
+
+        ``submodel_document`` is where the suffix is written, but the descriptor
+        that reaches the registry is the one the step hands to
+        ``create_submodel_descriptor`` — so this reads the href back off the
+        request the step reports having made.
+        """
+        output = await WizardCreateSubmodelDescriptorStep().invoke(
+            {
+                "aas_identifier": "urn:uuid:shell",
+                "semantic_id": "urn:samm:x#Y",
+                "href": "https://dataplane.example.com/api/public",
+                "asset_id": "urn:uuid:asset",
+                "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
+                "interface": "SUBMODEL-VALUE-3.2",
+            },
+            dtr_context,
+            _definition("digital-twin/provider/wizard/create_submodel_descriptor"),
+        )
+
+        sent = output.request.body
+        assert sent["endpoints"][0]["protocolInformation"]["href"] == (
+            "https://dataplane.example.com/api/public/submodel/$value"
+        )
+        assert aas.create_submodel_descriptor.call_args.args[0] == "urn:uuid:shell"
+
+    @pytest.mark.asyncio
+    async def test_the_registry_is_sent_the_bare_href_for_a_plain_interface(
+        self, dtr_context: MagicMock
+    ) -> None:
+        output = await WizardCreateSubmodelDescriptorStep().invoke(
+            {
+                "aas_identifier": "urn:uuid:shell",
+                "semantic_id": "urn:samm:x#Y",
+                "href": "https://dataplane.example.com/api/public",
+                "asset_id": "urn:uuid:asset",
+                "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
+            },
+            dtr_context,
+            _definition("digital-twin/provider/wizard/create_submodel_descriptor"),
+        )
+
+        sent = output.request.body
+        assert sent["endpoints"][0]["protocolInformation"]["href"] == (
+            "https://dataplane.example.com/api/public"
         )
 
     @pytest.mark.asyncio
@@ -281,7 +422,9 @@ class TestWizardCreateSubmodelDescriptor:
                 "aas_identifier": "urn:uuid:shell",
                 "id_short": "serialPart",
                 "semantic_id": "urn:samm:x#Y",
-                "endpoint_url": "https://dataplane.example.com/submodel",
+                "href": "https://dataplane.example.com/submodel",
+                "asset_id": "urn:uuid:asset",
+                "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
             },
             dtr_context,
             _definition("digital-twin/provider/wizard/create_submodel_descriptor"),

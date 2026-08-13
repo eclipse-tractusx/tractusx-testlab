@@ -49,12 +49,15 @@ class GenerateUuidParams(StepParams):
 
 
 class GenerateUuidOutput(StepPayload):
-    """Output contract of ``util/generate_uuid``."""
+    """Output contract of ``util/generate_uuid``.
 
-    generated_id: str = Field(description="The generated identifier, including any prefix.")
-    uuid: str = Field(
-        description="The same value under its original name, kept for existing scripts."
-    )
+    One key, because there is one value.  This step used to publish it twice —
+    as ``uuid`` and again as ``generated_id`` — and a second spelling of the
+    same value is a second thing to keep in step for no gain: two scripts read
+    the same identifier under two names and neither reads the step's contract.
+    """
+
+    uuid: str = Field(description="The generated identifier, including any prefix.")
 
 
 @step("util/generate_uuid")
@@ -75,4 +78,4 @@ class GenerateUuidStep(BaseStep[GenerateUuidParams, GenerateUuidOutput]):
         definition: StepDefinition,
     ) -> StepOutput[GenerateUuidOutput]:
         value = f"{params.prefix}{uuid.uuid4()}"
-        return StepOutput(value=GenerateUuidOutput(generated_id=value, uuid=value))
+        return StepOutput(value=GenerateUuidOutput(uuid=value))

@@ -120,11 +120,10 @@ teardown: []
     - uses: validate/assert
       with: { input: output_name, operator: not_null }
   if: "${{ success() }}"
-  on_failure: abort
   timeout_s: 30.0
 ```
 
-**Field order:** `id` → `uses` → `name` → `with` → `returns` → `validate` → `if` → `on_failure` → `timeout_s`
+**Field order:** `id` → `uses` → `name` → `with` → `returns` → `validate` → `if` → `timeout_s`
 
 ---
 
@@ -399,13 +398,12 @@ env:
 
 ---
 
-## Failure Policies (`on_failure:`)
+## Failure Handling
 
-| Policy | Behavior |
-|--------|----------|
-| `abort` | Stop immediately, run teardown (default) |
-| `continue` | Log warning, proceed to next step |
-| `skip_rest` | Skip remaining steps, run teardown |
+There is no per-step failure policy. A failed validation (hard assertion)
+fails its step; a failed step fails the test — execution stops, the remaining
+steps are skipped, and teardown runs. Teardown steps keep executing even when
+one of them fails.
 
 
 ## Common `uses:` Handlers

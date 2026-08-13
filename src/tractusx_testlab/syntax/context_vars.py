@@ -24,14 +24,16 @@
 
 """Well-known context variable names used for inter-step data passing.
 
-Steps that produce data store it under these keys; downstream steps
-read the same keys.  Using constants prevents silent typo breakage.
+Every step publishes all of its return outputs: each top-level output field
+becomes a context variable of the same name.  The constants here are the
+names downstream steps read back as parameter fallbacks — they must match
+the field names of the producing steps' output models, and using constants
+prevents silent typo breakage.
 """
 
 # Catalog query results
 CATALOG_ASSET_ID = "catalog_asset_id"
 CATALOG_POLICY = "catalog_policy"
-CATALOG_DATASETS = "datasets"
 
 # Contract negotiation
 NEGOTIATION_ID = "negotiation_id"
@@ -39,13 +41,9 @@ AGREEMENT_ID = "agreement_id"
 
 # Transfer / EDR
 TRANSFER_ID = "transfer_id"
-EDR_ENTRY = "edr_entry"
-#: Data-plane URL a completed transfer publishes; the only name for it.
-DATA_ADDRESS = "data_address"
+#: Data-plane URL a completed transfer returns; the only name for it.
+DATAPLANE_URL = "dataplane_url"
 EDR_TOKEN = "edr_token"
-
-# Backend data
-BACKEND_URL = "backend_url"
 
 # DSP protocol (direct, non-management-API)
 DSP_CATALOG = "dsp_catalog"

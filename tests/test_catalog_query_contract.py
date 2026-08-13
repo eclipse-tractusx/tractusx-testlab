@@ -41,10 +41,13 @@ from tractusx_testlab.steps.connector.catalog_query import (
     QueryCatalogStep,
 )
 from tractusx_testlab.syntax.context_vars import (
-    CATALOG_DATASETS,
     CATALOG_POLICY,
     CATALOG_ASSET_ID,
 )
+
+#: Output field every catalog step returns its offers under, and therefore the
+#: context variable it is published as.
+_DATASETS = "datasets"
 
 _DATASET = {"@id": "offer-abc", "odrl:hasPolicy": {"@id": "policy-1"}}
 _CATALOG = {
@@ -206,18 +209,18 @@ class TestQueryCatalogStep:
 
 
 # ---------------------------------------------------------------------------
-# Exports — the half of the interface that used to be invisible
+# Published outputs — every return output becomes a context variable
 # ---------------------------------------------------------------------------
 
 
-class TestQueryCatalogExports:
+class TestQueryCatalogPublishedOutputs:
     @pytest.mark.asyncio
     async def test_datasets_are_published_to_the_context(self, mock_context: MagicMock) -> None:
         consumer = MagicMock()
         consumer.get_catalog_with_filter.return_value = _CATALOG
         ctx = _with_consumer(mock_context, consumer)
         await QueryCatalogStep().invoke({}, ctx, _definition("connector/consumer/query_catalog"))
-        assert ctx.get_variable(CATALOG_DATASETS) == [_DATASET]
+        assert ctx.get_variable(_DATASETS) == [_DATASET]
 
     @pytest.mark.asyncio
     async def test_a_single_dataset_object_is_published_as_a_list(
@@ -227,7 +230,7 @@ class TestQueryCatalogExports:
         consumer.get_catalog_with_filter.return_value = {**_CATALOG, "dcat:dataset": _DATASET}
         ctx = _with_consumer(mock_context, consumer)
         await QueryCatalogStep().invoke({}, ctx, _definition("connector/consumer/query_catalog"))
-        assert ctx.get_variable(CATALOG_DATASETS) == [_DATASET]
+        assert ctx.get_variable(_DATASETS) == [_DATASET]
 
     @pytest.mark.asyncio
     async def test_empty_catalog_publishes_nothing(self, mock_context: MagicMock) -> None:
@@ -235,10 +238,10 @@ class TestQueryCatalogExports:
         consumer.get_catalog_with_filter.return_value = None
         ctx = _with_consumer(mock_context, consumer)
         await QueryCatalogStep().invoke({}, ctx, _definition("connector/consumer/query_catalog"))
-        assert not ctx.has_variable(CATALOG_DATASETS)
+        assert not ctx.has_variable(_DATASETS)
 
 
-class TestQueryCatalogByAssetIdExports:
+class TestQueryCatalogByAssetIdPublishedOutputs:
     @staticmethod
     def _params() -> dict:
         return {
@@ -323,12 +326,9 @@ class TestDeclaredContracts:
         assert contract.params_schema is not None
         assert contract.output_schema is not None
 
-    def test_export_names_match_the_context_var_constants(self) -> None:
-        exports = QueryCatalogByAssetIdStep.describe().exports_schema
-        assert set(exports["properties"]) == {CATALOG_ASSET_ID, CATALOG_POLICY}
-
-    def test_a_step_without_exports_declares_none(self) -> None:
-        assert QueryCatalogByBpnlStep.describe().exports_schema is None
+    def test_selected_offer_names_match_the_context_var_constants(self) -> None:
+        properties = QueryCatalogByAssetIdStep.describe().output_schema["properties"]
+        assert {CATALOG_ASSET_ID, CATALOG_POLICY} <= set(properties)
 
     def test_input_schema_documents_every_accepted_key(self) -> None:
         properties = QueryCatalogByAssetIdParams.model_json_schema()["properties"]

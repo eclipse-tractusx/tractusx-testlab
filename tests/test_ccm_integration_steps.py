@@ -64,8 +64,8 @@ class TestGenerateUuidStep:
         output = await step_instance.invoke({}, ctx, definition)
 
         assert output.value is not None, "StepOutput must have a value"
-        parsed = uuid.UUID(output.value["generated_id"], version=4)
-        assert str(parsed) == output.value["generated_id"], "Output must be a valid UUID v4 string"
+        parsed = uuid.UUID(output.value["uuid"], version=4)
+        assert str(parsed) == output.value["uuid"], "Output must be a valid UUID v4 string"
 
     @pytest.mark.asyncio
     async def test_generate_uuid_with_prefix(self) -> None:
@@ -76,8 +76,8 @@ class TestGenerateUuidStep:
 
         output = await step_instance.invoke({"prefix": "urn:uuid:"}, ctx, definition)
 
-        assert output.value["generated_id"].startswith("urn:uuid:"), "UUID should be prefixed"
-        uuid_part = output.value["generated_id"][len("urn:uuid:"):]
+        assert output.value["uuid"].startswith("urn:uuid:"), "UUID should be prefixed"
+        uuid_part = output.value["uuid"][len("urn:uuid:"):]
         uuid.UUID(uuid_part, version=4)  # must not raise
 
 
@@ -112,47 +112,45 @@ class TestJsonPathExtractStep:
 class TestExtractDatasetStep:
     @pytest.mark.asyncio
     async def test_extract_dataset_step(self) -> None:
-
-        catalog = {
-            "dcat:dataset": [
-                {
-                    "@id": "asset-ccm",
-                    "edc:id": "asset-ccm-edc",
-                    "dct:type": {"@id": "https://w3id.org/catenax/taxonomy#CCMAPI"},
-                    "odrl:hasPolicy": {"@id": "offer-123"},
-                },
-                {
-                    "@id": "asset-other",
-                    "dct:type": {"@id": "https://w3id.org/catenax/taxonomy#OTHER"},
-                },
-            ]
-        }
-        ctx = _make_mock_context(catalog=catalog)
+        datasets = [
+            {
+                "@id": "asset-ccm",
+                "edc:id": "asset-ccm-edc",
+                "dct:type": {"@id": "https://w3id.org/catenax/taxonomy#CCMAPI"},
+                "odrl:hasPolicy": {"@id": "offer-123"},
+            },
+            {
+                "@id": "asset-other",
+                "dct:type": {"@id": "https://w3id.org/catenax/taxonomy#OTHER"},
+            },
+        ]
+        ctx = _make_mock_context()
         step_instance = ExtractDatasetStep()
         definition = _make_step_definition(type="connector/consumer/extract_dataset")
 
         output = await step_instance.invoke(
-            {"source": "catalog", "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI"},
+            {
+                "datasets": datasets,
+                "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI",
+            },
             ctx, definition,
         )
 
         result = output.value
-        assert len(result["datasets"]) == 1, "Should match exactly one dataset"
+        assert result["dataset"] == datasets[0]
         assert result["asset_id"] == "asset-ccm-edc"
         assert result["offer_id"] == "offer-123"
 
     @pytest.mark.asyncio
     async def test_extract_dataset_no_match_returns_empty(self) -> None:
-
-        catalog = {"dcat:dataset": []}
-        ctx = _make_mock_context(catalog=catalog)
+        ctx = _make_mock_context()
         step_instance = ExtractDatasetStep()
         definition = _make_step_definition(type="connector/consumer/extract_dataset")
 
         output = await step_instance.invoke(
-            {"source": "catalog", "dct_type": "https://nonexistent"}, ctx, definition,
+            {"datasets": [], "dct_type": "https://nonexistent"}, ctx, definition,
         )
 
-        assert output.value["datasets"] == []
+        assert output.value["dataset"] is None
         assert output.value["offer_id"] is None
         assert output.value["asset_id"] is None

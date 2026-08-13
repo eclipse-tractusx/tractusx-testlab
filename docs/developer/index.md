@@ -21,64 +21,35 @@
 <!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
 <!-- It was reviewed and tested by a human committer. -->
 
-# Developer Handover — TestLab IDE
+# Developer Handover — TestLab Engine
 
-This documentation is a technical handover guide for the **TestLab IDE**, the browser-based visual test authoring tool for Eclipse Tractus-X dataspaces. It covers architecture, data flow, every source file, and the patterns used throughout the codebase so that a new developer can orient quickly and contribute confidently.
+This documentation is a technical handover guide for the **TestLab engine**, the Python compiler, runner, and mock server that executes certification test scripts for Eclipse Tractus-X dataspaces. It covers architecture, data flow, and the patterns used throughout the codebase so that a new developer can orient quickly and contribute confidently.
+
+The **IDE frontend** — the browser-based visual authoring tool built on React and Blockly — lives in the separate **cx-test-suite** repository. It talks to this engine through the server API and the block catalog generated from the engine's step registry; nothing in this repository renders UI.
 
 ## Repository layout
 
-The IDE lives under `ide/` in the monorepo. The Python library lives under `src/tractusx_testlab/`.
-
 ```
 tractusx-testlab/
-├── ide/                          ← Browser IDE (this documentation)
-│   ├── public/                   ← Static assets & block catalog
-│   │   ├── blocks/               ← Block definitions (one JSON per block)
-│   │   │   ├── index.json        ← Catalog manifest
-│   │   │   ├── edc-connector/    ← EDC block JSONs
-│   │   │   ├── digital-twin-registry/
-│   │   │   ├── discovery-finder/
-│   │   │   ├── flow/
-│   │   │   ├── function/
-│   │   │   ├── http/
-│   │   │   ├── mock/
-│   │   │   ├── notification/
-│   │   │   ├── validation/
-│   │   │   └── wait/
-│   │   ├── examples/             ← Bundled example projects
-│   │   │   ├── certificate-management-v1.0/
-│   │   │   ├── connector-ping-v1.0/
-│   │   │   ├── dtr-ping-v1.0/
-│   │   └── templates/            ← Reusable step templates
-│   │       └── index.json
-│   ├── src/
-│   │   ├── main.tsx              ← React entry point
-│   │   ├── App.tsx               ← Root layout component
-│   │   ├── components/           ← All UI components
-│   │   ├── models/               ← TypeScript types & validation
-│   │   ├── store/                ← Zustand state management
-│   │   ├── sync/                 ← YAML ↔ Model ↔ Graph converters
-│   │   └── theme/                ← Design tokens
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── tsconfig*.json
-├── src/tractusx_testlab/         ← Python library (separate docs)
-└── docs/developer/              ← You are here
+├── src/tractusx_testlab/         ← The engine: CLI, compiler, player, server, steps
+├── tests/                        ← Pytest suite (incl. e2e/ smoke scripts)
+├── stubs/                        ← Type stubs for untyped dependencies
+├── tools/                        ← Maintenance tooling (e.g. IDE parity checker)
+├── docs/                         ← This documentation (MkDocs)
+│   └── developer/                ← You are here
+├── mkdocs.yml
+└── pyproject.toml                ← Poetry project definition
 ```
+
+See [Architecture](architecture.md) for the layer-by-layer breakdown of `src/tractusx_testlab/`.
 
 ## Quick start
 
 ```bash
-cd ide
-npm install
-npm run dev          # http://localhost:5173
-```
-
-Build for production:
-
-```bash
-npm run build        # tsc --noEmit && vite build
-npm run preview      # serve the production bundle locally
+poetry install
+poetry run testlab --help        # the CLI entry point
+poetry run pytest                # run the test suite
+poetry run mkdocs serve          # preview this documentation
 ```
 
 ## Documentation structure
@@ -86,36 +57,32 @@ npm run preview      # serve the production bundle locally
 | Page | What it covers |
 |------|----------------|
 | [Product Scope](product-scope.md) | Mission, MVP scope boundaries, lifecycle, execution ordering, versioning, and validation model |
-| [Architecture](architecture.md) | High-level architecture, data flow, sync loop |
-| [State Management](state-management.md) | Zustand stores, persistence, file switching |
-| [Block System](block-system.md) | Blockly integration, block catalog, registration, serialization |
-| [Components](components.md) | Every React component, its purpose, props, and dependencies |
-| [Data Models](data-models.md) | TypeScript types, validation rules, YAML schema |
-| [Sync Layer](sync-layer.md) | YAML ↔ Model ↔ Graph conversion |
-| [Block Lifecycle](block-lifecycle.md) | How a block maps from IDE → YAML → Python executor → SDK call |
-| [Step-by-Step Tutorials](tutorials.md) | How-to guides: new blocks, steps, categories, assertions, templates, examples |
+| [Architecture](architecture.md) | High-level architecture, layering, module organization |
+| [Step Contracts](step-contracts.md) | The single-source-of-truth contract architecture: one id, one shape per step, enforcement and anti-drift tooling |
+| [Data Models](data-models.md) | The engine's Pydantic models and the YAML document structure |
+| [Block Lifecycle](block-lifecycle.md) | How a step maps from YAML → registry → Python executor → SDK call |
+| [Creating a Step](creating-a-step.md) | Reference for writing a new step executor and its contract |
+| [Tutorials](../tutorials/index.md) | How-to guides: step executors, service types, assertions, debugging |
 
 ## Tech stack
 
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| React | 19.1 | UI framework |
-| TypeScript | strict mode | Type safety |
-| Vite | 6 | Build tool & dev server |
-| Blockly | 12.5 | Visual block editor |
-| Zustand | 5.0 | State management |
-| Monaco Editor | 4.7 | YAML/JSON code editor |
-| React Flow (@xyflow/react) | 12.10 | Graph visualization |
-| MUI Icons | 9.0 | Icon set |
-| js-yaml | 4.1 | YAML parsing/serialization |
-| JSZip | 3.10 | ZIP import/export |
-| Dagre | 3.0 | Graph layout algorithm |
+| Technology | Purpose |
+|-----------|---------|
+| Python 3 + Poetry | Language and dependency management |
+| Pydantic v2 | Data models, step contracts, validation |
+| Typer | CLI command groups |
+| FastAPI | Mock server, callbacks, SSE streaming |
+| tractusx-sdk | Dataspace protocol communication (connector, DTR, discovery) |
+| pytest | Test suite |
+| MkDocs (Material) | This documentation |
+
+The IDE frontend's stack (React, Blockly, Zustand, Monaco, …) is documented in the cx-test-suite repository.
 
 ## Key design principles
 
-1. **Blocks are the primary editing surface.** The YAML editor is secondary and can be read-only.
-2. **Model is the source of truth.** Blocks and YAML are both derived from a shared `TestLabDocument` model in Zustand.
-3. **Steps are functions.** Every block has typed inputs and typed outputs. Outputs auto-appear as draggable variables.
-4. **Auto-generate IDs.** Asset IDs, policy IDs, contract IDs are auto-generated UUIDs — never ask the user.
-5. **Hide plumbing.** Connector addresses come from service config, not per-step fields.
-6. **Defaults everywhere.** Blocks work with minimal input. Optional fields are behind expandable sections.
+1. **One canonical contract per step.** One id, one set of parameter names, one output shape — declared in Pydantic next to the executor, with no aliases and no backward-compat shims. See [Step Contracts](step-contracts.md).
+2. **The YAML is the interface.** Scripts use `uses:` / `with:` / `returns:`; whatever authored them — the cx-test-suite IDE or a text editor — the engine compiles and runs the same document.
+3. **Steps are functions.** Every step has typed inputs and typed outputs, and publishes all of its return outputs — each top-level output field becomes a context variable of the same name.
+4. **Delegate the protocol.** Steps call tractusx-sdk services rather than re-implementing dataspace protocols.
+5. **Hide plumbing.** Connector services are seeded into the run context at runtime — no step names its service.
+6. **Generated reference, enforced parity.** The step reference page is generated from the registry, and CI fails when it drifts (`testlab docs --check`).

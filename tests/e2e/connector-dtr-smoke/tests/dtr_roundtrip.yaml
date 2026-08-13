@@ -40,7 +40,7 @@ execution:
     with:
       prefix: "urn:uuid:"
     returns:
-      generated_id:
+      uuid:
         type: string
 
   - id: create_shell
@@ -48,7 +48,7 @@ execution:
     name: Register the shell descriptor on the SUT's DTR
     with:
       shell_descriptor:
-        id: "${{ steps.new_twin_id.generated_id }}"
+        id: "${{ steps.new_twin_id.uuid }}"
         idShort: "testlabE2eSmokeTwin"
         specificAssetIds:
           - name: "manufacturerPartId"
@@ -83,13 +83,13 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: id, operator: equals, expected: "${{ steps.new_twin_id.generated_id }}" }
+        with: { input: id, operator: equals, expected: "${{ steps.new_twin_id.uuid }}" }
 
   - id: read_back_shell
     uses: digital-twin/provider/get_shell_descriptor
     name: Read the shell descriptor back from the SUT's DTR
     with:
-      aas_identifier: "${{ steps.new_twin_id.generated_id }}"
+      aas_identifier: "${{ steps.new_twin_id.uuid }}"
     returns:
       id:
         type: string
@@ -97,7 +97,7 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: id, operator: equals, expected: "${{ steps.new_twin_id.generated_id }}" }
+        with: { input: id, operator: equals, expected: "${{ steps.new_twin_id.uuid }}" }
       - uses: validate/assert
         with: { input: idShort, operator: equals, expected: "testlabE2eSmokeTwin" }
 
@@ -106,4 +106,12 @@ teardown:
     uses: digital-twin/provider/delete_shell_descriptor
     name: Delete the shell descriptor
     with:
-      aas_identifier: "${{ steps.new_twin_id.generated_id }}"
+      aas_identifier: "${{ steps.new_twin_id.uuid }}"
+    returns:
+      status_code:
+        type: integer
+    validate:
+      # This run created the twin, so a delete answered with anything but 204
+      # means the round-trip did not end where it started.
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, expected: 204 }

@@ -23,83 +23,79 @@
 
 # How to Add a New Assertion Type
 
-Assertions validate step outputs. The IDE and Python runtime both need to know about new assertion types.
+Assertions are steps. The three `validate/*` steps carry every assertion a script can write:
 
-## Step 1 — Add the assertion block in the IDE
+- `validate/assert` — apply an operator to a value
+- `validate/field` — apply an operator to a field at a dot-separated path inside a value
+- `validate/schema` — validate a payload against a JSON Schema document
 
-Open `ide/src/components/BlockEditor/blocks/assertionBlocks.ts`. Add a new block registration inside `registerAssertionBlocks()`:
+They run in two positions: as a standalone step in `execution:`, or inline in a step's `validate:` block. Inline, `with.input` is the plain name of one of the step's declared `returns:` — the assertion reads the step's public surface, nothing else (see [ADR-0025](../developer/decision-records/shared/ADR-0025-assertions-read-declared-returns.md)):
 
-```typescript
-Blockly.Blocks["assert_my_check"] = {
-  init(this: Block) {
-    this.appendDummyInput()
-      .appendField("assert my check:");
-
-    this.appendDummyInput()
-      .appendField("output:")
-      .appendField(
-        new Blockly.FieldDropdown(outputDropdown as () => Array<[string, string]>),
-        "OUTPUT"
-      );
-
-    this.appendValueInput("THRESHOLD")
-      .appendField("threshold:")
-      .setCheck("param_value");
-
-    this.setPreviousStatement(true, "assertion");
-    this.setNextStatement(true, "assertion");
-    this.setColour(blockColors.Assertions);
-    this.setTooltip("Custom assertion description");
-  },
-};
+```yaml
+- id: negotiate
+  uses: connector/consumer/negotiate
+  with:
+    counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+  returns:
+    negotiation_id:
+      type: string
+  validate:
+    - uses: validate/assert
+      with: { input: negotiation_id, operator: not_null }
 ```
 
-## Step 2 — Handle serialization (workspace → model)
+So "adding an assertion type" almost always means adding an **operator**, not a new step.
 
-In `ide/src/components/BlockEditor/serialization/workspaceToModel.ts`, find the assertion reading section in `readAssertionChain` (in `helpers.ts`) and add a case for your new block type:
+## Step 1 — Add the operator
 
-```typescript
-case "assert_my_check": {
-  const output = readDropdownValue(block, "OUTPUT");
-  const threshold = readValueBlockAsString(block, "THRESHOLD");
-  assertions.push({ output, my_check: threshold });
-  break;
-}
-```
-
-## Step 3 — Handle deserialization (model → workspace)
-
-In `ide/src/components/BlockEditor/serialization/populateTest.ts`, find the assertion population switch and add:
-
-```typescript
-case "my_check":
-  ab = makeBlock(ws, "assert_my_check");
-  setDropdownValue(ab, "OUTPUT", output);
-  connectValue(ab, "THRESHOLD", createValueBlockFromString(ws, String(val ?? "")));
-  break;
-```
-
-## Step 4 — Add the assertion type in Python
-
-In `src/tractusx_testlab/steps/assertions.py`, add the evaluation logic in `AssertionEngine.evaluate()`:
+All operators live in one table: `_check()` in `src/tractusx_testlab/steps/utility/validate.py`, shared by `validate/assert` and `validate/field`. Add a branch:
 
 ```python
-elif assertion_type == "my_check":
-    threshold = assertion_value
-    actual = extract_output(output, output_name)
-    passed = actual >= threshold  # your custom logic
-    results.append(AssertionResult(
-        output=output_name,
-        type="my_check",
-        expected=threshold,
-        actual=actual,
-        passed=passed,
-    ))
+def _check(operator: str, actual: Any, expected: Any) -> tuple[bool, str]:
+    ...
+    if operator == "greater_than":
+        passed = actual is not None and float(actual) > float(expected)
+        return passed, f"Expected value > {expected!r}, got {actual!r}"
 ```
 
-## Step 5 — Verify
+## Step 2 — Declare it in the contract
 
-1. Reload the IDE — the new assertion block should appear in the "Assertions" toolbox category
-2. Drag it under a step's `validate:` section
-3. Check the YAML preview — it should serialize as `my_check: <value>`
-4. Run `pytest` to verify the Python assertion engine handles it correctly
+Extend the `AssertOperator` literal at the top of the same file so the parameter models (and the generated step reference) know about it:
+
+```python
+AssertOperator = Literal[
+    "not_null",
+    "null",
+    "not_empty",
+    "equals",
+    "not_equals",
+    "matches_regex",
+    "contains",
+    "not_contains",
+    "greater_than",  # ← add this
+]
+```
+
+Because `ValidateFieldParams` inherits from `ValidateAssertParams`, both steps pick the new operator up automatically.
+
+## Step 3 — Test it
+
+Add a case to the validate-step tests and run them:
+
+```bash
+poetry run pytest -k validate
+```
+
+## Step 4 — Regenerate the step reference
+
+The step reference is generated from the parameter models. `poetry run testlab docs --check` fails when `docs/specification/reference/steps.md` is stale; regenerate it:
+
+```bash
+poetry run testlab docs
+```
+
+## When an operator is not enough
+
+If the check needs a genuinely different input contract (like `validate/schema`, which takes a `schema:` document instead of an operator), add a new `validate/*` step instead: a `StepParams` model, a `StepValue` output, and a `BaseStep` subclass registered with `@step("validate/<name>")` — the same pattern as the three existing steps in `src/tractusx_testlab/steps/utility/validate.py`. See [Create a New Step Executor](create-step-executor.md) for the full walkthrough.
+
+The visual IDE's assertion blocks live in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository and are updated there.

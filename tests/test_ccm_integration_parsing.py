@@ -120,18 +120,24 @@ class TestCompactAssertionParsing:
 
     def test_not_null_assertion_sets_uses_and_output(self) -> None:
 
-        assertion = Assertion(uses="assert/not_null", **{"with": {"output": "body.certificateId"}})
+        assertion = Assertion(
+            uses="validate/field",
+            **{"with": {"input": "response_body", "path": "certificateId", "operator": "not_null"}},
+        )
 
-        assert assertion.uses == "assert/not_null"
-        assert (assertion.with_ or {}).get("output") == "body.certificateId"
+        assert assertion.uses == "validate/field"
+        assert (assertion.with_ or {}).get("path") == "certificateId"
 
     def test_equals_assertion_sets_uses_value_and_output(self) -> None:
 
-        assertion = Assertion(uses="assert/equals", **{"with": {"output": "status", "value": 200}})
+        assertion = Assertion(
+            uses="validate/assert/equals",
+            **{"with": {"input": "status_code", "value": 200}},
+        )
 
-        assert assertion.uses == "assert/equals"
+        assert assertion.uses == "validate/assert/equals"
         assert (assertion.with_ or {}).get("value") == 200
-        assert (assertion.with_ or {}).get("output") == "status"
+        assert (assertion.with_ or {}).get("input") == "status_code"
 
 
 class TestCcmServiceParsing:

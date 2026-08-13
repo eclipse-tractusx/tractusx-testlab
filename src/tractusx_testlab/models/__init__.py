@@ -53,7 +53,6 @@ from tractusx_testlab.models.authoring.infrastructure import (
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
     EventKind,
-    FailurePolicy,
     JobStatus,
     PackageFormat,
     ScriptStatus,
@@ -64,7 +63,6 @@ from tractusx_testlab.models.primitives.enums import (
 )
 from tractusx_testlab.models.primitives.enums import VariableSource  # verb-form variable source
 from tractusx_testlab.models.primitives.enums import VariableScope  # verb-form variable scope
-from tractusx_testlab.models.primitives.enums import AssertionType  # local override — adds typed assertion types
 from tractusx_testlab.models.primitives.enums import ScriptKind  # local override — adds TCK
 from tractusx_testlab.models.primitives.enums import ServiceType  # local override — adds EDC connector types
 from tractusx_testlab.models.primitives.enums import StepPhase
@@ -128,9 +126,7 @@ from tractusx_testlab.models.domain.server import (
 __all__ = [
     # enums
     "AssertionSeverity",
-    "AssertionType",
     "EventKind",
-    "FailurePolicy",
     "JobStatus",
     "PackageFormat",
     "ScriptKind",

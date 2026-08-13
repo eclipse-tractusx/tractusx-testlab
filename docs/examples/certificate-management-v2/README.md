@@ -26,7 +26,7 @@ This folder demonstrates the complete lifecycle of a TCK from raw YAML authoring
 ```
 certificate-management-v2/
 ├── raw/                        ← Source YAML (what the test author writes)
-│   ├── tck.yaml                  TCK definition (env, services, preconditions)
+│   ├── tck.yaml                  TCK definition (env, services)
 │   ├── tests/
 │   │   └── request-certificate.yaml   Test steps
 │   ├── schemas/
@@ -51,7 +51,7 @@ certificate-management-v2/
 │   └── signature.sig             Hybrid Ed25519 + ML-DSA-65 signature
 │
 └── execution/                  ← Test execution output
-    └── execution-trace.jsonl     Line-by-line execution trace (preconditions + steps + summary)
+    └── execution-trace.jsonl     Line-by-line execution trace (steps + summary)
 ```
 
 ## Lifecycle Flow

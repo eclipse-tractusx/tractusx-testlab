@@ -19,6 +19,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
 
 """mock/dtr step — a protocol-aware Digital Twin Registry mock.
 
@@ -55,6 +57,7 @@ logger = logging.getLogger(__name__)
 
 _BASE_PATH = "/shell-descriptors"
 _LOOKUP_PATH = "/lookup/shells"
+_LOOKUP_BY_ASSET_LINK_PATH = "/lookup/shellsByAssetLink"
 
 
 def _b64url_encode(text: str) -> str:
@@ -137,9 +140,25 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
             matches = [s.get("id") for s in shells if _matches_asset_ids(s, requested)]
             return MockResponse(status_code=200, body={"result": matches})
 
+        def _lookup_shells_by_asset_link(req: MockRequest) -> MockResponse:
+            """The body-carried spelling of the same lookup.
+
+            ``POST /lookup/shellsByAssetLink`` takes the criteria as a plain JSON
+            array, so there is nothing to decode and no query-length limit — an
+            empty array matches every shell, the way an absent ``assetIds`` does.
+            """
+            requested = req.body if isinstance(req.body, list) else None
+            if requested is None:
+                return MockResponse(
+                    status_code=400, body={"error": "body must be a list of asset links"}
+                )
+            matches = [s.get("id") for s in shells if _matches_asset_ids(s, requested)]
+            return MockResponse(status_code=200, body={"result": matches, "paging_metadata": {}})
+
         register_mock(_BASE_PATH, "GET", _list_shells)
         register_mock(_BASE_PATH, "POST", _register_shell)
         register_mock(_LOOKUP_PATH, "GET", _lookup_shells)
+        register_mock(_LOOKUP_BY_ASSET_LINK_PATH, "POST", _lookup_shells_by_asset_link)
         for shell in shells:
             shell_id = shell.get("id")
             if shell_id:

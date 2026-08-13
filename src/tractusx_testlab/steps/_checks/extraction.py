@@ -178,7 +178,7 @@ def _resolve_path_segment(current: Any, part: str) -> Any:
 #: Names every step output carries whatever it declares — the ``StepOutput``
 #: slots and the response fields a script can always assert on.
 UNIVERSAL_RETURNS = frozenset({
-    "value", "request", "response", "exports",
+    "value", "request", "response",
     "status_code", "headers", "body", "duration_ms",
     "response_body", "response_headers",
 })
@@ -193,13 +193,12 @@ def declared_names(step_cls: Any) -> frozenset[str]:
     turn either into a silent ``None`` three steps later.
     """
     names = set(UNIVERSAL_RETURNS)
-    for attr in ("output_model", "exports_model"):
-        model = getattr(step_cls, attr, None)
-        fields = getattr(model, "model_fields", None) or {}
-        for name, field in fields.items():
-            names.add(name)
-            if getattr(field, "alias", None):
-                names.add(field.alias)
+    model = getattr(step_cls, "output_model", None)
+    fields = getattr(model, "model_fields", None) or {}
+    for name, field in fields.items():
+        names.add(name)
+        if getattr(field, "alias", None):
+            names.add(field.alias)
     return frozenset(names)
 
 

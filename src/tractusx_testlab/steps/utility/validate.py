@@ -26,57 +26,18 @@
 from __future__ import annotations
 
 import json
-import re
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import jsonschema
 from pydantic import ConfigDict, Field
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.steps.assertions.operators import AssertOperator, apply_operator
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepValue
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
-
-#: Comparisons ``validate/assert`` and ``validate/field`` accept.
-AssertOperator = Literal[
-    "not_null",
-    "null",
-    "not_empty",
-    "equals",
-    "not_equals",
-    "matches_regex",
-    "contains",
-    "not_contains",
-]
-
-
-def _check(operator: str, actual: Any, expected: Any) -> tuple[bool, str]:
-    """Apply *operator* to *actual*/*expected*; return ``(passed, error_message)``."""
-    if operator == "not_null":
-        return actual is not None, "Expected non-null value, got None"
-    if operator == "null":
-        return actual is None, f"Expected null, got {actual!r}"
-    if operator == "not_empty":
-        return bool(actual), f"Expected non-empty value, got {actual!r}"
-    if operator == "equals":
-        passed = actual == expected or str(actual) == str(expected)
-        return passed, f"Expected {expected!r}, got {actual!r}"
-    if operator == "not_equals":
-        passed = actual != expected and str(actual) != str(expected)
-        return passed, f"Expected value != {expected!r}, got {actual!r}"
-    if operator == "matches_regex":
-        passed = isinstance(actual, str) and bool(re.search(str(expected), actual))
-        return passed, f"Pattern {expected!r} not matched in {actual!r}"
-    if operator == "contains":
-        passed = str(expected) in str(actual) if actual is not None else False
-        return passed, f"Expected {actual!r} to contain {expected!r}"
-    if operator == "not_contains":
-        passed = str(expected) not in str(actual) if actual is not None else True
-        return passed, f"Expected {actual!r} to NOT contain {expected!r}"
-    raise ValueError(f"Unknown operator: {operator!r}")
-
 
 def _get_nested(obj: Any, path: str) -> Any:
     """Traverse a dot-separated path through nested dicts/lists."""
@@ -131,7 +92,7 @@ class ValidateAssertStep(BaseStep[ValidateAssertParams, AssertedValueOutput]):
         context: "StepContext",
         definition: StepDefinition,
     ) -> StepOutput[AssertedValueOutput]:
-        passed, message = _check(params.operator, params.input, params.value)
+        passed, message = apply_operator(params.operator, params.input, params.value)
         if not passed:
             raise ValueError(f"Assertion failed [{params.operator}]: {message}")
         return StepOutput(value=AssertedValueOutput(params.input))
@@ -171,7 +132,7 @@ class ValidateFieldStep(BaseStep[ValidateFieldParams, AssertedValueOutput]):
         definition: StepDefinition,
     ) -> StepOutput[AssertedValueOutput]:
         actual = _get_nested(params.input, params.path) if params.path else params.input
-        passed, message = _check(params.operator, actual, params.value)
+        passed, message = apply_operator(params.operator, actual, params.value)
         if not passed:
             raise ValueError(
                 f"Field assertion failed [{params.path}][{params.operator}]: {message}"

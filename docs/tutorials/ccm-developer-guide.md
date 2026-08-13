@@ -30,10 +30,10 @@ This guide covers setting up, running, and debugging the CX-0135 certificate man
 ### Prerequisites
 
 - Python 3.12+
-- Node.js 20+ (for IDE frontend)
 - A running CCMAPI-compliant SUT (or use the provided stub)
+- Optionally the visual IDE from the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository (requires Node.js 20+)
 
-### Five steps to your first test run
+### Four steps to your first test run
 
 ```bash
 # 1. Clone and install
@@ -43,14 +43,13 @@ pip install -e .
 
 # 2. Start the SUT stub
 cd stubs/ccm-sut && uvicorn app:app --port 8090 &
+cd ../..
 
-# 3. Start TestLab backend
-testlab serve &
+# 3. Run the Certificate Management suite from the CLI
+testlab run docs/examples/certificate-management-v2/raw/index.yaml --config run-config.yaml
 
-# 4. Start the IDE
-cd ide && npm install && npm run dev &
-
-# 5. Open http://localhost:5173 → load Certificate Management example → click Execute
+# 4. (Optional) For visual authoring and execution monitoring, start the
+#    TestLab backend with `testlab serve` and connect the cx-test-suite IDE to it.
 ```
 
 ## Running with the SUT Stub
@@ -110,34 +109,40 @@ Replace `provider_address` with your EDC's DSP URL and update the BPN values. Al
 
 ### Index file structure
 
-The TCK manifest at `index.yaml` declares metadata, runtime variables, and test references:
+The TCK manifest at `index.yaml` declares metadata, environment variables, and test references (see the shipped suite at `docs/examples/certificate-management-v2/raw/index.yaml`):
 
 ```yaml
 kind: tck
-name: certificate-management
-version: "0.0.1"
-standards:
-  - id: CX-0135
-    version: v3.1.0
+syntax: v1-alpha
+id: certificate-management-tck-v0.0.1
 
-variables:
-  provider_address:
-    type: str
-    description: Provider EDC DSP endpoint
-    runtime: true     # supplied at execution time
-  certificate_type:
-    type: str
-    default: "iso9001" # has a default — optional to override
+metadata:
+  name: "Certificate Management TCK"
+  version: "v0.0.1"
+  standards:
+    - id: CX-0135
+      version: v3.1.0
+
+env:
+  variables:
+    - id: sut_counter_party_address
+      uses: variable/type/string
+      with:
+        source: input   # supplied at execution time
+        scope: sut      # the SUT operator provides it
+      returns:
+        value:
+          type: string
 
 tests:
-  - test: tests/request_certificate.yaml
-  - test: tests/validate_payload.yaml
-  # ... 8 tests total
+  - id: request_certificate.yaml
+    name: Request a certificate via CCMAPI
+  # ... more tests
 ```
 
 ### Test files and dependencies
 
-The suite contains 8 test files. Some depend on outputs from earlier tests:
+The full suite described in this guide contains 8 test files; the engine repository ships a four-test version at `docs/examples/certificate-management-v2/raw/tests/`. Some tests depend on outputs from earlier tests:
 
 ```mermaid
 flowchart TD
@@ -166,8 +171,8 @@ flowchart TD
 | Test | CX-0135 Section | Dependencies |
 |------|-----------------|--------------|
 | `request_certificate` | §2.1.1.1 | None |
-| `validate_payload` | §3.1 | `request_certificate` (imports `document_id`) |
-| `await_feedback_callback` | §2.1.1.3 | `request_certificate` (imports `request_id`) |
+| `validate_payload` | §3.1 | `request_certificate` (reads its `document_id` output) |
+| `await_feedback_callback` | §2.1.1.3 | `request_certificate` (reads its `request_id` output) |
 | `send_feedback` | §2.1.1.3 | `request_certificate`, `validate_payload`, `await_feedback_callback` |
 | `push_certificate` | §2.1.1.2 | None |
 | `available_notification` | §2.1.1.4 | None |
@@ -178,9 +183,9 @@ flowchart TD
 
 See the **[Architecture Guide](ccm-architecture-guide.md)** for the full internal sequence. In summary:
 
-1. The IDE converts the workspace to YAML and sends `POST /testlab/test-execution/run`
+1. The IDE (cx-test-suite) converts the workspace to YAML and sends `POST /testlab/test-execution/run`
 2. The backend parses YAML into a `Tck` object and topologically sorts scripts by dependencies
-3. For each script: resolve `@variables` → execute steps → evaluate assertions → store outputs
+3. For each script: resolve `${{ }}` references → execute steps → evaluate `validate:` assertions → publish declared `returns:` outputs
 4. The IDE receives real-time SSE events (`step.started`, `step.completed`, `step.failed`)
 
 ## Deep Dive: request_certificate
@@ -189,14 +194,14 @@ This test executes the full DSP + CCMAPI flow in 7 steps:
 
 | Step | Type | What It Does |
 |------|------|-------------|
-| 1 | `query_catalog` | DSP catalog request filtered for `cx-taxo:CCMAPI` |
-| 2–3 | `json_path_extract` | Extract asset ID and offer policy from catalog |
-| 4 | `negotiate` | DSP contract negotiation for the CCMAPI asset |
-| 5 | `initiate_transfer` | Get an EDR with data plane auth token |
-| 6 | `generate_uuid` | Create a unique `messageId` |
-| 7 | `http_call_dataplane` | POST CX-0135 envelope to `/companycertificate/request` |
+| 1 | `connector/consumer/query_catalog` | DSP catalog request filtered for `cx-taxo:CCMAPI` |
+| 2–3 | `util/json_path_extract` | Extract asset ID and offer policy from catalog |
+| 4 | `connector/consumer/negotiate` | DSP contract negotiation for the CCMAPI asset |
+| 5 | `connector/consumer/initiate_transfer` | Get an EDR with data plane auth token |
+| 6 | `util/generate_uuid` | Create a unique `messageId` |
+| 7 | `connector/dataplane/http_request` | POST CX-0135 envelope to `/companycertificate/request` |
 
-The final step sends a CX-0135 `{header, content}` envelope and asserts a 200 response with non-null `requestStatus` and `documentId`. It exports `request_id` and `document_id` for downstream tests.
+Steps 1–5 can also be collapsed into a single `connector/consumer/pull_data_filtered` step, which is what the shipped suite does. The final step sends a CX-0135 `{header, content}` envelope and asserts a 200 response with non-null `requestStatus` and `documentId`. It publishes `request_id` and `document_id` as declared outputs for downstream tests.
 
 ## Configuring for Your SUT
 
@@ -239,16 +244,15 @@ Test execution logs are written to the `logs/` directory with timestamps. Each s
 
 ### Adding debug assertions
 
-Add extra assertions to any step to inspect intermediate values:
+Add extra `validate:` entries to any step to inspect intermediate values, or a `util/log` step to print a value to the execution log:
 
 ```yaml
 validate:
-  - type: "ASSERT_FIELD"
-    output: response_body
-    path: "header.messageId"
-    operator: "not_null"
-  - type: "LOG"    # prints value to execution log
-    output: response_body
+  - uses: validate/field
+    with:
+      input: response_body
+      path: "header.messageId"
+      operator: not_null
 ```
 
 ## Extending the Suite
@@ -256,9 +260,9 @@ validate:
 ### Add a new test step
 
 1. Create a new YAML file in the `tests/` directory
-2. Define `kind: test`, `name`, and `steps`
+2. Define `kind: test`, metadata, and `execution:` steps (`uses:` / `with:` / `returns:` / `validate:`)
 3. Add a reference in `index.yaml` under `tests:`
-4. Use `import_variable` in setup to consume outputs from other tests
+4. Declare `depends_on` if the test reads outputs published by other tests
 
 ### Add a new certificate type test
 

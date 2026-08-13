@@ -44,8 +44,7 @@ from tractusx_testlab.syntax.context_vars import (
     AGREEMENT_ID,
     CATALOG_ASSET_ID,
     CATALOG_POLICY,
-    DATA_ADDRESS,
-    EDR_ENTRY,
+    DATAPLANE_URL,
     EDR_TOKEN,
     NEGOTIATION_ID,
     TRANSFER_ID,
@@ -224,7 +223,7 @@ class TestInitiateTransferPull:
 
         output = await InitiateTransferStep().invoke({}, mock_context, definition)
 
-        assert output.value["data_address"] == _ENDPOINT
+        assert output.value["dataplane_url"] == _ENDPOINT
         assert output.value["edr_token"] == _TOKEN
         assert output.value["transfer_id"] == _TRANSFER_ID
 
@@ -232,16 +231,16 @@ class TestInitiateTransferPull:
     async def test_publishes_the_pair_the_dataplane_step_reads(
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
-        """C34 — one name for the data-plane URL, and it is ``data_address``."""
+        """C34 — one name for the data-plane URL, and it is ``dataplane_url``."""
         mock_context.get_consumer_service.return_value = _pull_consumer()
         mock_context.set_variable(NEGOTIATION_ID, _NEGOTIATION_ID)
 
         await InitiateTransferStep().invoke({}, mock_context, definition)
 
-        assert mock_context.variables[DATA_ADDRESS] == _ENDPOINT
+        assert mock_context.variables[DATAPLANE_URL] == _ENDPOINT
         assert mock_context.variables[EDR_TOKEN] == _TOKEN
         assert mock_context.variables[TRANSFER_ID] == _TRANSFER_ID
-        assert EDR_ENTRY in mock_context.variables
+        assert "edr_entry" in mock_context.variables
         assert "dataplane_endpoint" not in mock_context.variables
 
     @pytest.mark.asyncio
@@ -269,7 +268,7 @@ class TestInitiateTransferPull:
         output = await InitiateTransferStep().invoke({}, mock_context, definition)
 
         assert output.response.status_code == 500
-        assert output.value["data_address"] is None
+        assert output.value["dataplane_url"] is None
 
 
 # ---------------------------------------------------------------------------

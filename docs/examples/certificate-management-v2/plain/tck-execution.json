@@ -177,8 +177,7 @@
             }
           ],
           "phase": "main",
-          "phase_index": 0,
-          "on_failure": "abort"
+          "phase_index": 0
         }
       ]
     },
@@ -273,8 +272,7 @@
             }
           ],
           "phase": "main",
-          "phase_index": 0,
-          "on_failure": "abort"
+          "phase_index": 0
         },
         {
           "index": 1,
@@ -335,8 +333,7 @@
             }
           ],
           "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
+          "phase_index": 1
         }
       ]
     },
@@ -412,8 +409,7 @@
           },
           "validate": [],
           "phase": "setup",
-          "phase_index": 0,
-          "on_failure": "abort"
+          "phase_index": 0
         },
         {
           "index": 1,
@@ -474,8 +470,7 @@
             }
           ],
           "phase": "main",
-          "phase_index": 0,
-          "on_failure": "abort"
+          "phase_index": 0
         },
         {
           "index": 2,
@@ -514,8 +509,7 @@
             }
           ],
           "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
+          "phase_index": 1
         },
         {
           "index": 3,
@@ -570,8 +564,7 @@
             }
           ],
           "phase": "main",
-          "phase_index": 2,
-          "on_failure": "abort"
+          "phase_index": 2
         }
       ]
     },
@@ -666,14 +659,13 @@
             }
           ],
           "phase": "main",
-          "phase_index": 0,
-          "on_failure": "abort"
+          "phase_index": 0
         },
         {
           "index": 1,
           "id": "send_unknown_cert_type",
           "uses": "connector/dataplane/http_request",
-          "name": "Send request with unknown certificate type — SUT must return REJECTED",
+          "name": "Send request with unknown certificate type \u2014 SUT must return REJECTED",
           "with": {
             "method": "POST",
             "dataplane_url": {
@@ -728,8 +720,7 @@
             }
           ],
           "phase": "main",
-          "phase_index": 1,
-          "on_failure": "abort"
+          "phase_index": 1
         }
       ]
     }
