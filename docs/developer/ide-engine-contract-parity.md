@@ -113,8 +113,9 @@ closed from whichever side over- or under-declared: the OAuth2 steps stopped
 inheriting every other grant's credentials (and `grant_type`, pinned by the
 step name, stopped being an input at all); `create_asset` and `create_policy`
 dropped their `asset_id`/`policy_id` overrides, so the ID comes from the
-asset or policy document alone; and `http_call` and `generate_uuid` gained
-the `timeout` and `prefix` their engine steps already accepted.
+asset or policy document alone; `util/generate_uuid` dropped `prefix`, since
+a script writes `urn:uuid:${{ …​.uuid }}` where it uses the value; and
+`http_call` gained the `timeout` its engine step already accepted.
 
 **F** is now empty: every registered step has a block, so the catalog and the registry hold
 the same 53 ids.

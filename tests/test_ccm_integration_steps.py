@@ -67,19 +67,6 @@ class TestGenerateUuidStep:
         parsed = uuid.UUID(output.value["uuid"], version=4)
         assert str(parsed) == output.value["uuid"], "Output must be a valid UUID v4 string"
 
-    @pytest.mark.asyncio
-    async def test_generate_uuid_with_prefix(self) -> None:
-
-        step_instance = GenerateUuidStep()
-        ctx = _make_mock_context()
-        definition = _make_step_definition(type="util/generate_uuid")
-
-        output = await step_instance.invoke({"prefix": "urn:uuid:"}, ctx, definition)
-
-        assert output.value["uuid"].startswith("urn:uuid:"), "UUID should be prefixed"
-        uuid_part = output.value["uuid"][len("urn:uuid:"):]
-        uuid.UUID(uuid_part, version=4)  # must not raise
-
 
 class TestJsonPathExtractStep:
     @pytest.mark.asyncio

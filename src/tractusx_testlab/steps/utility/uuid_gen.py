@@ -40,12 +40,11 @@ if TYPE_CHECKING:
 
 
 class GenerateUuidParams(StepParams):
-    """Input contract of ``util/generate_uuid``."""
+    """Input contract of ``util/generate_uuid`` — the step takes nothing.
 
-    prefix: str = Field(
-        default="",
-        description="Text prepended to the UUID, e.g. 'urn:uuid:'.",
-    )
+    A prefix like ``urn:uuid:`` is not an input either: a script that needs
+    one writes it where the value is used, e.g. ``urn:uuid:${{ ... .uuid }}``.
+    """
 
 
 class GenerateUuidOutput(StepPayload):
@@ -57,12 +56,12 @@ class GenerateUuidOutput(StepPayload):
     the same identifier under two names and neither reads the step's contract.
     """
 
-    uuid: str = Field(description="The generated identifier, including any prefix.")
+    uuid: str = Field(description="The generated identifier.")
 
 
 @step("util/generate_uuid")
 class GenerateUuidStep(BaseStep[GenerateUuidParams, GenerateUuidOutput]):
-    """Generate a random UUID v4, optionally behind a prefix.
+    """Generate a random UUID v4.
 
     A fresh identifier is produced on every call, so a test that needs a value
     no earlier run can collide with can mint one here.
@@ -77,5 +76,4 @@ class GenerateUuidStep(BaseStep[GenerateUuidParams, GenerateUuidOutput]):
         context: "StepContext",
         definition: StepDefinition,
     ) -> StepOutput[GenerateUuidOutput]:
-        value = f"{params.prefix}{uuid.uuid4()}"
-        return StepOutput(value=GenerateUuidOutput(uuid=value))
+        return StepOutput(value=GenerateUuidOutput(uuid=str(uuid.uuid4())))

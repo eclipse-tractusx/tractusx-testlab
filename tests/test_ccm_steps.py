@@ -60,13 +60,6 @@ class TestGenerateUuidStep:
         assert parsed.version == 4
 
     @pytest.mark.asyncio
-    async def test_prepends_prefix(self, mock_context: MagicMock, definition: StepDefinition) -> None:
-        step = GenerateUuidStep()
-        result = await step.invoke({"prefix": "urn:uuid:"}, mock_context, definition)
-        assert result.value["uuid"].startswith("urn:uuid:")
-        uuid.UUID(result.value["uuid"].removeprefix("urn:uuid:"))
-
-    @pytest.mark.asyncio
     async def test_publishes_the_identifier_under_exactly_one_key(
         self, mock_context: MagicMock, definition: StepDefinition
     ) -> None:

@@ -1183,15 +1183,13 @@ _Output contract of `util/generate_bpn`._
 
 ### `util/generate_uuid`
 
-Generate a random UUID v4, optionally behind a prefix.
+Generate a random UUID v4.
 
 A fresh identifier is produced on every call, so a test that needs a value no earlier run can collide with can mint one here.
 
 **Inputs**
 
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `prefix` | string | no | `''` | — | Text prepended to the UUID, e.g. 'urn:uuid:'. |
+_No fields._
 
 **Output** — the value assertions and `returns:` read
 
@@ -1199,7 +1197,7 @@ _Output contract of `util/generate_uuid`._
 
 | Field | Type | Description |
 |---|---|---|
-| `uuid` | string | The generated identifier, including any prefix. |
+| `uuid` | string | The generated identifier. |
 
 ### `util/json_path_extract`
 

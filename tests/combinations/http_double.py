@@ -99,7 +99,10 @@ class HttpDouble:
         double = self
 
         class _Handler(BaseHTTPRequestHandler):
-            protocol_version = "HTTP/1.1"
+            # HTTP/1.0 closes each connection as it answers. Keep-alive would
+            # leave the client's socket open and every ``stop()`` would then
+            # wait out the handler thread — seconds per test, for nothing.
+            protocol_version = "HTTP/1.0"
 
             def log_message(self, *_args: Any) -> None:
                 """Keep the pytest output about the tests."""
@@ -140,7 +143,11 @@ class HttpDouble:
             do_DELETE = _handle
 
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
-        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+        # ``shutdown`` waits for the serve loop to notice, one poll interval at
+        # a time. The default half-second is charged to every test's teardown.
+        self._thread = threading.Thread(
+            target=self._server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+        )
         self._thread.start()
         host, port = self._server.server_address[:2]
         return f"http://{host}:{port}"
