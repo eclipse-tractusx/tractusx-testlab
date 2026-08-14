@@ -180,7 +180,7 @@ jobs:
             --set edc-consumer.tx-data-provider.data-persistence-layer-bundle.enabled=true \
             --set edc-provider.tractusx-identityhub.identityhub.livenessProbe.initialDelaySeconds=180 \
             --set edc-consumer.tractusx-identityhub.identityhub.livenessProbe.initialDelaySeconds=180 \
-            --timeout 20m --wait
+            --debug --timeout 20m --wait
         # The two --set overrides turn on a DTR for the "consumer" participant
         # too (the profile only enables one for "provider" by default), so
         # the deployed dataspace genuinely has two EDCs *and* two DTRs. If a
