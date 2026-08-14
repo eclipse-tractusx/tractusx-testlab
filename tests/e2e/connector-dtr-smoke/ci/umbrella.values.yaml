@@ -34,6 +34,10 @@ edc-provider:
     identityhub:
       livenessProbe:
         initialDelaySeconds: 180
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
   tx-data-provider:
     dataspace-connector-bundle:
       vault:
@@ -75,6 +79,10 @@ edc-consumer:
     identityhub:
       livenessProbe:
         initialDelaySeconds: 180
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
   tx-data-provider:
     dataspace-connector-bundle:
       vault:

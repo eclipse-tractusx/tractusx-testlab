@@ -398,6 +398,8 @@ jobs:
           mkdir -p ci-logs
           helm status umbrella -n "${UMBRELLA_NAMESPACE}" > ci-logs/helm-status.txt 2>&1 || true
           kubectl get all -n "${UMBRELLA_NAMESPACE}" -o wide > ci-logs/resources.txt 2>&1 || true
+          kubectl get nodes -o wide > ci-logs/nodes.txt 2>&1 || true
+          kubectl describe nodes > ci-logs/nodes-describe.txt 2>&1 || true
           kubectl get pods -n "${UMBRELLA_NAMESPACE}" -o wide > ci-logs/pods.txt 2>&1 || true
           kubectl describe pods -n "${UMBRELLA_NAMESPACE}" > ci-logs/pods-describe.txt 2>&1 || true
           kubectl get jobs -n "${UMBRELLA_NAMESPACE}" -o yaml > ci-logs/jobs.yaml 2>&1 || true
