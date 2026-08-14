@@ -25,7 +25,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "tractusx-testlab"
-version = "0.0.6-alpha"
+version = "v1-alpha-1"
 description = "Library with tools for authoring TCKs for Dataspaces which use Eclipse Tractus-X technology"
 license = { text = "Apache-2.0" }
 readme = "README.md"
