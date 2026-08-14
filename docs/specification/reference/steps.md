@@ -4,7 +4,7 @@
 
 Every step declares its interface as Pydantic models, and this page is generated from them, so it cannot drift from the implementation.
 
-55 steps.
+57 steps.
 
 ## Steps
 
@@ -606,7 +606,7 @@ This is the consumer's half of the DTR contract, and it is a different thing fro
 
 **Output** — the value assertions and `returns:` read
 
-_Shells a consumer-side registry read returned._
+_Shells a registry read returned._
 
 | Field | Type | Description |
 |---|---|---|
@@ -729,6 +729,28 @@ _An AAS descriptor as the registry returned it._
 
 Additional keys sent by the counterpart are passed through unchanged.
 
+### `digital-twin/provider/lookup_shells`
+
+Search the run's own registry for shells matching specific asset IDs.
+
+`digital-twin-registry/consumer/dataplane/lookup_shell` re-addressed at the registry the engine is seeded with: the same `GET /lookup/shells`, the same base64url-encoded criteria, the same answer, reached over the service's own lookup URL rather than through a data plane. That is what a setup phase needs — it has no EDR token, and no reason to obtain one to search a registry it operates. The lookup answers with identifiers, so each is read back as a descriptor from the registry API; a script that only needs the identifiers reads `shell_ids` and ignores the rest.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `bpn` | string | no | `None` | — | BPN the registry request is made on behalf of. |
+| `specific_asset_ids` | list of [SpecificAssetId](#specificassetid) | yes | — | — | Criteria the shell must match; all of them have to. |
+
+**Output** — the value assertions and `returns:` read
+
+_Shells a registry read returned._
+
+| Field | Type | Description |
+|---|---|---|
+| `shell_ids` | list of string | Identifiers of the shells that matched. |
+| `shell_descriptors` | list of object | The descriptor document of each matching shell. |
+
 ### `digital-twin/provider/wizard/create_shell_descriptor`
 
 Register a shell descriptor described field by field.
@@ -788,11 +810,11 @@ _An AAS descriptor as the registry returned it._
 
 Additional keys sent by the counterpart are passed through unchanged.
 
-### `digital-twin/submodel/upload`
+### `digital-twin/submodel/delete`
 
-Upload sample data to the engine's submodel server under a unique UUID path.
+Delete one submodel from the engine's submodel server.
 
-Each run gets its own `/urn:uuid:<uuid4>` resource — exactly like the TCK does — so repeated runs never collide, and the resulting URL is published as `backend_url` for the asset that will point at it. The server it posts to comes from the engine configuration (`submodel_backend_url`, `TESTLAB_SUBMODEL_BACKEND_URL`); an engine without one cannot run this step, and says so rather than posting nowhere.
+The teardown half of `digital-twin/submodel/upload`: it removes the resource that upload's `path` names, on the server the engine is seeded with (`submodel_backend_url`, `TESTLAB_SUBMODEL_BACKEND_URL`). The status the server answered with is published as `status_code`, so a teardown can assert that the data was really there (200/204) rather than already gone (404) — the same distinction `digital-twin/provider/delete_shell_descriptor` publishes.
 
 **Inputs**
 
@@ -800,7 +822,31 @@ Each run gets its own `/urn:uuid:<uuid4>` resource — exactly like the TCK does
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
-| `data` | any | no | `{'test': True}` | — | Payload to upload, sent as JSON. |
+| `path` | string | yes | — | — | Path of the submodel to delete under the submodel server, relative to it — the 'path' the upload published. |
+
+**Output** — the value assertions and `returns:` read
+
+_What a delete step publishes: the status the server answered it with._
+
+| Field | Type | Description |
+|---|---|---|
+| `status_code` | integer | HTTP status the delete was answered with. |
+
+### `digital-twin/submodel/upload`
+
+Upload sample data to the engine's submodel server, under its aspect and its id.
+
+The address is the Industry Core one — `<server>/<encoded semantic_id>/<submodel_id>`, and `<server>/<submodel_id>` when the payload names no aspect. A script that gives no `submodel_id` gets a fresh `urn:uuid:<uuid4>` — exactly like the TCK does — so repeated runs never collide. One that gives an id decides where the data lands, which is what a submodel descriptor written ahead of the upload, or a second run overwriting the first, needs. The address is published in its pieces, because a test needs them apart: `source_url` is the server an EDC asset is created against, `path` is what a data plane appends to it, and `backend_url` is the two joined — the endpoint a submodel descriptor points at. `submodel_id` comes back beside them rather than only inside the path, so a descriptor, a lookup or a delete can name the submodel without cutting the id back out of a URL, and `semantic_id` comes back so the descriptor step is wired from this step's outputs rather than from a URN retyped beside them. The server it posts to comes from the engine configuration (`submodel_backend_url`, `TESTLAB_SUBMODEL_BACKEND_URL`); an engine without one cannot run this step, and says so rather than posting nowhere.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `data` | any | yes | — | — | Payload to upload, sent as JSON. Required: an upload with no payload of its own would store a placeholder the test then asserts against. |
+| `semantic_id` | string | no | `None` | — | URN of the aspect model the payload follows, e.g. 'urn:samm:io.catenax.serial_part:3.0.0#SerialPart'. Percent-encoded into the storage path when given; the submodel is stored directly under the server when omitted. |
+| `submodel_id` | string | no | `None` | — | Id to store the submodel under; a unique 'urn:uuid:<uuid4>' is generated when omitted. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -808,7 +854,11 @@ _Output contract of `digital-twin/submodel/upload`._
 
 | Field | Type | Description |
 |---|---|---|
-| `backend_url` | string | Full backend URL the data was uploaded to. |
+| `backend_url` | string | Full backend URL the data was uploaded to — server and path together. |
+| `source_url` | string | Base URL of the submodel server the data now lives on, without the path — the data source an EDC asset is created against. |
+| `path` | string | Path the data landed on under the server — the percent-encoded aspect URN and the submodel id, or the submodel id alone when no aspect was given. |
+| `submodel_id` | string | Id the submodel was stored under, as given or as generated — the 'urn:uuid:<uuid4>' a descriptor and a lookup name it by. |
+| `semantic_id` | string | URN of the aspect model the uploaded payload follows — the same URN the submodel descriptor pointing at it must carry; null when none was given. |
 | `response` | any | Backend response body, parsed as JSON when it is JSON. |
 
 ### `flow/delay`

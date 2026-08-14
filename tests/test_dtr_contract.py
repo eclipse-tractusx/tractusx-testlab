@@ -40,6 +40,8 @@ from tractusx_testlab.steps.industry.dtr import (
     DataplaneGetShellDescriptorStep,
     DescriptorPayload,
     GetShellDescriptorStep,
+    ProviderShellLookupParams,
+    ProviderShellLookupStep,
     ShellLookupByAssetLinkParams,
     ShellLookupByAssetLinkStep,
     ShellLookupParams,
@@ -265,6 +267,152 @@ class TestShellLookup:
         descriptor_url = get.call_args_list[1].args[0]
         encoded = descriptor_url.rsplit("/", 1)[-1]
         assert base64.urlsafe_b64decode(encoded + "==").decode() == _SHELL_ID
+
+
+# ---------------------------------------------------------------------------
+# The same lookup, against the registry the run was seeded with
+# ---------------------------------------------------------------------------
+
+_REGISTRY_API = "https://registry.example.com/api/v3.0"
+_REGISTRY_LOOKUP = "https://registry-lookup.example.com/api/v3.0"
+
+
+def _provider_definition() -> StepDefinition:
+    return StepDefinition(id="lookup", uses="digital-twin/provider/lookup_shells")
+
+
+def _provider_params(**overrides: Any) -> dict:
+    return {
+        "specific_asset_ids": [{"name": "partInstanceId", "value": "SN-111"}],
+        **overrides,
+    }
+
+
+@pytest.fixture()
+def registry_context(context: MagicMock) -> MagicMock:
+    """A context whose seeded AAS service serves its API and lookup separately."""
+    aas = MagicMock()
+    aas.aas_url = _REGISTRY_API
+    aas.aas_lookup_url = _REGISTRY_LOOKUP
+    aas._prepare_headers = MagicMock(
+        side_effect=lambda bpn=None, method="GET": {
+            "Accept": "application/json",
+            **({"Edc-Bpn": bpn} if bpn else {}),
+        }
+    )
+    context.get_aas_service = MagicMock(return_value=aas)
+    return context
+
+
+class TestProviderShellLookup:
+    @pytest.mark.asyncio
+    async def test_returns_the_matching_ids_and_their_descriptors(
+        self, registry_context: MagicMock
+    ) -> None:
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(
+                _Response(200, {"result": [_SHELL_ID]}), _Response(200, _DESCRIPTOR)
+            ),
+        ):
+            output = await ProviderShellLookupStep().invoke(
+                _provider_params(), registry_context, _provider_definition()
+            )
+
+        # The same answer as the consumer lookup: a setup phase reads it the way
+        # an execution phase does.
+        assert output.value["shell_ids"] == [_SHELL_ID]
+        assert output.value["shell_descriptors"] == [_DESCRIPTOR]
+
+    @pytest.mark.asyncio
+    async def test_it_searches_the_seeded_registry_with_no_dataplane_in_between(
+        self, registry_context: MagicMock
+    ) -> None:
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(_Response(200, {"result": []})),
+        ) as get:
+            await ProviderShellLookupStep().invoke(
+                _provider_params(), registry_context, _provider_definition()
+            )
+
+        url, kwargs = get.call_args.args[0], get.call_args.kwargs
+        # The service's lookup URL, and no EDR token anywhere: this is the run's
+        # own registry, so there is nothing to negotiate first.
+        assert url == f"{_REGISTRY_LOOKUP}/lookup/shells"
+        assert "Authorization" not in kwargs["headers"]
+        assert len(kwargs["params"]["assetIds"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_the_criteria_travel_base64url_encoded_as_the_aas_api_asks(
+        self, registry_context: MagicMock
+    ) -> None:
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(_Response(200, {"result": []})),
+        ) as get:
+            await ProviderShellLookupStep().invoke(
+                _provider_params(), registry_context, _provider_definition()
+            )
+
+        (encoded,) = get.call_args.kwargs["params"]["assetIds"]
+        decoded = json.loads(base64.urlsafe_b64decode(encoded + "==").decode())
+        assert decoded == {"name": "partInstanceId", "value": "SN-111"}
+
+    @pytest.mark.asyncio
+    async def test_the_bpn_selects_the_tenant_the_registry_answers_for(
+        self, registry_context: MagicMock
+    ) -> None:
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(_Response(200, {"result": []})),
+        ) as get:
+            await ProviderShellLookupStep().invoke(
+                _provider_params(bpn="BPNL000000000001"),
+                registry_context,
+                _provider_definition(),
+            )
+
+        assert get.call_args.kwargs["headers"]["Edc-Bpn"] == "BPNL000000000001"
+
+    @pytest.mark.asyncio
+    async def test_descriptors_are_read_from_the_registry_api_not_the_lookup_url(
+        self, registry_context: MagicMock
+    ) -> None:
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(
+                _Response(200, {"result": [_SHELL_ID]}), _Response(200, _DESCRIPTOR)
+            ),
+        ) as get:
+            await ProviderShellLookupStep().invoke(
+                _provider_params(), registry_context, _provider_definition()
+            )
+
+        # A DTR may serve its lookup and its descriptors from different hosts;
+        # reading descriptors off the lookup URL would 404 on exactly those.
+        descriptor_url = get.call_args_list[1].args[0]
+        assert descriptor_url.startswith(f"{_REGISTRY_API}/shell-descriptors/")
+
+    @pytest.mark.asyncio
+    async def test_a_failed_lookup_is_reported_not_raised(
+        self, registry_context: MagicMock
+    ) -> None:
+        with patch(
+            "tractusx_testlab.steps.industry.dtr.requests.get",
+            side_effect=_responses(_Response(404, None)),
+        ):
+            output = await ProviderShellLookupStep().invoke(
+                _provider_params(), registry_context, _provider_definition()
+            )
+
+        assert output.value["shell_ids"] == []
+
+    def test_a_lookup_with_no_criteria_is_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            ProviderShellLookupParams.model_validate(
+                _provider_params(specific_asset_ids=[])
+            )
 
 
 # ---------------------------------------------------------------------------

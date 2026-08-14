@@ -102,6 +102,51 @@ def _as_document(result: Any) -> Any:
     return result.to_dict() if hasattr(result, "to_dict") else result
 
 
+class SpecificAssetId(BaseModel):
+    """One ``specificAssetIds`` criterion a shell is searched by.
+
+    Defined by the AAS specification rather than by testlab, so the two keys a
+    lookup always sends are named and anything else — ``externalSubjectId`` for
+    a criterion visible to one partner only — round-trips untouched.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    name: str = Field(description="Name of the asset identifier, e.g. 'partInstanceId'.")
+    value: str = Field(description="Value that identifier must have.")
+
+
+def _asset_ids_query(criteria: list[SpecificAssetId]) -> list[str]:
+    """The criteria as the ``assetIds`` query values ``GET /lookup/shells`` expects.
+
+    Each criterion travels as its own base64url-encoded JSON object — that is
+    the AAS v3 encoding, not a testlab convention — and it is the same encoding
+    whichever registry is being searched, so both sides read it from here.
+    """
+    return [
+        encode_as_base64_url_safe(json.dumps(entry.model_dump(exclude_none=True)))
+        for entry in criteria
+    ]
+
+
+class ShellLookupOutput(StepPayload):
+    """Shells a registry read returned.
+
+    The one output shape of every step that answers with a collection of shells,
+    so a script reads ``shell_ids`` and ``shell_descriptors`` the same way
+    whether the shells were searched for or listed, and whether the registry
+    searched was the run's own or a counterparty's.
+    """
+
+    shell_ids: list[str] = Field(
+        default_factory=list, description="Identifiers of the shells that matched."
+    )
+    shell_descriptors: list[dict] = Field(
+        default_factory=list,
+        description="The descriptor document of each matching shell.",
+    )
+
+
 # ---------------------------------------------------------------------------
 # digital-twin/provider/create_shell_descriptor
 # ---------------------------------------------------------------------------
@@ -255,6 +300,84 @@ class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayloa
             value=DescriptorPayload.of(body),
             request=HttpRequest(method="GET", url=url),
             response=HttpResponse(status_code=200, body=body),
+        )
+
+
+# ---------------------------------------------------------------------------
+# digital-twin/provider/lookup_shells
+# ---------------------------------------------------------------------------
+
+
+class ProviderShellLookupParams(DtrParams):
+    """Input contract of ``digital-twin/provider/lookup_shells``.
+
+    Only the criteria: the registry is the one the run was seeded with, so its
+    address is the service's, not the script's — which is the whole difference
+    from the consumer lookup, where the address is a data plane a transfer
+    produced.
+    """
+
+    specific_asset_ids: list[SpecificAssetId] = Field(
+        min_length=1,
+        description="Criteria the shell must match; all of them have to.",
+    )
+
+
+@step("digital-twin/provider/lookup_shells")
+class ProviderShellLookupStep(BaseStep[ProviderShellLookupParams, ShellLookupOutput]):
+    """Search the run's own registry for shells matching specific asset IDs.
+
+    ``digital-twin-registry/consumer/dataplane/lookup_shell`` re-addressed at the
+    registry the engine is seeded with: the same ``GET /lookup/shells``, the same
+    base64url-encoded criteria, the same answer, reached over the service's own
+    lookup URL rather than through a data plane. That is what a setup phase
+    needs — it has no EDR token, and no reason to obtain one to search a
+    registry it operates.
+
+    The lookup answers with identifiers, so each is read back as a descriptor
+    from the registry API; a script that only needs the identifiers reads
+    ``shell_ids`` and ignores the rest.
+    """
+
+    params_model = ProviderShellLookupParams
+    output_model = ShellLookupOutput
+
+    async def execute(
+        self,
+        params: ProviderShellLookupParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[ShellLookupOutput]:
+        aas = context.get_aas_service()
+        # The SDK assembles the registry's headers — the access token its auth
+        # service holds, plus the Edc-Bpn tenant selector. Rebuilding them here
+        # would be a second copy of the SDK's auth, free to drift from it, for
+        # the one call it does not wrap.
+        headers = aas._prepare_headers(params.bpn)
+        timeout = context.config.default_timeout_s
+
+        url = f"{aas.aas_lookup_url}/lookup/shells"
+        query = {"assetIds": _asset_ids_query(params.specific_asset_ids)}
+        response = requests.get(url, params=query, headers=headers, timeout=timeout)
+
+        shell_ids = _shell_ids(response)
+        # Descriptors come from the registry API, not the lookup URL: a DTR may
+        # serve the two from different hosts, and the service knows both.
+        descriptors = [
+            document
+            for shell_id in shell_ids
+            if (document := _shell_descriptor(aas.aas_url, shell_id, headers, timeout))
+            is not None
+        ]
+
+        return StepOutput(
+            value=ShellLookupOutput(shell_ids=shell_ids, shell_descriptors=descriptors),
+            request=HttpRequest(method="GET", url=url, headers=headers, body=query),
+            response=HttpResponse(
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                body={"shell_ids": shell_ids, "shell_descriptors": descriptors},
+            ),
         )
 
 
@@ -576,20 +699,6 @@ class PagedDataplaneParams(DataplaneParams):
 # ---------------------------------------------------------------------------
 
 
-class SpecificAssetId(BaseModel):
-    """One ``specificAssetIds`` criterion a shell is searched by.
-
-    Defined by the AAS specification rather than by testlab, so the two keys a
-    lookup always sends are named and anything else — ``externalSubjectId`` for
-    a criterion visible to one partner only — round-trips untouched.
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    name: str = Field(description="Name of the asset identifier, e.g. 'partInstanceId'.")
-    value: str = Field(description="Value that identifier must have.")
-
-
 class ShellLookupParams(DataplaneParams):
     """Input contract of ``digital-twin-registry/consumer/dataplane/lookup_shell``."""
 
@@ -599,32 +708,8 @@ class ShellLookupParams(DataplaneParams):
     )
 
     def asset_id_query(self) -> list[str]:
-        """The criteria as the ``assetIds`` query values the AAS API expects.
-
-        Each criterion travels as its own base64url-encoded JSON object — that
-        is the AAS v3 encoding, not a testlab convention.
-        """
-        return [
-            encode_as_base64_url_safe(json.dumps(entry.model_dump(exclude_none=True)))
-            for entry in self.specific_asset_ids
-        ]
-
-
-class ShellLookupOutput(StepPayload):
-    """Shells a consumer-side registry read returned.
-
-    The one output shape of every consumer step that answers with a collection,
-    so a script reads ``shell_ids`` and ``shell_descriptors`` the same way
-    whether the shells were searched for or listed.
-    """
-
-    shell_ids: list[str] = Field(
-        default_factory=list, description="Identifiers of the shells that matched."
-    )
-    shell_descriptors: list[dict] = Field(
-        default_factory=list,
-        description="The descriptor document of each matching shell.",
-    )
+        """The criteria as the ``assetIds`` query values the AAS API expects."""
+        return _asset_ids_query(self.specific_asset_ids)
 
 
 @step("digital-twin-registry/consumer/dataplane/lookup_shell")

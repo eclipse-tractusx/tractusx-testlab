@@ -52,6 +52,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   criteria is no longer bounded by the URL length; the paged answer's cursor
   comes back alongside the identifiers and their descriptors, and `limit` /
   `cursor` read the page after it. `mock/dtr` serves the endpoint too
+- `digital-twin/submodel/delete` step, removing one submodel from the engine's
+  submodel server. It takes the `path` the upload published — the address the
+  data actually landed on — and publishes the status the server answered with,
+  so a teardown can tell a submodel that was there (204) from one that was
+  already gone (404)
 
 ### Changed
 
@@ -98,6 +103,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`TESTLAB_SUBMODEL_BACKEND_URL`), so a script cannot redirect the upload
   somewhere the step never meant to write; an engine without one fails the step
   with a `StepConfigError` instead of posting nowhere
+- **Breaking.** `digital-twin/submodel/upload` requires `data`. The `{"test":
+  true}` default let a script upload a placeholder and then assert against it —
+  a test that passed without the provider's data ever being named
+- `digital-twin/submodel/upload` addresses a submodel the way the Industry Core
+  does — `<server>/<percent-encoded semantic_id>/<submodel_id>`, so submodels of
+  one aspect sit together and a data plane can be pointed at the aspect alone.
+  The aspect segment is percent-encoded because a raw `#` in a URN would start a
+  fragment and cut the id off the address; the id is written as it is, the way
+  the TCK stores `.../urn:uuid:<uuid4>`. `semantic_id` is optional: data naming
+  no aspect has nothing to group under and is stored at `<server>/<submodel_id>`
+- `digital-twin/submodel/upload` takes `submodel_id`, the id the data is stored
+  under, and generates a fresh `urn:uuid:<uuid4>` when it is omitted. A
+  descriptor written ahead of the upload, or a second run overwriting the first,
+  decides the id; it is an id and not an address, so it cannot carry a scheme, a
+  host or a `/`. The id is published as its own `submodel_id` output beside
+  `path`, so a descriptor, a lookup or a delete names the submodel without
+  cutting it back out of a URL it was buried in
 
 ### Removed
 

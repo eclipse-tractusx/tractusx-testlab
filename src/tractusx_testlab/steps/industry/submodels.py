@@ -22,14 +22,15 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
 ## It was reviewed and tested by a human committer.
 
-"""UploadBackendDataStep — uploads sample data to the backend under a unique UUID path."""
+"""Submodel-server steps: uploading data under a path, and deleting it again."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
+from urllib.parse import quote
 
 import httpx
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from tractusx_testlab.models import (
     HttpRequest,
@@ -38,7 +39,7 @@ from tractusx_testlab.models import (
     StepDefinition,
 )
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import HttpTransportParams
+from tractusx_testlab.steps._contracts import DeletionOutput, HttpTransportParams
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
@@ -47,27 +48,186 @@ if TYPE_CHECKING:
 import uuid
 
 
+def _relative_path(value: Any) -> Optional[str]:
+    """Normalize a path under the submodel server, refusing one with a server of its own.
+
+    The server is the engine's (``submodel_backend_url``) — a path allowed to
+    carry a scheme and host would be the ``url`` input these steps deliberately
+    do not have, and would send a provider's data somewhere the engine never
+    agreed to. Surrounding slashes are the caller's punctuation, not part of the
+    path, so ``/data/`` and ``data`` land in the same place.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("'path' must be a string")
+
+    candidate = value.strip()
+    if "://" in candidate or candidate.startswith("//"):
+        raise ValueError(
+            "'path' is relative to the engine's submodel server; "
+            f"it cannot be an absolute URL: {candidate!r}"
+        )
+
+    trimmed = candidate.strip("/")
+    return trimmed or None
+
+
+def _submodel_server(context: "StepContext", definition: StepDefinition) -> str:
+    """The submodel server the engine was seeded with, without its trailing slash.
+
+    An engine without one cannot run these steps, and says so rather than
+    addressing a server the script would have had to name itself.
+    """
+    backend_base_url = (context.config.submodel_backend_url or "").strip()
+    if not backend_base_url:
+        raise StepConfigError(
+            definition.uses,
+            "no submodel server is configured; set submodel_backend_url "
+            "(TESTLAB_SUBMODEL_BACKEND_URL) on the engine",
+        )
+    return backend_base_url.rstrip("/")
+
+
+def _storage_path(semantic_id: Optional[str], submodel_id: str) -> str:
+    """The path a submodel service stores one submodel under.
+
+    The layout is the Industry Core one: a submodel is addressed by the aspect
+    it follows and then by its own id, so submodels of the same aspect sit
+    together and a data plane can be pointed at the aspect alone. A URN carries
+    ``:`` and ``#``, and a raw ``#`` in a URL would start a fragment and cut the
+    rest of the address off, so the aspect segment is percent-encoded — the
+    same ``quote(..., safe="")`` the hub's submodel adapter uses.
+
+    The id is written as it is, because it is what the TCK stores its data
+    under (``.../urn:uuid:<uuid4>``) and ``:`` is legal in a path segment;
+    encoding it would name a different resource than every existing test does.
+
+    Without an aspect there is nothing to group by, so the submodel is stored
+    directly under the server as ``<server>/<submodel_id>``.
+    """
+    if not semantic_id:
+        return submodel_id
+    return f"{quote(semantic_id, safe='')}/{submodel_id}"
+
+
 class UploadBackendDataParams(HttpTransportParams):
     """Input contract of ``digital-twin/submodel/upload``.
 
-    Only the transport half of an HTTP call: the step always POSTs to a URL it
-    generates itself, so a ``method`` or ``url`` input would be a knob that
-    does nothing. The submodel server is the one the engine is seeded with
-    (``submodel_backend_url``), not one a script picks — a test that could send
-    the data anywhere would be testing the address it was given rather than the
-    provider's own backend.
+    Only the transport half of an HTTP call: the step always POSTs, so a
+    ``method`` input would be a knob that does nothing, and the submodel server
+    is the one the engine is seeded with (``submodel_backend_url``) rather than
+    one a script picks — a test that could send the data anywhere would be
+    testing the address it was given rather than the provider's own backend.
+    What a script decides is which submodel it is writing, not where: the
+    aspect and the id, which are what the address under that server is built
+    from.
     """
 
     data: Any = Field(
-        default_factory=lambda: {"test": True},
-        description="Payload to upload, sent as JSON.",
+        description=(
+            "Payload to upload, sent as JSON. Required: an upload with no payload "
+            "of its own would store a placeholder the test then asserts against."
+        ),
     )
+    semantic_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "URN of the aspect model the payload follows, e.g. "
+            "'urn:samm:io.catenax.serial_part:3.0.0#SerialPart'. Percent-encoded "
+            "into the storage path when given; the submodel is stored directly "
+            "under the server when omitted."
+        ),
+    )
+    submodel_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Id to store the submodel under; a unique 'urn:uuid:<uuid4>' is "
+            "generated when omitted."
+        ),
+    )
+
+    @field_validator("semantic_id", mode="before")
+    @classmethod
+    def _a_blank_aspect_is_no_aspect(cls, value: Any) -> Any:
+        """Read a blank aspect URN as the absent one it is.
+
+        A submodel descriptor written next has to name the same URN (CX-0002),
+        so the value matters where it is given — but ``semantic_id: ""`` says
+        nothing about an aspect model, and treating it as one would put an empty
+        segment in the storage path.
+        """
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("'semantic_id' must be a string")
+        return value.strip() or None
+
+    @field_validator("submodel_id", mode="before")
+    @classmethod
+    def _submodel_id_names_one_resource_under_the_server(cls, value: Any) -> Any:
+        """Normalize the id, and refuse one that is an address rather than an id.
+
+        The server is the engine's (``submodel_backend_url``) — an id allowed to
+        carry a scheme and host would be the ``url`` input this step
+        deliberately does not have, and would send a provider's data somewhere
+        the engine never agreed to. An id with a ``/`` in it is a path, and
+        would nest the submodel under its own aspect segment rather than name
+        it. Surrounding slashes are the caller's punctuation, so ``/x/`` and
+        ``x`` name the same submodel.
+        """
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("'submodel_id' must be a string")
+
+        candidate = value.strip()
+        if "://" in candidate or candidate.startswith("//"):
+            raise ValueError(
+                "'submodel_id' is stored under the engine's submodel server; "
+                f"it cannot be an absolute URL: {candidate!r}"
+            )
+
+        trimmed = candidate.strip("/")
+        if "/" in trimmed:
+            raise ValueError(
+                "'submodel_id' names one submodel under the server, not a path: "
+                f"{candidate!r}"
+            )
+        return trimmed or None
 
 
 class UploadBackendDataOutput(StepPayload):
     """Output contract of ``digital-twin/submodel/upload``."""
 
-    backend_url: str = Field(description="Full backend URL the data was uploaded to.")
+    backend_url: str = Field(
+        description="Full backend URL the data was uploaded to — server and path together."
+    )
+    source_url: str = Field(
+        description=(
+            "Base URL of the submodel server the data now lives on, without the path "
+            "— the data source an EDC asset is created against."
+        )
+    )
+    path: str = Field(
+        description=(
+            "Path the data landed on under the server — the percent-encoded aspect URN "
+            "and the submodel id, or the submodel id alone when no aspect was given."
+        )
+    )
+    submodel_id: str = Field(
+        description=(
+            "Id the submodel was stored under, as given or as generated — the "
+            "'urn:uuid:<uuid4>' a descriptor and a lookup name it by."
+        )
+    )
+    semantic_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "URN of the aspect model the uploaded payload follows — the same URN the "
+            "submodel descriptor pointing at it must carry; null when none was given."
+        ),
+    )
     response: Any = Field(
         default=None, description="Backend response body, parsed as JSON when it is JSON."
     )
@@ -75,11 +235,23 @@ class UploadBackendDataOutput(StepPayload):
 
 @step("digital-twin/submodel/upload")
 class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataOutput]):
-    """Upload sample data to the engine's submodel server under a unique UUID path.
+    """Upload sample data to the engine's submodel server, under its aspect and its id.
 
-    Each run gets its own ``/urn:uuid:<uuid4>`` resource — exactly like the TCK
-    does — so repeated runs never collide, and the resulting URL is published
-    as ``backend_url`` for the asset that will point at it.
+    The address is the Industry Core one — ``<server>/<encoded semantic_id>/<submodel_id>``,
+    and ``<server>/<submodel_id>`` when the payload names no aspect. A script
+    that gives no ``submodel_id`` gets a fresh ``urn:uuid:<uuid4>`` — exactly
+    like the TCK does — so repeated runs never collide. One that gives an id
+    decides where the data lands, which is what a submodel descriptor written
+    ahead of the upload, or a second run overwriting the first, needs.
+
+    The address is published in its pieces, because a test needs them apart:
+    ``source_url`` is the server an EDC asset is created against, ``path`` is
+    what a data plane appends to it, and ``backend_url`` is the two joined — the
+    endpoint a submodel descriptor points at. ``submodel_id`` comes back beside
+    them rather than only inside the path, so a descriptor, a lookup or a
+    delete can name the submodel without cutting the id back out of a URL, and
+    ``semantic_id`` comes back so the descriptor step is wired from this step's
+    outputs rather than from a URN retyped beside them.
 
     The server it posts to comes from the engine configuration
     (``submodel_backend_url``, ``TESTLAB_SUBMODEL_BACKEND_URL``); an engine
@@ -95,21 +267,16 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
         context: "StepContext",
         definition: StepDefinition,
     ) -> StepOutput[UploadBackendDataOutput]:
-        backend_base_url = (context.config.submodel_backend_url or "").strip()
-        if not backend_base_url:
-            raise StepConfigError(
-                definition.uses,
-                "no submodel server is configured; set submodel_backend_url "
-                "(TESTLAB_SUBMODEL_BACKEND_URL) on the engine",
-            )
-
-        unique_url = f"{backend_base_url.rstrip('/')}/urn:uuid:{uuid.uuid4()}"
+        source_url = _submodel_server(context, definition)
+        submodel_id = params.submodel_id or f"urn:uuid:{uuid.uuid4()}"
+        path = _storage_path(params.semantic_id, submodel_id)
+        target_url = f"{source_url}/{path}"
         headers = {"Content-Type": "application/json", **params.headers}
         timeout = params.timeout_or(context.config.default_timeout_s)
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
-                unique_url, json=params.data, headers=headers, timeout=timeout
+                target_url, json=params.data, headers=headers, timeout=timeout
             )
 
         try:
@@ -118,10 +285,105 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
             resp_body = resp.text
 
         return StepOutput(
-            value=UploadBackendDataOutput(backend_url=unique_url, response=resp_body),
-            request=HttpRequest(
-                method="POST", url=unique_url, headers=headers, body=params.data
+            value=UploadBackendDataOutput(
+                backend_url=target_url,
+                source_url=source_url,
+                path=path,
+                submodel_id=submodel_id,
+                semantic_id=params.semantic_id,
+                response=resp_body,
             ),
+            request=HttpRequest(
+                method="POST", url=target_url, headers=headers, body=params.data
+            ),
+            response=HttpResponse(
+                status_code=resp.status_code,
+                headers=dict(resp.headers),
+                body=resp_body,
+            ),
+        )
+
+
+# ---------------------------------------------------------------------------
+# digital-twin/submodel/delete
+# ---------------------------------------------------------------------------
+
+
+class DeleteBackendDataParams(HttpTransportParams):
+    """Input contract of ``digital-twin/submodel/delete``.
+
+    The server is the engine's, as it is for the upload; what a delete has to be
+    told is which resource under it to remove, and that is the ``path`` the
+    upload published — aspect segment and id together. Naming the path rather
+    than re-deriving it from ``semantic_id`` and ``submodel_id`` is what lets a
+    teardown be wired straight from the upload it undoes, and is the only way to
+    delete a submodel whose path an earlier run, or the provider, chose.
+    """
+
+    path: str = Field(
+        description=(
+            "Path of the submodel to delete under the submodel server, relative to "
+            "it — the 'path' the upload published."
+        ),
+    )
+
+    @field_validator("path", mode="before")
+    @classmethod
+    def _path_names_a_resource_under_the_configured_server(cls, value: Any) -> Any:
+        """Normalize the path, and refuse one that names nothing or a server of its own.
+
+        A blank path is not an empty answer but a missing one: it addresses the
+        server itself, and a DELETE sent there would ask a provider to drop every
+        submodel it holds rather than the one the test uploaded.
+        """
+        path = _relative_path(value)
+        if path is None:
+            raise ValueError(
+                "'path' is required: name the submodel to delete, e.g. the 'path' "
+                "output of 'digital-twin/submodel/upload'"
+            )
+        return path
+
+
+@step("digital-twin/submodel/delete")
+class DeleteBackendDataStep(BaseStep[DeleteBackendDataParams, DeletionOutput]):
+    """Delete one submodel from the engine's submodel server.
+
+    The teardown half of ``digital-twin/submodel/upload``: it removes the
+    resource that upload's ``path`` names, on the server the engine is seeded
+    with (``submodel_backend_url``, ``TESTLAB_SUBMODEL_BACKEND_URL``).
+
+    The status the server answered with is published as ``status_code``, so a
+    teardown can assert that the data was really there (200/204) rather than
+    already gone (404) — the same distinction
+    ``digital-twin/provider/delete_shell_descriptor`` publishes.
+    """
+
+    params_model = DeleteBackendDataParams
+    output_model = DeletionOutput
+
+    async def execute(
+        self,
+        params: DeleteBackendDataParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[DeletionOutput]:
+        source_url = _submodel_server(context, definition)
+        target_url = f"{source_url}/{params.path}"
+        headers = dict(params.headers)
+        timeout = params.timeout_or(context.config.default_timeout_s)
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.delete(target_url, headers=headers, timeout=timeout)
+
+        try:
+            resp_body: Any = resp.json()
+        except (ValueError, TypeError):
+            resp_body = resp.text
+
+        return StepOutput(
+            value=DeletionOutput(status_code=resp.status_code),
+            request=HttpRequest(method="DELETE", url=target_url, headers=headers),
             response=HttpResponse(
                 status_code=resp.status_code,
                 headers=dict(resp.headers),
