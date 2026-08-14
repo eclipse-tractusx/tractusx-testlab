@@ -19,6 +19,9 @@
 # SPDX-License-Identifier: Apache-2.0
 ###############################################################
 
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## It was reviewed and tested by a human committer.
+
 # E2E: testlab's compile -> validate -> run pipeline against a REAL,
 # ephemeral Eclipse Tractus-X dataspace.
 #
@@ -27,7 +30,7 @@
 # job, so the whole environment is "in-memory" for the run's lifetime.
 #
 # Deployed via Tractus-X Umbrella's "decentralized identityhub" profile
-#   https://github.com/eclipse-tractusx/tractus-x-umbrella/blob/main/charts/umbrella/values-adopter-decentralized-identityhub.yaml
+#   https://github.com/eclipse-tractusx/tractus-x-umbrella/blob/umbrella-26.03.00/charts/umbrella/values-adopter-decentralized-identityhub.yaml
 # this gives:
 #   - two EDC connectors ("provider" / BPNL000000000001, "consumer" /
 #     BPNL000000000002), each fronted by its own Tractus-X IdentityHub for
@@ -69,7 +72,8 @@ on:
 
 env:
   UMBRELLA_NAMESPACE: umbrella
-  UMBRELLA_CHART_VERSION: "" # pin a specific version once one is known-good; empty = latest from the dev repo
+  UMBRELLA_CHART_VERSION: "26.03.00"
+  UMBRELLA_VALUES_REF: "umbrella-26.03.00"
   KIND_VERSION: "v0.24.0"
   KUBECTL_VERSION: "v1.29.0"
   HELM_VERSION: "3.14.0"
@@ -168,15 +172,14 @@ jobs:
 
       - name: Deploy Tractus-X Umbrella (decentralized IdentityHub profile)
         run: |
-          VERSION_FLAG=()
-          if [ -n "${UMBRELLA_CHART_VERSION}" ]; then
-            VERSION_FLAG=(--version "${UMBRELLA_CHART_VERSION}")
-          fi
-          helm install umbrella tractusx-dev/umbrella "${VERSION_FLAG[@]}" \
+          helm install umbrella tractusx-dev/umbrella \
+            --version "${UMBRELLA_CHART_VERSION}" \
             --namespace "${UMBRELLA_NAMESPACE}" --create-namespace \
-            -f https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/main/charts/umbrella/values-adopter-decentralized-identityhub.yaml \
+            -f "https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/${UMBRELLA_VALUES_REF}/charts/umbrella/values-adopter-decentralized-identityhub.yaml" \
             --set edc-consumer.tx-data-provider.digital-twin-bundle.enabled=true \
             --set edc-consumer.tx-data-provider.data-persistence-layer-bundle.enabled=true \
+            --set edc-provider.tractusx-identityhub.identityhub.livenessProbe.initialDelaySeconds=180 \
+            --set edc-consumer.tractusx-identityhub.identityhub.livenessProbe.initialDelaySeconds=180 \
             --timeout 20m --wait
         # The two --set overrides turn on a DTR for the "consumer" participant
         # too (the profile only enables one for "provider" by default), so
@@ -184,6 +187,9 @@ jobs:
         # future chart release renames these subchart keys, this step is
         # where to fix it — `helm show values tractusx-dev/umbrella` lists
         # the current tree.
+        # IdentityHub needs more than the chart's default 35-second liveness
+        # window on hosted runners. Readiness still gates `helm --wait` while
+        # the 180-second delay prevents Kubernetes from restarting the pods.
 
       - name: Deploy in-cluster echo backend
         run: |
@@ -331,13 +337,21 @@ jobs:
         if: failure()
         run: |
           mkdir -p ci-logs
-          kubectl get pods -n "${UMBRELLA_NAMESPACE}" -o wide > ci-logs/pods.txt
-          kubectl describe pods -n "${UMBRELLA_NAMESPACE}" > ci-logs/pods-describe.txt
-          kubectl get ingress -n "${UMBRELLA_NAMESPACE}" -o yaml > ci-logs/ingress.yaml
-          for sel in controlplane dataplane identityhub; do
-            kubectl logs -n "${UMBRELLA_NAMESPACE}" -l "app.kubernetes.io/component=${sel}" --all-containers --tail=1000 \
-              > "ci-logs/${sel}.log" 2>&1 || true
-          done
+          helm status umbrella -n "${UMBRELLA_NAMESPACE}" > ci-logs/helm-status.txt 2>&1 || true
+          kubectl get all -n "${UMBRELLA_NAMESPACE}" -o wide > ci-logs/resources.txt 2>&1 || true
+          kubectl get pods -n "${UMBRELLA_NAMESPACE}" -o wide > ci-logs/pods.txt 2>&1 || true
+          kubectl describe pods -n "${UMBRELLA_NAMESPACE}" > ci-logs/pods-describe.txt 2>&1 || true
+          kubectl get jobs -n "${UMBRELLA_NAMESPACE}" -o yaml > ci-logs/jobs.yaml 2>&1 || true
+          kubectl get ingress -n "${UMBRELLA_NAMESPACE}" -o yaml > ci-logs/ingress.yaml 2>&1 || true
+          kubectl get events -n "${UMBRELLA_NAMESPACE}" --sort-by=.metadata.creationTimestamp \
+            > ci-logs/events.txt 2>&1 || true
+          while IFS= read -r pod; do
+            pod_name="${pod#pod/}"
+            kubectl logs -n "${UMBRELLA_NAMESPACE}" "${pod}" --all-containers --tail=1000 \
+              > "ci-logs/${pod_name}.log" 2>&1 || true
+            kubectl logs -n "${UMBRELLA_NAMESPACE}" "${pod}" --all-containers --previous --tail=1000 \
+              > "ci-logs/${pod_name}-previous.log" 2>&1 || true
+          done < <(kubectl get pods -n "${UMBRELLA_NAMESPACE}" -o name 2>/dev/null || true)
 
       - name: Upload testlab logs and execution traces
         if: always()
