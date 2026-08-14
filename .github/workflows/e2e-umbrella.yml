@@ -231,7 +231,7 @@ jobs:
               for document in documents
               if document.get("kind")
               and document.get("metadata", {}).get("name")
-              and "helm.sh/hook" not in document.get("metadata", {}).get("annotations", {})
+              and "helm.sh/hook" not in (document.get("metadata", {}).get("annotations") or {})
           ]
           duplicates = sorted(key for key, count in Counter(install_resources).items() if count > 1)
           if duplicates:
