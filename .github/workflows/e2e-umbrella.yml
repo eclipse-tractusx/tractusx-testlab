@@ -294,11 +294,12 @@ jobs:
       - name: Preflight — check connector and DTR reachability
         run: |
           set -euo pipefail
+          query='{"@context":{"edc":"https://w3id.org/edc/v0.0.1/ns/"},"@type":"QuerySpec","offset":0,"limit":1}'
           for participant in provider consumer; do
             curl --fail-with-body --silent --show-error \
               --header "X-Api-Key: password" \
               --header "Content-Type: application/json" \
-              --request POST --data '{}' \
+              --request POST --data "${query}" \
               "http://${participant}.intranet/connector/management/v3/assets/request" \
               > /dev/null
             echo "${participant} management API: reachable"
