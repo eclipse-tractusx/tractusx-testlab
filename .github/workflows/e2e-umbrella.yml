@@ -35,9 +35,8 @@
 #   - two EDC connectors ("provider" / BPNL000000000001, "consumer" /
 #     BPNL000000000002), each fronted by its own Tractus-X IdentityHub for
 #     DID/VC-based IATP trust — the "in-memory identity hub" side of the ask
-#   - a Digital Twin Registry on the provider by default; the workflow also
-#     flips one on for the consumer (--set overrides below) so both
-#     participants have one, matching "two EDCs and DTRs"
+#   - one Digital Twin Registry and one data backend per participant, enabled
+#     by the workflow's CI values so the test environment has two of each
 #   - a BDRS directory service + issuer service, both pre-seeded with the
 #     Catena-X membership / DataExchangeGovernance:1.0 VC claims the two
 #     participants need to pass ODRL policy checks out of the box
@@ -79,6 +78,7 @@ env:
   HELM_VERSION: "3.14.0"
   TCK_INDEX: tests/e2e/connector-dtr-smoke/index.yaml
   TCK_CONFIG: tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml
+  UMBRELLA_CI_VALUES: tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml
   TCK_OUT: dist/testlab-e2e-connector-dtr-smoke.tck
 
 jobs:
@@ -170,26 +170,84 @@ jobs:
           helm repo add tractusx-dev https://eclipse-tractusx.github.io/charts/dev
           helm repo update
 
+      - name: Prepare and validate pinned Umbrella chart
+        run: |
+          set -euo pipefail
+          chart_dir="${RUNNER_TEMP}/umbrella"
+          helm pull tractusx-dev/umbrella \
+            --version "${UMBRELLA_CHART_VERSION}" \
+            --untar --untardir "${RUNNER_TEMP}"
+
+          # Umbrella 26.03.00 packages the complete tx-data-provider bundles at
+          # the root but omits them from decentralized-identity-connector's
+          # nested tx-data-provider. Restore those same pinned dependencies.
+          source_bundles="${chart_dir}/charts/tx-data-provider/charts"
+          nested_provider="${chart_dir}/charts/decentralized-identity-connector/charts/tx-data-provider"
+          test -d "${source_bundles}"
+          test -d "${nested_provider}"
+          mkdir -p "${nested_provider}/charts"
+          cp -R "${source_bundles}/." "${nested_provider}/charts/"
+
+          profile_url="https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/${UMBRELLA_VALUES_REF}/charts/umbrella/values-adopter-decentralized-identityhub.yaml"
+          rendered="${RUNNER_TEMP}/umbrella-rendered.yaml"
+          helm template umbrella "${chart_dir}" \
+            --namespace "${UMBRELLA_NAMESPACE}" \
+            -f "${profile_url}" \
+            -f "${UMBRELLA_CI_VALUES}" \
+            > "${rendered}"
+
+          poetry run python - "${rendered}" <<'PY'
+          import sys
+          from collections import Counter
+
+          import yaml
+
+          expected_deployments = {
+              "consumer-dtr",
+              "provider-dtr",
+              "umbrella-consumer-connector-controlplane",
+              "umbrella-consumer-connector-dataplane",
+              "umbrella-provider-connector-controlplane",
+              "umbrella-provider-connector-dataplane",
+          }
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              documents = [document for document in yaml.safe_load_all(stream) if document]
+
+          deployments = {
+              document["metadata"]["name"]
+              for document in documents
+              if document.get("kind") == "Deployment"
+          }
+          missing = sorted(expected_deployments - deployments)
+          if missing:
+              raise SystemExit(f"Umbrella manifest is missing deployments: {', '.join(missing)}")
+
+          install_resources = [
+              (
+                  document.get("kind"),
+                  document.get("metadata", {}).get("namespace", "umbrella"),
+                  document.get("metadata", {}).get("name"),
+              )
+              for document in documents
+              if document.get("kind")
+              and document.get("metadata", {}).get("name")
+              and "helm.sh/hook" not in document.get("metadata", {}).get("annotations", {})
+          ]
+          duplicates = sorted(key for key, count in Counter(install_resources).items() if count > 1)
+          if duplicates:
+              raise SystemExit(f"Umbrella manifest has duplicate resources: {duplicates}")
+          print("Umbrella manifest contains both connectors and both DTRs.")
+          PY
+          echo "UMBRELLA_CHART_DIR=${chart_dir}" >> "${GITHUB_ENV}"
+          echo "UMBRELLA_PROFILE_URL=${profile_url}" >> "${GITHUB_ENV}"
+
       - name: Deploy Tractus-X Umbrella (decentralized IdentityHub profile)
         run: |
-          helm install umbrella tractusx-dev/umbrella \
-            --version "${UMBRELLA_CHART_VERSION}" \
+          helm install umbrella "${UMBRELLA_CHART_DIR}" \
             --namespace "${UMBRELLA_NAMESPACE}" --create-namespace \
-            -f "https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/${UMBRELLA_VALUES_REF}/charts/umbrella/values-adopter-decentralized-identityhub.yaml" \
-            --set edc-consumer.tx-data-provider.digital-twin-bundle.enabled=true \
-            --set edc-consumer.tx-data-provider.data-persistence-layer-bundle.enabled=true \
-            --set edc-provider.tractusx-identityhub.identityhub.livenessProbe.initialDelaySeconds=180 \
-            --set edc-consumer.tractusx-identityhub.identityhub.livenessProbe.initialDelaySeconds=180 \
-            --debug --timeout 20m --wait
-        # The two --set overrides turn on a DTR for the "consumer" participant
-        # too (the profile only enables one for "provider" by default), so
-        # the deployed dataspace genuinely has two EDCs *and* two DTRs. If a
-        # future chart release renames these subchart keys, this step is
-        # where to fix it — `helm show values tractusx-dev/umbrella` lists
-        # the current tree.
-        # IdentityHub needs more than the chart's default 35-second liveness
-        # window on hosted runners. Readiness still gates `helm --wait` while
-        # the 180-second delay prevents Kubernetes from restarting the pods.
+            -f "${UMBRELLA_PROFILE_URL}" \
+            -f "${UMBRELLA_CI_VALUES}" \
+            --debug --timeout 5m --wait
 
       - name: Deploy in-cluster echo backend
         run: |
@@ -219,8 +277,9 @@ jobs:
       - name: Discover DTR ingress host
         run: |
           set -euo pipefail
-          DTR_HOST="$(kubectl get ingress -n "${UMBRELLA_NAMESPACE}" -o json \
-            | jq -r '[.items[] | select(.metadata.name | test("dtr|digital-twin|registry"; "i"))][0].spec.rules[0].host // empty')"
+          DTR_HOST="$(kubectl get ingress provider-dtr \
+            -n "${UMBRELLA_NAMESPACE}" \
+            -o jsonpath='{.spec.rules[0].host}')"
           if [ -z "${DTR_HOST}" ]; then
             echo "::error::Could not find a Digital Twin Registry ingress in namespace ${UMBRELLA_NAMESPACE}."
             echo "Ingresses present:"

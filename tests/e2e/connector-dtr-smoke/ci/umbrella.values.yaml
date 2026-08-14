@@ -1,0 +1,110 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## It was reviewed and tested by a human committer.
+
+# CI-only additions to values-adopter-decentralized-identityhub.yaml.
+# Umbrella 26.03.00 does not enable the participant Vaults and its packaged
+# decentralized-identity-connector dependency omits these three bundles.
+# The workflow restores the pinned bundles before applying these values.
+
+edc-provider:
+  install:
+    vault: true
+  tractusx-identityhub:
+    identityhub:
+      livenessProbe:
+        initialDelaySeconds: 180
+  tx-data-provider:
+    dataspace-connector-bundle:
+      vault:
+        enabled: false
+    digital-twin-bundle:
+      enabled: true
+      digital-twin-registry:
+        fullnameOverride: provider-dtr
+        keycloak:
+          fullnameOverride: provider-registry-keycloak
+        registry:
+          host: provider-dtr.local
+          dataSource:
+            url: jdbc:postgresql://provider-dtr-postgresql:5432/dtr
+          ingress:
+            rules:
+              - host: provider-dtr.local
+                http:
+                  paths:
+                    - path: "/semantics/registry(/|$)(.*)"
+                      pathType: ImplementationSpecific
+      postgresql:
+        fullnameOverride: provider-dtr-postgresql
+    data-persistence-layer-bundle:
+      enabled: true
+      simple-data-backend:
+        fullnameOverride: provider-submodelserver
+        ingress:
+          hosts:
+            - host: provider-submodelserver.local
+              paths:
+                - path: /
+                  pathType: Prefix
+
+edc-consumer:
+  install:
+    vault: true
+  tractusx-identityhub:
+    identityhub:
+      livenessProbe:
+        initialDelaySeconds: 180
+  tx-data-provider:
+    dataspace-connector-bundle:
+      vault:
+        enabled: false
+    digital-twin-bundle:
+      enabled: true
+      digital-twin-registry:
+        fullnameOverride: consumer-dtr
+        keycloak:
+          fullnameOverride: consumer-registry-keycloak
+        registry:
+          host: consumer-dtr.local
+          dataSource:
+            url: jdbc:postgresql://consumer-dtr-postgresql:5432/dtr
+          ingress:
+            rules:
+              - host: consumer-dtr.local
+                http:
+                  paths:
+                    - path: "/semantics/registry(/|$)(.*)"
+                      pathType: ImplementationSpecific
+      postgresql:
+        fullnameOverride: consumer-dtr-postgresql
+    data-persistence-layer-bundle:
+      enabled: true
+      simple-data-backend:
+        fullnameOverride: consumer-submodelserver
+        ingress:
+          hosts:
+            - host: consumer-submodelserver.local
+              paths:
+                - path: /
+                  pathType: Prefix
