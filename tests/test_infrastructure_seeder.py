@@ -19,22 +19,26 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
 ## It was reviewed and tested by a human committer.
 
 """Unit tests for the infrastructure_seeder — ADR-0019 service auto-registration."""
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+from tractusx_testlab.config.settings import TestlabConfig as _TestlabConfig
+from tractusx_testlab.models import Job
 from tractusx_testlab.models.primitives.enums import ServiceType
+from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.infrastructure_seeder import (
     _ENGINE_CONNECTOR_NAME,
     _SUT_CONNECTOR_NAME,
     _SUT_DTR_NAME,
     seed_infrastructure_services,
 )
+from tractusx_testlab.services._factory import is_type_compatible
 from tractusx_testlab.services.manager import ServiceManager
 
 
@@ -99,6 +103,21 @@ class TestEngineConnectorSeeding:
 
         defn = svc_mgr._definitions[_ENGINE_CONNECTOR_NAME]
         assert defn.base_url == "https://engine.example.com"
+        assert defn.params is not None
+        assert defn.params.get("dma_path") == "/management"
+
+    def test_preserves_ingress_prefix_before_management_suffix(self) -> None:
+        svc_mgr = ServiceManager()
+        ctx = _make_context({
+            "infrastructure.engine.connector.management_url": (
+                "https://engine.example.com/connector/management"
+            ),
+        })
+
+        seed_infrastructure_services(svc_mgr, ctx)
+
+        defn = svc_mgr._definitions[_ENGINE_CONNECTOR_NAME]
+        assert defn.base_url == "https://engine.example.com/connector"
         assert defn.params is not None
         assert defn.params.get("dma_path") == "/management"
 
@@ -200,6 +219,39 @@ class TestSutConnectorSeeding:
         seed_infrastructure_services(svc_mgr, ctx)
 
         assert ctx.variables.get("infrastructure.sut.connector") == _SUT_CONNECTOR_NAME
+
+
+class TestConnectorRoleCompatibility:
+    """Role-specific services resolve only to their declared connector role."""
+
+    def test_consumer_does_not_satisfy_provider_role(self) -> None:
+        assert not is_type_compatible(
+            ServiceType.CONNECTOR_CONSUMER,
+            ServiceType.CONNECTOR_PROVIDER,
+        )
+
+    def test_generic_connector_satisfies_provider_role(self) -> None:
+        assert is_type_compatible(
+            ServiceType.EDC_CONNECTOR_SATURN,
+            ServiceType.CONNECTOR_PROVIDER,
+        )
+
+    def test_provider_lookup_skips_engine_consumer(self) -> None:
+        svc_mgr = ServiceManager()
+        ctx = StepContext(
+            services=svc_mgr,
+            job=Job(job_id="provider-resolution-test"),
+            config=_TestlabConfig(),
+        )
+        for name, value in {**_base_engine_vars(), **_base_sut_vars()}.items():
+            ctx.set_variable(name, value)
+        seed_infrastructure_services(svc_mgr, ctx)
+
+        with patch(
+            "tractusx_testlab.services.manager.create_instance",
+            side_effect=lambda definition, expected_type=None: definition.name,
+        ):
+            assert ctx.get_provider_service() == _SUT_CONNECTOR_NAME
 
 
 # ---------------------------------------------------------------------------

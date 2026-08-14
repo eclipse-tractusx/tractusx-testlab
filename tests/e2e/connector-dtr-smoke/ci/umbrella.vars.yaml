@@ -19,6 +19,9 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## It was reviewed and tested by a human committer.
+
 # Consumed by `.github/workflows/e2e-umbrella.yml` via `testlab run --config`.
 #
 # These are the values fixed by charts/umbrella/values-adopter-decentralized-
@@ -35,22 +38,17 @@
 variables:
   # engine = umbrella's "consumer" participant — the connector testlab drives.
   #
-  # Deliberately NOT setting infrastructure.engine.connector.name here: the
-  # seeder (player/execution/infrastructure_seeder.py) uses that field to
-  # additionally register the engine connector as a CONNECTOR_PROVIDER alias,
-  # ahead of the SUT connector in registration order — get_provider_service()
-  # would then resolve to the engine (consumer.intranet) instead of the SUT
-  # (provider.intranet) for every connector/provider/* step. Confirmed by a
-  # local dry run; leave this field unset unless that alias is actually
-  # needed (e.g. a `service: testlab` provisioning step).
-  infrastructure.engine.connector.management_url: "http://consumer.intranet/management"
+  # The chart exposes connector APIs below /connector. The SDK still receives
+  # its standard /management DMA path after the infrastructure seeder splits
+  # this full external URL into base_url + dma_path.
+  infrastructure.engine.connector.management_url: "http://consumer.intranet/connector/management"
   infrastructure.engine.connector.api_key: "password"
 
   # sut = umbrella's "provider" participant — the connector + DTR under test.
-  infrastructure.sut.connector.management_url: "http://provider.intranet/management"
+  infrastructure.sut.connector.management_url: "http://provider.intranet/connector/management"
   infrastructure.sut.connector.api_key: "password"
   infrastructure.sut.connector.participant_id: "BPNL000000000001"
-  infrastructure.sut.connector.dsp_url: "http://provider.local/api/v1/dsp"
+  infrastructure.sut.connector.dsp_url: "http://provider.local/connector/api/v1/dsp"
 
   # infrastructure.sut.dtr.base_url — intentionally absent; supplied via
   # `--var infrastructure.sut.dtr.base_url=...` once the workflow has

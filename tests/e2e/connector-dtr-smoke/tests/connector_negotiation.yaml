@@ -19,6 +19,9 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## It was reviewed and tested by a human committer.
+
 kind: test
 syntax: v1-alpha
 
@@ -32,9 +35,48 @@ metadata:
     Drives the engine connector (umbrella's "consumer" EDC) through a real
     DSP catalog request, contract negotiation, transfer and data pull
     against the SUT connector (umbrella's "provider" EDC) — proving the two
-    live connectors can actually talk to each other. The SUT's asset and
-    policies are provisioned by the workflow before this run, not by
-    testlab (see index.yaml's header comment for why).
+    live connectors can actually talk to each other. Setup provisions the
+    SUT's asset, policies and contract through testlab's provider steps.
+
+setup:
+  - id: create_access_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT catalog access policy
+    with:
+      policy: "${{ env.access_policy.policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_usage_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT contract usage policy
+    with:
+      policy: "${{ env.usage_policy.policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_asset
+    uses: connector/provider/create_asset
+    name: Create the SUT HTTP test asset
+    with:
+      asset: "${{ env.test_asset.asset }}"
+    returns:
+      asset_id:
+        type: string
+
+  - id: create_contract
+    uses: connector/provider/create_contract_definition
+    name: Publish the SUT test asset
+    with:
+      contract_definition_id: testlab-e2e-smoke-contract
+      access_policy_id: "${{ setup.create_access_policy.policy_id }}"
+      contract_policy_id: "${{ setup.create_usage_policy.policy_id }}"
+      asset_id: "${{ setup.create_asset.asset_id }}"
+    returns:
+      contract_definition_id:
+        type: string
 
 execution:
   - id: pull_data
@@ -73,3 +115,28 @@ execution:
     validate:
       - uses: validate/assert
         with: { input: fetch_data, operator: not_null }
+
+teardown:
+  - id: delete_contract
+    uses: connector/provider/delete_contract_definition
+    name: Remove the SUT test contract
+    with:
+      contract_definition_id: "${{ setup.create_contract.contract_definition_id }}"
+
+  - id: delete_asset
+    uses: connector/provider/delete_asset
+    name: Remove the SUT test asset
+    with:
+      asset_id: "${{ setup.create_asset.asset_id }}"
+
+  - id: delete_usage_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT usage policy
+    with:
+      policy_id: "${{ setup.create_usage_policy.policy_id }}"
+
+  - id: delete_access_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT access policy
+    with:
+      policy_id: "${{ setup.create_access_policy.policy_id }}"

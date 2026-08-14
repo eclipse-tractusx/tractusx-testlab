@@ -293,86 +293,22 @@ jobs:
 
       - name: Preflight — check connector and DTR reachability
         run: |
-          set -x
-          curl -sS -o /dev/null -w "provider mgmt:  %{http_code}\n" -H "X-Api-Key: password" "http://provider.intranet/management/v3/assets/request" -X POST -d '{}' -H "Content-Type: application/json" || true
-          curl -sS -o /dev/null -w "consumer mgmt:  %{http_code}\n" -H "X-Api-Key: password" "http://consumer.intranet/management/v3/assets/request" -X POST -d '{}' -H "Content-Type: application/json" || true
-          curl -sS -o /dev/null -w "provider dsp:   %{http_code}\n" "http://provider.local/api/v1/dsp" || true
-          curl -sS -o /dev/null -w "provider dtr:   %{http_code}\n" "http://${DTR_HOST}/api/v3.0/shell-descriptors" || true
-          echo "Non-zero / non-'000' codes above mean the endpoint is reachable; the exact status is validated by the TCK run itself."
+          set -euo pipefail
+          for participant in provider consumer; do
+            curl --fail-with-body --silent --show-error \
+              --header "X-Api-Key: password" \
+              --header "Content-Type: application/json" \
+              --request POST --data '{}' \
+              "http://${participant}.intranet/connector/management/v3/assets/request" \
+              > /dev/null
+            echo "${participant} management API: reachable"
+          done
+          curl --fail-with-body --location --silent --show-error \
+            "http://${DTR_HOST}/api/v3.0/shell-descriptors" > /dev/null
+          echo "provider DTR API: reachable"
 
       # ------------------------------------------------------------------
-      # 5. Provision the SUT — via the Tractus-X SDK, not testlab
-      # ------------------------------------------------------------------
-      # testlab's own connector/provider/* steps can't be pointed at the SUT
-      # reliably: with only infrastructure.* bindings seeded (no explicit
-      # `services:` block), get_provider_service() returns the FIRST
-      # connector-family service registered, which is always the engine's
-      # (services/_factory.py's is_type_compatible() treats CONNECTOR_CONSUMER
-      # and CONNECTOR_PROVIDER as mutually compatible). So the asset, both
-      # policies and the contract definition the TCK negotiates for are
-      # provisioned here instead, using the same tractusx-sdk service client
-      # testlab itself wraps — this also mirrors a real certification run,
-      # where the operator prepares the SUT and testlab only certifies it.
-      - name: Seed SUT connector with test data (Tractus-X SDK)
-        run: |
-          poetry run python - <<'PY'
-          from tractusx_sdk.dataspace.services.connector.service_factory import ServiceFactory
-
-          provider = ServiceFactory.get_connector_provider_service(
-              dataspace_version="saturn",
-              base_url="http://provider.intranet",
-              dma_path="/management",
-              headers={"Content-Type": "application/json", "X-Api-Key": "password"},
-          )
-
-          def create_or_conflict(create, **kwargs):
-              try:
-                  create(**kwargs)
-              except ValueError as exc:
-                  if "409" not in str(exc):
-                      raise
-                  print(f"  already exists, continuing: {kwargs.get('policy_id') or kwargs.get('asset_id') or kwargs.get('contract_id')}")
-
-          usage_policy_permissions = [{
-              "action": "use",
-              "constraints": {"and": [
-                  {"left_operand": "Membership", "operator": "eq", "right_operand": "active"},
-                  {"left_operand": "FrameworkAgreement", "operator": "eq", "right_operand": "DataExchangeGovernance:1.0"},
-              ]},
-          }]
-          access_policy_permissions = [{
-              "action": "use",
-              "constraints": {"left_operand": "Membership", "operator": "eq", "right_operand": "active"},
-          }]
-
-          print("Creating access policy ...")
-          create_or_conflict(provider.create_policy, policy_id="testlab-e2e-smoke-access-policy", permissions=access_policy_permissions)
-          print("Creating usage policy ...")
-          create_or_conflict(provider.create_policy, policy_id="testlab-e2e-smoke-usage-policy", permissions=usage_policy_permissions)
-          print("Creating asset ...")
-          create_or_conflict(
-              provider.create_asset,
-              asset_id="testlab-e2e-smoke-asset",
-              base_url="http://tck-echo.umbrella.svc.cluster.local",
-              dct_type="https://w3id.org/catenax/taxonomy#TestData",
-              version="1.0",
-          )
-          print("Publishing contract definition ...")
-          create_or_conflict(
-              provider.create_contract,
-              contract_id="testlab-e2e-smoke-contract",
-              usage_policy_id="testlab-e2e-smoke-usage-policy",
-              access_policy_id="testlab-e2e-smoke-access-policy",
-              asset_id="testlab-e2e-smoke-asset",
-          )
-          print("SUT seeded.")
-          PY
-        # Values here (asset id, policy shape) must stay in sync with
-        # tests/e2e/connector-dtr-smoke/index.yaml's `usage_policy` variable
-        # and the filter_expression in tests/connector_negotiation.yaml.
-
-      # ------------------------------------------------------------------
-      # 6. testlab: validate -> compile -> run, against the live dataspace
+      # 5. testlab: validate -> compile -> run, against the live dataspace
       # ------------------------------------------------------------------
       - name: testlab validate
         run: poetry run testlab validate "${TCK_INDEX}"
@@ -390,7 +326,7 @@ jobs:
             --logs-dir logs/e2e
 
       # ------------------------------------------------------------------
-      # 7. Diagnostics + cleanup
+      # 6. Diagnostics + cleanup
       # ------------------------------------------------------------------
       - name: Collect cluster diagnostics on failure
         if: failure()

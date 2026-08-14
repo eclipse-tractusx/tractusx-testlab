@@ -19,6 +19,9 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## It was reviewed and tested by a human committer.
+
 kind: test
 syntax: v1-alpha
 
@@ -91,13 +94,13 @@ execution:
     returns:
       id:
         type: string
-      idShort:
+      id_short:
         type: string
     validate:
       - uses: validate/assert
         with: { input: id, operator: equals, expected: "urn:uuid:${{ execution.new_twin_id.value }}" }
       - uses: validate/assert
-        with: { input: idShort, operator: equals, expected: "testlabE2eSmokeTwin" }
+        with: { input: id_short, operator: equals, expected: "testlabE2eSmokeTwin" }
 
 teardown:
   - id: delete_shell

@@ -19,6 +19,9 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## It was reviewed and tested by a human committer.
+
 # Self-hosted smoke TCK for the `.github/workflows/e2e-umbrella.yml` pipeline.
 #
 # Purpose: exercise testlab's own compile -> validate -> run pipeline against
@@ -27,18 +30,9 @@
 # identityhub" profile (see docs/README.md in this directory). It is not a
 # business-capability certification TCK — it certifies testlab itself.
 #
-# The SUT's test asset + policies + contract definition are seeded directly
-# by the workflow (via the Tractus-X SDK), not by this TCK: with only
-# `infrastructure.*` bindings seeded (no explicit `services:` block),
-# `connector/provider/*` steps resolve through get_provider_service(), which
-# returns the FIRST connector-family service registered — the engine's, not
-# the SUT's, since CONNECTOR_CONSUMER and CONNECTOR_PROVIDER are mutually
-# "compatible" types in services/_factory.py's is_type_compatible(). Confirmed
-# with a local dry run. This TCK therefore only exercises what testlab can
-# actually reach as the "engine": DSP-mediated calls to the SUT's public
-# endpoints (query/negotiate/transfer) and the SUT's DTR (unambiguous, since
-# no engine.dtr is ever seeded) — which also mirrors a real certification run,
-# where the operator provisions the SUT and testlab only certifies it.
+# The connector test provisions its SUT asset, policies and contract in setup,
+# then removes them in teardown. This exercises testlab's provider steps as
+# well as the consumer-side DSP negotiation and data transfer.
 
 kind: tck
 syntax: v1-alpha
@@ -84,15 +78,46 @@ infrastructure:
 
 env:
   variables:
-    # Must match the usage policy the workflow seeds on the SUT connector
-    # (see e2e-umbrella.yml, step "Seed SUT connector with test data") —
-    # this is what the negotiation is allowed to accept, not what creates it.
+    - id: test_asset
+      uses: config/connector/asset
+      name: E2E HTTP test asset
+      with:
+        source: value
+        value:
+          asset_id: testlab-e2e-smoke-asset
+          base_url: "http://tck-echo.umbrella.svc.cluster.local"
+          dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+          version: "1.0"
+      returns:
+        asset:
+          type: object
+          class: Asset
+
+    - id: access_policy
+      uses: config/connector/policy
+      name: Membership access policy
+      with:
+        source: value
+        value:
+          policy_id: testlab-e2e-smoke-access-policy
+          permissions:
+            - action: use
+              constraints:
+                left_operand: Membership
+                operator: eq
+                right_operand: active
+      returns:
+        policy:
+          type: object
+          class: Policy
+
     - id: usage_policy
       uses: config/connector/policy
       name: Framework-agreement usage policy
       with:
         source: value
         value:
+          policy_id: testlab-e2e-smoke-usage-policy
           permissions:
             - action: use
               constraints:
