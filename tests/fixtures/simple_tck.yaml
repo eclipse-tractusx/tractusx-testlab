@@ -21,7 +21,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-syntax: v2
+syntax: v1-alpha
 kind: tck
 id: simple-ping-tck
 metadata:

@@ -60,9 +60,9 @@ SPDX-License-Identifier: CC-BY-4.0
 | V-05 | `.tckpkg` checksum is verified on load; tampered packages are rejected | Unit |
 | V-06 | SDK version mismatch emits warning but does not block execution | Unit |
 | V-07 | Player executes a compiled TCK and produces correct `TckResult` with step timings | Integration |
-| V-08 | Step failure with `on_failure: abort` stops execution and runs cleanup | Integration |
-| V-09 | Step failure with `on_failure: continue` proceeds to next step | Integration |
-| V-10 | Step failure with `on_failure: skip_rest` skips remaining steps and runs cleanup | Integration |
+| V-08 | Step failure fails the test: execution stops and teardown runs | Integration |
+| V-09 | Teardown steps keep executing after a teardown step fails | Integration |
+| V-10 | Remaining steps after a failed step are reported as skipped | Integration |
 | V-11 | Hard assertion failure causes step failure; soft assertion failure produces warning | Unit |
 | V-12 | Assertion values from inline, file, and variable sources are resolved correctly | Unit |
 | V-13 | JSON strings embedded in YAML are auto-parsed before assertion comparison | Unit |

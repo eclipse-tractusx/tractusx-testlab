@@ -1,0 +1,54 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## It was reviewed and tested by a human committer.
+
+# Consumed by `.github/workflows/e2e-umbrella.yml` via `testlab run --config`.
+#
+# These are the values fixed by charts/umbrella/values-adopter-decentralized-
+# identityhub.yaml and the tractusx-connector chart's own defaults (pinned by
+# the workflow's `helm install`), so they are safe to commit here. The one
+# value the chart does not pin — the SUT DTR base URL — is discovered by the
+# workflow at deploy time and injected on the CLI with `--var`, which
+# overrides whatever is (or is not) set here.
+#
+# Source of truth for these values:
+#   https://github.com/eclipse-tractusx/tractus-x-umbrella/blob/main/charts/umbrella/values-adopter-decentralized-identityhub.yaml
+#   https://github.com/eclipse-tractusx/tractusx-edc/blob/main/charts/tractusx-connector/values.yaml
+
+variables:
+  # engine = umbrella's "consumer" participant — the connector testlab drives.
+  #
+  # Connector APIs use dedicated ingress hosts and their native paths. This
+  # prevents another component on consumer.local from handling the request.
+  infrastructure.engine.connector.management_url: "http://consumer-management.local/management"
+  infrastructure.engine.connector.api_key: "password"
+
+  # sut = umbrella's "provider" participant — the connector + DTR under test.
+  infrastructure.sut.connector.management_url: "http://provider-management.local/management"
+  infrastructure.sut.connector.api_key: "password"
+  infrastructure.sut.connector.participant_id: "BPNL000000000001"
+  infrastructure.sut.connector.dsp_url: "http://provider-dsp.local/api/v1/dsp"
+
+  # infrastructure.sut.dtr.base_url — intentionally absent; supplied via
+  # `--var infrastructure.sut.dtr.base_url=...` once the workflow has
+  # resolved the DTR's ingress host for this chart version.

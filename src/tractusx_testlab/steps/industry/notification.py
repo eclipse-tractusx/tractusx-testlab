@@ -28,118 +28,251 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+import httpx
+from pydantic import ConfigDict, Field, model_validator
+
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import CounterPartyParams
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload, StepValue
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 _logger = logging.getLogger(__name__)
 
+#: Metadata keys copied into the body when a script passes them alongside it.
+_NOTIFICATION_METADATA = ("notification_id", "sender_bpn", "recipient_bpn", "type", "status")
 
-@step("send_notification")
-class SendNotificationStep(BaseStep):
+
+# ---------------------------------------------------------------------------
+# notification/consumer/send
+# ---------------------------------------------------------------------------
+
+
+class SendNotificationParams(CounterPartyParams):
+    """Input contract of ``notification/consumer/send``.
+
+    Two modes share one step.  Giving ``dataplane_url`` picks the direct mode,
+    which POSTs straight at a data-plane the DSP flow already opened; leaving it
+    out picks the SDK mode, which negotiates the notification asset itself.
+    """
+
+    notification: Optional[dict] = Field(
+        default=None,
+        description="The notification document to send.",
+    )
+    endpoint_path: str = Field(
+        default="", description="Notification API path appended to the endpoint."
+    )
+    dataplane_url: Optional[str] = Field(
+        default=None,
+        description="Direct mode: data-plane URL to POST to; its presence selects that mode.",
+    )
+    edr_token: str = Field(
+        default="",
+        description="Direct mode: authorization token for that data-plane URL.",
+    )
+    content: Optional[dict] = Field(
+        default=None,
+        description="Older spelling of 'notification' — the document to send.",
+    )
+    timeout: float = Field(default=30, gt=0, description="Request timeout in seconds.")
+
+    @property
+    def is_direct(self) -> bool:
+        """Whether this call goes straight to a data-plane rather than through the SDK."""
+        return self.dataplane_url is not None
+
+    @model_validator(mode="after")
+    def _neither_mode_can_invent_a_notification(self) -> "SendNotificationParams":
+        """Neither mode can invent the document it is asked to send."""
+        if self.notification is None and self.content is None:
+            raise ValueError("'notification' is required")
+        return self
+
+    def document(self) -> dict:
+        """The notification document, from whichever of the two keys carried it.
+
+        Read by both modes, so a script that wrote ``content`` sends the same
+        document whether it goes through the SDK or straight at a data plane —
+        which it did not before: the SDK path used to read ``notification``
+        alone and silently send an empty notification for a ``content`` script.
+        """
+        return dict(self.notification or self.content or {})
+
+    def direct_url(self) -> str:
+        """The data-plane URL to POST at, with the notification API path appended."""
+        base = (self.dataplane_url or "").rstrip("/")
+        path = self.endpoint_path.strip()
+        if not path:
+            return base
+        return f"{base}/{path.lstrip('/')}"
+
+    def direct_body(self) -> dict:
+        """The body to POST in direct mode, with any metadata the script passed alongside."""
+        body = self.document()
+        extras = self.model_extra or {}
+        for key in _NOTIFICATION_METADATA:
+            if key in extras:
+                body.setdefault(key, extras[key])
+        return body
+
+
+class SendNotificationOutput(StepPayload):
+    """Output contract of ``notification/consumer/send``.
+
+    Whatever the receiver answered, spread at the top level, plus the three
+    parts of its answer named outright — status code, body and headers — so a
+    script can assert on any of them without reaching into the HTTP record.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    status_code: Optional[int] = Field(
+        default=None, description="Status code the receiver answered with."
+    )
+    response_body: Optional[Any] = Field(
+        default=None, description="Body the receiver answered with."
+    )
+    response_headers: Optional[dict] = Field(
+        default=None, description="Headers the receiver answered with."
+    )
+
+
+@step("notification/consumer/send")
+class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutput]):
     """Send a notification through the dataspace.
 
     Supports two modes:
-    - **SDK mode** (canonical): ``notification``, ``provider_bpn``, ``provider_dsp_url``
-    - **Dataplane-direct mode** (CCM): ``dataplane_url``, ``edr_token``, ``content``
+    - **Dataplane-direct mode**: ``dataplane_url``, ``edr_token``, ``endpoint_path``,
+      ``notification`` — what the IDE's Send Notification block emits
+    - **SDK mode**: ``notification``, ``counter_party_id``, ``counter_party_address``
     """
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
-        # Detect mode: CCM dataplane-direct vs. canonical SDK notification
-        if "dataplane_url" in params or "endpoint_url" in params:
-            return await self._execute_dataplane_direct(params, context)
+    params_model = SendNotificationParams
+    output_model = SendNotificationOutput
+
+    async def execute(
+        self,
+        params: SendNotificationParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[SendNotificationOutput]:
+        if params.is_direct:
+            return await self._execute_dataplane_direct(params)
         return await self._execute_sdk_notification(params, context)
 
     async def _execute_sdk_notification(
-        self, params: dict, context: "StepContext",
-    ) -> StepOutput:
+        self, params: SendNotificationParams, context: "StepContext",
+    ) -> StepOutput[SendNotificationOutput]:
         """Canonical mode: send via SDK NotificationConsumerService."""
         notif_service = context.get_notification_service()
         from tractusx_sdk.industry.models.notifications.notification import Notification
 
-        notification = Notification(**params["notification"])
-        provider_bpn = params["provider_bpn"]
-        provider_dsp = params["provider_dsp_url"]
-        endpoint_path = params.get("endpoint_path", "")
-
+        notification = Notification(**params.document())
         result = await asyncio.to_thread(
             notif_service.send_notification,
-            provider_bpn=provider_bpn,
-            provider_dsp_url=provider_dsp,
+            provider_bpn=params.counter_party_id,
+            provider_dsp_url=params.counter_party_address,
             notification=notification,
-            endpoint_path=endpoint_path,
-            timeout=params.get("timeout", 30),
+            endpoint_path=params.endpoint_path,
+            timeout=params.timeout,
         )
 
+        status_code = 200 if result else 500
         return StepOutput(
-            value=result,
-            request=HttpRequest(method="POST", url=provider_dsp, body=notification.to_data()),
-            response=HttpResponse(status_code=200 if result else 500, body=result),
+            value=SendNotificationOutput.model_validate({
+                **(result if isinstance(result, dict) else {}),
+                "status_code": status_code,
+                "response_body": result,
+                "response_headers": {},
+            }),
+            request=HttpRequest(
+                method="POST", url=params.counter_party_address, body=notification.to_data()
+            ),
+            response=HttpResponse(status_code=status_code, body=result),
         )
 
     async def _execute_dataplane_direct(
-        self, params: dict, context: "StepContext",
-    ) -> StepOutput:
+        self, params: SendNotificationParams,
+    ) -> StepOutput[SendNotificationOutput]:
         """CCM mode: POST directly to dataplane URL with EDR auth token."""
-        import httpx
+        url = params.direct_url()
+        body = params.direct_body()
+        headers = {"Content-Type": "application/json"}
+        if params.edr_token:
+            headers["Authorization"] = params.edr_token
 
-        dataplane_url = params.get("dataplane_url") or params.get("endpoint_url", "")
-        edr_token = params.get("edr_token") or params.get("auth_token", "")
-
-        # Build notification body from CCM params
-        body: dict = {}
-        if "content" in params:
-            body = dict(params["content"])
-        elif "payload" in params:
-            body = dict(params["payload"])
-
-        # Enrich body with notification metadata when provided
-        for key in ("notification_id", "sender_bpn", "recipient_bpn", "type", "status"):
-            if key in params:
-                body.setdefault(key, params[key])
-
-        headers = {"Authorization": edr_token} if edr_token else {}
-        headers["Content-Type"] = "application/json"
-
+        response_headers: dict[str, str] = {}
         try:
             async with httpx.AsyncClient() as client:
-                resp = await client.post(dataplane_url, json=body, headers=headers, timeout=30)
+                resp = await client.post(
+                    url, json=body, headers=headers, timeout=params.timeout
+                )
                 result = resp.json() if resp.content else {}
                 status_code = resp.status_code
+                response_headers = dict(resp.headers)
         except (httpx.HTTPError, ValueError) as exc:
             _logger.warning("Dataplane notification failed: %s", exc)
             result = {"error": str(exc)}
             status_code = 500
 
         return StepOutput(
-            value={"status_code": status_code, **result},
-            request=HttpRequest(method="POST", url=dataplane_url, body=body),
-            response=HttpResponse(status_code=status_code, body=result),
+            value=SendNotificationOutput.model_validate({
+                **(result if isinstance(result, dict) else {}),
+                "status_code": status_code,
+                "response_body": result,
+                "response_headers": response_headers,
+            }),
+            request=HttpRequest(method="POST", url=url, body=body),
+            response=HttpResponse(
+                status_code=status_code, headers=response_headers, body=result
+            ),
         )
 
 
-@step("discover_notification_assets")
-class DiscoverNotificationAssetsStep(BaseStep):
+# ---------------------------------------------------------------------------
+# notification/consumer/discover_assets
+# ---------------------------------------------------------------------------
+
+
+class DiscoverNotificationAssetsParams(CounterPartyParams):
+    """Input contract of ``notification/consumer/discover_assets``."""
+
+    timeout: float = Field(default=60, gt=0, description="Discovery timeout in seconds.")
+
+
+class NotificationAssetsOutput(StepValue[Any]):
+    """The notification datasets found in the provider's catalog."""
+
+
+@step("notification/consumer/discover_assets")
+class DiscoverNotificationAssetsStep(
+    BaseStep[DiscoverNotificationAssetsParams, NotificationAssetsOutput]
+):
     """Discover notification assets in a provider catalog."""
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
-        notif_service = context.get_notification_service()
-        provider_bpn = params["provider_bpn"]
-        provider_dsp = params["provider_dsp_url"]
+    params_model = DiscoverNotificationAssetsParams
+    output_model = NotificationAssetsOutput
 
+    async def execute(
+        self,
+        params: DiscoverNotificationAssetsParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[NotificationAssetsOutput]:
+        notif_service = context.get_notification_service()
         datasets = notif_service.discover_notification_assets(
-            provider_bpn=provider_bpn,
-            provider_dsp_url=provider_dsp,
-            timeout=params.get("timeout", 60),
+            provider_bpn=params.counter_party_id,
+            provider_dsp_url=params.counter_party_address,
+            timeout=params.timeout,
         )
 
         return StepOutput(
-            value=datasets,
-            request=HttpRequest(method="POST", url=provider_dsp),
+            value=NotificationAssetsOutput(datasets),
+            request=HttpRequest(method="POST", url=params.counter_party_address),
             response=HttpResponse(status_code=200, body=datasets),
         )

@@ -63,7 +63,6 @@ def build_ir(
 
     compiler_version = version or "0.5.0"
     compiled_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    namespace = manifest_data.get("namespace", "")
     testlab = manifest_data.get("testlab", "v1-alpha")
     tck_id = manifest_data.get("id", manifest_path.stem)
 
@@ -88,7 +87,6 @@ def build_ir(
     metadata = manifest_data.get("metadata", {})
     tck_section: dict[str, Any] = {
         "id": tck_id,
-        "namespace": namespace,
     }
     if metadata:
         tck_section["metadata"] = metadata

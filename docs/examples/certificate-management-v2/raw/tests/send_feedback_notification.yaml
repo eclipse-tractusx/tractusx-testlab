@@ -1,0 +1,163 @@
+################################################################################
+# Catena-X - Test Suite
+#
+# Copyright (c) 2026 Catena-X Automotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: certificate-management-tck-v0.0.1
+id: send-feedback-notification
+
+metadata:
+  name: "Send Feedback Notification"
+  version: "v1.0.0"
+  description: >
+    Send a CX-0135 CCMAPI status notification to the provider via EDC dataplane
+    and await the provider's acknowledgment on a TestLab mock endpoint.
+
+setup:
+  - id: mock_receive_ack
+    uses: mock/api
+    name: Expose mock endpoint for provider RECEIVE acknowledgment
+    with:
+      method: POST
+      path: "/companycertificate/notification/receive"
+      response_status: 200
+      response_body: "${{ env.testdata.send_feedback_body }}"
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      full_mock_url:
+        type: string
+
+execution:
+  - id: pull_ccmapi_endpoint
+    uses: connector/consumer/pull_data_filtered
+    name: Find CCMAPI endpoint and obtain dataplane credentials
+    with:
+      counter_party_address: "${{ env.sut_counter_party_address.value }}"
+      counter_party_id: "${{ env.sut_counter_party_id.value }}"
+      expected_policies: "${{ env.ccm_usage_policy.policy }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/type"
+          operator: "="
+          operand_right: "https://w3id.org/catenax/taxonomy#CCMAPI"
+        - operand_left: "http://purl.org/dc/terms/subject"
+          operator: "="
+          operand_right: "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
+        - operand_left: "https://w3id.org/catenax/ontology/common#version"
+          operator: "="
+          operand_right: "3.0"
+    returns:
+      edr_token:
+        type: string
+        class: AuthToken
+      dataplane_url:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: edr_token, operator: not_null }
+      - uses: validate/assert
+        with: { input: dataplane_url, operator: not_null }
+
+  - id: send_status_notification
+    uses: connector/dataplane/http_request
+    name: Send CX-0135 status notification to provider via dataplane
+    with:
+      method: POST
+      dataplane_url: "${{ execution.pull_ccmapi_endpoint.dataplane_url }}"
+      path: "/companycertificate/status"
+      edr_token: "${{ execution.pull_ccmapi_endpoint.edr_token }}"
+      headers:
+        Content-Type: "application/json"
+      body: ${{ env.testdata.send_feedback_body }}
+    returns:
+      status_code:
+        type: integer
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+
+  - id: wait_provider_ack
+    uses: mock/wait/http_request
+    name: Wait for provider RECEIVE acknowledgment
+    with:
+      mock: "${{ setup.mock_receive_ack.mock }}"
+      timeout_s: 60
+    returns:
+      request_method:
+        type: string
+      request_body:
+        type: object
+        class: CallbackPayload
+    validate:
+      - uses: validate/assert
+        with:
+          input: request_method
+          operator: equals
+          value: "POST"
+      - uses: validate/field
+        with:
+          input: request_body
+          path: "header.messageId"
+          operator: matches_regex
+          value: "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      - uses: validate/field
+        with:
+          input: request_body
+          path: "header.context"
+          operator: equals
+          value: "CompanyCertificateManagement-CCMAPI-Status:1.0.0"
+      - uses: validate/field
+        with:
+          input: request_body
+          path: "header.sentDateTime"
+          operator: not_null
+      - uses: validate/field
+        with:
+          input: request_body
+          path: "header.senderBpn"
+          operator: matches_regex
+          value: "^BPNL[0-9A-Z]{12}$"
+      - uses: validate/field
+        with:
+          input: request_body
+          path: "header.receiverBpn"
+          operator: equals
+          value: "${{ env.consumer_bpn }}"
+      - uses: validate/field
+        with:
+          input: request_body
+          path: "header.version"
+          operator: equals
+          value: "3.1.0"
+      - uses: validate/field
+        with:
+          input: request_body
+          path: "content.certificateStatus"
+          operator: one_of
+          value: ["RECEIVED", "ACCEPTED", "REJECTED"]
+
+# No teardown: the runtime tears the mock endpoint down automatically when the
+# test ends. There is no explicit mock-teardown step.

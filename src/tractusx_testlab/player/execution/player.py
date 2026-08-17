@@ -104,8 +104,17 @@ class TestlabPlayer:
     # ------------------------------------------------------------------
 
     async def run(self, path: str | Path, runtime_vars: Optional[dict] = None) -> TckResult:
-        """Load and execute a TCK, returning the full result."""
-        tck = self._loader.load(Path(path))
+        """Load and execute a TCK, emitting package verification events before execution."""
+        resolved = Path(path)
+        import zipfile as _zf
+        encrypted = _zf.is_zipfile(resolved) and _is_encrypted_tck(resolved)
+        self._monitor.on_package_verify_start(resolved.name, encrypted=encrypted)
+        try:
+            tck = self._loader.load(resolved)
+        except ValueError as exc:
+            self._monitor.on_package_verify_failed(resolved.name, str(exc))
+            raise
+        self._monitor.on_package_verify_passed(resolved.name, checksum="")
         return await self.run_tck(tck, runtime_vars=runtime_vars)
 
     async def run_tck(
@@ -134,7 +143,7 @@ class TestlabPlayer:
 
         job_logger = self._logger.for_job(job.job_id)
         monitor = self._create_job_monitor(job_logger)
-        monitor.log_event("job.started", job_id=job.job_id, tck_id=tck.id)
+        monitor.on_job_started(job.job_id, tck.id)
 
         svc_mgr = ServiceManager()
         context = StepContext(services=svc_mgr, job=job, config=self._config)
@@ -213,8 +222,8 @@ class TestlabPlayer:
             if script.test_id in skip_ids:
                 skipped = make_intentionally_skipped_result(script)
                 script_results.append(skipped)
-                monitor.log_event("script.started", job_id=job.job_id, tck_id=job.tck_id, script=script.definition.id, index=idx)
-                monitor.log_event("script.completed", job_id=job.job_id, tck_id=job.tck_id, result=skipped)
+                monitor.on_script_started(job.job_id, script.definition.id, idx)
+                monitor.on_script_completed(job.job_id, skipped)
                 continue
 
             # 2. Dependency skip — unmet deps produce a FAILED result.
@@ -223,16 +232,16 @@ class TestlabPlayer:
             if unmet_deps:
                 skipped_result = make_skipped_result(script, unmet_deps)
                 script_results.append(skipped_result)
-                monitor.log_event("script.started", job_id=job.job_id, tck_id=job.tck_id, script=script.definition.id, index=idx)
-                monitor.log_event("script.completed", job_id=job.job_id, tck_id=job.tck_id, result=skipped_result)
+                monitor.on_script_started(job.job_id, script.definition.id, idx)
+                monitor.on_script_completed(job.job_id, skipped_result)
                 continue
 
-            monitor.log_event("script.started", job_id=job.job_id, tck_id=job.tck_id, script=script.definition.id, index=idx)
+            monitor.on_script_started(job.job_id, script.definition.id, idx)
             job.current_script = script.name
 
             script_result = await run_script(script, context, job.job_id, monitor, self._jobs)
             script_results.append(script_result)
-            monitor.log_event("script.completed", job_id=job.job_id, tck_id=job.tck_id, result=script_result)
+            monitor.on_script_completed(job.job_id, script_result)
 
             if script_result.status == ScriptStatus.COMPLETED:
                 completed_tests.add(script.name)
@@ -251,3 +260,13 @@ class TestlabPlayer:
             if value is not None:
                 context.set_variable(export_name, value)
                 context.set_variable(f"!{script.name}:{export_name}", value)
+
+
+def _is_encrypted_tck(path: Path) -> bool:
+    """Return True if the .tck ZIP contains payload.enc (encrypted package format)."""
+    import zipfile
+    try:
+        with zipfile.ZipFile(path, "r") as zf:
+            return "payload.enc" in zf.namelist()
+    except Exception:
+        return False

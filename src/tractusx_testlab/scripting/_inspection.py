@@ -73,7 +73,7 @@ def build_inspection_result(tck: object) -> TckInspectionResult:
 
 
 def _map_steps(step_defs: list, phase: StepPhase) -> list[StepMeta]:
-    """Convert a list of StepDefinitionV2 objects into StepMeta instances."""
+    """Convert a list of StepDefinition objects into StepMeta instances."""
     return [
         StepMeta(
             step_name=step.name or step.uses,

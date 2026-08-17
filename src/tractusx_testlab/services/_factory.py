@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
 ## It was reviewed and tested by a human committer.
 
 """SDK service instance creation — wires ServiceDefinitions to live SDK objects."""
@@ -35,8 +35,9 @@ from tractusx_testlab.syntax import defaults
 
 logger = logging.getLogger(__name__)
 
-# Extended types that are compatible with connector consumer/provider roles.
-_CONNECTOR_COMPATIBLE_TYPES: frozenset[str] = frozenset({
+# All connector service types. Role-specific consumer/provider definitions are
+# deliberately not interchangeable; only the generic EDC types satisfy either role.
+_CONNECTOR_TYPES: frozenset[str] = frozenset({
     "CONNECTOR_CONSUMER", "CONNECTOR_PROVIDER",
     "EDC_CONNECTOR", "EDC_CONNECTOR_SATURN", "EDC_CONNECTOR_JUPITER",
 })
@@ -62,7 +63,11 @@ def is_type_compatible(actual: ServiceType, expected: ServiceType) -> bool:
     expected_val = expected.value
     if actual_val == expected_val:
         return True
-    if actual_val in _CONNECTOR_COMPATIBLE_TYPES and expected_val in _CONNECTOR_COMPATIBLE_TYPES:
+    if (
+        actual_val in _CONNECTOR_TYPES
+        and expected_val in _CONNECTOR_TYPES
+        and (actual_val in _GENERIC_CONNECTOR_TYPES or expected_val in _GENERIC_CONNECTOR_TYPES)
+    ):
         return True
     if actual_val in _DTR_COMPATIBLE_TYPES and expected_val in _DTR_COMPATIBLE_TYPES:
         return True
@@ -84,7 +89,7 @@ def create_instance(
     """Create a live SDK service from a ServiceDefinition."""
     stype_val = service_definition.type.value
 
-    if stype_val in _CONNECTOR_COMPATIBLE_TYPES:
+    if stype_val in _CONNECTOR_TYPES:
         return _create_connector_service(service_definition, expected_type)
     if stype_val in _DTR_COMPATIBLE_TYPES:
         return _create_aas_service(service_definition)

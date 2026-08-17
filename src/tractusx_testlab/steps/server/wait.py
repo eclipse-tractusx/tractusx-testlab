@@ -27,13 +27,17 @@
 from __future__ import annotations
 
 import logging
-from urllib.parse import urlparse
-from typing import TYPE_CHECKING
+import time
+from typing import TYPE_CHECKING, Any
 
-from tractusx_testlab.models import StepDefinitionV2
+from pydantic import Field
+
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import get_callback_manager
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import StepParams
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.server._contracts import MockInstance
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -43,37 +47,60 @@ logger = logging.getLogger(__name__)
 _DEFAULT_TIMEOUT_S = 30.0
 
 
-def _extract_path_from_endpoint_url(endpoint_url: str) -> str:
-    """Extract the callback path from a mock endpoint URL.
+class WaitForCallParams(StepParams):
+    """Input contract of ``mock/wait/http_request``.
 
-    The ``MockEndpointStep`` output is a full URL like
-    ``http://localhost:8080/companycertificate/status``.
-    We need just ``/companycertificate/status``.
+    The mock arrives as the object the step that registered it returned, not as
+    a URL or an ID to look up again: the mock already knows its own path and
+    method, so there is nothing left for this step to guess.
     """
-    return urlparse(endpoint_url).path
+
+    mock: MockInstance = Field(
+        description="The mock to wait on, as returned by the step that registered it."
+    )
+    timeout_s: float = Field(
+        default=_DEFAULT_TIMEOUT_S, gt=0, description="Seconds to wait before failing."
+    )
 
 
-@step("wait_for_call", aliases=["mock/wait/http_request"])
-class WaitForCallStep(BaseStep):
+class InboundCallOutput(StepPayload):
+    """The inbound request a mock endpoint received."""
+
+    request_method: str = Field(description="HTTP method of the inbound request.")
+    request_path: str = Field(description="Path the request arrived on.")
+    request_headers: dict[str, str] = Field(
+        default_factory=dict, description="Headers of the inbound request."
+    )
+    request_query_params: dict[str, str] = Field(
+        default_factory=dict, description="Query string parameters of the inbound request."
+    )
+    request_body: Any = Field(default=None, description="Body of the inbound request.")
+    elapsed_ms: int = Field(
+        description="Milliseconds spent waiting before the request arrived."
+    )
+
+
+@step("mock/wait/http_request")
+class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
     """Wait for an inbound HTTP request on a previously-registered mock endpoint.
 
-    Params:
-        endpoint_id (str): Variable reference to a mock endpoint's output URL.
-        timeout_s (float): Seconds to wait before failing (default ``30``).
-
-    Output:
-        The request body received from the inbound call.
+    This is the other half of ``mock/api``: that step hands the system under
+    test a callback URL, and this one blocks until the SUT calls it, then hands
+    the request it made to the assertions.
 
     Raises:
         RuntimeError: If no ``CallbackManager`` is available or the wait times out.
     """
 
+    params_model = WaitForCallParams
+    output_model = InboundCallOutput
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2
-    ) -> StepOutput:
-        raw_endpoint_id: str = params["endpoint_id"]
-        method: str = params.get("method", "POST").upper()
-        timeout: float = float(params.get("timeout_s", _DEFAULT_TIMEOUT_S))
+        self, params: WaitForCallParams, context: "StepContext", definition: StepDefinition
+    ) -> StepOutput[InboundCallOutput]:
+        path = params.mock.path
+        method = params.mock.method
+        timeout = params.timeout_s
 
         manager = get_callback_manager()
         if manager is None:
@@ -81,34 +108,24 @@ class WaitForCallStep(BaseStep):
                 "No CallbackManager available — wait_for_call requires the TestLab server"
             )
 
-        # endpoint_id may be a full URL (from a previous step output) or a plain
-        # string ID referencing a mock registered via MockEndpointStep.  When it
-        # looks like a URL we parse the path directly; otherwise we look up the
-        # context variable that MockEndpointStep stored under that ID.
-        if raw_endpoint_id.startswith(("http://", "https://")):  # NOSONAR — detecting URL scheme in user input, not constructing an insecure connection
-            full_path = _extract_path_from_endpoint_url(raw_endpoint_id)
-        else:
-            stored_url = context.get_variable(raw_endpoint_id)
-            if stored_url and isinstance(stored_url, str) and stored_url.startswith(("http://", "https://")):  # NOSONAR — detecting URL scheme in stored variable, not constructing an insecure connection
-                full_path = _extract_path_from_endpoint_url(stored_url)
-            else:
-                # Treat the raw value as a path fragment
-                full_path = f"/{raw_endpoint_id}" if not raw_endpoint_id.startswith("/") else raw_endpoint_id
+        manager.register(path, method)
+        logger.info("Waiting up to %.0fs for %s %s", timeout, method, path)
 
-        manager.register(full_path, method)
-        logger.info("Waiting up to %.0fs for %s %s", timeout, method, full_path)
-
-        result = await manager.wait(full_path, method, timeout)
+        started = time.monotonic()
+        result = await manager.wait(path, method, timeout)
+        elapsed_ms = round((time.monotonic() - started) * 1000)
 
         if result.timed_out:
-            raise RuntimeError(
-                f"Timed out after {timeout}s waiting for {method} {full_path}"
-            )
+            raise RuntimeError(f"Timed out after {timeout}s waiting for {method} {path}")
 
-        logger.info("Received callback on %s %s", method, full_path)
-        return StepOutput(value={
-            "method": result.method,
-            "path": result.path,
-            "headers": result.headers,
-            "body": result.payload,
-        })
+        logger.info("Received callback on %s %s after %dms", method, path, elapsed_ms)
+        return StepOutput(
+            value=InboundCallOutput(
+                request_method=result.method,
+                request_path=result.path,
+                request_headers=result.headers,
+                request_query_params=result.query_params,
+                request_body=result.payload,
+                elapsed_ms=elapsed_ms,
+            )
+        )

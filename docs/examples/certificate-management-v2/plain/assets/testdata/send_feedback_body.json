@@ -1,6 +1,6 @@
 {
   "header": {
-    "messageId": "urn:uuid:${{ steps.gen_feedback_uuid.generated_id }}",
+    "messageId": "urn:uuid:7c21ab3a-e781-4e2e-b199-df875065d73e",
     "context": "CompanyCertificateManagement-CCMAPI-Status:1.0.0",
     "sentDateTime": "2026-01-01T00:00:00Z",
     "senderBpn": "${{ env.consumer_bpn }}",

@@ -31,8 +31,8 @@ TestLab enables teams to author, version, compile, and execute certification TCK
 
 The product has two integrated components:
 
-1. IDE (authoring): users configure tests with reusable blocks and tck structure.
-2. Python compiler and runner (execution): YAML is validated, compiled, and executed against the SUT with structured feedback.
+1. IDE (authoring): users configure tests with reusable blocks and tck structure. The IDE frontend is maintained in the separate cx-test-suite repository.
+2. Python compiler and runner (execution): YAML is validated, compiled, and executed against the SUT with structured feedback. This is what this repository contains.
 
 ## MVP scope
 
@@ -71,7 +71,7 @@ The product has two integrated components:
 | Capability | Reusable functional building block that encodes a repeatable behavior pattern (for example, asset creation or schema validation). |
 | Block | Visual IDE representation of a capability or structural element, mapped to typed step data in YAML. |
 | Prerequisite | Condition or upstream output required before a step or test can execute safely and meaningfully. |
-| Setup phase | Preparation segment that creates test preconditions (data, identities, contracts, mocks, or environment state). |
+| Setup phase | Preparation segment that prepares the test environment (data, identities, contracts, mocks, or environment state). |
 | Execution phase | Main segment that performs the target interaction flow and validates expected behavior. |
 | Teardown phase | Cleanup/export segment that removes temporary artifacts and publishes selected outputs. |
 | SUT | System under test, including APIs and processes that TestLab must stimulate or observe. |

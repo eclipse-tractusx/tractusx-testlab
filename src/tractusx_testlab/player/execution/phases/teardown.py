@@ -41,7 +41,7 @@ from tractusx_testlab.scripting.script import TestScript
 
 _TEARDOWN_CONFIG = PhaseConfig(
     phase=StepPhase.TEARDOWN,
-    phase_label="cleanup",
+    phase_label="teardown",
     failure_policy=FailurePolicy.CONTINUE,
     evaluate_conditions=False,
     use_pause_gate=False,

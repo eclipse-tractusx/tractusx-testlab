@@ -64,42 +64,11 @@ class JobStatus(str, enum.Enum):
     TIMED_OUT = "TIMED_OUT"
 
 
-class AssertionType(str, enum.Enum):
-    """Supported assertion comparison operators."""
-
-    EXACT = "EXACT"
-    SCHEMA = "SCHEMA"
-    CONTAINS = "CONTAINS"
-    REGEX = "REGEX"
-    NOT_CONTAINS = "NOT_CONTAINS"
-    STATUS_CODE = "STATUS_CODE"
-    NOT_NULL = "NOT_NULL"
-    NOT_EMPTY = "NOT_EMPTY"
-    EQUALS = "EQUALS"
-    NOT_EQUALS = "NOT_EQUALS"
-    SCHEMA_VALIDATION = "SCHEMA_VALIDATION"
-    GREATER_THAN = "GREATER_THAN"
-    LESS_THAN = "LESS_THAN"
-    GREATER_OR_EQUAL = "GREATER_OR_EQUAL"
-    LESS_OR_EQUAL = "LESS_OR_EQUAL"
-    BETWEEN = "BETWEEN"
-    ASSERT_FIELD = "ASSERT_FIELD"
-    JSON_PATH_EXTRACT = "json_path_extract"
-
-
 class AssertionSeverity(str, enum.Enum):
     """Whether assertion failure aborts (HARD) or just warns (SOFT)."""
 
     HARD = "HARD"
     SOFT = "SOFT"
-
-
-class FailurePolicy(str, enum.Enum):
-    """Determines behavior when a step fails."""
-
-    ABORT = "ABORT"
-    CONTINUE = "CONTINUE"
-    SKIP_REST = "SKIP_REST"
 
 
 class ValueSource(str, enum.Enum):
@@ -187,3 +156,30 @@ class ScriptKind(str, enum.Enum):
     """Explicit type discriminator for YAML files, following the Kubernetes ``kind:`` convention."""
     TEST = "test"
     TCK = "tck"
+
+
+class EventKind(str, enum.Enum):
+    """Discriminator identifying the semantic kind of an execution event.
+
+    Every event published by the execution engine's :class:`ExecutionMonitor`
+    carries its ``kind`` so a consumer (IDE, CLI, log sink) can decide what
+    happened by reading this field directly, instead of sniffing ``step_type``
+    or other free-text values. The SSE wire event name is derived from the
+    kind value by turning its single underscore into a dot, e.g.
+    ``step_completed`` -> ``step.completed``.
+    """
+
+    JOB_STARTED = "job_started"
+    JOB_PAUSED = "job_paused"
+    JOB_RESUMED = "job_resumed"
+    JOB_COMPLETED = "job_completed"
+    JOB_FAILED = "job_failed"
+    JOB_CANCELLED = "job_cancelled"
+    SCRIPT_STARTED = "script_started"
+    SCRIPT_COMPLETED = "script_completed"
+    STEP_STARTED = "step_started"
+    STEP_COMPLETED = "step_completed"
+    STEP_FAILED = "step_failed"
+    STEP_SKIPPED = "step_skipped"
+    STEP_WAITING = "step_waiting"
+    ASSERTION_RESULT = "assertion_result"

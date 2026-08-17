@@ -40,11 +40,19 @@ from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.conditions import ConditionEvaluator
 
-# Maps internal phase_label to the V2 expression namespace (e.g. "steps.ID.field")
-_PHASE_TO_V2_NAMESPACE: dict[str, str] = {
+# Maps a phase label to the expression namespace (e.g. "execution.ID.field").
+#
+# The namespace is the phase's own name, for every phase. It used to differ for
+# the execution phase, whose steps published under ``steps.`` while authors —
+# and the syntax reference (§5.2), and the IDE that emits from it — wrote
+# ``${{ execution.<id>.<field> }}``. Nothing reported the mismatch: an
+# unresolvable reference is left as its own template text, so the *literal*
+# string ``${{ execution.mint.uuid }}`` was passed to the next step as if it
+# were the value.
+_PHASE_TO_NAMESPACE: dict[str, str] = {
     "setup": "setup",
-    "main": "steps",
-    "cleanup": "teardown",
+    "execution": "execution",
+    "teardown": "teardown",
 }
 
 
@@ -83,16 +91,14 @@ async def _run_phase(
         await _handle_pause_gate(jobs, job_id, config)
 
         step_name = _format_step_name(script.definition.id, step_idx, step_def.uses, config.phase_label, step_def.id)
-        monitor.log_event(
-            "step.started",
-            job_id=job_id,
-            tck_id=context.job.tck_id,
-            script=script.definition.id,
-            step_id=step_def.id,
-            step_index=step_idx,
-            step_type=step_def.uses,
-            step_name=step_name,
-            phase=config.phase_label,
+        monitor.on_step_started(
+            job_id,
+            script.definition.id,
+            step_def.id,
+            step_idx,
+            step_def.uses,
+            step_name,
+            config.phase_label,
         )
 
         if config.use_pause_gate and jobs is not None:
@@ -103,7 +109,10 @@ async def _run_phase(
         ):
             skipped = _make_skipped_result(step_name, step_def.uses, config.phase)
             results.append(skipped)
-            monitor.log_event("step.completed", job_id=job_id, tck_id=context.job.tck_id, script=script.definition.id, step_id=step_def.id, result=skipped)
+            monitor.on_step_completed(job_id, script.definition.id, step_def.id, skipped)
+            # A step whose `if:` said no must not then run: recording SKIPPED and
+            # executing it anyway is the one outcome the condition rules out.
+            continue
 
         failed = await _resolve_and_run_step(
             script, step_def, step_name, context, job_id, monitor, config, results,
@@ -139,16 +148,16 @@ async def _resolve_and_run_step(
     if step_cls is None:
         missing = _make_missing_step_result(step_name, step_def.uses, config.phase)
         results.append(missing)
-        monitor.log_event("step.completed", job_id=job_id, tck_id=context.job.tck_id, script=script.definition.id, step_id=step_def.id, result=missing)
+        monitor.on_step_completed(job_id, script.definition.id, step_def.id, missing)
         return config.failure_policy == FailurePolicy.STOP
 
     step_result = await run_step(step_cls, step_def, step_name, context)
     step_result.phase = config.phase
     results.append(step_result)
-    monitor.log_event("step.completed", job_id=job_id, tck_id=context.job.tck_id, script=script.definition.id, step_id=step_def.id, result=step_result)
+    monitor.on_step_completed(job_id, script.definition.id, step_def.id, step_result)
 
     if config.store_outputs:
-        step_namespace = _PHASE_TO_V2_NAMESPACE.get(config.phase_label)
+        step_namespace = _PHASE_TO_NAMESPACE.get(config.phase_label)
         store_step_outputs(step_def, step_result, context, step_namespace=step_namespace)
 
     return step_result.status == StepStatus.FAILED and config.failure_policy == FailurePolicy.STOP
@@ -166,7 +175,7 @@ def _get_steps_for_phase(script: TestScript, phase: StepPhase) -> list:
 def _format_step_name(script_name: str, idx: int, step_type: str, phase_label: str, step_id: str | None = None) -> str:
     """Format a step identifier using step id when available, index otherwise."""
     step_ref = step_id if step_id else f"{idx}"
-    if phase_label == "main":
+    if phase_label == "execution":
         return f"{script_name}[{step_ref}]:{step_type}"
     return f"{script_name}[{phase_label}:{step_ref}]:{step_type}"
 

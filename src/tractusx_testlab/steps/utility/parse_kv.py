@@ -33,11 +33,14 @@ needs a single field (the asset ``id``).
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
-from tractusx_testlab.models import StepDefinitionV2
+from pydantic import Field
+
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import StoreInVariableParams
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepValue
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -63,51 +66,56 @@ def _parse(text: str, pair_sep: str, kv_sep: str) -> dict[str, str]:
     return result
 
 
-@step("util/parse_kv", aliases=["parse_kv"])
-class ParseKvStep(BaseStep):
+# ---------------------------------------------------------------------------
+# util/parse_kv
+# ---------------------------------------------------------------------------
+
+
+class ParseKvParams(StoreInVariableParams):
+    """Input contract of ``util/parse_kv``."""
+
+    input: str = Field(description="The string to parse, e.g. an EDC 'subprotocolBody'.")
+    pair_separator: str = Field(default=";", description="Separator between pairs.")
+    kv_separator: str = Field(default="=", description="Separator between key and value.")
+    select: Optional[str] = Field(
+        default=None,
+        description="Return only this key's value; omit to return the whole parsed mapping.",
+    )
+
+
+class ParseKvOutput(StepValue[Union[str, dict[str, str]]]):
+    """The selected key's value when 'select' is given, else every parsed pair."""
+
+
+@step("util/parse_kv")
+class ParseKvStep(BaseStep[ParseKvParams, ParseKvOutput]):
     """Parse a delimited ``key=value`` string and optionally select one key.
 
-    Params:
-        input (str): The string to parse (e.g. an EDC ``subprotocolBody``).
-        pair_separator (str): Separator between pairs. Defaults to ``;``.
-        kv_separator (str): Separator between key and value. Defaults to ``=``.
-        select (str, optional): Return only this key's value. When omitted, the
-            whole parsed dict is returned.
-        store_in_variable (str, optional): Context variable to store the result.
-
-    Output:
-        The selected value (str) when ``select`` is given, else the parsed dict.
+    Pairs split on ``pair_separator`` and each pair on the *first*
+    ``kv_separator`` only, so a value may itself contain that separator — a URL
+    with a query string survives intact.
     """
 
+    params_model = ParseKvParams
+    output_model = ParseKvOutput
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2
-    ) -> StepOutput:
-        raw = params.get("input")
-        if raw is None:
-            raise KeyError("util/parse_kv requires an 'input' param")
-        if not isinstance(raw, str):
-            raise TypeError(
-                f"util/parse_kv expects a string input, got {type(raw).__name__}"
-            )
+        self, params: ParseKvParams, context: "StepContext", definition: StepDefinition
+    ) -> StepOutput[ParseKvOutput]:
+        parsed = _parse(params.input, params.pair_separator, params.kv_separator)
 
-        pair_sep = params.get("pair_separator", ";")
-        kv_sep = params.get("kv_separator", "=")
-        parsed = _parse(raw, pair_sep, kv_sep)
-
-        select = params.get("select")
-        if select is not None:
-            if select not in parsed:
+        if params.select is not None:
+            if params.select not in parsed:
                 raise KeyError(
-                    f"Key {select!r} not found in parsed value; "
+                    f"Key {params.select!r} not found in parsed value; "
                     f"available keys: {sorted(parsed)}"
                 )
-            result: object = parsed[select]
+            result: Union[str, dict[str, str]] = parsed[params.select]
         else:
             result = parsed
 
-        store_in = params.get("store_in_variable")
-        if store_in:
-            context.set_variable(store_in, result)
+        if params.store_in_variable:
+            context.set_variable(params.store_in_variable, result)
 
-        logger.debug("Parsed %d pair(s); selected %r", len(parsed), select)
-        return StepOutput(value=result)
+        logger.debug("Parsed %d pair(s); selected %r", len(parsed), params.select)
+        return StepOutput(value=ParseKvOutput(result))

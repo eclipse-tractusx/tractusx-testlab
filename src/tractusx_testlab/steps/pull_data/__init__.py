@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Pull data shortcut steps — registers all 3 step types."""
+"""Pull data shortcut step — registers the canonical DSP pull capability."""
 
 from __future__ import annotations
 
@@ -34,12 +34,10 @@ from tractusx_testlab.steps.pull_data._constants import (
 )
 from tractusx_testlab.steps.pull_data._executor import (
     ConnectorPullDataFiltered,
-    PullDataFiltered,
-    PullDataFilteredByPolicy,
+    ConnectorPullDataFilteredByPolicy,
 )
 
-__all__ = ["STEP_TYPES"]
+__all__ = ["STEP_TYPES", "STEP_PULL_DATA_FILTERED", "STEP_PULL_DATA_FILTERED_BY_POLICY"]
 
-step(STEP_PULL_DATA_FILTERED)(PullDataFiltered)
-step(STEP_PULL_DATA_FILTERED_BY_POLICY)(PullDataFilteredByPolicy)
-step("connector/pull_data_filtered")(ConnectorPullDataFiltered)
+step(STEP_PULL_DATA_FILTERED)(ConnectorPullDataFiltered)
+step(STEP_PULL_DATA_FILTERED_BY_POLICY)(ConnectorPullDataFilteredByPolicy)

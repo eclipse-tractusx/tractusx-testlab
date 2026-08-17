@@ -45,7 +45,7 @@ def build_instructions(
         {id, field, type, class, produced_by, source} dicts.
     """
     setup_steps = test_data.get("setup", [])
-    main_steps = test_data.get("execution", test_data.get("steps", []))
+    main_steps = test_data.get("execution", [])
     teardown_steps = test_data.get("teardown", [])
 
     instructions: list[dict[str, Any]] = []
@@ -90,17 +90,6 @@ def _collect_step_symbols(
             "source": source,
         })
 
-    # Auto-add "exported" symbol for util/export_env steps
-    if step.get("uses") == "util/export_env" and not returns:
-        step_symbols.append({
-            "id": step.get("id", ""),
-            "field": "exported",
-            "type": "string",
-            "class": "",
-            "produced_by": global_index,
-            "source": source,
-        })
-
 
 def _build_instruction(
     step: dict[str, Any], index: int, phase: str, phase_index: int,
@@ -121,7 +110,6 @@ def _build_instruction(
             resolved_returns[field_name] = {"type": "string"}
 
     validate = _build_validate_block(step)
-    on_failure = "continue" if phase == "teardown" else step.get("on_failure", "abort")
 
     return {
         "index": index,
@@ -133,7 +121,6 @@ def _build_instruction(
         "validate": validate,
         "phase": phase,
         "phase_index": phase_index,
-        "on_failure": on_failure,
     }
 
 

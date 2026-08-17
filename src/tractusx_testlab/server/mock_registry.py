@@ -32,7 +32,7 @@ through ``StepContext``.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 if TYPE_CHECKING:
     from tractusx_testlab.server.callbacks import CallbackManager
@@ -43,11 +43,28 @@ class MockResponse:
     """Canned response for a mock endpoint."""
 
     status_code: int
-    body: dict = field(default_factory=dict)
+    body: Any = field(default_factory=dict)
+    headers: dict[str, str] = field(default_factory=dict)
 
 
-# path+method -> canned response
-_mock_routes: dict[str, MockResponse] = {}
+@dataclass(frozen=True)
+class MockRequest:
+    """Inbound request data passed to a dynamic mock handler."""
+
+    method: str
+    path: str
+    headers: dict
+    query_params: dict
+    body: Optional[Any]
+
+
+# A dynamic handler computes the response from the inbound request — used by
+# protocol-aware mocks (e.g. mock/dtr, mock/discovery) whose reply depends on
+# the request path/query/body rather than being a single canned value.
+MockHandler = Callable[["MockRequest"], MockResponse]
+
+# path+method -> canned response or dynamic handler
+_mock_routes: dict[str, Union[MockResponse, MockHandler]] = {}
 
 # Singleton holder for the active CallbackManager
 _callback_manager: Optional["CallbackManager"] = None
@@ -57,14 +74,28 @@ def _key(path: str, method: str) -> str:
     return f"{method.upper()}:{path}"
 
 
-def register_mock(path: str, method: str, response: MockResponse) -> None:
-    """Register a canned response for the given path and method."""
+def register_mock(path: str, method: str, response: Union[MockResponse, MockHandler]) -> None:
+    """Register a canned response, or a dynamic handler, for the given path and method."""
     _mock_routes[_key(path, method)] = response
 
 
-def get_mock(path: str, method: str) -> Optional[MockResponse]:
-    """Look up a canned response, or ``None`` if not registered."""
+def get_mock(path: str, method: str) -> Optional[Union[MockResponse, MockHandler]]:
+    """Look up a canned response or dynamic handler, or ``None`` if not registered."""
     return _mock_routes.get(_key(path, method))
+
+
+def resolve_mock(
+    path: str, method: str, *, headers: dict, query_params: dict, body: Optional[dict],
+) -> Optional[MockResponse]:
+    """Look up a mock and, if it's a dynamic handler, invoke it to get a response."""
+    mock = get_mock(path, method)
+    if mock is None:
+        return None
+    if isinstance(mock, MockResponse):
+        return mock
+    return mock(MockRequest(
+        method=method, path=path, headers=headers, query_params=query_params, body=body,
+    ))
 
 
 def remove_mock(path: str, method: str) -> None:
@@ -86,3 +117,17 @@ def set_callback_manager(manager: "CallbackManager") -> None:
 def get_callback_manager() -> Optional["CallbackManager"]:
     """Return the active ``CallbackManager``, or ``None``."""
     return _callback_manager
+
+
+def clear_callback_manager() -> None:
+    """Drop the active ``CallbackManager``, cancelling anything waiting on it.
+
+    The manager holds futures bound to the event loop that registered them, so
+    one that outlives its loop resolves nothing and reports "attached to a
+    different loop" instead. The counterpart to :func:`clear_mocks`: both clear
+    the module state a run leaves behind.
+    """
+    global _callback_manager
+    if _callback_manager is not None:
+        _callback_manager.clear()
+    _callback_manager = None

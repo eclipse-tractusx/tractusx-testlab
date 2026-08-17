@@ -30,17 +30,17 @@ continues to work unchanged.
 """
 
 from tractusx_testlab.models.authoring.definitions import (
-    AssertionV2,
+    Assertion,
     EnvDefinition,
     ImportDefinition,
     MetadataDefinition,
     ReturnFieldDefinition,
     ScriptDefinition,
-    ScriptDefinitionV2,
+    ScriptDefinition,
     ServiceDefinition,
-    StepDefinitionV2,
+    StepDefinition,
     TckDefinition,
-    TckDefinitionV2,
+    TckDefinition,
     TckMetadataDefinition,
     VariableDefinition,
 )
@@ -52,7 +52,7 @@ from tractusx_testlab.models.authoring.infrastructure import (
 )
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
-    FailurePolicy,
+    EventKind,
     JobStatus,
     PackageFormat,
     ScriptStatus,
@@ -63,7 +63,6 @@ from tractusx_testlab.models.primitives.enums import (
 )
 from tractusx_testlab.models.primitives.enums import VariableSource  # verb-form variable source
 from tractusx_testlab.models.primitives.enums import VariableScope  # verb-form variable scope
-from tractusx_testlab.models.primitives.enums import AssertionType  # local override — adds typed assertion types
 from tractusx_testlab.models.primitives.enums import ScriptKind  # local override — adds TCK
 from tractusx_testlab.models.primitives.enums import ServiceType  # local override — adds EDC connector types
 from tractusx_testlab.models.primitives.enums import StepPhase
@@ -96,6 +95,23 @@ from tractusx_testlab.models.runtime.results import (
     StepResult,
     TckResult
 )
+from tractusx_testlab.models.runtime.events import (
+    AssertionResultEvent,
+    ExecutionEvent,
+    JobCancelledEvent,
+    JobCompletedEvent,
+    JobFailedEvent,
+    JobPausedEvent,
+    JobResumedEvent,
+    JobStartedEvent,
+    ScriptCompletedEvent,
+    ScriptStartedEvent,
+    StepCompletedEvent,
+    StepFailedEvent,
+    StepSkippedEvent,
+    StepStartedEvent,
+    StepWaitingEvent,
+)
 from tractusx_testlab.models.domain.security import (
     Base64Bytes,
     EncryptedKeyBlock,
@@ -110,8 +126,7 @@ from tractusx_testlab.models.domain.server import (
 __all__ = [
     # enums
     "AssertionSeverity",
-    "AssertionType",
-    "FailurePolicy",
+    "EventKind",
     "JobStatus",
     "PackageFormat",
     "ScriptKind",
@@ -128,18 +143,18 @@ __all__ = [
     "DataspaceContext",
     "InfrastructureConfig",
     "Standard",
-    # definitions (v2)
-    "AssertionV2",
+    # definitions
+    "Assertion",
     "EnvDefinition",
     "ImportDefinition",
     "MetadataDefinition",
     "ReturnFieldDefinition",
     "ScriptDefinition",
-    "ScriptDefinitionV2",
+    "ScriptDefinition",
     "ServiceDefinition",
-    "StepDefinitionV2",
+    "StepDefinition",
     "TckDefinition",
-    "TckDefinitionV2",
+    "TckDefinition",
     "TckMetadataDefinition",
     "VariableDefinition",
     "VariableSource",
@@ -164,6 +179,22 @@ __all__ = [
     "ScriptResult",
     "StepResult",
     "TckResult",
+    # execution events
+    "AssertionResultEvent",
+    "ExecutionEvent",
+    "JobCancelledEvent",
+    "JobCompletedEvent",
+    "JobFailedEvent",
+    "JobPausedEvent",
+    "JobResumedEvent",
+    "JobStartedEvent",
+    "ScriptCompletedEvent",
+    "ScriptStartedEvent",
+    "StepCompletedEvent",
+    "StepFailedEvent",
+    "StepSkippedEvent",
+    "StepStartedEvent",
+    "StepWaitingEvent",
     # jobs
     "Job",
     "JobEvent",

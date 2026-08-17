@@ -29,29 +29,45 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepValue
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-@step("generate_uuid", aliases=["util/generate_uuid"])
-class GenerateUuidStep(BaseStep):
-    """Generate a random UUID v4.
+class GenerateUuidParams(StepParams):
+    """Input contract of ``util/generate_uuid`` — the step takes nothing.
 
-    Params:
-        prefix (str, optional): Prefix to prepend to the UUID.
-
-    Output:
-        The generated UUID string (stored via ``store_in_memory``).
+    A prefix like ``urn:uuid:`` is not an input either: a script that needs
+    one writes it where the value is used, e.g. ``urn:uuid:${{ ... .uuid }}``.
     """
 
+
+class GenerateUuidOutput(StepValue[str]):
+    """The generated identifier — the output *is* the UUID string.
+
+    There is one value and no object around it; a script reads it as the
+    step's ``value``, the same way it reads ``util/json_path_extract``.
+    """
+
+
+@step("util/generate_uuid")
+class GenerateUuidStep(BaseStep[GenerateUuidParams, GenerateUuidOutput]):
+    """Generate a random UUID v4.
+
+    A fresh identifier is produced on every call, so a test that needs a value
+    no earlier run can collide with can mint one here.
+    """
+
+    params_model = GenerateUuidParams
+    output_model = GenerateUuidOutput
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2
-    ) -> StepOutput:
-        generated = str(uuid.uuid4())
-        prefix = params.get("prefix", "")
-        value = f"{prefix}{generated}" if prefix else generated
-        return StepOutput(value={"generated_id": value, "uuid": value})
+        self,
+        params: GenerateUuidParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[GenerateUuidOutput]:
+        return StepOutput(value=GenerateUuidOutput(str(uuid.uuid4())))

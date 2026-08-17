@@ -33,8 +33,10 @@ from typing import Optional
 
 from pydantic import ValidationError
 
-from tractusx_testlab.models import ScriptDefinitionV2, StepDefinitionV2, TckDefinitionV2
+from tractusx_testlab.models import ScriptDefinition, StepDefinition, TckDefinition
 from tractusx_testlab.scripting.registry import StepRegistry
+from tractusx_testlab.steps._checks.extraction import declared_names
+from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
 from tractusx_testlab.syntax import defaults
 
 
@@ -70,7 +72,7 @@ _VAR_REF = re.compile(r"\$\{(\w+)}")
 class ScriptValidator:
     """Validates a ScriptDefinition for correctness before execution."""
 
-    def validate_tck(self, tck: TckDefinitionV2, base_dir: Path, version: Optional[str] = None) -> ValidationResult:
+    def validate_tck(self, tck: TckDefinition, base_dir: Path, version: Optional[str] = None) -> ValidationResult:
         """Validate all test files referenced by a TCK manifest."""
         combined = ValidationResult()
         for entry in tck.tests:
@@ -101,11 +103,11 @@ class ScriptValidator:
                 combined.issues.append(issue)
         return combined
 
-    def validate(self, script: ScriptDefinitionV2, version: Optional[str] = None) -> ValidationResult:
+    def validate(self, script: ScriptDefinition, version: Optional[str] = None) -> ValidationResult:
         result = ValidationResult()
         declared_vars: set[str] = set()
 
-        # Collect variables declared in the script header (v2: in TCK env)
+        # Collect variables declared in the script header (in TCK env)
         declared_vars.update(getattr(script, "variables", {}))
 
         # Validate setup steps
@@ -120,7 +122,7 @@ class ScriptValidator:
 
     def _validate_step(
         self,
-        step_def: StepDefinitionV2,
+        step_def: StepDefinition,
         idx: int,
         declared_vars: set[str],
         version: Optional[str],
@@ -153,8 +155,42 @@ class ScriptValidator:
         self._validate_inline_assert_inputs(step_def, idx, result, phase)
 
         # If returns is set, auto-declare the output variables
+        self._validate_returns(step_def, step_cls, idx, result, phase)
         for key in (step_def.returns or {}):
             declared_vars.add(key)
+
+    def _validate_returns(
+        self,
+        step_def: StepDefinition,
+        step_cls: Optional[type],
+        step_idx: int,
+        result: ValidationResult,
+        phase: str,
+    ) -> None:
+        """Check every ``returns:`` name against what the step actually publishes.
+
+        A name the step never declares resolves to nothing at run time, so the
+        variable reads as empty several steps later and the failure surfaces far
+        from its cause. The step said what it produces; saying so here turns a
+        typo into a compile error instead of a mystery.
+        """
+        returns = step_def.returns or {}
+        if not returns or step_cls is None:
+            return
+        declared = declared_names(step_cls)
+        for name in returns:
+            # A dotted name reaches inside a declared output; only the first
+            # segment has to be something the step publishes.
+            root = name.split(".", 1)[0]
+            if root in declared:
+                continue
+            result.add_error(
+                f"'returns' name '{name}' is not produced by step "
+                f"'{step_def.uses}'. It publishes: {', '.join(sorted(declared))}.",
+                step_index=step_idx,
+                field="returns",
+                phase=phase,
+            )
 
     def _check_var_refs(
         self, params: dict, step_idx: int, declared: set[str], result: ValidationResult
@@ -176,21 +212,28 @@ class ScriptValidator:
 
     def _validate_inline_assert_inputs(
         self,
-        step_def: StepDefinitionV2,
+        step_def: StepDefinition,
         step_idx: int,
         result: ValidationResult,
         phase: str,
     ) -> None:
-        """Reject expression-based input values in inline validate assertions.
-        For ``validate/assert`` and ``validate/field`` blocks, ``with.input`` must
-        be a plain string path (e.g. ``"edr_token"``), not a ``${{ ... }}``
-        expression.
+        """Check that every assertion names a real check and a declared input.
+
+        An assertion the engine cannot resolve is rejected here rather than at
+        run time, where it would surface as a failing check on a passing SUT.
+        ``with.input`` must be a plain string naming one of the step's
+        ``returns`` (e.g. ``"edr_token"``), not a ``${{ ... }}`` expression.
         """
         valid_keys = set(step_def.returns or {})
         for assertion in step_def.validate or []:
-            if assertion.uses not in ("validate/assert", "validate/field"):
+            params = assertion.with_ or {}
+            resolved = resolve_assertion(assertion.uses, params)
+            if isinstance(resolved, str):
+                result.add_error(
+                    resolved, step_index=step_idx, field="validate.uses", phase=phase,
+                )
                 continue
-            input_value = (assertion.with_ or {}).get("input")
+            input_value = params.get("input")
             if not isinstance(input_value, str):
                 result.add_error(
                     "'validate.with.input' must be a plain string.",

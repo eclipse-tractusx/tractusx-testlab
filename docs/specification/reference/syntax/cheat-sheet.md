@@ -120,11 +120,10 @@ teardown: []
     - uses: validate/assert
       with: { input: output_name, operator: not_null }
   if: "${{ success() }}"
-  on_failure: abort
   timeout_s: 30.0
 ```
 
-**Field order:** `id` → `uses` → `name` → `with` → `returns` → `validate` → `if` → `on_failure` → `timeout_s`
+**Field order:** `id` → `uses` → `name` → `with` → `returns` → `validate` → `if` → `timeout_s`
 
 ---
 
@@ -375,19 +374,36 @@ env:
         policy:
           type: object
           class: Policy
+
+    # Asset definition the provider steps provision
+    - id: api_asset
+      uses: config/connector/asset
+      name: API asset
+      with:
+        value:
+          name: CCMAPI Notification Asset
+          base_url: "https://backend.example.com/ccm"
+          properties:
+            dct:type:
+              "@id": "https://w3id.org/catenax/taxonomy#CCMAPI"
+            cx-common:version: "3.0"
+      returns:
+        asset:
+          type: object
+          class: Asset
 ```
 
-**Reference in tests:** `${{ env.sut_dsp_url.value }}`, `${{ env.usage_policy.policy }}`.
+**Reference in tests:** `${{ env.sut_dsp_url.value }}`, `${{ env.usage_policy.policy }}`,
+`${{ env.api_asset.asset }}`.
 
 ---
 
-## Failure Policies (`on_failure:`)
+## Failure Handling
 
-| Policy | Behavior |
-|--------|----------|
-| `abort` | Stop immediately, run teardown (default) |
-| `continue` | Log warning, proceed to next step |
-| `skip_rest` | Skip remaining steps, run teardown |
+There is no per-step failure policy. A failed validation (hard assertion)
+fails its step; a failed step fails the test — execution stops, the remaining
+steps are skipped, and teardown runs. Teardown steps keep executing even when
+one of them fails.
 
 
 ## Common `uses:` Handlers
@@ -399,7 +415,7 @@ env:
 | `util/` | `util/generate_uuid`, `util/log`, `util/parse_kv`, `util/base64` |
 | `validate/` | `validate/assert`, `validate/field`, `validate/schema` |
 | `variable/` | `variable/type/string`, `variable/type/integer`, `variable/type/boolean` |
-| `config/` | `config/connector/policy` |
+| `config/` | `config/connector/policy`, `config/connector/asset` |
 | `service/` | `service/connector_service` |
 | _(no prefix)_ | `json_path_extract` |
 

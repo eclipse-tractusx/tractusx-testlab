@@ -26,8 +26,6 @@
 
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
-    AssertionType,
-    FailurePolicy,
     JobStatus,
     PackageFormat,
     ScriptKind,
@@ -50,8 +48,6 @@ from tractusx_testlab.models.primitives.exceptions import (
 
 __all__ = [
     "AssertionSeverity",
-    "AssertionType",
-    "FailurePolicy",
     "JobStatus",
     "PackageFormat",
     "ScriptKind",

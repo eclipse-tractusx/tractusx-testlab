@@ -29,8 +29,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.steps._contracts import (
+    CatalogOutput,
+    CounterPartyParams,
+    FilterExpressionParams,
+    as_dataset_list,
+)
 from tractusx_testlab.steps.base import BaseStep, StepOutput
 
 if TYPE_CHECKING:
@@ -39,51 +45,60 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@step("query_catalog_with_filters")
-class QueryCatalogWithFiltersStep(BaseStep):
-    """Query a provider's catalog with multiple filter expressions via the SDK."""
+# ---------------------------------------------------------------------------
+# connector/consumer/query_catalog_with_filters
+# ---------------------------------------------------------------------------
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+
+class QueryCatalogWithFiltersParams(CounterPartyParams, FilterExpressionParams):
+    """Input contract of ``connector/consumer/query_catalog_with_filters``."""
+
+
+@step("connector/consumer/query_catalog_with_filters")
+class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, CatalogOutput]):
+    """Query a provider's catalog with multiple filter expressions via the SDK.
+
+    Filter criteria are translated by the SDK's own ``get_filter_expression``,
+    so they carry whatever JSON-LD context the negotiated dataspace version
+    expects.
+    """
+
+    params_model = QueryCatalogWithFiltersParams
+    output_model = CatalogOutput
+
+    async def execute(
+        self,
+        params: QueryCatalogWithFiltersParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[CatalogOutput]:
         consumer = context.get_consumer_service()
-        counter_party_address = params.get("counter_party_address") or params.get("provider_url", "")
-        counter_party_id = params.get("counter_party_id") or params.get("bpnl", "")
-        filter_expression = self._build_filter_expression(consumer, params.get("filters", []))
+        filter_expression = [
+            consumer.get_filter_expression(
+                key=entry.operand_left, value=entry.operand_right, operator=entry.operator
+            )
+            for entry in params.filters
+        ]
 
         catalog = consumer.get_catalog_with_filter(
-            counter_party_id=counter_party_id,
-            counter_party_address=counter_party_address,
+            counter_party_id=params.counter_party_id,
+            counter_party_address=params.counter_party_address,
             filter_expression=filter_expression,
         )
 
-        url = f"{counter_party_address}/catalog/request"
+        url = f"{params.counter_party_address}/catalog/request"
+        request = HttpRequest(method="POST", url=url, body=params.model_dump(mode="json"))
         if not catalog:
             logger.error("Filtered catalog request returned no result: url=%s", url)
             return StepOutput(
                 value=None,
-                request=HttpRequest(method="POST", url=url, body=params),
+                request=request,
                 response=HttpResponse(status_code=500, body=None),
             )
 
-        datasets = catalog.get("dcat:dataset", [])
-        if isinstance(datasets, dict):
-            datasets = [datasets]
-        context.set_variable("datasets", datasets)
-
+        datasets = as_dataset_list(catalog)
         return StepOutput(
-            value={"catalog": catalog, "datasets": datasets},
-            request=HttpRequest(method="POST", url=url, body=params),
+            value=CatalogOutput(catalog=catalog, datasets=datasets),
+            request=request,
             response=HttpResponse(status_code=200, body=catalog),
         )
-
-    @staticmethod
-    def _build_filter_expression(consumer: object, filters: list) -> list[dict]:
-        """Convert block-style filters to SDK filter dicts via ``get_filter_expression``."""
-        expressions: list[dict] = []
-        for entry in filters:
-            if not isinstance(entry, dict):
-                continue
-            key = entry.get("operand_left", entry.get("operandLeft", ""))
-            value = entry.get("operand_right", entry.get("operandRight", ""))
-            operator = entry.get("operator", "=")
-            expressions.append(consumer.get_filter_expression(key=key, value=value, operator=operator))
-        return expressions

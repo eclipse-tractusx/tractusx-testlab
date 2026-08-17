@@ -93,10 +93,6 @@
             },
             "additionalProperties": true
           }
-        },
-        "on_failure": {
-          "type": "string",
-          "enum": ["abort", "continue", "skip_remaining"]
         }
       },
       "additionalProperties": true

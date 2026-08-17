@@ -23,38 +23,36 @@
 
 # How to Run the Full Development Workflow
 
-## IDE development
-
-```bash
-cd ide
-npm install              # Install dependencies
-npm run dev              # Start dev server (http://localhost:5173)
-npx tsc --noEmit         # Type check (run before committing)
-npx vite build           # Production build (run before PR)
-```
+The IDE frontend is developed in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository; this repository is the Python engine and CLI.
 
 ## Python development
 
-```bash
-# Create a virtual environment (if not done)
-python3.12 -m venv .venv
-source .venv/bin/activate
+The project is managed with Poetry (>= 2.0) and requires Python 3.12+:
 
-# Install in development mode
-pip install -e ".[dev]"
+```bash
+# Install all dependency groups (test, docs)
+poetry install
 
 # Run tests
-pytest -v
+poetry run pytest -v
 
 # Run the CLI
-testlab validate examples/connector-ping-v1.0/tests/ping_test.yaml
-testlab compile examples/connector-ping-v1.0/tests/ping_test.yaml
+poetry run testlab validate tests/e2e/connector-dtr-smoke/tests/dtr_roundtrip.yaml
+poetry run testlab compile tests/e2e/connector-dtr-smoke/index.yaml --plain
+poetry run testlab run tests/e2e/connector-dtr-smoke/index.yaml
+```
+
+Before opening a PR, check that the generated step reference is still in sync:
+
+```bash
+poetry run testlab docs --check
 ```
 
 ## Documentation
 
+The docs dependencies are in the `docs` Poetry group (installed by `poetry install`):
+
 ```bash
-pip install mkdocs-material
-mkdocs serve             # http://localhost:8000
-mkdocs build             # Build static site
+poetry run mkdocs serve   # http://localhost:8000
+poetry run mkdocs build   # Build static site
 ```

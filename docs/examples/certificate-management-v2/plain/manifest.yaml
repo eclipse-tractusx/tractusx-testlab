@@ -3,127 +3,74 @@ package:
   format: tck
   format_version: 1.0.0
   testlab: v1-alpha
-  checksum: blake2b:e4a614ab7b1b05f22cd257aff770b01beadc97b17f3733f765e8e305c31bfe35
+  checksum: blake2b:078c17dfaa40feae78655307c0da78cf2231d476054c12a1a02ab6180b7eac55
 tck:
-  id: certificate-management-tck
-  namespace: ccm-v0.0.1
+  id: certificate-management-tck-v0.0.1
   metadata:
     name: Certificate Management TCK
     version: v0.0.1
     description: 'Validate CCMAPI certificate management workflow per CX-0135 v3.1.0:
-      (1) Request certificate from provider (2) Validate certificate payload against
-      schema (3) Await provider feedback callback (4) Send feedback notification and
-      await acknowledgment (5) Expose TestLab as provider and verify SUT consumer
-      behavior
+      (1) Validate CX-0135 catalog policy constraints (2) Request certificate from
+      provider and validate payload (3) Send feedback notification and await acknowledgment
+      (4) Verify error handling for unknown certificate types
 
       '
     authors:
     - name: Certificate Management Expert Group
+      email: ccm-eg@catena-x.net
+      company: Catena-X Automotive Network e.V.
     copyright_holders:
-    - 2026 Contributors to the Eclipse Foundation
-    license: Apache-2.0
+    - 2026 Catena-X Automotive Network e.V.
+    license: LicenseRef-Proprietary
     standards:
     - id: CX-0135
       version: v3.1.0
     tags:
     - CCM
-    dataspace_version: saturn
 compilation:
-  compiled_at: '2026-07-15T07:51:22Z'
+  compiled_at: '2026-08-05T12:32:39Z'
   compiler_version: 0.5.0
   fingerprint:
-    nonce: blake2b:b9f8b66d92972f1ba9bcf27a32c6043f9e41b287bc52188340fb78838572bfd5
-    public_key: ed25519:mzZ4D9hrGB+Gl6vdN41Zv2mOKuu3BCJZLpDjvSAwIkQ=
-    digest: blake2b:68dcf91c2026977171c43dce14cf6f52bf867790bb5ba3786f36ccdc12f3a7f7
+    nonce: blake2b:f03d34381c6cd8d6d644fcb6d492cb3c85c8db1949d50aefc8f51ad0afdf2742
+    public_key: ed25519:yORG/mdbiDnJ8PQ/aLohTGahgQQ6OmWLMd389EQ0QVk=
+    digest: blake2b:9ffbb982290434f94ab1429cd24e572862a853aec112637dd2acec8a16e6f61f
 tests:
 - id: catalog-policy-validation
-  source_hash: blake2b:0e31a1f8a793b80325301e1f6e7339cb1435eaca967b9794300416fd449759b6
+  source_hash: blake2b:52ea54438e882674438151a9868f12f1289ba0bef5992684db20690067386911
 - id: request-certificate
-  source_hash: blake2b:0713ce0414a37ff8d447e8bf2895271b1903e91f7cdf4a5d5887f822f41fad24
-- id: certificate-asset-validation
-  source_hash: blake2b:4bc0400d4d4e763f25498ec307e8ad33a6053d7a6688307e1c8fcbe7cb35f4fa
-- id: validate-certificate-payload
-  source_hash: blake2b:5c2da870729549794c28f66f7868db03f9a11c5164dc2bdd571c895eac3db431
-- id: push-certificate
-  source_hash: blake2b:ccc6b2fc4666aa799b8c606a74f329893dc92066d1ac927ee64d70174ee8d04a
-- id: available-notification
-  source_hash: blake2b:545c91de614d1d117476d46d5ada312adaf71a1bce382d67402b1d21240d7747
+  source_hash: blake2b:b2cbf83d38e204ba11774894aa2e405c1b2776a4f8179a016b0e53fc1a00fa78
 - id: send-feedback-notification
-  source_hash: blake2b:09dff57a4c2bf0faec1bb7bb611a347e9fba6ca8f6a450c382980a4b6edbf94e
-- id: expose-testlab-asset
-  source_hash: blake2b:bfd506cc2cb8b81f800c258f9985ca1c8ca067ea04bc672acd92df5ccf8d117c
+  source_hash: blake2b:c80ccfe4a038e4b7da37a7eb5a2f756a431040f21f8721d3013537432e87fd4d
 - id: error-handling
-  source_hash: blake2b:383da95da60aec28e7f84418e2af7988ba0f687818730b922c2bc884d0160560
+  source_hash: blake2b:2f7186369b07e2b33993b823a56af272c2f21b3ae45e0dfbdd47918707a63c1d
 assets:
   schemas:
   - id: certificate_schema
-    file: business_partner_certificate_schema.json
-    path: assets/schemas/business_partner_certificate_schema.json
+    file: business_partner_certificate_schema-v3.0.1.json
+    path: assets/schemas/business_partner_certificate_schema-v3.0.1.json
     digest: blake2b:9e6ad2bbe5bc77131e2147a9fa842c9753732ee4d77b48771a3fa5b9c5276a32
     size: 3697
     mediaType: application/json
     location: filesystem
-  - id: bpc_v310_schema
-    file: bpc-v3.1.0.json
-    path: assets/schemas/bpc-v3.1.0.json
-    digest: blake2b:a262582d32e5bb79c6d6d0580c36f3df81ca5730ca91865789c1c05b7fe76663
-    size: 1984
-    mediaType: application/json
-    location: filesystem
   testdata:
-  - id: available_notification_body
-    file: available_notification_body.json
-    path: assets/testdata/available_notification_body.json
-    digest: blake2b:179f49e8b6b63437ed52c8098f858c125445d909c9ba87a9f7e542c5fd10960a
-    size: 634
-    mediaType: application/json
-    location: filesystem
-  - id: certificate_available_response
-    file: certificate_available_response.json
-    path: assets/testdata/certificate_available_response.json
-    digest: blake2b:70d3037df2cf541e5fadd2e1ddd1791591c9190abcd11fc5a153f4ce944b44d0
-    size: 831
-    mediaType: application/json
-    location: filesystem
-  - id: error_unknown_cert_type_body
-    file: error_unknown_cert_type_body.json
-    path: assets/testdata/error_unknown_cert_type_body.json
-    digest: blake2b:0f10142cf630f80c05b3cd712519b9201fd46c45d059ae271e4bbb616024dec2
-    size: 637
-    mediaType: application/json
-    location: filesystem
-  - id: expose_available_notification_body
-    file: expose_available_notification_body.json
-    path: assets/testdata/expose_available_notification_body.json
-    digest: blake2b:fc1024f282306b677e534a531c3d2d36fb6840df35a1813eec6bd6d6fb623f82
-    size: 643
-    mediaType: application/json
-    location: filesystem
-  - id: expose_certificate_data_response
-    file: expose_certificate_data_response.json
-    path: assets/testdata/expose_certificate_data_response.json
-    digest: blake2b:183d8149f783e821df6d1d7c73bb5772a7f037dee4d9e859502e18c941830c28
-    size: 837
-    mediaType: application/json
-    location: filesystem
-  - id: push_certificate_body
-    file: push_certificate_body.json
-    path: assets/testdata/push_certificate_body.json
-    digest: blake2b:919ad09b7230e37f71f425a89959ee0fdc95f1feb07a0ba8ebd689d343b4ff0a
-    size: 1347
-    mediaType: application/json
-    location: filesystem
   - id: request_certificate_body
     file: request_certificate_body.json
     path: assets/testdata/request_certificate_body.json
-    digest: blake2b:3b2b855615a2e080fb0ff674fd0205489df4d4f1a20920846b6a3c2bb0edefb3
-    size: 623
+    digest: blake2b:856bb2c0fe75c71bbe511a43e9a4b558128dcb11ddb6942e6cd9bfddaebb518e
+    size: 631
     mediaType: application/json
     location: filesystem
   - id: send_feedback_body
     file: send_feedback_body.json
     path: assets/testdata/send_feedback_body.json
-    digest: blake2b:8b66d67722dd51f3005985bc8be74fb80558121b3d7f42e49e8cddf7ee727e98
-    size: 594
+    digest: blake2b:92351acbcb65e2350f5bf14f3161958e7710bf4d3fbbea83314eb8c66be6ca61
+    size: 598
+    mediaType: application/json
+    location: filesystem
+  - id: error_unknown_cert_type_body
+    file: error_unknown_cert_type_body.json
+    path: assets/testdata/error_unknown_cert_type_body.json
+    digest: blake2b:05b888d95b361af21dc6add11a09d937e62f21bd45b029ff2b4cca75a36f032d
+    size: 645
     mediaType: application/json
     location: filesystem

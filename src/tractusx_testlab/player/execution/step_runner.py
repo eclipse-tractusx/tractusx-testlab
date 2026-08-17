@@ -34,6 +34,7 @@ from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
+from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.assertions import AssertionEngine
 from tractusx_testlab.models.runtime.results import AssertionResult, AssertionSummary, ScriptResult, StepResult
@@ -45,6 +46,27 @@ from tractusx_testlab.player.execution._phase_runners import (
 )
 
 
+def _resolve_assertions(assertions: list[Any], context: StepContext) -> list[Any]:
+    """Resolve ``${{ … }}`` references in each assertion's ``with:`` block.
+
+    A ``validate:`` entry compares against things the run produced — a value an
+    earlier step returned, a schema declared in ``env`` — and writes them the
+    way every other value is written. Only the step's own ``with:`` used to be
+    resolved, so those references reached the comparison as their own template
+    text: the check then failed against a string nobody wrote, and said so in a
+    message that read like a real mismatch.
+
+    ``input`` is unaffected: it names one of the step's returns and carries no
+    reference to resolve.
+    """
+    return [
+        assertion.model_copy(
+            update={"with_": resolve_params(assertion.with_ or {}, context)}
+        )
+        for assertion in assertions
+    ]
+
+
 async def run_step(
     step_cls: type, step_def: Any, step_name: str, context: StepContext,
 ) -> StepResult:
@@ -54,13 +76,17 @@ async def run_step(
     started_at = datetime.now(timezone.utc)
 
     try:
-        output = await step_instance.execute(params, context, step_def)
+        output = await step_instance.invoke(params, context, step_def)
 
         assertion_results: list[AssertionResult] = []
         if step_def.validate:
             assertion_results = [
                 AssertionResult.model_validate(ar.model_dump())
-                for ar in AssertionEngine.evaluate(step_def.validate, output, context.variables)
+                for ar in AssertionEngine.evaluate(
+                    _resolve_assertions(step_def.validate, context),
+                    output,
+                    context.variables,
+                )
             ]
 
         finished_at = datetime.now(timezone.utc)
@@ -98,7 +124,7 @@ def store_step_outputs(
     """Persist step outputs into context variables when returns is configured.
 
     Stores each return field both flat (``field``) and, when *step_namespace* and
-    ``step_def.id`` are set, as a V2 namespaced key (``{ns}.{id}.{field}``).
+    ``step_def.id`` are set, as a namespaced key (``{ns}.{id}.{field}``).
     """
     if step_result.output is None:
         return
@@ -107,13 +133,20 @@ def store_step_outputs(
     if not returns:
         return
 
+    from tractusx_testlab.steps._checks.extraction import declared_names
     from tractusx_testlab.steps.base import StepOutput
     raw = step_result.output
     full_output: Any = StepOutput(value=raw, request=step_result.request, response=step_result.response) if not isinstance(raw, StepOutput) else raw
 
+    # A `returns:` name is only readable when the step declared it, so a typo
+    # or a guess at the step's internals fails here rather than as a `None`
+    # several steps later.
+    step_cls = StepRegistry.get(step_def.uses, "")
+    declared = declared_names(step_cls) if step_cls is not None else None
+
     step_id = getattr(step_def, "id", None)
     for var_name in returns:
-        value = AssertionEngine.extract_path(full_output, var_name)
+        value = AssertionEngine.extract_path(full_output, var_name, declared)
         context.set_variable(var_name, value)
         if step_id and step_namespace:
             context.set_variable(f"{step_namespace}.{step_id}.{var_name}", value)

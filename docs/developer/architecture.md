@@ -25,31 +25,28 @@
 
 ## Overview
 
-The TestLab IDE is a single-page React application that lets users visually author dataspace integration tests using a block-based editor (Blockly). The application has three synchronized representations of the same test data:
+This repository contains the **TestLab engine**: the Python library, CLI, and server that compile YAML test scripts into executable packages and run them against a system under test. The engine has three run-time roles:
 
-1. **Block workspace** — Drag-and-drop visual editor (primary editing surface)
-2. **YAML editor** — Text-based editing with Monaco Editor
-3. **Dependency graph** — Read-only React Flow visualization
+1. **Compiler** — validates YAML scripts and TCK manifests and packages them
+2. **Player** — loads a package and executes its steps against the SUT
+3. **Server** — hosts mock endpoints, callbacks, and streams execution events (SSE)
 
-All three derive from a shared in-memory model (`TestLabDocument`) managed via Zustand.
+The **IDE frontend** — the browser-based visual authoring tool (React + Blockly) — lives in the separate **cx-test-suite** repository. It communicates with this engine via the server API and consumes the block catalog generated from the engine's step registry; the YAML it emits is exactly what the compiler here accepts.
 
 ## Module organization — deep modularity
 
-Both codebases — the frontend (`ide/src/`) and the backend
-(`src/tractusx_testlab/`) — follow the **same organizing principle: deep
+The engine (`src/tractusx_testlab/`) follows one organizing principle: **deep
 modularity**. The architecture is not "files split when they exceed 300 lines"; it
 is a tree in which **every concern is a module in its own right**.
 
-A module — a folder in TypeScript, a package in Python — has exactly three
-properties:
+A module — a Python package — has exactly three properties:
 
 1. **A single nameable responsibility.** If you cannot name what it does without
    the word "and", it is more than one module.
-2. **Its own barrel** as the public surface — `index.ts` for TypeScript,
-   `__init__.py` for Python. The barrel re-exports the module's public API and
-   contains no logic.
-3. **A minimal public surface.** Private helpers (`_*.py`, un-exported `.ts`) stay
-   internal and are never imported across module boundaries.
+2. **Its own barrel** as the public surface — the `__init__.py`. The barrel
+   re-exports the module's public API and contains no logic.
+3. **A minimal public surface.** Private helpers (`_*.py`) stay internal and are
+   never imported across module boundaries.
 
 Modules **nest as deep as real responsibility seams require** — sub-modules within
 sub-modules. Parent barrels re-export through their child barrels, so external
@@ -77,38 +74,12 @@ holding one stray file with no sibling concern. The boring, readable structure a
 human can navigate always wins over artificial depth.
 
 This is a **behavior-preserving** discipline: modularization changes structure
-only — never runtime behavior, generated output (YAML / `.stck`), styling, or any
+only — never runtime behavior, generated output (YAML / `.stck`), or any
 observable contract.
 
-### Frontend layers (`ide/src/`)
+### Engine layers (`src/tractusx_testlab/`)
 
-The frontend is feature-based. Each top-level layer exposes a barrel; imports flow
-**one way only** — `app → layout/features → store → services → models`, and any
-layer may import `shared`/`models`. Feature → feature imports are forbidden;
-features mediate through `store`.
-
-```
-ide/src/
-  app/        composition root: bootstrap + <App> only — no feature logic
-  layout/     app chrome (topbar, panels, status, bottom-panel, welcome)
-  features/   self-contained domain features; each owns its UI/hooks/local logic
-  store/      Zustand state slices — the only mutable app state; may import services/, models/
-  services/   pure, framework-free logic (transforms, I/O, validation) — no React, no store
-  models/     TypeScript schema types + factories — leaf layer, imports nothing internal
-  shared/     cross-cutting reusable UI, hooks, theme, ambient types — no domain knowledge
-  assets/     static assets + the single SCSS source tree (assets/styles/)
-```
-
-Features nest the same way down to the seam. The reference pattern is
-`features/block-editor/serialization/`, whose `serialize/` module splits into
-`reader/` (read a block chain into steps), `writer/` (write blocks → steps /
-policies), and `validation/` (flatten validate blocks) — each a nested module with
-its own barrel. For the complete nested end-state tree see
-[refactor-plan/ide-refactor-plan.md](refactor-plan/ide-refactor-plan.md) §2.
-
-### Backend layers (`src/tractusx_testlab/`)
-
-The backend is layered. Inner layers never import outer ones:
+The engine is layered. Inner layers never import outer ones:
 
 ```
 syntax  ──▶  (leaf: pure constants, no testlab imports)
@@ -152,163 +123,32 @@ end-state tree see
 
 ## System diagram
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        Browser Window                            │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌───────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
-│  │ Project   │  │ Block Workspace  │  │ YAML Editor (Monaco) │  │
-│  │ Explorer  │  │ (Blockly)        │  │                      │  │
-│  │           │  │                  │  │  or                  │  │
-│  │ File tree │  │  drag/connect    │  │  Dependency Graph    │  │
-│  │ + context │  │  blocks          │  │  (React Flow)        │  │
-│  │   menus   │  │                  │  │                      │  │
-│  └─────┬─────┘  └────────┬─────────┘  └──────────┬───────────┘  │
-│        │                 │                        │              │
-│        │        workspaceToModel()        yamlToModel()          │
-│        │                 │                        │              │
-│        │                 ▼                        ▼              │
-│        │    ┌────────────────────────────────┐                   │
-│        │    │   useTestLabStore (Zustand)     │                  │
-│        │    │                                │                   │
-│        │    │   model: TestLabDocument        │                  │
-│        │    │   yaml: string                 │                   │
-│        │    │   errors: ValidationError[]     │                  │
-│        │    │   lastEditSource: "blocks"      │                  │
-│        │    │         | "yaml" | "load"       │                  │
-│        │    └────────────┬───────────────────┘                   │
-│        │                 │                                       │
-│        │          onModelChange()                                │
-│        │                 │                                       │
-│        │                 ▼                                       │
-│        │    ┌────────────────────────────────┐                   │
-│        ├───▶│   useProjectStore (Zustand)    │                   │
-│             │                                │                   │
-│             │   tests: Map<name, Script>     │                   │
-│             │   tck: TckDefinition  │                  │
-│             │   schemas: Map<name, Schema>    │                  │
-│             │   activeFile: ActiveFile        │                  │
-│             │   workspaceStates: per-file     │                  │
-│             └────────────┬───────────────────┘                   │
-│                          │                                       │
-│                   localStorage                                   │
-│                  (auto-save 1s)                                  │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph IDE["cx-test-suite IDE — external repository"]
+        BLOCKS["Blockly workspace<br/><i>visual authoring</i>"]
+        YAMLED["YAML editor"]
+    end
+
+    IDE -->|"YAML scripts + TCK manifests<br/>(server API / packages)"| COMP
+
+    subgraph ENGINE["tractusx-testlab engine — this repository"]
+        direction TB
+        COMP["compiler<br/><i>YAML → IR → validation → package</i>"] --> PLAYER
+        PLAYER["player<br/><i>load → execute → track jobs</i>"] --> STEPS
+        STEPS["steps<br/><i>@step executors, declared contracts</i>"] --> SVCS
+        SVCS["services<br/><i>SDK service wiring</i>"]
+        SERVER["server<br/><i>mock endpoints · callbacks · SSE events</i>"]
+        CLI["cli<br/><i>testlab run / docs / serve</i>"]
+        CLI --> COMP
+        CLI --> PLAYER
+        CLI --> SERVER
+        PLAYER --- SERVER
+    end
+
+    SVCS -->|"HTTP via tractusx-sdk"| SUT["System under test<br/><i>EDC connector · DTR · discovery</i>"]
+    SUT -->|"callbacks"| SERVER
+    SERVER -.->|"SSE execution events"| IDE
 ```
 
-## The sync loop
-
-The most important mechanism to understand is the **bidirectional sync loop** between Blockly and YAML. Without proper guarding, changes from one side would trigger the other side to update, creating an infinite loop. The `lastEditSource` field prevents this.
-
-### Blocks → Model → YAML
-
-```
-User drags block
-  → Blockly fires change event
-  → debounced 150ms
-  → workspaceToModel(Blockly, ws, catalog) → TestLabDocument
-  → useTestLabStore.setModelFromBlocks(model)
-    → sets lastEditSource = "blocks"
-    → validate(model)
-    → modelToYaml(model) → yaml string
-    → onModelChange callback → useProjectStore.updateTest()
-```
-
-### YAML → Model → Blocks
-
-```
-User types in Monaco
-  → debounced 500ms
-  → useTestLabStore.setModelFromYaml(yaml)
-    → yamlToModel(yaml) → TestLabDocument
-    → sets lastEditSource = "yaml"
-    → validate(model)
-    → onModelChange callback → useProjectStore.updateTest()
-  → BlocklyWorkspace model-sync effect fires (because lastEditSource === "yaml")
-    → disposes existing block chains (SETUP, STEPS, TEARDOWN)
-    → populateWorkspaceFromModel(ws, root, model, catalog)
-    → refreshes dropdown fields
-```
-
-### File switch (click in ProjectExplorer)
-
-```
-User clicks different file in explorer
-  → useProjectStore.setActiveFile(file)
-  → BlocklyWorkspace file-switch effect:
-    → saves current workspace state under old file name
-    → updates activeFileKeyRef
-  → App.tsx loads new model via useTestLabStore.loadModel()
-    → sets lastEditSource = "load"
-  → BlocklyWorkspace model-sync effect fires (because lastEditSource === "load")
-    → disposes all chains (SETUP, STEPS, TEARDOWN)
-    → populateWorkspaceFromModel() rebuilds blocks from new model
-    → refreshDropdownFields() ensures variable dropdowns show correct values
-```
-
-### Loop prevention
-
-The `lastEditSource` field is the key guard:
-
-| `lastEditSource` | Blocks react? | YAML reacts? |
-|---|---|---|
-| `"blocks"` | No (it was the source) | Yes, updates YAML text |
-| `"yaml"` | Yes, rebuilds blocks | No (it was the source) |
-| `"load"` | Yes, rebuilds blocks | Yes, updates YAML text |
-| `"none"` | No | No |
-
-Additionally, `isUpdatingFromStore` ref in BlocklyWorkspace suppresses change events while programmatically modifying blocks, preventing spurious model updates during population.
-
-## Panel layout
-
-```
-┌──────────────────────────────────────────────────────┐
-│  TopBar (44px fixed)                                 │
-│  Logo | Project Name | Import | Export | Examples    │
-├────────┬─────────────────────────┬───────────────────┤
-│Explorer│  Center Panel           │  Right Panel      │
-│(resize │  (BlocklyWorkspace      │  (YamlEditor      │
-│ 160-   │   or SchemaEditor       │   or Graph        │
-│ 500px) │   or TckDashboard) │   or hidden)      │
-│        │                         │                   │
-├────────┴─────────────────────────┴───────────────────┤
-│  StatusBar (24px fixed)                              │
-│  Errors: 0 | Warnings: 0 | Steps: 5 | File: test.y  │
-└──────────────────────────────────────────────────────┘
-```
-
-The center panel content depends on the active file type:
-
-| Active file type | Center panel | Right panel options |
-|---|---|---|
-| `test` | BlocklyWorkspace | YAML Editor, Dependency Graph |
-| `tck` | TckDashboard | YAML Editor |
-| `schema` | SchemaEditor (read-only JSON) | Hidden |
-| None | WelcomeScreen | Hidden |
-
-## Canvas state persistence
-
-Each file gets its own Blockly canvas state (block positions, detached blocks, zoom level). When switching files:
-
-1. The current canvas is serialized via `Blockly.serialization.workspaces.save()` and stored in `useProjectStore.workspaceStates[fileName]`.
-2. On return to that file, the saved state is restored via `Blockly.serialization.workspaces.load()`, preserving exact block positions.
-3. After restore, `refreshDropdownFields()` runs to ensure all dynamic dropdowns (variables, services, schemas) show current values.
-
-If no saved state exists (first time opening a file), the workspace is built from the model via `populateWorkspaceFromModel()`.
-
-## Project persistence
-
-The entire project (TCK, all tests, schemas, test order) is serialized to `localStorage` under the key `"testlab-project"`. Auto-save runs on a 1-second debounce after any model change.
-
-The project can also be exported as a ZIP file with this structure:
-
-```
-{projectName}/
-├── index.yaml              ← Test case definition
-├── tests/
-│   ├── test_one.yaml
-│   └── test_two.yaml
-└── schemas/
-    └── my-schema.json
-```
+The engine also generates the artefacts the IDE consumes: the step reference (`testlab docs`) and the block catalog that mirrors the step registry, kept in sync by the parity checker (`tools/compare_ide_parity.py`).

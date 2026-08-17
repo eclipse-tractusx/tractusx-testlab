@@ -30,7 +30,7 @@ auto-registers the corresponding SDK service instances in the ``ServiceManager``
 before test execution begins.
 
 This bridges the gap between the declarative topology model (ADR-0019) and the
-SDK service layer, enabling V2 TCKs whose only runtime input is a config YAML
+SDK service layer, enabling TCKs whose only runtime input is a config YAML
 to drive real connector calls without an explicit ``services:`` block.
 """
 

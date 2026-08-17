@@ -38,12 +38,12 @@ import yaml
 from fastapi import APIRouter, FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from tractusx_testlab.models.authoring.definitions import ScriptDefinitionV2, TckDefinitionV2
+from tests.paths import FIXTURES_DIR, SRC_DIR
+from tractusx_testlab.models.authoring.definitions import ScriptDefinition, TckDefinition
 from tractusx_testlab.scripting.parser import YamlParser
 from tractusx_testlab.scripting.script import Tck, TestScript
 
-_FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
-_SRC_DIR = str(Path(__file__).resolve().parent.parent.parent / "src")
+_SRC_DIR = str(SRC_DIR)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ _SRC_DIR = str(Path(__file__).resolve().parent.parent.parent / "src")
 @pytest.fixture()
 def simple_tck_yaml() -> str:
     """Load the simple TCK YAML fixture as a string."""
-    return (_FIXTURES_DIR / "simple_tck.yaml").read_text(encoding="utf-8")
+    return (FIXTURES_DIR / "simple_tck.yaml").read_text(encoding="utf-8")
 
 
 @pytest.fixture()
@@ -69,17 +69,17 @@ def simple_tck_data(simple_tck_yaml: str) -> dict:
 
 
 class TestTckParseCompilePipeline:
-    """Verify the full parse → TckDefinitionV2 pipeline with a real YAML fixture."""
+    """Verify the full parse → TckDefinition pipeline with a real YAML fixture."""
 
     def test_parse_tck_from_dict_returns_tck_definition(
         self, simple_tck_data: dict,
     ) -> None:
-        """YamlParser.parse_tck_from_dict produces a valid TckDefinitionV2."""
+        """YamlParser.parse_tck_from_dict produces a valid TckDefinition."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)
 
-        assert isinstance(definition, TckDefinitionV2)
+        assert isinstance(definition, TckDefinition)
         assert definition.metadata.name == "simple-ping-test"
-        assert definition.syntax == "v2"
+        assert definition.syntax == "v1-alpha"
 
     def test_tck_definition_contains_test_paths(
         self, simple_tck_data: dict,
@@ -103,7 +103,7 @@ class TestTckParseCompilePipeline:
 
     def test_parse_tck_from_file(self) -> None:
         """YamlParser.parse_tck loads from a file path directly."""
-        path = _FIXTURES_DIR / "simple_tck.yaml"
+        path = FIXTURES_DIR / "simple_tck.yaml"
         definition = YamlParser.parse_tck(path)
 
         assert definition.metadata.name == "simple-ping-test"
@@ -213,7 +213,7 @@ class TestRunYamlEndpointE2E:
         single_test_yaml = (
             "name: bare-test\n"
             "steps:\n"
-            "  - type: http_request\n"
+            "  - type: http/http_request\n"
             "    params:\n"
             "      method: GET\n"
             "      url: http://localhost/ping\n"

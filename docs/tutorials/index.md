@@ -1,6 +1,8 @@
 # Tutorials
 
-Step-by-step guides for common TestLab tasks — IDE blocks, Python step executors, services, and more.
+Step-by-step guides for common TestLab engine tasks — writing tests, Python step executors, services, validation, and debugging.
+
+Looking for the visual IDE (Blockly blocks, React components, YAML sync)? That frontend lives in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository, together with its own tutorials.
 
 ## Getting Started
 
@@ -12,105 +14,117 @@ pip install tractusx-testlab
 
 ### 2. Write your first test
 
-Create `my-test.yaml`:
+Tests are packaged as a TCK: a directory with an `index.yaml` manifest and a `tests/` folder.
+
+`my-tck/index.yaml`:
 
 ```yaml
-name: My First Test
-version: "1.0"
-dataspace: saturn
+syntax: v1-alpha
+kind: tck
+id: my-first-tck
+metadata:
+  name: My First TCK
+  version: "1.0"
+  description: A single health-check test
 
-connectors:
-  provider:
-    url: http://localhost:8080
-    api_key: my-api-key
+tests:
+  - id: health_check.yaml
+    name: Health check
+```
 
-steps:
-  - type: http_request
+`my-tck/tests/health_check.yaml`:
+
+```yaml
+kind: test
+syntax: v1-alpha
+
+namespace: my-first-tck
+id: health-check
+
+metadata:
+  name: "Health Check"
+  version: "1.0"
+
+execution:
+  - id: health_check
+    uses: http/http_request
     name: Health Check
-    inputs:
+    with:
       method: GET
       url: http://localhost:8080/api/check/health
+    returns:
+      status_code:
+        type: integer
     validate:
-      - type: STATUS_CODE
-        value: 200
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
 ```
+
+Each step names its implementation with `uses:`, passes parameters in `with:`, and declares its readable outputs in `returns:` — assertions in `validate:` read exactly those declared names.
 
 ### 3. Validate
 
 ```bash
-testlab validate my-test.yaml
+testlab validate my-tck/tests/health_check.yaml
 ```
 
 ### 4. Run
 
 ```bash
-testlab run my-test.yaml
+testlab run my-tck/index.yaml
 ```
-
-## Using the Visual IDE
-
-### 1. Start the IDE
-
-```bash
-cd ide && npm install && npm run dev
-```
-
-### 2. Build your test
-
-- Drag a **Test Root** block into the workspace
-- Fill in the test name, connector URLs, and API keys
-- Add steps from the toolbox categories (Simulate → Prepare → Discover → Exchange)
-- Attach **Check** blocks to verify results
-
-### 3. Export
-
-The YAML preview panel shows your test definition in real-time. Copy it to a `.yaml` file.
 
 ## Using Mock Services
 
-Mocks let you test without real infrastructure:
+Mocks let you test without real infrastructure. Register a mock endpoint in `setup:`, hand its URL to the system under test, then wait for the call:
 
 ```yaml
-mocks:
-  - type: dtr
-    name: mock_dtr
+setup:
+  - id: mock_callback
+    uses: mock/api
+    name: Expose a mock callback endpoint
+    with:
+      method: POST
+      path: "/notifications/receive"
+      response_status: 200
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      full_mock_url:
+        type: string
 
-steps:
-  - type: register_twin
-    name: Register Twin
-    inputs:
-      dtr_url: "@mock_dtr_url"
-      id_short: "MyTwin"
-    validate:
-      - type: STATUS_CODE
-        value: 201
+execution:
+  - id: wait_for_callback
+    uses: mock/wait/http_request
+    name: Wait for the SUT to call the mock
+    with:
+      mock: "${{ steps.mock_callback.mock }}"
+      timeout_s: 30
+    returns:
+      request_body:
+        type: object
 ```
 
-TestLab starts a local HTTP server for each mock, registers default endpoints, and injects the URL as `@{mock_name}_url`.
+TestLab runs a local HTTP server for the mocks; `full_mock_url` is the address a script hands to the system under test. A protocol-aware Digital Twin Registry mock is available as `mock/dtr`, and twin registration against a real registry uses `digital-twin/provider/create_shell_descriptor`.
 
 ## All Tutorials
 
-### IDE (Blocks & Components)
-
-- [Create a New Block](create-block.md) — Add a visual block by writing a single JSON file
-- [Create a New Block Category](create-block-category.md) — Group blocks into a new toolbox section
-- [Add a New Assertion Type](add-assertion-type.md) — Extend the assertion system (IDE + Python)
-- [Add a New Component](add-component.md) — Build a new React component for the IDE
-- [Add a New Example Project](add-example-project.md) — Bundle an example for the Welcome Screen
-- [Add a New Template](add-template.md) — Create reusable step sequences
-
 ### Python (Runtime & Steps)
 
-- [Create a New Step Executor](create-step-executor.md) — Write the Python code that runs a block
+- [Create a New Step Executor](create-step-executor.md) — Write the Python code behind a step id
+- [Add a New Assertion Type](add-assertion-type.md) — Extend the `validate/*` steps
 - [Add a New Service Type](add-service-type.md) — Register a new external service integration
-- [Add a New Validation Rule](add-validation-rule.md) — Add real-time validation in IDE and compiler
+- [Add a New Validation Rule](add-validation-rule.md) — Add a static check to the compiler
 
-### Architecture & Workflow
+### Workflow
 
-- [Modify the Sync Flow](modify-sync-flow.md) — Understand and extend the blocks ↔ YAML sync loop
-- [Development Workflow](development-workflow.md) — IDE, Python, and docs dev commands
-- [Debugging Common Issues](debugging.md) — Troubleshoot blocks, YAML sync, variables, and runtime
+- [Development Workflow](development-workflow.md) — Python and docs dev commands
+- [Debugging Common Issues](debugging.md) — Troubleshoot step resolution, validation, and runtime failures
 
-### Reference
+### Certificate Management
 
-- [Quick Reference: File Locations](quick-reference.md) — Which files to modify for each task
+- [CCM Business Guide](ccm-business-guide.md) — What Company Certificate Management tests certify
+- [CCM Architecture Guide](ccm-architecture-guide.md) — How the CCM test flows are built
+- [CCM Developer Guide](ccm-developer-guide.md) — Implementing against the CCM TCK
+- [CCM Conformity Testing](ccm-conformity-testing.md) — Running the conformity suite

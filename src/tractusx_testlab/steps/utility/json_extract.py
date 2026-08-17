@@ -28,16 +28,19 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from tractusx_testlab.models import StepDefinitionV2
+from pydantic import Field
+
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._checks.extraction import (
     _PREDICATE_RE,
     _find_by_predicate,
     _split_path,
 )
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import StoreInVariableParams
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepValue
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -103,34 +106,54 @@ def _extract_by_path(data: object, path: str) -> object:
     return current
 
 
-@step("json_path_extract")
-class JsonPathExtractStep(BaseStep):
-    """Extract a value from a context variable using dot-notation path.
+# ---------------------------------------------------------------------------
+# util/json_path_extract
+# ---------------------------------------------------------------------------
 
-    Params:
-        source: Either the *name* of the context variable holding the JSON/dict
-            data (e.g. ``response_body``), or the data itself when a ``${{ }}``
-            expression is passed (it resolves before the step runs).
-        path (str): Dot-notation path to the desired value (e.g. ``datasets.0.id``).
 
-    Output:
-        The extracted value (stored via ``store_in_memory``).
+class JsonPathExtractParams(StoreInVariableParams):
+    """Input contract of ``util/json_path_extract``."""
+
+    input: Any = Field(
+        description=(
+            "Either the name of the context variable holding the data "
+            "(e.g. 'datasets'), or the data itself when a '${{ }}' "
+            "expression is passed — it resolves before the step runs."
+        ),
+    )
+    path: str = Field(
+        description="Dot-notation path to the desired value, e.g. 'datasets.0.id'."
+    )
+
+
+class JsonPathExtractOutput(StepValue[Any]):
+    """The value found at the path — whatever type the document holds there."""
+
+
+@step("util/json_path_extract")
+class JsonPathExtractStep(BaseStep[JsonPathExtractParams, JsonPathExtractOutput]):
+    """Extract a value out of nested data by dot-notation path.
+
+    Numeric segments index into lists (``datasets.0.id``) and a
+    ``key[field=value]`` segment selects the first list element whose *field*
+    equals *value*.  Dots inside a predicate are not separators, so a value
+    such as ``[interface='SUBMODEL-VALUE-3.1']`` survives intact.
     """
 
-    async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2
-    ) -> StepOutput:
-        source = params.get("source")
-        if source is None:
-            source = params.get("variable")
-        if source is None:
-            raise KeyError("json_path_extract requires either 'source' or 'variable' param")
-        path = params["path"]
+    params_model = JsonPathExtractParams
+    output_model = JsonPathExtractOutput
 
-        # ``source`` is normally a variable name (a string) that we look up.  But
+    async def execute(
+        self,
+        params: JsonPathExtractParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[JsonPathExtractOutput]:
+        # ``input`` is normally a variable name (a string) that we look up.  But
         # a ``${{ }}`` expression resolves to the value itself before the step
         # runs, so a dict/list arriving here is the data, not a name — use it
         # directly rather than attempting an unhashable dict lookup.
+        source = params.input
         if isinstance(source, str):
             data = context.get_variable(source)
             if data is None:
@@ -138,13 +161,14 @@ class JsonPathExtractStep(BaseStep):
         else:
             data = source
 
-        extracted = _extract_by_path(data, path)
+        extracted = _extract_by_path(data, params.path)
         source_label = source if isinstance(source, str) else f"<{type(source).__name__}>"
-        logger.debug("Extracted '%s' from '%s': %s", path, source_label, type(extracted).__name__)
+        logger.debug(
+            "Extracted '%s' from '%s': %s", params.path, source_label, type(extracted).__name__
+        )
 
-        store_in = params.get("store_in_variable")
-        if store_in:
-            context.set_variable(store_in, extracted)
-            logger.debug("Stored extracted value in variable '%s'", store_in)
+        if params.store_in_variable:
+            context.set_variable(params.store_in_variable, extracted)
+            logger.debug("Stored extracted value in variable '%s'", params.store_in_variable)
 
-        return StepOutput(value=extracted)
+        return StepOutput(value=JsonPathExtractOutput(extracted))

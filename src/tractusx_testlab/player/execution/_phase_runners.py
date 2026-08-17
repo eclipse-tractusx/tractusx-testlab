@@ -28,7 +28,7 @@ The implementation now lives in ``player.execution.phases`` package.
 This module re-exports the public API so that existing callers remain unchanged.
 """
 
-from tractusx_testlab.player.execution.phases.main import run_main as execute_main_steps
+from tractusx_testlab.player.execution.phases.execution import run_execution as execute_main_steps
 from tractusx_testlab.player.execution.phases.setup import run_setup as execute_setup_steps
 from tractusx_testlab.player.execution.phases.teardown import run_teardown as execute_teardown_steps
 

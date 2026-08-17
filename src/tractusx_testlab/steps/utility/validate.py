@@ -26,44 +26,18 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import TYPE_CHECKING, Any
 
 import jsonschema
+from pydantic import ConfigDict, Field
 
-from tractusx_testlab.models import StepDefinitionV2
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps.assertions.operators import AssertOperator, apply_operator
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepValue
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
-
-
-def _check(operator: str, actual: Any, expected: Any) -> tuple[bool, str]:
-    """Apply *operator* to *actual*/*expected*; return ``(passed, error_message)``."""
-    if operator == "not_null":
-        return actual is not None, "Expected non-null value, got None"
-    if operator == "null":
-        return actual is None, f"Expected null, got {actual!r}"
-    if operator == "not_empty":
-        return bool(actual), f"Expected non-empty value, got {actual!r}"
-    if operator == "equals":
-        passed = actual == expected or str(actual) == str(expected)
-        return passed, f"Expected {expected!r}, got {actual!r}"
-    if operator == "not_equals":
-        passed = actual != expected and str(actual) != str(expected)
-        return passed, f"Expected value != {expected!r}, got {actual!r}"
-    if operator == "matches_regex":
-        passed = isinstance(actual, str) and bool(re.search(str(expected), actual))
-        return passed, f"Pattern {expected!r} not matched in {actual!r}"
-    if operator == "contains":
-        passed = str(expected) in str(actual) if actual is not None else False
-        return passed, f"Expected {actual!r} to contain {expected!r}"
-    if operator == "not_contains":
-        passed = str(expected) not in str(actual) if actual is not None else True
-        return passed, f"Expected {actual!r} to NOT contain {expected!r}"
-    raise ValueError(f"Unknown operator: {operator!r}")
-
 
 def _get_nested(obj: Any, path: str) -> Any:
     """Traverse a dot-separated path through nested dicts/lists."""
@@ -80,58 +54,90 @@ def _get_nested(obj: Any, path: str) -> Any:
     return current
 
 
+# ---------------------------------------------------------------------------
+# validate/assert
+# ---------------------------------------------------------------------------
+
+
+class ValidateAssertParams(StepParams):
+    """Input contract of ``validate/assert``."""
+
+    input: Any = Field(default=None, description="The value to validate.")
+    operator: AssertOperator = Field(
+        default="not_null", description="Comparison applied to the value."
+    )
+    value: Any = Field(
+        default=None,
+        description="Expected value; required for the operators that compare two operands.",
+    )
+
+
+class AssertedValueOutput(StepValue[Any]):
+    """The value that was asserted on, passed through unchanged."""
+
+
 @step("validate/assert")
-class ValidateAssertStep(BaseStep):
+class ValidateAssertStep(BaseStep[ValidateAssertParams, AssertedValueOutput]):
     """Assert that a value satisfies an operator condition.
 
     Raises ``ValueError`` on failure so the runner marks the step as FAILED.
-
-    Params:
-        input: The value to validate (resolved variable reference).
-        operator: One of ``not_null``, ``null``, ``not_empty``, ``equals``,
-                  ``not_equals``, ``matches_regex``, ``contains``, ``not_contains``.
-        value: Expected value (required for binary operators).
     """
 
+    params_model = ValidateAssertParams
+    output_model = AssertedValueOutput
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2,
-    ) -> StepOutput:
-        actual = params.get("input")
-        operator = params.get("operator", "not_null")
-        expected = params.get("value")
-        passed, message = _check(operator, actual, expected)
+        self,
+        params: ValidateAssertParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[AssertedValueOutput]:
+        passed, message = apply_operator(params.operator, params.input, params.value)
         if not passed:
-            raise ValueError(f"Assertion failed [{operator}]: {message}")
-        return StepOutput(value=actual)
+            raise ValueError(f"Assertion failed [{params.operator}]: {message}")
+        return StepOutput(value=AssertedValueOutput(params.input))
+
+
+# ---------------------------------------------------------------------------
+# validate/field
+# ---------------------------------------------------------------------------
+
+
+class ValidateFieldParams(ValidateAssertParams):
+    """Input contract of ``validate/field`` — ``validate/assert`` plus a path."""
+
+    path: str = Field(
+        default="",
+        description=(
+            "Dot-separated key path to the field, e.g. 'header.messageId'. "
+            "Empty asserts on the whole object."
+        ),
+    )
 
 
 @step("validate/field")
-class ValidateFieldStep(BaseStep):
+class ValidateFieldStep(BaseStep[ValidateFieldParams, AssertedValueOutput]):
     """Assert that a field at a dot-separated path satisfies an operator condition.
 
     Raises ``ValueError`` on failure so the runner marks the step as FAILED.
-
-    Params:
-        input: Object (dict) to extract the field from.
-        path: Dot-separated key path (e.g. ``header.messageId``).
-        operator: Assertion operator (same as ``validate/assert``).
-        value: Expected value (for binary operators).
     """
 
+    params_model = ValidateFieldParams
+    output_model = AssertedValueOutput
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2,
-    ) -> StepOutput:
-        obj = params.get("input")
-        path = params.get("path", "")
-        operator = params.get("operator", "not_null")
-        expected = params.get("value")
-        actual = _get_nested(obj, path) if path else obj
-        passed, message = _check(operator, actual, expected)
+        self,
+        params: ValidateFieldParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[AssertedValueOutput]:
+        actual = _get_nested(params.input, params.path) if params.path else params.input
+        passed, message = apply_operator(params.operator, actual, params.value)
         if not passed:
             raise ValueError(
-                f"Field assertion failed [{path}][{operator}]: {message}"
+                f"Field assertion failed [{params.path}][{params.operator}]: {message}"
             )
-        return StepOutput(value=actual)
+        return StepOutput(value=AssertedValueOutput(actual))
 
 
 def _coerce_json(value: Any, label: str) -> Any:
@@ -152,25 +158,59 @@ def _coerce_json(value: Any, label: str) -> Any:
         ) from exc
 
 
+# ---------------------------------------------------------------------------
+# validate/schema
+# ---------------------------------------------------------------------------
+
+
+class ValidateSchemaParams(StepParams):
+    """Input contract of ``validate/schema``.
+
+    ``validate_by_name`` is off for the same reason as on ``flow/if``: the
+    attribute cannot be called ``schema``, and leaving the attribute name
+    bindable would make ``json_schema:`` a second accepted spelling of the one
+    key scripts actually write.
+    """
+
+    model_config = ConfigDict(extra="forbid", validate_by_name=False)
+
+    input: Any = Field(
+        default=None, description="The payload to validate — an object, a list, or a JSON string."
+    )
+    # Declared as ``json_schema`` because a field literally named ``schema``
+    # shadows a deprecated ``BaseModel`` method; scripts write ``schema:`` only.
+    json_schema: Any = Field(
+        validation_alias="schema",
+        serialization_alias="schema",
+        description=(
+            "A JSON Schema document, typically '${{ env.schemas.<id> }}', which "
+            "the player seeds from the TCK 'env.schemas' block."
+        ),
+    )
+
+
+class ValidatedPayloadOutput(StepValue[Any]):
+    """The validated payload, parsed from JSON when it arrived as a string."""
+
+
 @step("validate/schema")
-class ValidateSchemaStep(BaseStep):
+class ValidateSchemaStep(BaseStep[ValidateSchemaParams, ValidatedPayloadOutput]):
     """Validate a JSON payload against a JSON Schema document.
 
     Raises ``ValueError`` on failure so the runner marks the step as FAILED.
-
-    Params:
-        input: The payload to validate (dict, list, or JSON string).
-        schema: A JSON Schema document — typically ``${{ env.schemas.<id> }}``,
-                which the player seeds from the TCK ``env.schemas`` block.
     """
 
+    params_model = ValidateSchemaParams
+    output_model = ValidatedPayloadOutput
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2,
-    ) -> StepOutput:
-        if "schema" not in params:
-            raise ValueError("validate/schema requires a 'schema' parameter")
-        payload = _coerce_json(params.get("input"), "input")
-        schema = _coerce_json(params["schema"], "schema")
+        self,
+        params: ValidateSchemaParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[ValidatedPayloadOutput]:
+        payload = _coerce_json(params.input, "input")
+        schema = _coerce_json(params.json_schema, "schema")
 
         if not isinstance(schema, dict):
             raise ValueError(
@@ -193,4 +233,4 @@ class ValidateSchemaStep(BaseStep):
             raise ValueError(
                 f"Schema validation failed ({len(errors)} error(s)): {details}"
             )
-        return StepOutput(value=payload)
+        return StepOutput(value=ValidatedPayloadOutput(payload))

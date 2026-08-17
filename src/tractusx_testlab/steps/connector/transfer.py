@@ -22,22 +22,35 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
 ## It was reviewed and tested by a human committer.
 
-"""Data transfer step — resolves the EDR data address for a negotiated contract."""
+"""Transfer step — starts a transfer and resolves what it produced."""
 
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from pydantic import Field, model_validator
+
+from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps._contracts import (
+    DataAddressPayload,
+    StepParams,
+    data_address_token,
+)
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.connector._polling import (
+    DEFAULT_MAX_WAIT,
+    DEFAULT_POLL_INTERVAL,
+    TRANSFER_TERMINAL,
+    poll_until_terminal,
+    read_entity,
+)
+from tractusx_testlab.steps.connector.dataplane import fetch_data_address
 from tractusx_testlab.syntax.context_vars import (
-    DATAPLANE_ENDPOINT,
-    EDR_ENTRY,
-    EDR_TOKEN,
+    AGREEMENT_ID,
     NEGOTIATION_ID,
-    TRANSFER_ID,
 )
 
 if TYPE_CHECKING:
@@ -45,79 +58,223 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+#: The transfer the connector performs when the script does not ask for another.
+PULL_TRANSFER_TYPE = "HttpData-PULL"
 
-@step("transfer_data", aliases=["initiate_transfer"])
-class TransferDataStep(BaseStep):
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+
+# ---------------------------------------------------------------------------
+# connector/consumer/initiate_transfer
+# ---------------------------------------------------------------------------
+
+
+class InitiateTransferParams(StepParams):
+    """Input contract of ``connector/consumer/initiate_transfer``.
+
+    Which fields matter depends on ``transfer_type``.  A PULL transfer is
+    resolved from the negotiation the consumer already ran, so it needs only
+    ``negotiation_id``; a PUSH transfer is a request in its own right and needs
+    the agreement to perform it under and the destination to push to.
+    """
+
+    transfer_type: str = Field(
+        default=PULL_TRANSFER_TYPE,
+        description=(
+            "How the data moves: 'HttpData-PULL' (the consumer fetches it) or a "
+            "'-PUSH' type such as 'HttpData-PUSH' or 'AmazonS3-PUSH'."
+        ),
+    )
+    negotiation_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "PULL only — negotiation to collect the EDR for; falls back to the "
+            "'negotiation_id' context variable."
+        ),
+    )
+    agreement_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "PUSH only — contract agreement the transfer runs under; falls back "
+            "to the 'agreement_id' context variable."
+        ),
+    )
+    data_destination: Optional[dict] = Field(
+        default=None,
+        description="PUSH only — the EDC data address the provider pushes to.",
+    )
+    counter_party_address: str = Field(
+        default="",
+        description="PUSH only — DSP endpoint of the provider; falls back to 'provider_address'.",
+    )
+    max_wait: float = Field(
+        default=DEFAULT_MAX_WAIT,
+        description="PUSH only — seconds to wait for the transfer to reach a final state.",
+    )
+    poll_interval: float = Field(
+        default=DEFAULT_POLL_INTERVAL,
+        description="PUSH only — seconds between two transfer state reads.",
+    )
+    verify: Optional[Any] = Field(
+        default=None,
+        description="TLS verification passed through to the SDK; None keeps its default.",
+    )
+
+    @property
+    def is_push(self) -> bool:
+        """Whether this transfer pushes data rather than making it pullable."""
+        return self.transfer_type.upper().endswith("-PUSH")
+
+    @model_validator(mode="after")
+    def _push_needs_a_destination(self) -> "InitiateTransferParams":
+        """A PUSH with nowhere to push to would start and then fail at the provider."""
+        if self.is_push and not self.data_destination:
+            raise ValueError(
+                f"transfer_type {self.transfer_type!r} pushes data, so "
+                "'data_destination' is required."
+            )
+        return self
+
+
+class InitiateTransferOutput(StepPayload):
+    """Output contract of ``connector/consumer/initiate_transfer``.
+
+    A PUSH transfer fills in ``transfer_id`` and ``state`` alone: the data goes
+    to the destination the request named, so there is no EDR to read back.
+    """
+
+    transfer_id: Optional[str] = Field(
+        default=None, description="ID of the transfer process."
+    )
+    state: Optional[str] = Field(
+        default=None,
+        description="State the transfer settled at, e.g. 'STARTED' or 'COMPLETED'.",
+    )
+    edr_entry: Optional[dict] = Field(
+        default=None, description="PULL only — the EDR entry the negotiation produced."
+    )
+    dataplane_url: Optional[str] = Field(
+        default=None, description="PULL only — data-plane URL the data is fetched from."
+    )
+    edr_token: Optional[str] = Field(
+        default=None, description="PULL only — authorization token for that data-plane URL."
+    )
+    data_address: Optional[DataAddressPayload] = Field(
+        default=None,
+        description="PULL only — the full data address document, for assertions on its other keys.",
+    )
+
+
+@step("connector/consumer/initiate_transfer")
+class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutput]):
+    """Start a data transfer for a contract that has already been negotiated.
+
+    A PULL transfer turns a finished negotiation into something
+    ``connector/dataplane/http_request`` can call: it resolves ``negotiation_id``
+    down to a ``transfer_id``, then does exactly what
+    ``connector/consumer/get_edr`` does with one — the two steps share that
+    lookup rather than each fetching the data address their own way.
+
+    A PUSH transfer instead asks the connector to deliver the data to a
+    destination of the script's choosing, and waits for that transfer to settle.
+    """
+
+    params_model = InitiateTransferParams
+    output_model = InitiateTransferOutput
+
+    async def execute(
+        self, params: InitiateTransferParams, context: "StepContext", definition: StepDefinition
+    ) -> StepOutput[InitiateTransferOutput]:
+        if params.is_push:
+            return await self._push(params, context)
+        return await self._pull(params, context)
+
+    async def _pull(
+        self, params: InitiateTransferParams, context: "StepContext"
+    ) -> StepOutput[InitiateTransferOutput]:
+        """Collect the EDR the negotiation produced and resolve its data address."""
         consumer = context.get_consumer_service()
-        url = f"{context.get_consumer_base_url()}/v3/transferprocesses"
+        negotiation_id = params.negotiation_id or context.get_variable(NEGOTIATION_ID)
+        edr_entry = consumer.get_edr_entry(negotiation_id=negotiation_id, verify=params.verify)
 
-        negotiation_id = params.get("negotiation_id") or context.get_variable(NEGOTIATION_ID)
+        transfer_id = _transfer_id(edr_entry)
+        data_address = fetch_data_address(consumer, transfer_id, params.verify)
+        endpoint = (data_address or {}).get("endpoint")
 
-        edr_entry = consumer.get_edr_entry(
-            negotiation_id=negotiation_id,
-            verify=params.get("verify"),
+        # The negotiation already drove this transfer to its final state, so one
+        # read is enough — there is nothing here to wait for.
+        transfer = read_entity(
+            getattr(consumer, "transfer_processes", None), transfer_id or "", params.verify
         )
 
-        data_address_result = _resolve_data_address(edr_entry, consumer, context, params)
-        endpoint, auth_token = _extract_endpoint_and_token(data_address_result)
-
-        result_value = {
-            "edr_entry": edr_entry,
-            "data_address": endpoint,
-            "edr_token": auth_token,
-            "data_address_raw": data_address_result,
-        }
+        value = InitiateTransferOutput(
+            transfer_id=transfer_id,
+            state=(transfer or {}).get("state"),
+            edr_entry=edr_entry,
+            dataplane_url=endpoint,
+            edr_token=data_address_token(data_address),
+            data_address=data_address,
+        )
         return StepOutput(
-            value=result_value,
-            request=HttpRequest(method="POST", url=url),
+            value=value,
+            request=HttpRequest(
+                method="POST", url=context.get_consumer_endpoint_url("transfer_processes")
+            ),
             response=HttpResponse(
-                status_code=200 if edr_entry else 500,
-                body=result_value,
+                status_code=200 if edr_entry else 500, body=value.model_dump(mode="json")
+            ),
+        )
+
+    async def _push(
+        self, params: InitiateTransferParams, context: "StepContext"
+    ) -> StepOutput[InitiateTransferOutput]:
+        """Ask the connector to deliver the data to the destination the script named."""
+        consumer = context.get_consumer_service()
+        url = context.get_consumer_endpoint_url("transfer_processes")
+        request_model = ModelFactory.get_transfer_process_model(
+            dataspace_version=consumer.dataspace_version,
+            counter_party_address=(
+                params.counter_party_address or context.get_variable("provider_address", "")
+            ),
+            transfer_type=params.transfer_type,
+            contract_id=params.agreement_id or context.get_variable(AGREEMENT_ID, ""),
+            data_destination=params.data_destination or {},
+        )
+        response = consumer.transfer_processes.create(request_model)
+        transfer_id = _created_id(response)
+
+        transfer = await poll_until_terminal(
+            getattr(consumer, "transfer_processes", None),
+            transfer_id or "",
+            TRANSFER_TERMINAL,
+            max_wait=params.max_wait,
+            poll_interval=params.poll_interval,
+            verify=params.verify,
+        )
+
+        value = InitiateTransferOutput(
+            transfer_id=transfer_id, state=transfer.get("state")
+        )
+        return StepOutput(
+            value=value,
+            request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
+            response=HttpResponse(
+                status_code=getattr(response, "status_code", 500) if transfer_id else 500,
+                body=value.model_dump(mode="json"),
             ),
         )
 
 
-def _resolve_data_address(edr_entry: dict | None, consumer, context: "StepContext", params: dict) -> dict | None:
-    """Resolve the EDR data address from the entry, storing variables in context."""
+def _transfer_id(edr_entry: Optional[dict]) -> Optional[str]:
+    """Read the transfer process ID from an EDR entry under either of its spellings."""
     if not edr_entry:
         return None
+    return edr_entry.get("transferProcessId") or edr_entry.get("@id")
 
-    transfer_process_id = edr_entry.get("transferProcessId") or edr_entry.get("@id")
-    context.set_variable(TRANSFER_ID, transfer_process_id)
-    context.set_variable(EDR_ENTRY, edr_entry)
 
+def _created_id(response: Any) -> Optional[str]:
+    """Read the ``@id`` the connector answers a create request with."""
     try:
-        data_address_result = consumer.get_edr(
-            transfer_id=transfer_process_id,
-            verify=params.get("verify"),
-        )
-    except ConnectionError:
-        logger.warning("Failed to retrieve EDR data address for transfer %s", transfer_process_id)
+        body = response.json()
+    except (AttributeError, ValueError):
+        logger.error("Transfer process request returned no readable body")
         return None
-
-    if data_address_result:
-        _store_data_address_vars(data_address_result, context)
-
-    return data_address_result
-
-
-def _store_data_address_vars(data_address_result: dict, context: "StepContext") -> None:
-    """Store endpoint and auth token variables from a data address result."""
-    endpoint = data_address_result.get("endpoint")
-    auth_token = data_address_result.get("authorization") or data_address_result.get("authCode")
-    if endpoint:
-        context.set_variable("data_address", endpoint)
-        context.set_variable(DATAPLANE_ENDPOINT, endpoint)
-    if auth_token:
-        context.set_variable(EDR_TOKEN, auth_token)
-        context.set_variable("edr_token", auth_token)
-
-
-def _extract_endpoint_and_token(data_address_result: dict | None) -> tuple[str | None, str | None]:
-    """Extract endpoint and auth token from data address result."""
-    if not data_address_result:
-        return None, None
-    endpoint = data_address_result.get("endpoint")
-    auth_token = data_address_result.get("authorization") or data_address_result.get("authCode")
-    return endpoint, auth_token
+    return body.get("@id") if isinstance(body, dict) else None

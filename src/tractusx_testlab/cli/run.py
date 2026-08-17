@@ -163,19 +163,20 @@ def _load_tck(
     player_keys: Optional[Path],
     compiler_pub: Optional[Path],
 ):
-    """Load a TCK from YAML or encrypted .stck."""
+    """Load a TCK from YAML, .tck (plain or encrypted), or .stck."""
     from tractusx_testlab.player.loading.loader import Loader
 
     loader = Loader()
 
-    if target.suffix == ".stck":
-        from tractusx_testlab.security.crypto.keygen import load_private_key, load_public_key
-
+    priv = pub = None
+    if player_keys:
+        from tractusx_testlab.security.crypto.keygen import load_private_key
         priv = load_private_key(player_keys / "encryption.pem")
+    if compiler_pub:
+        from tractusx_testlab.security.crypto.keygen import load_public_key
         pub = load_public_key(compiler_pub)
-        return loader.load(target, player_private_key=priv, compiler_public_key=pub)
 
-    return loader.load(target)
+    return loader.load(target, player_private_key=priv, compiler_public_key=pub)
 
 
 def _print_run_header(

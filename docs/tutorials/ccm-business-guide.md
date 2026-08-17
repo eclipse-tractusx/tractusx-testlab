@@ -79,7 +79,10 @@ The test suite runs 8 scenarios covering the full CX-0135 standard:
 
 ### Step 1: Open the TestLab IDE
 
-Open your browser and navigate to the TestLab IDE (your administrator provides the URL). You see a visual editor with blocks on a canvas.
+The visual IDE is the separate **cx-test-suite** application ([eclipse-tractusx/cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite)), which connects to the TestLab engine in this repository. Open your browser and navigate to the TestLab IDE (your administrator provides the URL). You see a visual editor with blocks on a canvas.
+
+!!! note "No IDE available?"
+    A technical colleague can run the same test suite directly from the command line with the TestLab engine: `testlab run index.yaml --config run-config.yaml`. The results are the same — the IDE only adds the visual experience.
 
 ### Step 2: Load the Certificate Management Example
 

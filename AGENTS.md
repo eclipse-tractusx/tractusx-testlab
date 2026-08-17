@@ -180,6 +180,24 @@ The testlab delegates to SDK classes — never reimplement protocol logic.
 ### Framework
 - pytest + pytest-asyncio
 - Run: `python -m pytest tests/ -x -q`
+- Config lives **only** in `pyproject.toml` `[tool.pytest.ini_options]`
+
+### Layout — see [tests/README.md](tests/README.md)
+```
+tests/
+├── unit/          ← mirrors src/tractusx_testlab/ package for package
+├── combinations/  ← step-to-step wiring against in-process doubles
+├── examples/      ← the shipped docs/examples/ TCKs, read from disk
+├── integration/   ← CLI → compiler → player, end to end
+├── e2e/           ← TCK YAML run against a real dataspace (CI, not pytest)
+├── fixtures/      ← static YAML/JSON inputs
+└── paths.py       ← REPO_ROOT / SRC_DIR / DOCS_DIR / FIXTURES_DIR / CCM_RAW_DIR
+```
+- A test for `tractusx_testlab.<a>.<b>` goes in `tests/unit/<a>/<b>/`. No exceptions
+  except cross-package contracts, which sit at the parent level.
+- Every test directory needs an `__init__.py` — pytest's `prepend` import mode
+  relies on the chain to root `sys.path` and to keep same-named files apart.
+- Never write `Path(__file__).parent.parent` — import from `tests.paths`.
 
 ### Principles
 - Arrange-Act-Assert structure

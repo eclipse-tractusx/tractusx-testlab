@@ -40,7 +40,7 @@ from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.callbacks import CallbackManager
-from tractusx_testlab.server.mock_registry import get_mock, get_callback_manager, set_callback_manager
+from tractusx_testlab.server.mock_registry import get_callback_manager, resolve_mock, set_callback_manager
 from tractusx_testlab.server.storage import PackageStorage
 
 from tractusx_testlab.server.routes import router
@@ -105,14 +105,29 @@ def create_app(config: Optional[TestlabConfig] = None) -> FastAPI:
                 body = {}
 
         callbacks: CallbackManager = app.state.callbacks
-        mock = get_mock(full_path, method)
+        mock = resolve_mock(
+            full_path, method,
+            headers=headers, query_params=dict(request.query_params), body=body,
+        )
+
+        # A path no step opened is refused. `resolve` buffers a call nothing is
+        # waiting for and reports success for it — right when the SUT beats the
+        # script to its own wait step, wrong for an address that was never
+        # registered: the SUT is told 200 for a call that reached nobody, and
+        # the script then waits out its timeout on the address it did open.
+        if mock is None and not callbacks.has_listener(full_path, method):
+            raise HTTPException(404, f"No mock or listener for {method} {full_path}")
 
         # Resolve the callback listener (so wait_for_call steps unblock)
-        matched = callbacks.resolve(full_path, method, headers, body)
+        matched = callbacks.resolve(
+            full_path, method, headers, body, dict(request.query_params)
+        )
         if mock is not None:
             _safe_path = full_path[:80].replace("\n", "").replace("\r", "")
             _logger.debug("Mock catch-all matched %s %s -> %d", method, _safe_path, mock.status_code)
-            return JSONResponse(content=mock.body, status_code=mock.status_code)
+            return JSONResponse(
+                content=mock.body, status_code=mock.status_code, headers=mock.headers or None
+            )
         if matched:
             return JSONResponse(content={"status": "received"})
 

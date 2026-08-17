@@ -27,16 +27,19 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from tractusx_testlab.models import StepDefinitionV2
+from pydantic import Field, field_validator
+
+from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import (
     MockResponse,
     get_callback_manager,
     register_mock,
 )
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.server._contracts import MockIdParams, MockInstance
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -60,47 +63,94 @@ def _resolve_variables(obj: dict | list | str, context: "StepContext") -> dict |
     return obj
 
 
-@step("mock_endpoint", aliases=["mock/api"])
-class MockEndpointStep(BaseStep):
+class MockEndpointParams(MockIdParams):
+    """Input contract of ``mock/api``."""
+
+    path: str = Field(description="URL path to register, e.g. '/companycertificate/request'.")
+    method: str = Field(default="POST", description="HTTP method the mock answers on.")
+    response_status: int = Field(default=200, description="Status code the mock returns.")
+    response_body: Any = Field(
+        default_factory=dict,
+        description="JSON body the mock returns; '@name' strings resolve to context variables.",
+    )
+    response_headers: dict[str, str] = Field(
+        default_factory=dict, description="Headers the mock returns alongside the body."
+    )
+
+    @field_validator("method")
+    @classmethod
+    def _uppercase_method(cls, value: str) -> str:
+        """Accept ``post`` as readily as ``POST``."""
+        return value.upper()
+
+    @field_validator("path")
+    @classmethod
+    def _absolute_path(cls, value: str) -> str:
+        """The path must match the URL the SUT will call, leading slash included."""
+        return value if value.startswith("/") else f"/{value}"
+
+
+class MockEndpointOutput(StepPayload):
+    """The mock that now exists, and the two URLs a script needs from it."""
+
+    mock: MockInstance = Field(
+        description="The registered mock, as 'mock/wait/http_request' takes it."
+    )
+    base_mock_url: str = Field(description="Root URL of the testlab mock server.")
+    full_mock_url: str = Field(
+        description="Address to hand the system under test — root plus the mock's path."
+    )
+
+
+@step("mock/api")
+class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
     """Register a mock HTTP endpoint that returns a canned response.
 
-    Params:
-        path (str): URL path to register (e.g. ``/companycertificate/request``).
-        method (str): HTTP method (default ``POST``).
-        response_status (int): HTTP status code to return (default ``200``).
-        response_body (dict): JSON body to return, with ``@var`` variable resolution.
-
-    Output:
-        The full callback URL for the registered endpoint.
+    ``full_mock_url`` is what a script hands to the system under test as its
+    callback address; ``mock`` is what it hands to
+    ``mock/wait/http_request``, which then blocks until the SUT calls it.
     """
 
+    params_model = MockEndpointParams
+    output_model = MockEndpointOutput
+
     async def execute(
-        self, params: dict, context: "StepContext", definition: StepDefinitionV2
-    ) -> StepOutput:
-        path: str = params["path"]
-        method: str = params.get("method", "POST").upper()
-        status_code: int = params.get("response_status", 200)
-        raw_body: dict = params.get("response_body", {})
-
-        resolved_body = _resolve_variables(raw_body, context)
-
-        # Use the path as-is — it must match the URL the SUT will call
-        if not path.startswith("/"):
-            path = f"/{path}"
-        register_mock(path, method, MockResponse(status_code=status_code, body=resolved_body))
+        self, params: MockEndpointParams, context: "StepContext", definition: StepDefinition
+    ) -> StepOutput[MockEndpointOutput]:
+        resolved_body = _resolve_variables(params.response_body, context)
+        register_mock(
+            params.path,
+            params.method,
+            MockResponse(
+                status_code=params.response_status,
+                body=resolved_body,
+                headers=params.response_headers,
+            ),
+        )
 
         # Pre-register a callback listener so wait_for_call can block on it
         callback_manager = get_callback_manager()
         if callback_manager is not None:
-            callback_manager.register(path, method)
+            callback_manager.register(params.path, params.method)
 
-        port = context.config.server_port
-        endpoint_url = f"http://localhost:{port}{path}"
+        base_url = f"http://localhost:{context.config.server_port}"
+        full_url = f"{base_url}{params.path}"
+        params.publish_url(full_url, context)
 
-        # Store the URL under the mock's ID so wait_for_call can look it up
-        mock_id: str | None = params.get("id")
-        if mock_id:
-            context.set_variable(mock_id, endpoint_url)
-
-        logger.info("Registered mock endpoint %s %s -> %d", method, path, status_code)
-        return StepOutput(value=endpoint_url)
+        logger.info(
+            "Registered mock endpoint %s %s -> %d",
+            params.method, params.path, params.response_status,
+        )
+        return StepOutput(
+            value=MockEndpointOutput(
+                mock=MockInstance(
+                    endpoint_id=params.id,
+                    path=params.path,
+                    method=params.method,
+                    base_mock_url=base_url,
+                    full_mock_url=full_url,
+                ),
+                base_mock_url=base_url,
+                full_mock_url=full_url,
+            )
+        )

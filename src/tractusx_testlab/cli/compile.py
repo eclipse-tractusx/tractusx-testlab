@@ -103,7 +103,7 @@ def compile(
     ),
     plain: bool = typer.Option(
         False, "--plain",
-        help="Output loose files (manifest.yaml, tck-execution.json, assets/). For development.",
+        help="Output loose files to a directory (no ZIP). With --compiler-keys/--player-pub outputs encrypted loose files.",
     ),
     encrypt: bool = typer.Option(
         False, "--encrypt",
@@ -117,17 +117,20 @@ def compile(
 
     if plain:
         out = output or script.parent / "plain"
-        try:
-            manifest_dict, _ = compiler.compile_plain(manifest_path=script, output_path=out, version=version)
-        except (ValueError, FileNotFoundError) as exc:
-            typer.echo(f"Compilation failed: {exc}", err=True)
-            raise typer.Exit(1)
-        typer.echo(f"\nCompiled (plain) → {out}/manifest.yaml")
-        typer.echo(f"                 → {out}/tck-execution.json")
-        typer.echo(f"                 → {out}/assets/")
-        typer.echo("")
-        typer.echo(f"  Package checksum : {manifest_dict['package']['checksum']}")
-        typer.echo(f"  Fingerprint digest: {manifest_dict['compilation']['fingerprint']['digest']}")
+        if compiler_keys and player_pub:
+            _compile_encrypted_plain(script, compiler_keys, player_pub, out, version, compiler)
+        else:
+            try:
+                manifest_dict, _ = compiler.compile_plain(manifest_path=script, output_path=out, version=version)
+            except (ValueError, FileNotFoundError) as exc:
+                typer.echo(f"Compilation failed: {exc}", err=True)
+                raise typer.Exit(1)
+            typer.echo(f"\nCompiled (plain) → {out}/manifest.yaml")
+            typer.echo(f"                 → {out}/tck-execution.json")
+            typer.echo(f"                 → {out}/assets/")
+            typer.echo("")
+            typer.echo(f"  Package checksum : {manifest_dict['package']['checksum']}")
+            typer.echo(f"  Fingerprint digest: {manifest_dict['compilation']['fingerprint']['digest']}")
         return
 
     if encrypt:
@@ -140,6 +143,11 @@ def compile(
             raise typer.Exit(1)
 
         _compile_encrypted(script, compiler_keys, player_pub, output, version, compiler)
+        return
+
+    # Auto-encrypt when both compiler and player keys are provided
+    if compiler_keys and player_pub:
+        _compile_encrypted_tck(script, compiler_keys, player_pub, output, version, compiler)
         return
 
     # Default: unencrypted .tck ZIP archive
@@ -168,6 +176,137 @@ def compile(
     typer.echo(f"\nCompiled → {tck_path}")
     typer.echo(f"  Package checksum : {manifest_dict['package']['checksum']}")
     typer.echo(f"  Fingerprint digest: {manifest_dict['compilation']['fingerprint']['digest']}")
+
+
+def _compile_encrypted_plain(
+    script: Path,
+    compiler_keys: Path,
+    player_pub: list[Path],
+    out: Path,
+    version: Optional[str],
+    compiler: object,
+) -> None:
+    """Compile into encrypted loose files (manifest.yaml + payload.enc + signature.sig)."""
+    import base64
+    import tempfile
+
+    from tractusx_testlab.security.crypto.keygen import _fingerprint
+    from tractusx_testlab.security.crypto.signing import sign_bytes
+    from tractusx_testlab.security.trust.identity import PlayerIdentity
+    from tractusx_testlab.cli._tck_packager import (
+        build_encrypted_payload, build_redacted_manifest, create_tar_bytes,
+    )
+    import yaml as _yaml
+
+    compiler_identity = PlayerIdentity.load(compiler_keys)
+    recipient_keys: dict[str, bytes] = {}
+    for pub_path in player_pub:
+        pub_bytes = pub_path.read_bytes()
+        fp = _fingerprint(pub_bytes)
+        recipient_keys[fp] = pub_bytes
+        typer.echo(f"  Authorized player: {pub_path.name} ({fp[:16]}...)")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        try:
+            manifest_dict, _ = compiler.compile_plain(
+                manifest_path=script, output_path=tmp_path, version=version,
+            )
+        except (ValueError, FileNotFoundError) as exc:
+            typer.echo(f"Compilation failed: {exc}", err=True)
+            raise typer.Exit(1)
+        _embed_bundle_yaml(script, tmp_path)
+        tar_bytes = create_tar_bytes(tmp_path)
+
+    signature = sign_bytes(tar_bytes, compiler_identity.signing.private_bytes)
+    sig_b64 = base64.b64encode(signature).decode()
+    payload_b64, authorized_players = build_encrypted_payload(tar_bytes, recipient_keys)
+    redacted = build_redacted_manifest(
+        manifest_dict, compiler_identity.signing.fingerprint, authorized_players, sig_b64,
+    )
+
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "manifest.yaml").write_text(
+        _yaml.dump(redacted, default_flow_style=False, sort_keys=False), encoding="utf-8",
+    )
+    (out / "payload.enc").write_text(payload_b64, encoding="utf-8")
+    (out / "signature.sig").write_text(sig_b64, encoding="utf-8")
+
+    typer.echo(f"\nCompiled (encrypted plain) → {out}/manifest.yaml")
+    typer.echo(f"                           → {out}/payload.enc")
+    typer.echo(f"                           → {out}/signature.sig")
+    typer.echo(f"  Checksum : {redacted['package']['checksum'][:32]}...")
+    typer.echo(f"  Players  : {len(authorized_players)}")
+
+
+def _resolve_tck_output_path(
+    script: Path,
+    manifest_dict: dict,
+    output: Optional[Path],
+) -> Path:
+    """Resolve the output .tck path from CLI options."""
+    tck_id = manifest_dict["tck"]["id"]
+    if output:
+        if output.suffix == "" or output.is_dir():
+            output.mkdir(parents=True, exist_ok=True)
+            return output / f"{tck_id}.tck"
+        return output if output.suffix == ".tck" else output.with_suffix(".tck")
+    return script.parent / f"{tck_id}.tck"
+
+
+def _compile_encrypted_tck(
+    script: Path,
+    compiler_keys: Path,
+    player_pub: list[Path],
+    output: Optional[Path],
+    version: Optional[str],
+    compiler: object,
+) -> None:
+    """Compile a TCK manifest into a .tck with AES-256-GCM encrypted payload.enc."""
+    import base64
+    import tempfile
+
+    from tractusx_testlab.security.crypto.keygen import _fingerprint
+    from tractusx_testlab.security.crypto.signing import sign_bytes
+    from tractusx_testlab.security.trust.identity import PlayerIdentity
+    from tractusx_testlab.cli._tck_packager import (
+        build_encrypted_payload, build_redacted_manifest,
+        create_tar_bytes, write_encrypted_tck,
+    )
+
+    compiler_identity = PlayerIdentity.load(compiler_keys)
+    recipient_keys: dict[str, bytes] = {}
+    for pub_path in player_pub:
+        pub_bytes = pub_path.read_bytes()
+        fp = _fingerprint(pub_bytes)
+        recipient_keys[fp] = pub_bytes
+        typer.echo(f"  Authorized player: {pub_path.name} ({fp[:16]}...)")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        try:
+            manifest_dict, _ = compiler.compile_plain(
+                manifest_path=script, output_path=tmp_path, version=version,
+            )
+        except (ValueError, FileNotFoundError) as exc:
+            typer.echo(f"Compilation failed: {exc}", err=True)
+            raise typer.Exit(1)
+        _embed_bundle_yaml(script, tmp_path)
+        tar_bytes = create_tar_bytes(tmp_path)
+
+    signature = sign_bytes(tar_bytes, compiler_identity.signing.private_bytes)
+    sig_b64 = base64.b64encode(signature).decode()
+    payload_b64, authorized_players = build_encrypted_payload(tar_bytes, recipient_keys)
+    redacted = build_redacted_manifest(
+        manifest_dict, compiler_identity.signing.fingerprint, authorized_players, sig_b64,
+    )
+    tck_path = _resolve_tck_output_path(script, manifest_dict, output)
+    write_encrypted_tck(tck_path, redacted, payload_b64, sig_b64)
+
+    typer.echo(f"\nCompiled (encrypted .tck) → {tck_path}")
+    typer.echo(f"  Checksum : {redacted['package']['checksum'][:32]}...")
+    typer.echo(f"  Signed by: {compiler_identity.signing.fingerprint[:32]}...")
+    typer.echo(f"  Players  : {len(authorized_players)}")
 
 
 def _compile_encrypted(

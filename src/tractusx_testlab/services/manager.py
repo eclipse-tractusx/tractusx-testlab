@@ -103,18 +103,6 @@ class ServiceManager:
         self._states[name] = ServiceState.READY
         return instance
 
-    def get_provider(self, name: str) -> object:
-        """Return a connector provider service instance by name."""
-        return self.get(name, expected_type=ServiceType.CONNECTOR_PROVIDER)
-
-    def get_consumer(self, name: str) -> object:
-        """Return a connector consumer service instance by name."""
-        return self.get(name, expected_type=ServiceType.CONNECTOR_CONSUMER)
-
-    def get_dtr(self, name: str) -> object:
-        """Return a Digital Twin Registry (AAS) service instance by name."""
-        return self.get(name, expected_type=ServiceType.DTR)
-
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------

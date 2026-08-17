@@ -36,19 +36,19 @@ from tractusx_testlab.models.authoring.definitions import ServiceDefinition
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
-# V2 ${{ expr }} pattern — matches the full double-curly wrapper
-_V2_EXPR_RE = re.compile(r"\$\{\{\s*([^}]+?)\s*\}\}")
-_V2_EXPR_FULL_RE = re.compile(r"^\$\{\{\s*([^}]+?)\s*\}\}$")
+# ${{ expr }} pattern — matches the full double-curly wrapper
+_EXPR_RE = re.compile(r"\$\{\{\s*([^}]+?)\s*\}\}")
+_EXPR_FULL_RE = re.compile(r"^\$\{\{\s*([^}]+?)\s*\}\}$")
 
 
-def _resolve_v2_expr(expr: str, context: "StepContext") -> object:
-    """Resolve a single normalized V2 expression against the context.
+def _resolve_expr(expr: str, context: "StepContext") -> object:
+    """Resolve a single normalized expression against the context.
 
     Resolution rules:
     - ``env.X`` → context variable ``X``
-    - ``steps.ID.FIELD``, ``setup.ID.FIELD``, ``infrastructure.X.Y…`` → flat
-      context lookup of the full dotted path (set by store_step_outputs or
-      seeded by the player).
+    - ``execution.ID.FIELD``, ``setup.ID.FIELD``, ``teardown.ID.FIELD``,
+      ``infrastructure.X.Y…`` → flat context lookup of the full dotted path
+      (set by store_step_outputs or seeded by the player).
     - Anything else → flat context lookup as-is.
     """
     expr = expr.strip()
@@ -61,24 +61,24 @@ def resolve_str(value: str, context: "StepContext") -> object:
     """Replace ``${{ }}``, ``${var}``, and ``@var`` references in a single string.
 
     Priority order:
-    1. ``${{ expr }}`` (V2 double-curly) — whole-string returns raw type.
+    1. ``${{ expr }}`` (double-curly) — whole-string returns raw type.
     2. ``@var`` — whole-string returns raw type.
     3. Inline ``@var`` and ``${var}`` — string interpolation.
     """
-    # V2 whole-string expression → return raw value (preserving type)
+    # Whole-string expression → return raw value (preserving type)
     if "${{" in value:
-        full = _V2_EXPR_FULL_RE.match(value)
+        full = _EXPR_FULL_RE.match(value)
         if full:
-            resolved = _resolve_v2_expr(full.group(1), context)
+            resolved = _resolve_expr(full.group(1), context)
             if resolved is not None:
                 # If the resolved value is itself a composite (dict/list) containing
                 # further ${{ }} expressions (e.g. testdata files), process them now.
                 return _resolve_value(resolved, context)
             return value
-        # Inline V2 interpolation (mixed with literal text)
-        value = _V2_EXPR_RE.sub(
+        # Inline interpolation (mixed with literal text)
+        value = _EXPR_RE.sub(
             lambda m: str(
-                r if (r := _resolve_v2_expr(m.group(1), context)) is not None else m.group(0)
+                r if (r := _resolve_expr(m.group(1), context)) is not None else m.group(0)
             ),
             value,
         )

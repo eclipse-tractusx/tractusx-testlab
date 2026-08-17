@@ -84,7 +84,6 @@ Every instruction carries all metadata needed to:
 - Execute it (type, parameters, timeout)
 - Trace it (index, id, phase)
 - Decompile it (phase, phase_index)
-- Handle failures (on_failure strategy)
 - Validate its results (inline assertions)
 
 An instruction can be extracted from the array and understood in isolation — no external context is required beyond the symbol table values.
@@ -229,8 +228,7 @@ Each instruction in the `instructions` array follows this schema:
   "returns": { "<output_name>": { "type": "<type>", "class": "<class>" } },
   "validate": [ { "uses": "validate/...", "with": {...} } ],
   "phase": "setup|steps|teardown",
-  "phase_index": 0,
-  "on_failure": "abort|continue|skip_remaining"
+  "phase_index": 0
 }
 ```
 
@@ -245,7 +243,6 @@ Each instruction in the `instructions` array follows this schema:
 | `validate` | array | No | Inline assertions executed after the step. |
 | `phase` | string | Yes | Origin phase: `setup`, `steps`, or `teardown`. |
 | `phase_index` | integer | Yes | Position within the phase (for decompilation). |
-| `on_failure` | string | Yes | Failure strategy. |
 
 ---
 

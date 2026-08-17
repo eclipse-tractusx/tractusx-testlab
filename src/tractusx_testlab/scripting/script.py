@@ -29,8 +29,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from tractusx_testlab.models.authoring.definitions import (
-    ScriptDefinitionV2,
-    TckDefinitionV2,
+    ScriptDefinition,
+    TckDefinition,
     VariableDefinition,
 )
 from tractusx_testlab.models.authoring.infrastructure import InfrastructureConfig
@@ -47,7 +47,7 @@ class TestScript:
 
     def __init__(
         self,
-        definition: ScriptDefinitionV2,
+        definition: ScriptDefinition,
         *,
         skippable: bool = False,
         test_id: str = "",
@@ -94,22 +94,22 @@ class TestScript:
 
     @property
     def services(self):
-        """Service declarations (resolved from TCK env in v2)."""
+        """Service declarations (resolved from TCK env)."""
         return []
 
     @property
     def variables(self):
-        """Variable declarations (resolved from TCK env in v2)."""
+        """Variable declarations (resolved from TCK env)."""
         return {}
 
     @property
     def depends_on(self) -> list[str]:
-        """Dependency list — not used in v2 scripts."""
+        """Dependency list — not used in v1-alpha scripts."""
         return []
 
     @property
     def outputs(self) -> dict[str, str]:
-        """Declared output variable mappings — not used in v2 scripts."""
+        """Declared output variable mappings — not used in v1-alpha scripts."""
         return {}
 
     def step_count(self) -> int:
@@ -127,7 +127,7 @@ class Tck:
 
     __slots__ = ("definition", "_scripts", "base_dir")
 
-    def __init__(self, definition: TckDefinitionV2, base_dir: Path | None = None):
+    def __init__(self, definition: TckDefinition, base_dir: Path | None = None):
         """Initialize with a TCK definition and optional base directory."""
         self.definition = definition
         self.base_dir = base_dir
@@ -217,16 +217,16 @@ class Tck:
 
     @classmethod
     def from_single_script(
-        cls, script_def: ScriptDefinitionV2, base_dir: Path | None = None,
+        cls, script_def: ScriptDefinition, base_dir: Path | None = None,
     ) -> "Tck":
-        """Wrap a single ScriptDefinitionV2 in a minimal TckDefinitionV2 and return a Tck."""
+        """Wrap a single ScriptDefinition in a minimal TckDefinition and return a Tck."""
         from tractusx_testlab.models.authoring.definitions import (
-            TckDefinitionV2,
+            TckDefinition,
             TckMetadataDefinition,
         )
-        tck_def = TckDefinitionV2(
+        tck_def = TckDefinition(
             kind="tck",
-            syntax="v2",
+            syntax="v1-alpha",
             id=script_def.id,
             metadata=TckMetadataDefinition(
                 name=script_def.metadata.name,

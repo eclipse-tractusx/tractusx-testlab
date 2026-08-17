@@ -28,8 +28,8 @@ SPDX-License-Identifier: CC-BY-4.0
 | FR-AUTH-03 | Scripts SHALL declare variables in a `variables` block. Each variable SHALL specify a `type` and optionally a `default` value, a `runtime: true` flag, and a `description`. | Must |
 | FR-AUTH-04 | Step parameters SHALL support `${variable_name}` template syntax. These references are resolved at execution time from the `StepContext`. | Must |
 | FR-AUTH-05 | Variables marked `runtime: true` SHALL NOT require a default value. Their values MUST be provided at execution time via `runtime_vars`. | Must |
-| FR-AUTH-06 | Steps SHALL reference a `type` field that maps to a registered step implementation in the Step Registry. | Must |
-| FR-AUTH-07 | Each step SHALL support an `on_failure` policy: `abort` (stop script), `continue` (proceed to next step), or `skip_rest` (skip remaining steps, run cleanup). Default: `abort`. | Must |
+| FR-AUTH-06 | Steps SHALL declare a `uses:` field naming a registered step id in the Step Registry (e.g., `connector/provider/create_asset`). Parameters are passed via `with:` and declared outputs via `returns:`. | Must |
+| FR-AUTH-07 | Steps SHALL NOT declare per-step failure handling. A failing step fails the test: execution stops and cleanup runs. Failed validations (hard assertions) fail their step. | Must |
 | FR-AUTH-08 | Each step MAY specify a `timeout_s` value. If the step exceeds this timeout, it SHALL be treated as a failure. | Should |
 | FR-AUTH-09 | Scripts SHALL define an optional `cleanup` block — a list of steps that always execute regardless of prior step failures. | Must |
 | FR-AUTH-10 | Test cases SHALL be authored as YAML files (`tck.yaml`) containing an ordered `tests` list and optionally `shared_variables` available to all tests. Test cases SHALL support importing predefined tests via `import:` with optional `override:` blocks. | Must |
@@ -52,7 +52,7 @@ SPDX-License-Identifier: CC-BY-4.0
 |----|-------------|----------|
 | FR-COMP-01 | The Compiler SHALL accept YAML source as a file path, string, or dict (for programmatic/API input). | Must |
 | FR-COMP-02 | Compilation SHALL validate all `${var}` references in step parameters. Every reference MUST match a declared variable or a `shared_variable` (in TCKs). Unresolved references that are not declared `runtime: true` SHALL cause compilation failure. | Must |
-| FR-COMP-03 | Compilation SHALL validate every `step.type` exists in the Step Registry for the script's declared `dataspace_version`. Missing step types SHALL cause compilation failure. | Must |
+| FR-COMP-03 | Compilation SHALL validate every step's `uses:` id exists in the Step Registry for the script's declared `dataspace_version`. Unknown step ids SHALL cause compilation failure. | Must |
 | FR-COMP-04 | Compilation SHALL stamp metadata: SDK version, compilation timestamp, SHA-256 checksum. | Must |
 | FR-COMP-05 | Compilation failures SHALL produce a `ValidationResult` containing a list of errors and warnings with clear, actionable messages. | Must |
 | FR-COMP-06 | For TCKs, the Compiler SHALL perform cross-test validation: shared variables must be consistent, and all tests must be individually valid. The Compiler SHALL resolve `import:` references from the library path and merge `override:` blocks. | Must |
@@ -76,9 +76,9 @@ SPDX-License-Identifier: CC-BY-4.0
 | FR-PLAY-03 | On loading a `.tckpkg`, the Player SHALL verify the SHA-256 checksum and emit a warning if the SDK version in the manifest differs from the running SDK version. It SHALL NOT hard-fail on SDK version mismatch. | Must |
 | FR-PLAY-04 | The Player SHALL execute scripts asynchronously using `asyncio`. | Must |
 | FR-PLAY-05 | For each script, the Player SHALL create an isolated `StepContext` initialized with the script's `dataspace_version`, declared variable defaults, and any provided `runtime_vars`. The context SHALL also hold a reference to the parent `Job`. | Must |
-| FR-PLAY-06 | Steps SHALL be executed sequentially in declared order. For each step, the Player SHALL: (1) resolve `${var}` references from the context, (2) look up the step implementation from the registry by `(step_type, dataspace_version)`, (3) execute with `asyncio.wait_for(timeout)`, (4) evaluate assertions from the `validate` block, (5) record the `StepResult` in the Monitor. | Must |
-| FR-PLAY-07 | Step implementations SHALL write output variables into `StepContext` (e.g., `context.set("asset_id", created_id)`). These variables become available to subsequent steps via `${var}` references. Steps MAY also write to job memory via `context.job.memory.set(key, value)` for cross-script persistence. | Must |
-| FR-PLAY-08 | On step failure, the Player SHALL respect the step's `on_failure` policy: `abort` (stop immediately, run cleanup), `continue` (proceed to next step), `skip_rest` (skip remaining steps, run cleanup). | Must |
+| FR-PLAY-06 | Steps SHALL be executed sequentially in declared order. For each step, the Player SHALL: (1) resolve `${var}` references from the context, (2) look up the step implementation from the registry by `(uses id, dataspace_version)`, (3) execute with `asyncio.wait_for(timeout)`, (4) evaluate assertions from the `validate` block, (5) record the `StepResult` in the Monitor. | Must |
+| FR-PLAY-07 | Step implementations SHALL publish all of their return outputs into the `StepContext` after execution: every top-level field of the declared output becomes a context variable of the same name, and a `None` value leaves the variable unset. These variables become available to subsequent steps via variable references; explicit capture into a named variable uses `store_in_variable` on the utility steps that offer it. Steps MAY also write to job memory via `context.job.memory.set(key, value)` for cross-script persistence. | Must |
+| FR-PLAY-08 | On step failure, the Player SHALL stop execution immediately, mark the remaining steps as skipped, run cleanup, and fail the test. Cleanup steps SHALL keep executing even when one of them fails. | Must |
 | FR-PLAY-09 | Cleanup steps SHALL always execute regardless of prior step outcomes. | Must |
 | FR-PLAY-10 | The Player SHALL support running multiple jobs concurrently (each in a separate `asyncio.Task` with an isolated `StepContext` and independent `Job` instance). | Should |
 | FR-PLAY-11 | The Player SHALL support cancellation by `job_id`. Cancellation SHALL transition the job to `CANCELLED`, stop execution after the current step completes, and run cleanup steps. | Should |
@@ -90,10 +90,10 @@ SPDX-License-Identifier: CC-BY-4.0
 |----|-------------|----------|
 | FR-JOB-01 | Every test execution (CLI, API, or Python) SHALL create a `Job` entity with a unique `job_id`, status `QUEUED`, an empty `JobMemory`, and a creation timestamp. | Must |
 | FR-JOB-02 | The Job SHALL transition through defined lifecycle states: `QUEUED` → `RUNNING` → (`WAITING` ↔ `RUNNING`)* → `COMPLETED` / `FAILED` / `CANCELLED` / `TIMED_OUT`. Invalid transitions SHALL be rejected. | Must |
-| FR-JOB-03 | When a step enters a wait state (e.g., `await_callback`, polling for a state transition), the Job SHALL transition to `WAITING`. The `waiting_for` field SHALL describe the pending condition (e.g., `"callback: /callbacks/notif-ack"`, `"poll: transfer state=COMPLETED"`). | Must |
+| FR-JOB-03 | When a step enters a wait state (e.g., `mock/wait/http_request`, polling for a state transition), the Job SHALL transition to `WAITING`. The `waiting_for` field SHALL describe the pending condition (e.g., `"callback: /callbacks/notif-ack"`, `"poll: transfer state=COMPLETED"`). | Must |
 | FR-JOB-04 | When the awaited condition is met (callback received, poll condition satisfied), the Job SHALL automatically transition back to `RUNNING` and resume execution from the waiting step. | Must |
 | FR-JOB-05 | The `JobMemory` SHALL provide a persistent key-value store (`set`, `get`, `has`) and an event log (`log_event`). Memory SHALL persist across all steps, scripts, wait/resume cycles, and cleanup phases within the same job. | Must |
-| FR-JOB-06 | Steps SHALL be able to write to job memory via `store_in_memory` declarations in YAML or programmatically via `context.job.memory.set(key, value)`. Values stored in memory SHALL be accessible in subsequent steps via `${key}` variable syntax. | Must |
+| FR-JOB-06 | Steps SHALL publish every top-level field of their declared output as a context variable after execution; utility steps that offer `store_in_variable` SHALL store their result under the given variable name. Step implementations MAY additionally write to job memory programmatically via `context.job.memory.set(key, value)`. Published variables SHALL be accessible in subsequent steps via variable references. | Must |
 | FR-JOB-07 | The Player SHALL record `JobEvent` entries for significant lifecycle transitions: job created, script started/completed, step started/completed/failed, job entered/exited waiting state, job completed/failed/cancelled. | Must |
 | FR-JOB-08 | If a job remains in `WAITING` state beyond the step's configured `timeout_s`, the job SHALL transition to `TIMED_OUT` with an error message identifying the unmet wait condition. Cleanup steps SHALL still execute. | Must |
 | FR-JOB-09 | The `Job` entity SHALL be queryable at any time: `get_job(job_id) -> Job`, `list_jobs(status?) -> list[Job]`. The query SHALL return current status, memory contents, event log, and result (if completed). | Must |
@@ -126,7 +126,7 @@ SPDX-License-Identifier: CC-BY-4.0
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-REG-01 | The registry SHALL map `(step_type_name, dataspace_version)` tuples to `BaseStep` implementations. | Must |
+| FR-REG-01 | The registry SHALL map `(step_id, dataspace_version)` tuples to `BaseStep` implementations, where the step id is the `uses:` value (e.g., `connector/consumer/negotiate`). | Must |
 | FR-REG-02 | Step implementations SHALL declare which dataspace versions they support via `supported_versions: list[str]`. | Must |
 | FR-REG-03 | The registry SHALL auto-discover and register steps from the `steps/connector/` and `steps/industry/` packages at import time via the `@step` decorator. | Must |
 | FR-REG-04 | Users SHALL be able to register custom step implementations at runtime: `registry.register("my_step", MyStepClass, versions=["saturn"])`. | Must |
@@ -136,42 +136,42 @@ SPDX-License-Identifier: CC-BY-4.0
 
 ### Connector Steps
 
-| ID | Step Type | Description | Priority |
-|----|-----------|-------------|----------|
-| FR-STEP-01 | `provision_asset` | Create asset, access policy, usage policy, and contract definition on a provider connector. Outputs: `asset_id`, `access_policy_id`, `usage_policy_id`, `contract_def_id`. | Must |
-| FR-STEP-02 | `create_access_policy` | Create a single access policy. Output: `access_policy_id`. | Should |
-| FR-STEP-03 | `create_usage_policy` | Create a single usage policy. Output: `usage_policy_id`. | Should |
-| FR-STEP-04 | `create_asset` | Create a single asset. Output: `asset_id`. | Should |
-| FR-STEP-05 | `create_contract_definition` | Create a single contract definition. Output: `contract_def_id`. | Should |
-| FR-STEP-06 | `catalog_search` | Search a provider's catalog from a consumer connector. Output: `catalog_offer_id`, `catalog_response`. | Must |
-| FR-STEP-07 | `negotiate_contract` | Initiate and poll contract negotiation until agreed. Output: `contract_agreement_id`. | Must |
-| FR-STEP-08 | `initiate_transfer` | Initiate and poll data transfer until completed. Output: `transfer_id`. | Must |
-| FR-STEP-09 | `retrieve_edr` | Retrieve the EDR (Endpoint Data Reference) for a completed transfer. Output: `edr_token`, `edr_endpoint`. | Must |
-| FR-STEP-10 | `cleanup_resources` | Delete provisioned resources in reverse order (contract def, asset, policies). | Must |
+| ID | Step Id | Description | Priority |
+|----|---------|-------------|----------|
+| FR-STEP-01 | `connector/provider/create_asset` | Create a single asset on a provider connector. Output: `asset_id`. | Must |
+| FR-STEP-02 | `connector/provider/create_policy` | Create a single policy (access or contract/usage) on a provider connector. Output: `policy_id`. | Must |
+| FR-STEP-03 | `connector/provider/create_contract_definition` | Bind an asset to an access and a contract policy, making it appear in the provider's catalog. Output: `contract_definition_id`. | Must |
+| FR-STEP-04 | `connector/consumer/query_catalog` | Query a provider's catalog from a consumer connector. Outputs: `catalog`, `datasets`. | Must |
+| FR-STEP-05 | `connector/consumer/negotiate` | Initiate and poll contract negotiation until it settles. Outputs: `negotiation_id`, `agreement_id`, `state`. | Must |
+| FR-STEP-06 | `connector/consumer/initiate_transfer` | Initiate a data transfer for a negotiated contract and wait for it to settle. Outputs: `transfer_id`, `state`, and for PULL transfers `dataplane_url`, `edr_token`, and the full `data_address` document. | Must |
+| FR-STEP-07 | `connector/consumer/get_edr` | Retrieve the EDR (Endpoint Data Reference) for a completed transfer. Outputs: `endpoint`, `authorization`. | Must |
+| FR-STEP-08 | `connector/provider/delete_contract_definition` | Delete a contract definition during teardown. | Must |
+| FR-STEP-09 | `connector/provider/delete_asset` | Delete an asset during teardown. | Must |
+| FR-STEP-10 | `connector/provider/delete_policy` | Delete a policy during teardown. | Must |
 
 ### Dataplane Steps
 
-| ID | Step Type | Description | Priority |
-|----|-----------|-------------|----------|
-| FR-STEP-11 | `dataplane_call` | Perform an HTTP call to a dataplane endpoint using an EDR token. Supports configurable HTTP method (GET/POST/PUT/DELETE), path, query parameters, custom headers, and request body. The EDR authorization header is injected automatically. Body accepts inline YAML, raw JSON strings, `${var}` references, or file-sourced payloads. Output: `response_status`, `response_body`, `response_headers`. | Must |
+| ID | Step Id | Description | Priority |
+|----|---------|-------------|----------|
+| FR-STEP-11 | `connector/dataplane/http_request` | Perform an HTTP call to a dataplane endpoint using an EDR token. Supports configurable HTTP method (GET/POST/PUT/DELETE), path, custom headers, and request body. The `dataplane_url` and `edr_token` parameters fall back to the context variables of the same names published by prior steps, so the EDR authorization is injected automatically. Output: the response body (parsed JSON when the server sent JSON, otherwise raw text). | Must |
 
-### Industry Steps
+### Consumption & Validation Steps
 
-| ID | Step Type | Description | Priority |
-|----|-----------|-------------|----------|
-| FR-STEP-12 | `consume_submodel` | Fetch a submodel via the full connector pipeline (catalog → negotiate → transfer → EDR → dataplane GET). Stores the submodel payload in context. Output: `submodel_payload`. | Must |
-| FR-STEP-13 | `validate_aspect_model` | Validate a payload against an aspect model JSON schema. | Must |
-| FR-STEP-14 | `compare_submodel_schema` | Compare a submodel response against an expected JSON schema, reporting structural differences. | Should |
+| ID | Step Id | Description | Priority |
+|----|---------|-------------|----------|
+| FR-STEP-12 | `connector/consumer/pull_data_filtered` | Run the full DSP consumption flow in one step (catalog → negotiate → transfer → EDR), optionally constrained to one policy. Outputs include `dataplane_url`, `edr_token`, `asset_id`, `negotiation_id`, `agreement_id`, `transfer_id`. | Must |
+| FR-STEP-13 | `validate/schema` | Validate a payload against a JSON Schema document (e.g., an aspect model schema declared in `env.schemas`). | Must |
+| FR-STEP-14 | `validate/field` | Assert that a field at a dot-separated path of a payload satisfies an operator condition. | Should |
 
 ---
 
-## SDK Function Invocation (FR-SDK)
+## Typed Step Execution (FR-SDK)
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-SDK-01 | The `sdk_call` step type SHALL invoke SDK module functions by their fully qualified dotted path (e.g., `dataspace.services.connector.service_factory.get_connector_consumer_service`). The function path, positional arguments, and keyword arguments SHALL be specified in the step's `params`. | Must |
-| FR-SDK-02 | By default, `sdk_call` SHALL operate in **allowlist mode**: only functions listed in a curated allowlist may be invoked. The allowlist SHALL cover commonly used SDK entry points (`ServiceFactory` methods, `AasService`, `notification_api` functions). Calls to functions not in the allowlist SHALL be rejected with a clear error message. | Must |
-| FR-SDK-03 | Scripts MAY declare `allow_sdk_calls: open` at the script level to enable **open mode**, which permits invocation of any function within the `tractusx_sdk` package namespace. Open mode SHALL be logged as a warning. | Should |
+| FR-SDK-01 | Every step SHALL be a typed executor registered in the Step Registry under its `uses:` id, with a declared input contract (its `with:` parameters) and output contract (what `returns:` and assertions read). YAML SHALL NOT be able to invoke arbitrary SDK functions — SDK access happens only inside step implementations. | Must |
+| FR-SDK-02 | Step parameters SHALL be validated against the step's declared input contract at compile time. Unknown step ids and malformed parameters SHALL be rejected with a clear error message. | Must |
+| FR-SDK-03 | Steps SHALL publish exactly the fields of their declared output contract; `returns:` names and assertions SHALL be resolvable against that same contract. | Must |
 
 ## Managed Service Lifecycle (FR-SVC)
 
@@ -182,9 +182,9 @@ SPDX-License-Identifier: CC-BY-4.0
 | FR-SVC-03 | Initialized services SHALL be accessible from steps via `context.get_service("service_name")`. The returned instance SHALL be the same (cached) object for the lifetime of the script, avoiding repeated initialization. | Must |
 | FR-SVC-04 | All managed services SHALL be torn down (connections closed, resources released) after script execution completes, regardless of success or failure. Teardown SHALL occur after cleanup steps. | Must |
 | FR-SVC-05 | The `init_service` step type SHALL allow initializing a new service or replacing an existing service during step execution. The `stop_service` step type SHALL allow explicitly tearing down a service before script completion. | Should |
-| FR-SVC-06 | Steps SHALL reference managed services via `params.service: "<name>"`. The Player SHALL resolve this reference through the `ServiceManager` and inject the cached SDK service instance into the step. | Must |
-| FR-SVC-07 | Each predefined step SHALL declare an `expected_service_type` (e.g., `connector_provider`, `connector_consumer`, `dtr`). When a managed service is resolved via `params.service`, the Player SHALL validate that the service's type matches the step's declared expectation. A mismatch SHALL raise a `ServiceTypeMismatchError` with a message identifying the step, expected type, and actual type. | Must |
-| FR-SVC-08 | Service resolution SHALL follow a strict priority order: (1) if `params.service` is present, use the managed service (MUST exist and be READY), (2) if `params.base_url` and auth params are present, create a one-off standalone service (legacy mode), (3) if neither is present, raise a `StepConfigError`. | Must |
+| FR-SVC-06 | Steps SHALL NOT name their service in their parameters. Connector services are seeded into the run at startup from the declared `services` block; each step resolves the service for its role (provider, consumer, DTR) from the `StepContext` (e.g., `context.get_provider_service()`). | Must |
+| FR-SVC-07 | Each predefined step SHALL resolve the service type its role requires (e.g., `connector_provider`, `connector_consumer`, `dtr`). When no seeded service satisfies the step's role, execution SHALL fail with a clear error identifying the step and the missing service type. | Must |
+| FR-SVC-08 | Service resolution SHALL come exclusively from the services seeded into the run context — steps SHALL NOT construct one-off services from inline connection parameters. | Must |
 | FR-SVC-09 | The `StepContext` SHALL expose service access methods: `get_service(name) -> Any` (raises `ServiceNotFoundError` or `ServiceNotReadyError`), `has_service(name) -> bool`, `get_service_type(name) -> ServiceType`, and `list_services() -> dict[str, ServiceType]`. | Must |
 | FR-SVC-10 | The `ServiceManager` SHALL support: `initialize_all(services, dataspace_version)`, `get(name) -> (instance, type)`, `replace(name, definition, version)`, `stop(name)`, and `teardown_all()`. Duplicate service names during `initialize_all` SHALL raise `DuplicateServiceError`. | Must |
 | FR-SVC-11 | Services in a non-READY state (failed initialization, explicitly stopped) SHALL NOT be returned by `ServiceManager.get()`. Accessing a non-ready service SHALL raise `ServiceNotReadyError`. | Must |
@@ -193,10 +193,10 @@ SPDX-License-Identifier: CC-BY-4.0
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-CB-01 | Scripts MAY declare a `listen` block that specifies a callback endpoint configuration: a `path` (route path pattern, e.g., `/callbacks/{callback_id}`), an expected HTTP `method` (default: `POST`), and a `timeout_s` (maximum wait time for the callback). | Must |
-| FR-CB-02 | When a `listen` block is declared, the Player SHALL mount an ephemeral FastAPI route on the callback server at the specified path. The route SHALL accept the declared HTTP method, store the received payload in the Job's memory, and signal an `asyncio.Event` to wake the waiting step. | Must |
-| FR-CB-03 | The `await_callback` step type SHALL transition the parent Job to `WAITING` state, then wait for a callback response by calling `asyncio.Event.wait()` with the configured timeout. On receipt, the callback payload SHALL be stored in both the step context and the job memory as a specified output variable. On timeout, the Job SHALL transition to `TIMED_OUT` and the step SHALL fail according to its `on_failure` policy. | Must |
-| FR-CB-04 | After the `await_callback` step completes (success or timeout), the ephemeral route SHALL be unmounted from the callback server. | Must |
+| FR-CB-01 | Scripts MAY register a callback endpoint on the TestLab mock server via the `mock/api` step, declaring a `path` (e.g., `/callbacks/notification-ack`), an HTTP `method` (default: `POST`), and the canned response (`response_status`, `response_body`, `response_headers`). The step SHALL output the registered `mock` and its `full_mock_url` — the address a script hands to the system under test. | Must |
+| FR-CB-02 | Registering a mock endpoint SHALL also register a callback listener for that `(path, method)` pair, so a later wait step can block on inbound requests to it. Inbound requests SHALL be answered with the canned response and signalled to the waiting step via an `asyncio.Event`. | Must |
+| FR-CB-03 | The `mock/wait/http_request` step SHALL transition the parent Job to `WAITING` state, then block until an inbound request arrives on the referenced `mock`, up to `timeout_s`. On receipt, the request (`request_method`, `request_path`, `request_headers`, `request_query_params`, `request_body`) SHALL be exposed as the step's output for `returns:` and assertions. On timeout, the Job SHALL transition to `TIMED_OUT` and the step SHALL fail, failing the test. | Must |
+| FR-CB-04 | Mock endpoint registrations SHALL live for the duration of the run; the mock server (and all registrations with it) SHALL be torn down when the run finishes. No mock state SHALL persist between runs. | Must |
 
 ## Player Deployment / Server (FR-SRV)
 

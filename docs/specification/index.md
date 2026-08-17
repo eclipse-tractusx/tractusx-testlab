@@ -45,25 +45,32 @@ Test authors write **declarative YAML tests** describing the steps to execute, t
 
 Tests can declare long-lived services that persist for the test duration (avoiding repeated initialization), configure callback endpoints to receive async responses, and leverage runtime variable resolution. These tests are compiled with strict validation, packaged into distributable artifacts, and executed by the Player — which resolves runtime variables, manages step sequencing, evaluates assertions, orchestrates managed services, and provides live execution status.
 
-Tests with steps like (e.g., `provision_asset`, `negotiate_contract`, `validate_aspect_model`) can be included inside of TCKs, which enable reusability and personalized configurations for different scenarios.
+Tests with steps like (e.g., `connector/provider/create_asset`, `connector/consumer/negotiate`, `validate/schema`) can be included inside of TCKs, which enable reusability and personalized configurations for different scenarios.
 
 Example:
 
 ```yaml
 # A minimal test — provision an asset and verify it was created
 kind: test
-name: my-first-test
-version: "1.0"
-dataspace_version: saturn
+testlab: v1-alpha
+id: my-first-test
+metadata:
+  name: "My First Test"
+  version: "1.0"
+  dataspace_version: saturn
 
 steps:
-  - type: create_asset
-    params:
+  - id: create_asset
+    uses: connector/provider/create_asset
+    with:
       asset_id: "test-asset-001"
+    returns:
+      asset_id:
+        type: string
+        class: AssetId
     validate:
-      - type: STATUS_CODE
-        value: 200
-        severity: HARD
+      - uses: validate/assert
+        with: { input: asset_id, operator: equals, value: "test-asset-001" }
 ```
 
 
@@ -84,7 +91,7 @@ steps:
 | G-8 | Produce structured, machine-parseable logs (JSON-lines) alongside human-readable console output |
 | G-9 | Ship a predefined step library covering Connector capabilities (provision, negotiate, transfer, consume, cleanup) and Industry capabilities (submodel consumption, aspect model validation, schema comparison) |
 | G-10 | Support arbitrary dataplane API calls (GET/POST/PUT/DELETE) authenticated via EDR tokens from prior steps |
-| G-11 | Allow direct invocation of SDK module functions from YAML scripts via `sdk_call` step type, with a curated allowlist by default and an opt-in open mode |
+| G-11 | Ship every step as a typed executor with a declared input and output contract, so YAML never invokes arbitrary SDK functions and every parameter is validated at compile time |
 | G-12 | Provide managed service lifecycle — scripts declare required SDK services (connector consumer, connector provider, DTR) that are initialized once and reused across steps |
 | G-13 | Support async callback/webhook patterns — scripts can start a lightweight listener on an ephemeral endpoint, send a request, and await a response via `asyncio.Event` with configurable timeout |
 | G-14 | Support dual deployment modes for the Player — standalone CLI (`testlab serve`) and embeddable library API (`TestlabPlayer.from_app(app)`) |

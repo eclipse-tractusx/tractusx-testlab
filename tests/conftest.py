@@ -54,10 +54,33 @@ def participant_manager(tmp_participants_dir: Path) -> FileSystemParticipantMana
     return FileSystemParticipantManager(tmp_participants_dir)
 
 
+def attach_endpoint_url_stubs(ctx: MagicMock) -> MagicMock:
+    """Give a StepContext mock string-returning ``get_*_endpoint_url`` methods.
+
+    The real ones read the versioned path off the SDK controller; a mock
+    connector service has none, so the base URL, controller name and segments
+    are joined instead — enough for steps that only report the URL.
+    """
+
+    def _join(base: Any, controller: str, segments: tuple[Any, ...]) -> str:
+        root = base.rstrip("/") if isinstance(base, str) else "http://connector"
+        return "/".join([root, controller, *(str(segment) for segment in segments)])
+
+    def _consumer_url(controller: str, *segments: Any, service: Any = None) -> str:
+        return _join(ctx.get_consumer_base_url(), controller, segments)
+
+    def _provider_url(controller: str, *segments: Any, service: Any = None) -> str:
+        return _join(ctx.get_provider_base_url(), controller, segments)
+
+    ctx.get_consumer_endpoint_url = MagicMock(side_effect=_consumer_url)
+    ctx.get_provider_endpoint_url = MagicMock(side_effect=_provider_url)
+    return ctx
+
+
 @pytest.fixture()
 def mock_context() -> MagicMock:
     """MagicMock of StepContext with working get/set_variable."""
-    ctx = MagicMock()
+    ctx = attach_endpoint_url_stubs(MagicMock())
     variables: dict[str, Any] = {}
     ctx.variables = variables
 
@@ -67,6 +90,10 @@ def mock_context() -> MagicMock:
     def _get(name: str, default: Any = None) -> Any:
         return variables.get(name, default)
 
+    def _has(name: str) -> bool:
+        return name in variables
+
     ctx.set_variable = MagicMock(side_effect=_set)
     ctx.get_variable = MagicMock(side_effect=_get)
+    ctx.has_variable = MagicMock(side_effect=_has)
     return ctx

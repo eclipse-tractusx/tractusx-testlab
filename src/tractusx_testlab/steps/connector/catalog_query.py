@@ -27,114 +27,231 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
-from tractusx_sdk.dataspace.tools.dsp_tools import DspTools
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinitionV2
+from pydantic import Field
+
+from tractusx_sdk.dataspace.tools import DspTools
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.steps._contracts import (
+    DATASET_KEY,
+    CatalogOutput,
+    CatalogPayload,
+    CounterPartyParams,
+    FilterExpression,
+    StepParams,
+    as_dataset_list,
+)
 from tractusx_testlab.steps.base import BaseStep, StepOutput
-from tractusx_testlab.syntax.context_vars import CATALOG_POLICY, CATALOG_TARGET
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "DATASET_KEY",
+    "CatalogOfferOutput",
+    "CatalogOutput",
+    "CatalogPayload",
+    "CounterPartyParams",
+    "FilterExpression",
+    "QueryCatalogByAssetIdParams",
+    "QueryCatalogByAssetIdStep",
+    "QueryCatalogByBpnlParams",
+    "QueryCatalogByBpnlStep",
+    "QueryCatalogParams",
+    "QueryCatalogStep",
+]
 
-def _resolve_filter_expression(params: dict) -> list[dict]:
-    """Return the SDK filter expression from explicit or nested ``filter`` params."""
-    filter_expression = params.get("filter_expression")
-    if not filter_expression:
-        filter_dict = params.get("filter", {})
-        if isinstance(filter_dict, dict):
-            filter_expression = filter_dict.get("filter_expression")
-    return filter_expression or []
+
+# ---------------------------------------------------------------------------
+# connector/consumer/query_catalog
+# ---------------------------------------------------------------------------
 
 
-@step("query_catalog")
-class QueryCatalogStep(BaseStep):
-    """Query a provider's catalog via the SDK connector consumer service."""
+class QueryCatalogParams(CounterPartyParams):
+    """Input contract of ``connector/consumer/query_catalog``."""
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+    filters: list[FilterExpression] = Field(
+        default_factory=list,
+        description="Filter criteria applied to the catalog request.",
+    )
+
+
+@step("connector/consumer/query_catalog")
+class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogOutput]):
+    """Query a provider's catalog via the SDK connector consumer service.
+
+    Returns the catalog document and its offers side by side, so a ``returns:``
+    block reads ``datasets`` rather than the JSON-LD ``dcat:dataset`` key, and
+    downstream steps read the same offers.
+    """
+
+    params_model = QueryCatalogParams
+    output_model = CatalogOutput
+
+    async def execute(
+        self,
+        params: QueryCatalogParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[CatalogOutput]:
         consumer = context.get_consumer_service()
-        counter_party_address = params.get("counter_party_address") or params.get("provider_url", "")
-        counter_party_id = params.get("counter_party_id") or params.get("bpnl", "")
-        filter_expression = _resolve_filter_expression(params)
-
         catalog = consumer.get_catalog_with_filter(
-            counter_party_id=counter_party_id,
-            counter_party_address=counter_party_address,
-            filter_expression=filter_expression,
+            counter_party_id=params.counter_party_id,
+            counter_party_address=params.counter_party_address,
+            filter_expression=[entry.to_sdk() for entry in params.filters],
         )
 
-        url = f"{counter_party_address}/catalog/request"
+        url = context.get_consumer_endpoint_url("catalogs", "request")
+        request = HttpRequest(method="POST", url=url, body=params.model_dump(mode="json"))
         if not catalog:
             logger.error("Catalog request returned no result: url=%s", url)
             return StepOutput(
                 value=None,
-                request=HttpRequest(method="POST", url=url, body=params),
+                request=request,
                 response=HttpResponse(status_code=500, body=None),
             )
 
-        datasets = catalog.get("dcat:dataset", [])
-        if isinstance(datasets, dict):
-            datasets = [datasets]
-        context.set_variable("datasets", datasets)
-
+        datasets = as_dataset_list(catalog)
         return StepOutput(
-            value=catalog,
-            request=HttpRequest(method="POST", url=url, body=params),
+            value=CatalogOutput(catalog=catalog, datasets=datasets),
+            request=request,
             response=HttpResponse(status_code=200, body=catalog),
         )
 
 
-@step("query_catalog_by_asset_id")
-class QueryCatalogByAssetIdStep(BaseStep):
-    """Query the catalog filtered by a specific asset ID."""
+# ---------------------------------------------------------------------------
+# connector/consumer/query_catalog_by_asset_id
+# ---------------------------------------------------------------------------
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+
+class QueryCatalogByAssetIdParams(StepParams):
+    """Input contract of ``connector/consumer/query_catalog_by_asset_id``."""
+
+    counter_party_id: str = Field(description="BPN of the counter-party.")
+    counter_party_address: str = Field(
+        description="DSP endpoint of the counter-party connector."
+    )
+    asset_id: str = Field(description="Asset ID the catalog is filtered by.")
+    expected_policies: list[dict] = Field(
+        default_factory=list,
+        description="Policies accepted for the returned offer; the first match is exported.",
+    )
+
+
+class CatalogOfferOutput(CatalogOutput):
+    """Output contract of ``connector/consumer/query_catalog_by_asset_id``.
+
+    Extends the catalog document with the offer it selected.  Both selection
+    fields stay unset when no offer matches ``expected_policies`` — selection
+    is best-effort here and ``negotiate`` is what reports the failure.
+    """
+
+    catalog_asset_id: Optional[Any] = Field(
+        default=None,
+        description="Asset ID of the first offer whose policy is expected.",
+    )
+    catalog_policy: Optional[Any] = Field(
+        default=None,
+        description="The accepted ODRL policy of that offer.",
+    )
+
+
+@step("connector/consumer/query_catalog_by_asset_id")
+class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOfferOutput]):
+    """Query the catalog filtered by a specific asset ID.
+
+    Returns the first offer matching ``expected_policies`` as ``catalog_asset_id`` /
+    ``catalog_policy`` for the negotiation step that follows.
+    """
+
+    params_model = QueryCatalogByAssetIdParams
+    output_model = CatalogOfferOutput
+
+    async def execute(
+        self,
+        params: QueryCatalogByAssetIdParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[CatalogOfferOutput]:
         consumer = context.get_consumer_service()
         result = consumer.get_catalog_by_asset_id(
-            counter_party_id=params["counter_party_id"],
-            counter_party_address=params["counter_party_address"],
-            asset_id=params["asset_id"],
+            counter_party_id=params.counter_party_id,
+            counter_party_address=params.counter_party_address,
+            asset_id=params.asset_id,
         )
-        url = f"{context.get_consumer_base_url()}/v3/catalog/request"
+        url = context.get_consumer_endpoint_url("catalogs", "request")
 
-        if result:
-            try:
-                valid_assets_policies = DspTools.filter_assets_and_policies(
-                    catalog=result,
-                    allowed_policies=params.get("policies", []),
-                )
-                if valid_assets_policies:
-                    target, policy = valid_assets_policies[0]
-                    context.set_variable(CATALOG_TARGET, target)
-                    context.set_variable(CATALOG_POLICY, policy)
-            except (KeyError, TypeError, ValueError, IndexError):
-                pass  # Catalog extraction is best-effort; negotiate_contract will fail explicitly
+        value = CatalogOfferOutput(catalog=result, datasets=as_dataset_list(result))
+        offer = _select_offer(result, params.expected_policies)
+        if offer is not None:
+            value.catalog_asset_id, value.catalog_policy = offer
 
         return StepOutput(
-            value=result,
-            request=HttpRequest(method="POST", url=url, body=params),
+            value=value,
+            request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
             response=HttpResponse(status_code=200 if result else 500, body=result),
         )
 
 
-@step("query_catalog_by_bpnl")
-class QueryCatalogByBpnlStep(BaseStep):
+def _select_offer(catalog: Any, expected_policies: list[dict]) -> Optional[tuple[Any, Any]]:
+    """Pick the first offer matching ``expected_policies``, or nothing."""
+    if not catalog:
+        return None
+    try:
+        matches = DspTools.filter_assets_and_policies(catalog=catalog, allowed_policies=expected_policies)
+    except (KeyError, TypeError, ValueError, IndexError):
+        return None
+    if not matches:
+        return None
+    asset_id, policy = matches[0]
+    return asset_id, policy
+
+
+# ---------------------------------------------------------------------------
+# connector/consumer/query_catalog_by_bpnl
+# ---------------------------------------------------------------------------
+
+
+class QueryCatalogByBpnlParams(StepParams):
+    """Input contract of ``connector/consumer/query_catalog_by_bpnl``."""
+
+    bpnl: str = Field(description="BPN used to discover the counter-party's connector.")
+    counter_party_address: Optional[str] = Field(
+        default=None,
+        description="DSP endpoint; when omitted it is resolved from the BPN by discovery.",
+    )
+    filters: list[FilterExpression] = Field(
+        default_factory=list,
+        description="Filter criteria applied to the catalog request.",
+    )
+
+
+@step("connector/consumer/query_catalog_by_bpnl")
+class QueryCatalogByBpnlStep(BaseStep[QueryCatalogByBpnlParams, CatalogOutput]):
     """Query the catalog using BPNL-based connector discovery."""
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinitionV2) -> StepOutput:
+    params_model = QueryCatalogByBpnlParams
+    output_model = CatalogOutput
+
+    async def execute(
+        self,
+        params: QueryCatalogByBpnlParams,
+        context: "StepContext",
+        definition: StepDefinition,
+    ) -> StepOutput[CatalogOutput]:
         consumer = context.get_consumer_service()
         result = consumer.get_catalog_with_bpnl(
-            bpnl=params["bpnl"],
-            counter_party_address=params.get("counter_party_address"),
-            filter_expression=params.get("filter_expression"),
+            bpnl=params.bpnl,
+            counter_party_address=params.counter_party_address,
+            filter_expression=[entry.to_sdk() for entry in params.filters] or None,
         )
-        url = f"{context.get_consumer_base_url()}/v3/catalog/request"
+        url = context.get_consumer_endpoint_url("catalogs", "request")
         return StepOutput(
-            value=result,
-            request=HttpRequest(method="POST", url=url, body=params),
+            value=CatalogOutput(catalog=result, datasets=as_dataset_list(result)),
+            request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
             response=HttpResponse(status_code=200 if result else 500, body=result),
         )

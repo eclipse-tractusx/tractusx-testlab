@@ -64,6 +64,19 @@ router.include_router(streaming_router)
 router.include_router(compile_router)
 router.include_router(callback_router)
 
+# Background task references — prevents garbage collection and logs exceptions
+_background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+
+
+def _on_task_done(task: asyncio.Task) -> None:  # type: ignore[type-arg]
+    """Remove completed task from the tracking set and log any unhandled exceptions."""
+    _background_tasks.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        _logger.exception("Background execution task failed: %s", exc, exc_info=exc)
+
 
 def _get_player(request: Request) -> TestlabPlayer:
     return request.app.state.player
@@ -237,6 +250,7 @@ async def cancel_job(job_id: str, player: PlayerDep) -> JSONResponse:
     if job is None:
         raise HTTPException(404, f"Job '{job_id}' not found")
     player.jobs.cancel(job_id)
+    player.monitor.on_job_cancelled(job_id)
     return JSONResponse(content={"job_id": job_id, "status": "CANCELLED"})
 
 
@@ -256,6 +270,7 @@ async def pause_job(job_id: str, player: PlayerDep) -> JSONResponse:
     if job.status != JobStatus.RUNNING:
         raise HTTPException(409, f"Job '{job_id}' is not running (status: {job.status.value})")
     player.jobs.pause(job_id)
+    player.monitor.on_job_paused(job_id)
     return JSONResponse(content={"job_id": job_id, "status": "PAUSED"})
 
 
@@ -275,4 +290,5 @@ async def resume_job(job_id: str, player: PlayerDep) -> JSONResponse:
     if job.status != JobStatus.PAUSED:
         raise HTTPException(409, f"Job '{job_id}' is not paused (status: {job.status.value})")
     player.jobs.resume(job_id)
+    player.monitor.on_job_resumed(job_id)
     return JSONResponse(content={"job_id": job_id, "status": "RUNNING"})

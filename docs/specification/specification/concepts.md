@@ -38,10 +38,10 @@ graph LR
 
     subgraph Step Library
         direction TB
-        F["Connector Steps<br/><i>provision · negotiate<br/>transfer · retrieve_edr<br/>cleanup</i>"]
-        G["Industry Steps<br/><i>consume_submodel<br/>validate_aspect<br/>compare_schema</i>"]
-        H["Dataplane Steps<br/><i>dataplane_call<br/>(GET/POST/PUT/DELETE)<br/>with EDR auth</i>"]
-        I["SDK Call Steps<br/><i>sdk_call<br/>Direct function invocation</i>"]
+        F["Connector Steps<br/><i>create_asset · create_policy<br/>query_catalog · negotiate<br/>initiate_transfer · get_edr</i>"]
+        G["Digital Twin Steps<br/><i>shell and submodel descriptors<br/>lookup_shell · upload</i>"]
+        H["Dataplane Steps<br/><i>connector/dataplane/http_request<br/>(GET/POST/PUT/DELETE)<br/>with EDR auth</i>"]
+        I["Utility and Validation Steps<br/><i>util/ · validate/<br/>mock/ · flow/</i>"]
     end
 
     subgraph Managed Services
@@ -82,7 +82,7 @@ flowchart TD
     subgraph Compile ["2. Compile"]
         B1[Parse YAML]
         B2["Validate ${var} references"]
-        B3[Check step types<br/>against registry]
+        B3[Check step ids<br/>against registry]
         B4[Verify dataspace<br/>version compatibility]
         B5[Stamp metadata<br/>SDK version · timestamp · SHA-256]
         B6[Package as .tckpkg ZIP]
@@ -96,7 +96,7 @@ flowchart TD
         C1b[Create Job<br/>job_id · QUEUED → RUNNING]
         C2b[Initialize managed services<br/>from services block]
         C3[Create StepContext per test<br/>inject dataspace_version<br/>resolve runtime vars]
-        C4[Execute steps sequentially<br/>registry lookup by<br/>type + dataspace_version]
+        C4[Execute steps sequentially<br/>registry lookup by<br/>uses id + dataspace_version]
         C4b{Step needs<br/>external response?}
         C4c[Job → WAITING<br/>Preserve state in memory<br/>Listen for callback/poll]
         C4d[Response received<br/>Job → RUNNING<br/>Resume from saved state]
@@ -135,11 +135,11 @@ sequenceDiagram
     participant M as Monitor
 
     P->>C: Resolve ${var} references in params
-    P->>R: Lookup(step_type, dataspace_version)
+    P->>R: Lookup(uses_id, dataspace_version)
     R-->>P: StepImpl class
     P->>M: Record step RUNNING
     P->>S: execute(resolved_params, context)
-    S->>C: set("output_var", value)
+    S->>C: publish every output field as a context variable
     S-->>P: StepOutput
     P->>A: evaluate(validate block, StepOutput)
     A-->>P: list[AssertionResult]
@@ -147,25 +147,23 @@ sequenceDiagram
         P->>M: Record step PASSED
     else Any hard assertion fails
         P->>M: Record step FAILED
-        P->>P: Apply on_failure policy
+        P->>P: Stop execution, run teardown
     end
 ```
 
-## SDK Function Invocation
+## Typed Step Execution
 
-The `sdk_call` step type enables direct invocation of any SDK module function from YAML, removing the need to write custom Python step classes for common SDK operations.
+Every step is a **typed executor** registered in the Step Registry under its `uses:` id. Each step declares an input contract (its `with:` parameters) and an output contract (what `returns:` and assertions read), both validated at compile time.
 
-**Security model:** By default, only a curated allowlist of SDK functions may be called. Tests can opt in to unrestricted access by declaring `allow_sdk_calls: open` at the test level.
+**Security model:** There is no generic "call any SDK function" step — SDK access happens only inside step implementations, so a YAML script can never invoke arbitrary code.
 
 ```mermaid
 flowchart TD
-    YAML["sdk_call step in YAML<br/><i>function: dataspace.services.connector.service_factory.get_connector_consumer_service</i>"] --> RESOLVE[Resolve function path]
-    RESOLVE --> MODE{allow_sdk_calls?}
-    MODE -->|allowlist<br/>default| CHECK["Check against<br/>curated allowlist"]
-    MODE -->|open| INVOKE
-    CHECK -->|allowed| INVOKE["Invoke function<br/>with resolved args"]
-    CHECK -->|denied| REJECT["Reject with error"]
-    INVOKE --> OUTPUT["Store return value<br/>in context variable"]
+    YAML["Step in YAML<br/><i>uses: connector/provider/create_asset</i>"] --> RESOLVE["Registry lookup<br/>by uses id + dataspace_version"]
+    RESOLVE --> CHECK["Validate 'with:' params<br/>against the step's input contract"]
+    CHECK -->|valid| INVOKE["Execute typed<br/>step implementation"]
+    CHECK -->|invalid| REJECT["Reject with<br/>compilation error"]
+    INVOKE --> OUTPUT["Publish every output field<br/>as a context variable"]
 
     style YAML fill:#e1f5fe,stroke:#0288d1
     style CHECK fill:#fff3e0,stroke:#f57c00
@@ -187,7 +185,7 @@ stateDiagram-v2
     RUNNING --> WAITING : Step needs external response
     WAITING --> RUNNING : Response received / callback arrives
     RUNNING --> COMPLETED : All steps passed
-    RUNNING --> FAILED : Step failed (on_failure=abort)
+    RUNNING --> FAILED : Step failed
     WAITING --> TIMED_OUT : Wait timeout exceeded
     RUNNING --> CANCELLED : User cancels
     WAITING --> CANCELLED : User cancels
@@ -204,7 +202,7 @@ stateDiagram-v2
 
 2. **Execution** — The Player picks up the job and begins executing steps sequentially. Status: `RUNNING`. Each step can read from and write to the job's memory via `context.job.memory`.
 
-3. **Waiting** — When a step requires an external response (e.g., `await_callback`, polling for a state transition), the job transitions to `WAITING`. The `waiting_for` field describes what the job is blocked on. The job's memory and full execution state are preserved.
+3. **Waiting** — When a step requires an external response (e.g., `mock/wait/http_request`, polling for a state transition), the job transitions to `WAITING`. The `waiting_for` field describes what the job is blocked on. The job's memory and full execution state are preserved.
 
 4. **Resumption** — When the expected event arrives (callback received, poll condition met), the job automatically resumes from where it paused. Status returns to `RUNNING`. The received payload is stored in both the step context and the job memory.
 
@@ -230,7 +228,7 @@ sequenceDiagram
     P->>EXT: POST notification to external system
     EXT-->>P: 202 Accepted
 
-    P->>J: Step 5: await_callback
+    P->>J: Step 5: mock/wait/http_request
     J->>J: Status → WAITING
     J->>J: waiting_for = "callback: /callbacks/notif-ack"
     J->>J: Save state to memory
@@ -259,38 +257,42 @@ The `JobMemory` is a persistent key-value store attached to each job. Unlike ste
 - Wait/resume cycles
 - Cleanup phases
 
-This allows earlier steps to store state that later steps — or even steps after a wait/resume — can access:
+Within a single test, steps publish their declared outputs — later steps reference them via `${{ steps.<id>.<output> }}`, and even a step that resumes after a wait keeps the earlier outputs available:
 
 ```yaml
-# Step 1: Send a notification and remember the correlation ID
+setup:
+  # Expose a callback endpoint the SUT will acknowledge to
+  - id: ack_endpoint
+    uses: mock/api
+    with:
+      path: /callbacks/notification-ack
+      method: POST
+      response_status: 200
+
 steps:
-  - type: send_notification
-    name: notify_quality_alert
-    params:
-      service: "provider"
-      payload: { ... }
-    store_in_memory:
-      notification_id: "notificationId"
+  # Step 1: Send the notification, handing out the mock's URL as reply address
+  - id: notify_quality_alert
+    uses: notification/consumer/send
+    with:
+      counter_party_id: ${{ env.sut_bpn }}
+      counter_party_address: ${{ env.sut_dsp_url }}
+      notification:
+        content: { ... }
 
-  # Step 2: Wait for acknowledgment
-  - type: await_callback
-    name: wait_for_ack
-    params:
-      listener: "notification_ack"
+  # Step 2: Wait for the acknowledgment to arrive on the mock endpoint
+  - id: wait_for_ack
+    uses: mock/wait/http_request
+    with:
+      mock: ${{ setup.ack_endpoint.mock }}
       timeout_s: 120
-    store_in_memory:
-      ack_status: "payload.status"
-      ack_timestamp: "payload.respondedAt"
-
-  # Step 3: Verify the acknowledgment (uses memory from step 2)
-  - type: sdk_call
-    name: verify_ack
-    params:
-      function: "industry.services.notification.verify"
-      args:
-        notification_id: "${notification_id}"
-        expected_status: "ACKNOWLEDGED"
-        actual_status: "${ack_status}"
+    returns:
+      request_body:
+        type: object
+        class: ResponseBody
+    # Step 3: Verify the acknowledgment straight off the inbound request
+    validate:
+      - uses: validate/assert
+        with: { input: request_body, operator: not_null }
 ```
 
 ### Job Queries
@@ -304,13 +306,6 @@ Jobs are queryable at any time through the Monitor or API:
 | Cancel a job | `testlab cancel <job_id>` | `POST /api/v1/jobs/{job_id}/cancel` | Cancellation confirmation |
 | Get job memory | — | `GET /api/v1/jobs/{job_id}/memory` | Current memory key-value pairs |
 | Get job events | — | `GET /api/v1/jobs/{job_id}/events` | Chronological event log |
-
-The allowlist covers commonly used SDK entry points:
-
-- `dataspace.services.connector.service_factory.get_connector_consumer_service`
-- `dataspace.services.connector.service_factory.get_connector_provider_service`
-- `industry.services.aas_service.AasService`
-- `extensions.notification_api.*`
 
 ## Managed Service Lifecycle
 
@@ -335,7 +330,7 @@ sequenceDiagram
 
     loop For each step
         P->>Steps: execute(context)
-        Steps->>SM: context.get_service("consumer")
+        Steps->>SM: context.get_consumer_service()
         SM-->>Steps: Cached ConsumerService
     end
 
@@ -343,48 +338,44 @@ sequenceDiagram
     SM->>S: Close connections
 ```
 
-Additionally, `init_service` and `stop_service` step types allow mid-test service lifecycle changes:
-
-- `init_service` — Initialize a new service (or replace an existing one) during step execution
-- `stop_service` — Explicitly tear down a service before test completion
+Services are seeded once at run start and live for the whole run — steps never create, replace, or stop services mid-test.
 
 ## Async Callbacks / Webhook Endpoints
 
-For operations that require waiting for an external response (e.g., notification acknowledgments, async processing results), scripts can declare a `listen` block that starts a lightweight FastAPI endpoint. When a step enters `await_callback`, the parent Job transitions to `WAITING` state — preserving all execution context in its memory — and resumes automatically when the callback arrives.
+For operations that require waiting for an external response (e.g., notification acknowledgments, async processing results), scripts register a callback endpoint on the TestLab mock server via the `mock/api` step and hand its `full_mock_url` to the system under test. When a `mock/wait/http_request` step runs, the parent Job transitions to `WAITING` state — preserving all execution context in its memory — and resumes automatically when the callback arrives.
 
 ```mermaid
 sequenceDiagram
     participant Y as YAML Test
     participant P as Player
     participant J as Job
-    participant SRV as Callback Server
+    participant SRV as Mock Server
     participant EXT as External System
 
-    Y->>P: listen block declared
-    P->>SRV: Mount ephemeral route<br/>/callbacks/{callback_id}
-    P->>P: Execute outbound step<br/>(e.g., send notification)
+    Y->>P: mock/api step (setup)
+    P->>SRV: Register mock endpoint<br/>/callbacks/notification-ack
+    P->>P: Execute outbound step<br/>(e.g., notification/consumer/send)
 
-    P->>J: await_callback step
+    P->>J: mock/wait/http_request step
     J->>J: Status → WAITING
     J->>J: Save state to memory
     activate J
     Note over J: Job paused — memory preserved<br/>Other jobs can run concurrently
 
-    EXT->>SRV: POST /callbacks/{callback_id}
-    SRV->>J: Signal event + store payload in memory
+    EXT->>SRV: POST /callbacks/notification-ack
+    SRV->>J: Signal event + hand over the inbound request
     J->>J: Status → RUNNING
     deactivate J
 
-    P->>P: Continue with response<br/>in context variable + job memory
-    P->>SRV: Unmount route
+    P->>P: Continue with the inbound request<br/>as the step's output
 ```
 
-The callback server is either:
+The mock server is either:
 
-- **Auto-started** by the Player when a test declares a `listen` block (standalone mode)
+- **Auto-started** by the Player when a run registers mock endpoints (standalone mode)
 - **Shared** with the host application’s FastAPI instance (embedded mode via `TestlabPlayer.from_app()`)
 
-Timeouts are enforced via `asyncio.wait_for()`. If the callback is not received within `timeout_s`, the `await_callback` step fails according to its `on_failure` policy.
+Timeouts are enforced via `asyncio.wait_for()`. If the callback is not received within `timeout_s`, the `mock/wait/http_request` step fails, failing the test. Mock registrations live for the duration of the run and are torn down with the mock server when the run finishes.
 
 ## Player Deployment Modes
 
@@ -524,58 +515,38 @@ graph TD
 
 ## Service-Step Binding
 
-When a test declares a `services` block, those services are initialized by the **ServiceManager** at test start. Steps then reference these services by name via `params.service`. This section documents the exact resolution mechanism, type validation, and API contracts.
+When a TCK declares services in its `env.services` block, those services are registered with the **ServiceManager** and seeded into the run at startup. Steps never name a service in their parameters — each step resolves the service for its role (connector provider, connector consumer, DTR) from the `StepContext`. This section documents the exact resolution mechanism, type validation, and API contracts.
 
 ### Resolution Mechanism
 
 ```mermaid
 flowchart TD
-    STEP["Step definition in YAML<br/><code>params.service: 'provider'</code>"] --> HASREF{"params.service<br/>present?"}
+    STEP["Step executes<br/><code>uses: connector/provider/create_asset</code>"] --> LOOKUP["context.get_provider_service()"]
 
-    HASREF -->|Yes| LOOKUP["ServiceManager.get('provider')"]
-    LOOKUP --> EXISTS{"Service<br/>initialized?"}
-    EXISTS -->|Yes| TYPECHECK{"ServiceType<br/>matches step's<br/>expected type?"}
-    EXISTS -->|No| ERR1["ServiceNotFoundError<br/>'No service named provider'"]
+    LOOKUP --> EXISTS{"Seeded service of type<br/>CONNECTOR_PROVIDER?"}
+    EXISTS -->|Yes| TYPECHECK{"Service instance<br/>already initialized?"}
+    EXISTS -->|No| ERR1["ServiceNotFoundError<br/>'No service of type<br/>connector_provider is registered'"]
 
-    TYPECHECK -->|Yes| USE["Use managed service instance"]
-    TYPECHECK -->|No| ERR2["ServiceTypeMismatchError<br/>'provision_asset expects<br/>CONNECTOR_PROVIDER, got CONNECTOR_CONSUMER'"]
-
-    HASREF -->|No| HASURL{"params.base_url<br/>present?"}
-    HASURL -->|Yes| STANDALONE["Create standalone<br/>service from params<br/>(legacy mode)"]
-    HASURL -->|No| ERR3["StepConfigError<br/>'No service reference or<br/>direct params provided'"]
+    TYPECHECK -->|Yes| USE["Use cached service instance"]
+    TYPECHECK -->|No| INIT["Initialize lazily from the<br/>seeded ServiceDefinition,<br/>then cache"]
+    INIT --> USE
 
     style USE fill:#e8f5e9,stroke:#388e3c
     style ERR1 fill:#ffcdd2,stroke:#c62828
-    style ERR2 fill:#ffcdd2,stroke:#c62828
-    style ERR3 fill:#ffcdd2,stroke:#c62828
-    style STANDALONE fill:#fff9c4,stroke:#f9a825
+    style INIT fill:#fff9c4,stroke:#f9a825
 ```
 
-### Resolution Priority
+### Resolution by Role
 
-| Priority | Condition | Behavior |
-|----------|-----------|----------|
-| **1 (highest)** | `params.service` is set | Look up managed service by name from `ServiceManager`. Validate type. Use cached instance. |
-| **2** | `params.base_url` + auth params set | Create a one-off SDK service instance from direct parameters (legacy/standalone). |
-| **3 (error)** | Neither present | Raise `StepConfigError` with a clear message listing required parameters. |
+| Step family | Context accessor | Seeded ServiceType |
+|-------------|------------------|--------------------|
+| `connector/provider/*` | `context.get_provider_service()` | `CONNECTOR_PROVIDER` |
+| `connector/consumer/*` | `context.get_consumer_service()` | `CONNECTOR_CONSUMER` |
+| `notification/consumer/*` | `context.get_notification_service()` | `CONNECTOR_CONSUMER` |
+| `digital-twin/*` | `context.get_aas_service()` | `DTR` |
+| `connector/dataplane/http_request`, `http/http_request`, `util/*`, `validate/*`, `mock/*`, `flow/*` | *(none — no managed service involved)* | N/A |
 
-### Type Validation
-
-Each predefined step declares the `ServiceType` it expects. When a managed service is resolved via `params.service`, the Player validates that the service's type matches the step's expectation.
-
-| Step Type | Expected ServiceType | Validated At |
-|-----------|---------------------|-------------|
-| `provision_asset` | `CONNECTOR_PROVIDER` | Step execution start |
-| `create_contract_definition` | `CONNECTOR_PROVIDER` | Step execution start |
-| `catalog_search` | `CONNECTOR_CONSUMER` | Step execution start |
-| `negotiate_contract` | `CONNECTOR_CONSUMER` | Step execution start |
-| `initiate_transfer` | `CONNECTOR_CONSUMER` | Step execution start |
-| `retrieve_edr` | `CONNECTOR_CONSUMER` | Step execution start |
-| `dataplane_call` | `CONNECTOR_CONSUMER` | Step execution start |
-| `http_request` | *(none — standalone)* | N/A |
-| `consume_submodel` | `DTR` | Step execution start |
-| `init_service` | *(any — creates new)* | N/A |
-| `stop_service` | *(any — stops existing)* | N/A |
+A step whose role has no seeded service fails with a `ServiceNotFoundError` identifying the missing service type.
 
 ### Step Execution with Service Binding (Detailed Sequence)
 
@@ -588,20 +559,18 @@ sequenceDiagram
     participant S as StepImpl
     participant SVC as SDK Service
 
-    Y->>P: Step with params.service: "provider"
+    Y->>P: uses: connector/provider/create_asset
     P->>P: Resolve ${var} in params
-    P->>R: Lookup(step_type, dataspace_version)
+    P->>R: Lookup(uses_id, dataspace_version)
     R-->>P: StepImpl class
 
-    P->>SM: get("provider")
-    SM-->>P: (service_instance, ServiceType.CONNECTOR_PROVIDER)
+    P->>S: execute(params, context, definition)
+    S->>SM: context.get_provider_service()
+    SM-->>S: Cached CONNECTOR_PROVIDER instance
 
-    P->>P: Validate: StepImpl.expected_service_type<br/>== ServiceType.CONNECTOR_PROVIDER 
-
-    P->>S: execute(context, service=service_instance, **params)
-    S->>SVC: provider.assets.create(...)
-    SVC-->>S: asset_id
-    S->>P: StepOutput(asset_id=asset_id)
+    S->>SVC: provider.create_asset(asset_id=..., ...)
+    SVC-->>S: result
+    S->>P: StepOutput(CreateAssetOutput(asset_id=...))
 ```
 
 ### StepContext API (Service Access)
@@ -610,185 +579,113 @@ The `StepContext` provides these methods for service access during step executio
 
 ```python
 class StepContext:
-    def get_service(self, name: str) -> Any:
-        """Get a managed service instance by name.
-
-        Args:
-            name: The service name as declared in the test's `services` block.
-
-        Returns:
-            The initialized SDK service instance (e.g., ConnectorConsumerService,
-            ConnectorProviderService, AasService).
+    def get_provider_service(self) -> object:
+        """Return the CONNECTOR_PROVIDER service the run was seeded with.
 
         Raises:
-            ServiceNotFoundError: If no service with this name was declared.
-            ServiceNotReadyError: If the service failed to initialize or was stopped.
+            ServiceNotFoundError: If no provider service is registered.
         """
 
-    def has_service(self, name: str) -> bool:
-        """Check if a managed service exists and is ready.
-
-        Returns:
-            True if the service exists in the ServiceManager and is in a READY state.
-        """
-
-    def get_service_type(self, name: str) -> ServiceType:
-        """Get the ServiceType of a managed service.
-
-        Args:
-            name: The service name.
-
-        Returns:
-            The ServiceType enum value (e.g., CONNECTOR_CONSUMER, CONNECTOR_PROVIDER, DTR).
+    def get_consumer_service(self) -> object:
+        """Return the CONNECTOR_CONSUMER service the run was seeded with.
 
         Raises:
-            ServiceNotFoundError: If no service with this name exists.
+            ServiceNotFoundError: If no consumer service is registered.
         """
 
-    def list_services(self) -> dict[str, ServiceType]:
-        """List all available managed services and their types.
+    def get_aas_service(self) -> object:
+        """Return the DTR / AAS service the run was seeded with.
 
-        Returns:
-            A dict mapping service name → ServiceType for all services
-            currently in READY state.
+        Raises:
+            ServiceNotFoundError: If no DTR service is registered.
+        """
+
+    def get_notification_service(self) -> object:
+        """Return the service notifications are sent through.
+
+        Notifications ride on the connector consumer, so there is no
+        service of their own to look up.
         """
 ```
 
 ### ServiceManager API
 
-The `ServiceManager` manages the full lifecycle of SDK service instances:
+The `ServiceManager` manages the lifecycle of SDK service instances:
 
 ```python
 class ServiceManager:
-    async def initialize_all(
-        self,
-        services: list[ServiceDefinition],
-        dataspace_version: str
-    ) -> None:
-        """Initialize all services declared in the test's services block.
+    def register(self, definition: ServiceDefinition) -> None:
+        """Register a service definition from the script's services block."""
 
-        For each ServiceDefinition:
-          1. Resolve ${var} references in base_url and auth params.
-          2. Create SDK service instance via ServiceFactory:
-             - CONNECTOR_CONSUMER → ServiceFactory.get_connector_consumer_service()
-             - CONNECTOR_PROVIDER → ServiceFactory.get_connector_provider_service()
-             - DTR → AasService()
-          3. Authenticate (OAuth2 via OAuth2Manager, or API key).
-          4. Store in internal cache as: {name: (service_instance, service_type, state)}.
+    def register_all(self, definitions: list[ServiceDefinition]) -> None:
+        """Register multiple service definitions at once."""
 
-        Raises:
-            ServiceInitError: If any service fails to initialize.
-            DuplicateServiceError: If two services share the same name.
-        """
-
-    def get(self, name: str) -> tuple[Any, ServiceType]:
-        """Return a cached service instance and its type.
+    def get(self, name: str, expected_type: Optional[ServiceType] = None) -> object:
+        """Return a live service instance, initialising it lazily on first
+        access and caching it for the lifetime of the execution.
 
         Raises:
             ServiceNotFoundError: If the service does not exist.
-            ServiceNotReadyError: If the service is not in READY state.
+            ValueError: If the service's type is incompatible with expected_type.
         """
 
-    async def replace(
-        self,
-        name: str,
-        definition: ServiceDefinition,
-        dataspace_version: str
-    ) -> None:
-        """Replace a running service (used by the init_service step).
+    def state(self, name: str) -> ServiceState:
+        """Return the current lifecycle state of a service
+        (DECLARED, INITIALIZING, READY, STOPPED)."""
 
-        Steps:
-          1. Stop existing service if present (close connections, release resources).
-          2. Create and authenticate new service from definition.
-          3. Replace entry in cache.
-
-        Raises:
-            ServiceInitError: If the new service fails to initialize.
-        """
-
-    async def stop(self, name: str) -> None:
-        """Stop a specific service and remove it from the cache.
-
-        Used by the stop_service step. After stopping, get() for this
-        name will raise ServiceNotFoundError.
-
-        Raises:
-            ServiceNotFoundError: If the service does not exist.
-        """
-
-    async def teardown_all(self) -> None:
-        """Tear down all managed services.
+    def teardown(self) -> None:
+        """Release all service instances.
 
         Always called after test execution completes (success or failure).
-        Stops each service, closes connections, and clears the cache.
-        Errors during teardown are logged but do not raise.
         """
+
+    @property
+    def service_names(self) -> list[str]:
+        """Return the names of all registered services."""
 ```
 
 ### Step Implementation Pattern
 
-Predefined steps follow this pattern to support both managed-service and legacy-parameter modes:
+Predefined steps resolve their service by role from the context — the step's parameters carry only business data, never connection details:
 
 ```python
-class ProvisionAssetStep(BaseStep):
-    """Provision a digital twin asset on a connector provider."""
-    expected_service_type = ServiceType.CONNECTOR_PROVIDER
+class CreateAssetOutput(StepPayload):
+    """Output contract of ``connector/provider/create_asset``."""
 
-    async def execute(self, context: StepContext, **params) -> StepOutput:
-        # --- Service resolution ---
-        if "service" in params:
-            # Managed service path (preferred)
-            svc = context.get_service(params["service"])
-            actual_type = context.get_service_type(params["service"])
-            if actual_type != self.expected_service_type:
-                raise ServiceTypeMismatchError(
-                    step="provision_asset",
-                    expected=self.expected_service_type,
-                    actual=actual_type,
-                )
-        elif "base_url" in params:
-            # Legacy standalone path — create one-off service
-            svc = ServiceFactory.get_connector_provider_service(
-                dataspace_version=context.dataspace_version,
-                base_url=params["base_url"],
-                api_key=params.get("api_key"),
-            )
-        else:
-            raise StepConfigError(
-                "provision_asset requires either 'service' (managed) "
-                "or 'base_url' + auth params (standalone)"
-            )
+    asset_id: str = Field(description="ID of the asset that now exists at the provider.")
+
+
+@step("connector/provider/create_asset")
+class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
+    """Create a single asset at the provider connector."""
+
+    params_model = CreateAssetParams
+    output_model = CreateAssetOutput
+
+    async def execute(self, params, context, definition) -> StepOutput[CreateAssetOutput]:
+        # --- Service resolution: by role, from the seeded run context ---
+        provider = context.get_provider_service()
 
         # --- Business logic ---
-        asset_id = await svc.assets.create(
-            asset_id=params["asset_id"],
-            properties=params.get("properties", {}),
-        )
-        return StepOutput(asset_id=asset_id)
+        result = provider.create_asset(asset_id=params.asset_id, **params.definition())
+        return StepOutput(value=CreateAssetOutput(asset_id=params.asset_id))
 ```
 
-## Failure Policy Flow
+## Failure Handling
 
-When a step fails, the Player applies the step's `on_failure` policy:
+Failure handling is fixed per phase — there is no per-step policy. A failed
+validation (hard assertion) fails its step, and a failed step fails the test:
+execution stops, the remaining steps are skipped, and teardown runs. Teardown
+steps keep executing even when one of them fails, so cleanup always completes.
 
 ```mermaid
 flowchart TD
-    F[Step Failed] --> Policy{on_failure policy?}
-
-    Policy -->|abort| ABORT["Stop immediately"]
-    ABORT --> CLEANUP["Run cleanup steps"]
-
-    Policy -->|continue| CONT["Proceed to next step"]
-
-    Policy -->|skip_rest| SKIP["Skip remaining steps"]
-    SKIP --> CLEANUP
-
-    CLEANUP --> DONE[Test complete]
-    CONT --> NEXT[Next step]
+    F[Step Failed] --> STOP["Stop execution"]
+    STOP --> SKIP["Skip remaining steps"]
+    SKIP --> CLEANUP["Run teardown steps"]
+    CLEANUP --> DONE[Test failed]
 
     style F fill:#ffcdd2,stroke:#c62828
-    style ABORT fill:#ffcdd2,stroke:#c62828
-    style CONT fill:#fff9c4,stroke:#f9a825
     style SKIP fill:#ffe0b2,stroke:#ef6c00
     style CLEANUP fill:#e8f5e9,stroke:#388e3c
     style DONE fill:#e8eaf6,stroke:#3f51b5
@@ -804,7 +701,7 @@ flowchart TD
 | **TCK** | An ordered collection of tests (`kind: tck`), optionally sharing variables, packaged together as one distributable unit. Identified by `kind: tck` or by the presence of a `tests:` key. Supports importing predefined tests with optional overrides. |
 | **Kind** | The `kind:` field in a YAML header that explicitly declares the file type: `test` or `tck`. Follows the Kubernetes `kind:` convention. Optional for backward compatibility — the Player can infer the type from the document structure. |
 | **Step** | An atomic, named unit of work within a test (e.g., "provision an asset", "negotiate a contract"). Implemented as a Python class registered in the Step Registry. |
-| **Step Type** | The identifier that maps a step in YAML to its Python implementation (e.g., `provision_asset`, `dataplane_call`). |
+| **Step Id** | The `uses:` identifier that maps a step in YAML to its Python implementation (e.g., `connector/provider/create_asset`, `connector/dataplane/http_request`). |
 | **Variable** | A named value declared in a test's `variables` block. Can have a default value or be marked `runtime: true` (must be provided at execution time). Steps produce output variables that subsequent steps can consume via `${var_name}` syntax. |
 | **Assertion** | An expected-result check attached to a step via the `validate` block. Evaluated after step execution against the step's output. |
 | **Compiler** | The component that parses YAML tests, validates them against the Step Registry and declared variables, and stamps metadata. |
@@ -815,20 +712,19 @@ flowchart TD
 | **Monitor** | The in-memory state store that tracks execution progress in real-time — queryable for current step, status, timing, assertion results, and job state. |
 | **Context** | The per-test runtime state bag (`StepContext`) that holds variables, configuration, the target dataspace version, and service references. Steps read from and write to the context. |
 | **Dataspace Version** | The connector protocol version a test targets (e.g., `"jupiter"`, `"saturn"`). Determines which step implementations and SDK services are used. |
-| **SDK Call** | A step type (`sdk_call`) that directly invokes an SDK module function by its dotted path. Subject to allowlist or open-mode security policy. |
+| **Typed Executor** | The implementation model of every step: a registered Python class with a declared input contract (`with:` parameters) and output contract (what `returns:` and assertions read). YAML can only invoke registered step ids — never arbitrary SDK functions. |
 | **Service** | A managed SDK service instance (e.g., `ConnectorConsumerService`, `ConnectorProviderService`, `AasService`) declared in a test's `services` block. Initialized once before steps execute and reused across steps. |
 | **Service Manager** | The component that initializes, caches, and tears down managed SDK service instances based on the test's `services` declarations. |
 | **Callback** | An async webhook pattern where the Player starts a temporary HTTP endpoint, sends a request to an external system, transitions the Job to `WAITING` state, and resumes automatically when the external system calls back with a response within a configurable timeout. |
 | **Callback Server** | A FastAPI-based HTTP server (standalone or embedded) that hosts ephemeral callback routes mounted dynamically by the Player per test execution. |
-| **Listener** | A `listen` block in YAML that declares callback endpoint configuration: the route path, expected HTTP method, and timeout. Creates an `asyncio.Event` that the `await_callback` step waits on. |
-| **Allowlist** | A curated set of SDK function paths that `sdk_call` steps may invoke by default. Scripts must opt in to `allow_sdk_calls: open` to bypass this restriction. |
+| **Listener** | The callback registration created by the `mock/api` step: the mock endpoint's path and HTTP method, plus an `asyncio.Event` that the `mock/wait/http_request` step waits on. |
 | **Encrypted Package** | A `.tckpkg` archive whose payload (scripts + assets) is encrypted with AES-256-GCM. Only authorized Players holding the matching RSA private key can decrypt and execute it. |
 | **Player Identity** | An RSA key pair assigned to a Player instance. The public key's SHA-256 fingerprint serves as the Player's unique identifier for package authorization. |
 | **Key Block** | An entry in the package manifest's `security.authorized_players` list. Contains a Player's fingerprint and the AES content-encryption key wrapped with that Player's RSA public key. |
 | **Trust Store** | A directory (`~/.testlab/trusted_compilers/`) containing public keys of Compilers whose package signatures the Player will accept. |
 | **Compiler Signature** | An Ed25519 digital signature created by the Compiler over the manifest and encrypted payload. Verified by the Player against the trust store before execution. |
-| **Service Binding** | The mechanism by which a step's `params.service` reference is resolved to a managed SDK service instance via the `ServiceManager`. |
-| **Resolution Priority** | The order in which the Player tries to resolve a step's service dependency: (1) managed service by name, (2) standalone from direct params, (3) error. |
+| **Service Binding** | The mechanism by which a step resolves the managed SDK service for its role (provider, consumer, DTR) from the `StepContext` — steps never name their service in parameters. |
+| **Service Resolution** | How a step's service dependency is satisfied: the first seeded service matching the role's `ServiceType` is initialised lazily, cached, and injected; a missing service raises `ServiceNotFoundError`. |
 | **Package Upload** | The ability to upload `.tckpkg` files (encrypted or plain) to the testlab server via `POST /api/v1/packages`. Uploaded packages are stored on the server and can be referenced by `package_id` in `/run` requests. |
 | **Package Storage** | The server-side directory (default: `~/.testlab/packages/`) where uploaded packages are persisted and indexed by `package_id` (`name-version`). |
 | **Vault Backend** | An optional integration with HashiCorp Vault's KV v2 secrets engine for centralized key management. When configured, signing keys and Player keys are stored in and retrieved from Vault instead of the local filesystem. |

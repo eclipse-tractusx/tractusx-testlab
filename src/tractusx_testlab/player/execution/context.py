@@ -29,8 +29,6 @@ Provides access to services, variables, job memory, and configuration.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.models import Job, ServiceDefinition, ServiceNotFoundError, ServiceType
 from tractusx_testlab.services.manager import ServiceManager
@@ -94,29 +92,24 @@ class StepContext:
     # Service accessors (delegates to ServiceManager)
     # ------------------------------------------------------------------
 
-    def get_provider_service(self, name: Optional[str] = None) -> object:
-        """Return the first (or named) CONNECTOR_PROVIDER service."""
-        if name:
-            return self._services.get_provider(name)
+    def get_provider_service(self) -> object:
+        """Return the CONNECTOR_PROVIDER service the run was seeded with."""
         return self._first_service_of_type(ServiceType.CONNECTOR_PROVIDER)
 
-    def get_consumer_service(self, name: Optional[str] = None) -> object:
-        """Return the first (or named) CONNECTOR_CONSUMER service."""
-        if name:
-            return self._services.get_consumer(name)
+    def get_consumer_service(self) -> object:
+        """Return the CONNECTOR_CONSUMER service the run was seeded with."""
         return self._first_service_of_type(ServiceType.CONNECTOR_CONSUMER)
 
-    def get_aas_service(self, name: Optional[str] = None) -> object:
-        """Return the first (or named) DTR / AAS service."""
-        if name:
-            return self._services.get_dtr(name)
+    def get_aas_service(self) -> object:
+        """Return the DTR / AAS service the run was seeded with."""
         return self._first_service_of_type(ServiceType.DTR)
 
-    def get_notification_service(self, name: Optional[str] = None) -> object:
-        """Return a notification consumer service by name."""
-        if name:
-            return self._services.get(name)
-        # Notification service is built on top of a connector consumer
+    def get_notification_service(self) -> object:
+        """Return the service notifications are sent through.
+
+        Notifications ride on the connector consumer, so there is no service of
+        their own to look up.
+        """
         return self._first_service_of_type(ServiceType.CONNECTOR_CONSUMER)
 
     def _first_service_of_type(self, stype: ServiceType) -> object:
@@ -156,3 +149,57 @@ class StepContext:
     def get_consumer_base_url(self) -> str:
         """Return ``base_url + dma_path`` for the first consumer service."""
         return self._get_base_url(ServiceType.CONNECTOR_CONSUMER)
+
+    # ------------------------------------------------------------------
+    # Management-API endpoint URLs (for step request reporting)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _controller_url(service: object, fallback_base: str, controller: str, *segments: object) -> str:
+        """Join an SDK controller's endpoint path onto its connector base URL.
+
+        The versioned management path (``/v3/catalog`` and friends) differs per
+        dataspace version, so it is read off the controller the SDK built for
+        the configured version instead of being spelled out here. When the
+        service does not expose that controller — a stub, or a version that
+        dropped it — only the base URL and the extra segments are returned.
+        """
+        controller_obj = getattr(service, controller, None)
+        base = getattr(getattr(controller_obj, "adapter", None), "base_url", None)
+        if not isinstance(base, str) or not base:
+            base = fallback_base
+        if not base:
+            # No connector configured — a bare path would read as a real URL.
+            return ""
+        endpoint = getattr(controller_obj, "endpoint_url", None)
+
+        parts = [base.rstrip("/")]
+        if isinstance(endpoint, str):
+            parts.append(endpoint.strip("/"))
+        parts.extend(str(segment).strip("/") for segment in segments if segment is not None)
+        return "/".join(part for part in parts if part)
+
+    def get_consumer_endpoint_url(self, controller: str, *segments: object) -> str:
+        """Return the consumer management-API URL of an SDK *controller*.
+
+        ``controller`` is the SDK consumer-service attribute holding it, e.g.
+        ``"catalogs"``, ``"edrs"`` or ``"transfer_processes"``; *segments* are
+        appended as further path elements.
+        """
+        try:
+            consumer = self.get_consumer_service()
+        except ServiceNotFoundError:
+            consumer = None
+        return self._controller_url(consumer, self.get_consumer_base_url(), controller, *segments)
+
+    def get_provider_endpoint_url(self, controller: str, *segments: object) -> str:
+        """Return the provider management-API URL of an SDK *controller*.
+
+        ``controller`` is the SDK provider-service attribute holding it, e.g.
+        ``"assets"``, ``"policies"`` or ``"contract_definitions"``.
+        """
+        try:
+            provider = self.get_provider_service()
+        except ServiceNotFoundError:
+            provider = None
+        return self._controller_url(provider, self.get_provider_base_url(), controller, *segments)
