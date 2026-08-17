@@ -38,17 +38,16 @@
 variables:
   # engine = umbrella's "consumer" participant — the connector testlab drives.
   #
-  # The chart exposes connector APIs below /connector. The SDK still receives
-  # its standard /management DMA path after the infrastructure seeder splits
-  # this full external URL into base_url + dma_path.
-  infrastructure.engine.connector.management_url: "http://consumer.intranet/connector/management"
+  # Connector APIs use dedicated ingress hosts and their native paths. This
+  # prevents another component on consumer.local from handling the request.
+  infrastructure.engine.connector.management_url: "http://consumer-management.local/management"
   infrastructure.engine.connector.api_key: "password"
 
   # sut = umbrella's "provider" participant — the connector + DTR under test.
-  infrastructure.sut.connector.management_url: "http://provider.intranet/connector/management"
+  infrastructure.sut.connector.management_url: "http://provider-management.local/management"
   infrastructure.sut.connector.api_key: "password"
   infrastructure.sut.connector.participant_id: "BPNL000000000001"
-  infrastructure.sut.connector.dsp_url: "http://provider.local/connector/api/v1/dsp"
+  infrastructure.sut.connector.dsp_url: "http://provider-dsp.local/api/v1/dsp"
 
   # infrastructure.sut.dtr.base_url — intentionally absent; supplied via
   # `--var infrastructure.sut.dtr.base_url=...` once the workflow has

@@ -39,9 +39,41 @@ edc-provider:
           cpu: 100m
           memory: 128Mi
   tx-data-provider:
+    controlplanePublicUrl: "http://provider-dsp.local"
+    controlplaneManagementUrl: "http://provider-management.local"
     dataspace-connector-bundle:
       vault:
         enabled: false
+      tractusx-connector:
+        controlplane:
+          endpoints:
+            default:
+              path: /api
+            management:
+              path: /management
+            control:
+              path: /control
+            protocol:
+              path: /api/v1/dsp
+            catalog:
+              path: /catalog
+          ingresses:
+            - enabled: true
+              hostname: provider-dsp.local
+              endpoints:
+                - protocol
+              className: nginx
+              tls:
+                enabled: false
+            - enabled: true
+              hostname: provider-management.local
+              endpoints:
+                - management
+                - control
+                - catalog
+              className: nginx
+              tls:
+                enabled: false
     digital-twin-bundle:
       enabled: true
       digital-twin-registry:
@@ -84,9 +116,41 @@ edc-consumer:
           cpu: 100m
           memory: 128Mi
   tx-data-provider:
+    controlplanePublicUrl: "http://consumer-dsp.local"
+    controlplaneManagementUrl: "http://consumer-management.local"
     dataspace-connector-bundle:
       vault:
         enabled: false
+      tractusx-connector:
+        controlplane:
+          endpoints:
+            default:
+              path: /api
+            management:
+              path: /management
+            control:
+              path: /control
+            protocol:
+              path: /api/v1/dsp
+            catalog:
+              path: /catalog
+          ingresses:
+            - enabled: true
+              hostname: consumer-dsp.local
+              endpoints:
+                - protocol
+              className: nginx
+              tls:
+                enabled: false
+            - enabled: true
+              hostname: consumer-management.local
+              endpoints:
+                - management
+                - control
+                - catalog
+              className: nginx
+              tls:
+                enabled: false
     digital-twin-bundle:
       enabled: true
       digital-twin-registry:

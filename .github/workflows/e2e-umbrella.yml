@@ -156,8 +156,12 @@ jobs:
           sudo tee -a /etc/hosts >/dev/null <<'EOF'
           127.0.0.1 provider.local
           127.0.0.1 provider.intranet
+          127.0.0.1 provider-dsp.local
+          127.0.0.1 provider-management.local
           127.0.0.1 consumer.local
           127.0.0.1 consumer.intranet
+          127.0.0.1 consumer-dsp.local
+          127.0.0.1 consumer-management.local
           127.0.0.1 bdrs-server.tx.test
           127.0.0.1 issuerservice.local
           EOF
@@ -236,7 +240,37 @@ jobs:
           duplicates = sorted(key for key, count in Counter(install_resources).items() if count > 1)
           if duplicates:
               raise SystemExit(f"Umbrella manifest has duplicate resources: {duplicates}")
-          print("Umbrella manifest contains both connectors and both DTRs.")
+
+          expected_routes = {
+              "provider-dsp.local": {"/api/v1/dsp"},
+              "provider-management.local": {"/management", "/control", "/catalog"},
+              "consumer-dsp.local": {"/api/v1/dsp"},
+              "consumer-management.local": {"/management", "/control", "/catalog"},
+          }
+          ingress_routes = {}
+          for document in documents:
+              if document.get("kind") != "Ingress":
+                  continue
+              for rule in document.get("spec", {}).get("rules", []):
+                  ingress_routes.setdefault(rule.get("host"), set()).update(
+                      path["path"] for path in rule.get("http", {}).get("paths", [])
+                  )
+          wrong_routes = {
+              host: sorted(ingress_routes.get(host, set()))
+              for host, paths in expected_routes.items()
+              if ingress_routes.get(host) != paths
+          }
+          if wrong_routes:
+              raise SystemExit(f"Umbrella manifest has incorrect connector routes: {wrong_routes}")
+          prefixed_routes = sorted(
+              (host, path)
+              for host, paths in ingress_routes.items()
+              for path in paths
+              if path.startswith("/connector")
+          )
+          if prefixed_routes:
+              raise SystemExit(f"Umbrella manifest still has /connector routes: {prefixed_routes}")
+          print("Umbrella manifest contains both connectors, both DTRs, and isolated connector routes.")
           PY
           echo "UMBRELLA_CHART_DIR=${chart_dir}" >> "${GITHUB_ENV}"
           echo "UMBRELLA_PROFILE_URL=${profile_url}" >> "${GITHUB_ENV}"
@@ -300,7 +334,7 @@ jobs:
               --header "X-Api-Key: password" \
               --header "Content-Type: application/json" \
               --request POST --data "${query}" \
-              "http://${participant}.intranet/connector/management/v3/assets/request" \
+              "http://${participant}-management.local/management/v3/assets/request" \
               > /dev/null
             echo "${participant} management API: reachable"
           done
