@@ -133,11 +133,6 @@ def _compile(manifest_path: Path, out_dir: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="F-A01: authoring models use Pydantic's default extra='ignore', so "
-    "unknown keys are dropped without a word.",
-)
 def test_validation_rejects_a_misspelled_step_key(tmp_path: Path) -> None:
     """``validte:`` is not ``validate:`` and must be reported, not ignored.
 
@@ -177,10 +172,6 @@ def test_validation_rejects_a_misspelled_step_key(tmp_path: Path) -> None:
     ), f"Rejected, but without naming the offending key: {[i.message for i in result.issues]}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="F-A01: unknown keys are dropped at every level, not only on steps.",
-)
 def test_validation_rejects_an_unknown_key_on_a_step(tmp_path: Path) -> None:
     """A key that names no field of any model is an authoring mistake."""
     manifest_path = _write_tck(
@@ -204,11 +195,6 @@ def test_validation_rejects_an_unknown_key_on_a_step(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="F-A02: resolve_str falls back to the matched template text when a "
-    "reference resolves to nothing, so the step receives '${{ ... }}' as data.",
-)
 async def test_an_unresolvable_reference_fails_the_run(tmp_path: Path) -> None:
     """``${{ env.does_not_exist }}`` must stop the run, not become a string.
 
@@ -242,11 +228,6 @@ async def test_an_unresolvable_reference_fails_the_run(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="F-A05: DEFAULT_OPERATOR is 'not_null', so an assertion supplying "
-    "'value' but no 'operator' ignores the value and passes.",
-)
 def test_an_assertion_without_an_operator_is_rejected(tmp_path: Path) -> None:
     """Supplying ``value:`` with no ``operator:`` reads as a comparison.
 
@@ -356,11 +337,6 @@ def test_a_compiled_package_carries_one_executable_representation(
     assert "tests/probe.yaml" in names, "the file the player actually executes"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="F-A09: the package digest covers manifest.yaml + tck-execution.json "
-    "+ asset digests. The executed tests/*.yaml is in neither digest.",
-)
 def test_a_tampered_test_file_is_refused(tmp_path: Path) -> None:
     """Editing the executed test inside a compiled package must be detected.
 
@@ -400,11 +376,6 @@ def test_a_tampered_test_file_is_refused(tmp_path: Path) -> None:
         Loader().load(tampered)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="F-A09: _verify_tck_integrity returns early when tck-execution.json "
-    "is absent, so removing it skips verification rather than failing it.",
-)
 def test_a_package_missing_its_digest_target_is_refused(tmp_path: Path) -> None:
     """Deleting the fingerprinted file must fail verification, not skip it.
 

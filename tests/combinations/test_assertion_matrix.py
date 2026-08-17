@@ -254,7 +254,13 @@ class TestAnAssertionThatCannotBeUnderstood:
 
 
 class TestAssertingAgainstAnEarlierStep:
-    """An assertion compares against a value another step produced."""
+    """An assertion compares against a value another step produced.
+
+    The comparison value is written the way every other value in a script is
+    written — ``${{ env.<name> }}``.  It used to be spelled ``@name`` here and
+    dereferenced inside the assertion engine alone, which made the engine the one
+    place in the system where a fourth reference syntax was understood.
+    """
 
     async def test_a_response_is_checked_against_a_generated_id(
         self, harness: Harness, http: HttpDouble
@@ -275,7 +281,7 @@ class TestAssertingAgainstAnEarlierStep:
                         "with": {
                             "input": "response_body",
                             "path": "id",
-                            "value": "@expected_id",
+                            "value": "${{ env.expected_id }}",
                         },
                     }
                 ],
@@ -497,9 +503,9 @@ class TestAnAssertionReferencesWhatTheRunProduced:
 
         ``${{ execution.create.response_body.id }}`` finds nothing unless
         ``response_body.id`` was declared, because resolution looks the whole
-        dotted string up as one key. Harmless for authored TCKs — the IDE only
-        offers a block's declared outputs, so it never writes a deeper path —
-        and pinned here so it is a known edge rather than a surprise.
+        dotted string up as one key. It used to resolve to its own template text
+        and flow on as data; it now fails the step and names the reference, which
+        is the difference between a typo the author sees and one they do not.
         """
         http.json_route("POST", "/parts", {"id": "part-1"}, status=201)
         base = http.start()
@@ -518,4 +524,5 @@ class TestAnAssertionReferencesWhatTheRunProduced:
             },
         )
 
-        assert outcome.output("echo") == "${{ execution.create.response_body.id }}"
+        assert not outcome.passed
+        assert "execution.create.response_body.id" in (outcome.error("echo") or "")

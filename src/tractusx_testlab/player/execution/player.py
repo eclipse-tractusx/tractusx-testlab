@@ -43,7 +43,6 @@ from tractusx_testlab.infrastructure.mapping import collect_overrides, flatten
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.models import (
     ScriptResult,
-    ScriptStatus,
 )
 from tractusx_testlab.models import (
     TckResult as TckResult,  # SDK alias
@@ -54,7 +53,6 @@ from tractusx_testlab.player.execution._trace_formatter import (
     build_tck_result,
     finalize_job,
     make_intentionally_skipped_result,
-    make_skipped_result,
 )
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.infrastructure_seeder import seed_infrastructure_services
@@ -65,7 +63,6 @@ from tractusx_testlab.player.execution.step_runner import (
 )
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.loader import Loader
-from tractusx_testlab.player.loading.ordering import topological_sort
 from tractusx_testlab.scripting._infrastructure import collect_infrastructure_requirements
 from tractusx_testlab.scripting.script import Tck as Tck
 from tractusx_testlab.scripting.script import TestScript
@@ -202,9 +199,8 @@ class TestlabPlayer:
         skip_ids = resolve_skip_ids(tck, runtime_vars)
 
         tck_started_at = datetime.now(UTC)
-        ordered_scripts = topological_sort(tck.scripts)
-        script_results = await self._execute_scripts_in_order(
-            ordered_scripts, context, job, monitor, skip_ids,
+        script_results = await self._execute_scripts(
+            tck.scripts, context, job, monitor, skip_ids,
         )
         tck_finished_at = datetime.now(UTC)
 
@@ -284,35 +280,29 @@ class TestlabPlayer:
         )
         self._mock_server.start()
 
-    async def _execute_scripts_in_order(
+    async def _execute_scripts(
         self,
-        ordered_scripts: list[TestScript],
+        scripts: list[TestScript],
         context: StepContext,
         job: Any,
         monitor: ExecutionMonitor,
         skip_ids: frozenset[str],
     ) -> list[ScriptResult]:
-        """Execute scripts respecting dependency order, skipping on unmet deps."""
-        script_results: list[ScriptResult] = []
-        completed_tests: set[str] = set()
+        """Run each script in manifest order, honouring the operator's skips.
 
-        for idx, script in enumerate(ordered_scripts):
-            # 1. Intentional skip requested by the operator.
+        Scripts run in the order the manifest lists them. There is no
+        inter-script dependency declaration in v1-alpha — a script says what it
+        needs through the infrastructure it requires and the variables it reads,
+        not by naming another script.
+        """
+        script_results: list[ScriptResult] = []
+
+        for idx, script in enumerate(scripts):
             if script.test_id in skip_ids:
                 skipped = make_intentionally_skipped_result(script)
                 script_results.append(skipped)
                 monitor.on_script_started(job.job_id, script.definition.id, idx)
                 monitor.on_script_completed(job.job_id, skipped)
-                continue
-
-            # 2. Dependency skip — unmet deps produce a FAILED result.
-            unmet_deps = [dep for dep in script.depends_on if dep not in completed_tests]
-
-            if unmet_deps:
-                skipped_result = make_skipped_result(script, unmet_deps)
-                script_results.append(skipped_result)
-                monitor.on_script_started(job.job_id, script.definition.id, idx)
-                monitor.on_script_completed(job.job_id, skipped_result)
                 continue
 
             monitor.on_script_started(job.job_id, script.definition.id, idx)
@@ -322,54 +312,29 @@ class TestlabPlayer:
             script_results.append(script_result)
             monitor.on_script_completed(job.job_id, script_result)
 
-            if script_result.status == ScriptStatus.COMPLETED:
-                completed_tests.add(script.name)
-                self._propagate_script_outputs(script, context)
-
         return script_results
-
-
-
-    @staticmethod
-    def _propagate_script_outputs(script: TestScript, context: StepContext) -> None:
-        """Promote script output variables to the shared namespace for downstream tests."""
-        outputs = getattr(script.definition, "outputs", None) or {}
-        for export_name, var_ref in outputs.items():
-            value = context.get_variable(var_ref)
-            if value is not None:
-                context.set_variable(export_name, value)
-                context.set_variable(f"!{script.name}:{export_name}", value)
 
 
 def _target_release(tck: Tck) -> tuple[str, bool]:
     """Return the ecosystem release a TCK targets, and whether it said so itself.
 
-    ADR-0019's ``dataspace`` block is the source of the version; the flat
-    ``dataspace_version`` field is the older way of saying the same thing and
-    is read when the block is absent. Whether it was stated at all matters:
-    a release nobody declared is a default, and a default must never be held
-    against an operator who bound a deployment of a different one.
+    ``dataspace.version`` (ADR-0019) is the only source. The flat
+    ``dataspace_version`` field was an older spelling of the same thing and is
+    gone: while both existed, the player read it off the definition — where it
+    had never lived — so a TCK stating one release was run as another, and
+    reported the release as unstated, which suppressed the conflict check that
+    would have caught it.
+
+    Whether it was stated at all matters: a release nobody declared is a
+    default, and a default must never be held against an operator who bound a
+    deployment of a different one.
     """
     definition = tck.definition
-    if definition is None:
-        return defaults.DATASPACE_VERSION, False
-
-    dataspace = definition.dataspace
+    dataspace = definition.dataspace if definition is not None else None
     if dataspace is not None and dataspace.version:
         return dataspace.version, True
+    return defaults.DATASPACE_VERSION, False
 
-    # The older flat spelling lives on the *metadata* block, not on the
-    # definition. Reaching for it with getattr(definition, …) always missed —
-    # the attribute does not exist there — so a TCK stating
-    # `metadata.dataspace_version: jupiter` and no `dataspace:` block resolved
-    # to the saturn default, and reported the release as unstated. That second
-    # half is what made it silent: `release_stated=False` tells
-    # InfrastructureManager.align not to hold the release against the bound
-    # deployment, so the SDK built saturn services for a jupiter connector and
-    # no conflict was ever raised.
-    metadata = definition.metadata
-    version = metadata.dataspace_version or defaults.DATASPACE_VERSION
-    return version, "dataspace_version" in metadata.model_fields_set
 
 
 def _is_encrypted_tck(path: Path) -> bool:

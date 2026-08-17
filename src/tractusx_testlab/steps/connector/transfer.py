@@ -247,6 +247,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
             TRANSFER_TERMINAL,
             max_wait=params.max_wait,
             poll_interval=params.poll_interval,
+            what="connector/consumer/initiate_transfer",
             verify=params.verify,
         )
 

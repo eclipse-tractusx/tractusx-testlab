@@ -40,6 +40,7 @@ from tractusx_testlab.cli import docs as _docs
 from tractusx_testlab.cli import inspect as _inspect
 from tractusx_testlab.cli import keys as _keys
 from tractusx_testlab.cli import run as _run
+from tractusx_testlab.cli import schema as _schema
 from tractusx_testlab.cli import serve as _serve
 from tractusx_testlab.cli import validate as _validate
 

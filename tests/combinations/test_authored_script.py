@@ -55,7 +55,6 @@ def _script(base_url: str) -> str:
         syntax: v1-alpha
         kind: test
         id: combination-smoke
-        name: Combination smoke
         namespace: combination-tck
         metadata:
           name: Combination smoke

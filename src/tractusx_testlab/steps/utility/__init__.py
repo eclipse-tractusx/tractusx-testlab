@@ -27,5 +27,4 @@ import tractusx_testlab.steps.utility.json_extract
 import tractusx_testlab.steps.utility.log
 import tractusx_testlab.steps.utility.parse_kv
 import tractusx_testlab.steps.utility.uuid_gen
-import tractusx_testlab.steps.utility.validate
 import tractusx_testlab.steps.utility.validate_path

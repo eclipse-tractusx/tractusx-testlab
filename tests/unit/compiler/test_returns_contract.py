@@ -39,7 +39,6 @@ def _errors_for(uses: str, returns: dict) -> list[str]:
         syntax="v1-alpha",
         kind="test",
         id="t",
-        name="t",
         namespace="n",
         metadata={"name": "t"},
         execution=[StepDefinition(id="s1", uses=uses, returns=returns)],

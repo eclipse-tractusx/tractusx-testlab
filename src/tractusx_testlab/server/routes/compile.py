@@ -36,6 +36,7 @@ from pydantic import ValidationError
 from tractusx_testlab.compiler.validation.validator import ScriptValidator
 from tractusx_testlab.models.primitives.enums import ScriptKind
 from tractusx_testlab.scripting.parser import YamlParser
+from tractusx_testlab.syntax import defaults
 
 _logger = logging.getLogger(__name__)
 _validator = ScriptValidator()
@@ -73,7 +74,7 @@ async def compile_yaml(request: Request) -> JSONResponse:
     if isinstance(parsed, JSONResponse):
         return parsed
 
-    errors = _run_semantic_validation(parsed, kind, raw_data=data)
+    errors = _run_semantic_validation(parsed, kind)
     if errors:
         return JSONResponse(content={"status": "error", "errors": errors})
 
@@ -135,9 +136,7 @@ def _parse_script(data: dict, kind: ScriptKind) -> JSONResponse | object:
         })
 
 
-def _run_semantic_validation(
-    parsed: object, kind: ScriptKind, raw_data: dict | None = None,
-) -> list[dict[str, str]]:
+def _run_semantic_validation(parsed: object, kind: ScriptKind) -> list[dict[str, str]]:
     """Run semantic validation and return list of error dicts (empty if OK)."""
     errors: list[dict[str, str]] = []
 
@@ -148,27 +147,17 @@ def _run_semantic_validation(
         errors.append(_error("name", "Script name is required and must not be empty"))
 
     if kind == ScriptKind.TEST:
-        raw = raw_data or {}
-        ds_block = raw.get("dataspace")
-        has_explicit_version = (
-            (isinstance(ds_block, dict) and "version" in ds_block)
-            or "dataspace_version" in raw
+        # The release comes from the script's own ``dataspace`` block when it has
+        # one, and otherwise from the default. It is not required here: a test
+        # file belongs to a TCK, and it is the manifest that declares which
+        # ecosystem release the suite certifies against — none of the shipped
+        # example's test files carry the block, and demanding it rejected
+        # correctly-authored files.
+        dataspace = getattr(parsed, "dataspace", None)
+        dataspace_version = (
+            dataspace.version if dataspace is not None and dataspace.version
+            else defaults.DATASPACE_VERSION
         )
-
-        if not has_explicit_version:
-            errors.append(_error(
-                "dataspace_version",
-                "Dataspace version must be explicitly declared "
-                "(via 'dataspace.version' block or 'dataspace_version' field)",
-            ))
-            return errors
-
-        # Resolve effective version from the parsed model (safe — we confirmed explicit presence above).
-        ds_parsed = getattr(parsed, "dataspace", None)
-        if ds_parsed is not None and hasattr(ds_parsed, "version") and ds_parsed.version:
-            dataspace_version = ds_parsed.version
-        else:
-            dataspace_version = getattr(parsed, "dataspace_version", "saturn")
 
         result = _validator.validate(parsed, version=dataspace_version)
         for issue in result.issues:

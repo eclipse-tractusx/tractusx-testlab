@@ -362,7 +362,8 @@ class TestWhatANestedStepPublishes:
         )
 
         assert "execution.mint.value" not in outcome.variables
-        assert outcome.output("echo") == "${{ execution.mint.value }}"
+        assert not outcome.passed
+        assert "execution.mint.value" in (outcome.error("echo") or "")
 
     async def test_the_wrapper_carries_the_nested_outputs_instead(
         self, harness: Harness

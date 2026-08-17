@@ -24,7 +24,7 @@
 
 Sub-modules:
     execution — core player, step context, and execution monitor
-    loading   — TCK loading, dependency ordering, parameter resolution
+    loading   — TCK loading and parameter resolution
     jobs      — job lifecycle management
 """
 
@@ -33,8 +33,7 @@ from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.loader import Loader
-from tractusx_testlab.player.loading.ordering import topological_sort
-from tractusx_testlab.player.loading.resolver import resolve_params, resolve_service_def
+from tractusx_testlab.player.loading.resolver import resolve_params
 
 __all__ = [
     "ExecutionMonitor",
@@ -46,6 +45,4 @@ __all__ = [
     "StepContext",
     "TestlabPlayer",
     "resolve_params",
-    "resolve_service_def",
-    "topological_sort",
 ]

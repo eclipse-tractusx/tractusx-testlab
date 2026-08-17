@@ -138,6 +138,7 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
             NEGOTIATION_TERMINAL,
             max_wait=params.max_wait,
             poll_interval=params.poll_interval,
+            what="connector/consumer/negotiate",
         )
         agreement_id = negotiation.get("contractAgreementId")
         state = negotiation.get("state")

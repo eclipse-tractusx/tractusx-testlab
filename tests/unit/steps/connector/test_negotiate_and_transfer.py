@@ -37,6 +37,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
+from tractusx_testlab.models import StepExecutionError
 from tractusx_testlab.steps.connector.dataplane import DataplaneCallParams
 from tractusx_testlab.steps.connector.negotiate import NegotiateStep
 from tractusx_testlab.steps.connector.transfer import InitiateTransferStep
@@ -116,7 +117,11 @@ class TestNegotiate:
         mock_context.set_variable(CATALOG_ASSET_ID, "urn:asset:1")
         mock_context.set_variable(CATALOG_POLICY, {"@type": "odrl:Set"})
 
-        await NegotiateStep().invoke({}, mock_context, definition)
+        # The consumer here exposes no readable negotiation controller, so the
+        # step now fails once it tries to observe the state (F-A07). What this
+        # test is about is the request that went out before that.
+        with pytest.raises(StepExecutionError):
+            await NegotiateStep().invoke({}, mock_context, definition)
 
         call = consumer.start_edr_negotiation.call_args.kwargs
         assert (call["target"], call["policy"]) == ("urn:asset:1", {"@type": "odrl:Set"})
@@ -178,15 +183,19 @@ class TestNegotiate:
     async def test_gives_up_when_the_negotiation_cannot_be_read(
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
-        """An unreadable negotiation must not burn the whole wait window."""
+        """An unreadable negotiation fails fast rather than burning the wait window.
+
+        It used to return whatever had been observed — nothing — and the step
+        passed publishing ``state: None``. A negotiation whose state cannot be
+        read is not a negotiation that succeeded, so it is now an error, and it
+        is still raised immediately rather than after ``max_wait`` (F-A07).
+        """
         consumer = _consumer()
         consumer.start_edr_negotiation.return_value = _NEGOTIATION_ID
         mock_context.get_consumer_service.return_value = consumer
 
-        output = await NegotiateStep().invoke({}, mock_context, definition)
-
-        assert output.value["negotiation_id"] == _NEGOTIATION_ID
-        assert output.value["state"] is None
+        with pytest.raises(StepExecutionError, match="controller"):
+            await NegotiateStep().invoke({}, mock_context, definition)
 
     def test_target_is_no_longer_an_accepted_spelling(self) -> None:
         """C10 — the field is ``asset_id`` and nothing else.

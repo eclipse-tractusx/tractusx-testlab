@@ -162,15 +162,15 @@ class TestWhatDoesNotResolve:
         )
         assert outcome.variables["generated_id"] is None
 
-    async def test_an_unresolved_reference_is_passed_on_as_its_own_text(
+    async def test_an_unresolved_reference_fails_the_step(
         self, harness: Harness
     ) -> None:
-        """Documented, not endorsed — a hazard a script author should know.
+        """A reference to a step that never ran must stop the step, not become a string.
 
-        A reference to a step that never ran is not an error at run time: the
-        template text itself becomes the value. The compiler is where this is
-        caught (``returns`` names are checked there); at run time it survives as
-        a string that looks nothing like the value it stands for.
+        This used to be documented as a known hazard: the template text itself
+        became the value, so a URL built from an undefined variable was requested
+        verbatim and the step reported on whatever came back. The reference now
+        names nothing and the step fails saying so.
         """
         outcome = await harness.run(
             {
@@ -179,7 +179,8 @@ class TestWhatDoesNotResolve:
                 "with": {"value": "${{ execution.never_ran.value }}"},
             },
         )
-        assert outcome.output("echo") == "${{ execution.never_ran.value }}"
+        assert not outcome.passed
+        assert "execution.never_ran.value" in (outcome.error("echo") or "")
 
 
 class TestReadingInsideAnOutput:

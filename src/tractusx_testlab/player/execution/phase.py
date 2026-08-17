@@ -19,10 +19,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""Shared per-step execution loop used by all phase runners."""
+
+"""Running a script's steps, one phase at a time.
+
+Setup, execution and teardown differ in four decisions — whether a failure
+stops the phase, whether ``if:`` conditions are honoured, whether the pause
+gate applies, and whether outputs are published — and in nothing else.  Those
+four are :class:`PhaseConfig`, and the three named runners below are the three
+settings of it, so a change to how a step is run cannot reach one phase and
+miss another.
+"""
 
 from __future__ import annotations
 
@@ -75,7 +84,7 @@ class PhaseConfig:
     store_outputs: bool
 
 
-async def _run_phase(
+async def run_phase(
     script: TestScript,
     context: StepContext,
     job_id: str,
@@ -199,3 +208,75 @@ def _make_missing_step_result(step_name: str, step_type: str, phase: StepPhase) 
         status=StepStatus.FAILED,
         error=f"No implementation found for step type '{step_type}'",
     )
+
+
+# ---------------------------------------------------------------------------
+# The three phases
+# ---------------------------------------------------------------------------
+
+#: Setup and execution are run identically — the label they report under and the
+#: steps they read are the whole difference. Spelled out rather than shared
+#: through a splat so each phase's four decisions are readable in one place.
+SETUP = PhaseConfig(
+    phase=StepPhase.SETUP,
+    phase_label="setup",
+    failure_policy=FailurePolicy.STOP,
+    evaluate_conditions=True,
+    use_pause_gate=True,
+    store_outputs=True,
+)
+
+EXECUTION = PhaseConfig(
+    phase=StepPhase.EXECUTION,
+    phase_label="execution",
+    failure_policy=FailurePolicy.STOP,
+    evaluate_conditions=True,
+    use_pause_gate=True,
+    store_outputs=True,
+)
+
+#: Teardown is the phase that must happen regardless: it runs after a failure,
+#: ignores ``if:``, cannot be paused, and publishes nothing — releasing a
+#: resource is not a result a later step reads.
+TEARDOWN = PhaseConfig(
+    phase=StepPhase.TEARDOWN,
+    phase_label="teardown",
+    failure_policy=FailurePolicy.CONTINUE,
+    evaluate_conditions=False,
+    use_pause_gate=False,
+    store_outputs=False,
+)
+
+
+async def run_setup(
+    script: TestScript,
+    context: StepContext,
+    job_id: str,
+    monitor: ExecutionMonitor,
+    jobs: JobManager,
+) -> tuple[list[StepResult], ScriptStatus]:
+    """Run the script's setup steps, stopping at the first failure."""
+    return await run_phase(script, context, job_id, monitor, jobs, SETUP)
+
+
+async def run_execution(
+    script: TestScript,
+    context: StepContext,
+    job_id: str,
+    monitor: ExecutionMonitor,
+    jobs: JobManager,
+) -> tuple[list[StepResult], ScriptStatus]:
+    """Run the script's main steps, stopping at the first failure."""
+    return await run_phase(script, context, job_id, monitor, jobs, EXECUTION)
+
+
+async def run_teardown(
+    script: TestScript,
+    context: StepContext,
+    job_id: str,
+    monitor: ExecutionMonitor,
+    jobs: JobManager | None = None,
+) -> list[StepResult]:
+    """Run the script's teardown steps, whatever happened before them."""
+    results, _ = await run_phase(script, context, job_id, monitor, jobs, TEARDOWN)
+    return results

@@ -49,8 +49,8 @@ def build_global_symbols(
     symbols: dict[str, Any] = {}
     _collect_variable_symbols(env_raw.get("variables", {}), symbols)
     _collect_service_symbols(env_raw.get("services", []), symbols)
-    _collect_simple_symbols(env_raw.get("schemas", {}), "env.schemas", "object", symbols)
-    _collect_simple_symbols(env_raw.get("testdata", {}), "env.testdata", "object", symbols)
+    _collect_simple_symbols(env_raw.get("schemas"), "env.schemas", "object", symbols)
+    _collect_simple_symbols(env_raw.get("testdata"), "env.testdata", "object", symbols)
     return symbols
 
 
@@ -137,10 +137,24 @@ def _build_field_entry(field_def: Any, source: str, default_type: str = "string"
 
 
 def _collect_simple_symbols(
-    mapping: dict[str, Any], prefix: str, type_str: str, symbols: dict[str, Any],
+    entries: Any, prefix: str, type_str: str, symbols: dict[str, Any],
 ) -> None:
-    """Add schemas or testdata symbols to the symbol table."""
-    for name in mapping:
+    """Add schemas or testdata symbols to the symbol table.
+
+    ``env.schemas`` and ``env.testdata`` are lists of ``{id, source}`` — that is
+    what :class:`EnvDefinition` declares and what every TCK is written in. This
+    used to iterate them as if they were a mapping, which over a list yields the
+    entry dicts themselves, so the symbol names came out as their Python repr::
+
+        "env.schemas.{'id': 'certificate_schema', 'source': '…json'}"
+
+    ``env.schemas.certificate_schema`` was therefore absent from the symbol
+    table, and anything resolving a schema through the IR found nothing.
+    """
+    for entry in entries or []:
+        name = entry.get("id") if isinstance(entry, dict) else entry
+        if not name:
+            continue
         symbols[f"{prefix}.{name}"] = {
             "source": prefix,
             "type": type_str,
@@ -148,7 +162,15 @@ def _collect_simple_symbols(
 
 
 def build_test_symbols(step_symbols: list[dict[str, Any]]) -> dict[str, Any]:
-    """Build per-test symbol_table containing ONLY step/setup/teardown outputs."""
+    """Build per-test symbol_table containing ONLY step/setup/teardown outputs.
+
+    The namespace is the phase's own name, for every phase. Main-phase outputs
+    used to be filed under ``steps.`` here while the runtime published them under
+    ``execution.`` and every TCK — and the syntax reference, and the IDE that
+    emits from it — writes ``${{ execution.<id>.<field> }}``. The runtime side of
+    that mismatch was fixed; this side was not, so the compiled symbol table
+    described a namespace nothing else used.
+    """
     symbols: dict[str, Any] = {}
 
     for sym in step_symbols:
@@ -157,7 +179,7 @@ def build_test_symbols(step_symbols: list[dict[str, Any]]) -> dict[str, Any]:
         elif sym["source"] == "teardown_output":
             prefix = "teardown"
         else:
-            prefix = "steps"
+            prefix = "execution"
         key = f"{prefix}.{sym['id']}.{sym['field']}"
         entry: dict[str, Any] = {
             "source": sym["source"],

@@ -83,7 +83,13 @@ def run(
     )
     player = TestlabPlayer(config=config)
 
-    tck = _load_tck(target, player_keys, compiler_pub)
+    try:
+        tck = _load_tck(target, player_keys, compiler_pub)
+    except ValueError as exc:
+        # A package that fails verification is a security outcome, not a stack
+        # trace: the operator needs to see which package was refused and why.
+        typer.echo(f"\nRefused to run {target.name}:\n  {exc}", err=True)
+        raise typer.Exit(1) from exc
     total_steps = tck.total_steps()
 
     _print_run_header(target, config_file, config, runtime_vars, total_steps)
@@ -233,12 +239,21 @@ def _make_progress_callback(progress, task_id):
     """Create a progress callback for the player monitor."""
     def _on_progress(event: str, payload: dict) -> None:
         if event == "step.started":
-            progress.update(task_id, description=f"  Running: {payload.get('step_type', '')}")
+            progress.update(
+                task_id, description=f"  Running: {payload.get('step_type') or ''}"
+            )
         elif event == "step.completed":
-            status = payload.get("status", "")
-            name = payload.get("step_name", "")
-            icon = "[green]PASS" if status == "passed" else "[red]FAIL"
-            progress.update(task_id, advance=1, description=f"  {icon} {name}")
+            # The outcome lives on the event's nested `result`, not at the top
+            # level. Reading `payload["status"]` found nothing, so the comparison
+            # was never true and every step — passing or not — rendered red FAIL
+            # with a blank name, on every run. The typed-event fix that removes
+            # this class of guesswork is P4 (F-C02); this is the reading bug.
+            step = payload.get("result") or {}
+            passed = str(step.get("status", "")).upper() == "PASSED"
+            icon = "[green]PASS" if passed else "[red]FAIL"
+            progress.update(
+                task_id, advance=1, description=f"  {icon} {step.get('step_name', '')}"
+            )
         elif event == "script.started":
             progress.update(task_id, description=f"  Script: {payload.get('script', '')}")
     return _on_progress
@@ -292,3 +307,13 @@ def _print_script_result(script, step_status_cls) -> None:
             f"{s.failed_hard} hard-failed, "
             f"{s.failed_soft} soft-failed"
         )
+        if s.unevaluated:
+            typer.echo(
+                f"    WARNING: {s.unevaluated} declared assertion(s) were never "
+                f"evaluated — this result describes less than the script asked for."
+            )
+        elif s.verified_nothing:
+            typer.echo(
+                "    NOTE: this script evaluated no assertions. It exercised the "
+                "steps but verified nothing about the system under test."
+            )

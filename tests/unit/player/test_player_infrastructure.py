@@ -80,10 +80,10 @@ def _tck(release: str | None = None, **required: bool) -> Tck:
     Built from the real models rather than a ``SimpleNamespace``.  A stub only
     has the attributes someone remembered to give it, so it agrees with whatever
     the code under test happens to read: when the player looked for
-    ``definition.dataspace_version`` — a field that lives on ``metadata``, not on
-    the definition — the stub was as silent about it as the real model, and the
-    release fell back to the default with nobody the wiser.  Using the declared
-    models means a field that moves breaks this test instead of the run.
+    a field the model does not declare, the stub was as silent about it as the
+    real model, and the release fell back to the default with nobody the wiser.
+    Using the declared models means a field that moves breaks this test instead
+    of the run.
     """
     return Tck(
         TckDefinition(
@@ -262,24 +262,21 @@ class TestRelease:
 
         assert context.infrastructure.sut.connector.standard == "CX-0018"
 
-    def test_the_release_is_read_from_the_metadata_block(self, tmp_path: Path) -> None:
-        """A TCK stating only ``metadata.dataspace_version`` still targets that release.
+    def test_the_dataspace_block_is_the_only_source_of_the_release(self) -> None:
+        """``dataspace.version`` states the release; nothing else does.
 
-        The flat spelling is the older way of naming the release and lives on the
-        metadata block.  The player used to look for it on the definition, where
-        no such field exists, so a jupiter TCK silently resolved to the saturn
-        default — and, worse, reported the release as never stated, which is the
-        flag that tells :meth:`InfrastructureManager.align` not to hold a
-        mismatch against the bound deployment.  The SDK then built saturn
-        services for a jupiter connector and nothing objected.
+        A flat ``dataspace_version`` field used to say the same thing in a second
+        place, and the player read it off the definition — where it had never
+        lived — so a TCK naming one release ran as another and reported the
+        release as unstated, which is the flag that suppresses the conflict
+        check. The field is gone; the block is the source.
         """
         tck = Tck(
             TckDefinition(
                 syntax="v1-alpha",
-                id="flat-release",
-                metadata=TckMetadataDefinition(
-                    name="Flat release", dataspace_version="jupiter"
-                ),
+                id="declared-release",
+                metadata=TckMetadataDefinition(name="Declared"),
+                dataspace=DataspaceContext(ecosystem="Catena-X", version="jupiter"),
             )
         )
 
@@ -301,17 +298,3 @@ class TestRelease:
 
         assert _target_release(tck) == ("saturn", False)
 
-    def test_the_dataspace_block_wins_over_the_metadata_spelling(self, tmp_path: Path) -> None:
-        """When both are present the ADR-0019 block is the source of the version."""
-        tck = Tck(
-            TckDefinition(
-                syntax="v1-alpha",
-                id="both-releases",
-                metadata=TckMetadataDefinition(
-                    name="Both", dataspace_version="jupiter"
-                ),
-                dataspace=DataspaceContext(ecosystem="Catena-X", version="saturn"),
-            )
-        )
-
-        assert _target_release(tck) == ("saturn", True)

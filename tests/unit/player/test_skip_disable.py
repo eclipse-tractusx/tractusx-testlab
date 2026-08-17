@@ -48,7 +48,7 @@ def _make_script_def(script_id: str = "test-a") -> MagicMock:
     """Return a minimal ScriptDefinition mock sufficient for TestScript."""
     d = MagicMock()
     d.metadata.name = script_id.replace("-", " ").title()
-    d.dataspace_version = "saturn"
+    d.dataspace = None
     d.id = script_id
     return d
 
@@ -89,7 +89,6 @@ def _make_script_result(name: str, status: ScriptStatus) -> MagicMock:
     now = datetime.now(UTC)
     return ScriptResult(
         script_name=name,
-        dataspace_version="saturn",
         status=status,
         execution=[],
         started_at=now,

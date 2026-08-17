@@ -319,6 +319,17 @@ RANGE_OPERATORS: frozenset[str] = frozenset(
     name for name, operator in _OPERATORS.items() if operator.arity is Arity.RANGE
 )
 
+
+def arity_of(operator: str) -> Arity | None:
+    """Which operands *operator* reads, or ``None`` if the name is unknown.
+
+    The arity is already declared per operator in the table above; exposing it
+    lets the vocabulary reject an assertion that supplies an operand the check
+    will not read, instead of letting the operand be silently discarded.
+    """
+    known = _OPERATORS.get(operator)
+    return known.arity if known is not None else None
+
 # A name declared in the vocabulary but missing from the table would fail at
 # runtime as "unknown", which is the confusing way to find out that the two
 # halves of this module disagree.

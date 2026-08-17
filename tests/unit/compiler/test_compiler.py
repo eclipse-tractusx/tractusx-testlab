@@ -83,7 +83,7 @@ def _tck_manifest(test_filename: str = "minimal-test.yaml") -> dict:
             "copyright_holders": [],
             "license": "Apache-2.0",
         },
-        "env": {"variables": [], "schemas": [], "assets": []},
+        "env": {"variables": [], "schemas": []},
         "tests": [{"id": test_filename}],
     }
 

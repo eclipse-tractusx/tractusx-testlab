@@ -38,7 +38,6 @@ syntax: v1-alpha
 kind: test
 id: stck-smoke
 namespace: testlab.test
-dataspace_version: saturn
 metadata:
   name: stck-smoke-test
   version: "1.0"

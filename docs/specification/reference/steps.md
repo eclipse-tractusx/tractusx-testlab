@@ -4,7 +4,7 @@
 
 Every step declares its interface as Pydantic models, and this page is generated from them, so it cannot drift from the implementation.
 
-57 steps.
+54 steps.
 
 ## Steps
 
@@ -1308,66 +1308,6 @@ _The value found at the path — whatever type the document holds there._
 
 Type: any
 
-### `validate/assert`
-
-Assert that a value satisfies an operator condition.
-
-Raises `ValueError` on failure so the runner marks the step as FAILED.
-
-**Inputs**
-
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `input` | any | no | `None` | — | The value to validate. |
-| `operator` | `not_null` \| `is_null` \| `not_empty` \| `equals` \| `not_equals` \| `contains` \| `not_contains` \| `matches_regex` \| `one_of` \| `none_of` \| `has_key` \| `not_has_key` \| `gt` \| `gte` \| `lt` \| `lte` \| `length_equals` \| `length_gt` \| `length_lt` \| `between` | no | `'not_null'` | — | Comparison applied to the value. |
-| `value` | any | no | `None` | — | Expected value; required for the operators that compare two operands. |
-
-**Output** — the value assertions and `returns:` read
-
-_The value that was asserted on, passed through unchanged._
-
-Type: any
-
-### `validate/field`
-
-Assert that a field at a dot-separated path satisfies an operator condition.
-
-Raises `ValueError` on failure so the runner marks the step as FAILED.
-
-**Inputs**
-
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `input` | any | no | `None` | — | The value to validate. |
-| `operator` | `not_null` \| `is_null` \| `not_empty` \| `equals` \| `not_equals` \| `contains` \| `not_contains` \| `matches_regex` \| `one_of` \| `none_of` \| `has_key` \| `not_has_key` \| `gt` \| `gte` \| `lt` \| `lte` \| `length_equals` \| `length_gt` \| `length_lt` \| `between` | no | `'not_null'` | — | Comparison applied to the value. |
-| `value` | any | no | `None` | — | Expected value; required for the operators that compare two operands. |
-| `path` | string | no | `''` | — | Dot-separated key path to the field, e.g. 'header.messageId'. Empty asserts on the whole object. |
-
-**Output** — the value assertions and `returns:` read
-
-_The value that was asserted on, passed through unchanged._
-
-Type: any
-
-### `validate/schema`
-
-Validate a JSON payload against a JSON Schema document.
-
-Raises `ValueError` on failure so the runner marks the step as FAILED.
-
-**Inputs**
-
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `input` | any | no | `None` | — | The payload to validate — an object, a list, or a JSON string. |
-| `schema` | any | yes | — | — | A JSON Schema document, typically '${{ env.schemas.<id> }}', which the player seeds from the TCK 'env.schemas' block. |
-
-**Output** — the value assertions and `returns:` read
-
-_The validated payload, parsed from JSON when it arrived as a string._
-
-Type: any
-
 ## Nested objects
 
 ### Assertion
@@ -1469,5 +1409,6 @@ Step definition using `uses` and `with` verb-form keys.
 | `with` | object | no | `None` | — |  |
 | `returns` | object | no | `None` | — |  |
 | `validate` | list of [Assertion](#assertion) | no | `None` | — |  |
+| `expects` | `fail` | no | `None` | — |  |
 | `timeout_s` | number | no | `None` | — |  |
 | `if` | string | no | `None` | — |  |

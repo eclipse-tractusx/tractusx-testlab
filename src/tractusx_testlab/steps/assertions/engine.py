@@ -47,22 +47,14 @@ class AssertionEngine:
     """Evaluates a list of assertions against a step's output value."""
 
     @staticmethod
-    def evaluate(
-        assertions: list[Assertion],
-        output: object,
-        context_vars: dict[str, object] | None = None,
-    ) -> list[AssertionResult]:
+    def evaluate(assertions: list[Assertion], output: object) -> list[AssertionResult]:
+        """Evaluate every ``validate:`` entry against the output the step produced."""
         return [
-            AssertionEngine._evaluate_one(assertion, output, context_vars or {})
-            for assertion in assertions
+            AssertionEngine._evaluate_one(assertion, output) for assertion in assertions
         ]
 
     @staticmethod
-    def _evaluate_one(
-        assertion: Assertion,
-        output: object,
-        context_vars: dict[str, object],
-    ) -> AssertionResult:
+    def _evaluate_one(assertion: Assertion, output: object) -> AssertionResult:
         params = assertion.with_ or {}
         severity = AssertionSeverity(params.get("severity", "HARD"))
         resolved = resolve(assertion.uses, params)
@@ -77,7 +69,7 @@ class AssertionEngine:
             )
 
         actual = AssertionEngine._extract_subject(output, params, resolved)
-        expected = AssertionEngine._resolve_expected(params, resolved, context_vars)
+        expected = AssertionEngine._resolve_expected(params, resolved)
         passed, message = AssertionEngine._check(resolved, actual, expected)
 
         return AssertionResult(
@@ -107,29 +99,21 @@ class AssertionEngine:
         return subject
 
     @staticmethod
-    def _resolve_expected(
-        params: dict,
-        resolved: ResolvedAssertion,
-        context_vars: dict[str, object],
-    ) -> object:
-        """Read what the assertion compares against, resolving variable references."""
-        if resolved.kind is AssertionKind.SCHEMA:
-            return AssertionEngine._deref(params.get("schema"), params, context_vars)
-        if resolved.operator in RANGE_OPERATORS:
-            return [
-                AssertionEngine._deref(params.get("min"), params, context_vars),
-                AssertionEngine._deref(params.get("max"), params, context_vars),
-            ]
-        return AssertionEngine._deref(params.get("value"), params, context_vars)
+    def _resolve_expected(params: dict, resolved: ResolvedAssertion) -> object:
+        """Read what the assertion compares against.
 
-    @staticmethod
-    def _deref(value: object, params: dict, context_vars: dict[str, object]) -> object:
-        """Resolve a context-variable reference, whether spelled ``@name`` or declared."""
-        if params.get("source") == "VARIABLE":
-            return context_vars.get(str(value), value)
-        if isinstance(value, str) and value.startswith("@"):
-            return context_vars.get(value[1:], value)
-        return value
+        No dereferencing happens here.  A ``validate:`` block's ``with:`` is
+        resolved by the same ``${{ ... }}`` pass every other step parameter goes
+        through, before the engine ever sees it — so by this point ``value`` is
+        already the value.  Two further spellings used to be honoured at this
+        point alone, ``@name`` and ``source: VARIABLE``, which meant an assertion
+        could name a variable three ways and the compiler validated one of them.
+        """
+        if resolved.kind is AssertionKind.SCHEMA:
+            return params.get("schema")
+        if resolved.operator in RANGE_OPERATORS:
+            return [params.get("min"), params.get("max")]
+        return params.get("value")
 
     @staticmethod
     def _check(
@@ -159,8 +143,16 @@ class AssertionEngine:
         )
 
     @staticmethod
-    def build_summary(step_results: list[StepResult]) -> AssertionSummary:
-        """Aggregate assertion counts across step results."""
+    def build_summary(
+        step_results: list[StepResult], declared: int | None = None
+    ) -> AssertionSummary:
+        """Aggregate assertion counts across step results.
+
+        *declared* is how many checks the executed steps asked for. Passing it
+        lets the summary report the difference between "nothing was declared"
+        and "something was declared and did not run" — see
+        :attr:`AssertionSummary.unevaluated`.
+        """
         total = passed = failed_hard = failed_soft = 0
         for step_result in step_results:
             for assertion_result in step_result.assertions:
@@ -172,6 +164,7 @@ class AssertionEngine:
                 else:
                     failed_soft += 1
         return AssertionSummary(
+            declared=total if declared is None else declared,
             total=total, passed=passed,
             failed_hard=failed_hard, failed_soft=failed_soft,
         )

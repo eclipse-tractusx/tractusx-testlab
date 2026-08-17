@@ -44,8 +44,22 @@ from tractusx_testlab.models.primitives.enums import ServiceType, VariableScope,
 # Shared primitive models (kept across syntax versions)
 # ---------------------------------------------------------------------------
 
+#: Every authoring model rejects keys it does not declare.
+#:
+#: Pydantic's default is ``extra="ignore"``, which silently discarded them. A
+#: ``validte:`` block was dropped and the step reported PASS with zero
+#: assertions; a ``whit:`` block was dropped and the step ran with no
+#: parameters. The reasoning was already written down one layer in, on
+#: ``StepParams``, and simply never applied to the models that select it: a key
+#: the author wrote and the engine ignored is how a script comes to look like it
+#: configured something it never configured.
+_STRICT = ConfigDict(populate_by_name=True, extra="forbid")
+
+
 class VariableDefinition(BaseModel):
     """Schema for a declared variable."""
+
+    model_config = _STRICT
 
     name: str
     type: str = "str"
@@ -62,6 +76,8 @@ class VariableDefinition(BaseModel):
 class ServiceDefinition(BaseModel):
     """Declaration of an external service used by tests."""
 
+    model_config = _STRICT
+
     name: str
     type: ServiceType
     base_url: str
@@ -71,6 +87,8 @@ class ServiceDefinition(BaseModel):
 
 class ImportDefinition(BaseModel):
     """Reference to an external script to import into a TCK."""
+
+    model_config = _STRICT
 
     import_ref: str
     override: dict | None = None
@@ -83,7 +101,7 @@ class ImportDefinition(BaseModel):
 class MetadataDefinition(BaseModel):
     """Metadata block common to scripts and TCK manifests."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _STRICT
 
     name: str
     version: str = "1.0"
@@ -94,7 +112,7 @@ class MetadataDefinition(BaseModel):
 class ReturnFieldDefinition(BaseModel):
     """Single output field declared in a step ``returns`` block."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _STRICT
 
     type: str
     cls: str | None = Field(default=None, alias="class")
@@ -103,7 +121,7 @@ class ReturnFieldDefinition(BaseModel):
 class Assertion(BaseModel):
     """Assertion using ``uses`` / ``with`` verb-form keys."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _STRICT
 
     uses: str
     with_: dict[str, Any] | None = Field(default=None, alias="with")
@@ -112,7 +130,7 @@ class Assertion(BaseModel):
 class StepDefinition(BaseModel):
     """Step definition using ``uses`` and ``with`` verb-form keys."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _STRICT
 
     id: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]{0,49}$")
     uses: str
@@ -120,6 +138,21 @@ class StepDefinition(BaseModel):
     with_: dict[str, Any] | None = Field(default=None, alias="with")
     returns: dict[str, ReturnFieldDefinition] | None = None
     validate: list[Assertion] | None = None
+    #: Marks the step as a negative test (syntax spec §9.3): the request is one
+    #: the system under test is required to refuse.
+    #:
+    #: Declarative. What "refused correctly" means is expressed by the step's
+    #: ``validate:`` block, which is where a negative test's expectation lives —
+    #: the shipped error-handling TCK marks a step ``expects: fail`` and then
+    #: asserts ``status_code == 200`` with a well-formed rejection body, because
+    #: the refusal is an application-level answer, not a transport failure.
+    #: Inverting the step's own outcome would therefore fail exactly the runs
+    #: that are correct.
+    #:
+    #: Declared rather than merely tolerated so it survives ``extra="forbid"``
+    #: and reaches the compiled IR, where the IDE and reporting can see which
+    #: steps are negative tests.
+    expects: Literal["fail"] | None = None
     # Runtime control fields kept for execution-engine compatibility.
     timeout_s: float | None = None
     if_condition: str | None = Field(default=None, alias="if")
@@ -128,7 +161,7 @@ class StepDefinition(BaseModel):
 class ScriptDefinition(BaseModel):
     """Top-level test script definition."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _STRICT
 
     kind: Literal["test"] = "test"
     syntax: Literal["v1-alpha"]
@@ -142,9 +175,10 @@ class ScriptDefinition(BaseModel):
     setup: list[StepDefinition] = Field(default_factory=list)
     execution: list[StepDefinition] = Field(default_factory=list)
     teardown: list[StepDefinition] = Field(default_factory=list)
-    dataspace_version: Literal["saturn", "jupiter"] = "saturn"
-    # Transition fields: allow dataspace/infrastructure on per-script level for
-    # backward-compatible test suites that embed them inline.
+    #: The ecosystem release and the capabilities this script needs. Both are
+    #: stated in blocks — there is no flat ``dataspace_version`` field: it was
+    #: the older spelling of ``dataspace.version`` and having two ways to say
+    #: one thing is how the two came to disagree.
     dataspace: DataspaceContext | None = None
     infrastructure: InfrastructureConfig | None = None
 
@@ -156,11 +190,12 @@ class TckMetadataDefinition(MetadataDefinition):
     copyright_holders: list[str] = Field(default_factory=list)
     license: str = "Apache-2.0"
     standards: list[dict[str, Any]] = Field(default_factory=list)
-    dataspace_version: Literal["saturn", "jupiter"] = "saturn"
 
 
 class SchemaDefinition(BaseModel):
     """A single schema entry in the TCK env block."""
+
+    model_config = _STRICT
 
     id: str
     source: str
@@ -169,6 +204,8 @@ class SchemaDefinition(BaseModel):
 class TestDataDefinition(BaseModel):
     """A single test data entry in the TCK env block."""
 
+    model_config = _STRICT
+
     id: str
     source: str
     type: str = "application/json"
@@ -176,6 +213,8 @@ class TestDataDefinition(BaseModel):
 
 class EnvDefinition(BaseModel):
     """Environment block in a TCK manifest — shared variables, services, and test data."""
+
+    model_config = _STRICT
 
     variables: Any | None = None
     services: list[dict[str, Any]] | None = None
@@ -192,6 +231,8 @@ class TckTestEntry(BaseModel):
     test at runtime via the ``skip_tests`` runtime variable.
     """
 
+    model_config = _STRICT
+
     id: str = Field(pattern=r"^[a-zA-Z0-9_\-\.]+\.yaml$")
     name: str | None = None
     skippable: bool = False
@@ -200,7 +241,7 @@ class TckTestEntry(BaseModel):
 class TckDefinition(BaseModel):
     """Top-level TCK manifest definition."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _STRICT
 
     kind: Literal["tck"] = "tck"
     syntax: Literal["v1-alpha"]

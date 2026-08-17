@@ -20,10 +20,9 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-"""Loading sub-module — TCK loading, dependency ordering, and parameter resolution."""
+"""Loading sub-module — TCK loading and parameter resolution."""
 
 from tractusx_testlab.player.loading.loader import Loader
-from tractusx_testlab.player.loading.ordering import topological_sort
-from tractusx_testlab.player.loading.resolver import resolve_params, resolve_service_def
+from tractusx_testlab.player.loading.resolver import resolve_params
 
-__all__ = ["Loader", "resolve_params", "resolve_service_def", "topological_sort"]
+__all__ = ["Loader", "resolve_params"]

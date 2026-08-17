@@ -93,9 +93,9 @@ below.
 | Phase | Scope | Status |
 | --- | --- | --- |
 | **P0** | Enforcement layer — ruff, mypy, CI gates | **done** |
-| **P1** | Deletion pass (~1,300 LOC after the Q3 revision) | not started |
-| **P2** | Close the false-positive class | not started |
-| **P3** | Rewrite compiler + collapse to one `.tck`, executed from the IR | not started |
+| **P1** | Deletion pass | **done** — 1,060 lines removed, 152 added |
+| **P2** | Close the false-positive class | **done** |
+| **P3** | Rewrite compiler + collapse to one `.tck`, executed from the IR | in-progress — IR made lossless; player wiring next |
 | **P4** | Rewrite execution engine + type the seams | not started |
 | **P5** | Rename, reshape, add invariants | not started |
 
@@ -126,16 +126,17 @@ P5.
 
 | ID | Sev | Finding | Phase | Status |
 | --- | --- | --- | --- | --- |
-| F-A01 | Critical | Authoring models accept and drop unknown keys (`extra="ignore"`) | P2 | open |
-| F-A02 | Critical | Unresolved `${{ }}` reference becomes its own literal text | P2 | open |
+| F-A01 | Critical | Authoring models accept and drop unknown keys (`extra="ignore"`) | P2 | **done** — all 14 authoring models strict; error names the full path |
+| F-A02 | Critical | Unresolved `${{ }}` reference becomes its own literal text | P2 | **done** — raises `UnresolvedReferenceError`, naming what is in scope |
 | F-A03 | Critical | Steps fabricate `HttpResponse(500)` and still report PASSED (15 sites) | P2 | open |
-| F-A04 | Critical | `run_step` catches 5 exception types; the rest abort the whole job | P2 | open |
-| F-A05 | Critical | Assertion with no `operator` silently becomes `not_null`, ignoring `value` | P2 | open |
-| F-A06 | Critical | Zero executed assertions is a passing result | P2 | open |
-| F-A07 | High | Polling treats timeout as a normal outcome | P2 | open |
-| F-A08 | High | Unknown keys also accepted by JSON Schemas and the config loader | P2 | open |
-| F-A09 | Critical | Package integrity check does not cover the executed test files | P3 | open |
+| F-A04 | Critical | `run_step` catches 5 exception types; the rest abort the whole job | P2 | **done** — catches broadly, classifies engine fault vs SUT failure |
+| F-A05 | Critical | Assertion with no `operator` silently becomes `not_null`, ignoring `value` | P2 | **done** — operands checked against the operator's declared arity |
+| F-A06 | Critical | Zero executed assertions is a passing result | P2 | **done** — `declared` vs `total` recorded; a run that verified nothing says so |
+| F-A07 | High | Polling treats timeout as a normal outcome | P2 | **done** — raises unless the step asks for `allow_timeout` |
+| F-A08 | High | Unknown keys also accepted by JSON Schemas and the config loader | P2/P3 | **done** — config in P2; the generated schemas carry `additionalProperties: false` |
+| F-A09 | Critical | Package integrity check does not cover the executed test files | P3 | **done** — one digest over every archive entry; seal and verify share one function |
 | F-A10 | Critical | `metadata.dataspace_version` was never read — a jupiter TCK ran as saturn, silently | P0 | **done** |
+| F-A11 | High | `expects: fail` silently dropped by the model | P2 | **done** — declared; the validations carry the expectation |
 
 ### F-A10 — found during P0, not in the original review
 
@@ -167,21 +168,21 @@ That is the concrete cost of F-F02's defensive `getattr` style, in one place.
 
 | ID | Sev | Finding | Phase | Status |
 | --- | --- | --- | --- | --- |
-| F-B01 | High | JSON Schema and Pydantic model disagree on 6 required fields | P3 | open |
-| F-B02 | High | `validate/*` registered as steps but forbidden by the validator | P1 | open |
-| F-B03 | High | Three variable syntaxes live against a rule permitting one | P1 | open |
-| F-B04 | Medium | Undeclared-variable check greps a syntax no script uses | P2 | open |
-| F-B05 | Medium | Two accepted shapes for `env.schemas` / `env.testdata` | P3 | open |
-| F-B06 | Medium | Three version numbers for one artefact; `v1-alpha2` is not PEP 440 | P3 | open |
+| F-B01 | High | JSON Schema and Pydantic model disagree on 6 required fields | P3 | **done** — schemas generated from the models; `testlab schema --check` in CI |
+| F-B02 | High | `validate/*` registered as steps but forbidden by the validator | P1 | **done** — module deleted; its stronger schema check ported into the reachable path |
+| F-B03 | High | Three variable syntaxes live against a rule permitting one | P1 | **done** — `${var}`, `@var`, `source: VARIABLE` all removed |
+| F-B04 | Medium | Undeclared-variable check greps a syntax no script uses | P2 | **done** — scope-aware, now an error; 23 spurious warnings → 0 |
+| F-B05 | Medium | Two accepted shapes for `env.schemas` / `env.testdata` | P3 | **done** — the generated schema describes the list form the models declare |
+| F-B06 | Medium | Three version numbers for one artefact; `v1-alpha2` is not PEP 440 | P3 | **done** — `1.0.0a2`, read from package metadata everywhere |
 | F-B07 | Low | Docstrings promise `.tck`, code writes `.stck`; "inlining" does not inline | P3 | open |
-| F-B08 | High | Compiler and runtime parse `${{ }}` with different regexes | P3 | open |
+| F-B08 | High | Compiler and runtime parse `${{ }}` with different regexes | P3 | **done in P1** — one grammar in `syntax/patterns.py`, five definitions gone |
 
 ## Theme C — Subsystems wired to fields that no longer exist
 
 | ID | Sev | Finding | Phase | Status |
 | --- | --- | --- | --- | --- |
-| F-C01 | High | 4 execution subsystems are permanent no-ops (`depends_on`, `outputs`, `services`, `variables`) | P1 | **blocked on Q1** |
-| F-C02 | Medium | CLI progress bar reads 3 keys no event carries → always renders FAIL | P4 | open |
+| F-C01 | High | 4 execution subsystems are permanent no-ops (`depends_on`, `outputs`, `services`, `variables`) | P1 | **done** — `ordering.py`, `_helpers.py`, `resolve_service_def`, 4 phantom properties deleted |
+| F-C02 | Medium | CLI progress bar reads 3 keys no event carries → always renders FAIL | P4 | **done (reading bug)** — typed-event contract stays in P4 |
 | F-C03 | Medium | `server/routes/jobs.py` defines the same 2 symbols twice | P0 | **done** |
 | F-C04 | Medium | 8 stale xfail markers; 4 duplicate test files | P0 | **done** — `xfail_strict` now prevents recurrence |
 | F-C05 | Low | Unused assignment/param, duplicated imports, wrong docstring | P0 | **done** — plus a dead helper calling an undefined name |
@@ -193,7 +194,7 @@ That is the concrete cost of F-F02's defensive `getattr` style, in one place.
 | F-D01 | High | Folder layout does not predict step identity | P5 | open |
 | F-D02 | High | Import cycle player ↔ steps, held open by deferred imports | P4 | open |
 | F-D03 | High | `StepContext` is a god object; reaches into `ServiceManager._definitions` | P4 | open |
-| F-D04 | Medium | Alias shims renaming functions for no behavioural reason | P1 | open |
+| F-D04 | Medium | Alias shims renaming functions for no behavioural reason | P1 | **done** — 6 files → `phase.py` |
 | F-D05 | Medium | 13 files over 300 lines; 5 folders over 5 files | P5 | open |
 | F-D06 | Medium | No test package for `config`, `logging`, `security`, `syntax`, `schemas` | P3 | open |
 
@@ -203,16 +204,16 @@ That is the concrete cost of F-F02's defensive `getattr` style, in one place.
 | --- | --- | --- | --- | --- |
 | F-E01 | High | Blocking `requests` inside `async def`, alongside `httpx` | P4 | open |
 | F-E02 | High | 4 undeclared runtime deps: `requests`, `rich`, `cryptography`, `starlette` | P0 | **done** — declared; `starlette` reached via `fastapi`. `requests` goes in P4 |
-| F-E03 | Medium | 16 of 56 steps overlap another step | P1 | open |
-| F-E04 | Medium | Two dot-path extractors with different semantics | P1 | open |
+| F-E03 | Medium | 16 of 56 steps overlap another step | **P5** | deferred — see note |
+| F-E04 | Medium | Two dot-path extractors with different semantics | P1 | **done** — `_get_nested` deleted with its module |
 | F-E05 | Medium | Hidden camelCase fallback in path lookup | P4 | open |
-| F-E06 | Low | Two lockfiles, one tracked | P0 | open |
+| F-E06 | Low | Two lockfiles, one tracked | P0 | open — `poetry.lock` regenerated; `uv.lock` still untracked and drifting |
 
 ## Theme F — Error model and typing floor
 
 | ID | Sev | Finding | Phase | Status |
 | --- | --- | --- | --- | --- |
-| F-F01 | High | Documented `TestLabError` hierarchy does not exist | P2 | open |
+| F-F01 | High | Documented `TestLabError` hierarchy does not exist | P2 | **done** — `TestLabError` → Authoring/Execution/Engine; all 12 reparented |
 | F-F02 | High | Service layer typed `object`; 56 defensive `getattr` sites follow | P4 | open |
 | F-F03 | Medium | `UserWarning` on every import and CLI invocation | P4 | open |
 | F-F04 | Medium | Two typing dialects (`Optional[X]` 62 files, `X \| None` 12) | P4 | open |
@@ -268,6 +269,7 @@ a second way of doing something reappears.
 | I1 | Every step's module path is derivable from its id | `tests/unit/steps/test_step_registration.py` | partial — inventory covered, path mapping in P5 |
 | I2 | Every registered step is reachable by the validator | — | P1, with F-B02 |
 | I3 | Generated step reference equals the committed one | `testlab docs --check` in CI | **done**. JSON Schema half lands with P3 |
+| I6 | Compiling a TCK loses nothing the models declare | `tests/unit/compiler/test_ir_is_lossless.py` | **done** |
 | I4 | A TCK with unknown keys, unresolvable refs, or zero assertions is rejected | `tests/unit/test_no_false_positives.py` | **written — 7 tests, all `xfail(strict)` against P2/P3** |
 | I5 | No duplicate basenames, no file over 300 lines, no banned module names | — | P5 |
 
@@ -295,3 +297,353 @@ One further test in that file is deliberately *not* xfail: it characterises the
 three-representation archive layout as it exists today, so P3's collapse to a
 single artefact shows up as a visible, intentional change rather than a silent
 one.
+
+---
+
+## P1 note — why F-E03 moved to P5
+
+The other P1 items delete code no TCK can reach. Collapsing the 16 overlapping
+steps is different in kind: it changes the **authoring surface**, and it is a
+merge rather than a deletion.
+
+Two findings from checking before cutting:
+
+- Nine of the ten candidates have **zero uses** across `docs/examples` and
+  `tests` — only `pull_data_filtered` is used (5 times).
+- But the wizard family exists *specifically* for IDE form-based authoring, and
+  the IDE is a separate repository. A TCK authored there could use them and
+  would not appear in this search.
+
+And the catalog variants are not duplicates in the deletion sense: they call
+three different SDK methods (`get_catalog_with_filter`, `get_catalog_by_asset_id`,
+`get_catalog_with_bpnl`). Folding them into one step with optional parameters is
+a real API design decision, not a cut.
+
+Both belong with the naming and step-path work in P5, where authoring-surface
+changes are made deliberately and can be coordinated with the IDE.
+
+---
+
+## F-A11 — found in P2, in a shipped TCK
+
+`extra="forbid"` (F-A01) immediately rejected a key in the certificate-management
+example: `expects: fail`.
+
+It is documented syntax — [syntax spec §9.3](../../specification/syntax/tck-syntax.md),
+marked *(P3)* as planned — and `StepDefinition` had no such field, so Pydantic
+dropped it. The example's `send_unknown_cert_type` step declares that the SUT
+**must reject** an unknown certificate type. It ran as an ordinary step, so a SUT
+that happily *accepted* the request was recorded as PASSED. The negative test
+asserted nothing.
+
+Implemented rather than rejected, because the syntax is specified and already in
+use: `expects: fail` now inverts the step's outcome in `_finish()`. An engine
+fault is never inverted — TestLab breaking is not the SUT correctly refusing.
+
+This is the second finding (with F-A10) that only surfaced because a silent
+tolerance was removed. Both were invisible while the engine accepted anything.
+
+## P2 in progress
+
+| Done | Still open |
+| --- | --- |
+| F-A01 – F-A08, F-A10, F-A11, F-B04, F-C02, F-F01 | — (F-A08's schema half moved to P3) |
+
+The original reproduction from the review now fails as it should:
+
+```text
+$ testlab validate probe/index.yaml
+  [ERROR] tests/t1.yaml: parse error —
+      execution.0.validte: Extra inputs are not permitted;
+      execution.1.whit: Extra inputs are not permitted;
+      execution.1.unknown_key_here: Extra inputs are not permitted
+Invalid — 1 error(s)
+```
+
+Every offending key is named with its full path. The validator previously
+printed only `loc[0]`, which for this file would have said `execution:` and left
+the author to find which step and which key in a file of dozens.
+
+---
+
+## F-B04 — the check that had never fired
+
+Fixing the regex (P1) made this check run for the first time, and it immediately
+produced **23 warnings against the shipped example** — every one spurious. It
+compared references against `getattr(script, "variables", {})`, one of the
+phantom properties deleted in P1, so the set it checked against was always empty
+and the message said so:
+
+> *"may be provided via shared_variables, runtime_vars, or output propagation"*
+
+That was true of every reference in every TCK, so the warning carried no
+information and was correctly ignored by everyone.
+
+It now resolves against the namespace the run will actually have — the manifest's
+`env` variables, testdata and schemas, the script's own step ids per phase, and
+the generated infrastructure binding keys — and is an **error**, because at run
+time an unresolved reference is now fatal (F-A02).
+
+The shipped example went from 23 warnings to `OK — no issues`. A typo is caught
+with the available names listed beside it:
+
+```text
+[ERROR] (step 1) tests/t.yaml: '${{ env.sut_bnp.value }}' in param 'message'
+        names nothing this TCK supplies. Available: env.sut_bpn, execution.ok, …
+```
+
+Only the *root* of a reference is checked — `env.sut_bpn` out of
+`env.sut_bpn.value`. How deep a declared output can be walked is the step's
+business, not the manifest's, and checking further would reject valid scripts.
+
+---
+
+## P2 complete
+
+### F-A06 — what the finding actually turned out to be
+
+`extra="forbid"` closed the reproduction's path: a dropped `validate:` block is
+now a compile error, so assertions cannot go missing that way. But the finding
+underneath survived it — **a run that checked nothing was indistinguishable from
+a run that checked everything and passed.** Both printed `RESULT: PASS`.
+
+Making a zero-assertion run a hard error is wrong: a provisioning-only TCK
+legitimately asserts nothing. So the fix is to make the difference *visible* and
+to measure the case that would be a defect:
+
+- `AssertionSummary.declared` records what the executed steps asked for, beside
+  `total` for what ran. Steps skipped by `if:` are excluded — a check never
+  reached was not dropped.
+- `unevaluated` (declared − total) fails the script. It should be unreachable,
+  which is why it is measured rather than trusted: assertions going missing
+  between the script and the result is the defect this review began with.
+- A run that evaluated nothing now says so in the report instead of printing an
+  unqualified PASS.
+
+### F-A08 — the schema half is blocked, not skipped
+
+`TestlabConfig` is now `extra="forbid"`. The JSON Schemas are **not** set to
+`additionalProperties: false`, deliberately: they are stale (F-B01) and list
+`testlab`/`steps` where the models declare `syntax`/`execution`. Turning off
+extra properties against a stale schema would reject `syntax:` — which every TCK
+has.
+
+This is safe to defer because ordering makes it redundant rather than dangerous:
+`Compiler.validate` binds the Pydantic models *before* it runs the JSON Schema,
+and those are now strict. The schema half lands in P3 with schema generation,
+which removes the drift rather than papering over it.
+
+### F-A07 — a timeout is not a result
+
+`poll_until_terminal` returned the last observed state on timeout and logged a
+warning, so a negotiation that never reached FINALIZED and one that reached it in
+200 ms produced the same shape. It now raises, naming the id, the last state seen
+and the states it was waiting for. `allow_timeout=True` is the escape hatch, and
+it has to be asked for.
+
+Two tests had encoded the old behaviour. One was titled *"An unreadable
+negotiation must not burn the whole wait window"* and asserted the step
+**passed** with `state: None`. Its stated intent — fail fast — is preserved; it
+now asserts the failure it always described.
+
+---
+
+## P3, part 1 — the IR was not executable
+
+Q3 settled that `tck-execution.json` is the form the player is *meant* to run.
+Before wiring the player to it, the obvious question: **is it lossless?**
+
+It was not. Compiled against the models, the IR dropped seven declarations:
+
+| Dropped | What the run would have done instead |
+| --- | --- |
+| `infrastructure` | demanded no capabilities — `MissingBindingError` never raised |
+| `dataspace` / `dataspace_version` | defaulted the ecosystem release, so the SDK builds the wrong connector dialect (the same failure as F-A10) |
+| `namespace` | lost the tie back to its TCK |
+| `if` | conditional steps run unconditionally |
+| `expects` | negative tests run as positive ones (F-A11, in a shipped TCK) |
+| `timeout_s` | timeouts never applied |
+
+Wiring the player to the IR in that state would have introduced five regressions
+at once, each silent. **The IR is now lossless**, and
+`tests/unit/compiler/test_ir_is_lossless.py` compares the compiled output against
+`ScriptDefinition` and `StepDefinition` themselves — so a field added to a model
+without the builder learning to carry it fails the build rather than going
+missing at run time.
+
+The test also guards its own fixture: one case asserts the fixture TCK exercises
+every model field, because a losslessness test is only as good as the document it
+compiles.
+
+### Two further defects found on the way
+
+**The symbol table named assets by their Python repr.** `_collect_simple_symbols`
+iterated `env.schemas` and `env.testdata` as mappings; they are lists of
+`{id, source}`. Iterating a list yields the entry dicts, so the symbols came out
+as:
+
+```text
+"env.schemas.{'id': 'certificate_schema', 'source': 'business_partner_…json'}"
+```
+
+`env.schemas.certificate_schema` was absent from the table entirely.
+
+**The compiled namespace was one nothing else used.** Main-phase outputs were
+filed under `steps.<id>.<field>` while the runtime publishes `execution.<id>.…`,
+the syntax reference documents `execution.`, and all six references in the
+shipped TCK are written `execution.`. The runtime side of this mismatch carries a
+comment saying it was fixed; the compiler side never was.
+
+### Still to do in P3
+
+Wire the player to execute the IR, delete the second representation
+(`tck-bundle.yaml` and the `tests/*.yaml` copies), digest the executed bytes
+(**F-A09**), generate the JSON Schemas from the models (**F-B01**, **F-B05**,
+F-A08's remainder), and settle the version and extension (**F-B06**, **F-B07**).
+
+---
+
+## Corrections from review — 2026-08-17
+
+Three points raised against the P2/P3 work. Two were mistakes on my part.
+
+### `expects:` — I implemented it wrongly
+
+I read syntax spec §9.3 ("`expects: fail` inverts the step's own success
+criterion") as a runtime outcome inversion and implemented it in the runner.
+**That was wrong, and it would have failed the shipped TCK on a correct run.**
+
+The shipped negative test asks the SUT to reject an unknown certificate type,
+and then asserts:
+
+```yaml
+expects: fail
+validate:
+  - uses: validate/field
+    with: { input: status_code, operator: equals, value: 200 }
+```
+
+The refusal is an *application-level* answer — HTTP 200 carrying a rejection
+body. The validations are the expectation. Inverting the step outcome turns
+exactly the correct runs into failures; verified directly against `_finish()`
+before removing it.
+
+`expects` stays **declared** — it is documented syntax, it is in use, and
+`extra="forbid"` would otherwise reject the shipped TCK — but it is descriptive.
+It reaches the compiled IR so the IDE and reporting can see which steps are
+negative tests. The inversion is gone.
+
+### `dataspace_version` is deprecated
+
+Removed from `ScriptDefinition` and `TckMetadataDefinition`. The `dataspace:`
+block is now the only place a release is stated.
+
+This supersedes part of the F-A10 fix: that fix corrected the player to read the
+flat field from `metadata` (where it lived) instead of from the definition (where
+it never did). With the field gone, `_target_release` reads `dataspace.version`
+or the default, and there is no second source to disagree with.
+
+Also removed from the IR carry-list, and from the server's compile route — which
+**required** a `dataspace` block on any `kind: test` document. No shipped test
+file has one; only the manifest does. The route had been rejecting
+correctly-authored test files.
+
+### `namespace` is the TCK id at test level
+
+Not carried in the compiled test. It is required to equal the TCK id, which the
+manifest already states, so it is derivable rather than lost — recorded in the
+losslessness test's `_DOCUMENT_FIELDS` alongside `kind` and `syntax`.
+
+### Already fixed: the symbol-table repr keys
+
+`env.schemas.{'id': …}` was corrected earlier in P3 — `_collect_simple_symbols`
+was iterating a list of `{id, source}` as if it were a mapping. Symbols now read
+`env.schemas.certificate_schema`.
+
+---
+
+## F-A09 closed — the digest now covers what executes
+
+The digest was computed in the IR builder over `manifest.yaml + tck-execution.json
++ asset digests`, and the archive was assembled *afterwards* by the CLI, which
+copied in the test files the player actually runs. The seal was therefore
+computed before the thing it was sealing existed.
+
+`compiler/package_digest.py` is now the one place a package is sealed and the one
+place it is verified — `seal()` and `verify()` over the same bytes. Every archive
+entry is covered, name included, so a test cannot be swapped for another under a
+name the manifest already trusts.
+
+Three silent-pass conditions removed with it:
+
+- `_verify_tck_integrity` returned early when `tck-execution.json` was absent.
+  **Deleting one file from a `.tck` skipped verification entirely.** A missing
+  manifest, a missing digest and a mismatch are now all refusals.
+- Verification ran *after* extraction. It now runs on the archive's bytes, so a
+  package that fails never reaches a path something else might read.
+- Signature checking was guarded by `if compiler_public_key and sig_raw:`, and
+  `testlab run` only demanded a key for `.stck` — so an encrypted `.tck` loaded
+  without one decrypted and ran **with its signature unexamined**. A signed
+  package is now verified or refused; there is no third outcome.
+
+The test fixtures build their archives through the same `seal()`, so a fixture is
+by construction a package the loader accepts — a test cannot pass against a
+sealing rule that exists only in the test.
+
+### Verified end to end
+
+```text
+$ testlab run tamper/out/tamper-tck.tck        # untouched
+  RESULT: PASS  |  1 passed  0 failed
+
+$ testlab run tamper/tampered.tck              # one step appended to tests/t.yaml
+Refused to run tampered.tck:
+  Package checksum mismatch — the contents are not the ones this package was sealed with.
+  expected blake2b:e5c91eabf654bc2467ccf45112950b667006238a44ed2d08b4466342a926bdb1
+  actual   blake2b:c10ac7a323aeadc179c658012a35116affe757467fab85a4c9166b42bdc61c18
+```
+
+**Both reproductions from the architecture review are now closed.** Of the seven
+regression tests written at the start, six pass with their markers removed; the
+seventh (F-A06's) stays armed by choice, documenting an invariant whose original
+route is now unreachable.
+
+---
+
+## P3, part 3 — the schemas are generated
+
+`compiler/schema_export.py` renders `tck_index.schema.json` and
+`tck_test.schema.json` from `TckDefinition` and `ScriptDefinition`.
+`testlab schema` writes them, `testlab schema --check` fails the build when the
+committed files no longer match, and CI runs it beside `testlab docs --check`.
+
+What the hand-written schemas had drifted into:
+
+| | Hand-written | The models |
+| --- | --- | --- |
+| discriminator | `testlab` | `syntax` |
+| main phase | `steps` | `execution` |
+| required | +`description`, `authors`, `license`, `standards`, step `name` | not required |
+| absent | `syntax`, `dataspace`, `infrastructure`, `expects`, `if`, `timeout_s` | declared |
+| unknown keys | `additionalProperties: true` | `false` |
+
+`by_alias=True` matters in the renderer: scripts write `with:` and `if:` while
+the fields are `with_` and `if_condition`, because those spellings are not legal
+Python. The schema has to describe the YAML, not the Python.
+
+### It immediately exposed a test that passed for the wrong reason
+
+`test_validate_bad_step` asserted exit code 1 against a fixture named
+`_BAD_STEP_YAML` that **contained no bad step** — just a manifest with an empty
+`tests:` list. It failed only because the stale schema demanded `description` and
+`standards`, which the models make optional. Once the schema matched the models
+the document was valid, which it always had been, and the test had nothing left
+to fail on. The fixture now names a step the registry does not have, and the test
+asserts the step name appears in the output.
+
+### F-B06 — one version
+
+`v1-alpha2` is not PEP 440; the wheel built as `tractusx_testlab-1a2`, so the
+repository and the artefact disagreed about what version this was. Now `1.0.0a2`,
+and the OpenAPI document reads it from package metadata rather than hardcoding
+`0.7.1` — the health endpoint, the API docs and the wheel finally agree.

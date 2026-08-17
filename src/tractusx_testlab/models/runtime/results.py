@@ -103,10 +103,36 @@ class CallbackResult(BaseModel):
 class AssertionSummary(BaseModel):
     """Aggregated assertion pass/fail counts for a script run."""
 
+    #: Assertions the script's executed steps declared. Recorded separately from
+    #: :attr:`total` so "checked nothing" is never indistinguishable from
+    #: "checked everything and it passed" — the two used to produce the same
+    #: ``RESULT: PASS`` with nothing to tell them apart.
+    declared: int = 0
     total: int = 0
     passed: int = 0
     failed_hard: int = 0
     failed_soft: int = 0
+
+    @property
+    def verified_nothing(self) -> bool:
+        """True when the run reached its end without evaluating a single check.
+
+        Not an error on its own — a provisioning-only TCK legitimately asserts
+        nothing — but it is never a certification, and a report that does not
+        say so is telling the reader something it did not establish.
+        """
+        return self.total == 0
+
+    @property
+    def unevaluated(self) -> int:
+        """Assertions a step declared and the engine did not evaluate.
+
+        Always zero if the engine is behaving: assertions are evaluated one for
+        one. A non-zero value means checks went missing between the script and
+        the result, which is the shape of the defect this whole review began
+        with, so it is measured rather than assumed.
+        """
+        return max(0, self.declared - self.total)
 
 
 class ScriptResult(BaseModel):

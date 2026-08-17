@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from tractusx_testlab.models import VaultConfig
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
@@ -35,6 +35,16 @@ _DEFAULT_BASE = Path.home() / ".testlab"
 
 
 class TestlabConfig(BaseModel):
+    """Engine settings, resolved from ``testlab.config.yaml``, env and CLI.
+
+    Unknown keys are rejected. A misspelled setting used to be discarded in
+    silence and the operator got the default they did not ask for — a
+    ``storage_dir`` typo meant packages quietly landed under ``~/.testlab``
+    while the config file said otherwise.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     keys_dir: Path = Field(default=_DEFAULT_BASE / "keys")
     trust_store_dir: Path = Field(default=_DEFAULT_BASE / "trusted_compilers")
     storage_dir: Path = Field(default=_DEFAULT_BASE / "packages")

@@ -41,6 +41,7 @@ from typing import Any
 # The waiting defaults are declared once in ``steps._contracts`` and re-exported
 # here, so the connector steps keep importing them from the module they poll
 # with and no two steps can drift into different waits.
+from tractusx_testlab.models import StepExecutionError
 from tractusx_testlab.steps._contracts import DEFAULT_MAX_WAIT, DEFAULT_POLL_INTERVAL
 
 logger = logging.getLogger(__name__)
@@ -94,37 +95,60 @@ async def poll_until_terminal(
     max_wait: float = DEFAULT_MAX_WAIT,
     poll_interval: float = DEFAULT_POLL_INTERVAL,
     verify: Any = None,
+    *,
+    what: str = "connector/poll",
+    allow_timeout: bool = False,
 ) -> dict:
     """Read *oid* until its ``state`` is in *terminal_states* or *max_wait* elapses.
 
-    Returns the last entity that could be read — empty when none ever could.
-    Neither timing out nor an unreadable entity is an error here: whatever state
-    was observed is the answer, and the step publishes it so the script can
-    assert on it.
+    Returns the entity once its state is terminal.
+
+    A timeout is a failure, not a result. It used to return whatever state had
+    last been observed and log a warning, so a negotiation that never reached
+    FINALIZED and one that reached it in 200 ms produced the same shape and the
+    step passed either way unless the TCK happened to assert on ``state``. A
+    conformance run cannot report on a state machine that never settled.
+
+    *allow_timeout* is the escape hatch for the case where not settling is the
+    thing under test — it has to be asked for, in the script, in writing.
 
     The connector answers a create request only once the entity is persisted, so
     a first read that fails means the entity cannot be observed at all — polling
     stops there rather than spending *max_wait* on a connector that will not
     answer.
+
+    Raises:
+        StepExecutionError: if the entity never settles, or cannot be read.
     """
-    if not oid or not callable(getattr(controller, "get_by_id", None)):
-        # No entity to watch, or a service that does not expose this controller.
-        return {}
+    if not oid:
+        raise StepExecutionError(what, "no id to watch — the create call returned none")
+    if not callable(getattr(controller, "get_by_id", None)):
+        raise StepExecutionError(
+            what, "the connector service exposes no controller to read this from"
+        )
 
     deadline = time.monotonic() + max_wait
     entity: dict = {}
     while True:
         current = read_entity(controller, oid, verify)
         if current is None and not entity:
-            logger.warning("Entity %s cannot be read; reporting no state", oid)
-            return {}
+            if allow_timeout:
+                return {}
+            raise StepExecutionError(what, f"{oid} cannot be read from the connector")
         entity = current or entity
         if str(entity.get("state", "")) in terminal_states:
             return entity
         if time.monotonic() + poll_interval > deadline:
-            logger.warning(
-                "Entity %s did not settle within %ss (state=%r)",
-                oid, max_wait, entity.get("state"),
+            if allow_timeout:
+                logger.warning(
+                    "Entity %s did not settle within %ss (state=%r); allowed by the step",
+                    oid, max_wait, entity.get("state"),
+                )
+                return entity
+            raise StepExecutionError(
+                what,
+                f"{oid} did not reach a final state within {max_wait}s — last seen "
+                f"{entity.get('state')!r}, waiting for one of "
+                f"{', '.join(sorted(terminal_states))}",
             )
-            return entity
         await asyncio.sleep(poll_interval)

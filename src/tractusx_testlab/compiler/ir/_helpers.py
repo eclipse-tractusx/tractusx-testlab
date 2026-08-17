@@ -111,7 +111,7 @@ def _build_instruction(
 
     validate = _build_validate_block(step)
 
-    return {
+    instruction: dict[str, Any] = {
         "index": index,
         "id": step.get("id", ""),
         "uses": step.get("uses", ""),
@@ -122,6 +122,17 @@ def _build_instruction(
         "phase": phase,
         "phase_index": phase_index,
     }
+
+    # Carried only when the author wrote them, so the compiled form stays the
+    # shape of the script rather than the shape of the model's defaults. Absent
+    # entirely before this, which meant a conditional step ran unconditionally, a
+    # negative test ran as a positive one, and a timeout was never applied — the
+    # run did something other than what the TCK said, in silence.
+    for control in ("if", "expects", "timeout_s"):
+        if step.get(control) is not None:
+            instruction[control] = step[control]
+
+    return instruction
 
 
 def _build_validate_block(step: dict[str, Any]) -> list[dict[str, Any]]:

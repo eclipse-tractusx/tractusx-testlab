@@ -38,6 +38,7 @@ from tractusx_testlab.models.runtime.inspection import TckInspectionResult
 from tractusx_testlab.scripting._infrastructure import collect_infrastructure_requirements
 from tractusx_testlab.scripting._inspection import build_inspection_result
 from tractusx_testlab.scripting._variable_form import parse_variables_block
+from tractusx_testlab.syntax import defaults
 
 
 class TestScript:
@@ -75,8 +76,14 @@ class TestScript:
 
     @property
     def dataspace_version(self) -> str:
-        """Target dataspace version — resolved from the script definition (default: 'saturn')."""
-        return self.definition.dataspace_version
+        """The ecosystem release this script runs against.
+
+        Read from the ``dataspace:`` block, which is the only place it is
+        stated; the flat field of the same name is gone. Used to pick a
+        version-specific step implementation from the registry.
+        """
+        dataspace = self.definition.dataspace
+        return dataspace.version if dataspace is not None else defaults.DATASPACE_VERSION
 
     @property
     def steps(self):
@@ -92,26 +99,6 @@ class TestScript:
     def teardown(self):
         """List of teardown step definitions."""
         return self.definition.teardown
-
-    @property
-    def services(self):
-        """Service declarations (resolved from TCK env)."""
-        return []
-
-    @property
-    def variables(self):
-        """Variable declarations (resolved from TCK env)."""
-        return {}
-
-    @property
-    def depends_on(self) -> list[str]:
-        """Dependency list — not used in v1-alpha scripts."""
-        return []
-
-    @property
-    def outputs(self) -> dict[str, str]:
-        """Declared output variable mappings — not used in v1-alpha scripts."""
-        return {}
 
     def step_count(self) -> int:
         """Return the number of main execution steps."""

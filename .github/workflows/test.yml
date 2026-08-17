@@ -98,6 +98,12 @@ jobs:
       - name: Step reference is current
         run: poetry run testlab docs --check
 
+      # The JSON Schemas are the contract the IDE validates against. They were
+      # hand-written and had drifted from the models that actually run; they are
+      # now generated, and this is what keeps them that way.
+      - name: JSON Schemas are current
+        run: poetry run testlab schema --check
+
   packaging:
     name: Wheel installs and imports
     runs-on: ubuntu-latest

@@ -22,26 +22,34 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Variable and service definition resolution for ${var} and ${{ }} references."""
+"""Resolving ``${{ ... }}`` references in a step's parameters.
+
+``${{ ... }}`` is the only reference syntax (ADR-0010).  Two older spellings —
+``${var}`` and ``@var`` — were resolved here as well, which meant the same value
+could be written three ways and the compiler only understood one of them.  They
+are gone; the compiler rejects them by name so a script written against the old
+grammar gets an error that says what to write instead.
+"""
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
-from tractusx_testlab.models.authoring.definitions import ServiceDefinition
+from tractusx_testlab.models import UnresolvedReferenceError
 from tractusx_testlab.syntax import patterns
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
-# ${{ expr }} pattern — matches the full double-curly wrapper
-_EXPR_RE = re.compile(r"\$\{\{\s*([^}]+?)\s*\}\}")
-_EXPR_FULL_RE = re.compile(r"^\$\{\{\s*([^}]+?)\s*\}\}$")
+
+#: Distinguishes "no such variable" from "a variable whose value is None".
+#: ``get_variable`` returns ``None`` for both, and conflating them is what let an
+#: undefined reference look like an ordinary empty value.
+_MISSING = object()
 
 
-def _resolve_expr(expr: str, context: StepContext) -> object:
-    """Resolve a single normalized expression against the context.
+def _lookup(expr: str, context: StepContext) -> object:
+    """Return what *expr* names, or :data:`_MISSING` if it names nothing.
 
     Resolution rules:
     - ``env.X`` → context variable ``X``
@@ -50,56 +58,50 @@ def _resolve_expr(expr: str, context: StepContext) -> object:
       (set by store_step_outputs or seeded by the player).
     - Anything else → flat context lookup as-is.
     """
-    expr = expr.strip()
-    if expr.startswith("env."):
-        return context.get_variable(expr[4:])
-    return context.get_variable(expr)
+    name = expr[4:] if expr.startswith("env.") else expr
+    if context.has_variable(name):
+        return context.get_variable(name)
+    return _MISSING
+
+
+def _require(expr: str, context: StepContext) -> object:
+    """Resolve *expr*, or refuse the run.
+
+    A reference that resolved to nothing used to be replaced by its own template
+    text and handed to the step as data: a URL built from an undefined variable
+    was requested verbatim, and a BPN compared against one compared as a string
+    containing braces. Neither failed, and both produced a verdict about a system
+    that was never asked the question.
+    """
+    value = _lookup(expr, context)
+    if value is _MISSING:
+        raise UnresolvedReferenceError(expr, list(context.variables))
+    return value
 
 
 def resolve_str(value: str, context: StepContext) -> object:
-    """Replace ``${{ }}``, ``${var}``, and ``@var`` references in a single string.
+    """Replace ``${{ ... }}`` references in a single string.
 
-    Priority order:
-    1. ``${{ expr }}`` (double-curly) — whole-string returns raw type.
-    2. ``@var`` — whole-string returns raw type.
-    3. Inline ``@var`` and ``${var}`` — string interpolation.
+    A reference that is the whole string returns the raw value, so a dict or a
+    list survives as itself rather than being stringified.  Mixed with literal
+    text, it interpolates.
+
+    Raises:
+        UnresolvedReferenceError: if any reference names nothing in scope.
     """
-    # Whole-string expression → return raw value (preserving type)
-    if "${{" in value:
-        full = _EXPR_FULL_RE.match(value)
-        if full:
-            resolved = _resolve_expr(full.group(1), context)
-            if resolved is not None:
-                # If the resolved value is itself a composite (dict/list) containing
-                # further ${{ }} expressions (e.g. testdata files), process them now.
-                return _resolve_value(resolved, context)
-            return value
-        # Inline interpolation (mixed with literal text)
-        value = _EXPR_RE.sub(
-            lambda m: str(
-                r if (r := _resolve_expr(m.group(1), context)) is not None else m.group(0)
-            ),
-            value,
-        )
+    if "${{" not in value:
+        return value
 
-    # Whole-string @var → return raw value (preserving type)
-    if value.startswith("@") and patterns.AT_VAR_REF.fullmatch(value):
-        var_name = value[1:]
-        resolved = context.get_variable(var_name)
-        return resolved if resolved is not None else value
+    full = patterns.EXPR_REF_FULL.match(value)
+    if full:
+        # A resolved composite may itself carry references — testdata files
+        # routinely do — so it is walked before being handed back.
+        return _resolve_value(_require(full.group(1), context), context)
 
-    # Inline @var replacements within a larger string (e.g. "@base_url/path")
-    result = patterns.AT_VAR_REF.sub(
-        lambda m: str(context.get_variable(m.group(1), m.group(0))),
+    return patterns.EXPR_REF.sub(
+        lambda m: str(_require(m.group(1), context)),
         value,
     )
-
-    # Also handle ${var} references
-    result = patterns.VAR_REF.sub(
-        lambda m: str(context.get_variable(m.group(1), m.group(0))),
-        result,
-    )
-    return result
 
 
 def _resolve_value(value: object, context: StepContext) -> object:
@@ -114,31 +116,10 @@ def _resolve_value(value: object, context: StepContext) -> object:
 
 
 def resolve_params(params: dict, context: StepContext) -> dict:
-    """Replace ``${var}`` and ``@var`` references in param values with context variables."""
+    """Resolve every ``${{ ... }}`` reference in a step's ``with:`` block."""
     resolved: dict[str, object] = {}
     for key, value in params.items():
         resolved[key] = _resolve_value(value, context)
     return resolved
 
 
-def resolve_service_def(svc_def: ServiceDefinition, context: StepContext) -> ServiceDefinition:
-    """Return a copy of *svc_def* with ``${var}`` and ``@var`` references resolved."""
-    resolved_base_url = resolve_str(svc_def.base_url, context)
-    base_url = resolved_base_url if isinstance(resolved_base_url, str) else str(resolved_base_url)
-    resolved_auth = {
-        auth_key: resolve_str(auth_value, context) if isinstance(auth_value, str) else auth_value
-        for auth_key, auth_value in svc_def.auth.items()
-    }
-    resolved_params: dict | None = None
-    if svc_def.params:
-        resolved_params = {
-            param_key: resolve_str(param_value, context) if isinstance(param_value, str) else param_value
-            for param_key, param_value in svc_def.params.items()
-        }
-    return ServiceDefinition(
-        name=svc_def.name,
-        type=svc_def.type,
-        base_url=base_url,
-        auth=resolved_auth,
-        params=resolved_params,
-    )

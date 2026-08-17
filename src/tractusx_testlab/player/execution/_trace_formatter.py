@@ -46,33 +46,18 @@ _NON_FAILING_STATUSES: frozenset[ScriptStatus] = frozenset({
 })
 
 
-def make_skipped_result(script: TestScript, unmet_deps: list[str]) -> ScriptResult:
-    """Build a FAILED result for a script whose dependencies were not met."""
-    now = datetime.now(UTC)
-    return ScriptResult(
-        script_name=script.name,
-        dataspace_version=script.definition.dataspace_version,
-        status=ScriptStatus.FAILED,
-        execution=[],
-        started_at=now,
-        finished_at=now,
-        total_duration_s=0.0,
-        assertion_summary=AssertionSummary(total=0, passed=0, failed_hard=0, failed_soft=0),
-        error=f"Skipped — unmet dependencies: {', '.join(unmet_deps)}",
-    )
 
 
 def make_intentionally_skipped_result(script: TestScript) -> ScriptResult:
     """Build a SKIPPED result for a test intentionally omitted by the operator.
 
-    Unlike ``make_skipped_result`` (which marks a dependency failure as FAILED),
     this result uses ``ScriptStatus.SKIPPED`` so the overall TCK result remains
     ``COMPLETED`` when all non-skipped tests pass.
     """
     now = datetime.now(UTC)
     return ScriptResult(
         script_name=script.name,
-        dataspace_version=script.definition.dataspace_version,
+        dataspace_version=script.dataspace_version,
         status=ScriptStatus.SKIPPED,
         execution=[],
         started_at=now,

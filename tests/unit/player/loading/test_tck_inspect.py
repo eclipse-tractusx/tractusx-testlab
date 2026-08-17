@@ -30,6 +30,7 @@ import zipfile
 import pytest
 import yaml
 
+from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.inspection import TckInspectionResult
 from tractusx_testlab.player.loading._parser import _SCRIPT_ADAPTER
@@ -41,7 +42,6 @@ syntax: v1-alpha
 kind: test
 id: test-inspect-single
 namespace: testlab.test
-dataspace_version: saturn
 metadata:
   name: Single Script Test
   version: "1.0"
@@ -74,7 +74,6 @@ _TCK_WITH_TWO_SCRIPTS = """\
 syntax: v1-alpha
 kind: tck
 id: tck-inspect
-namespace: testlab.test
 metadata:
   name: Multi-Script TCK
   version: "1.0"
@@ -90,7 +89,6 @@ syntax: v1-alpha
 kind: test
 id: script-a
 namespace: testlab.test
-dataspace_version: saturn
 metadata:
   name: Script A
   version: "1.0"
@@ -104,7 +102,6 @@ syntax: v1-alpha
 kind: test
 id: script-b
 namespace: testlab.test
-dataspace_version: saturn
 metadata:
   name: Script B
   version: "1.0"
@@ -132,10 +129,15 @@ def multi_script_tck(tmp_path) -> object:
 
 
     archive = tmp_path / "inspect.tck"
+    sealed = package_digest.seal({
+        "manifest.yaml": b"kind: manifest\n",
+        _TCK_BUNDLE_ENTRY: _TCK_WITH_TWO_SCRIPTS.encode(),
+        "tests/script-a.yaml": _SCRIPT_A_YAML.encode(),
+        "tests/script-b.yaml": _SCRIPT_B_YAML.encode(),
+    })
     with zipfile.ZipFile(archive, "w") as zf:
-        zf.writestr(_TCK_BUNDLE_ENTRY, _TCK_WITH_TWO_SCRIPTS)
-        zf.writestr("tests/script-a.yaml", _SCRIPT_A_YAML)
-        zf.writestr("tests/script-b.yaml", _SCRIPT_B_YAML)
+        for name in sorted(sealed):
+            zf.writestr(name, sealed[name])
 
     return Loader().load(archive)
 

@@ -34,18 +34,32 @@ from pathlib import Path
 import typer
 
 from tractusx_testlab.cli import app
+from tractusx_testlab.compiler import package_digest
 
 # Archive entry name for the bundled authoring YAML
 TCK_BUNDLE_ENTRY = "tck-bundle.yaml"
 
 
 def _create_tck_archive(source_dir: Path, archive_path: Path) -> None:
-    """Create a .tck ZIP archive from the compiled output directory."""
+    """Create a ``.tck`` ZIP from *source_dir*, sealing it with a digest of itself.
+
+    The digest is stamped here rather than in the IR builder because here is
+    where the archive's contents finally exist. The builder ran before the test
+    files were copied in, so its digest covered a subset of the package and the
+    executed files sat outside it.
+    """
+    entries = {
+        path.relative_to(source_dir).as_posix(): path.read_bytes()
+        for path in sorted(source_dir.rglob("*"))
+        if path.is_file()
+    }
+
+    if package_digest.MANIFEST_ENTRY in entries:
+        entries = package_digest.seal(entries)
+
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for file_path in sorted(source_dir.rglob("*")):
-            if file_path.is_file():
-                arcname = file_path.relative_to(source_dir).as_posix()
-                zf.write(file_path, arcname)
+        for name in sorted(entries):
+            zf.writestr(name, entries[name])
 
 
 def _embed_bundle_yaml(manifest_path: Path, output_dir: Path) -> None:

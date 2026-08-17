@@ -49,6 +49,21 @@ from tractusx_testlab.server.storage import PackageStorage
 _logger = logging.getLogger(__name__)
 
 
+def _version() -> str:
+    """The installed package version — the one source of it.
+
+    Three numbers used to be in play: ``pyproject`` said one thing, this file
+    hardcoded ``0.7.1`` into the OpenAPI document, and ``/testlab/health``
+    reported a third from the package metadata. An IDE checking compatibility
+    against the health endpoint and a reader of the API docs saw different
+    versions of the same server.
+    """
+    try:
+        return importlib.metadata.version("tractusx-testlab")
+    except importlib.metadata.PackageNotFoundError:
+        return "unknown"
+
+
 def create_app(config: TestlabConfig | None = None) -> FastAPI:
     """Build and return a fully-wired FastAPI application.
 
@@ -60,7 +75,7 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
 
     app = FastAPI(
         title="Tractus-X Testlab Player",
-        version="0.7.1",
+        version=_version(),
         description="Automated test execution for Tractus-X dataspace interoperability.",
     )
 
@@ -83,11 +98,7 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
     @app.get("/testlab/health", tags=["testlab"])
     async def health() -> JSONResponse:
         """Lightweight health check for IDE connectivity validation."""
-        try:
-            version = importlib.metadata.version("tractusx-testlab")
-        except importlib.metadata.PackageNotFoundError:
-            version = "unknown"
-        return JSONResponse(content={"status": "ok", "version": version})
+        return JSONResponse(content={"status": "ok", "version": _version()})
 
     # ── Catch-all for mock endpoints registered at arbitrary paths ─────
     # SUTs send callbacks to URLs like /companycertificate/status.

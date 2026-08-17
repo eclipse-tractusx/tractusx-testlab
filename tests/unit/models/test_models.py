@@ -57,7 +57,6 @@ class TestStepDefinition:
         step = StepDefinition(
             uses="http/http_request",
             name="Call API",
-            description="Calls an external API",
             **{"with": {"url": "http://example.com"}},
             timeout_s=30.0,
         )

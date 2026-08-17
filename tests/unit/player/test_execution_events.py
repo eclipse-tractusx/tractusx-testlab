@@ -258,10 +258,10 @@ class TestConditionalSkip:
     ) -> None:
         """Recording SKIPPED and executing anyway is the one outcome `if:` rules out."""
         from tractusx_testlab.models.primitives.enums import StepPhase
-        from tractusx_testlab.player.execution.phases._run_phase import (
+        from tractusx_testlab.player.execution.phase import (
             FailurePolicy,
             PhaseConfig,
-            _run_phase,
+            run_phase,
         )
 
         script = MagicMock()
@@ -274,9 +274,9 @@ class TestConditionalSkip:
                 if_condition="${{ failure() }}",
             )
         ]
-        script.dataspace_version = "jupiter"
+        script.definition.dataspace = None
 
-        results, _ = await _run_phase(
+        results, _ = await run_phase(
             script,
             mock_context,
             "job-1",

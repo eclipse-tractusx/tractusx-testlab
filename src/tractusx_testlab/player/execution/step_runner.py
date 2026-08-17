@@ -26,31 +26,30 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from tractusx_testlab.models import ScriptStatus, StepStatus
+from tractusx_testlab.models import EngineError, ScriptStatus, StepStatus, TestLabError
 from tractusx_testlab.models.runtime.results import (
     AssertionResult,
     ScriptResult,
     StepResult,
 )
-from tractusx_testlab.player.execution._helpers import (
-    register_script_services,
-    seed_script_defaults,
-)
-from tractusx_testlab.player.execution._phase_runners import (
-    execute_main_steps,
-    execute_setup_steps,
-    execute_teardown_steps,
-)
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
+from tractusx_testlab.player.execution.phase import (
+    run_execution,
+    run_setup,
+    run_teardown,
+)
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.assertions import AssertionEngine
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_assertions(assertions: list[Any], context: StepContext) -> list[Any]:
@@ -67,22 +66,46 @@ def _resolve_assertions(assertions: list[Any], context: StepContext) -> list[Any
     reference to resolve.
     """
     return [
-        assertion.model_copy(
-            update={"with_": resolve_params(assertion.with_ or {}, context)}
-        )
+        assertion.model_copy(update={"with_": resolve_params(assertion.with_ or {}, context)})
         for assertion in assertions
     ]
 
 
+#: Marks a result whose failure came from TestLab, not from the SUT.
+#:
+#: There is no ``StepStatus.ERROR`` yet — adding one changes the event payload
+#: the IDE consumes, so it lands in P4 with the rest of that contract. Until
+#: then the distinction is carried in the message, which is at least visible in
+#: the report instead of being lost entirely.
+ENGINE_FAULT_PREFIX = "[engine fault] "
+
+
 async def run_step(
-    step_cls: type, step_def: Any, step_name: str, context: StepContext,
+    step_cls: type,
+    step_def: Any,
+    step_name: str,
+    context: StepContext,
 ) -> StepResult:
-    """Execute a single step and evaluate its assertions."""
+    """Execute a single step, evaluate its assertions, and decide its outcome.
+
+    This is a supervisory boundary, so it catches broadly on purpose: a step
+    that raises must fail *that step*, not abort the TCK. It used to catch five
+    exception types by name, which meant a ``requests.RequestException`` — the
+    single most likely thing to happen when testing a remote SUT — escaped and
+    killed the whole run at step 3 of 40, losing the teardown with it.
+
+    Catching broadly is only safe if the outcome is then classified, and that is
+    the second half: an ``EngineError``, or any exception TestLab did not raise
+    deliberately, is a defect in the engine rather than a verdict about the SUT.
+    """
     step_instance = step_cls()
-    params = resolve_params(step_def.with_ or {}, context)
     started_at = datetime.now(UTC)
 
     try:
+        # Inside the guard: resolving a step's parameters is part of running it,
+        # and an unresolvable reference must fail that step rather than escape
+        # and take the run down with it.
+        params = resolve_params(step_def.with_ or {}, context)
         output = await step_instance.invoke(params, context, step_def)
 
         assertion_results: list[AssertionResult] = []
@@ -92,7 +115,6 @@ async def run_step(
                 for ar in AssertionEngine.evaluate(
                     _resolve_assertions(step_def.validate, context),
                     output,
-                    context.variables,
                 )
             ]
 
@@ -111,8 +133,13 @@ async def run_step(
             response=output.response,
             assertions=assertion_results,
         )
-    except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
+    except Exception as exc:
         finished_at = datetime.now(UTC)
+        engine_fault = isinstance(exc, EngineError) or not isinstance(
+            exc, TestLabError | ValueError
+        )
+        if engine_fault:
+            logger.exception("Engine fault while running step %s", step_name)
         return StepResult(
             step_name=step_name,
             step_type=step_def.uses,
@@ -120,13 +147,16 @@ async def run_step(
             started_at=started_at,
             finished_at=finished_at,
             duration_s=(finished_at - started_at).total_seconds(),
-            error=str(exc),
+            error=f"{ENGINE_FAULT_PREFIX if engine_fault else ''}{exc}",
         )
 
 
 def store_step_outputs(
-    step_def: Any, step_result: StepResult, context: StepContext,
-    *, step_namespace: str | None = None,
+    step_def: Any,
+    step_result: StepResult,
+    context: StepContext,
+    *,
+    step_namespace: str | None = None,
 ) -> None:
     """Persist step outputs into context variables when returns is configured.
 
@@ -142,8 +172,13 @@ def store_step_outputs(
 
     from tractusx_testlab.steps._checks.extraction import declared_names
     from tractusx_testlab.steps.base import StepOutput
+
     raw = step_result.output
-    full_output: Any = StepOutput(value=raw, request=step_result.request, response=step_result.response) if not isinstance(raw, StepOutput) else raw
+    full_output: Any = (
+        StepOutput(value=raw, request=step_result.request, response=step_result.response)
+        if not isinstance(raw, StepOutput)
+        else raw
+    )
 
     # A `returns:` name is only readable when the step declared it, so a typo
     # or a guess at the step's internals fails here rather than as a `None`
@@ -167,28 +202,48 @@ async def run_script(
     jobs: JobManager,
 ) -> ScriptResult:
     """Execute all steps in a script sequentially (setup → main → teardown)."""
-    seed_script_defaults(script, context)
-    register_script_services(script, context)
-
     script_start = datetime.now(UTC)
 
     step_results: list[StepResult] = []
-    setup_results, setup_status = await execute_setup_steps(
-        script, context, job_id, monitor, jobs,
+    setup_results, setup_status = await run_setup(
+        script,
+        context,
+        job_id,
+        monitor,
+        jobs,
     )
     if setup_status == ScriptStatus.FAILED:
         script_status = ScriptStatus.FAILED
     else:
-        step_results, script_status = await execute_main_steps(
-            script, context, job_id, monitor, jobs,
+        step_results, script_status = await run_execution(
+            script,
+            context,
+            job_id,
+            monitor,
+            jobs,
         )
 
-    teardown_results = await execute_teardown_steps(
-        script, context, job_id, monitor,
+    teardown_results = await run_teardown(
+        script,
+        context,
+        job_id,
+        monitor,
     )
 
     script_end = datetime.now(UTC)
     all_step_results = setup_results + step_results + teardown_results
+
+    summary = AssertionEngine.build_summary(
+        all_step_results, declared=_declared_assertions(script, all_step_results)
+    )
+
+    # Checks that were asked for and did not run mean the result describes less
+    # than the script claimed to verify. The engine evaluates assertions one for
+    # one, so this should be unreachable — which is exactly why it is measured
+    # rather than trusted: the defect this whole review started from was
+    # assertions going missing between the script and the result.
+    if summary.unevaluated:
+        script_status = ScriptStatus.FAILED
 
     return ScriptResult(
         script_name=script.name,
@@ -198,5 +253,24 @@ async def run_script(
         started_at=script_start,
         finished_at=script_end,
         total_duration_s=(script_end - script_start).total_seconds(),
-        assertion_summary=AssertionEngine.build_summary(all_step_results),
+        assertion_summary=summary,
+    )
+
+
+def _declared_assertions(script: TestScript, results: list[StepResult]) -> int:
+    """Count the assertions the steps that actually ran had asked for.
+
+    Steps skipped by ``if:`` are excluded: a check that was never reached was
+    not dropped, it was correctly not applicable.
+    """
+    ran = {result.step_type for result in results if result.status is not StepStatus.SKIPPED}
+    return sum(
+        len(step.validate or [])
+        for phase in (
+            script.definition.setup,
+            script.definition.execution,
+            script.definition.teardown,
+        )
+        for step in phase
+        if step.uses in ran
     )

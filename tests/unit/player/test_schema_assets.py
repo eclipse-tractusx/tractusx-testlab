@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
 ## It was reviewed and tested by a human committer.
 
-"""Tests for env.schemas/env.testdata asset seeding and the validate/schema step."""
+"""Tests for env.schemas/env.testdata asset seeding and JSON Schema validation."""
 
 from __future__ import annotations
 
@@ -33,7 +33,6 @@ from unittest.mock import MagicMock
 import pytest
 
 # Ensure all built-in steps are registered
-from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.models.authoring.definitions import (
     EnvDefinition,
     SchemaDefinition,
@@ -46,8 +45,8 @@ from tractusx_testlab.models.authoring.definitions import (
 from tractusx_testlab.player.execution._context_seeder import seed_context_variables
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.loading.resolver import resolve_params
-from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import Tck
+from tractusx_testlab.steps._checks.schema import check_schema_validation
 
 _SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -128,61 +127,60 @@ class TestAssetSeeding:
         assert resolved["schema"] == _SCHEMA
 
 
-class TestValidateSchemaStep:
-    """validate/schema must perform real JSON Schema validation (ADR-0010)."""
+class TestSchemaValidation:
+    """``validate/schema`` must perform real JSON Schema validation (ADR-0010).
 
-    @staticmethod
-    def _step():
-        cls = StepRegistry.get("validate/schema", "saturn")
-        assert cls is not None
-        return cls()
+    Exercised through :func:`check_schema_validation`, which is the code an
+    assertion block actually reaches.  It used to be tested through a
+    ``validate/schema`` *step* class — but the compiler rejects
+    ``uses: validate/*`` as a step, so that class was unreachable from any TCK
+    and the test was proving a path no author could take.  The step is gone; the
+    stronger checks it carried moved into this function.
+    """
 
-    @staticmethod
-    def _definition() -> StepDefinition:
-        return StepDefinition(id="validate_1", uses="validate/schema")
+    def test_valid_payload_passes(self) -> None:
+        passed, message = check_schema_validation({"holder": "BPNL000000000000"}, _SCHEMA)
+        assert passed, message
 
-    @pytest.mark.asyncio
-    async def test_valid_payload_passes(self, context: StepContext) -> None:
-        payload = {"holder": "BPNL000000000000"}
-        output = await self._step().invoke(
-            {"input": payload, "schema": _SCHEMA}, context, self._definition(),
-        )
-        assert output.value == payload
+    def test_missing_required_property_fails(self) -> None:
+        passed, message = check_schema_validation({}, _SCHEMA)
+        assert not passed
+        assert "'holder' is a required property" in message
 
-    @pytest.mark.asyncio
-    async def test_missing_required_property_fails(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="'holder' is a required property"):
-            await self._step().invoke(
-                {"input": {}, "schema": _SCHEMA}, context, self._definition(),
-            )
+    def test_wrong_type_fails(self) -> None:
+        passed, message = check_schema_validation({"holder": 42}, _SCHEMA)
+        assert not passed
+        assert "Schema validation failed" in message
 
-    @pytest.mark.asyncio
-    async def test_wrong_type_fails(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="Schema validation failed"):
-            await self._step().invoke(
-                {"input": {"holder": 42}, "schema": _SCHEMA}, context, self._definition(),
-            )
+    def test_json_string_payload_is_decoded(self) -> None:
+        passed, message = check_schema_validation(json.dumps({"holder": "BPNL1"}), _SCHEMA)
+        assert passed, message
 
-    @pytest.mark.asyncio
-    async def test_json_string_payload_is_decoded(self, context: StepContext) -> None:
-        await self._step().invoke(
-            {"input": json.dumps({"holder": "BPNL1"}), "schema": _SCHEMA},
-            context,
-            self._definition(),
-        )
+    def test_unresolved_schema_reference_is_named_as_such(self) -> None:
+        passed, message = check_schema_validation({}, "${{ env.schemas.missing }}")
+        assert not passed
+        assert "not valid JSON" in message
 
-    @pytest.mark.asyncio
-    async def test_unresolved_schema_reference_raises_clear_error(
-        self, context: StepContext,
-    ) -> None:
-        with pytest.raises(ValueError, match="not valid JSON"):
-            await self._step().invoke(
-                {"input": {}, "schema": "${{ env.schemas.missing }}"},
-                context,
-                self._definition(),
-            )
+    def test_a_missing_schema_is_refused(self) -> None:
+        passed, message = check_schema_validation({}, None)
+        assert not passed
+        assert "No schema provided" in message
 
-    @pytest.mark.asyncio
-    async def test_missing_schema_param_raises(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="schema: Field required"):
-            await self._step().invoke({"input": {}}, context, self._definition())
+    def test_an_invalid_schema_is_refused_rather_than_accepting_everything(self) -> None:
+        """A malformed schema must fail loudly, not validate nothing successfully."""
+        passed, message = check_schema_validation({"anything": 1}, {"type": "nonsense"})
+        assert not passed
+        assert "Invalid JSON Schema" in message
+
+    def test_every_error_is_reported_not_only_the_first(self) -> None:
+        """A payload wrong in two places costs one run to diagnose, not two."""
+        schema = {
+            "type": "object",
+            "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
+            "required": ["a", "b"],
+        }
+        passed, message = check_schema_validation({"a": 1, "b": 2}, schema)
+        assert not passed
+        assert "2 error(s)" in message
+        assert "a:" in message
+        assert "b:" in message

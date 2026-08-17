@@ -33,6 +33,7 @@ import pytest
 from typer.testing import CliRunner
 
 from tractusx_testlab.cli import app
+from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.player.loading.loader import _TCK_BUNDLE_ENTRY
 
 runner = CliRunner()
@@ -41,7 +42,6 @@ _TCK_BUNDLE_YAML = """\
 syntax: v1-alpha
 kind: tck
 id: tck-cli-inspect
-namespace: testlab.test
 metadata:
   name: CLI Inspect TCK
   version: "1.0"
@@ -55,7 +55,6 @@ syntax: v1-alpha
 kind: test
 id: inspect-script
 namespace: testlab.test
-dataspace_version: saturn
 metadata:
   name: Inspect Script
   version: "1.0"
@@ -74,13 +73,28 @@ teardown:
 """
 
 
+
+def _write_sealed(archive: Path, entries: dict[str, bytes]) -> None:
+    """Write a ``.tck`` sealed the way the compiler seals one.
+
+    Goes through :func:`package_digest.seal`, the same function the compiler
+    uses, so a fixture is by construction a package the loader will accept — a
+    test cannot pass against a sealing rule that exists only in the test.
+    """
+    sealed = package_digest.seal({"manifest.yaml": b"kind: manifest\n", **entries})
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in sorted(sealed):
+            zf.writestr(name, sealed[name])
+
+
 @pytest.fixture()
 def tck_archive(tmp_path: Path) -> Path:
     """Build a plain .tck ZIP archive for CLI tests."""
     archive = tmp_path / "cli-inspect.tck"
-    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(_TCK_BUNDLE_ENTRY, _TCK_BUNDLE_YAML)
-        zf.writestr("tests/inspect-script.yaml", _SCRIPT_YAML)
+    _write_sealed(archive, {
+        _TCK_BUNDLE_ENTRY: _TCK_BUNDLE_YAML.encode(),
+        "tests/inspect-script.yaml": _SCRIPT_YAML.encode(),
+    })
     return archive
 
 

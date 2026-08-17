@@ -26,11 +26,9 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
-_EXPR_PATTERN = re.compile(r"\$\{\{((?:[^}]|\}(?!\}))+)\}\}")
-_FULL_EXPR_PATTERN = re.compile(r"^\$\{\{((?:[^}]|\}(?!\}))+)\}\}$")
+from tractusx_testlab.syntax import patterns
 
 
 def resolve_expression(value: Any) -> Any:
@@ -46,11 +44,11 @@ def resolve_expression(value: Any) -> Any:
 
 def _resolve_string_expr(value: str) -> Any:
     """Convert a string with ${{ expr }} to $ref or $concat."""
-    full_match = _FULL_EXPR_PATTERN.match(value)
+    full_match = patterns.EXPR_REF_FULL.match(value)
     if full_match:
         return {"$ref": _normalize_ref(full_match.group(1))}
 
-    parts = _EXPR_PATTERN.split(value)
+    parts = patterns.EXPR_REF.split(value)
     if len(parts) == 1:
         return value
 

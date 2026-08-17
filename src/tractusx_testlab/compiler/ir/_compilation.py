@@ -71,9 +71,22 @@ def _compile_single_test(
     instructions, step_symbols = build_instructions(test_data)
     symbol_table = build_test_symbols(step_symbols)
 
-    return {
+    compiled: dict[str, Any] = {
         "id": test_data.get("id", ""),
         "metadata": metadata,
         "symbol_table": symbol_table,
         "instructions": instructions,
     }
+
+    # What the test requires of the deployment, and which ecosystem release it
+    # certifies against, are part of the test — not decoration on the YAML. The
+    # compiled form dropped both, so a run driven from it would demand no
+    # capabilities and default to the wrong connector dialect.
+    #
+    # ``namespace`` is deliberately not carried: it is required to equal the TCK
+    # id, which the manifest already states, so it is derivable rather than lost.
+    for declared in ("dataspace", "infrastructure"):
+        if test_data.get(declared) is not None:
+            compiled[declared] = test_data[declared]
+
+    return compiled

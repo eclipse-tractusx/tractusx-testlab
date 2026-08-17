@@ -84,9 +84,13 @@ from tractusx_testlab.models.primitives.enums import (
     VariableSource,  # verb-form variable source
 )
 from tractusx_testlab.models.primitives.exceptions import (
+    AuthoringError,
     DuplicateServiceError,
+    EngineError,
+    ExecutionError,
     InfrastructureError,
     MissingBindingError,
+    NoAssertionsExecutedError,
     ServiceInitError,
     ServiceNotFoundError,
     ServiceNotReadyError,
@@ -94,7 +98,10 @@ from tractusx_testlab.models.primitives.exceptions import (
     SkipNotAllowedError,
     StandardConflictError,
     StepConfigError,
+    StepExecutionError,
+    TestLabError,
     UnknownBindingKeyError,
+    UnresolvedReferenceError,
 )
 from tractusx_testlab.models.runtime.events import (
     AssertionResultEvent,
@@ -144,6 +151,8 @@ __all__ = [
     # enums
     "AssertionSeverity",
     "AssertionSummary",
+    # exceptions
+    "AuthoringError",
     # security
     "Base64Bytes",
     "CallbackResult",
@@ -154,13 +163,14 @@ __all__ = [
     "ConnectorBinding",
     "DataspaceContext",
     "DtrBinding",
-    # exceptions
     "DuplicateServiceError",
     "EncryptedKeyBlock",
     "EngineBindings",
     "EngineDtrBinding",
+    "EngineError",
     "EnvDefinition",
     "EventKind",
+    "ExecutionError",
     "ExecutionEvent",
     "HttpRequest",
     "HttpResponse",
@@ -181,6 +191,7 @@ __all__ = [
     "JobStatus",
     "MetadataDefinition",
     "MissingBindingError",
+    "NoAssertionsExecutedError",
     "PackageFormat",
     "PackageManifest",
     "ReturnFieldDefinition",
@@ -207,6 +218,7 @@ __all__ = [
     "StepCompletedEvent",
     "StepConfigError",
     "StepDefinition",
+    "StepExecutionError",
     "StepFailedEvent",
     "StepMeta",
     "StepPhase",
@@ -220,7 +232,9 @@ __all__ = [
     "TckInspectionResult",
     "TckMetadataDefinition",
     "TckResult",
+    "TestLabError",
     "UnknownBindingKeyError",
+    "UnresolvedReferenceError",
     # server
     "UploadedPackage",
     "ValueSource",

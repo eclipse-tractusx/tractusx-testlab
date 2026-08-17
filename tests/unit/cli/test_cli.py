@@ -51,6 +51,13 @@ tests: []
 
 _INVALID_YAML = "{{not valid yaml"
 
+#: A TCK whose test names a step the engine does not have.
+#:
+#: It used to contain no bad step at all — just a manifest with no tests — and
+#: passed only because the hand-written JSON Schema demanded ``description`` and
+#: ``standards``, which the models make optional. Once the schema was generated
+#: from the models the document became valid, which is what it always was, and
+#: the test asserting a failure had nothing left to fail on.
 _BAD_STEP_YAML = """\
 syntax: v1-alpha
 kind: tck
@@ -61,7 +68,22 @@ metadata:
   authors: []
   copyright_holders: []
   license: Apache-2.0
-tests: []
+tests:
+  - id: bad-step.yaml
+"""
+
+_BAD_STEP_TEST_YAML = """\
+syntax: v1-alpha
+kind: test
+id: bad-step
+namespace: bad-step-tck
+metadata:
+  name: Bad Step
+  version: "1.0"
+execution:
+  - id: nope
+    name: Names a step that does not exist
+    uses: connector/consumer/no_such_step
 """
 
 @pytest.fixture()
@@ -82,6 +104,8 @@ def invalid_yaml_file(tmp_path: Path) -> Path:
 
 @pytest.fixture()
 def bad_step_yaml_file(tmp_path: Path) -> Path:
+    (tmp_path / "tests").mkdir(exist_ok=True)
+    (tmp_path / "tests" / "bad-step.yaml").write_text(_BAD_STEP_TEST_YAML)
     f = tmp_path / "bad_step.yaml"
     f.write_text(_BAD_STEP_YAML)
     return f
@@ -98,8 +122,10 @@ class TestValidateCommand:
         assert result.exit_code == 1
 
     def test_validate_bad_step(self, bad_step_yaml_file: Path) -> None:
+        """A step the registry does not know must fail validation, by name."""
         result = runner.invoke(app, ["validate", str(bad_step_yaml_file)])
         assert result.exit_code == 1
+        assert "no_such_step" in result.stdout
 
     def test_validate_nonexistent_file(self) -> None:
         result = runner.invoke(app, ["validate", "/nonexistent/path.yaml"])
