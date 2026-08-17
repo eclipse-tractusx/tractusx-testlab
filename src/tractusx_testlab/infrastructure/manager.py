@@ -30,8 +30,8 @@ is a typed object passed at construction rather than a set of strings the
 engine hopes to find in its variables::
 
     from tractusx_testlab import (
-        ConnectorBinding, DtrBinding, EngineBindings, Infrastructure,
-        InfrastructureManager, SubmodelServerBinding, SutBindings, TestlabPlayer,
+        ConnectorBinding, DtrBinding, EngineBindings, EngineDtrBinding,
+        Infrastructure, InfrastructureManager, SutBindings, TestlabPlayer,
     )
 
     integration = Infrastructure(
@@ -41,7 +41,10 @@ engine hopes to find in its variables::
                 api_key="…",
                 participant_id="BPNL000000000TLB",
             ),
-            submodel_server=SubmodelServerBinding(base_url="https://backend.example.com"),
+            dtr=EngineDtrBinding(
+                base_url="https://engine.example.com/semantics/registry",
+                submodel_base_url="https://backend.example.com",
+            ),
         ),
         sut=SutBindings(
             connector=ConnectorBinding(

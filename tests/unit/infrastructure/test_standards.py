@@ -67,8 +67,9 @@ class TestCapabilityStandards:
     def test_a_registry_implements_the_digital_twin_standard(self) -> None:
         assert default_standard("dtr") == "CX-0002"
 
-    def test_the_submodel_server_claims_none(self) -> None:
-        assert default_standard("submodel_server") == ""
+    def test_a_capability_the_table_does_not_know_claims_none(self) -> None:
+        """An unassigned standard is left empty rather than invented."""
+        assert default_standard("bpn_did_resolver") == ""
 
 
 class TestServiceWiring:

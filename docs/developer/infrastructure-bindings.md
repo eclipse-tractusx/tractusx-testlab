@@ -27,10 +27,9 @@
 
 A TCK declares *what* it needs — `infrastructure.sut.connector.required: true` —
 and never says where that connector is. Where it is comes from whoever operates
-the engine, as a **binding**: a typed object naming the engine's own connector,
-registry and submodel server, and the system under test. Requirements are
-authored; bindings are operated. The two meet once per run, before the first
-step.
+the engine, as a **binding**: a typed object naming the engine's own connector
+and registry, and the system under test. Requirements are authored; bindings
+are operated. The two meet once per run, before the first step.
 
 ## The model
 
@@ -39,8 +38,7 @@ Infrastructure
 ├── engine                 # infrastructure TestLab operates — it holds credentials
 │   ├── connector          # management_url, api_key, api_key_header,
 │   │                      # participant_id, dsp_url, name
-│   ├── dtr                # base_url
-│   └── submodel_server    # base_url
+│   └── dtr                # base_url, submodel_base_url
 └── sut                    # infrastructure TestLab talks to — an identity and an endpoint
     ├── connector          # same fields as above
     └── dtr                # base_url
@@ -52,10 +50,15 @@ against](#what-a-run-certifies-against).
 
 The asymmetry is deliberate (ADR-0019 §4). The engine side is driven through
 management APIs, so it carries credentials — and it has a registry of its own,
-alongside the connector and the submodel server. The SUT side is a
-counter-party reached over DSP. The submodel server is engine-only: the engine
-hosts the data a test provisions, and a test that could name its own backend
-would be testing an address rather than the provider's.
+alongside the connector. The SUT side is a counter-party reached over DSP.
+
+The submodel server is **not** a capability of its own. A registry entry is a
+pointer to a payload, so the backend those payloads live on is part of the
+registry the engine operates: it is the `submodel_base_url` field of
+`engine.dtr`, and requiring `engine.dtr` requires both halves. It exists on the
+engine side only, because the engine hosts the data a test provisions and a
+test that could name its own backend would be testing an address rather than
+the provider's.
 
 ## What a run certifies against
 
@@ -112,10 +115,9 @@ states nothing about a field leaves it alone:
          management_url: https://engine.example.com/management
          api_key: engine-key
          participant_id: BPNL000000000TLB
-       submodel_server:
-         base_url: https://backend.example.com
        dtr:
          base_url: https://engine.example.com/semantics/registry
+         submodel_base_url: https://backend.example.com
      sut:
        connector:
          management_url: https://sut.example.com/management
@@ -146,8 +148,8 @@ constructed and type-checked by the caller, not looked up out of a string:
 
 ```python
 from tractusx_testlab import (
-    ConnectorBinding, DtrBinding, EngineBindings, Infrastructure,
-    InfrastructureManager, SubmodelServerBinding, SutBindings, TestlabPlayer,
+    ConnectorBinding, DtrBinding, EngineBindings, EngineDtrBinding,
+    Infrastructure, InfrastructureManager, SutBindings, TestlabPlayer,
 )
 
 integration = Infrastructure(
@@ -157,7 +159,10 @@ integration = Infrastructure(
             api_key="engine-key",
             participant_id="BPNL000000000TLB",
         ),
-        submodel_server=SubmodelServerBinding(base_url="https://backend.example.com"),
+        dtr=EngineDtrBinding(
+            base_url="https://engine.example.com/semantics/registry",
+            submodel_base_url="https://backend.example.com",
+        ),
     ),
     sut=SutBindings(
         connector=ConnectorBinding(

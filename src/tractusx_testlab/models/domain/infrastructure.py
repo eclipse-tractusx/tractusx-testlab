@@ -32,12 +32,16 @@ required capability against the bindings it was given.
 
 The two sides are asymmetric on purpose (ADR-0019 §4). The **engine** side is
 infrastructure TestLab operates — a connector it drives through the management
-API, a registry it writes to, and the submodel server it uploads provider data
-to — so it carries credentials. The **sut** side is a counter-party TestLab only
-talks to, so it carries an identity and an endpoint. The submodel server is
-engine-only for the same reason: the engine hosts the data a test provisions,
-and a test that could name its own would be testing an address rather than the
-provider's backend.
+API and a registry it writes to — so it carries credentials. The **sut** side is
+a counter-party TestLab only talks to, so it carries an identity and an
+endpoint.
+
+The submodel server is not a capability of its own: a registry entry is a
+pointer to a payload, so the backend those payloads live on is part of the
+registry the engine operates and is bound as a field of it
+(``engine.dtr.submodel_base_url``). It is engine-side only, because the engine
+hosts the data a test provisions and a test that could name its own server
+would be testing an address rather than the provider's backend.
 
 Every field here is one leaf of the naming rule these bindings exist to make
 mechanical — a field named ``dsp_url`` on ``sut.connector`` is the config key
@@ -158,16 +162,21 @@ class DtrBinding(CapabilityBinding):
     )
 
 
-class SubmodelServerBinding(CapabilityBinding):
-    """The engine's submodel server — the backend provider data is uploaded to."""
+class EngineDtrBinding(DtrBinding):
+    """The registry the engine operates, and the backend its entries point at.
 
-    identity_field: ClassVar[str] = "base_url"
+    A shell descriptor is a pointer: the registry says where a submodel lives
+    and something else serves it. Both halves are one deployment the operator
+    stands up for the engine, so the payload backend is a field of the registry
+    capability rather than a capability the TCK has to require separately.
+    """
 
-    base_url: str = Field(
+    submodel_base_url: str = Field(
         default="",
         description=(
-            "Root URL submodel payloads are stored under. The engine addresses "
-            "submodels beneath it; a script never names a server of its own."
+            "Root URL submodel payloads are stored under, and the address the "
+            "engine's registry entries point at. The engine addresses submodels "
+            "beneath it; a script never names a server of its own."
         ),
     )
 
@@ -178,8 +187,7 @@ class EngineBindings(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     connector: ConnectorBinding = Field(default_factory=ConnectorBinding)
-    dtr: DtrBinding = Field(default_factory=DtrBinding)
-    submodel_server: SubmodelServerBinding = Field(default_factory=SubmodelServerBinding)
+    dtr: EngineDtrBinding = Field(default_factory=EngineDtrBinding)
 
 
 class SutBindings(BaseModel):
@@ -207,9 +215,9 @@ class Infrastructure(BaseModel):
     def binding(self, side: str, capability: str) -> Optional[CapabilityBinding]:
         """Return the binding for *side*/*capability*, or ``None`` if that pair has none.
 
-        The pair may legitimately not exist — ``sut.submodel_server`` is not a
-        thing the engine binds — which is why this answers ``None`` rather
-        than raising.
+        The pair may legitimately not exist — the sides need not declare the
+        same capabilities — which is why this answers ``None`` rather than
+        raising.
         """
         side_bindings = getattr(self, side, None)
         if side_bindings is None:
@@ -247,8 +255,8 @@ def capability_bindings() -> tuple[tuple[str, str, type[CapabilityBinding]], ...
 def capability_keys(side: str) -> tuple[str, ...]:
     """Return the capabilities bindable on *side*, in the order it declares them.
 
-    The two sides are asymmetric — ``submodel_server`` exists on ``engine``
-    alone — so the answer is per side rather than one global set.
+    Answered per side rather than as one global set: the sides are asymmetric
+    by design, and a requirement may only name what its own side can bind.
     """
     return tuple(
         capability for declared_side, capability, _ in capability_bindings()

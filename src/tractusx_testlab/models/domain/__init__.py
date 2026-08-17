@@ -29,8 +29,8 @@ from tractusx_testlab.models.domain.infrastructure import (
     ConnectorBinding,
     DtrBinding,
     EngineBindings,
+    EngineDtrBinding,
     Infrastructure,
-    SubmodelServerBinding,
     SutBindings,
 )
 from tractusx_testlab.models.domain.security import (
@@ -49,8 +49,8 @@ __all__ = [
     "ConnectorBinding",
     "DtrBinding",
     "EngineBindings",
+    "EngineDtrBinding",
     "Infrastructure",
-    "SubmodelServerBinding",
     "SutBindings",
     "Base64Bytes",
     "EncryptedKeyBlock",

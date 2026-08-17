@@ -51,7 +51,7 @@ import uuid
 def _relative_path(value: Any) -> Optional[str]:
     """Normalize a path under the submodel server, refusing one with a server of its own.
 
-    The server is the engine's (``engine.submodel_server.base_url``) — a path allowed to
+    The server is the engine's (``engine.dtr.submodel_base_url``) — a path allowed to
     carry a scheme and host would be the ``url`` input these steps deliberately
     do not have, and would send a provider's data somewhere the engine never
     agreed to. Surrounding slashes are the caller's punctuation, not part of the
@@ -79,12 +79,12 @@ def _submodel_server(context: "StepContext", definition: StepDefinition) -> str:
     An engine without one cannot run these steps, and says so rather than
     addressing a server the script would have had to name itself.
     """
-    backend_base_url = (context.infrastructure.engine.submodel_server.base_url or "").strip()
+    backend_base_url = (context.infrastructure.engine.dtr.submodel_base_url or "").strip()
     if not backend_base_url:
         raise StepConfigError(
             definition.uses,
-            "no submodel server is bound; set engine.submodel_server.base_url "
-            "(TESTLAB_ENGINE_SUBMODEL_SERVER_BASE_URL) on the engine",
+            "no submodel server is bound; set engine.dtr.submodel_base_url "
+            "(TESTLAB_ENGINE_DTR_SUBMODEL_BASE_URL) on the engine",
         )
     return backend_base_url.rstrip("/")
 
@@ -116,7 +116,7 @@ class UploadBackendDataParams(HttpTransportParams):
 
     Only the transport half of an HTTP call: the step always POSTs, so a
     ``method`` input would be a knob that does nothing, and the submodel server
-    is the one the engine is bound to (``engine.submodel_server.base_url``) rather than
+    is the one the engine is bound to (``engine.dtr.submodel_base_url``) rather than
     one a script picks — a test that could send the data anywhere would be
     testing the address it was given rather than the provider's own backend.
     What a script decides is which submodel it is writing, not where: the
@@ -168,7 +168,7 @@ class UploadBackendDataParams(HttpTransportParams):
     def _submodel_id_names_one_resource_under_the_server(cls, value: Any) -> Any:
         """Normalize the id, and refuse one that is an address rather than an id.
 
-        The server is the engine's (``engine.submodel_server.base_url``) — an id allowed to
+        The server is the engine's (``engine.dtr.submodel_base_url``) — an id allowed to
         carry a scheme and host would be the ``url`` input this step
         deliberately does not have, and would send a provider's data somewhere
         the engine never agreed to. An id with a ``/`` in it is a path, and
@@ -254,7 +254,7 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
     outputs rather than from a URN retyped beside them.
 
     The server it posts to comes from the engine configuration
-    (``engine.submodel_server.base_url``); an engine
+    (``engine.dtr.submodel_base_url``); an engine
     without one cannot run this step, and says so rather than posting nowhere.
     """
 
@@ -351,7 +351,7 @@ class DeleteBackendDataStep(BaseStep[DeleteBackendDataParams, DeletionOutput]):
 
     The teardown half of ``digital-twin/submodel/upload``: it removes the
     resource that upload's ``path`` names, on the server the engine is seeded
-    with (``engine.submodel_server.base_url``).
+    with (``engine.dtr.submodel_base_url``).
 
     The status the server answered with is published as ``status_code``, so a
     teardown can assert that the data was really there (200/204) rather than

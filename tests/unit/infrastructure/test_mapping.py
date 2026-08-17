@@ -42,8 +42,8 @@ from tractusx_testlab.models.domain.infrastructure import (
     ConnectorBinding,
     DtrBinding,
     EngineBindings,
+    EngineDtrBinding,
     Infrastructure,
-    SubmodelServerBinding,
     SutBindings,
 )
 from tractusx_testlab.models.primitives.exceptions import UnknownBindingKeyError
@@ -66,12 +66,12 @@ class TestKeyDerivation:
     def test_every_field_has_a_context_key(self) -> None:
         assert "infrastructure.sut.connector.dsp_url" in known_keys()
 
-    def test_multi_word_capability_keeps_its_underscore(self) -> None:
-        assert "infrastructure.engine.submodel_server.base_url" in known_keys()
+    def test_multi_word_field_keeps_its_underscore(self) -> None:
+        assert "infrastructure.engine.dtr.submodel_base_url" in known_keys()
 
     def test_env_key_is_the_upper_case_path(self) -> None:
-        assert env_key("engine", "submodel_server", "base_url") == (
-            "TESTLAB_ENGINE_SUBMODEL_SERVER_BASE_URL"
+        assert env_key("engine", "dtr", "submodel_base_url") == (
+            "TESTLAB_ENGINE_DTR_SUBMODEL_BASE_URL"
         )
 
     def test_context_key_is_the_prefixed_path(self) -> None:
@@ -186,12 +186,12 @@ class TestOverridesFromEnv:
         )
         assert overrides == {"infrastructure.sut.dtr.base_url": "https://dtr.example.com"}
 
-    def test_reads_a_multi_word_capability(self) -> None:
+    def test_reads_a_multi_word_field(self) -> None:
         overrides = overrides_from_env(
-            {"TESTLAB_ENGINE_SUBMODEL_SERVER_BASE_URL": "https://backend.example.com"}
+            {"TESTLAB_ENGINE_DTR_SUBMODEL_BASE_URL": "https://backend.example.com"}
         )
         assert overrides == {
-            "infrastructure.engine.submodel_server.base_url": "https://backend.example.com"
+            "infrastructure.engine.dtr.submodel_base_url": "https://backend.example.com"
         }
 
     def test_ignores_unrelated_variables(self) -> None:
@@ -231,9 +231,9 @@ class TestMerge:
     def test_engine_and_sut_layer_independently(self) -> None:
         base = Infrastructure(
             engine=EngineBindings(
-                submodel_server=SubmodelServerBinding(base_url="https://backend"),
+                dtr=EngineDtrBinding(submodel_base_url="https://backend"),
             ),
         )
         merged = merge(base, _bound_sut())
-        assert merged.engine.submodel_server.base_url == "https://backend"
+        assert merged.engine.dtr.submodel_base_url == "https://backend"
         assert merged.sut.connector.management_url == "https://sut.example.com/management"

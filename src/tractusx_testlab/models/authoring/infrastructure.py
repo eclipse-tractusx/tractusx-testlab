@@ -71,10 +71,10 @@ class InfrastructureConfig(BaseModel):
     """The two bindable sides, each keyed by capability (ADR-0019 §1).
 
     Which capabilities a side accepts is not restated here: it is read from the
-    binding model, which is the registry. The sides are asymmetric —
-    ``submodel_server`` is engine-only — so each is checked against its own
-    side's capabilities, and a TCK naming one the engine cannot bind is
-    refused while the manifest is parsed rather than at the step that needed it.
+    binding model, which is the registry. The sides are asymmetric by design,
+    so each is checked against its own side's capabilities, and a TCK naming
+    one the engine cannot bind is refused while the manifest is parsed rather
+    than at the step that needed it.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")

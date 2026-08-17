@@ -33,9 +33,9 @@ from tractusx_testlab.infrastructure import (
     ConnectorBinding,
     DtrBinding,
     EngineBindings,
+    EngineDtrBinding,
     Infrastructure,
     InfrastructureManager,
-    SubmodelServerBinding,
     SutBindings,
 )
 from tractusx_testlab.player.execution.context import StepContext
@@ -73,9 +73,9 @@ __all__ = [
     "ConnectorBinding",
     "DtrBinding",
     "EngineBindings",
+    "EngineDtrBinding",
     "Infrastructure",
     "InfrastructureManager",
-    "SubmodelServerBinding",
     "SutBindings",
     # Security
     "PlayerIdentity",

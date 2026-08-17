@@ -52,8 +52,8 @@ from tractusx_testlab.models.domain.infrastructure import (
     ConnectorBinding,
     DtrBinding,
     EngineBindings,
+    EngineDtrBinding,
     Infrastructure,
-    SubmodelServerBinding,
     SutBindings,
 )
 
@@ -65,9 +65,9 @@ __all__ = [
     "DEFAULT_PROFILE",
     "DtrBinding",
     "EngineBindings",
+    "EngineDtrBinding",
     "Infrastructure",
     "InfrastructureManager",
-    "SubmodelServerBinding",
     "SutBindings",
     "aas_api_path",
     "apply_overrides",

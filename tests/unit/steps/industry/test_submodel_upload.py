@@ -45,8 +45,8 @@ from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.models import StepConfigError, StepDefinition
 from tractusx_testlab.models.domain.infrastructure import (
     EngineBindings,
+    EngineDtrBinding,
     Infrastructure,
-    SubmodelServerBinding,
 )
 from tractusx_testlab.steps.industry.submodels import (
     DeleteBackendDataParams,
@@ -68,7 +68,7 @@ def _context(submodel_server_url: str) -> MagicMock:
     config = TestlabConfig(
         infrastructure=Infrastructure(
             engine=EngineBindings(
-                submodel_server=SubmodelServerBinding(base_url=submodel_server_url),
+                dtr=EngineDtrBinding(submodel_base_url=submodel_server_url),
             ),
         ),
     )
@@ -283,7 +283,7 @@ async def test_an_engine_without_a_submodel_server_says_so() -> None:
             StepDefinition(id="s", uses=_USES),
         )
 
-    assert "engine.submodel_server.base_url" in str(error.value)
+    assert "engine.dtr.submodel_base_url" in str(error.value)
 
 
 def _capture_delete(monkeypatch, status: int = 204) -> dict[str, object]:
@@ -373,4 +373,4 @@ async def test_a_delete_against_an_engine_without_a_submodel_server_says_so() ->
             StepDefinition(id="s", uses=_DELETE_USES),
         )
 
-    assert "engine.submodel_server.base_url" in str(error.value)
+    assert "engine.dtr.submodel_base_url" in str(error.value)

@@ -38,9 +38,10 @@ Environment          ``TESTLAB_<SIDE>_<CAPABILITY>_<FIELD>``      ``TESTLAB_SUT_
 ===================  ===========================================  ==================================================
 
 Environment variables are read by generating the full set of legal names and
-looking each one up, rather than by splitting names apart. A capability named
-``submodel_server`` cannot be recovered from ``TESTLAB_ENGINE_SUBMODEL_SERVER_BASE_URL``
-by counting underscores, and a generated set has no ambiguity to resolve.
+looking each one up, rather than by splitting names apart. The capability and
+field cannot be recovered from ``TESTLAB_ENGINE_DTR_SUBMODEL_BASE_URL`` by
+counting underscores — both halves carry them — and a generated set has no
+ambiguity to resolve.
 """
 
 from __future__ import annotations

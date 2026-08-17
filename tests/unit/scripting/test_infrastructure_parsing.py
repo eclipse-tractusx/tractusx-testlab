@@ -95,19 +95,11 @@ class TestInfrastructureParsing:
         with pytest.raises(ValueError):
             YamlParser.parse_script_from_dict(doc)
 
-    def test_engine_submodel_server_is_a_declarable_capability(self) -> None:
+    @pytest.mark.parametrize("side", ["engine", "sut"])
+    def test_the_submodel_server_is_not_a_capability_of_its_own(self, side: str) -> None:
+        """It is part of the registry requirement — ``engine.dtr`` covers it."""
         doc = _doc()
-        doc["infrastructure"]["engine"]["submodel_server"] = {"required": True}
-
-        script = YamlParser.parse_script_from_dict(doc)
-
-        assert script.infrastructure.engine["submodel_server"] == CapabilityRequirement(
-            required=True,
-        )
-
-    def test_submodel_server_is_rejected_on_the_sut_side(self) -> None:
-        doc = _doc()
-        doc["infrastructure"]["sut"]["submodel_server"] = {"required": True}
+        doc["infrastructure"][side]["submodel_server"] = {"required": True}
 
         with pytest.raises(ValueError, match="submodel_server"):
             YamlParser.parse_script_from_dict(doc)

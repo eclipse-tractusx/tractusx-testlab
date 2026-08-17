@@ -50,9 +50,8 @@ from tractusx_testlab.syntax import defaults
 KNOWN_RELEASES: tuple[str, ...] = ("saturn", "jupiter")
 
 #: The standard each capability implements when the TCK names none (ADR-0019 §1).
-#: ``submodel_server`` is deliberately absent: no standard id is assigned to it
-#: in ADR-0019, and inventing one would put a claim in a run's report that
-#: nothing backs.
+#: A capability with no standard assigned to it is left out rather than given
+#: an invented one, which would put a claim in a run's report that nothing backs.
 CAPABILITY_STANDARDS: dict[str, str] = {
     "connector": "CX-0018",
     "dtr": "CX-0002",

@@ -38,8 +38,8 @@ from tractusx_testlab.models.domain.infrastructure import (
     ConnectorBinding,
     DtrBinding,
     EngineBindings,
+    EngineDtrBinding,
     Infrastructure,
-    SubmodelServerBinding,
     SutBindings,
 )
 from tractusx_testlab.models.primitives.exceptions import (
@@ -57,7 +57,10 @@ def _integration() -> Infrastructure:
                 api_key="engine-key",
                 participant_id="BPNL000000000TLB",
             ),
-            submodel_server=SubmodelServerBinding(base_url="https://backend.example.com"),
+            dtr=EngineDtrBinding(
+                base_url="https://engine.example.com/semantics/registry",
+                submodel_base_url="https://backend.example.com",
+            ),
         ),
         sut=SutBindings(
             connector=ConnectorBinding(
@@ -104,7 +107,7 @@ class TestConstruction:
     def test_from_config_takes_the_engines_own_bindings(self) -> None:
         config = TestlabConfig(infrastructure=_integration())
         manager = InfrastructureManager.from_config(config)
-        assert manager.active.engine.submodel_server.base_url == "https://backend.example.com"
+        assert manager.active.engine.dtr.submodel_base_url == "https://backend.example.com"
 
     def test_from_env_reads_the_environment_over_a_base(self) -> None:
         manager = InfrastructureManager.from_env(
@@ -242,7 +245,7 @@ class TestAlign:
         aligned = manager.align(_requires(connector=True), "jupiter")
         assert aligned.sut.dtr.version == "jupiter"
         assert aligned.engine.connector.version == "jupiter"
-        assert aligned.engine.submodel_server.version == "jupiter"
+        assert aligned.engine.dtr.version == "jupiter"
 
     def test_an_unbound_capability_is_left_alone(self) -> None:
         manager = InfrastructureManager(_staging())
@@ -305,12 +308,6 @@ class TestAlign:
         aligned = manager.align(InfrastructureConfig(), "saturn")
         assert aligned.sut.connector.standard == "CX-0018"
         assert aligned.sut.dtr.standard == "CX-0002"
-
-    def test_a_capability_with_no_assigned_standard_claims_none(self) -> None:
-        """Nothing assigns a standard id to the submodel server, so nothing is claimed."""
-        manager = InfrastructureManager(_integration())
-        aligned = manager.align(InfrastructureConfig(), "saturn")
-        assert aligned.engine.submodel_server.standard == ""
 
     def test_a_contradicted_standard_is_refused(self) -> None:
         deployment = Infrastructure(
