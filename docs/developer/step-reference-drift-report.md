@@ -67,6 +67,11 @@ decorator — they call `step(...)` as a plain function on an already-defined cl
 a decorator-only grep under-reports by exactly those two. Worth knowing before anyone
 audits step coverage with `grep` again.
 
+> **Update:** both steps now carry `@step("…")` in
+> [`connector/pull_data.py`](../../src/tractusx_testlab/steps/connector/pull_data.py),
+> so a decorator grep is once again the complete inventory: every registered step
+> is declared by an annotation on its class.
+
 Byte diff of the committed page against a fresh generation isolates the drift to the
 `Type:` line of seven steps. Nothing else differs.
 
