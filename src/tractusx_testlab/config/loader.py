@@ -33,10 +33,25 @@ from typing import Optional
 import yaml
 
 from tractusx_testlab.config.settings import TestlabConfig
+from tractusx_testlab.infrastructure.mapping import (
+    apply_overrides,
+    merge,
+    overrides_from_env,
+)
 from tractusx_testlab.models import VaultConfig
+from tractusx_testlab.models.domain.infrastructure import Infrastructure
 
 _CONFIG_FILENAME = "testlab.config.yaml"
 _ENV_PREFIX = "TESTLAB_"
+
+
+def _as_infrastructure(declared: object) -> Infrastructure:
+    """Read one config layer's ``infrastructure`` block as the model it describes."""
+    if isinstance(declared, Infrastructure):
+        return declared
+    if isinstance(declared, dict):
+        return Infrastructure.model_validate(declared)
+    return Infrastructure()
 
 
 class ConfigLoader:
@@ -57,7 +72,28 @@ class ConfigLoader:
         if "vault" in merged and isinstance(merged["vault"], dict):
             merged["vault"] = VaultConfig(**merged["vault"])
 
+        merged["infrastructure"] = ConfigLoader._load_infrastructure(
+            file_data.get("infrastructure"),
+            (cli_overrides or {}).get("infrastructure"),
+        )
+
         return TestlabConfig(**merged)
+
+    @staticmethod
+    def _load_infrastructure(declared: object, cli_declared: object) -> Infrastructure:
+        """Build the infrastructure block from file, environment and caller, in that order.
+
+        The file states a whole deployment, the environment adjusts single
+        fields of it — which is how one container image is pointed at a
+        different connector per stage — and a caller constructing the config
+        itself has the last word. The layers meet rather than replace one
+        another, so setting one URL in the environment does not erase the rest
+        of the block.
+        """
+        resolved = apply_overrides(_as_infrastructure(declared), overrides_from_env())
+        if cli_declared is None:
+            return resolved
+        return merge(resolved, _as_infrastructure(cli_declared))
 
     @staticmethod
     def _load_file(config_path: Optional[Path] = None) -> dict:
@@ -83,7 +119,6 @@ class ConfigLoader:
             "MAX_UPLOAD_BYTES": "max_upload_bytes",
             "DEFAULT_TIMEOUT_S": "default_timeout_s",
             "LIBRARY_PATH": "library_path",
-            "SUBMODEL_BACKEND_URL": "submodel_backend_url",
         }
         for env_suffix, field_name in mappings.items():
             value = os.environ.get(f"{_ENV_PREFIX}{env_suffix}")

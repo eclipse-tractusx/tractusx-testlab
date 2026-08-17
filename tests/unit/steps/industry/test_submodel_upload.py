@@ -43,6 +43,11 @@ from pydantic import ValidationError
 
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.models import StepConfigError, StepDefinition
+from tractusx_testlab.models.domain.infrastructure import (
+    EngineBindings,
+    Infrastructure,
+    SubmodelServerBinding,
+)
 from tractusx_testlab.steps.industry.submodels import (
     DeleteBackendDataParams,
     DeleteBackendDataStep,
@@ -58,9 +63,17 @@ _ENCODED_SEMANTIC_ID = (
 )
 
 
-def _context(submodel_backend_url: str) -> MagicMock:
+def _context(submodel_server_url: str) -> MagicMock:
     ctx = MagicMock()
-    ctx.config = TestlabConfig(submodel_backend_url=submodel_backend_url)
+    config = TestlabConfig(
+        infrastructure=Infrastructure(
+            engine=EngineBindings(
+                submodel_server=SubmodelServerBinding(base_url=submodel_server_url),
+            ),
+        ),
+    )
+    ctx.config = config
+    ctx.infrastructure = config.infrastructure
     return ctx
 
 
@@ -270,7 +283,7 @@ async def test_an_engine_without_a_submodel_server_says_so() -> None:
             StepDefinition(id="s", uses=_USES),
         )
 
-    assert "submodel_backend_url" in str(error.value)
+    assert "engine.submodel_server.base_url" in str(error.value)
 
 
 def _capture_delete(monkeypatch, status: int = 204) -> dict[str, object]:
@@ -360,4 +373,4 @@ async def test_a_delete_against_an_engine_without_a_submodel_server_says_so() ->
             StepDefinition(id="s", uses=_DELETE_USES),
         )
 
-    assert "submodel_backend_url" in str(error.value)
+    assert "engine.submodel_server.base_url" in str(error.value)

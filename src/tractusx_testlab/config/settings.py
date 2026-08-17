@@ -30,6 +30,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from tractusx_testlab.models import VaultConfig
+from tractusx_testlab.models.domain.infrastructure import Infrastructure
 
 _DEFAULT_BASE = Path.home() / ".testlab"
 
@@ -42,8 +43,9 @@ class TestlabConfig(BaseModel):
     server_port: int = 8100
     max_upload_bytes: int = 52_428_800  # 50 MB
     default_timeout_s: float = 600.0
-    #: Root URL of the submodel server ``digital-twin/submodel/upload`` posts to.
-    #: Seeded with the engine, so a script never names the backend it writes to.
-    submodel_backend_url: str = ""
+    #: The deployment this engine drives — its own connector, registry and
+    #: submodel server, and the system under test it talks to. Held here so an
+    #: engine is configured once, at startup, rather than per script.
+    infrastructure: Infrastructure = Field(default_factory=Infrastructure)
     vault: Optional[VaultConfig] = None
     library_path: Optional[Path] = None

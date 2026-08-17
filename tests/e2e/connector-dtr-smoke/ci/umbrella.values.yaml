@@ -23,17 +23,32 @@
 ## It was reviewed and tested by a human committer.
 
 # CI-only additions to values-adopter-decentralized-identityhub.yaml.
-# Umbrella 26.03.00 does not enable the participant Vaults and its packaged
-# decentralized-identity-connector dependency omits these three bundles.
-# The workflow restores the pinned bundles before applying these values.
+#
+# Three things this file is responsible for:
+#
+#   1. Giving the *consumer* participant a Digital Twin Registry and a data
+#      backend (the upstream profile only gives them to the provider), so the
+#      test environment has two of each.
+#   2. Isolating each connector's DSP / management APIs onto their own ingress
+#      hostnames, so nothing else on `<participant>.local` can shadow them.
+#   3. Making the whole release survive on a 4-vCPU GitHub runner: every JVM in
+#      the release boots at the same time on a heavily contended CPU, so the
+#      stock 30s/100s liveness delays kill pods before they finish starting.
+#
+# Note what this file deliberately does NOT touch: the profile's vault wiring.
+# `edc-provider.install.vault` stays `false` and the connector bundle's own
+# vault stays enabled, because the bundle is what ships
+# `post-install-vault-setup` — the hook that writes tokenSignerPrivateKey /
+# tokenSignerPublicKey / tokenEncryptionAesKey into the participant's vault.
+# Deploying the vault from `install.vault` instead gives you a vault with no
+# secrets in it, and every data-plane transfer then fails to sign its EDR.
+# The workflow's manifest validation asserts both hooks are present.
 
 edc-provider:
-  install:
-    vault: true
   tractusx-identityhub:
     identityhub:
       livenessProbe:
-        initialDelaySeconds: 180
+        initialDelaySeconds: 240
       resources:
         requests:
           cpu: 100m
@@ -43,9 +58,14 @@ edc-provider:
     controlplaneManagementUrl: "http://provider-management.local"
     dataspace-connector-bundle:
       vault:
-        enabled: false
+        # The agent injector is not used here and costs a Deployment plus two
+        # cluster-scoped MutatingWebhookConfigurations per participant.
+        injector:
+          enabled: false
       tractusx-connector:
         controlplane:
+          livenessProbe:
+            initialDelaySeconds: 240
           endpoints:
             default:
               path: /api
@@ -74,6 +94,9 @@ edc-provider:
               className: nginx
               tls:
                 enabled: false
+        dataplane:
+          livenessProbe:
+            initialDelaySeconds: 240
     digital-twin-bundle:
       enabled: true
       digital-twin-registry:
@@ -82,6 +105,8 @@ edc-provider:
           fullnameOverride: provider-registry-keycloak
         registry:
           host: provider-dtr.local
+          livenessProbe:
+            initialDelaySeconds: 240
           dataSource:
             url: jdbc:postgresql://provider-dtr-postgresql:5432/dtr
           ingress:
@@ -97,6 +122,8 @@ edc-provider:
       enabled: true
       simple-data-backend:
         fullnameOverride: provider-submodelserver
+        livenessProbe:
+          initialDelaySeconds: 240
         ingress:
           hosts:
             - host: provider-submodelserver.local
@@ -105,12 +132,10 @@ edc-provider:
                   pathType: Prefix
 
 edc-consumer:
-  install:
-    vault: true
   tractusx-identityhub:
     identityhub:
       livenessProbe:
-        initialDelaySeconds: 180
+        initialDelaySeconds: 240
       resources:
         requests:
           cpu: 100m
@@ -120,9 +145,12 @@ edc-consumer:
     controlplaneManagementUrl: "http://consumer-management.local"
     dataspace-connector-bundle:
       vault:
-        enabled: false
+        injector:
+          enabled: false
       tractusx-connector:
         controlplane:
+          livenessProbe:
+            initialDelaySeconds: 240
           endpoints:
             default:
               path: /api
@@ -151,6 +179,9 @@ edc-consumer:
               className: nginx
               tls:
                 enabled: false
+        dataplane:
+          livenessProbe:
+            initialDelaySeconds: 240
     digital-twin-bundle:
       enabled: true
       digital-twin-registry:
@@ -159,6 +190,8 @@ edc-consumer:
           fullnameOverride: consumer-registry-keycloak
         registry:
           host: consumer-dtr.local
+          livenessProbe:
+            initialDelaySeconds: 240
           dataSource:
             url: jdbc:postgresql://consumer-dtr-postgresql:5432/dtr
           ingress:
@@ -174,9 +207,32 @@ edc-consumer:
       enabled: true
       simple-data-backend:
         fullnameOverride: consumer-submodelserver
+        livenessProbe:
+          initialDelaySeconds: 240
         ingress:
           hosts:
             - host: consumer-submodelserver.local
               paths:
                 - path: /
                   pathType: Prefix
+
+# Both of these ask for 500m of CPU by default. On a 4-vCPU runner that is
+# ~a third of the schedulable capacity spent on two services that idle for
+# most of the run, and it crowds out the connectors.
+bdrs-server-memory:
+  server:
+    livenessProbe:
+      initialDelaySeconds: 240
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+tractusx-issuerservice:
+  issuerservice:
+    livenessProbe:
+      initialDelaySeconds: 240
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi

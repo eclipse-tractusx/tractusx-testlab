@@ -50,5 +50,9 @@ variables:
   infrastructure.sut.connector.dsp_url: "http://provider-dsp.local/api/v1/dsp"
 
   # infrastructure.sut.dtr.base_url — intentionally absent; supplied via
-  # `--var infrastructure.sut.dtr.base_url=...` once the workflow has
-  # resolved the DTR's ingress host for this chart version.
+  # `--var infrastructure.sut.dtr.base_url=...` once the workflow has resolved
+  # the DTR's ingress host *and* its rewritten path prefix for this chart
+  # version. The registry is served under `/semantics/registry`, so the base URL
+  # is host + prefix (`http://provider-dtr.local/semantics/registry`) — the bare
+  # host answers 404. Both halves are subchart defaults rather than values this
+  # profile pins, which is why they are discovered instead of committed here.

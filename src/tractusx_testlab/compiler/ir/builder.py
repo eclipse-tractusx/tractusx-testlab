@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import yaml
+from pydantic import ValidationError
 
 from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.compiler._fingerprint import build_fingerprint
@@ -45,6 +46,11 @@ from tractusx_testlab.compiler.ir._helpers import (
     infer_testdata_type as _infer_testdata_type,
 )
 from tractusx_testlab.compiler.ir._symbols import build_global_symbols
+from tractusx_testlab.models.authoring.infrastructure import (
+    DataspaceContext,
+    InfrastructureConfig,
+)
+from tractusx_testlab.scripting._infrastructure import merge_requirements
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +96,10 @@ def build_ir(
     }
     if metadata:
         tck_section["metadata"] = metadata
+    if dataspace := _build_dataspace(manifest_data):
+        tck_section["dataspace"] = dataspace
+    if infrastructure := _build_infrastructure(manifest_data, base_dir):
+        tck_section["infrastructure"] = infrastructure
 
     execution_json = json.dumps(execution_dict, indent=2, ensure_ascii=False)
     execution_json_bytes = execution_json.encode("utf-8")
@@ -264,3 +274,57 @@ def _build_tests_list(
     return tests_list
 
 
+def _build_dataspace(manifest_data: dict[str, Any]) -> dict[str, Any]:
+    """The ecosystem context the package certifies against, when the TCK names one.
+
+    Only the manifest-level block counts, which is the rule the player applies
+    too: a release nobody declared is the engine's default, and writing that
+    default into the package would claim the TCK targets a release it never
+    named — a claim an operator would then be held to.
+    """
+    declared = manifest_data.get("dataspace")
+    if not isinstance(declared, dict):
+        return {}
+    return DataspaceContext.model_validate(declared).model_dump()
+
+
+def _build_infrastructure(
+    manifest_data: dict[str, Any], base_dir: Path,
+) -> dict[str, Any]:
+    """What the package needs bound before it can run — resolved, not copied.
+
+    A TCK may state its requirements once at the manifest level or leave each
+    test to state its own, so the manifest-level block wins when present and
+    the per-test blocks are merged otherwise. That is the same resolution the
+    player performs before the first step, which is what makes this section an
+    answer to "what must I bind to run this package" rather than a transcript
+    of where the author happened to write it down.
+    """
+    from tractusx_testlab.compiler.ir._helpers import load_test_file, resolve_test_path
+
+    declared = manifest_data.get("infrastructure")
+    if isinstance(declared, dict):
+        requirements = _as_requirements(declared, "index.yaml")
+    else:
+        per_test: list[InfrastructureConfig] = []
+        for entry in manifest_data.get("tests", []):
+            file_ref = entry if isinstance(entry, str) else entry.get(
+                "test", entry.get("file", entry.get("id", ""))
+            )
+            test_path = resolve_test_path(file_ref, base_dir)
+            test_declared = load_test_file(test_path).get("infrastructure")
+            if isinstance(test_declared, dict):
+                per_test.append(_as_requirements(test_declared, f"tests/{test_path.name}"))
+        requirements = merge_requirements(per_test)
+
+    if not requirements.engine and not requirements.sut:
+        return {}
+    return requirements.model_dump(exclude_none=True)
+
+
+def _as_requirements(declared: dict[str, Any], source: str) -> InfrastructureConfig:
+    """Read one ``infrastructure`` block, naming the file when it does not hold up."""
+    try:
+        return InfrastructureConfig.model_validate(declared)
+    except ValidationError as exc:
+        raise ValueError(f"Invalid 'infrastructure' block in {source}:\n{exc}") from exc

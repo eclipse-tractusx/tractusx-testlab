@@ -74,6 +74,68 @@ class SkipNotAllowedError(Exception):
         )
 
 
+class InfrastructureError(Exception):
+    """Base for problems with the infrastructure bindings an engine was given."""
+
+
+class UnknownBindingKeyError(InfrastructureError):
+    """Raised when a binding key names no field of the infrastructure model.
+
+    A misspelled key used to be dropped in silence and surface as an empty URL
+    several steps later, so the key is rejected where it is written and the
+    accepted ones are listed beside it.
+    """
+
+    def __init__(self, key: str, known: list[str]) -> None:
+        self.key = key
+        self.known = known
+        listed = "\n  ".join(known)
+        super().__init__(
+            f"Unknown infrastructure binding key: '{key}'. Accepted keys are:\n  {listed}"
+        )
+
+
+class MissingBindingError(InfrastructureError):
+    """Raised before the first step when a required capability was never bound.
+
+    Reports every unbound capability at once, each with the key the operator
+    still owes, so one run tells them everything they have to supply.
+    """
+
+    def __init__(self, missing: list[tuple[str, str, str]]) -> None:
+        self.missing = missing
+        lines = "\n".join(
+            f"  {side}.{capability} — set '{key}' "
+            f"(or {'TESTLAB_' + key.split('.', 1)[1].replace('.', '_').upper()})"
+            for side, capability, key in missing
+        )
+        capabilities = ", ".join(f"{side}.{capability}" for side, capability, _ in missing)
+        super().__init__(
+            f"This TCK requires infrastructure that is not bound: {capabilities}\n{lines}"
+        )
+
+
+class StandardConflictError(InfrastructureError):
+    """Raised when a binding claims a different standard or release than the TCK certifies.
+
+    A TCK that certifies against Saturn cannot prove anything by running
+    against a connector the operator declared as Jupiter — one of the two is
+    wrong, and which one is the operator's call, so both are printed.
+    """
+
+    def __init__(self, conflicts: list[tuple[str, str, str, str, str]]) -> None:
+        self.conflicts = conflicts
+        lines = "\n".join(
+            f"  {side}.{capability}.{field}: bound as '{bound}', "
+            f"but this TCK certifies against '{required}'"
+            for side, capability, field, bound, required in conflicts
+        )
+        super().__init__(
+            "The infrastructure bound does not match what this TCK certifies against:\n"
+            f"{lines}"
+        )
+
+
 class DuplicateServiceError(Exception):
     def __init__(self, name: str):
         self.name = name

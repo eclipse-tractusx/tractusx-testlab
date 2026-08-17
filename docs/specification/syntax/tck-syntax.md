@@ -172,19 +172,21 @@ infrastructure:
     connector:
       required: true
       standard:
-        - id: CX-0018
-          version: v4.2.0
+        id: CX-0018
+        version: v4.2.0
+    submodel_server:           # engine-only — where provider payloads are uploaded
+      required: true
   sut:                         # System Under Test — the Service Provider's side
     connector:
       required: true
       standard:
-        - id: CX-0018
-          version: v4.2.0
+        id: CX-0018
+        version: v4.2.0
     dtr:
       required: true
       standard:
-        - id: CX-0002
-          version: v1.0.5
+        id: CX-0002
+        version: v1.0.5
 ```
 
 | Field | R/O | Notes |
@@ -193,11 +195,14 @@ infrastructure:
 | `sut` | R | Requirements on the System Under Test. |
 | `<side>.connector` | R | EDC requirement. |
 | `<side>.dtr` | O | Digital Twin Registry requirement — optional per the deck. |
+| `engine.submodel_server` | O | Backend the engine uploads provider submodel payloads to. Engine-only: a test never names a server of its own. |
 | `*.required` | R | bool. |
-| `*.standard[]` | R | List of `{id, version}` the component must comply with. |
+| `*.standard` | O | Single `{id, version}` the component must comply with. One capability certifies one standard; the report carries that pair. `version` inherits `dataspace.version` when omitted. |
 
-**[PROP]** Component keys are a closed vocabulary per `syntax` version. `v1-alpha`: `connector`, `dtr`.
-Adding a component type (e.g. `submodel_server`, `bpn_did_resolver`) is a `syntax` bump.
+**[PROP]** Component keys are a closed vocabulary per `syntax` version, and the vocabulary is the
+engine's binding model — the two sides are asymmetric, so each side accepts only what it can bind.
+`v1-alpha`: `engine` → `connector`, `dtr`, `submodel_server`; `sut` → `connector`, `dtr`. Adding a
+component type (e.g. `bpn_did_resolver`) is a `syntax` bump.
 
 ### 3.5 `env` — Environmental Configuration **[SPEC]**
 
@@ -785,19 +790,19 @@ infrastructure:
     connector:
       required: true
       standard:
-        - id: CX-0018
-          version: v4.2.0
+        id: CX-0018
+        version: v4.2.0
   sut:
     connector:
       required: true
       standard:
-        - id: CX-0018
-          version: v4.2.0
+        id: CX-0018
+        version: v4.2.0
     dtr:
       required: true
       standard:
-        - id: CX-0002
-          version: v1.0.5
+        id: CX-0002
+        version: v1.0.5
 
 env:
   variables:

@@ -29,11 +29,14 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from tractusx_testlab.config.settings import TestlabConfig as _TestlabConfig
+from tractusx_testlab.infrastructure.mapping import apply_overrides, collect_overrides
 from tractusx_testlab.models import Job
+from tractusx_testlab.models.domain.infrastructure import Infrastructure
 from tractusx_testlab.models.primitives.enums import ServiceType
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.infrastructure_seeder import (
     _ENGINE_CONNECTOR_NAME,
+    _ENGINE_DTR_NAME,
     _SUT_CONNECTOR_NAME,
     _SUT_DTR_NAME,
     seed_infrastructure_services,
@@ -46,6 +49,11 @@ from tractusx_testlab.services.manager import ServiceManager
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _infrastructure(variables: dict) -> Infrastructure:
+    """Resolve flat binding variables into the typed deployment they describe."""
+    return apply_overrides(Infrastructure(), collect_overrides(variables))
+
+
 def _make_context(variables: dict) -> MagicMock:
     """Return a lightweight StepContext mock backed by a real dict."""
     ctx = MagicMock()
@@ -53,6 +61,7 @@ def _make_context(variables: dict) -> MagicMock:
     ctx.variables = store
     ctx.set_variable.side_effect = lambda k, v: store.update({k: v})
     ctx.get_variable.side_effect = lambda k, d=None: store.get(k, d)
+    ctx.infrastructure = _infrastructure(store)
     return ctx
 
 
@@ -238,12 +247,14 @@ class TestConnectorRoleCompatibility:
 
     def test_provider_lookup_skips_engine_consumer(self) -> None:
         svc_mgr = ServiceManager()
+        bindings = {**_base_engine_vars(), **_base_sut_vars()}
         ctx = StepContext(
             services=svc_mgr,
             job=Job(job_id="provider-resolution-test"),
             config=_TestlabConfig(),
+            infrastructure=_infrastructure(bindings),
         )
-        for name, value in {**_base_engine_vars(), **_base_sut_vars()}.items():
+        for name, value in bindings.items():
             ctx.set_variable(name, value)
         seed_infrastructure_services(svc_mgr, ctx)
 
