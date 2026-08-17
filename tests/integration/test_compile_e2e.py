@@ -38,12 +38,12 @@ import yaml
 from fastapi import APIRouter, FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from tests.paths import FIXTURES_DIR, SRC_DIR
 from tractusx_testlab.models.authoring.definitions import ScriptDefinition, TckDefinition
 from tractusx_testlab.scripting.parser import YamlParser
 from tractusx_testlab.scripting.script import Tck, TestScript
 
-_FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
-_SRC_DIR = str(Path(__file__).resolve().parent.parent.parent / "src")
+_SRC_DIR = str(SRC_DIR)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ _SRC_DIR = str(Path(__file__).resolve().parent.parent.parent / "src")
 @pytest.fixture()
 def simple_tck_yaml() -> str:
     """Load the simple TCK YAML fixture as a string."""
-    return (_FIXTURES_DIR / "simple_tck.yaml").read_text(encoding="utf-8")
+    return (FIXTURES_DIR / "simple_tck.yaml").read_text(encoding="utf-8")
 
 
 @pytest.fixture()
@@ -103,7 +103,7 @@ class TestTckParseCompilePipeline:
 
     def test_parse_tck_from_file(self) -> None:
         """YamlParser.parse_tck loads from a file path directly."""
-        path = _FIXTURES_DIR / "simple_tck.yaml"
+        path = FIXTURES_DIR / "simple_tck.yaml"
         definition = YamlParser.parse_tck(path)
 
         assert definition.metadata.name == "simple-ping-test"

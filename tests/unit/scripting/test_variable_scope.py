@@ -26,21 +26,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
+from tests.paths import CCM_RAW_DIR
 from tractusx_testlab.compiler.validation._rules import _validate_variable_scopes
 from tractusx_testlab.models.primitives.enums import VariableScope, VariableSource
 from tractusx_testlab.scripting._variable_form import parse_variables_block
-
-CCM_DIR = (
-    Path(__file__).resolve().parent.parent
-    / "docs"
-    / "examples"
-    / "certificate-management-v2"
-    / "raw"
-)
 
 
 class TestVariableScopeEnum:
@@ -218,7 +209,7 @@ class TestCcmVariableScopes:
         from tractusx_testlab.scripting.parser import YamlParser
         from tractusx_testlab.scripting.script import Tck
 
-        tck_def = YamlParser.parse_tck(CCM_DIR / "index.yaml")
+        tck_def = YamlParser.parse_tck(CCM_RAW_DIR / "index.yaml")
         return Tck(tck_def)
 
     def test_a_variable_declared_sut_is_scoped_to_the_sut(self) -> None:
@@ -235,7 +226,7 @@ class TestCcmVariableScopes:
         """What the YAML says a variable's scope is, is what the model reports."""
         import yaml
 
-        raw = yaml.safe_load((CCM_DIR / "index.yaml").read_text(encoding="utf-8"))
+        raw = yaml.safe_load((CCM_RAW_DIR / "index.yaml").read_text(encoding="utf-8"))
         declared = {
             entry["id"]: (entry.get("with") or {}).get("scope")
             for entry in (raw.get("env") or {}).get("variables") or []

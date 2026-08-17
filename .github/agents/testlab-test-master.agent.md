@@ -34,18 +34,25 @@ You are working on `tractusx-testlab` tests:
 - **Dependencies**: tractusx-sdk, Pydantic v2, FastAPI, Typer, httpx
 - **Run command**: `python -m pytest tests/ -x -q`
 
-### Current Test Files
+### Where a Test Goes
 
-| File | What it tests |
-|------|---------------|
-| `test_cli.py` | Typer CLI commands (run, compile, validate, keygen) |
-| `test_compiler.py` | YAML → compiled test package |
-| `test_mock_server_integration.py` | Mock server lifecycle and callback handling |
-| `test_mocks.py` | Mock object construction |
-| `test_models.py` | Pydantic model validation |
-| `test_runner.py` | Test execution engine |
-| `test_step_executors.py` | Individual step executor behavior |
-| `test_test_runner.py` | End-to-end test runner |
+Full map: [tests/README.md](../../tests/README.md). The short form:
+
+| Directory | Answers |
+|-----------|---------|
+| `tests/unit/` | Does one module honour its contract? Mirrors `src/tractusx_testlab/` package for package |
+| `tests/combinations/` | Do steps compose — outputs of one wiring into the next? |
+| `tests/examples/` | Does the shipped `docs/examples/` TCK still parse and compile? |
+| `tests/integration/` | Does CLI → compiler → player hold end to end? |
+| `tests/e2e/` | TCK YAML run against a real dataspace in CI — not pytest |
+
+Placement is mechanical: a test for `tractusx_testlab.steps.connector.negotiate`
+goes in `tests/unit/steps/connector/`. Only contracts spanning several packages
+sit at a parent level.
+
+- Every test directory needs an `__init__.py`, or collection breaks.
+- Never write `Path(__file__).parent.parent` — import `REPO_ROOT`, `SRC_DIR`,
+  `DOCS_DIR`, `FIXTURES_DIR` or `CCM_RAW_DIR` from `tests.paths`.
 
 ### Modules to Test
 

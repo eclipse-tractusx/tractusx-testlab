@@ -31,6 +31,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from tests.paths import CCM_RAW_DIR
 from tractusx_testlab.cli import app
 
 runner = CliRunner()
@@ -67,7 +68,7 @@ tests: []
 @pytest.fixture()
 def valid_yaml_file() -> Path:
     # Use the real CCM example which is known-valid and satisfies JSON schema.
-    p = Path("docs/examples/certificate-management-v2/raw/index.yaml")
+    p = CCM_RAW_DIR / "index.yaml"
     if not p.exists():
         pytest.skip("CCM example not found")
     return p

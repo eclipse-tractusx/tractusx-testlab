@@ -42,13 +42,14 @@ from tractusx_testlab.models.primitives.enums import (
     EventKind,
     StepStatus,
 )
+from tests.paths import DOCS_DIR
 from tractusx_testlab.models.authoring.definitions import Assertion, StepDefinition
 from tractusx_testlab.models.runtime.events import ExecutionEvent
 from tractusx_testlab.models.runtime.results import AssertionResult, ScriptResult, StepResult
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.server.streaming.formatter import TERMINAL_EVENTS
 
-_CONTRACT_PAGE = Path(__file__).resolve().parents[1] / "docs/developer/execution-events.md"
+_CONTRACT_PAGE = DOCS_DIR / "developer" / "execution-events.md"
 
 
 @pytest.fixture()

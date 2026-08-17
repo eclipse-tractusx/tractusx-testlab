@@ -36,11 +36,13 @@ import pytest
 from fastapi import APIRouter, FastAPI
 from starlette.testclient import TestClient
 
+from tests.paths import SRC_DIR
+
 # ---------------------------------------------------------------------------
 # Fixture: build a FastAPI app from local source with SDK deps mocked
 # ---------------------------------------------------------------------------
 
-_SRC_DIR = str(Path(__file__).resolve().parent.parent / "src")
+_SRC_DIR = str(SRC_DIR)
 
 
 @pytest.fixture()

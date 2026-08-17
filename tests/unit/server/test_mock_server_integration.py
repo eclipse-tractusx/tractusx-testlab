@@ -36,7 +36,9 @@ import pytest
 from fastapi import APIRouter, FastAPI
 from starlette.testclient import TestClient
 
-_SRC_DIR = str(Path(__file__).resolve().parent.parent / "src")
+from tests.paths import SRC_DIR
+
+_SRC_DIR = str(SRC_DIR)
 
 
 @pytest.fixture()

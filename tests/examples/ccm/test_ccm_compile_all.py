@@ -30,12 +30,10 @@ from pathlib import Path
 import pytest
 import yaml
 
+from tests.paths import CCM_RAW_DIR
 from tractusx_testlab.scripting.parser import YamlParser
 
-CCM_TESTS_DIR = (
-    Path(__file__).resolve().parent.parent
-    / "docs" / "examples" / "certificate-management-v2" / "raw" / "tests"
-)
+CCM_TESTS_DIR = CCM_RAW_DIR / "tests"
 
 _CCM_YAML_FILES = sorted(CCM_TESTS_DIR.glob("*.yaml"))
 

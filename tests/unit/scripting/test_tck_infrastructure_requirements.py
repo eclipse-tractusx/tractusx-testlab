@@ -30,6 +30,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.paths import CCM_RAW_DIR
 from tractusx_testlab.models.authoring.definitions import (
     MetadataDefinition,
     ScriptDefinition,
@@ -226,14 +227,7 @@ class TestInfrastructureRequirementsCcm:
     def test_ccm_tck_declares_engine_and_sut_connector(self) -> None:
         from tractusx_testlab.scripting.parser import YamlParser
 
-        ccm_dir = (
-            Path(__file__).resolve().parent.parent
-            / "docs"
-            / "examples"
-            / "certificate-management-v2"
-            / "raw"
-        )
-        tck_def = YamlParser.parse_tck(ccm_dir / "index.yaml")
+        tck_def = YamlParser.parse_tck(CCM_RAW_DIR / "index.yaml")
         tck = Tck(tck_def)
 
         result = tck.infrastructure_requirements()

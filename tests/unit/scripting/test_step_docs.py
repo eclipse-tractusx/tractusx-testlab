@@ -31,6 +31,7 @@ import pytest
 from pydantic import BaseModel, Field
 
 import tractusx_testlab.steps  # noqa: F401  — registers every step
+from tests.paths import DOCS_DIR
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.step_docs import (
     accepted_names,
@@ -41,7 +42,7 @@ from tractusx_testlab.scripting.step_docs import (
     type_name,
 )
 
-_GENERATED_PAGE = Path(__file__).resolve().parents[1] / "docs/specification/reference/steps.md"
+_GENERATED_PAGE = DOCS_DIR / "specification" / "reference" / "steps.md"
 
 
 class _Nested(BaseModel):

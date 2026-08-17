@@ -25,12 +25,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 import yaml
 
 import tractusx_testlab.steps  # noqa: F401 — trigger @step registrations
+from tests.paths import CCM_RAW_DIR
 from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.models.authoring.definitions import Assertion, ServiceDefinition
 from tractusx_testlab.models.authoring.infrastructure import DataspaceContext
@@ -38,8 +37,7 @@ from tractusx_testlab.models.primitives.enums import ServiceType
 from tractusx_testlab.scripting import StepRegistry
 from tractusx_testlab.scripting.parser import YamlParser
 
-CCM_DIR = Path(__file__).resolve().parent.parent / "docs" / "examples" / "certificate-management-v2" / "raw"
-CCM_TESTS_DIR = CCM_DIR / "tests"
+CCM_TESTS_DIR = CCM_RAW_DIR / "tests"
 
 #: The example's own test files, read from disk rather than listed here.
 #: A hard-coded list drifts silently every time the example is reworked, and
@@ -102,7 +100,7 @@ class TestCcmYamlParsing:
 class TestCcmIndexParsing:
     def test_ccm_index_parses_as_tck(self) -> None:
 
-        index_path = CCM_DIR / "index.yaml"
+        index_path = CCM_RAW_DIR / "index.yaml"
         with open(index_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
@@ -160,13 +158,13 @@ class TestCcmInfrastructure:
 
     def test_ccm_index_dataspace_block_parses(self) -> None:
 
-        tck = YamlParser.parse_tck(CCM_DIR / "index.yaml")
+        tck = YamlParser.parse_tck(CCM_RAW_DIR / "index.yaml")
 
         assert tck.dataspace == DataspaceContext(ecosystem="Catena-X", version="saturn")
 
     def test_ccm_index_infrastructure_declares_engine_and_sut_connector(self) -> None:
 
-        tck = YamlParser.parse_tck(CCM_DIR / "index.yaml")
+        tck = YamlParser.parse_tck(CCM_RAW_DIR / "index.yaml")
 
         assert tck.infrastructure.engine["connector"].required is True
         assert tck.infrastructure.sut["connector"].required is True

@@ -74,4 +74,7 @@ mike = "^2.1.3"
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["tests"]
+# `tests` on the path so the combination harness imports as `combinations.*`;
+# the repo root comes from the `tests` package itself, for `tests.paths`.
 pythonpath = ["tests"]
+asyncio_mode = "auto"
