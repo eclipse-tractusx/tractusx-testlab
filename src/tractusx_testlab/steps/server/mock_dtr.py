@@ -101,7 +101,7 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
     output_model = NoOutput
 
     async def execute(
-        self, params: MockDtrParams, context: "StepContext", definition: StepDefinition,
+        self, params: MockDtrParams, context: StepContext, definition: StepDefinition,
     ) -> StepOutput[NoOutput]:
         shells: list[dict] = list(params.shells)
 

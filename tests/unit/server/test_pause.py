@@ -36,7 +36,6 @@ from tractusx_testlab.models.primitives.enums import JobStatus
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.server.routes import router
-from tractusx_testlab.server.streaming import streaming_router
 
 _STREAMING_MODULE = "tractusx_testlab.server.streaming.routes"
 
@@ -98,7 +97,6 @@ class TestPauseEndpoint:
     """POST /testlab/test-execution/{job_id}/pause tests."""
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="Route uses str(enum) instead of enum.value — returns 409 always")
     async def test_pause_running_job_returns_200(
         self, client: AsyncClient, mock_player: MagicMock,
     ) -> None:
@@ -115,7 +113,6 @@ class TestPauseEndpoint:
         assert data["status"] == "PAUSED"
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="Route uses str(enum) instead of enum.value — returns 409 always")
     async def test_pause_sets_job_status_to_paused(
         self, client: AsyncClient, mock_player: MagicMock,
     ) -> None:

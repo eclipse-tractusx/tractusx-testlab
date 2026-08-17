@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
@@ -87,13 +87,13 @@ class ExtractDatasetOutput(StepPayload):
     The dataset and identifiers describe the first matching offer.
     """
 
-    dataset: Optional[dict] = Field(
+    dataset: dict | None = Field(
         default=None, description="The first dataset whose 'dct:type' matched."
     )
-    offer_id: Optional[str] = Field(
+    offer_id: str | None = Field(
         default=None, description="Policy/offer ID of the first match."
     )
-    asset_id: Optional[str] = Field(default=None, description="Asset ID of the first match.")
+    asset_id: str | None = Field(default=None, description="Asset ID of the first match.")
 
 
 @step("connector/consumer/extract_dataset")
@@ -104,15 +104,15 @@ class ExtractDatasetStep(BaseStep[ExtractDatasetParams, ExtractDatasetOutput]):
     output_model = ExtractDatasetOutput
 
     async def execute(
-        self, params: ExtractDatasetParams, context: "StepContext", definition: StepDefinition
+        self, params: ExtractDatasetParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[ExtractDatasetOutput]:
         dataset = _find_dataset_by_type(params.datasets, params.dct_type)
         logger.debug(
             "Found dataset matching dct:type '%s': %s", params.dct_type, dataset is not None
         )
 
-        offer_id: Optional[str] = None
-        asset_id: Optional[str] = None
+        offer_id: str | None = None
+        asset_id: str | None = None
         if dataset is not None:
             offer_id = _extract_offer_id(dataset)
             asset_id = dataset.get(_ASSET_ID_KEY) or dataset.get("@id")

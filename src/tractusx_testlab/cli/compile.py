@@ -30,12 +30,10 @@ import json
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Optional
 
 import typer
 
 from tractusx_testlab.cli import app
-
 
 # Archive entry name for the bundled authoring YAML
 TCK_BUNDLE_ENTRY = "tck-bundle.yaml"
@@ -56,7 +54,7 @@ def _embed_bundle_yaml(manifest_path: Path, output_dir: Path) -> None:
 
     import yaml as _yaml
 
-    with open(manifest_path, "r", encoding="utf-8") as f:
+    with open(manifest_path, encoding="utf-8") as f:
         tck_data = _yaml.safe_load(f)
 
     bundled = _yaml.dump(tck_data, default_flow_style=False, sort_keys=False)
@@ -85,19 +83,19 @@ def _embed_bundle_yaml(manifest_path: Path, output_dir: Path) -> None:
 @app.command()
 def compile(
     script: Path = typer.Argument(..., help="Path to the YAML test script to compile."),
-    compiler_keys: Optional[Path] = typer.Option(
+    compiler_keys: Path | None = typer.Option(
         None, "--compiler-keys", "-c",
         help="Directory containing the compiler identity (signing.pem, encryption.*).",
     ),
-    player_pub: Optional[list[Path]] = typer.Option(
+    player_pub: list[Path] | None = typer.Option(
         None, "--player-pub", "-p",
         help="Path(s) to player RSA public key(s) (encryption.pub). Can be repeated.",
     ),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None, "--output", "-o",
         help="Output path. Directory for --plain, .tck file otherwise.",
     ),
-    version: Optional[str] = typer.Option(
+    version: str | None = typer.Option(
         None, "--version", "-v",
         help="Connector version for version-specific validation.",
     ),
@@ -124,7 +122,7 @@ def compile(
                 manifest_dict, _ = compiler.compile_plain(manifest_path=script, output_path=out, version=version)
             except (ValueError, FileNotFoundError) as exc:
                 typer.echo(f"Compilation failed: {exc}", err=True)
-                raise typer.Exit(1)
+                raise typer.Exit(1) from exc
             typer.echo(f"\nCompiled (plain) → {out}/manifest.yaml")
             typer.echo(f"                 → {out}/tck-execution.json")
             typer.echo(f"                 → {out}/assets/")
@@ -157,7 +155,7 @@ def compile(
             manifest_dict, _ = compiler.compile_plain(manifest_path=script, output_path=tmp_path, version=version)
         except (ValueError, FileNotFoundError) as exc:
             typer.echo(f"Compilation failed: {exc}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from exc
 
         _embed_bundle_yaml(script, tmp_path)
 
@@ -183,20 +181,23 @@ def _compile_encrypted_plain(
     compiler_keys: Path,
     player_pub: list[Path],
     out: Path,
-    version: Optional[str],
+    version: str | None,
     compiler: object,
 ) -> None:
     """Compile into encrypted loose files (manifest.yaml + payload.enc + signature.sig)."""
     import base64
     import tempfile
 
+    import yaml as _yaml
+
+    from tractusx_testlab.cli._tck_packager import (
+        build_encrypted_payload,
+        build_redacted_manifest,
+        create_tar_bytes,
+    )
     from tractusx_testlab.security.crypto.keygen import _fingerprint
     from tractusx_testlab.security.crypto.signing import sign_bytes
     from tractusx_testlab.security.trust.identity import PlayerIdentity
-    from tractusx_testlab.cli._tck_packager import (
-        build_encrypted_payload, build_redacted_manifest, create_tar_bytes,
-    )
-    import yaml as _yaml
 
     compiler_identity = PlayerIdentity.load(compiler_keys)
     recipient_keys: dict[str, bytes] = {}
@@ -214,7 +215,7 @@ def _compile_encrypted_plain(
             )
         except (ValueError, FileNotFoundError) as exc:
             typer.echo(f"Compilation failed: {exc}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from exc
         _embed_bundle_yaml(script, tmp_path)
         tar_bytes = create_tar_bytes(tmp_path)
 
@@ -242,7 +243,7 @@ def _compile_encrypted_plain(
 def _resolve_tck_output_path(
     script: Path,
     manifest_dict: dict,
-    output: Optional[Path],
+    output: Path | None,
 ) -> Path:
     """Resolve the output .tck path from CLI options."""
     tck_id = manifest_dict["tck"]["id"]
@@ -258,21 +259,23 @@ def _compile_encrypted_tck(
     script: Path,
     compiler_keys: Path,
     player_pub: list[Path],
-    output: Optional[Path],
-    version: Optional[str],
+    output: Path | None,
+    version: str | None,
     compiler: object,
 ) -> None:
     """Compile a TCK manifest into a .tck with AES-256-GCM encrypted payload.enc."""
     import base64
     import tempfile
 
+    from tractusx_testlab.cli._tck_packager import (
+        build_encrypted_payload,
+        build_redacted_manifest,
+        create_tar_bytes,
+        write_encrypted_tck,
+    )
     from tractusx_testlab.security.crypto.keygen import _fingerprint
     from tractusx_testlab.security.crypto.signing import sign_bytes
     from tractusx_testlab.security.trust.identity import PlayerIdentity
-    from tractusx_testlab.cli._tck_packager import (
-        build_encrypted_payload, build_redacted_manifest,
-        create_tar_bytes, write_encrypted_tck,
-    )
 
     compiler_identity = PlayerIdentity.load(compiler_keys)
     recipient_keys: dict[str, bytes] = {}
@@ -290,7 +293,7 @@ def _compile_encrypted_tck(
             )
         except (ValueError, FileNotFoundError) as exc:
             typer.echo(f"Compilation failed: {exc}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from exc
         _embed_bundle_yaml(script, tmp_path)
         tar_bytes = create_tar_bytes(tmp_path)
 
@@ -313,13 +316,13 @@ def _compile_encrypted(
     script: Path,
     compiler_keys: Path,
     player_pub: list[Path],
-    output: Optional[Path],
-    version: Optional[str],
+    output: Path | None,
+    version: str | None,
     compiler: object,
 ) -> None:
     """Run encrypted .stck compilation with signing and encryption."""
-    from tractusx_testlab.security.trust.identity import PlayerIdentity
     from tractusx_testlab.security.crypto.keygen import _fingerprint
+    from tractusx_testlab.security.trust.identity import PlayerIdentity
 
     # Load compiler identity
     compiler_identity = PlayerIdentity.load(compiler_keys)
@@ -336,9 +339,10 @@ def _compile_encrypted(
 
     # Detect whether input is a TCK manifest or a single test
     import yaml as _yaml
-    from tractusx_testlab.player.loading.loader import _detect_kind
+
     from tractusx_testlab.models.primitives.enums import ScriptKind
-    with open(script, "r", encoding="utf-8") as script_handle:
+    from tractusx_testlab.player.loading.loader import _detect_kind
+    with open(script, encoding="utf-8") as script_handle:
         raw = _yaml.safe_load(script_handle)
     is_tck = isinstance(raw, dict) and _detect_kind(raw) == ScriptKind.TCK
 
@@ -361,7 +365,7 @@ def _compile_encrypted(
             )
     except (ValueError, FileNotFoundError) as exc:
         typer.echo(f"Compilation failed: {exc}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
     typer.echo(f"\nCompiled (encrypted) → {out}")
     typer.echo(f"  Checksum : {manifest.checksum[:32]}...")
@@ -396,7 +400,7 @@ def decompile(
         ..., "--compiler-pub", "-c",
         help="Path to the compiler's signing public key (signing.pub).",
     ),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None, "--output", "-o",
         help="Output path for the decrypted YAML. Defaults to <package_name>.yaml.",
     ),
@@ -425,7 +429,7 @@ def decompile(
         plaintext = Packager.extract_and_verify(package, priv_key, pub_key)
     except ValueError as exc:
         typer.echo(f"Decompilation failed: {exc}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
     if stdout:
         typer.echo(plaintext.decode("utf-8"))

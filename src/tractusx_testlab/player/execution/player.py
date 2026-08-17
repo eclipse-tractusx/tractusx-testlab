@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """TestlabPlayer — async executor that runs TCKs script-by-script, step-by-step."""
@@ -27,53 +27,52 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Ensure built-in steps are registered
+import contextlib
 
 from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.infrastructure.manager import InfrastructureManager
 from tractusx_testlab.infrastructure.mapping import collect_overrides, flatten
 from tractusx_testlab.logging.structured import StructuredLogger
-from tractusx_testlab.player.execution.infrastructure_seeder import seed_infrastructure_services
 from tractusx_testlab.models import (
-    JobStatus,
     ScriptResult,
     ScriptStatus,
+)
+from tractusx_testlab.models import (
     TckResult as TckResult,  # SDK alias
 )
-from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.player.execution.monitor import ExecutionMonitor
-from tractusx_testlab.player.execution.mock_server import _BackgroundMockServer
-from tractusx_testlab.player.execution.step_runner import (
-    execute_teardown_steps,
-    execute_main_steps,
-    execute_setup_steps,
-    run_script,
-)
+from tractusx_testlab.player.execution._context_seeder import seed_context_variables
+from tractusx_testlab.player.execution._skip import resolve_skip_ids
 from tractusx_testlab.player.execution._trace_formatter import (
     build_tck_result,
     finalize_job,
     make_intentionally_skipped_result,
     make_skipped_result,
 )
-from tractusx_testlab.player.execution._skip import resolve_skip_ids
-from tractusx_testlab.player.execution._context_seeder import seed_context_variables
+from tractusx_testlab.player.execution.context import StepContext
+from tractusx_testlab.player.execution.infrastructure_seeder import seed_infrastructure_services
+from tractusx_testlab.player.execution.mock_server import _BackgroundMockServer
+from tractusx_testlab.player.execution.monitor import ExecutionMonitor
+from tractusx_testlab.player.execution.step_runner import (
+    run_script,
+)
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.loader import Loader
 from tractusx_testlab.player.loading.ordering import topological_sort
 from tractusx_testlab.scripting._infrastructure import collect_infrastructure_requirements
-from tractusx_testlab.scripting.script import Tck as Tck, TestScript
+from tractusx_testlab.scripting.script import Tck as Tck
+from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import get_callback_manager, set_callback_manager
 from tractusx_testlab.services.manager import ServiceManager
 from tractusx_testlab.syntax import defaults
-
-# Ensure built-in steps are registered
-import tractusx_testlab.steps  # noqa: F401
 
 
 class TestlabPlayer:
@@ -92,13 +91,19 @@ class TestlabPlayer:
     """
 
     __slots__ = (
-        "_config", "_logger", "_monitor", "_jobs", "_loader", "_mock_server", "_infrastructure",
+        "_config",
+        "_infrastructure",
+        "_jobs",
+        "_loader",
+        "_logger",
+        "_mock_server",
+        "_monitor",
     )
 
     def __init__(
         self,
-        config: Optional[TestlabConfig] = None,
-        infrastructure: Optional[InfrastructureManager] = None,
+        config: TestlabConfig | None = None,
+        infrastructure: InfrastructureManager | None = None,
     ) -> None:
         """Build a player for *config*, running against *infrastructure*.
 
@@ -112,7 +117,7 @@ class TestlabPlayer:
         self._monitor = ExecutionMonitor(self._logger)
         self._jobs = JobManager()
         self._loader = Loader()
-        self._mock_server: Optional[_BackgroundMockServer] = None
+        self._mock_server: _BackgroundMockServer | None = None
 
     @property
     def infrastructure(self) -> InfrastructureManager:
@@ -131,7 +136,7 @@ class TestlabPlayer:
     # Public API
     # ------------------------------------------------------------------
 
-    async def run(self, path: str | Path, runtime_vars: Optional[dict] = None) -> TckResult:
+    async def run(self, path: str | Path, runtime_vars: dict | None = None) -> TckResult:
         """Load and execute a TCK, emitting package verification events before execution."""
         resolved = Path(path)
         import zipfile as _zf
@@ -148,8 +153,8 @@ class TestlabPlayer:
     async def run_tck(
         self,
         tck: Tck,
-        runtime_vars: Optional[dict] = None,
-        job_id: Optional[str] = None,
+        runtime_vars: dict | None = None,
+        job_id: str | None = None,
     ) -> TckResult:
         """Execute a loaded Tck object.
 
@@ -196,12 +201,12 @@ class TestlabPlayer:
 
         skip_ids = resolve_skip_ids(tck, runtime_vars)
 
-        tck_started_at = datetime.now(timezone.utc)
+        tck_started_at = datetime.now(UTC)
         ordered_scripts = topological_sort(tck.scripts)
         script_results = await self._execute_scripts_in_order(
             ordered_scripts, context, job, monitor, skip_ids,
         )
-        tck_finished_at = datetime.now(timezone.utc)
+        tck_finished_at = datetime.now(UTC)
 
         svc_mgr.teardown()
 
@@ -261,10 +266,8 @@ class TestlabPlayer:
         def _forward_to_player(event: str, payload: dict) -> None:
             """Forward events to all current player-level callbacks (dynamic lookup)."""
             for cb in self._monitor._callbacks:
-                try:
+                with contextlib.suppress(RuntimeError, TypeError, ValueError):
                     cb(event, payload)
-                except (RuntimeError, TypeError, ValueError):
-                    pass
 
         monitor.add_callback(_forward_to_player)
         return monitor
@@ -347,17 +350,26 @@ def _target_release(tck: Tck) -> tuple[str, bool]:
     a release nobody declared is a default, and a default must never be held
     against an operator who bound a deployment of a different one.
     """
-    definition = getattr(tck, "definition", None)
+    definition = tck.definition
     if definition is None:
         return defaults.DATASPACE_VERSION, False
 
-    dataspace = getattr(definition, "dataspace", None)
-    if dataspace is not None and getattr(dataspace, "version", ""):
+    dataspace = definition.dataspace
+    if dataspace is not None and dataspace.version:
         return dataspace.version, True
 
-    fields_set = getattr(definition, "model_fields_set", set())
-    version = getattr(definition, "dataspace_version", "") or defaults.DATASPACE_VERSION
-    return version, "dataspace_version" in fields_set
+    # The older flat spelling lives on the *metadata* block, not on the
+    # definition. Reaching for it with getattr(definition, …) always missed —
+    # the attribute does not exist there — so a TCK stating
+    # `metadata.dataspace_version: jupiter` and no `dataspace:` block resolved
+    # to the saturn default, and reported the release as unstated. That second
+    # half is what made it silent: `release_stated=False` tells
+    # InfrastructureManager.align not to hold the release against the bound
+    # deployment, so the SDK built saturn services for a jupiter connector and
+    # no conflict was ever raised.
+    metadata = definition.metadata
+    version = metadata.dataspace_version or defaults.DATASPACE_VERSION
+    return version, "dataspace_version" in metadata.model_fields_set
 
 
 def _is_encrypted_tck(path: Path) -> bool:

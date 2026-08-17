@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Player identity — RSA key pair for encryption, Ed25519 key pair for signing."""
@@ -46,7 +46,7 @@ class PlayerIdentity:
     signing: KeyPair      # Ed25519 — for package signing
 
     @staticmethod
-    def generate() -> "PlayerIdentity":
+    def generate() -> PlayerIdentity:
         """Create a fresh identity with new RSA and Ed25519 key pairs."""
         return PlayerIdentity(
             encryption=generate_rsa_keypair(),
@@ -59,7 +59,7 @@ class PlayerIdentity:
         save_keypair(self.signing, directory, "signing")
 
     @staticmethod
-    def load(directory: Path) -> "PlayerIdentity":
+    def load(directory: Path) -> PlayerIdentity:
         """Load a persisted identity from *directory*."""
         enc_priv = load_private_key(directory / "encryption.pem")
         enc_pub = load_public_key(directory / "encryption.pub")

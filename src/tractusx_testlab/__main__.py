@@ -26,4 +26,11 @@
 
 from tractusx_testlab.cli import main
 
-main()
+# Guarded, because this module is importable as well as runnable. Called
+# unconditionally, merely *importing* ``tractusx_testlab.__main__`` launches the
+# CLI — which is what anything that walks the package does: the packaging smoke
+# test, documentation generators, coverage collectors. ``python -m
+# tractusx_testlab`` still runs it, because that entry point sets ``__name__``
+# to ``"__main__"``.
+if __name__ == "__main__":
+    main()

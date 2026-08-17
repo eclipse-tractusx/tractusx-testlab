@@ -33,7 +33,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.scripting.script import Tck
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 def seed_context_variables(
     context: StepContext,
     tck: Tck,
-    runtime_vars: Optional[dict],
+    runtime_vars: dict | None,
 ) -> None:
     """Seed context with all variable sources in priority order.
 
@@ -97,7 +97,7 @@ def seed_env_variables(context: StepContext, tck: Tck) -> None:
             context.set_variable(f"{var_id}.{field_name}", value)
 
 
-def _resolve_asset_path(base_dir: Path, folder_name: str, source: str) -> Optional[Path]:
+def _resolve_asset_path(base_dir: Path, folder_name: str, source: str) -> Path | None:
     """Locate an asset file under *folder_name*, tolerating both package layouts.
 
     A compiled ``.tck`` archive stores assets under ``assets/<folder>/`` while a

@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """AES-256-GCM symmetric encryption with RSA-OAEP key wrapping for packages."""
@@ -28,14 +28,62 @@ from __future__ import annotations
 
 import os
 
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 # AES-256 key length
 _AES_KEY_LEN = 32
 # GCM nonce length (96 bits recommended by NIST)
 _NONCE_LEN = 12
+
+
+def _oaep() -> padding.OAEP:
+    """The OAEP configuration every wrap and unwrap in this module uses.
+
+    Stated once: a package encrypted under one padding and decrypted under
+    another fails with a bare ``ValueError`` that says nothing about which half
+    disagreed.
+    """
+    return padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None,
+    )
+
+
+def _rsa_public_key(public_pem: bytes) -> RSAPublicKey:
+    """Load *public_pem*, refusing anything that is not an RSA key.
+
+    ``load_pem_public_key`` returns whichever key type the PEM held, and every
+    caller here goes straight on to RSA-OAEP.  Handed an Ed25519 key — the
+    other key type this project issues, and the neighbouring one in a player's
+    key directory — the call would fail with ``AttributeError: 'Ed25519PublicKey'
+    object has no attribute 'encrypt'`` from inside the crypto library.  Naming
+    the mistake here is the same guard :mod:`~tractusx_testlab.security.crypto.signing`
+    already applies to its Ed25519 keys.
+    """
+    key = serialization.load_pem_public_key(public_pem)
+    if not isinstance(key, RSAPublicKey):
+        raise TypeError(
+            f"Expected an RSA public key for package encryption, got "
+            f"{type(key).__name__}. Encryption keys are 'encryption.pub'; "
+            f"'signing.pub' is the Ed25519 key used to sign, not to encrypt."
+        )
+    return key
+
+
+def _rsa_private_key(private_pem: bytes) -> RSAPrivateKey:
+    """Load *private_pem*, refusing anything that is not an RSA key."""
+    key = serialization.load_pem_private_key(private_pem, password=None)
+    if not isinstance(key, RSAPrivateKey):
+        raise TypeError(
+            f"Expected an RSA private key to decrypt this package, got "
+            f"{type(key).__name__}. Decryption keys are 'encryption.pem'; "
+            f"'signing.pem' is the Ed25519 key used to sign, not to decrypt."
+        )
+    return key
 
 
 def encrypt_package(plaintext: bytes, recipient_public_pem: bytes) -> tuple[bytes, bytes, bytes]:
@@ -50,15 +98,7 @@ def encrypt_package(plaintext: bytes, recipient_public_pem: bytes) -> tuple[byte
     aesgcm = AESGCM(aes_key)
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)
 
-    rsa_pub = serialization.load_pem_public_key(recipient_public_pem)
-    encrypted_key = rsa_pub.encrypt(
-        aes_key,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None,
-        ),
-    )
+    encrypted_key = _rsa_public_key(recipient_public_pem).encrypt(aes_key, _oaep())
     return encrypted_key, nonce, ciphertext
 
 
@@ -76,29 +116,13 @@ def encrypt_for_recipients(
     ciphertext = AESGCM(aes_key).encrypt(nonce, plaintext, None)
     key_blocks: list[tuple[str, bytes]] = []
     for player_id, pub_pem in recipient_public_pems.items():
-        rsa_pub = serialization.load_pem_public_key(pub_pem)
-        enc_key = rsa_pub.encrypt(
-            aes_key,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None,
-            ),
-        )
+        enc_key = _rsa_public_key(pub_pem).encrypt(aes_key, _oaep())
         key_blocks.append((player_id, enc_key))
     return nonce, ciphertext, key_blocks
 
 
 def decrypt_package(encrypted_key: bytes, nonce: bytes, ciphertext: bytes, private_pem: bytes) -> bytes:
     """Unwrap AES key with RSA-OAEP, then decrypt AES-256-GCM ciphertext."""
-    rsa_priv = serialization.load_pem_private_key(private_pem, password=None)
-    aes_key = rsa_priv.decrypt(
-        encrypted_key,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None,
-        ),
-    )
+    aes_key = _rsa_private_key(private_pem).decrypt(encrypted_key, _oaep())
     aesgcm = AESGCM(aes_key)
     return aesgcm.decrypt(nonce, ciphertext, None)

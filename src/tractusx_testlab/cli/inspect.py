@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -38,11 +37,11 @@ from tractusx_testlab.cli import app
 @app.command()
 def inspect(
     package: Path = typer.Argument(..., help="Path to a .tck or .stck package."),
-    player_keys: Optional[Path] = typer.Option(
+    player_keys: Path | None = typer.Option(
         None, "--player-keys", "-k",
         help="Directory with the player identity (encryption.pem). Required for .stck files.",
     ),
-    compiler_pub: Optional[Path] = typer.Option(
+    compiler_pub: Path | None = typer.Option(
         None, "--compiler-pub", "-c",
         help="Path to the compiler's signing public key (signing.pub). Required for .stck files.",
     ),
@@ -81,7 +80,7 @@ def inspect(
         _print_infrastructure(tck)
 
 
-def _require_keys(player_keys: Optional[Path], compiler_pub: Optional[Path]) -> None:
+def _require_keys(player_keys: Path | None, compiler_pub: Path | None) -> None:
     """Validate that decryption keys are present for encrypted packages."""
     if player_keys is None:
         typer.echo("Error: --player-keys is required for encrypted .stck files.", err=True)
@@ -93,8 +92,8 @@ def _require_keys(player_keys: Optional[Path], compiler_pub: Optional[Path]) -> 
 
 def _load_tck(
     package: Path,
-    player_keys: Optional[Path],
-    compiler_pub: Optional[Path],
+    player_keys: Path | None,
+    compiler_pub: Path | None,
 ) -> object:
     """Load a .tck or .stck package into a Tck object."""
     from tractusx_testlab.player.loading.loader import Loader
@@ -172,10 +171,10 @@ def _print_infrastructure(tck: object) -> None:
     typer.echo(f"  {'-'*25} {'-'*10} {'-'*20}")
     for cap, req in infra.engine.items():
         std = req.standard.id if req.standard else "—"
-        typer.echo(f"  engine.{cap:<18} {str(req.required):<10} {std}")
+        typer.echo(f"  engine.{cap:<18} {req.required!s:<10} {std}")
     for cap, req in infra.sut.items():
         std = req.standard.id if req.standard else "—"
-        typer.echo(f"  sut.{cap:<21} {str(req.required):<10} {std}")
+        typer.echo(f"  sut.{cap:<21} {req.required!s:<10} {std}")
     typer.echo()
     typer.echo("=" * width)
     typer.echo()

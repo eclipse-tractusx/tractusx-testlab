@@ -28,7 +28,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import tractusx_testlab.steps  # noqa: F401  (registers all built-in steps)
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.flow.retry import RetryStep
 from tractusx_testlab.steps.utility.log import LogStep

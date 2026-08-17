@@ -123,7 +123,7 @@ class Base64Step(BaseStep[Base64Params, Base64Output]):
     output_model = Base64Output
 
     async def execute(
-        self, params: Base64Params, context: "StepContext", definition: StepDefinition,
+        self, params: Base64Params, context: StepContext, definition: StepDefinition,
     ) -> StepOutput[Base64Output]:
         if params.mode == "encode":
             result = _encode(

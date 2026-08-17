@@ -26,15 +26,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
-import pytest
-
-from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.steps.base import BaseStep, StepOutput
-
 # Ensure all built-in steps are registered
-import tractusx_testlab.steps  # noqa: F401
+from tractusx_testlab.scripting.registry import StepRegistry
 
 
 class TestStepRegistry:

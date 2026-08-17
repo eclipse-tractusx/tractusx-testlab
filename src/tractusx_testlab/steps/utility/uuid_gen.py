@@ -67,7 +67,7 @@ class GenerateUuidStep(BaseStep[GenerateUuidParams, GenerateUuidOutput]):
     async def execute(
         self,
         params: GenerateUuidParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[GenerateUuidOutput]:
         return StepOutput(value=GenerateUuidOutput(str(uuid.uuid4())))

@@ -32,7 +32,7 @@ code paths never drift.
 
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import tractusx_testlab.syntax.keys as keys
 from tractusx_testlab.models import VariableDefinition, VariableScope, VariableSource
@@ -93,7 +93,7 @@ def _build_verb_variable(name: str, spec: dict) -> VariableDefinition:
     declared_type = value_return.get(keys.TYPE) or _type_from_verb_path(namespace, segments)
 
     raw_scope = with_block.get(keys.SCOPE)
-    scope: Optional[VariableScope] = VariableScope(raw_scope) if raw_scope else None
+    scope: VariableScope | None = VariableScope(raw_scope) if raw_scope else None
 
     return VariableDefinition(
         name=name,
@@ -109,7 +109,7 @@ def _build_verb_variable(name: str, spec: dict) -> VariableDefinition:
     )
 
 
-def _type_from_verb_path(namespace: str, segments: list[str]) -> Optional[str]:
+def _type_from_verb_path(namespace: str, segments: list[str]) -> str | None:
     """Return the type token of a ``variable/type/<type>`` verb path, if present."""
     if namespace == keys.VARIABLE and len(segments) >= 3 and segments[1] == keys.TYPE:
         return segments[2]
@@ -120,7 +120,7 @@ def _resolve_origin(
     namespace: str,
     segments: list[str],
     with_block: dict,
-) -> tuple[VariableSource, Optional[str], Optional[Any], Optional[str]]:
+) -> tuple[VariableSource, str | None, Any | None, str | None]:
     """Resolve (source, generator, default, placeholder) from the uses namespace.
 
     ``generate/<gen>`` yields a generated variable. The simple ``variable/type/<type>``

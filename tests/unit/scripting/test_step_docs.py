@@ -24,13 +24,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Literal, Optional
 
 import pytest
 from pydantic import BaseModel, Field
 
-import tractusx_testlab.steps  # noqa: F401  — registers every step
 from tests.paths import DOCS_DIR
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.step_docs import (
@@ -51,7 +49,7 @@ class _Nested(BaseModel):
 
 class _Sample(BaseModel):
     plain: str
-    optional_text: Optional[str] = None
+    optional_text: str | None = None
     choice: Literal["a", "b"] = "a"
     items: list[_Nested] = Field(default_factory=list)
     anything: Any = None

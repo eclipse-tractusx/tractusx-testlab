@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -35,9 +35,9 @@ from tractusx_testlab.models.authoring.definitions import Assertion
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
     ScriptStatus,
+    StepPhase,
     StepStatus,
 )
-from tractusx_testlab.models.primitives.enums import StepPhase
 
 
 class HttpRequest(BaseModel):
@@ -45,16 +45,16 @@ class HttpRequest(BaseModel):
 
     method: str
     url: str
-    headers: Optional[dict] = None
-    body: Optional[Any] = None
+    headers: dict | None = None
+    body: Any | None = None
 
 
 class HttpResponse(BaseModel):
     """Captured HTTP response details from a step execution."""
 
     status_code: int
-    headers: Optional[dict] = None
-    body: Optional[Any] = None
+    headers: dict | None = None
+    body: Any | None = None
     duration_ms: float = 0.0
 
 
@@ -63,8 +63,8 @@ class AssertionResult(BaseModel):
 
     assertion: Assertion
     passed: bool
-    expected: Optional[Any] = None
-    actual: Optional[Any] = None
+    expected: Any | None = None
+    actual: Any | None = None
     message: str = ""
     severity: AssertionSeverity = AssertionSeverity.HARD
 
@@ -76,14 +76,14 @@ class StepResult(BaseModel):
     step_type: str = ""
     phase: StepPhase = StepPhase.EXECUTION
     status: StepStatus = StepStatus.PENDING
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    duration_s: Optional[float] = None
-    request: Optional[HttpRequest] = None
-    response: Optional[HttpResponse] = None
-    error: Optional[str] = None
-    error_traceback: Optional[str] = None
-    output: Optional[Any] = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    duration_s: float | None = None
+    request: HttpRequest | None = None
+    response: HttpResponse | None = None
+    error: str | None = None
+    error_traceback: str | None = None
+    output: Any | None = None
     assertions: list[AssertionResult] = Field(default_factory=list)
 
 
@@ -95,8 +95,8 @@ class CallbackResult(BaseModel):
     method: str = "POST"
     headers: dict = Field(default_factory=dict)
     query_params: dict = Field(default_factory=dict)
-    payload: Optional[Any] = None
-    received_at: Optional[datetime] = None
+    payload: Any | None = None
+    received_at: datetime | None = None
     timed_out: bool = False
 
 
@@ -117,13 +117,13 @@ class ScriptResult(BaseModel):
     dataspace_version: str = ""
     status: ScriptStatus = ScriptStatus.IDLE
     execution: list[StepResult] = Field(default_factory=list)
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    total_duration_s: Optional[float] = None
-    metadata: Optional[dict] = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    total_duration_s: float | None = None
+    metadata: dict | None = None
     assertion_summary: AssertionSummary = Field(default_factory=AssertionSummary)
     callback_results: list[CallbackResult] = Field(default_factory=list)
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class TckResult(BaseModel):
@@ -133,11 +133,11 @@ class TckResult(BaseModel):
     package_name: str = ""
     status: ScriptStatus = ScriptStatus.IDLE
     scripts: list[ScriptResult] = Field(default_factory=list)
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
 
     @property
-    def duration_ms(self) -> Optional[float]:
+    def duration_ms(self) -> float | None:
         """Total TCK execution duration in milliseconds."""
         if self.started_at and self.finished_at:
             return (self.finished_at - self.started_at).total_seconds() * 1000

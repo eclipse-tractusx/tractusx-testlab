@@ -37,7 +37,6 @@ from tractusx_testlab.services.participants import (
     _generate_bpnl,
 )
 
-
 # ---------------------------------------------------------------------------
 # BPNL format and determinism
 # ---------------------------------------------------------------------------

@@ -39,7 +39,7 @@ from __future__ import annotations
 import socket
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 import requests
 
@@ -64,7 +64,7 @@ class MockServer:
 
     # -- lifecycle --------------------------------------------------------
 
-    def start(self, timeout_s: float = 10.0) -> "MockServer":
+    def start(self, timeout_s: float = 10.0) -> MockServer:
         """Start serving and block until the health endpoint answers."""
         self._server.start()
         deadline = time.monotonic() + timeout_s
@@ -99,7 +99,7 @@ class MockServer:
         url: str,
         method: str = "POST",
         json: Any = None,
-        params: Optional[dict] = None,
+        params: dict | None = None,
         timeout: float = 5.0,
     ) -> requests.Response:
         """Call the mock, the way the system under test would."""
@@ -107,7 +107,7 @@ class MockServer:
             method, self.local(url), json=json, params=params, timeout=timeout
         )
 
-    def call_soon(self, url: str, delay_s: float = 0.2, **kwargs: Any) -> "_LateCall":
+    def call_soon(self, url: str, delay_s: float = 0.2, **kwargs: Any) -> _LateCall:
         """Call the mock from another thread after *delay_s*.
 
         The point of these steps is that the call arrives while the script is
@@ -127,11 +127,11 @@ class _LateCall:
         self._url = url
         self._delay_s = delay_s
         self._kwargs = kwargs
-        self._thread: Optional[threading.Thread] = None
-        self.response: Optional[requests.Response] = None
-        self.error: Optional[Exception] = None
+        self._thread: threading.Thread | None = None
+        self.response: requests.Response | None = None
+        self.error: Exception | None = None
 
-    def start(self) -> "_LateCall":
+    def start(self) -> _LateCall:
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
         return self

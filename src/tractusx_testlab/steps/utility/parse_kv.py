@@ -33,7 +33,7 @@ needs a single field (the asset ``id``).
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 from pydantic import Field
 
@@ -77,7 +77,7 @@ class ParseKvParams(StoreInVariableParams):
     input: str = Field(description="The string to parse, e.g. an EDC 'subprotocolBody'.")
     pair_separator: str = Field(default=";", description="Separator between pairs.")
     kv_separator: str = Field(default="=", description="Separator between key and value.")
-    select: Optional[str] = Field(
+    select: str | None = Field(
         default=None,
         description="Return only this key's value; omit to return the whole parsed mapping.",
     )
@@ -100,7 +100,7 @@ class ParseKvStep(BaseStep[ParseKvParams, ParseKvOutput]):
     output_model = ParseKvOutput
 
     async def execute(
-        self, params: ParseKvParams, context: "StepContext", definition: StepDefinition
+        self, params: ParseKvParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[ParseKvOutput]:
         parsed = _parse(params.input, params.pair_separator, params.kv_separator)
 
@@ -110,7 +110,7 @@ class ParseKvStep(BaseStep[ParseKvParams, ParseKvOutput]):
                     f"Key {params.select!r} not found in parsed value; "
                     f"available keys: {sorted(parsed)}"
                 )
-            result: Union[str, dict[str, str]] = parsed[params.select]
+            result: str | dict[str, str] = parsed[params.select]
         else:
             result = parsed
 

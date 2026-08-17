@@ -47,7 +47,8 @@ ambiguity to resolve.
 from __future__ import annotations
 
 import os
-from typing import Any, Iterator, Mapping, Optional
+from collections.abc import Iterator, Mapping
+from typing import Any
 
 from tractusx_testlab.models.domain.infrastructure import (
     CapabilityBinding,
@@ -137,7 +138,7 @@ def collect_overrides(variables: Mapping[str, Any]) -> dict[str, Any]:
     return overrides
 
 
-def overrides_from_env(environ: Optional[Mapping[str, str]] = None) -> dict[str, str]:
+def overrides_from_env(environ: Mapping[str, str] | None = None) -> dict[str, str]:
     """Return the binding overrides the environment carries, in context-key form."""
     source = os.environ if environ is None else environ
     overrides: dict[str, str] = {}

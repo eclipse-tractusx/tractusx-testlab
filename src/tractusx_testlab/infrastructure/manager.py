@@ -69,7 +69,7 @@ by side and switches with :meth:`activate` instead of rebuilding the player.
 from __future__ import annotations
 
 import logging
-from typing import Mapping, Optional
+from collections.abc import Mapping
 
 from tractusx_testlab.infrastructure.mapping import (
     apply_overrides,
@@ -102,11 +102,11 @@ DEFAULT_PROFILE = "default"
 class InfrastructureManager:
     """Registry of named infrastructure combinations, one of them active."""
 
-    __slots__ = ("_profiles", "_active")
+    __slots__ = ("_active", "_profiles")
 
     def __init__(
         self,
-        infrastructure: Optional[Infrastructure] = None,
+        infrastructure: Infrastructure | None = None,
         *,
         name: str = DEFAULT_PROFILE,
     ) -> None:
@@ -124,7 +124,7 @@ class InfrastructureManager:
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_config(cls, config: object, *, name: str = DEFAULT_PROFILE) -> "InfrastructureManager":
+    def from_config(cls, config: object, *, name: str = DEFAULT_PROFILE) -> InfrastructureManager:
         """Build a manager from the ``infrastructure`` block of a loaded config."""
         infrastructure = getattr(config, "infrastructure", None)
         if not isinstance(infrastructure, Infrastructure):
@@ -134,11 +134,11 @@ class InfrastructureManager:
     @classmethod
     def from_env(
         cls,
-        environ: Optional[Mapping[str, str]] = None,
+        environ: Mapping[str, str] | None = None,
         *,
-        base: Optional[Infrastructure] = None,
+        base: Infrastructure | None = None,
         name: str = DEFAULT_PROFILE,
-    ) -> "InfrastructureManager":
+    ) -> InfrastructureManager:
         """Build a manager from ``TESTLAB_<SIDE>_<CAPABILITY>_<FIELD>`` variables.
 
         *base* is the deployment the environment is read on top of, for a
@@ -208,7 +208,7 @@ class InfrastructureManager:
         """
         self._profiles[self._active] = merge(self.active, infrastructure)
 
-    def resolve(self, overrides: Optional[Mapping[str, object]] = None) -> Infrastructure:
+    def resolve(self, overrides: Mapping[str, object] | None = None) -> Infrastructure:
         """Return the active deployment with the run's *overrides* applied.
 
         Overrides are context-keyed (``infrastructure.sut.dtr.base_url``), which
@@ -221,7 +221,7 @@ class InfrastructureManager:
     def validate(
         self,
         requirements: InfrastructureConfig,
-        infrastructure: Optional[Infrastructure] = None,
+        infrastructure: Infrastructure | None = None,
     ) -> None:
         """Check every required capability against what is bound, and say what is missing.
 
@@ -251,7 +251,7 @@ class InfrastructureManager:
         release: str,
         *,
         release_stated: bool = True,
-        infrastructure: Optional[Infrastructure] = None,
+        infrastructure: Infrastructure | None = None,
     ) -> Infrastructure:
         """Return a deployment carrying the standard and release the TCK certifies against.
 
@@ -317,6 +317,6 @@ class InfrastructureManager:
 
         return apply_overrides(resolved, fills)
 
-    def flatten(self, infrastructure: Optional[Infrastructure] = None) -> dict[str, str]:
+    def flatten(self, infrastructure: Infrastructure | None = None) -> dict[str, str]:
         """Project a deployment onto the context keys a test can reference."""
         return flatten(self.active if infrastructure is None else infrastructure)

@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 _VARIABLE_PREFIX = "@"
 
 
-def _resolve_variables(obj: dict | list | str, context: "StepContext") -> dict | list | str:
+def _resolve_variables(obj: dict | list | str, context: StepContext) -> dict | list | str:
     """Recursively replace ``@var`` references in response bodies."""
     if isinstance(obj, str):
         if obj.startswith(_VARIABLE_PREFIX):
@@ -115,7 +115,7 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
     output_model = MockEndpointOutput
 
     async def execute(
-        self, params: MockEndpointParams, context: "StepContext", definition: StepDefinition
+        self, params: MockEndpointParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[MockEndpointOutput]:
         resolved_body = _resolve_variables(params.response_body, context)
         register_mock(

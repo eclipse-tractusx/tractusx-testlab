@@ -26,7 +26,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -153,7 +153,7 @@ class IfStep(BaseStep[IfParams, IfOutput]):
     output_model = IfOutput
 
     async def execute(
-        self, params: IfParams, context: "StepContext", definition: StepDefinition
+        self, params: IfParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[IfOutput]:
         outcomes = [condition.holds() for condition in params.conditions]
         condition_result = all(outcomes) if params.match == "all" else any(outcomes)
@@ -188,7 +188,7 @@ class IfStep(BaseStep[IfParams, IfOutput]):
 
 
 async def _run_sequence(
-    nested_defs: list[StepDefinition], label: str, context: "StepContext"
+    nested_defs: list[StepDefinition], label: str, context: StepContext
 ) -> list[StepResult]:
     """Run each nested step in order, stopping at the first failure."""
     from tractusx_testlab.player.execution.step_runner import run_step
@@ -208,7 +208,7 @@ async def _run_sequence(
             )
             break
 
-        result: Optional[StepResult] = await run_step(
+        result: StepResult | None = await run_step(
             step_cls, nested_def, step_name, context
         )
         results.append(result)

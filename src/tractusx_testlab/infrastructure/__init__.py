@@ -59,10 +59,10 @@ from tractusx_testlab.models.domain.infrastructure import (
 
 __all__ = [
     "CAPABILITY_STANDARDS",
+    "DEFAULT_PROFILE",
     "KNOWN_RELEASES",
     "CapabilityBinding",
     "ConnectorBinding",
-    "DEFAULT_PROFILE",
     "DtrBinding",
     "EngineBindings",
     "EngineDtrBinding",

@@ -31,7 +31,6 @@ state tracking, and teardown.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from tractusx_testlab.models import (
     ServiceNotFoundError,
@@ -80,7 +79,7 @@ class ServiceManager:
     # Retrieval (lazy init)
     # ------------------------------------------------------------------
 
-    def get(self, name: str, expected_type: Optional[ServiceType] = None) -> object:
+    def get(self, name: str, expected_type: ServiceType | None = None) -> object:
         """Return a live service instance, initialising it if necessary."""
         if name not in self._definitions:
             raise ServiceNotFoundError(name)

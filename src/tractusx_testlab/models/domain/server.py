@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Server models — uploaded packages and vault configuration."""
@@ -27,7 +27,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -40,9 +39,9 @@ class UploadedPackage(BaseModel):
     version: str
     format: PackageFormat = PackageFormat.PLAIN
     size_bytes: int = 0
-    uploaded_at: Optional[datetime] = None
+    uploaded_at: datetime | None = None
     checksum: str = ""
-    file_path: Optional[str] = None
+    file_path: str | None = None
 
 
 class VaultConfig(BaseModel):

@@ -37,7 +37,7 @@ from __future__ import annotations
 import re
 import types
 import typing
-from typing import Any, Optional, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
@@ -277,14 +277,13 @@ def render_shared_models(step_classes: list[type[BaseStep]]) -> list[str]:
     return lines
 
 
-def render_catalog(step_types: Optional[list[str]] = None) -> str:
+def render_catalog(step_types: list[str] | None = None) -> str:
     """Render the full step reference page.
 
     Every registered step is documented: `@step` refuses to register one that
     has not declared its models, so there is no undocumented remainder to
     account for.
     """
-    import tractusx_testlab.steps  # noqa: F401  — registers every step
 
     names = sorted(step_types or StepRegistry.list_step_types())
     step_classes = [cls for cls in (StepRegistry.get(name, "") for name in names) if cls]

@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """FastAPI application factory for the Testlab server."""
@@ -27,10 +27,8 @@
 from __future__ import annotations
 
 import importlib.metadata
-from pathlib import Path
-from typing import Optional
-
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -40,15 +38,18 @@ from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.callbacks import CallbackManager
-from tractusx_testlab.server.mock_registry import get_callback_manager, resolve_mock, set_callback_manager
-from tractusx_testlab.server.storage import PackageStorage
-
+from tractusx_testlab.server.mock_registry import (
+    get_callback_manager,
+    resolve_mock,
+    set_callback_manager,
+)
 from tractusx_testlab.server.routes import router
+from tractusx_testlab.server.storage import PackageStorage
 
 _logger = logging.getLogger(__name__)
 
 
-def create_app(config: Optional[TestlabConfig] = None) -> FastAPI:
+def create_app(config: TestlabConfig | None = None) -> FastAPI:
     """Build and return a fully-wired FastAPI application.
 
     Args:

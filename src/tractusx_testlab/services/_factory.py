@@ -27,7 +27,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from tractusx_testlab.models.authoring.definitions import ServiceDefinition
 from tractusx_testlab.models.primitives.enums import ServiceType
@@ -69,13 +68,11 @@ def is_type_compatible(actual: ServiceType, expected: ServiceType) -> bool:
         and (actual_val in _GENERIC_CONNECTOR_TYPES or expected_val in _GENERIC_CONNECTOR_TYPES)
     ):
         return True
-    if actual_val in _DTR_COMPATIBLE_TYPES and expected_val in _DTR_COMPATIBLE_TYPES:
-        return True
-    return False
+    return bool(actual_val in _DTR_COMPATIBLE_TYPES and expected_val in _DTR_COMPATIBLE_TYPES)
 
 
 def cache_key(
-    name: str, definition: ServiceDefinition, expected_type: Optional[ServiceType],
+    name: str, definition: ServiceDefinition, expected_type: ServiceType | None,
 ) -> str:
     """Return cache key — compound for generic connector types."""
     if expected_type and definition.type.value in _GENERIC_CONNECTOR_TYPES:
@@ -84,7 +81,7 @@ def cache_key(
 
 
 def create_instance(
-    service_definition: ServiceDefinition, expected_type: Optional[ServiceType] = None,
+    service_definition: ServiceDefinition, expected_type: ServiceType | None = None,
 ) -> object:
     """Create a live SDK service from a ServiceDefinition."""
     stype_val = service_definition.type.value
@@ -99,7 +96,7 @@ def create_instance(
 
 
 def _create_connector_service(
-    service_definition: ServiceDefinition, expected_type: Optional[ServiceType] = None,
+    service_definition: ServiceDefinition, expected_type: ServiceType | None = None,
 ) -> object:
     from tractusx_sdk.dataspace.services.connector.service_factory import ServiceFactory
 

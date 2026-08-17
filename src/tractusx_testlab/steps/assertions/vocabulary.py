@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass
-from typing import Optional
 
 from tractusx_testlab.steps.assertions.operators import OPERATORS
 
@@ -66,7 +65,7 @@ class ResolvedAssertion:
 
     kind: AssertionKind
     #: ``None`` for :attr:`AssertionKind.SCHEMA`, which takes no operator.
-    operator: Optional[str]
+    operator: str | None
 
 
 def resolve(uses: str, params: dict) -> ResolvedAssertion | str:
@@ -107,7 +106,7 @@ def _resolve_known_prefix(
     return ResolvedAssertion(kind=kind, operator=operator)
 
 
-def _unknown_operator(operator: object, uses: Optional[str]) -> str:
+def _unknown_operator(operator: object, uses: str | None) -> str:
     """Say which operator was not understood, and name the ones that are."""
     where = f" in {uses!r}" if uses else ""
     return (

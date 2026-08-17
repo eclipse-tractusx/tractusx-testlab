@@ -38,20 +38,18 @@ from pydantic import TypeAdapter
 
 from tractusx_testlab.models.authoring.definitions import (
     ScriptDefinition,
-    ScriptDefinition,
-    TckDefinition,
     TckDefinition,
 )
 
 logger = logging.getLogger(__name__)
 
-_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinition] = TypeAdapter(ScriptDefinition)  # type: ignore[assignment]
-_TCK_ADAPTER: TypeAdapter[TckDefinition] = TypeAdapter(TckDefinition)  # type: ignore[assignment]
+_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinition] = TypeAdapter(ScriptDefinition)
+_TCK_ADAPTER: TypeAdapter[TckDefinition] = TypeAdapter(TckDefinition)
 
 
 def _load_yaml(path: Path) -> dict:
     """Load a YAML file and assert it is a mapping."""
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
         raise ValueError(f"Expected a YAML mapping in {path}, got {type(data).__name__}")

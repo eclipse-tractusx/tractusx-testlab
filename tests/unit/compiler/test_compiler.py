@@ -34,37 +34,9 @@ import yaml
 from tractusx_testlab.compiler.compiler import Compiler
 from tractusx_testlab.compiler.validation.validator import ValidationResult
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _write_yaml(tmp_path: Path, content: dict, name: str = "script.yaml") -> Path:
-    """Write a YAML dict to a temp file and return the path."""
-    p = tmp_path / name
-    p.write_text(yaml.dump(content, default_flow_style=False))
-    return p
-
-
-def _minimal_script() -> dict:
-    """Return a minimal valid script dict."""
-    return {
-        "syntax": "v1-alpha",
-        "kind": "test",
-        "id": "minimal-test",
-        "namespace": "testlab.test",
-        "metadata": {
-            "name": "Minimal Test",
-            "version": "1.0",
-            "description": "A minimal test script.",
-        },
-        "execution": [],
-    }
-
-
-def _write_script(tmp_path: Path, execution_steps: list | None = None) -> Path:
-    return _write_yaml(tmp_path, _minimal_script_dict(execution_steps))
 
 
 # ---------------------------------------------------------------------------

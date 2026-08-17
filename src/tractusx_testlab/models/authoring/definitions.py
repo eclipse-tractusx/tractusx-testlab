@@ -30,16 +30,15 @@ and ``with`` keys.  The ``syntax`` field pins the format version (``v1-alpha``).
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from tractusx_testlab.models.authoring.infrastructure import (
     DataspaceContext,
     InfrastructureConfig,
 )
 from tractusx_testlab.models.primitives.enums import ServiceType, VariableScope, VariableSource
-
 
 # ---------------------------------------------------------------------------
 # Shared primitive models (kept across syntax versions)
@@ -50,14 +49,14 @@ class VariableDefinition(BaseModel):
 
     name: str
     type: str = "str"
-    default: Optional[Any] = None
+    default: Any | None = None
     runtime: bool = False
-    description: Optional[str] = None
+    description: str | None = None
     source: VariableSource = VariableSource.VALUE
-    generator: Optional[str] = None
-    format: Optional[str] = None
-    placeholder: Optional[str] = None
-    scope: Optional[VariableScope] = None
+    generator: str | None = None
+    format: str | None = None
+    placeholder: str | None = None
+    scope: VariableScope | None = None
 
 
 class ServiceDefinition(BaseModel):
@@ -67,14 +66,14 @@ class ServiceDefinition(BaseModel):
     type: ServiceType
     base_url: str
     auth: dict = Field(default_factory=dict)
-    params: Optional[dict] = None
+    params: dict | None = None
 
 
 class ImportDefinition(BaseModel):
     """Reference to an external script to import into a TCK."""
 
     import_ref: str
-    override: Optional[dict] = None
+    override: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +87,7 @@ class MetadataDefinition(BaseModel):
 
     name: str
     version: str = "1.0"
-    description: Optional[str] = None
+    description: str | None = None
     tags: list[str] = Field(default_factory=list)
 
 
@@ -98,7 +97,7 @@ class ReturnFieldDefinition(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     type: str
-    cls: Optional[str] = Field(default=None, alias="class")
+    cls: str | None = Field(default=None, alias="class")
 
 
 class Assertion(BaseModel):
@@ -107,7 +106,7 @@ class Assertion(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     uses: str
-    with_: Optional[dict[str, Any]] = Field(default=None, alias="with")
+    with_: dict[str, Any] | None = Field(default=None, alias="with")
 
 
 class StepDefinition(BaseModel):
@@ -115,15 +114,15 @@ class StepDefinition(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    id: Optional[str] = Field(default=None, pattern=r"^[a-z][a-z0-9_]{0,49}$")
+    id: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]{0,49}$")
     uses: str
-    name: Optional[str] = None
-    with_: Optional[dict[str, Any]] = Field(default=None, alias="with")
-    returns: Optional[dict[str, ReturnFieldDefinition]] = None
-    validate: Optional[list[Assertion]] = None
+    name: str | None = None
+    with_: dict[str, Any] | None = Field(default=None, alias="with")
+    returns: dict[str, ReturnFieldDefinition] | None = None
+    validate: list[Assertion] | None = None
     # Runtime control fields kept for execution-engine compatibility.
-    timeout_s: Optional[float] = None
-    if_condition: Optional[str] = Field(default=None, alias="if")
+    timeout_s: float | None = None
+    if_condition: str | None = Field(default=None, alias="if")
 
 
 class ScriptDefinition(BaseModel):
@@ -146,8 +145,8 @@ class ScriptDefinition(BaseModel):
     dataspace_version: Literal["saturn", "jupiter"] = "saturn"
     # Transition fields: allow dataspace/infrastructure on per-script level for
     # backward-compatible test suites that embed them inline.
-    dataspace: Optional["DataspaceContext"] = None
-    infrastructure: Optional["InfrastructureConfig"] = None
+    dataspace: DataspaceContext | None = None
+    infrastructure: InfrastructureConfig | None = None
 
 
 class TckMetadataDefinition(MetadataDefinition):
@@ -178,10 +177,10 @@ class TestDataDefinition(BaseModel):
 class EnvDefinition(BaseModel):
     """Environment block in a TCK manifest — shared variables, services, and test data."""
 
-    variables: Optional[Any] = None
-    services: Optional[list[dict[str, Any]]] = None
-    schemas: Optional[list[SchemaDefinition]] = None
-    testdata: Optional[list[TestDataDefinition]] = None
+    variables: Any | None = None
+    services: list[dict[str, Any]] | None = None
+    schemas: list[SchemaDefinition] | None = None
+    testdata: list[TestDataDefinition] | None = None
 
 
 class TckTestEntry(BaseModel):
@@ -194,7 +193,7 @@ class TckTestEntry(BaseModel):
     """
 
     id: str = Field(pattern=r"^[a-zA-Z0-9_\-\.]+\.yaml$")
-    name: Optional[str] = None
+    name: str | None = None
     skippable: bool = False
 
 
@@ -211,11 +210,11 @@ class TckDefinition(BaseModel):
         pattern=r"^[a-z][a-z0-9_.-]{0,99}$"
     )
     metadata: TckMetadataDefinition
-    env: Optional[EnvDefinition] = None
+    env: EnvDefinition | None = None
     tests: list[TckTestEntry] = Field(default_factory=list)
     # Transition fields — kept for compatibility with existing CCM examples.
-    dataspace: Optional[DataspaceContext] = None
-    infrastructure: Optional[InfrastructureConfig] = None
+    dataspace: DataspaceContext | None = None
+    infrastructure: InfrastructureConfig | None = None
 
 
 # ``syntax`` is a plain ``Literal["v1-alpha"]`` on both models: there is exactly

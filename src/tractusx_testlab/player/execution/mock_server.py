@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Optional
 
 import uvicorn
 
@@ -44,13 +43,13 @@ class _BackgroundMockServer:
     The server handles mock endpoint responses and callback listeners.
     """
 
-    __slots__ = ("_port", "_config", "_thread", "_server")
+    __slots__ = ("_config", "_port", "_server", "_thread")
 
     def __init__(self, port: int, config: TestlabConfig) -> None:
         self._port = port
         self._config = config
-        self._thread: Optional[threading.Thread] = None
-        self._server: Optional[uvicorn.Server] = None
+        self._thread: threading.Thread | None = None
+        self._server: uvicorn.Server | None = None
 
     def start(self) -> None:
         """Start the mock server on a background daemon thread."""

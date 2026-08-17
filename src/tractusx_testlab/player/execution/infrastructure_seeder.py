@@ -138,8 +138,8 @@ def _dtr_definition(name: str, binding: DtrBinding) -> ServiceDefinition:
 
 
 def _register(
-    svc_mgr: "ServiceManager",
-    context: "StepContext",
+    svc_mgr: ServiceManager,
+    context: StepContext,
     definition: ServiceDefinition,
     capability_key: str,
 ) -> None:
@@ -157,7 +157,7 @@ def _register(
 # ------------------------------------------------------------------
 
 def seed_infrastructure_services(
-    svc_mgr: "ServiceManager", context: "StepContext",
+    svc_mgr: ServiceManager, context: StepContext,
 ) -> None:
     """Register the SDK services the run's infrastructure bindings describe.
 

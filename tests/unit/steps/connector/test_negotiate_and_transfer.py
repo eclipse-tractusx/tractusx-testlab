@@ -31,7 +31,7 @@ ends: what ``negotiate`` publishes is exactly what ``initiate_transfer`` reads.
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -60,7 +60,7 @@ _TOKEN = "Bearer eyJhbGciOiJSUzI1NiJ9.test"
 class _Response:
     """The bare shape of a ``requests.Response`` the SDK controllers hand back."""
 
-    def __init__(self, status_code: int = 200, body: Optional[dict] = None) -> None:
+    def __init__(self, status_code: int = 200, body: dict | None = None) -> None:
         self.status_code = status_code
         self._body = body
 

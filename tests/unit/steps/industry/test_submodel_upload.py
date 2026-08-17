@@ -81,7 +81,7 @@ def _capture_post(monkeypatch) -> dict[str, object]:
     """Record the request the step makes instead of sending it."""
     captured: dict[str, object] = {}
 
-    async def fake_post(self, url, json=None, headers=None, timeout=None):  # noqa: ANN001
+    async def fake_post(self, url, json=None, headers=None, timeout=None):
         captured["url"] = url
         captured["json"] = json
         return httpx.Response(201, json={"ok": True})
@@ -290,7 +290,7 @@ def _capture_delete(monkeypatch, status: int = 204) -> dict[str, object]:
     """Record the delete the step makes instead of sending it."""
     captured: dict[str, object] = {}
 
-    async def fake_delete(self, url, headers=None, timeout=None):  # noqa: ANN001
+    async def fake_delete(self, url, headers=None, timeout=None):
         captured["url"] = url
         return httpx.Response(status)
 

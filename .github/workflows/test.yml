@@ -15,7 +15,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
 name: Tests
@@ -27,7 +27,10 @@ on:
     branches: [main]
 
 jobs:
-  backend-tests:
+  # Lint and types run as their own job so a formatting problem is reported as
+  # a formatting problem, not as "the test job is red".
+  quality:
+    name: Lint & types
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,5 +53,99 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
+      # Rules and per-module exclusions are declared in pyproject.toml, each
+      # annotated with the finding it defers and the phase that clears it.
+      - name: Lint (ruff)
+        run: poetry run ruff check src tests tools
+
+      # Gated on the packages that are already clean. The ratchet lives in
+      # [[tool.mypy.overrides]]; removing an entry there is how a package
+      # graduates. See docs/developer/architecture-cleanup/README.md.
+      - name: Types (mypy)
+        run: poetry run mypy
+
+  backend-tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      # The whole suite, integration included. It was previously skipped, which
+      # left CLI → compiler → player — the only end-to-end path — unverified.
       - name: Run tests
-        run: poetry run python -m pytest tests/ -q --ignore=tests/integration
+        run: poetry run python -m pytest tests/ -q
+
+      # The step reference is generated from the steps' own Pydantic models, so
+      # a contract change that skips the regeneration is a documentation lie.
+      - name: Step reference is current
+        run: poetry run testlab docs --check
+
+  packaging:
+    name: Wheel installs and imports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Build the wheel
+        run: poetry build
+
+      # An import of every module from a clean environment is the only reliable
+      # way to catch a dependency that is used but not declared — the failure
+      # mode that shipped `requests`, `rich` and `cryptography` undeclared, each
+      # resolving only because something else happened to pull it in.
+      - name: Install the wheel into a clean environment and import everything
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --quiet dist/*.whl
+          /tmp/smoke/bin/testlab --help
+          /tmp/smoke/bin/python - <<'PY'
+          import importlib, pkgutil
+          import tractusx_testlab
+
+          failed = []
+          for module in pkgutil.walk_packages(
+              tractusx_testlab.__path__, f"{tractusx_testlab.__name__}."
+          ):
+              try:
+                  importlib.import_module(module.name)
+              except Exception as exc:  # noqa: BLE001 — report every one, not the first
+                  failed.append(f"{module.name}: {type(exc).__name__}: {exc}")
+
+          if failed:
+              raise SystemExit(
+                  "Modules that do not import from an installed wheel:\n  "
+                  + "\n  ".join(failed)
+              )
+          print("every module imports from the installed wheel")
+          PY
+
+      # The shipped example must compile with the shipped code. It is the one
+      # artefact that exercises parse → validate → schema check together.
+      - name: Validate the shipped example TCK
+        run: /tmp/smoke/bin/testlab validate docs/examples/certificate-management-v2/raw/index.yaml

@@ -61,7 +61,7 @@ class DelayStep(BaseStep[DelayParams, NoOutput]):
     output_model = NoOutput
 
     async def execute(
-        self, params: DelayParams, context: "StepContext", definition: StepDefinition
+        self, params: DelayParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[NoOutput]:
         await asyncio.sleep(params.seconds)
         return StepOutput(value=NoOutput(None))

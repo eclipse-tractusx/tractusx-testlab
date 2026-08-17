@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Package builder/reader — creates encrypted, signed .stck ZIP archives."""
@@ -30,7 +30,7 @@ import base64
 import hashlib
 import io
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from tractusx_testlab.models import (
@@ -98,7 +98,7 @@ class Packager:
         manifest = PackageManifest(
             name=name,
             version=version,
-            compiled_at=datetime.now(timezone.utc),
+            compiled_at=datetime.now(UTC),
             checksum=checksum,
             security=security,
         )

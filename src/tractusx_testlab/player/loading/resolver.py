@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Variable and service definition resolution for ${var} and ${{ }} references."""
@@ -27,11 +27,10 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any
-
-from tractusx_testlab.syntax import patterns
+from typing import TYPE_CHECKING
 
 from tractusx_testlab.models.authoring.definitions import ServiceDefinition
+from tractusx_testlab.syntax import patterns
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -41,7 +40,7 @@ _EXPR_RE = re.compile(r"\$\{\{\s*([^}]+?)\s*\}\}")
 _EXPR_FULL_RE = re.compile(r"^\$\{\{\s*([^}]+?)\s*\}\}$")
 
 
-def _resolve_expr(expr: str, context: "StepContext") -> object:
+def _resolve_expr(expr: str, context: StepContext) -> object:
     """Resolve a single normalized expression against the context.
 
     Resolution rules:
@@ -57,7 +56,7 @@ def _resolve_expr(expr: str, context: "StepContext") -> object:
     return context.get_variable(expr)
 
 
-def resolve_str(value: str, context: "StepContext") -> object:
+def resolve_str(value: str, context: StepContext) -> object:
     """Replace ``${{ }}``, ``${var}``, and ``@var`` references in a single string.
 
     Priority order:
@@ -103,7 +102,7 @@ def resolve_str(value: str, context: "StepContext") -> object:
     return result
 
 
-def _resolve_value(value: object, context: "StepContext") -> object:
+def _resolve_value(value: object, context: StepContext) -> object:
     """Recursively resolve variable references in any value type."""
     if isinstance(value, str):
         return resolve_str(value, context)
@@ -114,7 +113,7 @@ def _resolve_value(value: object, context: "StepContext") -> object:
     return value
 
 
-def resolve_params(params: dict, context: "StepContext") -> dict:
+def resolve_params(params: dict, context: StepContext) -> dict:
     """Replace ``${var}`` and ``@var`` references in param values with context variables."""
     resolved: dict[str, object] = {}
     for key, value in params.items():
@@ -122,13 +121,10 @@ def resolve_params(params: dict, context: "StepContext") -> dict:
     return resolved
 
 
-def resolve_service_def(svc_def: ServiceDefinition, context: "StepContext") -> ServiceDefinition:
+def resolve_service_def(svc_def: ServiceDefinition, context: StepContext) -> ServiceDefinition:
     """Return a copy of *svc_def* with ``${var}`` and ``@var`` references resolved."""
     resolved_base_url = resolve_str(svc_def.base_url, context)
-    if isinstance(resolved_base_url, str):
-        base_url = resolved_base_url
-    else:
-        base_url = str(resolved_base_url)
+    base_url = resolved_base_url if isinstance(resolved_base_url, str) else str(resolved_base_url)
     resolved_auth = {
         auth_key: resolve_str(auth_value, context) if isinstance(auth_value, str) else auth_value
         for auth_key, auth_value in svc_def.auth.items()

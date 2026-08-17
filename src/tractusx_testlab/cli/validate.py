@@ -27,7 +27,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -37,7 +36,7 @@ from tractusx_testlab.cli import app
 @app.command()
 def validate(
     script: Path = typer.Argument(..., help="Path to the YAML test script."),
-    version: Optional[str] = typer.Option(
+    version: str | None = typer.Option(
         None, "--version", "-v",
         help="Connector version for version-specific validation (e.g. 'saturn').",
     ),

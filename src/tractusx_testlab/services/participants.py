@@ -29,7 +29,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
@@ -75,7 +75,7 @@ class FileSystemParticipantManager:
     on every mutation to keep the file consistent.
     """
 
-    __slots__ = ("_storage_path", "_participants")
+    __slots__ = ("_participants", "_storage_path")
 
     def __init__(self, storage_path: Path) -> None:
         self._storage_path = storage_path
@@ -98,7 +98,7 @@ class FileSystemParticipantManager:
         participant = Participant(
             name=normalised,
             bpnl=_generate_bpnl(normalised),
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         self._participants[normalised] = participant
         self._save()

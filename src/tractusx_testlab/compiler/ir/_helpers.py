@@ -152,7 +152,7 @@ def resolve_test_path(file_ref: str, base_dir: Path) -> Path:
 
 def load_test_file(test_path: Path) -> dict[str, Any]:
     """Load a test YAML file."""
-    with open(test_path, "r", encoding="utf-8") as f:
+    with open(test_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
         raise ValueError(f"Expected YAML mapping in {test_path}")

@@ -39,7 +39,7 @@ the grant names are the public step names.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import requests
 from pydantic import ConfigDict, Field
@@ -133,19 +133,19 @@ class OAuth2TokenPayload(StepPayload):
 
     model_config = ConfigDict(extra="allow")
 
-    access_token: Optional[str] = Field(
+    access_token: str | None = Field(
         default=None, description="The bearer token to present to protected services."
     )
-    token_type: Optional[str] = Field(
+    token_type: str | None = Field(
         default=None, description="Type of the issued token, normally 'Bearer'."
     )
-    expires_in: Optional[int] = Field(
+    expires_in: int | None = Field(
         default=None, description="Lifetime of the access token in seconds."
     )
-    scope: Optional[str] = Field(
+    scope: str | None = Field(
         default=None, description="Scopes the server actually granted."
     )
-    refresh_token: Optional[str] = Field(
+    refresh_token: str | None = Field(
         default=None, description="Refresh token, when the server issues one."
     )
 
@@ -168,7 +168,7 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
     async def execute(
         self,
         params: OAuth2GetTokenParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[OAuth2TokenPayload]:
         timeout = params.timeout_or(context.config.default_timeout_s)

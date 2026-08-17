@@ -28,7 +28,6 @@ from __future__ import annotations
 import pytest
 import yaml
 
-import tractusx_testlab.steps  # noqa: F401 — trigger @step registrations
 from tests.paths import CCM_RAW_DIR
 from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.models.authoring.definitions import Assertion, ServiceDefinition
@@ -101,7 +100,7 @@ class TestCcmIndexParsing:
     def test_ccm_index_parses_as_tck(self) -> None:
 
         index_path = CCM_RAW_DIR / "index.yaml"
-        with open(index_path, "r", encoding="utf-8") as f:
+        with open(index_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["kind"] == "tck"

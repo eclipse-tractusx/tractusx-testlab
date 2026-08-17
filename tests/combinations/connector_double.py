@@ -37,13 +37,13 @@ request the step builds itself.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 class _Response:
     """The part of a ``requests.Response`` the SDK controllers hand back."""
 
-    def __init__(self, status_code: int = 200, body: Optional[dict] = None) -> None:
+    def __init__(self, status_code: int = 200, body: dict | None = None) -> None:
         self.status_code = status_code
         self._body = body
 
@@ -146,8 +146,8 @@ class ServicesDouble:
 
     def __init__(
         self,
-        consumer: Optional[ConsumerDouble] = None,
-        provider: Optional[ProviderDouble] = None,
+        consumer: ConsumerDouble | None = None,
+        provider: ProviderDouble | None = None,
     ) -> None:
         self._by_type: dict[str, object] = {}
         if consumer is not None:

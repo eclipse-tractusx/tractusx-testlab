@@ -37,7 +37,7 @@ import ast
 import re
 from pathlib import Path
 
-import tractusx_testlab.steps  # noqa: F401  — importing registers every step
+import tractusx_testlab.steps
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps.base import BaseStep
 

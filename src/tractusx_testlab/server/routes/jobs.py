@@ -30,52 +30,46 @@ import asyncio
 import logging
 import uuid
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from tractusx_testlab.models import JobStatus
 from tractusx_testlab.player.execution.player import TestlabPlayer
-from tractusx_testlab.server.storage import PackageStorage
-
 from tractusx_testlab.server.routes.callbacks import callback_router
 from tractusx_testlab.server.routes.compile import compile_router
+from tractusx_testlab.server.storage import PackageStorage
 from tractusx_testlab.server.streaming import streaming_router
 
 _logger = logging.getLogger(__name__)
 
-# Background task references — prevents garbage collection and logs exceptions
-_background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+#: Strong references to in-flight background runs. ``asyncio`` holds only a weak
+#: reference to a task, so a run whose reference is dropped can be garbage
+#: collected mid-execution; holding it here until the done-callback discards it
+#: is what keeps that from happening.
+_background_tasks: set[asyncio.Task] = set()
 
 
-def _on_task_done(task: asyncio.Task) -> None:  # type: ignore[type-arg]
-    """Remove completed task from the tracking set and log any unhandled exceptions."""
-    _background_tasks.discard(task)
-    if task.cancelled():
-        return
-    exc = task.exception()
-    if exc is not None:
-        _logger.exception("Background task failed: %s", exc, exc_info=exc)
+def _on_task_done(task: asyncio.Task) -> None:
+    """Release a finished run and surface anything it raised.
 
-
-router = APIRouter(prefix="/testlab", tags=["testlab"])
-router.include_router(streaming_router)
-router.include_router(compile_router)
-router.include_router(callback_router)
-
-# Background task references — prevents garbage collection and logs exceptions
-_background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
-
-
-def _on_task_done(task: asyncio.Task) -> None:  # type: ignore[type-arg]
-    """Remove completed task from the tracking set and log any unhandled exceptions."""
+    A background task that dies with an unhandled exception is otherwise silent
+    until interpreter shutdown, which is far too late to associate it with the
+    job it belonged to.
+    """
     _background_tasks.discard(task)
     if task.cancelled():
         return
     exc = task.exception()
     if exc is not None:
         _logger.exception("Background execution task failed: %s", exc, exc_info=exc)
+
+
+router = APIRouter(prefix="/testlab", tags=["testlab"])
+router.include_router(streaming_router)
+router.include_router(compile_router)
+router.include_router(callback_router)
 
 
 def _get_player(request: Request) -> TestlabPlayer:
@@ -213,15 +207,15 @@ async def _execute_in_background(player: TestlabPlayer, target: Path, runtime_va
 )
 async def list_jobs(
     player: PlayerDep,
-    status: Optional[str] = None,
+    status: str | None = None,
 ) -> JSONResponse:
     """List all executions, optionally filtered by status."""
     status_filter = None
     if status:
         try:
             status_filter = JobStatus(status.upper())
-        except ValueError:
-            raise HTTPException(400, f"Invalid status: {status}")
+        except ValueError as exc:
+            raise HTTPException(400, f"Invalid status: {status}") from exc
 
     jobs = player.jobs.list_jobs(status=status_filter)
     return JSONResponse(content=[job.model_dump(mode="json") for job in jobs])

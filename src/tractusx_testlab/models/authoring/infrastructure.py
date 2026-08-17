@@ -26,7 +26,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -51,7 +51,7 @@ class Standard(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id: str
-    version: Optional[str] = None
+    version: str | None = None
 
     def effective_version(self, dataspace_version: str) -> str:
         """Resolve the constraint version, inheriting ``dataspace.version`` when omitted."""
@@ -64,7 +64,7 @@ class CapabilityRequirement(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     required: bool
-    standard: Optional[Standard] = None
+    standard: Standard | None = None
 
 
 class InfrastructureConfig(BaseModel):

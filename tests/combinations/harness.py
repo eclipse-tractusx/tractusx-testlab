@@ -32,7 +32,7 @@ published outputs its own way would pass while the player failed.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.models import Job, StepDefinition, StepStatus
@@ -76,7 +76,7 @@ class Outcome:
         """What the step with this ``id`` returned."""
         return self.result(step_id).output
 
-    def error(self, step_id: str) -> Optional[str]:
+    def error(self, step_id: str) -> str | None:
         """Why the step with this ``id`` failed, if it did."""
         return self.result(step_id).error
 
@@ -128,8 +128,8 @@ class Harness:
 
 
 def build_context(
-    services: Optional[ServiceManager] = None,
-    config: Optional[TestlabConfig] = None,
+    services: ServiceManager | None = None,
+    config: TestlabConfig | None = None,
 ) -> StepContext:
     """A real ``StepContext``, not a mock — variable resolution is under test."""
     return StepContext(

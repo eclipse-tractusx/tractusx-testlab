@@ -31,19 +31,18 @@ to decide what happened.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
+from tests.paths import DOCS_DIR
+from tractusx_testlab.models.authoring.definitions import Assertion, StepDefinition
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
     EventKind,
     StepStatus,
 )
-from tests.paths import DOCS_DIR
-from tractusx_testlab.models.authoring.definitions import Assertion, StepDefinition
 from tractusx_testlab.models.runtime.events import ExecutionEvent
 from tractusx_testlab.models.runtime.results import AssertionResult, ScriptResult, StepResult
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor

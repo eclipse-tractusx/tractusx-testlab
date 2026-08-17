@@ -22,4 +22,4 @@
 
 """Security steps: obtaining and handling authorization credentials."""
 
-import tractusx_testlab.steps.security.oauth2  # noqa: F401
+import tractusx_testlab.steps.security.oauth2

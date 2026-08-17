@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """StepContext — the execution context passed to every step.
@@ -39,14 +39,14 @@ from tractusx_testlab.syntax import defaults
 class StepContext:
     """Mutable execution context shared across steps within a single script run."""
 
-    __slots__ = ("_services", "_variables", "_job", "_config", "_infrastructure")
+    __slots__ = ("_config", "_infrastructure", "_job", "_services", "_variables")
 
     def __init__(
         self,
         services: ServiceManager,
         job: Job,
         config: TestlabConfig,
-        infrastructure: "Infrastructure | None" = None,
+        infrastructure: Infrastructure | None = None,
     ) -> None:
         self._services = services
         self._job = job
@@ -138,7 +138,7 @@ class StepContext:
                 continue
         raise ServiceNotFoundError(f"No service of type {stype.value} is registered")
 
-    def _first_definition_of_type(self, stype: ServiceType) -> "ServiceDefinition | None":
+    def _first_definition_of_type(self, stype: ServiceType) -> ServiceDefinition | None:
         """Return the first ``ServiceDefinition`` matching *stype*, or ``None``."""
         for service_definition in self._services._definitions.values():
             if service_definition.type == stype:

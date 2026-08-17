@@ -32,4 +32,4 @@ from tractusx_testlab.player.execution.phases.execution import run_execution as 
 from tractusx_testlab.player.execution.phases.setup import run_setup as execute_setup_steps
 from tractusx_testlab.player.execution.phases.teardown import run_teardown as execute_teardown_steps
 
-__all__ = ["execute_setup_steps", "execute_main_steps", "execute_teardown_steps"]
+__all__ = ["execute_main_steps", "execute_setup_steps", "execute_teardown_steps"]

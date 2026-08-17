@@ -32,27 +32,24 @@ discriminator key.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import yaml
 from pydantic import TypeAdapter
 
 from tractusx_testlab.models.authoring.definitions import (
     ScriptDefinition,
-    ScriptDefinition,
-    TckDefinition,
     TckDefinition,
 )
 
-_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinition] = TypeAdapter(ScriptDefinition)  # type: ignore[assignment]
-_TCK_ADAPTER: TypeAdapter[TckDefinition] = TypeAdapter(TckDefinition)  # type: ignore[assignment]
+_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinition] = TypeAdapter(ScriptDefinition)
+_TCK_ADAPTER: TypeAdapter[TckDefinition] = TypeAdapter(TckDefinition)
 
 _INCLUDE_PREFIX = "!include "
 
 
 def _load_yaml(path: Path) -> dict:
     """Load a YAML file, returning the top-level mapping."""
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
         raise ValueError(f"Expected YAML mapping at top level in {path}")
@@ -86,13 +83,13 @@ class YamlParser:
         return _TCK_ADAPTER.validate_python(normalized)
 
     @staticmethod
-    def parse_script_from_dict(data: dict, path: Optional[Path] = None) -> ScriptDefinition:
+    def parse_script_from_dict(data: dict, path: Path | None = None) -> ScriptDefinition:
         """Parse a script from an already-loaded YAML dict."""
         normalized = _normalize_discriminator(data, path or Path("<dict>"))
         return _SCRIPT_ADAPTER.validate_python(normalized)
 
     @staticmethod
-    def parse_tck_from_dict(data: dict, path: Optional[Path] = None) -> TckDefinition:
+    def parse_tck_from_dict(data: dict, path: Path | None = None) -> TckDefinition:
         """Parse a TCK from an already-loaded YAML dict."""
         normalized = _normalize_discriminator(data, path or Path("<dict>"))
         return _TCK_ADAPTER.validate_python(normalized)

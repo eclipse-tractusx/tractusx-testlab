@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Data-plane interaction steps — fetch data through EDR endpoint."""
@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import requests
 from pydantic import Field
@@ -76,7 +76,7 @@ class DataplaneCallParams(HttpCallParams):
         ),
     )
     path: str = Field(default="", description="Path appended to the data-plane URL.")
-    edr_token: Optional[str] = Field(
+    edr_token: str | None = Field(
         default=None,
         description="EDR authorization token; falls back to the 'edr_token' context variable.",
     )
@@ -104,7 +104,7 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
     output_model = HttpBodyOutput
 
     async def execute(
-        self, params: DataplaneCallParams, context: "StepContext", definition: StepDefinition
+        self, params: DataplaneCallParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
         url = params.resolved_url(context.get_variable(DATAPLANE_URL))
         token = params.edr_token or context.get_variable(EDR_TOKEN)
@@ -137,20 +137,20 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
 class GetEdrParams(StepParams):
     """Input contract of ``connector/consumer/get_edr``."""
 
-    transfer_id: Optional[str] = Field(
+    transfer_id: str | None = Field(
         default=None,
         description=(
             "Transfer process to read the EDR of; falls back to the "
             "'transfer_id' context variable."
         ),
     )
-    verify: Optional[Any] = Field(
+    verify: Any | None = Field(
         default=None,
         description="TLS verification passed through to the SDK; None keeps its default.",
     )
 
 
-def fetch_data_address(consumer: Any, transfer_id: Optional[str], verify: Any = None) -> Optional[dict]:
+def fetch_data_address(consumer: Any, transfer_id: str | None, verify: Any = None) -> dict | None:
     """Fetch the EDR data address for a transfer, or ``None`` if it cannot be read.
 
     The one place that calls ``consumer.get_edr`` — ``connector/consumer/get_edr``
@@ -177,13 +177,13 @@ class EdrOutput(StepPayload):
     document stays alongside for assertions on its other keys.
     """
 
-    dataplane_url: Optional[str] = Field(
+    dataplane_url: str | None = Field(
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
-    edr_token: Optional[str] = Field(
+    edr_token: str | None = Field(
         default=None, description="Authorization token for that data-plane URL."
     )
-    data_address: Optional[DataAddressPayload] = Field(
+    data_address: DataAddressPayload | None = Field(
         default=None, description="The full EDR data address document, unchanged."
     )
 
@@ -202,7 +202,7 @@ class GetEdrStep(BaseStep[GetEdrParams, EdrOutput]):
     output_model = EdrOutput
 
     async def execute(
-        self, params: GetEdrParams, context: "StepContext", definition: StepDefinition
+        self, params: GetEdrParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[EdrOutput]:
         consumer = context.get_consumer_service()
         transfer_id = params.transfer_id or context.get_variable(TRANSFER_ID)

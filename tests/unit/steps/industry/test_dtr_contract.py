@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import base64
 import json
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -88,7 +88,7 @@ def _params(**overrides: Any) -> dict:
     }
 
 
-def _responses(*bodies: Optional[_Response]) -> list:
+def _responses(*bodies: _Response | None) -> list:
     return list(bodies)
 
 

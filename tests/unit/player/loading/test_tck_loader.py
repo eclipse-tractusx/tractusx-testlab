@@ -30,8 +30,7 @@ from pathlib import Path
 
 import pytest
 
-from tractusx_testlab.player.loading.loader import Loader, _TCK_BUNDLE_ENTRY
-
+from tractusx_testlab.player.loading.loader import _TCK_BUNDLE_ENTRY, Loader
 
 _TCK_MANIFEST_YAML = """\
 syntax: v1-alpha

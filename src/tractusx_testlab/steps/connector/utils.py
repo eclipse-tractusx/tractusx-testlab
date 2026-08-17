@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Utility steps — generic HTTP and backend data helpers."""
@@ -64,7 +64,7 @@ class HttpRequestStep(BaseStep[HttpRequestParams, HttpBodyOutput]):
     output_model = HttpBodyOutput
 
     async def execute(
-        self, params: HttpRequestParams, context: "StepContext", definition: StepDefinition
+        self, params: HttpRequestParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
         timeout = params.timeout_or(context.config.default_timeout_s)
         payload = (

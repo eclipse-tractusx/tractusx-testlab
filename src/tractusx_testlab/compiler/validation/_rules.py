@@ -21,12 +21,23 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""TCK manifest and test file validation against JSON schemas."""
+"""TCK manifest and test file validation against JSON schemas.
+
+Everything a TCK must satisfy beyond its JSON schema is a rule returning the
+errors it found, and the rules that repeat over a vocabulary — the ``uses:``
+prefixes a script may no longer name, the ``env:`` collections whose entries
+name a file — are tables walked once rather than a loop written per entry.
+Every rule runs; nothing short-circuits, so an author sees every problem in the
+TCK at once instead of one per compile.
+"""
 
 from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -37,11 +48,17 @@ logger = logging.getLogger(__name__)
 
 _SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
 
+#: The phases a step can sit in; a rule about steps means all three.
+_PHASES = ("setup", "execution", "teardown")
 
-def _load_schema(schema_name: str) -> dict[str, Any]:
-    """Load a JSON schema from the schemas directory."""
-    schema_path = _SCHEMAS_DIR / schema_name
-    return json.loads(schema_path.read_text(encoding="utf-8"))
+
+@cache
+def _validator_for(schema_name: str) -> Draft202012Validator:
+    """Return the validator for a schema, reading and compiling it once per process."""
+    schema: dict[str, Any] = json.loads(
+        (_SCHEMAS_DIR / schema_name).read_text(encoding="utf-8")
+    )
+    return Draft202012Validator(schema)
 
 
 def _collect_errors(
@@ -53,10 +70,7 @@ def _collect_errors(
     errors: list[str] = []
     for error in validator.iter_errors(data):
         path = ".".join(str(p) for p in error.absolute_path) if error.absolute_path else ""
-        if path:
-            location = f"'{path}' in {source_label}"
-        else:
-            location = source_label
+        location = f"'{path}' in {source_label}" if path else source_label
         errors.append(f"{error.message} (at {location})")
     return errors
 
@@ -70,52 +84,29 @@ def validate_tck_manifest(
     Raises:
         ValueError: If validation errors are found. Message lists ALL errors.
     """
-    all_errors: list[str] = []
-
-    # Validate the index manifest
-    index_schema = _load_schema("tck_index.schema.json")
-    index_validator = Draft202012Validator(index_schema)
-    all_errors.extend(_collect_errors(index_validator, manifest_data, "index.yaml"))
-
-    # Validate referenced file existence
-    all_errors.extend(_validate_file_refs(manifest_data, base_dir))
-
-    # Validate variable scope annotations
     env = manifest_data.get("env") or {}
-    all_errors.extend(_validate_variable_scopes(env))
 
-    # Validate that every scoped variable has a side that exists to be asked
-    all_errors.extend(
-        _validate_scoped_sides_are_declared(env, manifest_data.get("infrastructure"))
-    )
+    all_errors: list[str] = [
+        *_collect_errors(
+            _validator_for("tck_index.schema.json"), manifest_data, "index.yaml"
+        ),
+        *_validate_file_refs(manifest_data, base_dir),
+        *_validate_variable_scopes(env),
+        *_validate_scoped_sides_are_declared(env, manifest_data.get("infrastructure")),
+    ]
 
-    # Validate each test file
-    tests = manifest_data.get("tests", [])
-    test_schema = _load_schema("tck_test.schema.json")
-    test_validator = Draft202012Validator(test_schema)
-
-    for test_entry in tests:
-        test_file = test_entry if isinstance(test_entry, str) else test_entry.get(
-            "file", test_entry.get("id", "")
-        )
-        if not test_file:
-            continue
+    for test_file in _referenced_test_files(manifest_data):
+        label = f"tests/{test_file}"
         test_path = base_dir / "tests" / test_file
         if not test_path.is_file():
-            all_errors.append(f"Referenced test file not found: tests/{test_file}")
+            all_errors.append(f"Referenced test file not found: {label}")
             continue
         test_data = yaml.safe_load(test_path.read_text(encoding="utf-8"))
         if not isinstance(test_data, dict):
-            all_errors.append(f"Test file 'tests/{test_file}' is not a valid YAML mapping")
+            all_errors.append(f"Test file '{label}' is not a valid YAML mapping")
             continue
         all_errors.extend(
-            _collect_errors(test_validator, test_data, f"tests/{test_file}")
-        )
-        all_errors.extend(
-            _reject_deprecated_verbs(test_data, f"tests/{test_file}")
-        )
-        all_errors.extend(
-            _reject_validate_step(test_data, f"tests/{test_file}")
+            error for rule in _TEST_FILE_RULES for error in rule(test_data, label)
         )
 
     if all_errors:
@@ -127,6 +118,15 @@ def validate_tck_manifest(
     logger.info("TCK manifest validation passed")
 
 
+def _referenced_test_files(manifest_data: dict[str, Any]) -> Iterator[str]:
+    """Yield the file name of every test the manifest lists, however it spells it."""
+    for entry in manifest_data.get("tests", []):
+        if isinstance(entry, str):
+            yield entry
+        elif name := entry.get("file", entry.get("id", "")):
+            yield str(name)
+
+
 _VALID_SCOPES: frozenset[str] = frozenset({"engine", "sut"})
 
 
@@ -136,17 +136,9 @@ def _validate_variable_scopes(env_data: dict[str, Any]) -> list[str]:
     Variables with ``source: value`` or ``source: generated`` are exempt.
     """
     errors: list[str] = []
-    variables = env_data.get("variables") or []
-    if not isinstance(variables, list):
-        return errors
-    for entry in variables:
-        if not isinstance(entry, dict):
-            continue
-        with_block = entry.get("with") or {}
-        if str(with_block.get("source", "")) != "input":
-            continue
+    for entry in _input_variables(env_data):
         var_id = entry.get("id", "?")
-        scope = with_block.get("scope")
+        scope = (entry.get("with") or {}).get("scope")
         if scope is None:
             errors.append(
                 f"Variable '{var_id}' has source: input but no scope declared. "
@@ -161,22 +153,25 @@ def _validate_variable_scopes(env_data: dict[str, Any]) -> list[str]:
     return errors
 
 
-def _scoped_input_variables(env_data: dict[str, Any]) -> list[tuple[str, str]]:
-    """Return every ``(variable id, scope)`` pair the env block requests."""
+def _input_variables(env_data: dict[str, Any]) -> Iterator[dict[str, Any]]:
+    """Yield every ``env.variables`` entry that asks for a value at run start."""
     variables = env_data.get("variables") or []
     if not isinstance(variables, list):
-        return []
-    pairs: list[tuple[str, str]] = []
+        return
     for entry in variables:
         if not isinstance(entry, dict):
             continue
-        with_block = entry.get("with") or {}
-        if str(with_block.get("source", "")) != "input":
-            continue
-        scope = with_block.get("scope")
-        if scope in _VALID_SCOPES:
-            pairs.append((str(entry.get("id", "?")), str(scope)))
-    return pairs
+        if str((entry.get("with") or {}).get("source", "")) == "input":
+            yield entry
+
+
+def _scoped_input_variables(env_data: dict[str, Any]) -> list[tuple[str, str]]:
+    """Return every ``(variable id, scope)`` pair the env block requests."""
+    return [
+        (str(entry.get("id", "?")), str(scope))
+        for entry in _input_variables(env_data)
+        if (scope := (entry.get("with") or {}).get("scope")) in _VALID_SCOPES
+    ]
 
 
 def _sides_with_a_required_capability(infrastructure: Any) -> set[str]:
@@ -188,15 +183,15 @@ def _sides_with_a_required_capability(infrastructure: Any) -> set[str]:
     """
     if not isinstance(infrastructure, dict):
         return set()
-    sides: set[str] = set()
-    for side, capabilities in infrastructure.items():
-        if not isinstance(capabilities, dict):
-            continue
-        for requirement in capabilities.values():
-            if isinstance(requirement, dict) and requirement.get("required") is True:
-                sides.add(str(side))
-                break
-    return sides
+    return {
+        str(side)
+        for side, capabilities in infrastructure.items()
+        if isinstance(capabilities, dict)
+        and any(
+            isinstance(requirement, dict) and requirement.get("required") is True
+            for requirement in capabilities.values()
+        )
+    }
 
 
 def _validate_scoped_sides_are_declared(
@@ -225,17 +220,47 @@ def _validate_scoped_sides_are_declared(
         return []
 
     declared_sides = _sides_with_a_required_capability(infrastructure)
-    errors: list[str] = []
-    for var_id, scope in scoped:
-        if scope in declared_sides:
-            continue
-        errors.append(
-            f"Variable '{var_id}' is scoped to '{scope}', but the infrastructure "
-            f"block requires no {scope} capability. Declare what the run needs "
-            f"(e.g. infrastructure.{scope}.connector.required: true), or remove "
-            f"the variable."
-        )
-    return errors
+    return [
+        f"Variable '{var_id}' is scoped to '{scope}', but the infrastructure "
+        f"block requires no {scope} capability. Declare what the run needs "
+        f"(e.g. infrastructure.{scope}.connector.required: true), or remove "
+        f"the variable."
+        for var_id, scope in scoped
+        if scope not in declared_sides
+    ]
+
+
+@dataclass(frozen=True, slots=True)
+class FileCollection:
+    """An ``env:`` collection whose entries name a file that must exist on disk.
+
+    *key* is both the block under ``env:`` and the directory the file lives in;
+    *noun* is how a missing one is named in the error.
+    """
+
+    key: str
+    noun: str
+
+
+#: The collections a TCK can reference files from. Both spellings of an entry —
+#: a list of ``{id, source}`` and a mapping of ``name: {file}`` — are accepted.
+_FILE_COLLECTIONS: tuple[FileCollection, ...] = (
+    FileCollection("schemas", "schema"),
+    FileCollection("testdata", "testdata"),
+)
+
+
+def _referenced_files(collection: Any, key: str) -> Iterator[tuple[str, str]]:
+    """Yield ``(file name, where it was declared)`` for every entry naming a file."""
+    if isinstance(collection, list):
+        for entry in collection:
+            source = entry.get("source") if isinstance(entry, dict) else None
+            if source:
+                yield str(source), f"env.{key}[{entry.get('id', '?')}]"
+    elif isinstance(collection, dict):
+        for name, entry in collection.items():
+            if isinstance(entry, dict) and "file" in entry:
+                yield str(entry["file"]), f"env.{key}.{name}"
 
 
 def _validate_file_refs(
@@ -243,101 +268,82 @@ def _validate_file_refs(
     base_dir: Path,
 ) -> list[str]:
     """Validate that all referenced schema and testdata files exist."""
-    errors: list[str] = []
     env = manifest_data.get("env", {})
-
-    schemas = env.get("schemas", {})
-    if isinstance(schemas, list):
-        for entry in schemas:
-            source = entry.get("source") if isinstance(entry, dict) else None
-            if source:
-                path = base_dir / "schemas" / source
-                if not path.is_file():
-                    errors.append(
-                        f"Referenced schema file not found: schemas/{source} "
-                        f"(env.schemas[{entry.get('id', '?')}])"
-                    )
-    elif isinstance(schemas, dict):
-        for name, entry in schemas.items():
-            if isinstance(entry, dict) and "file" in entry:
-                path = base_dir / "schemas" / entry["file"]
-                if not path.is_file():
-                    errors.append(
-                        f"Referenced schema file not found: schemas/{entry['file']} "
-                        f"(env.schemas.{name})"
-                    )
-
-    testdata = env.get("testdata", {})
-    if isinstance(testdata, list):
-        for entry in testdata:
-            source = entry.get("source") if isinstance(entry, dict) else None
-            if source:
-                path = base_dir / "testdata" / source
-                if not path.is_file():
-                    errors.append(
-                        f"Referenced testdata file not found: testdata/{source} "
-                        f"(env.testdata[{entry.get('id', '?')}])"
-                    )
-    elif isinstance(testdata, dict):
-        for name, entry in testdata.items():
-            if isinstance(entry, dict) and "file" in entry:
-                path = base_dir / "testdata" / entry["file"]
-                if not path.is_file():
-                    errors.append(
-                        f"Referenced testdata file not found: testdata/{entry['file']} "
-                        f"(env.testdata.{name})"
-                    )
-
-    return errors
+    return [
+        f"Referenced {collection.noun} file not found: "
+        f"{collection.key}/{file_name} ({declared_at})"
+        for collection in _FILE_COLLECTIONS
+        for file_name, declared_at in _referenced_files(
+            env.get(collection.key, {}), collection.key
+        )
+        if not (base_dir / collection.key / file_name).is_file()
+    ]
 
 
-_DEPRECATED_VERB_PREFIXES = ("precondition/",)
+@dataclass(frozen=True, slots=True)
+class BannedStep:
+    """A ``uses:`` prefix no script may name, and what the author should write instead.
+
+    *reason* completes the sentence "'<uses>' …", so it reads as one message
+    however many prefixes the table grows.
+    """
+
+    prefix: str
+    reason: str
 
 
-def _reject_deprecated_verbs(
-    test_data: dict[str, Any],
-    source_label: str,
-) -> list[str]:
-    """Reject steps that use deprecated verb prefixes (ADR-0021)."""
-    errors: list[str] = []
-    for phase in ("setup", "execution", "teardown"):
+_BANNED_STEPS: tuple[BannedStep, ...] = (
+    BannedStep(
+        "precondition/",
+        "is no longer accepted (removed by ADR-0021). Migrate to a complex "
+        "variable in env.variables with 'uses: config/connector/policy'.",
+    ),
+    BannedStep(
+        "validate/",
+        "cannot be used as a standalone step. Place it under the parent step's "
+        "'validate:' block.",
+    ),
+)
+
+
+def _steps_in(test_data: dict[str, Any]) -> Iterator[dict[str, Any]]:
+    """Yield every step of a test file, whichever phase it sits in."""
+    for phase in _PHASES:
         steps = test_data.get(phase, [])
         if not isinstance(steps, list):
             continue
         for step in steps:
-            if not isinstance(step, dict):
-                continue
-            uses = step.get("uses", "")
-            for prefix in _DEPRECATED_VERB_PREFIXES:
-                if uses.startswith(prefix):
-                    step_id = step.get("id", "?")
-                    errors.append(
-                        f"Rejected step '{step_id}' in {source_label}: "
-                        f"'{uses}' is no longer accepted (removed by ADR-0021). "
-                        f"Migrate to a complex variable in env.variables with "
-                        f"'uses: config/connector/policy'."
-                    )
-    return errors
+            if isinstance(step, dict):
+                yield step
 
-def _reject_validate_step(
+
+def _reject_banned_steps(
     test_data: dict[str, Any],
     source_label: str,
 ) -> list[str]:
-    """Reject steps that use deprecated verb prefixes (ADR-0021)."""
+    """Reject every step whose ``uses`` names a prefix the dialect no longer takes."""
     errors: list[str] = []
-    for phase in ("setup", "execution", "teardown"):
-        steps = test_data.get(phase, [])
-        if not isinstance(steps, list):
-            continue
-        for step in steps:
-            if not isinstance(step, dict):
-                continue
-            uses = step.get("uses", "")
-            if uses.startswith("validate/"):
-                step_id = step.get("id", "?")
+    for step in _steps_in(test_data):
+        uses = str(step.get("uses", ""))
+        for banned in _BANNED_STEPS:
+            if uses.startswith(banned.prefix):
                 errors.append(
-                    f"Rejected step '{step_id}' in {source_label}: "
-                    f"'{uses}' cannot be used as a standalone step. "
-                    "Place it under the parent step's 'validate:' block."
+                    f"Rejected step '{step.get('id', '?')}' in {source_label}: "
+                    f"'{uses}' {banned.reason}"
                 )
     return errors
+
+
+def _check_test_schema(test_data: dict[str, Any], source_label: str) -> list[str]:
+    """Validate a test file against the test JSON schema."""
+    return _collect_errors(
+        _validator_for("tck_test.schema.json"), test_data, source_label
+    )
+
+
+#: Everything asked of a single test file, in the order an author reads it.
+#: A new per-file rule is a row here, not another call site to remember.
+_TEST_FILE_RULES: tuple[Callable[[dict[str, Any], str], list[str]], ...] = (
+    _check_test_schema,
+    _reject_banned_steps,
+)

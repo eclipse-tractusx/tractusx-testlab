@@ -26,7 +26,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
@@ -53,10 +53,10 @@ class DspFlowOutput(StepPayload):
     that as a 500 rather than raising, so a script can assert on it.
     """
 
-    dataplane_url: Optional[str] = Field(
+    dataplane_url: str | None = Field(
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
-    edr_token: Optional[str] = Field(
+    edr_token: str | None = Field(
         default=None, description="Authorization token for that data-plane URL."
     )
 
@@ -88,7 +88,7 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
     output_model = DspFlowOutput
 
     async def execute(
-        self, params: DoDspParams, context: "StepContext", definition: StepDefinition
+        self, params: DoDspParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.get_consumer_service()
         endpoint, token = consumer.do_dsp(
@@ -114,11 +114,11 @@ class DoDspWithBpnlParams(FilterExpressionParams):
     """
 
     bpnl: str = Field(description="BPN used to discover the counter-party's connector.")
-    counter_party_address: Optional[str] = Field(
+    counter_party_address: str | None = Field(
         default=None,
         description="DSP endpoint; when omitted it is resolved from the BPN by discovery.",
     )
-    expected_policies: Optional[list[dict]] = Field(
+    expected_policies: list[dict] | None = Field(
         default=None,
         description="ODRL policies the negotiation is allowed to accept.",
     )
@@ -135,7 +135,7 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
     output_model = DspFlowOutput
 
     async def execute(
-        self, params: DoDspWithBpnlParams, context: "StepContext", definition: StepDefinition
+        self, params: DoDspWithBpnlParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.get_consumer_service()
         endpoint, token = consumer.do_dsp_with_bpnl(
@@ -163,7 +163,7 @@ class DiscoverDtrAuthParams(CounterPartyParams):
         default=DTR_DCT_TYPE,
         description="`dct:type` the registry asset is offered under in the catalog.",
     )
-    expected_policies: Optional[list[dict]] = Field(
+    expected_policies: list[dict] | None = Field(
         default=None,
         description="ODRL policies the negotiation is allowed to accept.",
     )
@@ -185,7 +185,7 @@ class DiscoverDtrAuthStep(BaseStep[DiscoverDtrAuthParams, DspFlowOutput]):
     async def execute(
         self,
         params: DiscoverDtrAuthParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.get_consumer_service()
@@ -199,10 +199,10 @@ class DiscoverDtrAuthStep(BaseStep[DiscoverDtrAuthParams, DspFlowOutput]):
 
 
 def _build_output(
-    context: "StepContext",
+    context: StepContext,
     params: StepParams,
-    endpoint: Optional[str],
-    token: Optional[str],
+    endpoint: str | None,
+    token: str | None,
 ) -> StepOutput[DspFlowOutput]:
     """Report the data-plane address every flow step ends at."""
     value = DspFlowOutput(dataplane_url=endpoint, edr_token=token)

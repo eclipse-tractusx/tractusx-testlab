@@ -79,7 +79,7 @@ class LogStep(BaseStep[LogParams, LogOutput]):
     output_model = LogOutput
 
     async def execute(
-        self, params: LogParams, context: "StepContext", definition: StepDefinition,
+        self, params: LogParams, context: StepContext, definition: StepDefinition,
     ) -> StepOutput[LogOutput]:
         label = params.message or getattr(definition, "id", None) or "log"
         rendered = _render(params.value)

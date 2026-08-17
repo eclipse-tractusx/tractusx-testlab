@@ -37,15 +37,15 @@ from tractusx_testlab.player.loading.ordering import topological_sort
 from tractusx_testlab.player.loading.resolver import resolve_params, resolve_service_def
 
 __all__ = [
-    # Execution
-    "StepContext",
     "ExecutionMonitor",
-    "TestlabPlayer",
-    # Loading
-    "Loader",
-    "topological_sort",
-    "resolve_params",
-    "resolve_service_def",
     # Jobs
     "JobManager",
+    # Loading
+    "Loader",
+    # Execution
+    "StepContext",
+    "TestlabPlayer",
+    "resolve_params",
+    "resolve_service_def",
+    "topological_sort",
 ]

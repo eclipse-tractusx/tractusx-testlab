@@ -36,14 +36,12 @@ from tractusx_testlab.models.primitives.enums import ServiceType
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.infrastructure_seeder import (
     _ENGINE_CONNECTOR_NAME,
-    _ENGINE_DTR_NAME,
     _SUT_CONNECTOR_NAME,
     _SUT_DTR_NAME,
     seed_infrastructure_services,
 )
 from tractusx_testlab.services._factory import is_type_compatible
 from tractusx_testlab.services.manager import ServiceManager
-
 
 # ---------------------------------------------------------------------------
 # Helpers

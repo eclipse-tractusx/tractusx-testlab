@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Notification steps — reuses SDK NotificationConsumerService."""
@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import httpx
 from pydantic import ConfigDict, Field, model_validator
@@ -60,14 +60,14 @@ class SendNotificationParams(CounterPartyParams):
     out picks the SDK mode, which negotiates the notification asset itself.
     """
 
-    notification: Optional[dict] = Field(
+    notification: dict | None = Field(
         default=None,
         description="The notification document to send.",
     )
     endpoint_path: str = Field(
         default="", description="Notification API path appended to the endpoint."
     )
-    dataplane_url: Optional[str] = Field(
+    dataplane_url: str | None = Field(
         default=None,
         description="Direct mode: data-plane URL to POST to; its presence selects that mode.",
     )
@@ -75,7 +75,7 @@ class SendNotificationParams(CounterPartyParams):
         default="",
         description="Direct mode: authorization token for that data-plane URL.",
     )
-    content: Optional[dict] = Field(
+    content: dict | None = Field(
         default=None,
         description="Older spelling of 'notification' — the document to send.",
     )
@@ -87,7 +87,7 @@ class SendNotificationParams(CounterPartyParams):
         return self.dataplane_url is not None
 
     @model_validator(mode="after")
-    def _neither_mode_can_invent_a_notification(self) -> "SendNotificationParams":
+    def _neither_mode_can_invent_a_notification(self) -> SendNotificationParams:
         """Neither mode can invent the document it is asked to send."""
         if self.notification is None and self.content is None:
             raise ValueError("'notification' is required")
@@ -131,13 +131,13 @@ class SendNotificationOutput(StepPayload):
 
     model_config = ConfigDict(extra="allow")
 
-    status_code: Optional[int] = Field(
+    status_code: int | None = Field(
         default=None, description="Status code the receiver answered with."
     )
-    response_body: Optional[Any] = Field(
+    response_body: Any | None = Field(
         default=None, description="Body the receiver answered with."
     )
-    response_headers: Optional[dict] = Field(
+    response_headers: dict | None = Field(
         default=None, description="Headers the receiver answered with."
     )
 
@@ -158,7 +158,7 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
     async def execute(
         self,
         params: SendNotificationParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[SendNotificationOutput]:
         if params.is_direct:
@@ -166,7 +166,7 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
         return await self._execute_sdk_notification(params, context)
 
     async def _execute_sdk_notification(
-        self, params: SendNotificationParams, context: "StepContext",
+        self, params: SendNotificationParams, context: StepContext,
     ) -> StepOutput[SendNotificationOutput]:
         """Canonical mode: send via SDK NotificationConsumerService."""
         notif_service = context.get_notification_service()
@@ -261,7 +261,7 @@ class DiscoverNotificationAssetsStep(
     async def execute(
         self,
         params: DiscoverNotificationAssetsParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[NotificationAssetsOutput]:
         notif_service = context.get_notification_service()

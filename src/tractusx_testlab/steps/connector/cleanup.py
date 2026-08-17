@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Resource cleanup steps — delete assets, policies, and contract definitions.
@@ -73,7 +73,7 @@ class DeleteAssetStep(BaseStep[DeleteAssetParams, DeletionOutput]):
     output_model = DeletionOutput
 
     async def execute(
-        self, params: DeleteAssetParams, context: "StepContext", definition: StepDefinition
+        self, params: DeleteAssetParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DeletionOutput]:
         provider = context.get_provider_service()
         asset_id = params.asset_id or context.get_variable("asset_id")
@@ -111,7 +111,7 @@ class DeletePolicyStep(BaseStep[DeletePolicyParams, DeletionOutput]):
     output_model = DeletionOutput
 
     async def execute(
-        self, params: DeletePolicyParams, context: "StepContext", definition: StepDefinition
+        self, params: DeletePolicyParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DeletionOutput]:
         provider = context.get_provider_service()
         policy_id = params.policy_id or context.get_variable("policy_id")
@@ -158,7 +158,7 @@ class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, Dele
     async def execute(
         self,
         params: DeleteContractDefinitionParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DeletionOutput]:
         provider = context.get_provider_service()
@@ -176,6 +176,6 @@ class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, Dele
             response=HttpResponse(status_code=status, body=None),
         )
 
-    async def cleanup(self, context: "StepContext") -> None:
+    async def cleanup(self, context: StepContext) -> None:
         """No-op cleanup — resource already deleted by execute."""
         # Intentionally empty: the step's execute() already performs the deletion

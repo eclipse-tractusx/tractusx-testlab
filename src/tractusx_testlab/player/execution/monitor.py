@@ -39,7 +39,8 @@ See ``docs/developer/execution-events.md`` for the full event contract.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.models.primitives.enums import StepStatus
@@ -69,13 +70,13 @@ CallbackFn = Callable[[str, dict[str, Any]], Any]
 class ExecutionMonitor:
     """Publishes typed execution events, logs them, and fires callbacks."""
 
-    __slots__ = ("_logger", "_callbacks", "_background_tasks")
+    __slots__ = ("_background_tasks", "_callbacks", "_logger")
 
     def __init__(self, logger: StructuredLogger) -> None:
         """Initialize with a structured logger for event recording."""
         self._logger = logger
         self._callbacks: list[CallbackFn] = []
-        self._background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+        self._background_tasks: set[asyncio.Task] = set()
 
     def add_callback(self, fn: CallbackFn) -> None:
         """Register a callback function to be invoked on every event."""
@@ -101,7 +102,7 @@ class ExecutionMonitor:
         """Publish a job_completed event."""
         self._publish(JobCompletedEvent(job_id=job_id))
 
-    def on_job_failed(self, job_id: str, error: Optional[str] = None) -> None:
+    def on_job_failed(self, job_id: str, error: str | None = None) -> None:
         """Publish a job_failed event."""
         self._publish(JobFailedEvent(job_id=job_id, error=error))
 
@@ -129,7 +130,7 @@ class ExecutionMonitor:
         self,
         job_id: str,
         script: str,
-        step_id: Optional[str],
+        step_id: str | None,
         step_index: int,
         step_type: str,
         step_name: str,
@@ -147,7 +148,7 @@ class ExecutionMonitor:
         ))
 
     def on_step_completed(
-        self, job_id: str, script: str, step_id: Optional[str], result: StepResult,
+        self, job_id: str, script: str, step_id: str | None, result: StepResult,
     ) -> None:
         """Publish one assertion_result event per assertion, then the step outcome.
 

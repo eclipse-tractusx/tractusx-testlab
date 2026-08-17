@@ -49,7 +49,7 @@ Truthy check
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from tractusx_testlab.steps._condition_parsing import (
     LEGACY_COMPARISON_RE,
@@ -74,9 +74,9 @@ class ConditionEvaluator:
 
     @staticmethod
     def should_run(
-        condition: Optional[str],
-        previous_results: list["StepResult"],
-        context: "StepContext",
+        condition: str | None,
+        previous_results: list[StepResult],
+        context: StepContext,
     ) -> bool:
         """Return ``True`` if the step should execute.
 

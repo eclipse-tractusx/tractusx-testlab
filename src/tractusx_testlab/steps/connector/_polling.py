@@ -36,7 +36,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 # The waiting defaults are declared once in ``steps._contracts`` and re-exported
 # here, so the connector steps keep importing them from the module they poll
@@ -63,7 +63,7 @@ NEGOTIATION_TERMINAL = frozenset({"FINALIZED", "TERMINATED"})
 TRANSFER_TERMINAL = frozenset({"STARTED", "COMPLETED", "TERMINATED", "SUSPENDED"})
 
 
-def read_entity(controller: Any, oid: str, verify: Any = None) -> Optional[dict]:
+def read_entity(controller: Any, oid: str, verify: Any = None) -> dict | None:
     """Read one management-API entity by ID, or ``None`` when it cannot be read.
 
     An unreachable connector is reported as "no entity" rather than raised: the
@@ -76,7 +76,7 @@ def read_entity(controller: Any, oid: str, verify: Any = None) -> Optional[dict]
     options = {} if verify is None else {"verify": verify}
     try:
         response = controller.get_by_id(oid=oid, **options)
-    except Exception as exc:  # noqa: BLE001 — any transport failure reads as "not yet"
+    except Exception as exc:
         logger.debug("Could not read entity %s: %s", oid, exc)
         return None
     if response is None or getattr(response, "status_code", 0) != 200:

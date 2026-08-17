@@ -34,11 +34,11 @@ from tractusx_testlab.infrastructure.standards import (
     release_or_default,
 )
 from tractusx_testlab.models.domain.infrastructure import ConnectorBinding, DtrBinding
+from tractusx_testlab.models.primitives.enums import ServiceType
 from tractusx_testlab.player.execution.infrastructure_seeder import (
     _connector_definition,
     _dtr_definition,
 )
-from tractusx_testlab.models.primitives.enums import ServiceType
 from tractusx_testlab.syntax import defaults
 
 

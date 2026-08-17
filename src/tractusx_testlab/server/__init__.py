@@ -38,4 +38,4 @@ def __getattr__(name):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["create_app", "PackageStorage"]
+__all__ = ["PackageStorage", "create_app"]

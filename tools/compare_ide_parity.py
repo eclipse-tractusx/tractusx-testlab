@@ -68,15 +68,14 @@ import json
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 warnings.filterwarnings("ignore")
 
-from pydantic import BaseModel  # noqa: E402
-from pydantic.aliases import AliasChoices, AliasPath  # noqa: E402
+from pydantic import BaseModel
+from pydantic.aliases import AliasChoices, AliasPath
 
-import tractusx_testlab.steps  # noqa: E402,F401  importing registers every step
-from tractusx_testlab.scripting.registry import StepRegistry  # noqa: E402
+from tractusx_testlab.scripting.registry import StepRegistry
 
 # -- Known name drift ---------------------------------------------------------
 # The IDE spelling on the left is what the exporter writes; the engine name on
@@ -127,7 +126,7 @@ def _type_name(field: Any) -> str:
     return getattr(annotation, "__name__", str(annotation)).replace("typing.", "")
 
 
-def _describe_model(model: Optional[type[BaseModel]]) -> dict:
+def _describe_model(model: type[BaseModel] | None) -> dict:
     if model is None:
         return {"extra": None, "fields": {}}
     # ``validate_by_name`` is the field-name switch pydantic actually reads;

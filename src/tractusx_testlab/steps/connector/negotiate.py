@@ -26,7 +26,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
@@ -61,14 +61,14 @@ class NegotiateParams(CounterPartyParams):
     script that ran ``query_catalog_by_asset_id`` first can leave them all out.
     """
 
-    asset_id: Optional[Any] = Field(
+    asset_id: Any | None = Field(
         default=None,
         description=(
             "Asset ID to negotiate for; falls back to the 'catalog_asset_id' "
             "context variable."
         ),
     )
-    policy: Optional[Any] = Field(
+    policy: Any | None = Field(
         default=None,
         description=(
             "ODRL policy to negotiate under; falls back to the 'catalog_policy' "
@@ -88,14 +88,14 @@ class NegotiateParams(CounterPartyParams):
 class NegotiationOutput(StepPayload):
     """Output contract of ``connector/consumer/negotiate``."""
 
-    negotiation_id: Optional[str] = Field(
+    negotiation_id: str | None = Field(
         default=None, description="ID of the started negotiation."
     )
-    agreement_id: Optional[str] = Field(
+    agreement_id: str | None = Field(
         default=None,
         description="ID of the contract agreement, once the negotiation finalised.",
     )
-    state: Optional[str] = Field(
+    state: str | None = Field(
         default=None,
         description="State the negotiation settled at, e.g. 'FINALIZED' or 'TERMINATED'.",
     )
@@ -116,7 +116,7 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
     async def execute(
         self,
         params: NegotiateParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[NegotiationOutput]:
         consumer = context.get_consumer_service()

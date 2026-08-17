@@ -36,7 +36,6 @@ from tractusx_testlab.models.primitives.enums import JobStatus
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.server.routes import router
-from tractusx_testlab.server.streaming import streaming_router
 
 _STREAMING_MODULE = "tractusx_testlab.server.streaming.routes"
 

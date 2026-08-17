@@ -28,12 +28,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import requests
 from pydantic import Field, field_validator
-
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
+
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
@@ -115,11 +115,11 @@ class PullDataOutput(StepPayload):
     another spelling of the transfer.
     """
 
-    dataplane_url: Optional[str] = Field(
+    dataplane_url: str | None = Field(
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
     edr_token: str = Field(default="", description="Authorization token for that URL.")
-    token_prefix: Optional[str] = Field(
+    token_prefix: str | None = Field(
         default=None,
         description="First characters of the token, safe to log or assert on.",
     )
@@ -130,13 +130,13 @@ class PullDataOutput(StepPayload):
         default_factory=list, description="Dataset offers in that catalog."
     )
     asset_id: str = Field(default="", description="Asset ID of the first offer.")
-    negotiation_id: Optional[str] = Field(
+    negotiation_id: str | None = Field(
         default=None, description="ID of the negotiation the flow ran."
     )
-    agreement_id: Optional[str] = Field(
+    agreement_id: str | None = Field(
         default=None, description="ID of the contract agreement the negotiation produced."
     )
-    transfer_id: Optional[str] = Field(
+    transfer_id: str | None = Field(
         default=None, description="ID of the transfer process the flow ran."
     )
 
@@ -145,9 +145,9 @@ class PullDataOutput(StepPayload):
 
 
 async def _do_dsp_flow(
-    context: "StepContext",
+    context: StepContext,
     params: PullDataParams,
-    policies: Optional[list[dict]],
+    policies: list[dict] | None,
 ) -> tuple[PullDataOutput, HttpRequest, HttpResponse]:
     """Execute the full DSP flow via the SDK and describe what it produced."""
     consumer = context.get_consumer_service()
@@ -216,7 +216,7 @@ async def _do_dsp_flow(
     return value, request, response
 
 
-def _edr_entry_of(consumer: Any, transfer_id: Optional[str]) -> dict:
+def _edr_entry_of(consumer: Any, transfer_id: str | None) -> dict:
     """Read the EDR entry a transfer belongs to, for the identifiers it carries.
 
     ``get_transfer_id`` hands back only the transfer, but the negotiation and
@@ -236,7 +236,7 @@ def _edr_entry_of(consumer: Any, transfer_id: Optional[str]) -> dict:
             ],
         )
         response = consumer.edrs.query(query)
-    except Exception as exc:  # noqa: BLE001 — an unreadable entry is not a failed pull
+    except Exception as exc:
         logger.debug("Could not read the EDR entry for transfer %s: %s", transfer_id, exc)
         return {}
     if response is None or getattr(response, "status_code", 0) != 200:
@@ -254,7 +254,7 @@ def _edr_entry_of(consumer: Any, transfer_id: Optional[str]) -> dict:
 class PullDataFilteredParams(PullDataParams):
     """Input contract of ``connector/consumer/pull_data_filtered``."""
 
-    expected_policies: Optional[Any] = Field(
+    expected_policies: Any | None = Field(
         default=None,
         description=(
             "Policies the offer must satisfy, in ODRL or the testlab simplified "
@@ -263,7 +263,7 @@ class PullDataFilteredParams(PullDataParams):
         ),
     )
 
-    def allowed_policies(self) -> Optional[list[dict]]:
+    def allowed_policies(self) -> list[dict] | None:
         """The policies as the SDK's allow-list argument, or None for "any offer"."""
         if self.expected_policies is None:
             return None
@@ -287,7 +287,7 @@ class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]
     async def execute(
         self,
         params: PullDataFilteredParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[PullDataOutput]:
         value, request, response = await _do_dsp_flow(
@@ -333,7 +333,7 @@ class ConnectorPullDataFilteredByPolicy(
     async def execute(
         self,
         params: PullDataFilteredByPolicyParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[PullDataOutput]:
         value, request, response = await _do_dsp_flow(

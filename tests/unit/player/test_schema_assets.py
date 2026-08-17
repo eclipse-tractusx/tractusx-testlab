@@ -32,6 +32,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+# Ensure all built-in steps are registered
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.models.authoring.definitions import (
     EnvDefinition,
@@ -47,9 +48,6 @@ from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.loading.resolver import resolve_params
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import Tck
-
-# Ensure all built-in steps are registered
-import tractusx_testlab.steps  # noqa: F401
 
 _SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",

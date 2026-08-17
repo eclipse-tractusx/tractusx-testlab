@@ -30,8 +30,8 @@ import asyncio
 
 import pytest
 
-from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.models import CallbackResult
+from tractusx_testlab.server.callbacks import CallbackManager
 
 
 class TestCallbackManagerRegistration:

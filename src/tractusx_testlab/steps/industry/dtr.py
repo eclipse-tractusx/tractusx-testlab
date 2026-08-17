@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Digital Twin Registry steps.
@@ -37,12 +37,12 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import requests
 from pydantic import BaseModel, ConfigDict, Field
-
 from tractusx_sdk.dataspace.tools import encode_as_base64_url_safe
+
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
@@ -71,7 +71,7 @@ class DtrParams(StepParams):
     service uses whatever it was configured with.
     """
 
-    bpn: Optional[str] = Field(
+    bpn: str | None = Field(
         default=None, description="BPN the registry request is made on behalf of."
     )
 
@@ -86,11 +86,11 @@ class DescriptorPayload(StepPayload):
 
     model_config = ConfigDict(extra="allow")
 
-    id: Optional[str] = Field(default=None, description="Identifier of the descriptor.")
+    id: str | None = Field(default=None, description="Identifier of the descriptor.")
     # The AAS API spells it ``idShort``; scripts read ``id_short`` and nothing
     # else, so the camelCase form is accepted on the way in and never written
     # on the way out.
-    id_short: Optional[str] = Field(
+    id_short: str | None = Field(
         default=None,
         validation_alias="idShort",
         description="Short, human-readable name.",
@@ -170,14 +170,14 @@ class CreateShellDescriptorStep(BaseStep[CreateShellDescriptorParams, Descriptor
     async def execute(
         self,
         params: CreateShellDescriptorParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         return _register_shell(context, params.shell_descriptor, params.bpn)
 
 
 def _register_shell(
-    context: "StepContext", shell_descriptor: dict, bpn: Optional[str]
+    context: StepContext, shell_descriptor: dict, bpn: str | None
 ) -> StepOutput[DescriptorPayload]:
     """Register a shell descriptor, whether it was written out or assembled.
 
@@ -259,7 +259,7 @@ class WizardCreateShellDescriptorStep(
     async def execute(
         self,
         params: WizardCreateShellDescriptorParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         return _register_shell(context, params.shell_document(), params.bpn)
@@ -286,7 +286,7 @@ class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayloa
     async def execute(
         self,
         params: ShellDescriptorRefParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         aas = context.get_aas_service()
@@ -345,7 +345,7 @@ class ProviderShellLookupStep(BaseStep[ProviderShellLookupParams, ShellLookupOut
     async def execute(
         self,
         params: ProviderShellLookupParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[ShellLookupOutput]:
         aas = context.get_aas_service()
@@ -406,7 +406,7 @@ class CreateSubmodelDescriptorStep(
     async def execute(
         self,
         params: CreateSubmodelDescriptorParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         return _register_submodel(
@@ -415,10 +415,10 @@ class CreateSubmodelDescriptorStep(
 
 
 def _register_submodel(
-    context: "StepContext",
+    context: StepContext,
     aas_identifier: str,
     submodel_descriptor: dict,
-    bpn: Optional[str],
+    bpn: str | None,
 ) -> StepOutput[DescriptorPayload]:
     """Attach a submodel descriptor, whether it was written out or assembled."""
     from tractusx_sdk.industry.models.aas.v3.base import SubModelDescriptor
@@ -560,7 +560,7 @@ class WizardCreateSubmodelDescriptorStep(
     async def execute(
         self,
         params: WizardCreateSubmodelDescriptorParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         return _register_submodel(
@@ -615,7 +615,7 @@ class DeleteShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DeletionOutpu
     async def execute(
         self,
         params: ShellDescriptorRefParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DeletionOutput]:
         aas = context.get_aas_service()
@@ -656,7 +656,7 @@ class DataplaneParams(HttpTransportParams):
         description="EDR authorization token; falls back to the 'edr_token' context variable.",
     )
 
-    def transport(self, context: "StepContext") -> tuple[str, dict[str, str], float]:
+    def transport(self, context: StepContext) -> tuple[str, dict[str, str], float]:
         """The (base URL, headers, timeout) this step's requests travel with."""
         base = (self.dataplane_url or context.get_variable(DATAPLANE_URL, "")).rstrip("/")
         token = self.edr_token or context.get_variable(EDR_TOKEN, "")
@@ -671,7 +671,7 @@ class PagedDataplaneParams(DataplaneParams):
     them under the same two names.
     """
 
-    limit: Optional[int] = Field(
+    limit: int | None = Field(
         default=None,
         gt=0,
         description=(
@@ -679,7 +679,7 @@ class PagedDataplaneParams(DataplaneParams):
             "its own default applies when omitted."
         ),
     )
-    cursor: Optional[str] = Field(
+    cursor: str | None = Field(
         default=None,
         description="Cursor a previous page returned, to read the page after it.",
     )
@@ -730,7 +730,7 @@ class ShellLookupStep(BaseStep[ShellLookupParams, ShellLookupOutput]):
     async def execute(
         self,
         params: ShellLookupParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[ShellLookupOutput]:
         base, headers, timeout = params.transport(context)
@@ -797,7 +797,7 @@ class ShellLookupPageOutput(ShellLookupOutput):
     reaching into the raw response.
     """
 
-    cursor: Optional[str] = Field(
+    cursor: str | None = Field(
         default=None,
         description="Cursor of the next page, or null when this was the last one.",
     )
@@ -824,7 +824,7 @@ class ShellLookupByAssetLinkStep(
     async def execute(
         self,
         params: ShellLookupByAssetLinkParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[ShellLookupPageOutput]:
         base, headers, timeout = params.transport(context)
@@ -887,7 +887,7 @@ def _shell_ids(response: Any) -> list[str]:
     return [str(entry) for entry in _result_page(response, "Shell lookup")]
 
 
-def _next_cursor(response: Any) -> Optional[str]:
+def _next_cursor(response: Any) -> str | None:
     """Read the next-page cursor out of a paged answer, when there is one.
 
     Absent from a registry that answered with the bare list, and absent from the
@@ -919,7 +919,7 @@ def _get_shell_descriptor(
 
 def _shell_descriptor(
     base: str, shell_id: str, headers: dict, timeout: float
-) -> Optional[dict]:
+) -> dict | None:
     """Read one shell descriptor by identifier, or ``None`` when it cannot be read.
 
     A shell the lookup named but the registry will not hand over is reported by
@@ -959,7 +959,7 @@ class DataplaneGetShellDescriptorsStep(BaseStep[PagedDataplaneParams, ShellLooku
     async def execute(
         self,
         params: PagedDataplaneParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[ShellLookupPageOutput]:
         base, headers, timeout = params.transport(context)
@@ -1025,7 +1025,7 @@ class DataplaneGetShellDescriptorStep(
     async def execute(
         self,
         params: DataplaneShellDescriptorRefParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         base, headers, timeout = params.transport(context)

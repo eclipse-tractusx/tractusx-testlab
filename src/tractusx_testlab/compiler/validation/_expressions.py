@@ -67,25 +67,19 @@ def _resolve_string_expr(value: str) -> Any:
     return {"$concat": concat_parts}
 
 
+#: Roots that name something inside the ``env:`` block without saying so, and are
+#: rewritten under it. Every other root — ``env.``, ``steps.``, ``setup.``,
+#: ``metadata.`` and, per ADR-0019, ``infrastructure.`` — is already canonical
+#: and is kept verbatim. (``infrastructure.<side>.<capability>`` is a first-class
+#: capability handle; deeper segments such as
+#: ``infrastructure.sut.connector.counter_party_address`` are operator-supplied
+#: binding fields resolved from the binding profile at runtime.)
+_ENV_SCOPED_ROOTS = ("testdata.", "schemas.")
+
+
 def _normalize_ref(expr: str) -> str:
     """Normalize expression paths to canonical $ref format."""
     expr = expr.strip()
-    if expr.startswith("env."):
-        return expr
-    if expr.startswith("testdata."):
+    if expr.startswith(_ENV_SCOPED_ROOTS):
         return f"env.{expr}"
-    if expr.startswith("schemas."):
-        return f"env.{expr}"
-    if expr.startswith("steps.") or expr.startswith("setup."):
-        return expr
-    if expr.startswith("metadata."):
-        return expr
-    # ADR-0019: `infrastructure.<side>.<capability>` is a first-class capability
-    # handle (e.g. `infrastructure.engine.connector`); deeper segments such as
-    # `infrastructure.sut.connector.counter_party_address` are operator-supplied
-    # binding fields resolved from the binding profile at runtime. The path is
-    # already canonical, so — like `steps.`/`setup.`/`metadata.` — it is kept
-    # verbatim and never rewritten under `env.`.
-    if expr.startswith("infrastructure."):
-        return expr
     return expr

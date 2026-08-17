@@ -27,7 +27,7 @@ Sub-modules:
     trust  — player identity, trust store, and vault client
 """
 
-from tractusx_testlab.security.crypto.encryption import encrypt_package, decrypt_package
+from tractusx_testlab.security.crypto.encryption import decrypt_package, encrypt_package
 from tractusx_testlab.security.crypto.keygen import (
     KeyPair,
     generate_ed25519_keypair,
@@ -41,14 +41,14 @@ from tractusx_testlab.security.trust.vault import VaultClient
 __all__ = [
     # Crypto
     "KeyPair",
-    "generate_rsa_keypair",
-    "generate_ed25519_keypair",
-    "encrypt_package",
-    "decrypt_package",
-    "sign_bytes",
-    "verify_signature",
     # Trust
     "PlayerIdentity",
     "TrustStore",
     "VaultClient",
+    "decrypt_package",
+    "encrypt_package",
+    "generate_ed25519_keypair",
+    "generate_rsa_keypair",
+    "sign_bytes",
+    "verify_signature",
 ]

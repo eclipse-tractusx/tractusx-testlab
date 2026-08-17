@@ -26,4 +26,4 @@ from tractusx_testlab.player.loading.loader import Loader
 from tractusx_testlab.player.loading.ordering import topological_sort
 from tractusx_testlab.player.loading.resolver import resolve_params, resolve_service_def
 
-__all__ = ["Loader", "topological_sort", "resolve_params", "resolve_service_def"]
+__all__ = ["Loader", "resolve_params", "resolve_service_def", "topological_sort"]

@@ -64,7 +64,7 @@ class MockIdParams(StepParams):
         description="Identifier for the registered mock; also the variable its URL is stored under.",
     )
 
-    def publish_url(self, url: str, context: "StepContext") -> None:
+    def publish_url(self, url: str, context: StepContext) -> None:
         """Store *url* under this mock's ID, when it was given one."""
         if self.id:
             context.set_variable(self.id, url)

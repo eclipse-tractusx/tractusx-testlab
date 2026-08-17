@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Security models — encryption key blocks, package manifests, and Base64 type helpers."""
@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import base64
 from datetime import datetime
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 from pydantic import BaseModel, BeforeValidator, Field, PlainSerializer
 
@@ -69,8 +69,8 @@ class PackageManifest(BaseModel):
     name: str
     version: str
     sdk_version: str = ""
-    compiled_at: Optional[datetime] = None
+    compiled_at: datetime | None = None
     dataspace_versions: list[str] = Field(default_factory=list)
     scripts: list[str] = Field(default_factory=list)
     checksum: str = ""
-    security: Optional[SecurityBlock] = None
+    security: SecurityBlock | None = None

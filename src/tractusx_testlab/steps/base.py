@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Abstract base class for all steps and the @step auto-registration decorator."""
@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, ValidationError
 
@@ -68,7 +68,7 @@ class StepPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     @classmethod
-    def of(cls, document: Any) -> Optional["StepPayload"]:
+    def of(cls, document: Any) -> StepPayload | None:
         """Bind a document a counterpart sent, keeping "nothing" as nothing.
 
         Steps whose output *is* a document defined elsewhere — a DCAT catalog,
@@ -126,13 +126,13 @@ class StepOutput(Generic[PayloadT]):
     is the whole of its interface — there is no separate export channel.
     """
 
-    __slots__ = ("value", "request", "response")
+    __slots__ = ("request", "response", "value")
 
     def __init__(
         self,
         value: Any = None,
-        request: Optional[HttpRequest] = None,
-        response: Optional[HttpResponse] = None,
+        request: HttpRequest | None = None,
+        response: HttpResponse | None = None,
     ):
         self.value = value
         self.request = request
@@ -178,7 +178,7 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
     params_model: ClassVar[type[StepParams]]
     #: Output contract — a :class:`StepPayload` for an object, a
     #: :class:`StepValue` for a bare value.
-    output_model: ClassVar[type[Union[StepPayload, StepValue]]]
+    output_model: ClassVar[type[StepPayload | StepValue]]
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Refuse to define a step that does not say what comes in and what goes out.
@@ -195,7 +195,7 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
     async def execute(
         self,
         params: ParamsT,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[PayloadT]:
         """Run the step logic.
@@ -213,7 +213,7 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
     async def invoke(
         self,
         raw_params: dict,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[Any]:
         """Bind *raw_params* to the input contract, run the step, bind the output.
@@ -270,7 +270,7 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
         return output
 
     @classmethod
-    def publish_output(cls, output: StepOutput[Any], context: "StepContext") -> None:
+    def publish_output(cls, output: StepOutput[Any], context: StepContext) -> None:
         """Write every top-level field of the step's output into the run context.
 
         A step publishes all of its return outputs, always: each key of the
@@ -301,7 +301,7 @@ class BaseStep(ABC, Generic[ParamsT, PayloadT]):
             output_schema=cls.output_model.model_json_schema(),
         )
 
-    async def cleanup(self, context: "StepContext") -> None:
+    async def cleanup(self, context: StepContext) -> None:
         """Optional cleanup hook executed after the step's script finishes."""
 
 
@@ -329,7 +329,7 @@ def _require_declared_contract(cls: type[BaseStep]) -> None:
         )
 
 
-def _dump_payload(payload: Union[StepPayload, StepValue]) -> Any:
+def _dump_payload(payload: StepPayload | StepValue) -> Any:
     """Serialise a declared payload to the plain JSON data the rest of the run sees.
 
     ``exclude_unset`` is the rule: the output carries exactly what the step

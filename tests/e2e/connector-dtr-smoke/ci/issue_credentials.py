@@ -343,7 +343,7 @@ def _await_credentials(client: httpx.Client, timeout: float, interval: float) ->
                 _log(f"  {name}: IdentityHub not answering yet ({error})")
                 continue
             last_seen[name] = held
-            if EXPECTED_CREDENTIAL_TYPES <= held:
+            if held >= EXPECTED_CREDENTIAL_TYPES:
                 _log(f"  {name}: holds {', '.join(sorted(EXPECTED_CREDENTIAL_TYPES))}")
                 del outstanding[name]
             else:

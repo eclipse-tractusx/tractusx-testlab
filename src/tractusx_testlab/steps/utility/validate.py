@@ -89,7 +89,7 @@ class ValidateAssertStep(BaseStep[ValidateAssertParams, AssertedValueOutput]):
     async def execute(
         self,
         params: ValidateAssertParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[AssertedValueOutput]:
         passed, message = apply_operator(params.operator, params.input, params.value)
@@ -128,7 +128,7 @@ class ValidateFieldStep(BaseStep[ValidateFieldParams, AssertedValueOutput]):
     async def execute(
         self,
         params: ValidateFieldParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[AssertedValueOutput]:
         actual = _get_nested(params.input, params.path) if params.path else params.input
@@ -206,7 +206,7 @@ class ValidateSchemaStep(BaseStep[ValidateSchemaParams, ValidatedPayloadOutput])
     async def execute(
         self,
         params: ValidateSchemaParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[ValidatedPayloadOutput]:
         payload = _coerce_json(params.input, "input")

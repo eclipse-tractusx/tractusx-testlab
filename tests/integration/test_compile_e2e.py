@@ -26,22 +26,17 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
-import json
-import sys
-from pathlib import Path
-from typing import Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import yaml
-from fastapi import APIRouter, FastAPI
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from tests.paths import FIXTURES_DIR, SRC_DIR
-from tractusx_testlab.models.authoring.definitions import ScriptDefinition, TckDefinition
+from tractusx_testlab.models.authoring.definitions import TckDefinition
 from tractusx_testlab.scripting.parser import YamlParser
-from tractusx_testlab.scripting.script import Tck, TestScript
+from tractusx_testlab.scripting.script import Tck
 
 _SRC_DIR = str(SRC_DIR)
 

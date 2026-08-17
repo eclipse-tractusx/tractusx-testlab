@@ -26,13 +26,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.infrastructure.manager import InfrastructureManager
 from tractusx_testlab.models import Job
+from tractusx_testlab.models.authoring.definitions import (
+    TckDefinition,
+    TckMetadataDefinition,
+)
 from tractusx_testlab.models.authoring.infrastructure import (
     CapabilityRequirement,
     DataspaceContext,
@@ -48,7 +51,8 @@ from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.infrastructure_seeder import (
     seed_infrastructure_services,
 )
-from tractusx_testlab.player.execution.player import TestlabPlayer
+from tractusx_testlab.player.execution.player import TestlabPlayer, _target_release
+from tractusx_testlab.scripting.script import Tck
 from tractusx_testlab.services.manager import ServiceManager
 
 
@@ -70,10 +74,22 @@ def _sut_connector() -> Infrastructure:
     )
 
 
-def _tck(release: str | None = None, **required: bool) -> SimpleNamespace:
-    """A TCK stub carrying the requirements — and optionally the release — under test."""
-    return SimpleNamespace(
-        definition=SimpleNamespace(
+def _tck(release: str | None = None, **required: bool) -> Tck:
+    """A TCK carrying the requirements — and optionally the release — under test.
+
+    Built from the real models rather than a ``SimpleNamespace``.  A stub only
+    has the attributes someone remembered to give it, so it agrees with whatever
+    the code under test happens to read: when the player looked for
+    ``definition.dataspace_version`` — a field that lives on ``metadata``, not on
+    the definition — the stub was as silent about it as the real model, and the
+    release fell back to the default with nobody the wiser.  Using the declared
+    models means a field that moves breaks this test instead of the run.
+    """
+    return Tck(
+        TckDefinition(
+            syntax="v1-alpha",
+            id="infrastructure-probe",
+            metadata=TckMetadataDefinition(name="Infrastructure probe"),
             dataspace=(
                 DataspaceContext(ecosystem="Catena-X", version=release)
                 if release is not None
@@ -85,8 +101,7 @@ def _tck(release: str | None = None, **required: bool) -> SimpleNamespace:
                     for key, value in required.items()
                 },  # type: ignore[arg-type]
             ),
-        ),
-        scripts=[],
+        )
     )
 
 
@@ -246,3 +261,57 @@ class TestRelease:
         player._bind_infrastructure(context, _tck(release="saturn", connector=True))
 
         assert context.infrastructure.sut.connector.standard == "CX-0018"
+
+    def test_the_release_is_read_from_the_metadata_block(self, tmp_path: Path) -> None:
+        """A TCK stating only ``metadata.dataspace_version`` still targets that release.
+
+        The flat spelling is the older way of naming the release and lives on the
+        metadata block.  The player used to look for it on the definition, where
+        no such field exists, so a jupiter TCK silently resolved to the saturn
+        default — and, worse, reported the release as never stated, which is the
+        flag that tells :meth:`InfrastructureManager.align` not to hold a
+        mismatch against the bound deployment.  The SDK then built saturn
+        services for a jupiter connector and nothing objected.
+        """
+        tck = Tck(
+            TckDefinition(
+                syntax="v1-alpha",
+                id="flat-release",
+                metadata=TckMetadataDefinition(
+                    name="Flat release", dataspace_version="jupiter"
+                ),
+            )
+        )
+
+        assert _target_release(tck) == ("jupiter", True)
+
+    def test_an_undeclared_release_is_the_default_and_says_so(self, tmp_path: Path) -> None:
+        """Nothing stated means the default release, flagged as *not* stated.
+
+        The second half is what keeps the default from being held against an
+        operator who bound a deployment of a different release.
+        """
+        tck = Tck(
+            TckDefinition(
+                syntax="v1-alpha",
+                id="no-release",
+                metadata=TckMetadataDefinition(name="No release"),
+            )
+        )
+
+        assert _target_release(tck) == ("saturn", False)
+
+    def test_the_dataspace_block_wins_over_the_metadata_spelling(self, tmp_path: Path) -> None:
+        """When both are present the ADR-0019 block is the source of the version."""
+        tck = Tck(
+            TckDefinition(
+                syntax="v1-alpha",
+                id="both-releases",
+                metadata=TckMetadataDefinition(
+                    name="Both", dataspace_version="jupiter"
+                ),
+                dataspace=DataspaceContext(ecosystem="Catena-X", version="saturn"),
+            )
+        )
+
+        assert _target_release(tck) == ("saturn", True)

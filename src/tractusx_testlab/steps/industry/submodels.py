@@ -19,14 +19,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Submodel-server steps: uploading data under a path, and deleting it again."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import httpx
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 import uuid
 
 
-def _relative_path(value: Any) -> Optional[str]:
+def _relative_path(value: Any) -> str | None:
     """Normalize a path under the submodel server, refusing one with a server of its own.
 
     The server is the engine's (``engine.dtr.submodel_base_url``) — a path allowed to
@@ -73,7 +73,7 @@ def _relative_path(value: Any) -> Optional[str]:
     return trimmed or None
 
 
-def _submodel_server(context: "StepContext", definition: StepDefinition) -> str:
+def _submodel_server(context: StepContext, definition: StepDefinition) -> str:
     """The submodel server the engine was bound to, without its trailing slash.
 
     An engine without one cannot run these steps, and says so rather than
@@ -89,7 +89,7 @@ def _submodel_server(context: "StepContext", definition: StepDefinition) -> str:
     return backend_base_url.rstrip("/")
 
 
-def _storage_path(semantic_id: Optional[str], submodel_id: str) -> str:
+def _storage_path(semantic_id: str | None, submodel_id: str) -> str:
     """The path a submodel service stores one submodel under.
 
     The layout is the Industry Core one: a submodel is addressed by the aspect
@@ -130,7 +130,7 @@ class UploadBackendDataParams(HttpTransportParams):
             "of its own would store a placeholder the test then asserts against."
         ),
     )
-    semantic_id: Optional[str] = Field(
+    semantic_id: str | None = Field(
         default=None,
         description=(
             "URN of the aspect model the payload follows, e.g. "
@@ -139,7 +139,7 @@ class UploadBackendDataParams(HttpTransportParams):
             "under the server when omitted."
         ),
     )
-    submodel_id: Optional[str] = Field(
+    submodel_id: str | None = Field(
         default=None,
         description=(
             "Id to store the submodel under; a unique 'urn:uuid:<uuid4>' is "
@@ -221,7 +221,7 @@ class UploadBackendDataOutput(StepPayload):
             "'urn:uuid:<uuid4>' a descriptor and a lookup name it by."
         )
     )
-    semantic_id: Optional[str] = Field(
+    semantic_id: str | None = Field(
         default=None,
         description=(
             "URN of the aspect model the uploaded payload follows — the same URN the "
@@ -264,7 +264,7 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
     async def execute(
         self,
         params: UploadBackendDataParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[UploadBackendDataOutput]:
         source_url = _submodel_server(context, definition)
@@ -365,7 +365,7 @@ class DeleteBackendDataStep(BaseStep[DeleteBackendDataParams, DeletionOutput]):
     async def execute(
         self,
         params: DeleteBackendDataParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DeletionOutput]:
         source_url = _submodel_server(context, definition)

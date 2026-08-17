@@ -50,7 +50,7 @@ def build_inspection_result(tck: object) -> TckInspectionResult:
     """
     script_inspections: list[ScriptInspection] = []
 
-    for script in tck.scripts:  # type: ignore[union-attr]
+    for script in tck.scripts:
         step_metas: list[StepMeta] = []
         step_metas.extend(_map_steps(script.setup, StepPhase.SETUP))
         step_metas.extend(_map_steps(script.steps, StepPhase.EXECUTION))
@@ -65,7 +65,7 @@ def build_inspection_result(tck: object) -> TckInspectionResult:
     )
 
     return TckInspectionResult(
-        name=tck.name,  # type: ignore[union-attr]
+        name=tck.name,
         total_steps=total_steps,
         total_validations=total_validations,
         scripts=tuple(script_inspections),

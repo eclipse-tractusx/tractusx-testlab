@@ -39,11 +39,12 @@ from tractusx_testlab.scripting._infrastructure import collect_infrastructure_re
 from tractusx_testlab.scripting._inspection import build_inspection_result
 from tractusx_testlab.scripting._variable_form import parse_variables_block
 
+
 class TestScript:
     """Runtime wrapper for a single script definition."""
 
     __test__ = False  # Prevent pytest from collecting this class
-    __slots__ = ("definition", "_skippable", "_test_id")
+    __slots__ = ("_skippable", "_test_id", "definition")
 
     def __init__(
         self,
@@ -125,7 +126,7 @@ class TestScript:
 class Tck:
     """Runtime wrapper for a TCK definition."""
 
-    __slots__ = ("definition", "_scripts", "base_dir")
+    __slots__ = ("_scripts", "base_dir", "definition")
 
     def __init__(self, definition: TckDefinition, base_dir: Path | None = None):
         """Initialize with a TCK definition and optional base directory."""
@@ -183,7 +184,7 @@ class Tck:
             if var.runtime and var.default is None
         }
 
-    def inspect(self) -> "TckInspectionResult":
+    def inspect(self) -> TckInspectionResult:
         """Extract static metadata from this TCK without executing any steps.
 
         Returns general metadata (name, total steps, total validations) and
@@ -218,7 +219,7 @@ class Tck:
     @classmethod
     def from_single_script(
         cls, script_def: ScriptDefinition, base_dir: Path | None = None,
-    ) -> "Tck":
+    ) -> Tck:
         """Wrap a single ScriptDefinition in a minimal TckDefinition and return a Tck."""
         from tractusx_testlab.models.authoring.definitions import (
             TckDefinition,

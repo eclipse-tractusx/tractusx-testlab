@@ -41,8 +41,8 @@ from tractusx_testlab.steps.connector.catalog_query import (
     QueryCatalogStep,
 )
 from tractusx_testlab.syntax.context_vars import (
-    CATALOG_POLICY,
     CATALOG_ASSET_ID,
+    CATALOG_POLICY,
 )
 
 #: Output field every catalog step returns its offers under, and therefore the

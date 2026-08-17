@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Asset provisioning steps — reuses SDK ConnectorProviderService."""
@@ -28,11 +28,11 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
-
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
+
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import FilterExpression
@@ -74,14 +74,14 @@ def _config_object(value: Any, key: str) -> dict:
     return inner if isinstance(inner, dict) else value
 
 
-def _iri(value: Any) -> Optional[str]:
+def _iri(value: Any) -> str | None:
     """Read an IRI that may be spelled bare or as a JSON-LD ``{"@id": …}``."""
     if isinstance(value, dict):
         value = value.get("@id")
     return str(value) if value else None
 
 
-def _create_or_conflict(create, **kwargs) -> tuple[Optional[dict], int]:
+def _create_or_conflict(create, **kwargs) -> tuple[dict | None, int]:
     """Run a provider create call, treating a 409 as "already there, carry on"."""
     try:
         result = create(**kwargs)
@@ -150,7 +150,7 @@ class CreateAssetParams(StepParams):
 
 
 def _register_asset(
-    context: "StepContext", asset_id: str, definition: dict[str, Any], request_body: Any
+    context: StepContext, asset_id: str, definition: dict[str, Any], request_body: Any
 ) -> StepOutput[CreateAssetOutput]:
     """Create an asset at the provider and report what happened.
 
@@ -198,7 +198,7 @@ class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
     output_model = CreateAssetOutput
 
     async def execute(
-        self, params: CreateAssetParams, context: "StepContext", definition: StepDefinition
+        self, params: CreateAssetParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[CreateAssetOutput]:
         return _register_asset(
             context, params.derived_asset_id(), params.definition(), params.model_dump(mode="json")
@@ -260,7 +260,7 @@ class WizardCreateAssetStep(BaseStep[WizardCreateAssetParams, CreateAssetOutput]
     output_model = CreateAssetOutput
 
     async def execute(
-        self, params: WizardCreateAssetParams, context: "StepContext", definition: StepDefinition
+        self, params: WizardCreateAssetParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[CreateAssetOutput]:
         assembled = CreateAssetParams(asset=params.asset_config())
         return _register_asset(
@@ -323,14 +323,14 @@ class CreatePolicyStep(BaseStep[CreatePolicyParams, CreatePolicyOutput]):
     output_model = CreatePolicyOutput
 
     async def execute(
-        self, params: CreatePolicyParams, context: "StepContext", definition: StepDefinition
+        self, params: CreatePolicyParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[CreatePolicyOutput]:
         policy_id = str(params.policy.get("policy_id") or "")
         return _register_policy(context, policy_id, params.policy)
 
 
 def _register_policy(
-    context: "StepContext", policy_id: str, policy: dict
+    context: StepContext, policy_id: str, policy: dict
 ) -> StepOutput[CreatePolicyOutput]:
     """Create a policy definition at the provider and report what happened.
 
@@ -416,7 +416,7 @@ class WizardCreatePolicyStep(BaseStep[WizardCreatePolicyParams, CreatePolicyOutp
     async def execute(
         self,
         params: WizardCreatePolicyParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[CreatePolicyOutput]:
         return _register_policy(context, params.policy_id, params.policy_document())
@@ -516,7 +516,7 @@ class CreateContractDefinitionStep(
     async def execute(
         self,
         params: CreateContractDefinitionParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[CreateContractDefinitionOutput]:
         provider = context.get_provider_service()

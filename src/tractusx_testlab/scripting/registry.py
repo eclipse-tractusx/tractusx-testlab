@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Version-aware registry mapping (step_type, dataspace_version) to BaseStep classes."""
@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tractusx_testlab.steps.base import BaseStep
@@ -35,10 +35,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Registry: (step_type, dataspace_version) -> BaseStep class
-_REGISTRY: dict[tuple[str, str], type["BaseStep"]] = {}
+_REGISTRY: dict[tuple[str, str], type[BaseStep]] = {}
 
 # Global (version-agnostic) steps: step_type -> BaseStep class
-_GLOBAL_REGISTRY: dict[str, type["BaseStep"]] = {}
+_GLOBAL_REGISTRY: dict[str, type[BaseStep]] = {}
 
 
 class StepRegistry:
@@ -47,7 +47,7 @@ class StepRegistry:
     @staticmethod
     def register(
         step_type: str,
-        dataspace_version: Optional[str] = None,
+        dataspace_version: str | None = None,
     ):
         """Decorator to register a BaseStep class.
 
@@ -57,7 +57,7 @@ class StepRegistry:
             dataspace_version: Restrict to a specific version (e.g., ``saturn``).
                 If ``None``, the step is available for all versions.
         """
-        def decorator(cls: type["BaseStep"]) -> type["BaseStep"]:
+        def decorator(cls: type[BaseStep]) -> type[BaseStep]:
             # Stamp the canonical key onto the class so a step can describe its
             # own contract (BaseStep.describe) without a registry lookup.
             cls.step_type = step_type
@@ -72,7 +72,7 @@ class StepRegistry:
         return decorator
 
     @staticmethod
-    def get(step_type: str, dataspace_version: str) -> Optional[type["BaseStep"]]:
+    def get(step_type: str, dataspace_version: str) -> type[BaseStep] | None:
         """Look up a step class by type and version.
 
         Version-specific registrations take priority over global ones.
@@ -87,7 +87,7 @@ class StepRegistry:
         return StepRegistry.get(step_type, dataspace_version) is not None
 
     @staticmethod
-    def list_step_types(dataspace_version: Optional[str] = None) -> list[str]:
+    def list_step_types(dataspace_version: str | None = None) -> list[str]:
         """Return all registered step type names, optionally filtered by version."""
         types = set(_GLOBAL_REGISTRY.keys())
         if dataspace_version:

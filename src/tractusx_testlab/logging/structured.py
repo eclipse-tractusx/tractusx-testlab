@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """JSON-lines structured logger for test execution output."""
@@ -28,11 +28,10 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import IO, Optional
+from typing import IO
 
 
 class _JsonFormatter(logging.Formatter):
@@ -40,7 +39,7 @@ class _JsonFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         entry: dict[str, object] = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "msg": record.getMessage(),
@@ -75,7 +74,7 @@ class CliHandler(logging.StreamHandler):
             self.setFormatter(logging.Formatter(fmt=self._FALLBACK_FMT, datefmt=self._FALLBACK_DATEFMT))
 
     @staticmethod
-    def _root_console_formatter() -> Optional[logging.Formatter]:
+    def _root_console_formatter() -> logging.Formatter | None:
         for handler in logging.getLogger().handlers:
             if isinstance(handler, logging.StreamHandler) and handler.formatter is not None:
                 return handler.formatter
@@ -111,7 +110,7 @@ class CliHandler(logging.StreamHandler):
         if hasattr(record, "extra_data") or (record.exc_info and record.exc_info[1]):
             record = logging.makeLogRecord(record.__dict__)
             if hasattr(record, "extra_data"):
-                extra_data = dict(record.extra_data)  # type: ignore[attr-defined]
+                extra_data = dict(record.extra_data)
                 record.msg = self._build_inline_message(record.getMessage(), extra_data)
 
                 record.args = None
@@ -136,20 +135,20 @@ class StructuredLogger:
         job_log.info("Step started", step_index=0, step_type="create_asset")
     """
 
-    __slots__ = ("_logger", "_file_handler", "_logs_dir")
+    __slots__ = ("_file_handler", "_logger", "_logs_dir")
 
     def __init__(
         self,
         name: str = "testlab",
-        logs_dir: Optional[Path] = None,
-        log_file: Optional[Path] = None,
-        stream: Optional[IO] = None,
+        logs_dir: Path | None = None,
+        log_file: Path | None = None,
+        stream: IO | None = None,
         level: int = logging.DEBUG,
     ) -> None:
         self._logger = logging.getLogger(name)
         self._logger.setLevel(level)
         self._logger.propagate = False
-        self._file_handler: Optional[logging.FileHandler] = None
+        self._file_handler: logging.FileHandler | None = None
         self._logs_dir = logs_dir
 
         # Always enable console output stream
@@ -165,16 +164,16 @@ class StructuredLogger:
             self._logger.addHandler(file_handler)
             self._file_handler = file_handler
 
-    def for_job(self, job_id: str) -> "StructuredLogger":
+    def for_job(self, job_id: str) -> StructuredLogger:
         """Create a child logger that writes to ``<logs_dir>/<date>/<time>_<job_id>.jsonl``.
 
         The date directory is derived from the current UTC date.
         The file name is prefixed with the current UTC time (HH-MM-SS-fff)
         so that execution runs are ordered chronologically.
         """
-        log_file: Optional[Path] = None
+        log_file: Path | None = None
         if self._logs_dir:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             date_dir = self._logs_dir / now.strftime("%Y-%m-%d")
             time_prefix = now.strftime("%H-%M-%S-") + f"{now.microsecond // 1000:03d}"
             log_file = date_dir / f"{time_prefix}_{job_id}.jsonl"
@@ -191,7 +190,7 @@ class StructuredLogger:
             self._logger.name, level, "(testlab)", 0, msg, (), None
         )
         if kw:
-            record.extra_data = kw  # type: ignore[attr-defined]
+            record.extra_data = kw
         self._logger.handle(record)
 
     def debug(self, msg: str, **kw: object) -> None:

@@ -35,13 +35,13 @@ app = typer.Typer(
 )
 
 # Register all commands by importing their modules (each calls @app.command())
-from tractusx_testlab.cli import keys as _keys  # noqa: E402, F401
-from tractusx_testlab.cli import validate as _validate  # noqa: E402, F401
-from tractusx_testlab.cli import compile as _compile  # noqa: E402, F401
-from tractusx_testlab.cli import run as _run  # noqa: E402, F401
-from tractusx_testlab.cli import serve as _serve  # noqa: E402, F401
-from tractusx_testlab.cli import inspect as _inspect  # noqa: E402, F401
-from tractusx_testlab.cli import docs as _docs  # noqa: E402, F401
+from tractusx_testlab.cli import compile as _compile
+from tractusx_testlab.cli import docs as _docs
+from tractusx_testlab.cli import inspect as _inspect
+from tractusx_testlab.cli import keys as _keys
+from tractusx_testlab.cli import run as _run
+from tractusx_testlab.cli import serve as _serve
+from tractusx_testlab.cli import validate as _validate
 
 
 def main() -> None:

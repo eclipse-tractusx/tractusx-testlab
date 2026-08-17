@@ -19,14 +19,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Optional HashiCorp Vault backend for key storage."""
 
 from __future__ import annotations
-
-from typing import Optional
 
 import requests
 
@@ -36,7 +34,7 @@ from tractusx_testlab.models import VaultConfig
 class VaultClient:
     """Thin wrapper around the HashiCorp Vault KV v2 API."""
 
-    __slots__ = ("_url", "_token", "_secret_path", "_session")
+    __slots__ = ("_secret_path", "_session", "_token", "_url")
 
     def __init__(self, config: VaultConfig) -> None:
         self._url = config.vault_url.rstrip("/")
@@ -48,7 +46,7 @@ class VaultClient:
     def _kv_url(self, key: str) -> str:
         return f"{self._url}/v1/{self._secret_path}/data/{key}"
 
-    def read_secret(self, key: str) -> Optional[dict]:
+    def read_secret(self, key: str) -> dict | None:
         """Read a secret from Vault. Returns the data dict or None."""
         resp = self._session.get(self._kv_url(key), timeout=10)
         if resp.status_code == 200:
@@ -72,7 +70,7 @@ class VaultClient:
             "public_key": public_pem.decode(),
         })
 
-    def load_key(self, name: str) -> Optional[tuple[bytes, bytes]]:
+    def load_key(self, name: str) -> tuple[bytes, bytes] | None:
         """Convenience: load a key pair from Vault. Returns (private, public) or None."""
         data = self.read_secret(name)
         if data and "private_key" in data and "public_key" in data:

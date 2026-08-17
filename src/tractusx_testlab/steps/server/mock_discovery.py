@@ -87,7 +87,7 @@ class MockDiscoveryStep(BaseStep[MockDiscoveryParams, NoOutput]):
     output_model = NoOutput
 
     async def execute(
-        self, params: MockDiscoveryParams, context: "StepContext", definition: StepDefinition,
+        self, params: MockDiscoveryParams, context: StepContext, definition: StepDefinition,
     ) -> StepOutput[NoOutput]:
         bpn_to_endpoint = params.mappings
 

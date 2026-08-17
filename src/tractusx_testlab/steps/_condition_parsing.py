@@ -31,7 +31,7 @@ validation and runtime evaluation of ``if`` conditions on step definitions.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from tractusx_testlab.models.primitives.enums import StepStatus
 
@@ -82,7 +82,7 @@ OUTCOME_MAP = {
 # ---------------------------------------------------------------------------
 
 
-def evaluate_status_fn(fn_name: str, previous_results: list["StepResult"]) -> bool:
+def evaluate_status_fn(fn_name: str, previous_results: list[StepResult]) -> bool:
     """Evaluate a status function against previous step results."""
     if fn_name == "always":
         return True
@@ -99,7 +99,7 @@ def evaluate_step_outcome(
     step_name: str,
     operator: str,
     expected: str,
-    previous_results: list["StepResult"],
+    previous_results: list[StepResult],
 ) -> bool:
     """Evaluate ``steps.<name>.outcome == 'success'``."""
     result = find_step_result(step_name, previous_results)
@@ -114,7 +114,7 @@ def evaluate_step_outcome(
     return actual_outcome != expected
 
 
-def find_step_result(name: str, results: list["StepResult"]) -> Optional["StepResult"]:
+def find_step_result(name: str, results: list[StepResult]) -> StepResult | None:
     """Find a step result by name (exact or suffix match)."""
     for r in reversed(results):
         if r.step_name == name:
@@ -132,7 +132,7 @@ def evaluate_comparison(
     var_name: str,
     operator: str,
     expected: str,
-    context: "StepContext",
+    context: StepContext,
 ) -> bool:
     """Evaluate ``vars.<name> == 'value'`` or ``vars.<name> != 'value'``."""
     actual = context.get_variable(var_name)
@@ -143,7 +143,7 @@ def evaluate_comparison(
     return actual_str != expected
 
 
-def evaluate_truthy(var_name: str, context: "StepContext") -> bool:
+def evaluate_truthy(var_name: str, context: StepContext) -> bool:
     """Return ``True`` when the variable exists and is truthy."""
     value = context.get_variable(var_name)
     return bool(value)

@@ -25,17 +25,16 @@
 
 from __future__ import annotations
 
-import pytest
 import zipfile
+
+import pytest
 import yaml
 
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.inspection import TckInspectionResult
-from tractusx_testlab.player.loading.loader import Loader, _TCK_BUNDLE_ENTRY
 from tractusx_testlab.player.loading._parser import _SCRIPT_ADAPTER
+from tractusx_testlab.player.loading.loader import _TCK_BUNDLE_ENTRY, Loader
 from tractusx_testlab.scripting.script import Tck
-
-
 
 _SINGLE_SCRIPT_YAML = """\
 syntax: v1-alpha
@@ -130,7 +129,7 @@ def single_script_tck() -> object:
 @pytest.fixture()
 def multi_script_tck(tmp_path) -> object:
     """A Tck loaded from a TCK manifest with two scripts."""
-    
+
 
     archive = tmp_path / "inspect.tck"
     with zipfile.ZipFile(archive, "w") as zf:

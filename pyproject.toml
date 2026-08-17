@@ -39,6 +39,13 @@ dependencies = [
     "fastapi (>=0.115.0,<1.0.0)",
     "uvicorn (>=0.30.0,<1.0.0)",
     "jsonschema (>=4.20.0,<5.0.0)",
+    # F-E02 — imported directly by src/ and previously undeclared, resolving
+    # only because a transitive dependency happened to supply them.
+    "cryptography (>=42.0.0)",
+    "rich (>=13.0.0)",
+    # Slated for removal in P4, which standardises every step on httpx; declared
+    # meanwhile so the dependency set describes the code as it actually is.
+    "requests (>=2.31.0,<3.0.0)",
 ]
 
 [project.scripts]
@@ -57,6 +64,8 @@ requires-poetry = ">=2.0"
 [tool.poetry.group.dev.dependencies]
 build = "^1.2.2"
 setuptools = "^78.1.1"
+ruff = "^0.16.3"
+mypy = "^2.3.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.1.1"
@@ -78,3 +87,171 @@ testpaths = ["tests"]
 # the repo root comes from the `tests` package itself, for `tests.paths`.
 pythonpath = ["tests"]
 asyncio_mode = "auto"
+# F-C04 — an xfail that starts passing is a fixed bug whose marker nobody
+# removed. Strict mode turns that into a build failure, which is what makes the
+# regression tests in tests/unit/test_no_false_positives.py a ratchet: the fix
+# cannot land without the marker coming off.
+xfail_strict = true
+
+# ---------------------------------------------------------------------------
+# Lint / format — F-G01
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = ["site", "stubs", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "F",    # pyflakes — undefined names, unused imports, redefinitions
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "I",    # import sorting
+    "UP",   # pyupgrade — PEP 604 unions and friends (F-F04)
+    "B",    # bugbear — real bug patterns
+    "SIM",  # simplifiable constructs
+    "ARG",  # unused arguments (F-C05)
+    "TID",  # tidy imports — no relative imports beyond the parent
+    "RUF",  # ruff's own rules
+]
+# Two kinds of entry live here and they are not the same thing.
+#
+#   PERMANENT — the rule is wrong for this codebase and always will be.
+#   RATCHET   — real debt, deliberately deferred to a named phase. Each carries
+#               the finding ID it belongs to. Deleting the line is how that
+#               phase proves it is finished, so nothing here expires silently.
+#
+# Phases are defined in docs/developer/architecture-cleanup/README.md.
+ignore = [
+    # -- PERMANENT ----------------------------------------------------------
+    "E501",    # line length — the formatter owns this; long docstrings abound
+    "B008",    # call in an argument default — Typer's entire calling convention
+    "RUF012",  # ClassVar on mutable class attrs — noisy against Pydantic models
+
+    # -- RATCHET: P4, typing pass (F-F04) -----------------------------------
+    "UP007",   # Union[X, Y]      → X | Y
+    "UP045",   # Optional[X]      → X | None
+    "UP046",   # Generic[T] class → PEP 695 syntax
+    "UP042",   # (str, Enum)      → StrEnum. Changes str() semantics; needs care.
+
+    # -- RATCHET: P4, import cycle (F-D02) ----------------------------------
+    "E402",    # imports not at top — the deferred imports that break the cycle
+
+    # -- RATCHET: P5, cosmetic sweep ----------------------------------------
+    "E701",    # multiple statements on one line
+    "SIM102",  # collapsible if
+    "B017",    # assert on blind Exception (2 tests)
+    "RUF043",  # unescaped metacharacters in pytest.raises(match=)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# PERMANENT. Barrels exist to re-export; that is not an unused import.
+"**/__init__.py" = ["F401"]
+# PERMANENT. `execute(self, params, context, definition)` is the BaseStep
+# contract every step implements. A step that needs none of `context` or
+# `definition` still has to accept them, so an unused one is the interface
+# working, not a defect.
+"src/tractusx_testlab/steps/**" = ["ARG002", "ARG005"]
+# PERMANENT. Tests legitimately assert on privates and shadow names in fixtures.
+"tests/**" = ["ARG001", "ARG002", "ARG005", "SIM117"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tractusx_testlab"]
+
+# ---------------------------------------------------------------------------
+# Types — F-G01. Deliberately non-strict at the start: the goal is a gate that
+# passes today and tightens per package, not a sweep that blocks the cleanup.
+# ---------------------------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "src"
+# On by default and worth keeping honest from day one.
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+no_implicit_optional = true
+# Off for now — turning these on per package is the ratchet. Track progress in
+# docs/developer/architecture-cleanup/README.md.
+disallow_untyped_defs = false
+disallow_any_generics = false
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# The SDK ships no type information; F-F02 replaces the `object`-typed seam with
+# Protocols in P4, which is what makes this override removable.
+module = ["tractusx_sdk.*", "jsonschema.*", "requests.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# The type ratchet.
+#
+# Everything NOT listed here is gated: mypy must stay clean on it, and CI fails
+# if it does not. Five packages are already fully clean and stay that way —
+# infrastructure, logging, security, services, syntax.
+#
+# The modules below carry known errors. 59 of the 72 are in `steps` and are the
+# same defect: the SDK service accessors return `object`, so every attribute
+# read on them is unverifiable (F-F02). P4 replaces that seam with Protocols
+# defined in `contracts/`, and these entries come off a module at a time.
+#
+# Removing an entry is how a package proves it is done. Do not add one without
+# a finding ID.
+# ---------------------------------------------------------------------------
+
+[[tool.mypy.overrides]]
+# F-F02 — SDK services typed `object`. Cleared by P4.
+module = [
+    "tractusx_testlab.steps.*",
+    "tractusx_testlab.cli.compile",
+    "tractusx_testlab.cli.inspect",
+    "tractusx_testlab.scripting._inspection",
+    "tractusx_testlab.scripting.step_docs",
+    "tractusx_testlab.server.routes.compile",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# F-F03 — `StepDefinition.validate` shadows `BaseModel.validate`, which mypy
+# reports as an incompatible override. Cleared by P4's rename.
+module = ["tractusx_testlab.models.authoring.definitions"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# Genuine narrow defects, each small and independent. Cleared by P2 alongside
+# the rest of the correctness work rather than piecemeal now.
+#   config.loader              — vault dict assigned into a `str`-typed slot
+#   compiler.packager          — `SecurityBlock | None` dereferenced unguarded
+#   models.authoring.infrastructure — `str | None` passed where `str` required
+#   player.execution.player    — remaining defensive getattr in the skip path
+module = [
+    "tractusx_testlab.config.loader",
+    "tractusx_testlab.compiler.packager",
+    "tractusx_testlab.models.authoring.infrastructure",
+    "tractusx_testlab.player.execution.player",
+]
+ignore_errors = true
+
+# ---------------------------------------------------------------------------
+# Coverage — F-G02. The floor is the level measured when the gate went in; it
+# ratchets upward and never downward.
+# ---------------------------------------------------------------------------
+
+[tool.coverage.run]
+source = ["src/tractusx_testlab"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]

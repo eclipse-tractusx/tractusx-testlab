@@ -39,9 +39,9 @@ The mixins here are meant to be inherited by a step's own params model::
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from tractusx_testlab.steps.base import StepParams, StepPayload, StepValue
 
@@ -171,7 +171,7 @@ class CatalogPayload(StepPayload):
     model_config = ConfigDict(extra="allow")
 
     context: Any = Field(default=None, alias="@context", description="JSON-LD context.")
-    id: Optional[str] = Field(default=None, alias="@id", description="Catalog ID.")
+    id: str | None = Field(default=None, alias="@id", description="Catalog ID.")
     type: Any = Field(default=None, alias="@type", description="JSON-LD type.")
     # Left as Any rather than list[dict]: a provider offering exactly one
     # dataset sends a bare object, and coercing it here would silently change
@@ -192,7 +192,7 @@ class CatalogOutput(StepPayload):
     the offers, whichever shape the provider sent them in.
     """
 
-    catalog: Optional[CatalogPayload] = Field(
+    catalog: CatalogPayload | None = Field(
         default=None, description="The provider's catalog document, unchanged."
     )
     datasets: list[dict] = Field(
@@ -201,7 +201,7 @@ class CatalogOutput(StepPayload):
     )
 
 
-def as_dataset_list(catalog: Optional[dict]) -> list[dict]:
+def as_dataset_list(catalog: dict | None) -> list[dict]:
     """Return a catalog's datasets, normalising the single-offer object form."""
     datasets = (catalog or {}).get(DATASET_KEY, [])
     if isinstance(datasets, dict):
@@ -219,20 +219,20 @@ class DataAddressPayload(StepPayload):
 
     model_config = ConfigDict(extra="allow")
 
-    endpoint: Optional[str] = Field(
+    endpoint: str | None = Field(
         default=None, description="Data-plane URL to fetch the data from."
     )
-    authorization: Optional[str] = Field(
+    authorization: str | None = Field(
         default=None, description="Authorization token for that URL."
     )
-    auth_code: Optional[str] = Field(
+    auth_code: str | None = Field(
         default=None,
         alias="authCode",
         description="Legacy spelling of 'authorization' used by older connectors.",
     )
 
 
-def data_address_token(data_address: Optional[dict]) -> Optional[str]:
+def data_address_token(data_address: dict | None) -> str | None:
     """Read the auth token from a data address under either of its two spellings."""
     if not data_address:
         return None
@@ -254,7 +254,7 @@ class HttpTransportParams(StepParams):
     headers: dict[str, str] = Field(
         default_factory=dict, description="Extra HTTP headers merged into the request."
     )
-    timeout: Optional[float] = Field(
+    timeout: float | None = Field(
         default=None,
         description="Request timeout in seconds; the script's default is used when omitted.",
     )

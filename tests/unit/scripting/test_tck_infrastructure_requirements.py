@@ -26,10 +26,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
 from tests.paths import CCM_RAW_DIR
 from tractusx_testlab.models.authoring.definitions import (
     MetadataDefinition,
@@ -43,7 +39,6 @@ from tractusx_testlab.models.authoring.infrastructure import (
     Standard,
 )
 from tractusx_testlab.scripting.script import Tck, TestScript
-
 
 # ---------------------------------------------------------------------------
 # Helpers

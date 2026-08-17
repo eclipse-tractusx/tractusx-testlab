@@ -33,7 +33,6 @@ from tractusx_testlab.compiler.packager import Packager
 from tractusx_testlab.player.loading.loader import Loader
 from tractusx_testlab.security.crypto import generate_ed25519_keypair, generate_rsa_keypair
 
-
 _VALID_SCRIPT_YAML = b"""\
 syntax: v1-alpha
 kind: test

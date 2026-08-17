@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Compiler — orchestrates validation + compilation into encrypted .stck packages."""
@@ -27,7 +27,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -40,13 +39,13 @@ from tractusx_testlab.security.trust.identity import PlayerIdentity
 
 class Compiler:
     """High-level API: parse YAML → validate → encrypt + sign → .stck."""
-    __slots__ = ("_validator", "_parser")
+    __slots__ = ("_parser", "_validator")
 
     def __init__(self) -> None:
         self._validator = ScriptValidator()
         self._parser = YamlParser()
 
-    def validate(self, script_path: Path, version: Optional[str] = None) -> ValidationResult:
+    def validate(self, script_path: Path, version: str | None = None) -> ValidationResult:
         """Validate a YAML tck and its tests without compiling."""
         from tractusx_testlab.compiler.validation._rules import validate_tck_manifest
 
@@ -70,8 +69,8 @@ class Compiler:
         script_path: Path,
         compiler_identity: PlayerIdentity,
         recipient_keys: dict[str, bytes],
-        output_path: Optional[Path] = None,
-        version: Optional[str] = None,
+        output_path: Path | None = None,
+        version: str | None = None,
     ) -> tuple[PackageManifest, ValidationResult]:
         """Validate and compile a script into a .tck archive.
 
@@ -115,8 +114,8 @@ class Compiler:
     def compile_plain(
         self,
         manifest_path: Path,
-        output_path: Optional[Path] = None,
-        version: Optional[str] = None,
+        output_path: Path | None = None,
+        version: str | None = None,
     ) -> tuple[dict, dict]:
         """Compile a TCK manifest into manifest.yaml + tck-execution.json.
 
@@ -154,8 +153,8 @@ class Compiler:
         manifest_path: Path,
         compiler_identity: PlayerIdentity,
         recipient_keys: dict[str, bytes],
-        output_path: Optional[Path] = None,
-        version: Optional[str] = None,
+        output_path: Path | None = None,
+        version: str | None = None,
     ) -> tuple[PackageManifest, ValidationResult]:
         """Compile a TCK manifest into a self-contained .tck.
 
@@ -172,7 +171,7 @@ class Compiler:
         Returns:
             (manifest, validation_result)
         """
-        with open(manifest_path, "r", encoding="utf-8") as manifest_file:
+        with open(manifest_path, encoding="utf-8") as manifest_file:
             tck_data = yaml.safe_load(manifest_file)
 
         validation_result = self.validate(manifest_path, version=version)
@@ -185,7 +184,6 @@ class Compiler:
         inlined_tests = self._resolve_and_validate_test_entries(
             tck_data.get("tests", []),
             manifest_path.parent,
-            version,
         )
 
         tck_data["tests"] = inlined_tests
@@ -213,9 +211,8 @@ class Compiler:
         self,
         tests_raw: list,
         base_dir: Path,
-        version: Optional[str],
     ) -> list[dict]:
-        """Resolve string file references to inline dicts and validate each entry.
+        """Resolve string file references to inline dicts, rejecting any that will not parse.
 
         Returns the list of inlined test dicts.
         """
@@ -223,7 +220,10 @@ class Compiler:
 
         for entry in tests_raw:
             script_dict = self._load_test_entry(entry, base_dir)
-            definition = YamlParser.parse_script_from_dict(script_dict)
+            # Parsed for its exceptions, not its result: a test that cannot be
+            # bound to ScriptDefinition must fail the compile here rather than
+            # be inlined into a package and fail on the player.
+            YamlParser.parse_script_from_dict(script_dict)
             inlined_tests.append(script_dict)
 
         return inlined_tests
@@ -245,5 +245,5 @@ class Compiler:
         if not script_file.exists():
             raise FileNotFoundError(f"Referenced script not found: {entry}")
 
-        with open(script_file, "r", encoding="utf-8") as script_handle:
+        with open(script_file, encoding="utf-8") as script_handle:
             return yaml.safe_load(script_handle)

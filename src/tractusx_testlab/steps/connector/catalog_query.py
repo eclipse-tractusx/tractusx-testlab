@@ -27,11 +27,11 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
-
 from tractusx_sdk.dataspace.tools import DspTools
+
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
@@ -95,7 +95,7 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogOutput]):
     async def execute(
         self,
         params: QueryCatalogParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[CatalogOutput]:
         consumer = context.get_consumer_service()
@@ -150,11 +150,11 @@ class CatalogOfferOutput(CatalogOutput):
     is best-effort here and ``negotiate`` is what reports the failure.
     """
 
-    catalog_asset_id: Optional[Any] = Field(
+    catalog_asset_id: Any | None = Field(
         default=None,
         description="Asset ID of the first offer whose policy is expected.",
     )
-    catalog_policy: Optional[Any] = Field(
+    catalog_policy: Any | None = Field(
         default=None,
         description="The accepted ODRL policy of that offer.",
     )
@@ -174,7 +174,7 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOff
     async def execute(
         self,
         params: QueryCatalogByAssetIdParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[CatalogOfferOutput]:
         consumer = context.get_consumer_service()
@@ -197,7 +197,7 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOff
         )
 
 
-def _select_offer(catalog: Any, expected_policies: list[dict]) -> Optional[tuple[Any, Any]]:
+def _select_offer(catalog: Any, expected_policies: list[dict]) -> tuple[Any, Any] | None:
     """Pick the first offer matching ``expected_policies``, or nothing."""
     if not catalog:
         return None
@@ -220,7 +220,7 @@ class QueryCatalogByBpnlParams(StepParams):
     """Input contract of ``connector/consumer/query_catalog_by_bpnl``."""
 
     bpnl: str = Field(description="BPN used to discover the counter-party's connector.")
-    counter_party_address: Optional[str] = Field(
+    counter_party_address: str | None = Field(
         default=None,
         description="DSP endpoint; when omitted it is resolved from the BPN by discovery.",
     )
@@ -240,7 +240,7 @@ class QueryCatalogByBpnlStep(BaseStep[QueryCatalogByBpnlParams, CatalogOutput]):
     async def execute(
         self,
         params: QueryCatalogByBpnlParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[CatalogOutput]:
         consumer = context.get_consumer_service()

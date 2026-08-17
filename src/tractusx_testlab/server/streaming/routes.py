@@ -28,19 +28,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Annotated, Any
+from typing import Annotated
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.responses import StreamingResponse
 
-from tractusx_testlab.models.authoring.definitions import TckDefinition
 from tractusx_testlab.models.primitives.enums import ScriptKind
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.scripting.parser import YamlParser
 from tractusx_testlab.scripting.script import Tck
-
 from tractusx_testlab.server.streaming._event_buffer import EventBuffer
 from tractusx_testlab.server.streaming.lifecycle import create_event_queue, sse_event_generator
 
@@ -50,10 +48,10 @@ _logger = logging.getLogger(__name__)
 _pending_jobs: dict[str, Tck] = {}
 
 # Background task references — prevents garbage collection and logs exceptions
-_background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+_background_tasks: set[asyncio.Task] = set()
 
 
-def _on_task_done(task: asyncio.Task) -> None:  # type: ignore[type-arg]
+def _on_task_done(task: asyncio.Task) -> None:
     """Remove completed task from the tracking set and log any unhandled exceptions."""
     _background_tasks.discard(task)
     if task.cancelled():

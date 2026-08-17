@@ -251,7 +251,7 @@ class TestRequestThenAssert:
             },
         )
 
-        assert not outcome.result("create").status.value == "passed"
+        assert outcome.result("create").status.value != "passed"
         assert outcome.output("read_back") == "asset-9"
 
 

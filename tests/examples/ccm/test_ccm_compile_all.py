@@ -57,7 +57,7 @@ class TestCcmCompileAll:
         assert len(script.execution) > 0, f"{yaml_path.name} must have at least one step"
 
     def test_has_name(self, yaml_path: Path) -> None:
-        with open(yaml_path, "r", encoding="utf-8") as f:
+        with open(yaml_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         metadata_name = (data.get("metadata") or {}).get("name")

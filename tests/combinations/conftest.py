@@ -25,11 +25,10 @@
 
 from __future__ import annotations
 
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 
-import tractusx_testlab.steps  # noqa: F401  — registers every step type
 from combinations.harness import Harness, build_context
 from combinations.http_double import HttpDouble
 

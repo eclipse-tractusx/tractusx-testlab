@@ -24,14 +24,14 @@
 
 """SSE streaming sub-package — routes, lifecycle, and event formatting."""
 
-from tractusx_testlab.server.streaming.routes import streaming_router
-from tractusx_testlab.server.streaming._event_buffer import EventBuffer, BufferedEvent
+from tractusx_testlab.server.streaming._event_buffer import BufferedEvent, EventBuffer
 from tractusx_testlab.server.streaming.lifecycle import create_event_queue, sse_event_generator
+from tractusx_testlab.server.streaming.routes import streaming_router
 
 __all__ = [
-    "streaming_router",
-    "EventBuffer",
     "BufferedEvent",
+    "EventBuffer",
     "create_event_queue",
     "sse_event_generator",
+    "streaming_router",
 ]

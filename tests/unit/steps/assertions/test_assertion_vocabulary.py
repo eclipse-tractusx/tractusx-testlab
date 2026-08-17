@@ -54,14 +54,14 @@ class TestOperatorVocabulary:
     """The operator table is the single source of truth for comparisons."""
 
     def test_the_ratified_operator_set_is_complete(self) -> None:
-        assert OPERATORS == {
+        assert {
             "not_null", "is_null", "not_empty",
             "equals", "not_equals", "contains", "not_contains", "matches_regex",
             "one_of", "none_of", "has_key", "not_has_key",
             "gt", "gte", "lt", "lte",
             "length_equals", "length_gt", "length_lt",
             "between",
-        }
+        } == OPERATORS
 
     @pytest.mark.parametrize("operator", sorted(OPERATORS))
     def test_every_declared_operator_is_actually_dispatched(self, operator: str) -> None:

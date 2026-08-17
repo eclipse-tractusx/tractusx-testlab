@@ -30,7 +30,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import tractusx_testlab.steps  # noqa: F401  — registers every step
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.scripting.registry import StepRegistry

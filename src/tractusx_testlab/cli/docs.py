@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -39,11 +38,11 @@ _DEFAULT_OUTPUT = Path("docs/specification/reference/steps.md")
 
 @app.command("docs")
 def docs(
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None, "--output", "-o",
         help=f"Write the page to this path (default: {_DEFAULT_OUTPUT}). Use '-' for stdout.",
     ),
-    step: Optional[list[str]] = typer.Option(
+    step: list[str] | None = typer.Option(
         None, "--step", "-s",
         help="Document only these step types. Repeatable. Defaults to all registered steps.",
     ),
@@ -57,7 +56,6 @@ def docs(
     ),
 ) -> None:
     """Generate the step reference from the steps' declared input/output models."""
-    import tractusx_testlab.steps  # noqa: F401  — registers every step
 
     if step:
         _reject_unknown_steps(step)
@@ -85,7 +83,7 @@ def _reject_unknown_steps(step_types: list[str]) -> None:
         raise typer.Exit(1)
 
 
-def _as_json(step_types: Optional[list[str]]) -> str:
+def _as_json(step_types: list[str] | None) -> str:
     """Render every step's contract as a JSON Schema document."""
     names = sorted(step_types or StepRegistry.list_step_types())
     contracts = []

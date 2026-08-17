@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Topological sort for test scripts respecting depends_on declarations."""
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.scripting.script import TestScript
 
 
-def topological_sort(scripts: list["TestScript"]) -> list["TestScript"]:
+def topological_sort(scripts: list[TestScript]) -> list[TestScript]:
     """Sort scripts respecting *depends_on* declarations (Kahn's algorithm).
 
     Scripts without dependencies retain their original relative order.
@@ -46,7 +46,7 @@ def topological_sort(scripts: list["TestScript"]) -> list["TestScript"]:
         if in_degree[script.name] == 0:
             queue.append(script.name)
 
-    ordered: list["TestScript"] = []
+    ordered: list[TestScript] = []
     while queue:
         name = queue.popleft()
         ordered.append(by_name[name])
@@ -62,10 +62,10 @@ def topological_sort(scripts: list["TestScript"]) -> list["TestScript"]:
 
 
 def _build_dependency_graph(
-    scripts: list["TestScript"],
-) -> tuple[dict[str, "TestScript"], dict[str, int], dict[str, list[str]]]:
+    scripts: list[TestScript],
+) -> tuple[dict[str, TestScript], dict[str, int], dict[str, list[str]]]:
     """Build name lookup, in-degree counts, and dependents adjacency list."""
-    by_name: dict[str, "TestScript"] = {}
+    by_name: dict[str, TestScript] = {}
     in_degree: dict[str, int] = defaultdict(int)
     dependents: dict[str, list[str]] = defaultdict(list)
 
@@ -87,7 +87,7 @@ def _build_dependency_graph(
 
 
 def _raise_cycle_error(
-    scripts: list["TestScript"], ordered: list["TestScript"],
+    scripts: list[TestScript], ordered: list[TestScript],
 ) -> None:
     """Raise a descriptive error when a dependency cycle is detected."""
     sorted_names = {script.name for script in ordered}

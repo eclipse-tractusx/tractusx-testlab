@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Discovers and merges configuration from YAML file, env vars, and CLI flags."""
@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -59,8 +58,8 @@ class ConfigLoader:
 
     @staticmethod
     def load(
-        config_path: Optional[Path] = None,
-        cli_overrides: Optional[dict] = None,
+        config_path: Path | None = None,
+        cli_overrides: dict | None = None,
     ) -> TestlabConfig:
         file_data = ConfigLoader._load_file(config_path)
         env_data = ConfigLoader._load_env()
@@ -96,14 +95,14 @@ class ConfigLoader:
         return merge(resolved, _as_infrastructure(cli_declared))
 
     @staticmethod
-    def _load_file(config_path: Optional[Path] = None) -> dict:
+    def _load_file(config_path: Path | None = None) -> dict:
         candidates = [config_path] if config_path else [
             Path.cwd() / _CONFIG_FILENAME,
             Path.home() / ".testlab" / _CONFIG_FILENAME,
         ]
         for path in candidates:
             if path and path.is_file():
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     data = yaml.safe_load(f)
                 return data if isinstance(data, dict) else {}
         return {}

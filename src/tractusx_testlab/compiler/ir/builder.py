@@ -30,22 +30,24 @@ import hashlib
 import json
 import logging
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 from pydantic import ValidationError
 
-from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.compiler._fingerprint import build_fingerprint
 from tractusx_testlab.compiler.ir._assets import build_asset_entries
 from tractusx_testlab.compiler.ir._compilation import build_compiled_tests
 from tractusx_testlab.compiler.ir._helpers import (
-    _infer_type, compute_source_hash,
+    compute_source_hash,
+)
+from tractusx_testlab.compiler.ir._helpers import (
     infer_testdata_type as _infer_testdata_type,
 )
 from tractusx_testlab.compiler.ir._symbols import build_global_symbols
+from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.models.authoring.infrastructure import (
     DataspaceContext,
     InfrastructureConfig,
@@ -56,8 +58,8 @@ logger = logging.getLogger(__name__)
 
 def build_ir(
     manifest_path: Path,
-    output_path: Optional[Path] = None,
-    version: Optional[str] = None,
+    output_path: Path | None = None,
+    version: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build manifest and execution payload from a TCK manifest.
 
@@ -68,7 +70,7 @@ def build_ir(
     base_dir = manifest_path.parent
 
     compiler_version = version or "0.5.0"
-    compiled_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    compiled_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     testlab = manifest_data.get("testlab", "v1-alpha")
     tck_id = manifest_data.get("id", manifest_path.stem)
 
@@ -250,7 +252,6 @@ def _build_tests_list(
 ) -> list[dict[str, Any]]:
     """Build the tests reference list with source hashes."""
     from tractusx_testlab.compiler.ir._helpers import (
-        compute_source_hash,
         load_test_file,
         resolve_test_path,
     )

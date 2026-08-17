@@ -69,7 +69,7 @@ class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, Catalo
     async def execute(
         self,
         params: QueryCatalogWithFiltersParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[CatalogOutput]:
         consumer = context.get_consumer_service()

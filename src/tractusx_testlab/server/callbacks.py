@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """CallbackManager — manages ephemeral HTTP listener endpoints for async callbacks."""
@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from tractusx_testlab.models import CallbackResult
@@ -40,7 +40,7 @@ class CallbackManager:
     a matching request arrives or the timeout elapses.
     """
 
-    __slots__ = ("_listeners", "_buffered", "_loop")
+    __slots__ = ("_buffered", "_listeners", "_loop")
 
     def __init__(self) -> None:
         self._listeners: dict[str, asyncio.Future[CallbackResult]] = {}
@@ -93,7 +93,7 @@ class CallbackManager:
         try:
             result = await asyncio.wait_for(future, timeout=timeout_s)
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return CallbackResult(
                 listener_name=key,
                 path=path,
@@ -123,7 +123,7 @@ class CallbackManager:
             headers=headers,
             query_params=query_params or {},
             payload=payload,
-            received_at=datetime.now(timezone.utc),
+            received_at=datetime.now(UTC),
         )
 
         future = self._listeners.get(key)

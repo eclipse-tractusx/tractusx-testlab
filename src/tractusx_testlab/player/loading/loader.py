@@ -30,21 +30,20 @@ import logging
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Optional
 
 import yaml
 from pydantic import ValidationError
 
 from tractusx_testlab.compiler.packager import Packager
-from tractusx_testlab.scripting.script import Tck as Tck, TestScript
 from tractusx_testlab.models.primitives.enums import ScriptKind
 from tractusx_testlab.player.loading._parser import (
-    _normalize_discriminator,
     _SCRIPT_ADAPTER,
     _TCK_ADAPTER,
+    _normalize_discriminator,
     parse_script_file,
-    parse_tck_file,
 )
+from tractusx_testlab.scripting.script import Tck as Tck
+from tractusx_testlab.scripting.script import TestScript
 
 # Entry name for the bundled authoring YAML inside .tck ZIP archives
 _TCK_BUNDLE_ENTRY = "tck-bundle.yaml"
@@ -115,8 +114,8 @@ class Loader:
     def load(
         self,
         path: Path,
-        player_private_key: Optional[bytes] = None,
-        compiler_public_key: Optional[bytes] = None,
+        player_private_key: bytes | None = None,
+        compiler_public_key: bytes | None = None,
     ) -> Tck:
         """Load a TCK from *path*.
 
@@ -134,8 +133,8 @@ class Loader:
     def _load_tck_package(
         self,
         path: Path,
-        player_private_key: Optional[bytes] = None,
-        compiler_public_key: Optional[bytes] = None,
+        player_private_key: bytes | None = None,
+        compiler_public_key: bytes | None = None,
     ) -> Tck:
         """Load a .tck ZIP archive — plain or encrypted (payload.enc format).
 
@@ -166,15 +165,15 @@ class Loader:
 
         bundle_path = extract_dir / _TCK_BUNDLE_ENTRY
         _verify_tck_integrity(extract_dir)
-        with open(bundle_path, "r", encoding="utf-8") as f:
+        with open(bundle_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         return self._parse_data(data, source_path=path, base_dir=extract_dir)
 
     def _load_encrypted_tck_package(
         self,
         path: Path,
-        player_private_key: Optional[bytes],
-        compiler_public_key: Optional[bytes],
+        player_private_key: bytes | None,
+        compiler_public_key: bytes | None,
     ) -> Tck:
         """Decrypt payload.enc, extract the TAR, and load tck-bundle.yaml."""
         import base64
@@ -219,15 +218,15 @@ class Loader:
                 f"Decrypted package is missing {_TCK_BUNDLE_ENTRY}. "
                 "Re-compile with the latest testlab compiler."
             )
-        with open(bundle_path, "r", encoding="utf-8") as f:
+        with open(bundle_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         return self._parse_data(data, source_path=path, base_dir=extract_dir)
 
     def _load_package(
         self,
         path: Path,
-        player_private_key: Optional[bytes],
-        compiler_public_key: Optional[bytes],
+        player_private_key: bytes | None,
+        compiler_public_key: bytes | None,
     ) -> Tck:
         """Load and verify a .stck archive — fingerprint/checksum verification handled by Packager."""
         if player_private_key is None or compiler_public_key is None:
@@ -243,7 +242,7 @@ class Loader:
 
     def _load_yaml(self, path: Path) -> Tck:
         """Load a plain YAML file."""
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         return self._parse_data(data, source_path=path, base_dir=path.parent)
 
@@ -269,7 +268,6 @@ class Loader:
 
 def _verify_tck_integrity(extract_dir: Path) -> None:
     """Verify fingerprint digest and package checksum of an extracted .tck directory."""
-    import hashlib
 
     execution_path = extract_dir / "tck-execution.json"
     manifest_path = extract_dir / "manifest.yaml"
@@ -277,7 +275,7 @@ def _verify_tck_integrity(extract_dir: Path) -> None:
         return
 
     execution_bytes = execution_path.read_bytes()
-    with open(manifest_path, "r", encoding="utf-8") as f:
+    with open(manifest_path, encoding="utf-8") as f:
         manifest = yaml.safe_load(f)
 
     _check_fingerprint(execution_bytes, manifest)

@@ -26,7 +26,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from tractusx_testlab.models.authoring.infrastructure import (
     CapabilityRequirement,

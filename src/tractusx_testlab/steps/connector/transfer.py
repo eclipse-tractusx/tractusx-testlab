@@ -27,11 +27,11 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, model_validator
-
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
+
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
@@ -83,21 +83,21 @@ class InitiateTransferParams(StepParams):
             "'-PUSH' type such as 'HttpData-PUSH' or 'AmazonS3-PUSH'."
         ),
     )
-    negotiation_id: Optional[str] = Field(
+    negotiation_id: str | None = Field(
         default=None,
         description=(
             "PULL only — negotiation to collect the EDR for; falls back to the "
             "'negotiation_id' context variable."
         ),
     )
-    agreement_id: Optional[str] = Field(
+    agreement_id: str | None = Field(
         default=None,
         description=(
             "PUSH only — contract agreement the transfer runs under; falls back "
             "to the 'agreement_id' context variable."
         ),
     )
-    data_destination: Optional[dict] = Field(
+    data_destination: dict | None = Field(
         default=None,
         description="PUSH only — the EDC data address the provider pushes to.",
     )
@@ -113,7 +113,7 @@ class InitiateTransferParams(StepParams):
         default=DEFAULT_POLL_INTERVAL,
         description="PUSH only — seconds between two transfer state reads.",
     )
-    verify: Optional[Any] = Field(
+    verify: Any | None = Field(
         default=None,
         description="TLS verification passed through to the SDK; None keeps its default.",
     )
@@ -124,7 +124,7 @@ class InitiateTransferParams(StepParams):
         return self.transfer_type.upper().endswith("-PUSH")
 
     @model_validator(mode="after")
-    def _push_needs_a_destination(self) -> "InitiateTransferParams":
+    def _push_needs_a_destination(self) -> InitiateTransferParams:
         """A PUSH with nowhere to push to would start and then fail at the provider."""
         if self.is_push and not self.data_destination:
             raise ValueError(
@@ -141,23 +141,23 @@ class InitiateTransferOutput(StepPayload):
     to the destination the request named, so there is no EDR to read back.
     """
 
-    transfer_id: Optional[str] = Field(
+    transfer_id: str | None = Field(
         default=None, description="ID of the transfer process."
     )
-    state: Optional[str] = Field(
+    state: str | None = Field(
         default=None,
         description="State the transfer settled at, e.g. 'STARTED' or 'COMPLETED'.",
     )
-    edr_entry: Optional[dict] = Field(
+    edr_entry: dict | None = Field(
         default=None, description="PULL only — the EDR entry the negotiation produced."
     )
-    dataplane_url: Optional[str] = Field(
+    dataplane_url: str | None = Field(
         default=None, description="PULL only — data-plane URL the data is fetched from."
     )
-    edr_token: Optional[str] = Field(
+    edr_token: str | None = Field(
         default=None, description="PULL only — authorization token for that data-plane URL."
     )
-    data_address: Optional[DataAddressPayload] = Field(
+    data_address: DataAddressPayload | None = Field(
         default=None,
         description="PULL only — the full data address document, for assertions on its other keys.",
     )
@@ -181,14 +181,14 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
     output_model = InitiateTransferOutput
 
     async def execute(
-        self, params: InitiateTransferParams, context: "StepContext", definition: StepDefinition
+        self, params: InitiateTransferParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[InitiateTransferOutput]:
         if params.is_push:
             return await self._push(params, context)
         return await self._pull(params, context)
 
     async def _pull(
-        self, params: InitiateTransferParams, context: "StepContext"
+        self, params: InitiateTransferParams, context: StepContext
     ) -> StepOutput[InitiateTransferOutput]:
         """Collect the EDR the negotiation produced and resolve its data address."""
         consumer = context.get_consumer_service()
@@ -224,7 +224,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
         )
 
     async def _push(
-        self, params: InitiateTransferParams, context: "StepContext"
+        self, params: InitiateTransferParams, context: StepContext
     ) -> StepOutput[InitiateTransferOutput]:
         """Ask the connector to deliver the data to the destination the script named."""
         consumer = context.get_consumer_service()
@@ -263,14 +263,14 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
         )
 
 
-def _transfer_id(edr_entry: Optional[dict]) -> Optional[str]:
+def _transfer_id(edr_entry: dict | None) -> str | None:
     """Read the transfer process ID from an EDR entry under either of its spellings."""
     if not edr_entry:
         return None
     return edr_entry.get("transferProcessId") or edr_entry.get("@id")
 
 
-def _created_id(response: Any) -> Optional[str]:
+def _created_id(response: Any) -> str | None:
     """Read the ``@id`` the connector answers a create request with."""
     try:
         body = response.json()

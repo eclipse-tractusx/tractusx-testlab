@@ -35,7 +35,7 @@ See ``docs/developer/execution-events.md`` for the full wire contract.
 
 from __future__ import annotations
 
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 
 from pydantic import BaseModel
 
@@ -80,7 +80,7 @@ class JobFailedEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.JOB_FAILED] = EventKind.JOB_FAILED
     status: Literal[JobStatus.FAILED] = JobStatus.FAILED
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class JobCancelledEvent(_ExecutionEvent):
@@ -110,7 +110,7 @@ class StepStartedEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.STEP_STARTED] = EventKind.STEP_STARTED
     script: str
-    step_id: Optional[str] = None
+    step_id: str | None = None
     step_index: int
     step_type: str
     step_name: str
@@ -122,7 +122,7 @@ class StepCompletedEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.STEP_COMPLETED] = EventKind.STEP_COMPLETED
     script: str
-    step_id: Optional[str] = None
+    step_id: str | None = None
     result: StepResult
 
 
@@ -131,7 +131,7 @@ class StepFailedEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.STEP_FAILED] = EventKind.STEP_FAILED
     script: str
-    step_id: Optional[str] = None
+    step_id: str | None = None
     result: StepResult
 
 
@@ -140,7 +140,7 @@ class StepSkippedEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.STEP_SKIPPED] = EventKind.STEP_SKIPPED
     script: str
-    step_id: Optional[str] = None
+    step_id: str | None = None
     result: StepResult
 
 
@@ -163,7 +163,7 @@ class AssertionResultEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.ASSERTION_RESULT] = EventKind.ASSERTION_RESULT
     script: str
-    step_id: Optional[str] = None
+    step_id: str | None = None
     step_name: str
     #: Position in the step's ``validate:`` block, from 0.
     #

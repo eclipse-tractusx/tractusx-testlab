@@ -146,7 +146,7 @@ class JsonPathExtractStep(BaseStep[JsonPathExtractParams, JsonPathExtractOutput]
     async def execute(
         self,
         params: JsonPathExtractParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[JsonPathExtractOutput]:
         # ``input`` is normally a variable name (a string) that we look up.  But

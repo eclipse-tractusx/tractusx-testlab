@@ -96,7 +96,7 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
     output_model = InboundCallOutput
 
     async def execute(
-        self, params: WaitForCallParams, context: "StepContext", definition: StepDefinition
+        self, params: WaitForCallParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[InboundCallOutput]:
         path = params.mock.path
         method = params.mock.method

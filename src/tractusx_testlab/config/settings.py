@@ -25,7 +25,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -47,5 +46,5 @@ class TestlabConfig(BaseModel):
     #: submodel server, and the system under test it talks to. Held here so an
     #: engine is configured once, at startup, rather than per script.
     infrastructure: Infrastructure = Field(default_factory=Infrastructure)
-    vault: Optional[VaultConfig] = None
-    library_path: Optional[Path] = None
+    vault: VaultConfig | None = None
+    library_path: Path | None = None

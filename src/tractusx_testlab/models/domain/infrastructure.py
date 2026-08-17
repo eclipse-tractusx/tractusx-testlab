@@ -53,7 +53,7 @@ mechanical — a field named ``dsp_url`` on ``sut.connector`` is the config key
 
 from __future__ import annotations
 
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -212,7 +212,7 @@ class Infrastructure(BaseModel):
     engine: EngineBindings = Field(default_factory=EngineBindings)
     sut: SutBindings = Field(default_factory=SutBindings)
 
-    def binding(self, side: str, capability: str) -> Optional[CapabilityBinding]:
+    def binding(self, side: str, capability: str) -> CapabilityBinding | None:
         """Return the binding for *side*/*capability*, or ``None`` if that pair has none.
 
         The pair may legitimately not exist — the sides need not declare the

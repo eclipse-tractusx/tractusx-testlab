@@ -31,8 +31,9 @@ through ``StepContext``.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from tractusx_testlab.server.callbacks import CallbackManager
@@ -55,7 +56,7 @@ class MockRequest:
     path: str
     headers: dict
     query_params: dict
-    body: Optional[Any]
+    body: Any | None
 
 
 # A dynamic handler computes the response from the inbound request — used by
@@ -64,29 +65,29 @@ class MockRequest:
 MockHandler = Callable[["MockRequest"], MockResponse]
 
 # path+method -> canned response or dynamic handler
-_mock_routes: dict[str, Union[MockResponse, MockHandler]] = {}
+_mock_routes: dict[str, MockResponse | MockHandler] = {}
 
 # Singleton holder for the active CallbackManager
-_callback_manager: Optional["CallbackManager"] = None
+_callback_manager: CallbackManager | None = None
 
 
 def _key(path: str, method: str) -> str:
     return f"{method.upper()}:{path}"
 
 
-def register_mock(path: str, method: str, response: Union[MockResponse, MockHandler]) -> None:
+def register_mock(path: str, method: str, response: MockResponse | MockHandler) -> None:
     """Register a canned response, or a dynamic handler, for the given path and method."""
     _mock_routes[_key(path, method)] = response
 
 
-def get_mock(path: str, method: str) -> Optional[Union[MockResponse, MockHandler]]:
+def get_mock(path: str, method: str) -> MockResponse | MockHandler | None:
     """Look up a canned response or dynamic handler, or ``None`` if not registered."""
     return _mock_routes.get(_key(path, method))
 
 
 def resolve_mock(
-    path: str, method: str, *, headers: dict, query_params: dict, body: Optional[dict],
-) -> Optional[MockResponse]:
+    path: str, method: str, *, headers: dict, query_params: dict, body: dict | None,
+) -> MockResponse | None:
     """Look up a mock and, if it's a dynamic handler, invoke it to get a response."""
     mock = get_mock(path, method)
     if mock is None:
@@ -108,13 +109,13 @@ def clear_mocks() -> None:
     _mock_routes.clear()
 
 
-def set_callback_manager(manager: "CallbackManager") -> None:
+def set_callback_manager(manager: CallbackManager) -> None:
     """Store the active ``CallbackManager`` for step access."""
     global _callback_manager
     _callback_manager = manager
 
 
-def get_callback_manager() -> Optional["CallbackManager"]:
+def get_callback_manager() -> CallbackManager | None:
     """Return the active ``CallbackManager``, or ``None``."""
     return _callback_manager
 

@@ -34,7 +34,6 @@ import pytest
 
 from tractusx_testlab.services.participants import FileSystemParticipantManager
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

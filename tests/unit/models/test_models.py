@@ -38,7 +38,6 @@ from tractusx_testlab.models.authoring.definitions import (
     TckDefinition,
     TckMetadataDefinition,
     TckTestEntry,
-    VariableDefinition,
 )
 from tractusx_testlab.models.primitives.enums import (
     ServiceType,

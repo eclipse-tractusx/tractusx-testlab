@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 # Matches a path segment with a predicate filter: ``name[key=value]``
 _PREDICATE_RE = re.compile(r"^([^\[]+)\[([^=\]]+)=([^\]]*)\]$")
@@ -203,7 +203,7 @@ def declared_names(step_cls: Any) -> frozenset[str]:
 
 
 def extract_path(
-    output: Any, path: Optional[str], declared: Optional[frozenset[str]] = None
+    output: Any, path: str | None, declared: frozenset[str] | None = None
 ) -> Any:
     """Extract a value from a nested dict/list/object using dot-separated *path*.
 
@@ -228,7 +228,7 @@ def extract_path(
 
 
 def _extract_from_step_output(
-    output: Any, path: str, declared: Optional[frozenset[str]] = None
+    output: Any, path: str, declared: frozenset[str] | None = None
 ) -> Any:
     """Extract a value from a StepOutput by resolving the first segment then traversing."""
     segments = _split_path(path)
@@ -254,9 +254,9 @@ def _extract_from_step_output(
 def _resolve_first_segment(
     output: Any,
     first: str,
-    rest: Optional[str],
+    rest: str | None,
     full_path: str,
-    declared: Optional[frozenset[str]] = None,
+    declared: frozenset[str] | None = None,
 ) -> Any:
     """Resolve the first path segment against a StepOutput's various data sources."""
     # Map well-known aliases
@@ -311,7 +311,7 @@ def _fallback_resolution(output: Any, first: str) -> Any:
     return None
 
 
-def _resolve_from_value_dict(output: Any, first: str, rest: Optional[str], full_path: str) -> Any:
+def _resolve_from_value_dict(output: Any, first: str, rest: str | None, full_path: str) -> Any:
     """Try to resolve the first segment from the StepOutput.value dict."""
     # _resolve_path_segment handles both plain keys and ``name[key=value]``
     # predicates, so a filtered first segment resolves here rather than

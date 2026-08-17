@@ -32,7 +32,7 @@ declared output rather than by digging through the HTTP record?
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -50,7 +50,7 @@ def _definition() -> StepDefinition:
     )
 
 
-def _refusal(*codes: Optional[str]) -> SimpleNamespace:
+def _refusal(*codes: str | None) -> SimpleNamespace:
     """An AAS ``Result`` as the SDK hands one back when the registry refuses.
 
     Only the two attributes the step reads are modelled — the messages and the

@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -38,34 +37,32 @@ from tractusx_testlab.cli import app
 @app.command()
 def run(
     target: Path = typer.Argument(..., help="TCK manifest (.yaml), plain package (.tck), or encrypted package (.stck)."),
-    config_file: Optional[Path] = typer.Option(
+    config_file: Path | None = typer.Option(
         None, "--config", "-c",
         help="YAML config file with variable overrides (e.g. saturn_tck_int.yaml).",
     ),
-    player_keys: Optional[Path] = typer.Option(
+    player_keys: Path | None = typer.Option(
         None, "--player-keys", "-k",
         help="Directory with the player identity (required for .stck encrypted files).",
     ),
-    compiler_pub: Optional[Path] = typer.Option(
+    compiler_pub: Path | None = typer.Option(
         None, "--compiler-pub",
         help="Path to the compiler's signing.pub (required for .stck encrypted files).",
     ),
-    var: Optional[list[str]] = typer.Option(
+    var: list[str] | None = typer.Option(
         None, "--var",
         help="Runtime variable override as KEY=VALUE. Can be repeated.",
     ),
-    logs_dir: Optional[Path] = typer.Option(
+    logs_dir: Path | None = typer.Option(
         None, "--logs-dir", "-l",
         help="Directory for log output. Defaults to ./logs in the current directory.",
     ),
 ) -> None:
     """Load and execute a TCK, printing results to stdout."""
+    # Register all local step executors (triggers @step() decorators)
     from tractusx_testlab.config.loader import ConfigLoader
     from tractusx_testlab.models import ScriptStatus, StepStatus
     from tractusx_testlab.player.execution.player import TestlabPlayer
-
-    # Register all local step executors (triggers @step() decorators)
-    import tractusx_testlab.steps  # noqa: F401
 
     _compile_target_for_run(target)
 
@@ -117,8 +114,8 @@ def _compile_target_for_run(target: Path) -> None:
 
 
 def _build_runtime_vars(
-    config_file: Optional[Path],
-    var_overrides: Optional[list[str]],
+    config_file: Path | None,
+    var_overrides: list[str] | None,
 ) -> dict[str, str]:
     """Merge variables from config file (lower priority) and --var flags (higher priority)."""
     runtime_vars: dict[str, str] = {}
@@ -140,7 +137,7 @@ def _load_config_variables(config_file: Path) -> dict[str, str]:
         typer.echo(f"Error: config file not found: {config_file}", err=True)
         raise typer.Exit(1)
 
-    with open(config_file, "r", encoding="utf-8") as config_handle:
+    with open(config_file, encoding="utf-8") as config_handle:
         config_data = _yaml.safe_load(config_handle) or {}
 
     result: dict[str, str] = {}
@@ -165,8 +162,8 @@ def _apply_var_overrides(runtime_vars: dict[str, str], var_overrides: list[str])
 
 def _load_tck(
     target: Path,
-    player_keys: Optional[Path],
-    compiler_pub: Optional[Path],
+    player_keys: Path | None,
+    compiler_pub: Path | None,
 ):
     """Load a TCK from YAML, .tck (plain or encrypted), or .stck."""
     from tractusx_testlab.player.loading.loader import Loader
@@ -186,7 +183,7 @@ def _load_tck(
 
 def _print_run_header(
     target: Path,
-    config_file: Optional[Path],
+    config_file: Path | None,
     config,
     runtime_vars: dict[str, str],
     total_steps: int,

@@ -31,15 +31,14 @@ needed at runtime for environment variable resolution and service wiring.
 
 from __future__ import annotations
 
-from tractusx_testlab.syntax import defaults
 import tractusx_testlab.syntax.keys as keys
-
 from tractusx_testlab.models import (
     VariableDefinition,
 )
 from tractusx_testlab.models.authoring.definitions import ServiceDefinition
 from tractusx_testlab.models.primitives.enums import ServiceType
 from tractusx_testlab.scripting._variable_form import VariablesBlock, parse_variables_block
+from tractusx_testlab.syntax import defaults
 
 
 def parse_variables(raw: VariablesBlock) -> dict[str, VariableDefinition]:

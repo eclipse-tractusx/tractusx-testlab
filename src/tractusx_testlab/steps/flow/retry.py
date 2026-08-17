@@ -81,7 +81,7 @@ class RetryStep(BaseStep[RetryParams, RetryOutput]):
     output_model = RetryOutput
 
     async def execute(
-        self, params: RetryParams, context: "StepContext", definition: StepDefinition
+        self, params: RetryParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[RetryOutput]:
         attempt = 1
         results = await _run_sequence(params.steps, context)
@@ -101,7 +101,7 @@ class RetryStep(BaseStep[RetryParams, RetryOutput]):
 
 
 async def _run_sequence(
-    nested_defs: list[StepDefinition], context: "StepContext"
+    nested_defs: list[StepDefinition], context: StepContext
 ) -> list[StepResult]:
     """Run each nested step in order, stopping at the first failure."""
     from tractusx_testlab.player.execution.step_runner import run_step

@@ -26,8 +26,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tractusx_testlab.models import (
     AssertionResult,
     AssertionSeverity,
@@ -52,7 +50,7 @@ class AssertionEngine:
     def evaluate(
         assertions: list[Assertion],
         output: object,
-        context_vars: Optional[dict[str, object]] = None,
+        context_vars: dict[str, object] | None = None,
     ) -> list[AssertionResult]:
         return [
             AssertionEngine._evaluate_one(assertion, output, context_vars or {})
@@ -144,7 +142,7 @@ class AssertionEngine:
 
     @staticmethod
     def extract_path(
-        output: object, path: Optional[str], declared: Optional[frozenset[str]] = None
+        output: object, path: str | None, declared: frozenset[str] | None = None
     ) -> object:
         """Extract a value from a nested dict/list/object using dot-separated *path*.
 

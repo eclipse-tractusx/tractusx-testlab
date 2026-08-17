@@ -25,7 +25,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -38,8 +38,7 @@ from tractusx_testlab.player.execution._trace_formatter import (
     build_tck_result,
     make_intentionally_skipped_result,
 )
-from tractusx_testlab.scripting.script import TestScript, Tck
-
+from tractusx_testlab.scripting.script import Tck, TestScript
 
 # ---------------------------------------------------------------------------
 # Helpers / factories
@@ -87,7 +86,7 @@ def _make_tck_with_scripts(
 def _make_script_result(name: str, status: ScriptStatus) -> MagicMock:
     from tractusx_testlab.models.runtime.results import AssertionSummary, ScriptResult
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return ScriptResult(
         script_name=name,
         dataspace_version="saturn",
@@ -190,7 +189,7 @@ class TestMakeIntentionallySkippedResult:
 class TestBuildTckResult:
 
     def _now(self) -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
     def test_all_completed_gives_completed(self):
         results = [

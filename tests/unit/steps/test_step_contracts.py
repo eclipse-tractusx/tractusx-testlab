@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import pytest
 
-import tractusx_testlab.steps  # noqa: F401  — registers every step
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps._contracts import NoOutput
 from tractusx_testlab.steps.base import (

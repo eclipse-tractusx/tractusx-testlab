@@ -26,10 +26,24 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from tractusx_testlab.models import ScriptStatus, StepStatus
+from tractusx_testlab.models.runtime.results import (
+    AssertionResult,
+    ScriptResult,
+    StepResult,
+)
+from tractusx_testlab.player.execution._helpers import (
+    register_script_services,
+    seed_script_defaults,
+)
+from tractusx_testlab.player.execution._phase_runners import (
+    execute_main_steps,
+    execute_setup_steps,
+    execute_teardown_steps,
+)
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
@@ -37,13 +51,6 @@ from tractusx_testlab.player.loading.resolver import resolve_params
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.assertions import AssertionEngine
-from tractusx_testlab.models.runtime.results import AssertionResult, AssertionSummary, ScriptResult, StepResult
-from tractusx_testlab.player.execution._helpers import seed_script_defaults, register_script_services
-from tractusx_testlab.player.execution._phase_runners import (
-    execute_setup_steps,
-    execute_main_steps,
-    execute_teardown_steps,
-)
 
 
 def _resolve_assertions(assertions: list[Any], context: StepContext) -> list[Any]:
@@ -73,7 +80,7 @@ async def run_step(
     """Execute a single step and evaluate its assertions."""
     step_instance = step_cls()
     params = resolve_params(step_def.with_ or {}, context)
-    started_at = datetime.now(timezone.utc)
+    started_at = datetime.now(UTC)
 
     try:
         output = await step_instance.invoke(params, context, step_def)
@@ -89,7 +96,7 @@ async def run_step(
                 )
             ]
 
-        finished_at = datetime.now(timezone.utc)
+        finished_at = datetime.now(UTC)
         failed = AssertionEngine.has_hard_failure(assertion_results)
 
         return StepResult(
@@ -105,7 +112,7 @@ async def run_step(
             assertions=assertion_results,
         )
     except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
-        finished_at = datetime.now(timezone.utc)
+        finished_at = datetime.now(UTC)
         return StepResult(
             step_name=step_name,
             step_type=step_def.uses,
@@ -163,7 +170,7 @@ async def run_script(
     seed_script_defaults(script, context)
     register_script_services(script, context)
 
-    script_start = datetime.now(timezone.utc)
+    script_start = datetime.now(UTC)
 
     step_results: list[StepResult] = []
     setup_results, setup_status = await execute_setup_steps(
@@ -180,7 +187,7 @@ async def run_script(
         script, context, job_id, monitor,
     )
 
-    script_end = datetime.now(timezone.utc)
+    script_end = datetime.now(UTC)
     all_step_results = setup_results + step_results + teardown_results
 
     return ScriptResult(

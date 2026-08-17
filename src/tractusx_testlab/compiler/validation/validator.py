@@ -29,7 +29,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from pydantic import ValidationError
 
@@ -45,9 +44,9 @@ class ValidationIssue:
     """A single validation finding."""
     level: str  # "error" | "warning"
     message: str
-    step_index: Optional[int] = None
-    field: Optional[str] = None
-    phase: Optional[str] = None
+    step_index: int | None = None
+    field: str | None = None
+    phase: str | None = None
 
 
 @dataclass(slots=True)
@@ -72,7 +71,7 @@ _VAR_REF = re.compile(r"\$\{(\w+)}")
 class ScriptValidator:
     """Validates a ScriptDefinition for correctness before execution."""
 
-    def validate_tck(self, tck: TckDefinition, base_dir: Path, version: Optional[str] = None) -> ValidationResult:
+    def validate_tck(self, tck: TckDefinition, base_dir: Path, version: str | None = None) -> ValidationResult:
         """Validate all test files referenced by a TCK manifest."""
         combined = ValidationResult()
         for entry in tck.tests:
@@ -88,7 +87,7 @@ class ScriptValidator:
                 issues = "; ".join(f"{e['loc'][0]}: {e['msg']}" for e in exc.errors())
                 combined.add_error(f"tests/{entry.id}: parse error — {issues}")
                 continue
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 combined.add_error(f"tests/{entry.id}: failed to parse — {exc}")
                 continue
             result = self.validate(script, version=version)
@@ -103,7 +102,7 @@ class ScriptValidator:
                 combined.issues.append(issue)
         return combined
 
-    def validate(self, script: ScriptDefinition, version: Optional[str] = None) -> ValidationResult:
+    def validate(self, script: ScriptDefinition, version: str | None = None) -> ValidationResult:
         result = ValidationResult()
         declared_vars: set[str] = set()
 
@@ -125,7 +124,7 @@ class ScriptValidator:
         step_def: StepDefinition,
         idx: int,
         declared_vars: set[str],
-        version: Optional[str],
+        version: str | None,
         result: ValidationResult,
         phase: str = "main",
     ) -> None:
@@ -162,7 +161,7 @@ class ScriptValidator:
     def _validate_returns(
         self,
         step_def: StepDefinition,
-        step_cls: Optional[type],
+        step_cls: type | None,
         step_idx: int,
         result: ValidationResult,
         phase: str,
