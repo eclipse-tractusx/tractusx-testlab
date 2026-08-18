@@ -1038,6 +1038,31 @@ runs `testlab inspect --json` and asserts the package carries every test the
 manifest declared, so a test lost between manifest and archive is caught before
 anything executes.
 
+### What was and was not run locally
+
+The pipeline work above was verified by running it. The two new e2e scenarios
+were, at first, only *validated and compiled* — `testlab validate` proves a
+scenario is well-formed and `testlab compile` proves it packages, and neither
+runs a step. A scenario can be valid, compile cleanly, and fail on its first
+call in a job that costs 25 minutes and a Kubernetes cluster to reach.
+
+`tests/combinations/test_e2e_scenarios_offline.py` closes that: it reads the
+step lists out of the shipped YAML and executes them against the connector and
+HTTP doubles. Both scenarios run. The assertions are about values having
+*travelled* — the asset id the negotiation asks for came out of the catalog two
+hops earlier, and the data-plane fetch arrives at a server, which a URL
+assembled from an unresolved reference does not.
+
+Driving it turned up a missing method on `ConsumerDouble`
+(`get_filter_expression`, which `query_catalog_with_filters` calls), so the
+double now stands in for the SDK surface the scenario actually uses.
+
+What this cannot say anything about is the dataspace: whether two real EDCs
+complete a DSP handshake, whether the IdentityHub issues a usable token,
+whether the registry answers at the ingress path. That is what
+`e2e-umbrella.yml` is for, and it has not run yet — `kind` is not available
+locally. The division is shape and wiring here, dataspace there.
+
 `tests/combinations/test_tck_pipeline.py` is the same journey without a
 cluster: author three test files, compile, inspect, run, and run combinations —
 18 tests covering the wiring on the wire (the ticket a setup step published

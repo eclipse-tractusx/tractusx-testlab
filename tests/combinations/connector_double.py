@@ -98,6 +98,11 @@ class ConsumerDouble:
 
     # -- the SDK surface the steps use ------------------------------------
 
+    def get_filter_expression(self, key: str, value: Any, operator: str) -> dict:
+        """The SDK builds the JSON-LD filter; the shape is all the step needs."""
+        self._record("get_filter_expression", key=key, value=value, operator=operator)
+        return {"operandLeft": key, "operator": operator, "operandRight": value}
+
     def get_catalog_with_filter(self, **kwargs: Any) -> dict:
         self._record("get_catalog_with_filter", **kwargs)
         return self._catalog
