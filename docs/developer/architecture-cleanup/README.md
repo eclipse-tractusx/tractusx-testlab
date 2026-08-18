@@ -105,7 +105,7 @@ Three gates now run in CI (`.github/workflows/test.yml`) and all pass:
 
 | Gate | State |
 | --- | --- |
-| `ruff check src tests tools` | clean — 880 violations fixed, the rest deferred with a named finding and phase |
+| `ruff check src tests tools` | clean — 880 violations fixed, no rule deferred |
 | `mypy` | clean — 135 errors → 0 gated; 72 remain behind per-module ratchet entries |
 | `pytest tests/` | 1,310 pass, 0 fail — integration suite no longer excluded |
 | `testlab docs --check` | added; step reference must match the models |
@@ -223,7 +223,7 @@ That is the concrete cost of F-F02's defensive `getattr` style, in one place.
 
 | ID | Sev | Finding | Phase | Status |
 | --- | --- | --- | --- | --- |
-| F-G01 | Critical | No linter, type checker or formatter anywhere | P0 | **done** — formatter deferred to P5, see P0 outcome |
+| F-G01 | Critical | No linter, type checker or formatter anywhere | P0 | **done** — ruff check, ruff format and mypy all gated in CI, no exemptions |
 | F-G02 | High | CI excludes integration tests and every documented quality gate | P0 | **done** |
 | F-G03 | Medium | No packaging smoke test | P0 | **done** |
 | F-G04 | Medium | `__main__.py` runs the CLI on *import*, not only on `python -m` | P0 | **done** |
