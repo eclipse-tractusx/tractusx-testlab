@@ -38,7 +38,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.steps.digital_twin.provider import DeleteShellDescriptorStep
+from tractusx_testlab.steps.digital_twin.provider.shell import DeleteShellDescriptorStep
 
 _AAS_URL = "https://dtr.example.com/api/v3"
 _SHELL_ID = "urn:uuid:11111111-2222-3333-4444-555555555555"

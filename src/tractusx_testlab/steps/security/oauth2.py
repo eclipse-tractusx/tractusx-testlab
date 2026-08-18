@@ -46,7 +46,7 @@ from pydantic import ConfigDict, Field
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client
-from tractusx_testlab.steps.shared_models import HttpTransportParams
+from tractusx_testlab.steps.shared_models import HttpTransportParams, StepParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
@@ -162,7 +162,12 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
     never appear in the recorded request.
     """
 
-    params_model = OAuth2GetTokenParams
+    # Annotated rather than inferred: the grant-specific subclasses each bind a
+    # different `OAuth2GetTokenParams` subclass, and an inferred
+    # `type[OAuth2GetTokenParams]` here makes those siblings incompatible
+    # overrides. The base contract is `type[StepParams]` and that is what this
+    # slot holds.
+    params_model: ClassVar[type[StepParams]] = OAuth2GetTokenParams
     output_model = OAuth2TokenPayload
 
     async def execute(

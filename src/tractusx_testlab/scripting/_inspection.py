@@ -30,6 +30,8 @@ a side-effect-free function that is called by ``Tck.inspect()``.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.inspection import (
     ScriptInspection,
@@ -37,13 +39,15 @@ from tractusx_testlab.models.runtime.inspection import (
     TckInspectionResult,
 )
 
+if TYPE_CHECKING:
+    from tractusx_testlab.scripting.script import Tck
 
-def build_inspection_result(tck: object) -> TckInspectionResult:
+
+def build_inspection_result(tck: Tck) -> TckInspectionResult:
     """Extract static metadata from *tck* without executing any steps.
 
     Args:
-        tck: A ``Tck`` runtime object (typed as ``object`` to avoid a circular
-             import with ``scripting.script``).
+        tck: The :class:`~tractusx_testlab.scripting.script.Tck` to describe.
 
     Returns:
         A frozen :class:`TckInspectionResult` with general and step-level metadata.

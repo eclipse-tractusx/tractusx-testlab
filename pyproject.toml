@@ -186,63 +186,16 @@ module = ["tractusx_sdk.*", "jsonschema.*", "requests.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------
-# The type ratchet.
+# No module is exempt. There was a ratchet here — fourteen modules carrying 72
+# known errors, annotated with the finding that would clear each one. F-F02
+# took the largest bite (the `object`-typed SDK seam became the Protocols in
+# `contracts/`, 59 errors), and the last 24 were cleared one at a time.
 #
-# Everything NOT listed here is gated: mypy must stay clean on it, and CI fails
-# if it does not. Five packages are already fully clean and stay that way —
-# infrastructure, logging, security, services, syntax.
-#
-# The modules below carry known errors. 59 of the 72 are in `steps` and are the
-# same defect: the SDK service accessors return `object`, so every attribute
-# read on them is unverifiable (F-F02). P4 replaces that seam with Protocols
-# defined in `contracts/`, and these entries come off a module at a time.
-#
-# Removing an entry is how a package proves it is done. Do not add one without
-# a finding ID.
+# Two of them were live defects the exemption was hiding: `step_docs` read a
+# leftover loop variable when deciding whether to print the extra-keys note,
+# and `_sized` handed `int()` an unnarrowed `object`. That is the argument for
+# not adding an entry back — an exemption is a place a defect can sit unseen.
 # ---------------------------------------------------------------------------
-
-[[tool.mypy.overrides]]
-# F-F02 — the `object`-typed SDK seam is gone: `contracts/services.py` states
-# what the engine requires of a connector, and the accessors return it. That
-# took `steps` from 59 errors to 17, and the whole package off this list.
-#
-# What is left is ordinary step-level typing — `Any` flowing out of the SDK into
-# a declared payload — not the seam. Ten modules, listed individually so the
-# remainder is visible and shrinks one file at a time rather than hiding behind
-# `steps.*`.
-module = [
-    "tractusx_testlab.steps._checks.schema",
-    "tractusx_testlab.steps.shared_models",
-    "tractusx_testlab.steps.assertions.operators",
-    "tractusx_testlab.steps.connector.dataplane",
-    "tractusx_testlab.steps.connector.pull_data",
-    "tractusx_testlab.steps.connector.transfer",
-    "tractusx_testlab.steps.flow.conditional",
-    "tractusx_testlab.steps.digital_twin_registry.consumer",
-    "tractusx_testlab.steps.security.oauth2",
-    "tractusx_testlab.steps.util.json_extract",
-    "tractusx_testlab.cli.compile",
-    "tractusx_testlab.cli.inspect",
-    "tractusx_testlab.scripting._inspection",
-    "tractusx_testlab.scripting.step_docs",
-    "tractusx_testlab.server.routes.compile",
-]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-# Genuine narrow defects, each small and independent. Cleared by P2 alongside
-# the rest of the correctness work rather than piecemeal now.
-#   config.loader              — vault dict assigned into a `str`-typed slot
-#   compiler.packager          — `SecurityBlock | None` dereferenced unguarded
-#   models.authoring.infrastructure — `str | None` passed where `str` required
-#   player.execution.player    — remaining defensive getattr in the skip path
-module = [
-    "tractusx_testlab.config.loader",
-    "tractusx_testlab.compiler.packager",
-    "tractusx_testlab.models.authoring.infrastructure",
-    "tractusx_testlab.player.execution.player",
-]
-ignore_errors = true
 
 # ---------------------------------------------------------------------------
 # Coverage — F-G02. The floor is the level measured when the gate went in; it

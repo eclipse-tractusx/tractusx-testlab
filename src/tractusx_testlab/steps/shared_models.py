@@ -178,7 +178,7 @@ class CatalogPayload(StepPayload):
     # the document that assertions run against.
     datasets: Any = Field(
         default=None,
-        alias=DATASET_KEY,
+        alias="dcat:dataset",  # == DATASET_KEY, spelled out: aliases must be literals
         description="Dataset offers — a list, or a bare object when there is exactly one.",
     )
 

@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Self, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, ValidationError
 
@@ -68,7 +68,7 @@ class StepPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     @classmethod
-    def of(cls, document: Any) -> StepPayload | None:
+    def of(cls, document: Any) -> Self | None:
         """Bind a document a counterpart sent, keeping "nothing" as nothing.
 
         Steps whose output *is* a document defined elsewhere — a DCAT catalog,
@@ -76,6 +76,10 @@ class StepPayload(BaseModel):
         absent document stays ``None`` rather than becoming an empty object,
         which is the difference between "the provider answered with nothing"
         and "the provider answered with {}".
+
+        Typed as ``Self`` so ``DataAddressPayload.of(...)`` is a data address and
+        not a bare :class:`StepPayload` — the field it lands in declares the
+        specific type, and every call site was quietly wider than its target.
         """
         return None if document is None else cls.model_validate(document)
 

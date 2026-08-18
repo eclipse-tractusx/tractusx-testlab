@@ -41,6 +41,7 @@ def _make_mock_context(**variables: Any) -> MagicMock:
     """Create a mock StepContext with preset variables."""
     ctx = MagicMock()
     ctx.get_variable = MagicMock(side_effect=lambda name, default=None: variables.get(name, default))
+    ctx.get_str = MagicMock(side_effect=lambda name, default="": str(variables.get(name, default) or default))
     return ctx
 
 

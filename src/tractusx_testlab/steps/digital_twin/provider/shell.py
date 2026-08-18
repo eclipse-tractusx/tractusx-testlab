@@ -23,37 +23,41 @@
 ## It was reviewed and tested by a human committer.
 
 
-"""Provider-side Digital Twin Registry steps — ``digital-twin/provider/*``.
+"""Shell descriptors at a registry the engine operates.
 
-Registering shells and submodel descriptors at a registry the engine operates,
-through the SDK's AAS service. The consumer-side steps live next door in
-:mod:`tractusx_testlab.steps.digital_twin_registry.consumer`: they read a
-registry over a data plane and share none of this module's SDK surface, which is
-why 1,063 lines in one file called ``industry/dtr.py`` was two modules.
+Registering a shell, reading one back, looking shells up by their
+``specificAssetIds``, and removing one — the descriptor's own lifecycle. The
+submodel descriptors that hang off a shell are next door in
+:mod:`~tractusx_testlab.steps.digital_twin.provider.submodel_descriptor`.
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict, Field
-from tractusx_sdk.dataspace.tools import encode_as_base64_url_safe
+from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client, sdk_call
+from tractusx_testlab.steps.registry_models import (
+    DescriptorPayload,
+    DtrParams,
+    ShellLookupOutput,
+    SpecificAssetId,
+    _as_document,
+    _asset_ids_query,
+)
 from tractusx_testlab.steps.registry_reading import (
     _shell_descriptor,
     _shell_ids,
 )
 from tractusx_testlab.steps.shared_models import (
     DeletionOutput,
-    StepParams,
 )
-from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -61,96 +65,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Shared contract
-# ---------------------------------------------------------------------------
-
-
-class DtrParams(StepParams):
-    """What every Digital Twin Registry step accepts.
-
-    ``bpn`` selects the tenant the registry answers for; left out, the AAS
-    service uses whatever it was configured with.
-    """
-
-    bpn: str | None = Field(
-        default=None, description="BPN the registry request is made on behalf of."
-    )
-
-
-class DescriptorPayload(StepPayload):
-    """An AAS descriptor as the registry returned it.
-
-    The shape is defined by the AAS specification rather than by testlab, so
-    the two keys every descriptor carries are named and the rest of the
-    document round-trips untouched.
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    id: str | None = Field(default=None, description="Identifier of the descriptor.")
-    # The AAS API spells it ``idShort``; scripts read ``id_short`` and nothing
-    # else, so the camelCase form is accepted on the way in and never written
-    # on the way out.
-    id_short: str | None = Field(
-        default=None,
-        validation_alias="idShort",
-        description="Short, human-readable name.",
-    )
-
-
-def _as_document(result: Any) -> Any:
-    """Render an SDK descriptor object as the plain document a script reads."""
-    return result.to_dict() if hasattr(result, "to_dict") else result
-
-
-class SpecificAssetId(BaseModel):
-    """One ``specificAssetIds`` criterion a shell is searched by.
-
-    Defined by the AAS specification rather than by testlab, so the two keys a
-    lookup always sends are named and anything else — ``externalSubjectId`` for
-    a criterion visible to one partner only — round-trips untouched.
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    name: str = Field(description="Name of the asset identifier, e.g. 'partInstanceId'.")
-    value: str = Field(description="Value that identifier must have.")
-
-
-def _asset_ids_query(criteria: list[SpecificAssetId]) -> list[str]:
-    """The criteria as the ``assetIds`` query values ``GET /lookup/shells`` expects.
-
-    Each criterion travels as its own base64url-encoded JSON object — that is
-    the AAS v3 encoding, not a testlab convention — and it is the same encoding
-    whichever registry is being searched, so both sides read it from here.
-    """
-    return [
-        encode_as_base64_url_safe(json.dumps(entry.model_dump(exclude_none=True)))
-        for entry in criteria
-    ]
-
-
-class ShellLookupOutput(StepPayload):
-    """Shells a registry read returned.
-
-    The one output shape of every step that answers with a collection of shells,
-    so a script reads ``shell_ids`` and ``shell_descriptors`` the same way
-    whether the shells were searched for or listed, and whether the registry
-    searched was the run's own or a counterparty's.
-    """
-
-    shell_ids: list[str] = Field(
-        default_factory=list, description="Identifiers of the shells that matched."
-    )
-    shell_descriptors: list[dict] = Field(
-        default_factory=list,
-        description="The descriptor document of each matching shell.",
-    )
-
-
-# ---------------------------------------------------------------------------
-# digital-twin/provider/create_shell_descriptor
 # ---------------------------------------------------------------------------
 
 
@@ -386,193 +300,6 @@ class ProviderShellLookupStep(BaseStep[ProviderShellLookupParams, ShellLookupOut
 
 
 # ---------------------------------------------------------------------------
-# digital-twin/provider/create_submodel_descriptor
-# ---------------------------------------------------------------------------
-
-
-class CreateSubmodelDescriptorParams(ShellDescriptorRefParams):
-    """Input contract of ``digital-twin/provider/create_submodel_descriptor``."""
-
-    submodel_descriptor: dict = Field(
-        description="The submodel descriptor document to register under the shell."
-    )
-
-
-@step("digital-twin/provider/create_submodel_descriptor")
-class CreateSubmodelDescriptorStep(
-    BaseStep[CreateSubmodelDescriptorParams, DescriptorPayload]
-):
-    """Create a submodel descriptor under an AAS shell."""
-
-    params_model = CreateSubmodelDescriptorParams
-    output_model = DescriptorPayload
-
-    async def execute(
-        self,
-        params: CreateSubmodelDescriptorParams,
-        context: StepContext,
-        definition: StepDefinition,
-    ) -> StepOutput[DescriptorPayload]:
-        return await _register_submodel(
-            context, params.aas_identifier, params.submodel_descriptor, params.bpn
-        )
-
-
-async def _register_submodel(
-    context: StepContext,
-    aas_identifier: str,
-    submodel_descriptor: dict,
-    bpn: str | None,
-) -> StepOutput[DescriptorPayload]:
-    """Attach a submodel descriptor, whether it was written out or assembled."""
-    from tractusx_sdk.industry.models.aas.v3.base import SubModelDescriptor
-
-    aas = context.dataspace.registry()
-    result = await sdk_call.run(aas.create_submodel_descriptor,
-        aas_identifier, SubModelDescriptor(**submodel_descriptor), bpn=bpn
-    )
-    url = f"{aas.aas_url}/shell-descriptors/{aas_identifier}/submodel-descriptors"
-
-    body = _as_document(result)
-    return StepOutput(
-        value=DescriptorPayload.of(body),
-        request=HttpRequest(method="POST", url=url, body=submodel_descriptor),
-        response=HttpResponse(status_code=201, body=body),
-    )
-
-
-# ---------------------------------------------------------------------------
-# digital-twin/provider/wizard/create_submodel_descriptor
-# ---------------------------------------------------------------------------
-
-#: Endpoint values CX-0002 fixes outright. They are written, never asked for:
-#: the standard admits no other value, so an input would only invite a wrong one.
-_ENDPOINT_PROTOCOL = "HTTP"
-_ENDPOINT_PROTOCOL_VERSION = "1.1"
-_SUBMODEL_SUBPROTOCOL = "DSP"
-_SUBPROTOCOL_BODY_ENCODING = "plain"
-
-
-class WizardCreateSubmodelDescriptorParams(ShellDescriptorRefParams):
-    """Input contract of ``digital-twin/provider/wizard/create_submodel_descriptor``.
-
-    A submodel descriptor is mostly boilerplate around a few facts: what the
-    submodel is called, which aspect model it follows, where its data can be
-    fetched, and — because the data is fetched through a dataspace and not from
-    the bare URL — which asset it is offered as and which control plane that
-    offer lives on. This step takes those and writes the rest.
-
-    Of the endpoint's keys only ``interface`` is asked for, because it is the
-    only one CX-0002 leaves a choice in; the rest are fixed by the standard and
-    written from the constants above.
-    """
-
-    id: str = Field(
-        default="", description="Submodel identifier; a fresh URN UUID when omitted."
-    )
-    id_short: str = Field(
-        default="",
-        description=(
-            "Short, human-readable name for the submodel. CX-0002 does not "
-            "require one, so an omitted name is left out of the descriptor."
-        ),
-    )
-    semantic_id: str = Field(description="URN of the aspect model the submodel follows.")
-    href: str = Field(
-        description=(
-            "URL the submodel's data is served from, written to the endpoint's "
-            "'href'. Give the bare data URL: the '$'-suffix the chosen "
-            "interface calls for is this step's to write."
-        )
-    )
-    asset_id: str = Field(
-        description="Asset ID the submodel is offered as — the subprotocol body's 'id'."
-    )
-    dsp_endpoint: str = Field(
-        description=(
-            "DSP URL of the provider control plane the asset is negotiated "
-            "through — the subprotocol body's 'dspEndpoint'."
-        )
-    )
-    interface: str = Field(
-        default="SUBMODEL-3.0",
-        description=(
-            "AAS interface the endpoint implements — SUBMODEL-3.X, or "
-            "SUBMODEL-VALUE-3.X when the href is directly callable as given."
-        ),
-    )
-    def endpoint_href(self) -> str:
-        """The href the chosen interface asks for (CX-0002).
-
-        ``SUBMODEL-3.X`` names an endpoint the consumer appends ``$``-suffixes
-        to, so the href must not carry one; ``SUBMODEL-VALUE-3.X`` promises a
-        directly callable href, so the step appends ``/submodel/$value`` —
-        just ``/$value`` when the URL already ends in ``/submodel``, and
-        nothing when it already carries a ``$``-segment. Either way the author
-        gives the URL they have and the step writes the conformant spelling.
-        """
-        url = self.href.rstrip("/")
-        tail = url.rsplit("/", 1)[-1]
-        if self.interface.startswith("SUBMODEL-VALUE"):
-            if tail.startswith("$"):
-                return url
-            return f"{url}/$value" if tail == "submodel" else f"{url}/submodel/$value"
-        return url.rsplit("/", 1)[0] if tail.startswith("$") else self.href
-
-    def submodel_document(self) -> dict:
-        """The AAS submodel descriptor these fields describe."""
-        document = {
-            "id": self.id or f"urn:uuid:{uuid.uuid4()}",
-            "semanticId": {
-                "type": "ExternalReference",
-                "keys": [{"type": "GlobalReference", "value": self.semantic_id}],
-            },
-            "endpoints": [
-                {
-                    "interface": self.interface,
-                    "protocolInformation": {
-                        "href": self.endpoint_href(),
-                        "endpointProtocol": _ENDPOINT_PROTOCOL,
-                        "endpointProtocolVersion": [_ENDPOINT_PROTOCOL_VERSION],
-                        "subprotocol": _SUBMODEL_SUBPROTOCOL,
-                        "subprotocolBody": (
-                            f"id={self.asset_id};dspEndpoint={self.dsp_endpoint}"
-                        ),
-                        "subprotocolBodyEncoding": _SUBPROTOCOL_BODY_ENCODING,
-                    },
-                }
-            ],
-        }
-        if self.id_short:
-            document["idShort"] = self.id_short
-        return document
-
-
-@step("digital-twin/provider/wizard/create_submodel_descriptor")
-class WizardCreateSubmodelDescriptorStep(
-    BaseStep[WizardCreateSubmodelDescriptorParams, DescriptorPayload]
-):
-    """Attach a submodel descriptor described field by field.
-
-    The guided sibling of ``digital-twin/provider/create_submodel_descriptor``,
-    registering through the same call.
-    """
-
-    params_model = WizardCreateSubmodelDescriptorParams
-    output_model = DescriptorPayload
-
-    async def execute(
-        self,
-        params: WizardCreateSubmodelDescriptorParams,
-        context: StepContext,
-        definition: StepDefinition,
-    ) -> StepOutput[DescriptorPayload]:
-        return await _register_submodel(
-            context, params.aas_identifier, params.submodel_document(), params.bpn
-        )
-
-
-# ---------------------------------------------------------------------------
 # digital-twin/provider/delete_shell_descriptor
 # ---------------------------------------------------------------------------
 
@@ -634,5 +361,3 @@ class DeleteShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DeletionOutpu
             request=HttpRequest(method="DELETE", url=url),
             response=HttpResponse(status_code=status, body=result),
         )
-
-

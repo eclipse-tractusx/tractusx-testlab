@@ -35,7 +35,7 @@ from pydantic import ValidationError
 
 from tests.conftest import attach_endpoint_url_stubs
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.steps.connector.provision import (
+from tractusx_testlab.steps.connector.provision.contract_definition import (
     CreateContractDefinitionParams,
     CreateContractDefinitionStep,
 )

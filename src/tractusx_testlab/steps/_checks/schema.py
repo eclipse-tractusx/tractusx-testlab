@@ -27,6 +27,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any, cast
 
 import jsonschema
 
@@ -83,7 +84,13 @@ def check_schema_validation(
     except jsonschema.SchemaError as exc:
         return False, f"Invalid JSON Schema: {exc.message}"
 
-    errors = sorted(validator_cls(schema).iter_errors(payload), key=lambda e: list(e.path))
+    # `payload` came back from `json.loads` or arrived as a decoded body, so
+    # it is JSON-shaped by construction; jsonschema types the parameter
+    # narrowly and cannot see that.
+    errors = sorted(
+        validator_cls(schema).iter_errors(cast("Any", payload)),
+        key=lambda e: list(e.path),
+    )
     if not errors:
         return True, ""
 

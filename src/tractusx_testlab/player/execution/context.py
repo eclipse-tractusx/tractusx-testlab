@@ -142,6 +142,20 @@ class StepContext:
     def get_variable(self, name: str, default: object = None) -> object:
         return self._variables.get(name, default)
 
+    def get_str(self, name: str, default: str = "") -> str:
+        """Read a variable that a step is going to use as text.
+
+        Variables hold whatever a step published, so :meth:`get_variable`
+        returns ``object`` and every caller that wanted a URL or a token had to
+        narrow it — or, more often, not narrow it and pass ``object`` into
+        ``.rstrip()`` or an HTTP header. Narrowed once, here, with the
+        conversion made explicit rather than implied by use.
+        """
+        value = self._variables.get(name, default)
+        if value is None:
+            return default
+        return value if isinstance(value, str) else str(value)
+
     def has_variable(self, name: str) -> bool:
         return name in self._variables
 

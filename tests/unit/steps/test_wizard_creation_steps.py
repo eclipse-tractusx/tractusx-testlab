@@ -39,18 +39,22 @@ import pytest
 
 from tests.conftest import attach_endpoint_url_stubs
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.steps.connector.provision import (
+from tractusx_testlab.steps.connector.provision.asset import (
     CreateAssetStep,
-    CreatePolicyStep,
     WizardCreateAssetParams,
     WizardCreateAssetStep,
+)
+from tractusx_testlab.steps.connector.provision.policy import (
+    CreatePolicyStep,
     WizardCreatePolicyParams,
     WizardCreatePolicyStep,
 )
-from tractusx_testlab.steps.digital_twin.provider import (
+from tractusx_testlab.steps.digital_twin.provider.shell import (
     CreateShellDescriptorStep,
     WizardCreateShellDescriptorParams,
     WizardCreateShellDescriptorStep,
+)
+from tractusx_testlab.steps.digital_twin.provider.submodel_descriptor import (
     WizardCreateSubmodelDescriptorParams,
     WizardCreateSubmodelDescriptorStep,
 )

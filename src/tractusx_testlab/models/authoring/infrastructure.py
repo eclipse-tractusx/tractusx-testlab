@@ -90,7 +90,9 @@ class InfrastructureConfig(BaseModel):
         info: ValidationInfo,
     ) -> dict[str, CapabilityRequirement]:
         """Reject a capability the binding model has no field for on this side."""
-        side = info.field_name
+        # Set for every field validator; the annotation allows None because the
+        # same object is passed to model validators, which have no field.
+        side = info.field_name or ""
         accepted = capability_keys(side)
         unknown = [key for key in declared if key not in accepted]
         if unknown:

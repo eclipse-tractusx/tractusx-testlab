@@ -61,6 +61,7 @@ def ctx() -> MagicMock:
 
     mock.set_variable = MagicMock(side_effect=_set)
     mock.get_variable = MagicMock(side_effect=_get)
+    mock.get_str = MagicMock(side_effect=lambda n, d="": str(_get(n, d) or d))
     mock.variables = variables
     mock.dataspace.provider_base_url.return_value = _BASE_URL
     return attach_endpoint_url_stubs(mock)

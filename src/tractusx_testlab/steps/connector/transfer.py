@@ -193,7 +193,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
     ) -> StepOutput[InitiateTransferOutput]:
         """Collect the EDR the negotiation produced and resolve its data address."""
         consumer = context.dataspace.consumer()
-        negotiation_id = params.negotiation_id or context.get_variable(NEGOTIATION_ID)
+        negotiation_id = params.negotiation_id or context.get_str(NEGOTIATION_ID)
         edr_entry = await sdk_call.run(consumer.get_edr_entry, negotiation_id=negotiation_id, verify=params.verify)
 
         transfer_id = _transfer_id(edr_entry)
@@ -219,7 +219,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
             edr_entry=edr_entry,
             dataplane_url=endpoint,
             edr_token=data_address_token(data_address),
-            data_address=data_address,
+            data_address=DataAddressPayload.of(data_address),
         )
         return StepOutput(
             value=value,
@@ -240,10 +240,10 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
         request_model = ModelFactory.get_transfer_process_model(
             dataspace_version=consumer.dataspace_version,
             counter_party_address=(
-                params.counter_party_address or context.get_variable("provider_address", "")
+                params.counter_party_address or context.get_str("provider_address")
             ),
             transfer_type=params.transfer_type,
-            contract_id=params.agreement_id or context.get_variable(AGREEMENT_ID, ""),
+            contract_id=params.agreement_id or context.get_str(AGREEMENT_ID),
             data_destination=params.data_destination or {},
         )
         response = consumer.transfer_processes.create(request_model)

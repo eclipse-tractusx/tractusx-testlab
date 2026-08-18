@@ -143,7 +143,8 @@ def _load_tck(
         pub = load_public_key(compiler_pub)
 
     tck = Loader().load(package, player_private_key=priv, compiler_public_key=pub)
-    return tck, Path(tck.base_dir)
+    # Set for every archive the loader extracts; a bare YAML resolves beside itself.
+    return tck, tck.base_dir or package.parent
 
 
 def _jsonable(value: object) -> object:

@@ -195,7 +195,7 @@ That is the concrete cost of F-F02's defensive `getattr` style, in one place.
 | F-D02 | High | Import cycle player ↔ steps, held open by deferred imports | P4 | **done** — `contracts.StepInvoker`; the edge is one-way |
 | F-D03 | High | `StepContext` is a god object; reaches into `ServiceManager._definitions` | P4 | **done** — `DataspaceAccess` split out; 222 → 151 lines |
 | F-D04 | Medium | Alias shims renaming functions for no behavioural reason | P1 | **done** — 6 files → `phase.py` |
-| F-D05 | Medium | 13 files over 300 lines; 5 folders over 5 files | P5 | partial — measured and ratcheted; `dtr.py` 1063 → two modules |
+| F-D05 | Medium | 13 files over 300 lines; 5 folders over 5 files | P5 | **done** — 16 → 13 over 300, largest 638 → 422; ratcheted, may only shrink |
 | F-D06 | Medium | No test package for `config`, `logging`, `security`, `syntax`, `schemas` | P3 | **done** — `tests/unit/security/`, 15 tests over encryption, signing and sealing |
 
 ## Theme E — The same job, done several ways
@@ -891,3 +891,63 @@ One thing found while wiring the smoke test: `compile` echoed the checksum the
 IR builder computed, which is taken *before* the archive is sealed, so the number
 printed by the compile was not the number in the package it had just written.
 `_create_tck_archive` returns the sealed digest and that is what is reported.
+
+### F-F02 remainder — no module is exempt from the type checker
+
+The mypy ratchet is empty and its override blocks are deleted. It held fourteen
+modules and 72 errors when the gate went in; F-F02's Protocols cleared 59, and
+the last 24 came off one file at a time.
+
+Two of them were live defects the exemption was hiding:
+
+* `step_docs.render_shared_models` decided whether to print "Additional keys
+  sent by the counterpart are passed through unchanged" by reading `model` — a
+  variable left over from the *outer* loop, holding the last step's output
+  model rather than the nested model being documented. The note was printed,
+  or not, for the wrong object.
+* `_sized` handed `int()` an unnarrowed `object` under a `type: ignore` that
+  did not even cover the error code being raised.
+
+The rest were narrowing, and most of them came from one place: `get_variable`
+returns `object`, honestly, because a variable holds whatever a step published
+— and every caller that wanted a URL or a token either narrowed it or, more
+often, passed `object` into `.rstrip()` or an HTTP header. `StepContext.get_str`
+narrows once, and the sites that read text now say so. The one site where
+absence is meaningful to the SDK — `negotiate`'s `target` — deliberately still
+reads `get_variable`, because `""` would say a target was named.
+
+Also typed properly rather than ignored: `StepPayload.of` returns `Self`, so
+`DataAddressPayload.of(...)` is a data address and not a bare payload; the
+`Controller` Protocol declares `create`, which half its callers use; and
+`_parse_script` returns the definition it parses instead of `object`.
+
+### F-D05 — the file-size ratchet, tightened
+
+Sixteen files were over 300 lines; thirteen are, and the largest is 422 rather
+than 638. `cli/compile.py` 457 → 175 and `cli/run.py` 326 → 190 dropped off the
+list entirely.
+
+Three splits, each on a seam the code already had:
+
+* `steps/connector/provision.py` (561) → a package with one module per resource
+  family — `asset`, `policy`, `contract_definition` — plus `_shared` for the
+  read-an-id and create-or-409 helpers. That is how the connector's management
+  API is divided and how a script uses them.
+* `steps/digital_twin/provider.py` (638) → `provider/shell.py` and
+  `provider/submodel_descriptor.py`. A submodel descriptor is addressed through
+  the shell that holds it, which is the one import between them.
+* `cli/run.py` and `cli/inspect.py` → `_run_report.py` and `_inspect_report.py`,
+  the same seam in both: the command decides what to do, the report module
+  decides what the terminal shows.
+
+And one deduplication, which is why the split was worth doing at all: the two
+DTR step families each declared `DtrParams`, `DescriptorPayload`,
+`SpecificAssetId`, `ShellLookupOutput` and two helpers — 85 lines, verbatim, in
+both. They describe the Asset Administration Shell, not a side of it: the
+provider registers a descriptor and the consumer reads the same one back. They
+live in `steps/registry_models.py` now, beside the readers in
+`registry_reading.py`.
+
+The duplication was visible in the shipped documentation the whole time —
+`docs/specification/reference/steps.md` documented `SpecificAssetId` twice,
+because it existed twice. Deduplicating the code removed the doubled entry.

@@ -92,8 +92,16 @@ def mock_context() -> MagicMock:
     def _has(name: str) -> bool:
         return name in variables
 
+    def _get_str(name: str, default: str = "") -> str:
+        """Mirrors :meth:`StepContext.get_str` — narrowing, not a second store."""
+        value = variables.get(name, default)
+        if value is None:
+            return default
+        return value if isinstance(value, str) else str(value)
+
     ctx.set_variable = MagicMock(side_effect=_set)
     ctx.get_variable = MagicMock(side_effect=_get)
+    ctx.get_str = MagicMock(side_effect=_get_str)
     ctx.has_variable = MagicMock(side_effect=_has)
 
     # The real runner, because `flow/if` and `flow/retry` run the steps nested

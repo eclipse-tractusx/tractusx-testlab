@@ -1397,17 +1397,6 @@ One `specificAssetIds` criterion a shell is searched by.
 
 Additional keys sent by the counterpart are passed through unchanged.
 
-### SpecificAssetId
-
-One `specificAssetIds` criterion a shell is searched by.
-
-| Field | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `name` | string | yes | — | — | Name of the asset identifier, e.g. 'partInstanceId'. |
-| `value` | string | yes | — | — | Value that identifier must have. |
-
-Additional keys sent by the counterpart are passed through unchanged.
-
 ### StepDefinition
 
 Step definition using `uses` and `with` verb-form keys.

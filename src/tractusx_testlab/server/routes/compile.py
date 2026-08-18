@@ -34,6 +34,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from tractusx_testlab.compiler.validation.validator import ScriptValidator
+from tractusx_testlab.models.authoring.definitions import ScriptDefinition, TckDefinition
 from tractusx_testlab.models.primitives.enums import ScriptKind
 from tractusx_testlab.scripting.parser import YamlParser
 from tractusx_testlab.syntax import defaults
@@ -116,7 +117,9 @@ def _resolve_script_kind(data: dict) -> ScriptKind | JSONResponse:
         })
 
 
-def _parse_script(data: dict, kind: ScriptKind) -> JSONResponse | object:
+def _parse_script(
+    data: dict, kind: ScriptKind,
+) -> JSONResponse | ScriptDefinition | TckDefinition:
     """Parse the YAML data into a script/tck definition or return error response."""
     parser = YamlParser()
     try:
@@ -136,7 +139,9 @@ def _parse_script(data: dict, kind: ScriptKind) -> JSONResponse | object:
         })
 
 
-def _run_semantic_validation(parsed: object, kind: ScriptKind) -> list[dict[str, str]]:
+def _run_semantic_validation(
+    parsed: ScriptDefinition | TckDefinition, kind: ScriptKind,
+) -> list[dict[str, str]]:
     """Run semantic validation and return list of error dicts (empty if OK)."""
     errors: list[dict[str, str]] = []
 
@@ -146,7 +151,7 @@ def _run_semantic_validation(parsed: object, kind: ScriptKind) -> list[dict[str,
     if not name or not name.strip():
         errors.append(_error("name", "Script name is required and must not be empty"))
 
-    if kind == ScriptKind.TEST:
+    if kind == ScriptKind.TEST and isinstance(parsed, ScriptDefinition):
         # The release comes from the script's own ``dataspace`` block when it has
         # one, and otherwise from the default. It is not required here: a test
         # file belongs to a TCK, and it is the manifest that declares which

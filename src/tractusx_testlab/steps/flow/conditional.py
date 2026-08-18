@@ -168,7 +168,7 @@ class IfStep(BaseStep[IfParams, IfOutput]):
                 )
             )
 
-        label = "then" if condition_result else "else"
+        label: Literal["then", "else"] = "then" if condition_result else "else"
         results = await _run_sequence(branch, label, context)
 
         failed = next((r for r in results if r.status == StepStatus.FAILED), None)

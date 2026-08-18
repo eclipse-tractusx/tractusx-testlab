@@ -106,8 +106,8 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
     async def execute(
         self, params: DataplaneCallParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
-        url = params.resolved_url(context.get_variable(DATAPLANE_URL))
-        token = params.edr_token or context.get_variable(EDR_TOKEN)
+        url = params.resolved_url(context.get_str(DATAPLANE_URL))
+        token = params.edr_token or context.get_str(EDR_TOKEN)
         headers = {"Authorization": token, **params.headers}
         timeout = params.timeout_or(context.config.default_timeout_s)
 
@@ -206,7 +206,7 @@ class GetEdrStep(BaseStep[GetEdrParams, EdrOutput]):
         self, params: GetEdrParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[EdrOutput]:
         consumer = context.dataspace.consumer()
-        transfer_id = params.transfer_id or context.get_variable(TRANSFER_ID)
+        transfer_id = params.transfer_id or context.get_str(TRANSFER_ID)
         url = context.dataspace.consumer_endpoint_url("edrs", transfer_id, "dataaddress")
 
         edr = await fetch_data_address(consumer, transfer_id, params.verify)

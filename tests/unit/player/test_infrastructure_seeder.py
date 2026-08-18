@@ -59,6 +59,7 @@ def _make_context(variables: dict) -> MagicMock:
     ctx.variables = store
     ctx.set_variable.side_effect = lambda k, v: store.update({k: v})
     ctx.get_variable.side_effect = lambda k, d=None: store.get(k, d)
+    ctx.get_str.side_effect = lambda k, d="": str(store.get(k, d) or d)
     ctx.infrastructure = _infrastructure(store)
     return ctx
 

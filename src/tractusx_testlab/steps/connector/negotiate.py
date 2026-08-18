@@ -121,14 +121,16 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
         definition: StepDefinition,
     ) -> StepOutput[NegotiationOutput]:
         consumer = context.dataspace.consumer()
-        counter_party_address = params.counter_party_address or context.get_variable(
-            "provider_address", ""
+        counter_party_address = params.counter_party_address or context.get_str(
+            "provider_address"
         )
-        counter_party_id = params.counter_party_id or context.get_variable("provider_bpnl", "")
+        counter_party_id = params.counter_party_id or context.get_str("provider_bpnl")
 
         negotiation_id = await sdk_call.run(consumer.start_edr_negotiation,
             counter_party_id=counter_party_id,
             counter_party_address=counter_party_address,
+            # `get_variable`, not `get_str`: the SDK is handed the absence as
+            # `None`, and an empty string would say a target was named.
             target=params.asset_id or context.get_variable(CATALOG_ASSET_ID),
             policy=params.policy or context.get_variable(CATALOG_POLICY),
         )

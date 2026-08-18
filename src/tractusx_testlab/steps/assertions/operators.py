@@ -127,7 +127,10 @@ def _sized(compare: Callable[[int, int], bool]) -> Check:
 
     def check(actual: object, expected: object) -> bool:
         try:
-            length, wanted = len(actual), int(expected)  # type: ignore[arg-type]
+            length = len(actual)  # type: ignore[arg-type]
+            if not isinstance(expected, (int, float, str)):
+                raise TypeError(f"not a count: {expected!r}")
+            wanted = int(expected)
         except (TypeError, ValueError) as error:
             raise OperandError(
                 f"Cannot measure the length of {actual!r} against {expected!r}"

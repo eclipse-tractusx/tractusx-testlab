@@ -33,16 +33,20 @@ provider-side steps are in
 
 from __future__ import annotations
 
-import json
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, ConfigDict, Field
-from tractusx_sdk.dataspace.tools import encode_as_base64_url_safe
+from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client
+from tractusx_testlab.steps.registry_models import (
+    DescriptorPayload,
+    ShellLookupOutput,
+    SpecificAssetId,
+    _asset_ids_query,
+)
 from tractusx_testlab.steps.registry_reading import (
     _get_shell_descriptor,
     _next_cursor,
@@ -52,9 +56,8 @@ from tractusx_testlab.steps.registry_reading import (
 )
 from tractusx_testlab.steps.shared_models import (
     HttpTransportParams,
-    StepParams,
 )
-from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput
 from tractusx_testlab.syntax.context_vars import DATAPLANE_URL, EDR_TOKEN
 
 if TYPE_CHECKING:
@@ -63,97 +66,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Shared contract
-# ---------------------------------------------------------------------------
-
-
-class DtrParams(StepParams):
-    """What every Digital Twin Registry step accepts.
-
-    ``bpn`` selects the tenant the registry answers for; left out, the AAS
-    service uses whatever it was configured with.
-    """
-
-    bpn: str | None = Field(
-        default=None, description="BPN the registry request is made on behalf of."
-    )
-
-
-class DescriptorPayload(StepPayload):
-    """An AAS descriptor as the registry returned it.
-
-    The shape is defined by the AAS specification rather than by testlab, so
-    the two keys every descriptor carries are named and the rest of the
-    document round-trips untouched.
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    id: str | None = Field(default=None, description="Identifier of the descriptor.")
-    # The AAS API spells it ``idShort``; scripts read ``id_short`` and nothing
-    # else, so the camelCase form is accepted on the way in and never written
-    # on the way out.
-    id_short: str | None = Field(
-        default=None,
-        validation_alias="idShort",
-        description="Short, human-readable name.",
-    )
-
-
-def _as_document(result: Any) -> Any:
-    """Render an SDK descriptor object as the plain document a script reads."""
-    return result.to_dict() if hasattr(result, "to_dict") else result
-
-
-class SpecificAssetId(BaseModel):
-    """One ``specificAssetIds`` criterion a shell is searched by.
-
-    Defined by the AAS specification rather than by testlab, so the two keys a
-    lookup always sends are named and anything else — ``externalSubjectId`` for
-    a criterion visible to one partner only — round-trips untouched.
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    name: str = Field(description="Name of the asset identifier, e.g. 'partInstanceId'.")
-    value: str = Field(description="Value that identifier must have.")
-
-
-def _asset_ids_query(criteria: list[SpecificAssetId]) -> list[str]:
-    """The criteria as the ``assetIds`` query values ``GET /lookup/shells`` expects.
-
-    Each criterion travels as its own base64url-encoded JSON object — that is
-    the AAS v3 encoding, not a testlab convention — and it is the same encoding
-    whichever registry is being searched, so both sides read it from here.
-    """
-    return [
-        encode_as_base64_url_safe(json.dumps(entry.model_dump(exclude_none=True)))
-        for entry in criteria
-    ]
-
-
-class ShellLookupOutput(StepPayload):
-    """Shells a registry read returned.
-
-    The one output shape of every step that answers with a collection of shells,
-    so a script reads ``shell_ids`` and ``shell_descriptors`` the same way
-    whether the shells were searched for or listed, and whether the registry
-    searched was the run's own or a counterparty's.
-    """
-
-    shell_ids: list[str] = Field(
-        default_factory=list, description="Identifiers of the shells that matched."
-    )
-    shell_descriptors: list[dict] = Field(
-        default_factory=list,
-        description="The descriptor document of each matching shell.",
-    )
-
-
-# ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-# The consumer-side transport
 # ---------------------------------------------------------------------------
 
 
@@ -178,8 +90,8 @@ class DataplaneParams(HttpTransportParams):
 
     def transport(self, context: StepContext) -> tuple[str, dict[str, str], float]:
         """The (base URL, headers, timeout) this step's requests travel with."""
-        base = (self.dataplane_url or context.get_variable(DATAPLANE_URL, "")).rstrip("/")
-        token = self.edr_token or context.get_variable(EDR_TOKEN, "")
+        base = (self.dataplane_url or context.get_str(DATAPLANE_URL)).rstrip("/")
+        token = self.edr_token or context.get_str(EDR_TOKEN)
         headers = {"Authorization": token, **self.headers}
         return base, headers, self.timeout_or(context.config.default_timeout_s)
 

@@ -66,7 +66,7 @@ _SIMPLIFIED_KEY_MAP: dict[str, str] = {
 }
 
 
-def _to_odrl_policy(value: object) -> object:
+def _to_odrl_policy[T](value: T) -> T:
     """Recursively convert a simplified testlab policy dict to ODRL camelCase format.
 
     Maps snake_case keys and plural rule keys to the canonical ODRL names the
@@ -77,12 +77,12 @@ def _to_odrl_policy(value: object) -> object:
     - ``right_operand``→ ``rightOperand``
     """
     if isinstance(value, dict):
-        return {
+        return {  # type: ignore[return-value]
             _SIMPLIFIED_KEY_MAP.get(k, k): _to_odrl_policy(v)
             for k, v in value.items()
         }
     if isinstance(value, list):
-        return [_to_odrl_policy(item) for item in value]
+        return [_to_odrl_policy(item) for item in value]  # type: ignore[return-value]
     return value
 
 

@@ -76,7 +76,7 @@ class DeleteAssetStep(BaseStep[DeleteAssetParams, DeletionOutput]):
         self, params: DeleteAssetParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DeletionOutput]:
         provider = context.dataspace.provider()
-        asset_id = params.asset_id or context.get_variable("asset_id")
+        asset_id = params.asset_id or context.get_str("asset_id")
         url = context.dataspace.provider_endpoint_url("assets", asset_id)
 
         result = provider.assets.delete(oid=asset_id)
@@ -114,7 +114,7 @@ class DeletePolicyStep(BaseStep[DeletePolicyParams, DeletionOutput]):
         self, params: DeletePolicyParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DeletionOutput]:
         provider = context.dataspace.provider()
-        policy_id = params.policy_id or context.get_variable("policy_id")
+        policy_id = params.policy_id or context.get_str("policy_id")
         url = context.dataspace.provider_endpoint_url("policies", policy_id)
 
         result = provider.policies.delete(oid=policy_id)
@@ -162,7 +162,7 @@ class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, Dele
         definition: StepDefinition,
     ) -> StepOutput[DeletionOutput]:
         provider = context.dataspace.provider()
-        contract_id = params.contract_definition_id or context.get_variable(
+        contract_id = params.contract_definition_id or context.get_str(
             "contract_definition_id"
         )
         url = context.dataspace.provider_endpoint_url("contract_definitions", contract_id)

@@ -51,10 +51,11 @@ logger = logging.getLogger(__name__)
 def _resolve_predicate(current: object, segment: str, match: re.Match) -> object:
     """Resolve a ``name[key=value]`` segment, selecting the first matching element."""
     name, pred_key, pred_val = match.group(1), match.group(2), match.group(3)
+    container: object
     if isinstance(current, list):
         # Step over an intermediate array: apply the predicate to each element.
-        containers = [
-            item.get(name) for item in current
+        containers: list[list] = [
+            item[name] for item in current
             if isinstance(item, dict) and isinstance(item.get(name), list)
         ]
         container = [entry for sublist in containers for entry in sublist]
