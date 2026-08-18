@@ -111,6 +111,21 @@ env:
           type: object
           class: Policy
 
+    - id: stepwise_asset
+      uses: config/connector/asset
+      name: A second HTTP test asset, for the step-by-step DSP journey
+      with:
+        source: value
+        value:
+          asset_id: testlab-e2e-stepwise-asset
+          base_url: "http://tck-echo.umbrella.svc.cluster.local"
+          dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+          version: "1.0"
+      returns:
+        asset:
+          type: object
+          class: Asset
+
     - id: usage_policy
       uses: config/connector/policy
       name: Framework-agreement usage policy
@@ -133,8 +148,22 @@ env:
           type: object
           class: Policy
 
+# Every entry is `skippable: true`. This is testlab's own CI signal rather than
+# a certification TCK, so the operator is allowed to run any subset — which is
+# also what lets the workflow execute several *combinations* of one compiled
+# package (`--var skip_tests=...`) instead of compiling a package per shape. A
+# published certification TCK would leave these false, and the engine would
+# then refuse to omit anything.
 tests:
   - id: connector_negotiation.yaml
     name: Negotiate and pull data across the two live EDC connectors
+    skippable: true
+  - id: dsp_step_by_step.yaml
+    name: Drive the same DSP journey as six wired steps
+    skippable: true
   - id: dtr_roundtrip.yaml
     name: Write and read back a shell descriptor on the SUT's Digital Twin Registry
+    skippable: true
+  - id: negative_paths.yaml
+    name: Ask for things that are not there, and check the answers say so
+    skippable: true

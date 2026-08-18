@@ -101,8 +101,18 @@ class TestScript:
         return self.definition.teardown
 
     def step_count(self) -> int:
-        """Return the number of main execution steps."""
-        return len(self.definition.execution)
+        """Return how many steps this script runs, across all three phases.
+
+        Setup and teardown are steps: they invoke the same catalog, publish
+        under the same rules and can fail the script. Counting only
+        ``execution`` made ``testlab run`` announce "Steps: 2" for a run that
+        went on to execute five, and gave the progress bar a total it passed.
+        """
+        return (
+            len(self.definition.setup)
+            + len(self.definition.execution)
+            + len(self.definition.teardown)
+        )
 
     @property
     def definition_version(self) -> str:

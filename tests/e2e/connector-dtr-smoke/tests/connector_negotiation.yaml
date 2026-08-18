@@ -101,7 +101,7 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: asset_id, operator: equals, expected: "testlab-e2e-smoke-asset" }
+        with: { input: asset_id, operator: equals, value: "testlab-e2e-smoke-asset" }
       - uses: validate/assert
         with: { input: negotiation_id, operator: not_null }
       - uses: validate/assert

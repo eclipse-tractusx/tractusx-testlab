@@ -119,8 +119,8 @@ def print_run_results(result, step_status_cls, script_status_cls) -> None:
     if result.duration_ms:
         typer.echo(
             f"  RESULT: {status_label}  |  "
-            f"{result.passed} passed  "
-            f"{result.total - result.passed} failed  |  "
+            f"{result.steps_passed} passed  "
+            f"{result.steps_total - result.steps_passed} failed  |  "
             f"Duration: {result.duration_ms:.0f}ms"
         )
     else:

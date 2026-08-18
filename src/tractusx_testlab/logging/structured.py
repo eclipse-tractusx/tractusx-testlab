@@ -33,6 +33,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO
 
+from tractusx_testlab.logging.console import render
+
 
 class _JsonFormatter(logging.Formatter):
     """Emit each log record as a single JSON line."""
@@ -82,38 +84,12 @@ class CliHandler(logging.StreamHandler):
                 return handler.formatter
         return None
 
-    @classmethod
-    def _build_inline_message(cls, base_msg: str, extra_data: dict[str, object]) -> str:
-        parts: list[str] = [base_msg]
-
-        # Add extra_data fields
-        if "tck" in extra_data:
-            parts.append(f"[{extra_data['tck']}]")
-        if "script" in extra_data:
-            parts.append(f"[{extra_data['script']}]")
-        if "step_type" in extra_data:
-            parts.append(f"[{extra_data['step_type']}]")
-        if "phase" in extra_data:
-            parts.append(f"[{extra_data['phase']}]")
-        if "status" in extra_data:
-            parts.append(f"[{extra_data['status']}]")
-        if "duration_s" in extra_data:
-            parts.append(f"[{extra_data['duration_s']}s]")
-        if "request" in extra_data:
-            parts.append(f"request:[{json.dumps(extra_data['request'], default=str)}]")
-        if "response" in extra_data:
-            parts.append(f"response:[{json.dumps(extra_data['response'], default=str)}]")
-        if "error" in extra_data:
-            parts.append(f"error:[{extra_data['error']}]")
-
-        return " ".join(parts)
-
     def emit(self, record: logging.LogRecord) -> None:
         if hasattr(record, "extra_data") or (record.exc_info and record.exc_info[1]):
             record = logging.makeLogRecord(record.__dict__)
             if hasattr(record, "extra_data"):
                 extra_data = dict(record.extra_data)
-                record.msg = self._build_inline_message(record.getMessage(), extra_data)
+                record.msg = render(record.getMessage(), extra_data)
 
                 record.args = None
             if record.exc_info and record.exc_info[1]:

@@ -194,11 +194,24 @@ class ScriptValidator:
         result = ValidationResult()
         declared = set(scope) if scope is not None else None
 
-        for idx, step_def in enumerate(script.setup):
-            self._validate_step(step_def, idx, declared, version, result, phase="setup")
-
-        for idx, step_def in enumerate(script.execution):
-            self._validate_step(step_def, idx, declared, version, result)
+        # All three phases. `teardown` used to be left out, so a teardown step
+        # could name a step type that does not exist, assert with an operand its
+        # operator never reads, or declare a `returns:` the step does not
+        # publish — and `testlab validate` answered OK. The shipped e2e TCK had
+        # exactly that: a `delete_shell_descriptor` assertion the engine would
+        # have refused, in a file the validator called clean.
+        #
+        # The label is the phase the author writes in a reference
+        # (`${{ execution.<id>.<field> }}`), not an engine-internal synonym: an
+        # error in the main phase used to be reported against "main", a word
+        # that appears nowhere in the syntax.
+        for phase, steps in (
+            ("setup", script.setup),
+            ("execution", script.execution),
+            ("teardown", script.teardown),
+        ):
+            for idx, step_def in enumerate(steps):
+                self._validate_step(step_def, idx, declared, version, result, phase=phase)
 
         return result
 
@@ -209,7 +222,7 @@ class ScriptValidator:
         declared: set[str] | None,
         version: str | None,
         result: ValidationResult,
-        phase: str = "main",
+        phase: str = "execution",
     ) -> None:
         effective_version = version or defaults.DATASPACE_VERSION
 

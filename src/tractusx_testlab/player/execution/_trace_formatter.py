@@ -98,7 +98,8 @@ def finalize_job(
 ) -> None:
     """Update job status and close the logger after execution completes."""
     job.result = result
-    if result.passed:
+    # `status`, not a step tally: the verdict is the aggregate the TCK reports.
+    if result.status in _NON_FAILING_STATUSES:
         jobs.complete(job.job_id)
         monitor.on_job_completed(job.job_id)
     else:

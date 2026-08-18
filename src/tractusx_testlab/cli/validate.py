@@ -55,8 +55,7 @@ def validate(
 
     for issue in result.issues:
         prefix = "ERROR" if issue.level == "error" else "WARN "
-        loc = f" (step {issue.step_index})" if issue.step_index is not None else ""
-        typer.echo(f"  [{prefix}]{loc} {issue.message}")
+        typer.echo(f"  [{prefix}]{_where(issue)} {issue.message}")
 
     if result.valid:
         typer.echo(f"\nValid with {len(result.issues)} warning(s)")
@@ -65,3 +64,17 @@ def validate(
         errors = sum(1 for issue in result.issues if issue.level == "error")
         typer.echo(f"\nInvalid — {errors} error(s)")
         raise typer.Exit(1)
+
+
+def _where(issue: object) -> str:
+    """Locate an issue as the author would: which phase, which step in it.
+
+    The index alone was ambiguous — a setup step 0, an execution step 0 and a
+    teardown step 0 all printed as "(step 0)", and the phase was on the issue
+    the whole time.
+    """
+    index = getattr(issue, "step_index", None)
+    if index is None:
+        return ""
+    phase = getattr(issue, "phase", None)
+    return f" ({phase} step {index})" if phase else f" (step {index})"

@@ -170,8 +170,17 @@ class TckResult(BaseModel):
         return None
 
     @property
-    def passed(self) -> int:
-        """Count of steps with PASSED status across all scripts."""
+    def steps_passed(self) -> int:
+        """Count of steps with PASSED status across all scripts.
+
+        Named for what it is. It was ``passed``, which reads as a verdict, and
+        one caller used it as one: ``if result.passed:`` decided whether to
+        emit ``job_completed`` or ``job_failed``, and a non-zero *count* is
+        truthy — so a run where four steps passed and one failed announced
+        itself as COMPLETED on the event stream the IDE consumes, while the
+        CLI printed FAIL from :attr:`status`. Ask :attr:`status` for the
+        verdict; ask this for the tally.
+        """
         return sum(
             1
             for script in self.scripts
@@ -180,7 +189,7 @@ class TckResult(BaseModel):
         )
 
     @property
-    def total(self) -> int:
+    def steps_total(self) -> int:
         """Total number of steps across all scripts."""
         return sum(len(script.execution) for script in self.scripts)
 

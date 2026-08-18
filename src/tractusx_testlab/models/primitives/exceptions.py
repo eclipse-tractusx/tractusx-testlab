@@ -195,6 +195,14 @@ class UnresolvedReferenceError(AuthoringError):
     The variables in scope are listed because the usual cause is a name that
     exists under a different spelling, and the author cannot see the namespace
     from the script.
+
+    When the reference reaches *into* something that is in scope, the message
+    says so and names the fix. A reference is a name, not a path: the walk into
+    a step's output happens once, in that step's ``returns:``, and the declared
+    name is what a later step reads. Someone who writes
+    ``${{ execution.call.body.kind }}`` against a step that declared ``body``
+    has made one specific mistake with one specific remedy, and a bare list of
+    everything in scope leaves them to infer the rule from it.
     """
 
     def __init__(self, reference: str, available: list[str] | None = None) -> None:
@@ -202,7 +210,25 @@ class UnresolvedReferenceError(AuthoringError):
         self.available = available or []
         listed = ", ".join(sorted(self.available)[:20]) or "nothing"
         more = "" if len(self.available) <= 20 else f" (and {len(self.available) - 20} more)"
-        super().__init__(f"'{reference}' resolves to nothing. In scope: {listed}{more}.")
+        super().__init__(
+            f"'{reference}' resolves to nothing.{self._remedy()} In scope: {listed}{more}."
+        )
+
+    def _remedy(self) -> str:
+        """Name the fix when the reference reaches into something in scope."""
+        segments = self.reference.split(".")
+        for cut in range(len(segments) - 1, 0, -1):
+            prefix, rest = ".".join(segments[:cut]), ".".join(segments[cut:])
+            if prefix not in self.available:
+                continue
+            owner = ".".join(prefix.split(".")[2:]) or prefix
+            return (
+                f" '{prefix}' is in scope but '{rest}' is a path into its value,"
+                f" and a reference is a name rather than a path. Declare it as"
+                f" `returns: {{ {owner}.{rest}: ... }}` on the step that produces"
+                f" it, then reference '{self.reference}'."
+            )
+        return ""
 
 
 class StepExecutionError(ExecutionError):

@@ -84,7 +84,7 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: id, operator: equals, expected: "urn:uuid:${{ execution.new_twin_id.value }}" }
+        with: { input: id, operator: equals, value: "urn:uuid:${{ execution.new_twin_id.value }}" }
 
   - id: read_back_shell
     uses: digital-twin/provider/get_shell_descriptor
@@ -98,9 +98,9 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: id, operator: equals, expected: "urn:uuid:${{ execution.new_twin_id.value }}" }
+        with: { input: id, operator: equals, value: "urn:uuid:${{ execution.new_twin_id.value }}" }
       - uses: validate/assert
-        with: { input: id_short, operator: equals, expected: "testlabE2eSmokeTwin" }
+        with: { input: id_short, operator: equals, value: "testlabE2eSmokeTwin" }
 
 teardown:
   - id: delete_shell
@@ -115,4 +115,4 @@ teardown:
       # This run created the twin, so a delete answered with anything but 204
       # means the round-trip did not end where it started.
       - uses: validate/assert
-        with: { input: status_code, operator: equals, expected: 204 }
+        with: { input: status_code, operator: equals, value: 204 }

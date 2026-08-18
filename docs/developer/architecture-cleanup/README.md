@@ -951,3 +951,96 @@ live in `steps/registry_models.py` now, beside the readers in
 The duplication was visible in the shipped documentation the whole time —
 `docs/specification/reference/steps.md` documented `SpecificAssetId` twice,
 because it existed twice. Deduplicating the code removed the doubled entry.
+
+## Pipeline verification — 2026-08-18
+
+Built a TCK that uses the whole chain and ran it, rather than reasoning about
+it. Five defects, each of which had shipped.
+
+### The verdict was a step tally
+
+`TckResult.passed` counts steps with `PASSED`. `finalize_job` asked
+`if result.passed:` — and a non-zero count is truthy. **Any run where at least
+one step passed published `job_completed`**, while the CLI printed FAIL from
+`status`. The event stream is what the IDE reads, so a failed TCK showed as a
+green job; only a run where *every* step failed reported failure.
+
+`steps_passed` / `steps_total` are named for what they are and the verdict is
+`status`. Pinned in `tests/unit/player/test_run_verdict.py`, including the
+four-of-five reproduction.
+
+### The console trace threw away everything it was given
+
+`_build_inline_message` looked for flat `status` / `duration_s` / `request` /
+`response` keys. The typed events carry a nested `result` and a nested
+`assertion`, so none of those keys were ever present and every line printed as
+its event name and its script: `assertion.result [wiring]`. The JSONL had the
+whole story the entire time.
+
+`logging/console.py` renders the real shapes — which check ran, what it asked
+and saw, which step finished, how long it took, and the request and response
+when the step made one. Thirteen tests in `tests/unit/logging/`.
+
+### The validator never walked `teardown`
+
+`validate()` iterated `setup` and `execution`. A teardown step could name a
+step type that does not exist, assert with an operand its operator never reads,
+or declare a `returns:` the step does not publish, and `testlab validate`
+answered OK.
+
+**The shipped e2e TCK was in exactly that state** — `dtr_roundtrip.yaml`'s
+teardown asserted with `expected:`, which the engine refuses. The e2e job's
+first step is `testlab validate`, so the CI signal was red-on-arrival and the
+validator was hiding one of the four errors. Fixed both.
+
+Errors also name the phase now: a setup step 0, an execution step 0 and a
+teardown step 0 all printed as `(step 0)`. And the main phase is labelled
+`execution` — the word authors write in `${{ execution.<id> }}` — rather than
+`main`, which appears nowhere in the syntax.
+
+### `Steps: N` counted one phase of three
+
+`TestScript.step_count` returned `len(definition.execution)`. `testlab run`
+announced "Steps: 2" for a run that executed five, and gave the progress bar a
+total it went past. `testlab inspect` had always counted all three, so the two
+commands disagreed about the same package.
+
+### A reference that reaches into a document said nothing useful
+
+`${{ execution.call.body.kind }}` against a step that declared `body` failed
+with a list of everything in scope. The rule is that a reference is a *name*
+and the walk happens once, in `returns:` — `returns: { body.kind: ... }` — but
+nothing said so at the point of failure.
+
+I first "fixed" this by making the resolver descend, which was wrong: the walk
+already had one spelling, and a second one is the alias this project does not
+allow. Reverted. `UnresolvedReferenceError` now detects that a prefix is in
+scope and names the remedy.
+
+### E2E — combinations against the live dataspace
+
+Two scenarios added to `tests/e2e/connector-dtr-smoke/`:
+
+* `dsp_step_by_step.yaml` — the journey `connector_negotiation.yaml` runs as
+  one `pull_data_filtered` step, driven as six wired steps instead: catalog →
+  dataset → negotiation → transfer → EDR → data-plane fetch. Each step reads
+  what the one before published, so this is what fails if the runtime stops
+  carrying a real value across a phase boundary. The last step spends the EDR,
+  which a token assembled from unresolved references cannot do.
+* `negative_paths.yaml` — asks the live dataspace for things that are not
+  there and asserts the answers say so. A green run means absence is reported
+  as absence.
+
+The manifest marks every test `skippable: true`, so the workflow runs **one
+compiled package as several combinations** (`--var skip_tests=…`): full,
+wiring-only, registry-only, plus an unknown id that must be refused. It also
+runs `testlab inspect --json` and asserts the package carries every test the
+manifest declared, so a test lost between manifest and archive is caught before
+anything executes.
+
+`tests/combinations/test_tck_pipeline.py` is the same journey without a
+cluster: author three test files, compile, inspect, run, and run combinations —
+18 tests covering the wiring on the wire (the ticket a setup step published
+arrives in the execution step's header, and the state from *that* step's
+response body arrives in teardown's), assertion recording, soft-failure
+semantics, and selection refusal.

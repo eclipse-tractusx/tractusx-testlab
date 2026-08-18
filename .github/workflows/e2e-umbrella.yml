@@ -600,7 +600,11 @@ jobs:
           echo "provider DTR API: reachable at ${DTR_BASE_URL}"
 
       # ------------------------------------------------------------------
-      # 6. testlab: validate -> compile -> run, against the live dataspace
+      # 6. testlab: validate -> compile -> inspect -> run, against the live
+      #    dataspace. One package, executed as several combinations: the
+      #    manifest marks every test `skippable: true`, which is what lets an
+      #    operator select a subset — and what this job uses to prove the
+      #    selection machinery works against a real SUT rather than a mock.
       # ------------------------------------------------------------------
       - name: testlab validate
         run: poetry run testlab validate "${TCK_INDEX}"
@@ -610,12 +614,74 @@ jobs:
           mkdir -p dist
           poetry run testlab compile "${TCK_INDEX}" --output "${TCK_OUT}"
 
-      - name: testlab run — connector negotiation + DTR round-trip
+      # The package describes itself before anything runs it. This is also the
+      # assertion that compilation kept the whole suite: a test dropped between
+      # the manifest and the archive shows up here as a missing script.
+      - name: testlab inspect — what the package says it will do
+        run: |
+          mkdir -p logs
+          poetry run testlab inspect "${TCK_OUT}" --variables --infrastructure
+          poetry run testlab inspect "${TCK_OUT}" --json > logs/inspect.json
+          poetry run python - <<'PY'
+          import json, pathlib, sys
+
+          report = json.loads(pathlib.Path("logs/inspect.json").read_text())["inspection"]
+          expected = {
+              "connector_negotiation.yaml",
+              "dsp_step_by_step.yaml",
+              "dtr_roundtrip.yaml",
+              "negative_paths.yaml",
+          }
+          found = {script["test_id"] for script in report["scripts"]}
+          if found != expected:
+              sys.exit(f"package carries {sorted(found)}, manifest declared {sorted(expected)}")
+          print(f"package carries all {len(found)} tests, {report['total_steps']} steps, "
+                f"{report['total_validations']} validations")
+          PY
+
+      # Combination 1 — the whole suite.
+      - name: testlab run — full suite
         run: |
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
-            --logs-dir logs/e2e
+            --logs-dir logs/e2e/full
+
+      # Combination 2 — only the tests that exercise the runtime's variable
+      # wiring, from the same package. Nothing recompiles; the selection is a
+      # run-time argument, and the engine refuses ids that are unknown or that
+      # the manifest did not mark skippable.
+      - name: testlab run — wiring combination
+        run: |
+          poetry run testlab run "${TCK_OUT}" \
+            --config "${TCK_CONFIG}" \
+            --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+            --var "skip_tests=connector_negotiation.yaml,dtr_roundtrip.yaml" \
+            --logs-dir logs/e2e/wiring
+
+      # Combination 3 — the registry alone, proving a test that needs no
+      # connector journey runs without one having happened first.
+      - name: testlab run — registry combination
+        run: |
+          poetry run testlab run "${TCK_OUT}" \
+            --config "${TCK_CONFIG}" \
+            --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml" \
+            --logs-dir logs/e2e/registry
+
+      # A selection the manifest does not permit must be refused, not silently
+      # ignored — an operator who mistypes a test id has to find out.
+      - name: testlab run — an unknown test id is refused
+        run: |
+          if poetry run testlab run "${TCK_OUT}" \
+               --config "${TCK_CONFIG}" \
+               --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+               --var "skip_tests=no-such-test.yaml" \
+               --logs-dir logs/e2e/refused; then
+            echo "::error::skipping an unknown test id was accepted; it must be refused"
+            exit 1
+          fi
+          echo "unknown test id refused, as it must be"
 
       # ------------------------------------------------------------------
       # 7. Diagnostics + cleanup
@@ -651,7 +717,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: testlab-e2e-run-${{ github.run_id }}
-          path: logs/e2e
+          path: logs
           retention-days: 14
           if-no-files-found: ignore
 
