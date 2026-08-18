@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -35,8 +35,8 @@ from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import FilterExpression
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepPayload
+from tractusx_testlab.steps.shared_models import FilterExpression
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -89,7 +89,7 @@ def _create_or_conflict(create, **kwargs) -> tuple[dict | None, int]:
         if "409" in str(exc):
             return None, _ALREADY_EXISTS
         raise
-    return result, 200 if result else 500
+    return result, 200
 
 
 # ---------------------------------------------------------------------------
@@ -158,8 +158,8 @@ def _register_asset(
     over the config it was given, the wizard hands over the config it
     assembled, and both get the same call and the same 409 handling.
     """
-    provider = context.get_provider_service()
-    url = context.get_provider_endpoint_url("assets")
+    provider = context.dataspace.provider()
+    url = context.dataspace.provider_endpoint_url("assets")
 
     result, http_status = _create_or_conflict(
         provider.create_asset, asset_id=asset_id, **definition
@@ -337,8 +337,8 @@ def _register_policy(
     The one place either policy step reaches the connector, so the raw step and
     its wizard sibling cannot drift apart in what they register.
     """
-    provider = context.get_provider_service()
-    url = context.get_provider_endpoint_url("policies")
+    provider = context.dataspace.provider()
+    url = context.dataspace.provider_endpoint_url("policies")
     policy_id = policy_id or str(uuid.uuid4())
 
     rules = {
@@ -519,8 +519,8 @@ class CreateContractDefinitionStep(
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[CreateContractDefinitionOutput]:
-        provider = context.get_provider_service()
-        url = context.get_provider_endpoint_url("contract_definitions")
+        provider = context.dataspace.provider()
+        url = context.dataspace.provider_endpoint_url("contract_definitions")
         definition_id = params.contract_definition_id or str(uuid.uuid4())
 
         model = ModelFactory.get_contract_definition_model(

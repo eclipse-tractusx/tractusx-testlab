@@ -130,10 +130,7 @@ ignore = [
     "B008",    # call in an argument default — Typer's entire calling convention
     "RUF012",  # ClassVar on mutable class attrs — noisy against Pydantic models
 
-    # -- RATCHET: P4, typing pass (F-F04) -----------------------------------
-    "UP007",   # Union[X, Y]      → X | Y
-    "UP045",   # Optional[X]      → X | None
-    "UP046",   # Generic[T] class → PEP 695 syntax
+    # -- RATCHET: P5, StrEnum change (F-F04 remainder) ----------------------
     "UP042",   # (str, Enum)      → StrEnum. Changes str() semantics; needs care.
 
     # -- RATCHET: P4, import cycle (F-D02) ----------------------------------
@@ -205,21 +202,31 @@ ignore_missing_imports = true
 # ---------------------------------------------------------------------------
 
 [[tool.mypy.overrides]]
-# F-F02 — SDK services typed `object`. Cleared by P4.
+# F-F02 — the `object`-typed SDK seam is gone: `contracts/services.py` states
+# what the engine requires of a connector, and the accessors return it. That
+# took `steps` from 59 errors to 17, and the whole package off this list.
+#
+# What is left is ordinary step-level typing — `Any` flowing out of the SDK into
+# a declared payload — not the seam. Ten modules, listed individually so the
+# remainder is visible and shrinks one file at a time rather than hiding behind
+# `steps.*`.
 module = [
-    "tractusx_testlab.steps.*",
+    "tractusx_testlab.steps._checks.schema",
+    "tractusx_testlab.steps.shared_models",
+    "tractusx_testlab.steps.assertions.operators",
+    "tractusx_testlab.steps.connector.dataplane",
+    "tractusx_testlab.steps.connector.pull_data",
+    "tractusx_testlab.steps.connector.transfer",
+    "tractusx_testlab.steps.flow.conditional",
+    "tractusx_testlab.steps.digital_twin_registry.consumer",
+    "tractusx_testlab.steps.security.oauth2",
+    "tractusx_testlab.steps.util.json_extract",
     "tractusx_testlab.cli.compile",
     "tractusx_testlab.cli.inspect",
     "tractusx_testlab.scripting._inspection",
     "tractusx_testlab.scripting.step_docs",
     "tractusx_testlab.server.routes.compile",
 ]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-# F-F03 — `StepDefinition.validate` shadows `BaseModel.validate`, which mypy
-# reports as an incompatible override. Cleared by P4's rename.
-module = ["tractusx_testlab.models.authoring.definitions"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]

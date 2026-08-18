@@ -19,7 +19,7 @@ SPDX-License-Identifier: CC-BY-4.0
 
 # Compiling Packages
 
-This section shows how to validate your test scripts and compile them into a portable `.tckpkg` package.
+This section shows how to validate your test scripts and compile them into a portable `.tck` package.
 
 ## Prerequisites
 
@@ -131,7 +131,7 @@ testlab compile tck.yaml \
   --authorize-player ~/.testlab/keys/player1.pub \
   --authorize-player ~/.testlab/keys/player2.pub \
   --signing-key ./compiler_signing.pem \
-  --output connector_e2e-1.0.tckpkg
+  --output connector_e2e-1.0.tck
 ```
 
 **Expected output:**
@@ -151,14 +151,14 @@ Packaging...
    Writing payload.enc (encrypted scripts + assets)
    Writing signature.sig (Ed25519 signature)
 
-Encrypted package created: connector_e2e-1.0.tckpkg (14.1 KB)
+Encrypted package created: connector_e2e-1.0.tck (14.1 KB)
    Authorized players: 2
 ```
 
 **If you forget the keys:**
 
 ```bash
-testlab compile tck.yaml --output connector_e2e-1.0.tckpkg
+testlab compile tck.yaml --output connector_e2e-1.0.tck
 ```
 
 ```
@@ -173,14 +173,14 @@ To compile without encryption (development only), use --plain.
 
 ## Step 4 — Inspect the Compiled Package
 
-The compiled `.tckpkg` is **not human-readable**. Tests and assets are encrypted inside `payload.enc`:
+The compiled `.tck` is **not human-readable**. Tests and assets are encrypted inside `payload.enc`:
 
 ```bash
-unzip -l connector_e2e-1.0.tckpkg
+unzip -l connector_e2e-1.0.tck
 ```
 
 ```
-Archive:  connector_e2e-1.0.tckpkg
+Archive:  connector_e2e-1.0.tck
   Length      Date    Time    Name
 ---------  ---------- -----   ----
       892  2026-03-30 14:25   manifest.yaml
@@ -193,7 +193,7 @@ Archive:  connector_e2e-1.0.tckpkg
 Only the `manifest.yaml` is readable — it contains metadata and the security block, but **no secrets**:
 
 ```bash
-unzip -p connector_e2e-1.0.tckpkg manifest.yaml
+unzip -p connector_e2e-1.0.tck manifest.yaml
 ```
 
 ```yaml
@@ -232,42 +232,34 @@ security:
 | `checksum` | `sha256:<hex>` | Integrity hash — Player rejects tampered packages |
 | `security` | Block | Encryption metadata — algorithm, compiler ID, authorized Players |
 
-### Decompiling a Package
+### Extracting a Package
 
-An authorized Player can decompile a package — extracting the original YAML scripts — using the `testlab decompile` command. This requires the Player's private key (to decrypt) and the Compiler's public key (to verify the signature):
-
-```bash
-testlab decompile connector_e2e-1.0.tckpkg \
-  --player-keys .keys/player \
-  --compiler-pub .keys/compiler/signing.pub
-```
-
-```
-Decompiled → connector_e2e-1.0.yaml
-  Package  : connector_e2e v1.0
-  Checksum : e3b0c44298fc1c149afbf4c89...
-  Verified : signature OK
-```
-
-You can also print the decrypted YAML to stdout without writing a file:
+An authorized Player can write a package's contents back out — the manifest, the
+compiled instructions, the test scripts and the bundled assets — with
+`testlab inspect --extract`. For an encrypted package this needs the Player's
+private key (to decrypt) and the Compiler's public key (to verify the signature):
 
 ```bash
-testlab decompile connector_e2e-1.0.tckpkg \
+testlab inspect connector_e2e-1.0.tck \
   --player-keys .keys/player \
   --compiler-pub .keys/compiler/signing.pub \
-  --stdout
+  --extract ./extracted
 ```
 
-Or specify a custom output path:
-
-```bash
-testlab decompile connector_e2e-1.0.tckpkg \
-  --player-keys .keys/player \
-  --compiler-pub .keys/compiler/signing.pub \
-  --output ./decompiled/connector_e2e.yaml
+```
+Extracted connector_e2e-1.0.tck -> ./extracted/
+  manifest.yaml
+  tck-bundle.yaml
+  tck-execution.json
+  tests/negotiate-and-transfer.yaml
 ```
 
-!!! note "Decompilation requires authorization"
+What lands on disk is what was verified: the package is checked before anything
+is written, and the bytes written are the checked ones. There used to be a
+separate `testlab decompile` that wrote out only the authoring YAML, and only
+for encrypted packages.
+
+!!! note "Extraction requires authorization"
     The Player's key must be listed in the package's `authorized_players` block.
     Unauthorized Players cannot unwrap the AES content key and will receive an error.
 
@@ -278,7 +270,7 @@ testlab decompile connector_e2e-1.0.tckpkg \
 For local development and debugging, you can opt out of encryption with `--plain`:
 
 ```bash
-testlab compile tck.yaml --plain --output connector_e2e-1.0.tckpkg
+testlab compile tck.yaml --plain --output connector_e2e-1.0.tck
 ```
 
 ```
@@ -296,17 +288,17 @@ Packaging...
    Stamping metadata (SDK v0.5.0, 2026-03-30T14:22:00Z)
    Computing SHA-256 checksum
 
-Package created: connector_e2e-1.0.tckpkg (12.4 KB)
+Package created: connector_e2e-1.0.tck (12.4 KB)
 ```
 
 Plain packages store tests as-is — human-readable, no encryption, no keys needed:
 
 ```bash
-unzip -l connector_e2e-1.0.tckpkg
+unzip -l connector_e2e-1.0.tck
 ```
 
 ```
-Archive:  connector_e2e-1.0.tckpkg
+Archive:  connector_e2e-1.0.tck
   Length      Date    Time    Name
 ---------  ---------- -----   ----
       487  2026-03-30 14:22   manifest.yaml
@@ -329,7 +321,7 @@ Archive:  connector_e2e-1.0.tckpkg
 | Command | Description |
 |---------|-------------|
 | `testlab validate <tck.yaml>` | Validate tests without packaging |
-| `testlab compile <tck.yaml> --authorize-player <key.pub> --signing-key <key.pem>` | Compile into encrypted `.tckpkg` (default) |
+| `testlab compile <tck.yaml> --authorize-player <key.pub> --signing-key <key.pem>` | Compile into encrypted `.tck` (default) |
 | `testlab compile <tck.yaml> --plain` | Compile without encryption (development only) |
 | `testlab compile <tck.yaml> --output <file>` | Specify output filename |
 | `testlab compile <tck.yaml> --library-path <dir>` | Set path for resolving imported tests |
@@ -338,14 +330,14 @@ Archive:  connector_e2e-1.0.tckpkg
 | `testlab keygen --force` | Overwrite existing keys (key rotation) |
 | `testlab export-key --player` | Print Player public key to stdout |
 | `testlab export-key --fingerprint` | Print Player fingerprint |
-| `testlab info <package>` | Show manifest metadata |
-| `testlab decompile <package> --player-keys <dir> --compiler-pub <key.pub>` | Decrypt and extract original YAML (requires authorized Player key + Compiler public key) |
-| `testlab decompile <package> ... --stdout` | Print decrypted YAML to stdout instead of file |
-| `testlab decompile <package> ... --output <file>` | Write decrypted YAML to a specific path |
+| `testlab inspect <package>` | Show what a package contains, without running it |
+| `testlab inspect <package> --manifest` | Show manifest metadata |
+| `testlab inspect <package> --extract <dir>` | Write the verified contents out (needs `--player-keys`/`--compiler-pub` if encrypted) |
+| `testlab inspect <package> --json` | One JSON object with every requested section |
 
 ---
 
-You now have a compiled `.tckpkg` ready to distribute and execute. Continue to [Executing Tests](executing-tests.md).
+You now have a compiled `.tck` ready to distribute and execute. Continue to [Executing Tests](executing-tests.md).
 
 ---
 

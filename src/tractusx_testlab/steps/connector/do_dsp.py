@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -30,14 +30,15 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import (
+from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.shared_models import (
     CounterPartyParams,
     FilterExpressionParams,
     StepParams,
 )
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -90,14 +91,14 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
     async def execute(
         self, params: DoDspParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
-        consumer = context.get_consumer_service()
-        endpoint, token = consumer.do_dsp(
+        consumer = context.dataspace.consumer()
+        endpoint, token = await sdk_call.run(consumer.do_dsp,
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
             filter_expression=params.sdk_filter_expression(),
             policies=params.expected_policies,
         )
-        return _build_output(context, params, endpoint, token)
+        return _build_output(self.step_type, context, params, endpoint, token)
 
 
 # ---------------------------------------------------------------------------
@@ -137,14 +138,14 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
     async def execute(
         self, params: DoDspWithBpnlParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
-        consumer = context.get_consumer_service()
-        endpoint, token = consumer.do_dsp_with_bpnl(
+        consumer = context.dataspace.consumer()
+        endpoint, token = await sdk_call.run(consumer.do_dsp_with_bpnl,
             bpnl=params.bpnl,
             counter_party_address=params.counter_party_address,
             filter_expression=params.sdk_filter_expression() or None,
             policies=params.expected_policies,
         )
-        return _build_output(context, params, endpoint, token)
+        return _build_output(self.step_type, context, params, endpoint, token)
 
 
 # ---------------------------------------------------------------------------
@@ -188,30 +189,42 @@ class DiscoverDtrAuthStep(BaseStep[DiscoverDtrAuthParams, DspFlowOutput]):
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DspFlowOutput]:
-        consumer = context.get_consumer_service()
-        endpoint, token = consumer.do_dsp_by_dct_type(
+        consumer = context.dataspace.consumer()
+        endpoint, token = await sdk_call.run(consumer.do_dsp_by_dct_type,
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
             dct_type=params.dct_type,
             policies=params.expected_policies,
         )
-        return _build_output(context, params, endpoint, token)
+        return _build_output(self.step_type, context, params, endpoint, token)
 
 
 def _build_output(
+    step_type: str,
     context: StepContext,
     params: StepParams,
     endpoint: str | None,
     token: str | None,
 ) -> StepOutput[DspFlowOutput]:
-    """Report the data-plane address every flow step ends at."""
+    """Report the data-plane address every flow step ends at.
+
+    A flow that produced no endpoint did not achieve what the step declares, so
+    it fails rather than reporting a 500 the counterpart never sent — the code
+    was invented, and nothing downstream read it.
+    """
+    if not endpoint:
+        raise StepExecutionError(
+            step_type,
+            "the DSP flow completed without a data-plane endpoint, so there is "
+            "nothing for a later step to pull data from.",
+        )
     value = DspFlowOutput(dataplane_url=endpoint, edr_token=token)
-    url = context.get_consumer_endpoint_url("edrs")
+    url = context.dataspace.consumer_endpoint_url("edrs")
     return StepOutput(
         value=value,
         request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
         response=HttpResponse(
-            status_code=200 if endpoint else 500,
+            status_code=200,
             body=value.model_dump(mode="json"),
         ),
     )

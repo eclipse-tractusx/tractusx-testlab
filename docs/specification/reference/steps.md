@@ -961,7 +961,7 @@ Register a mock HTTP endpoint that returns a canned response.
 | `path` | string | yes | — | — | URL path to register, e.g. '/companycertificate/request'. |
 | `method` | string | no | `'POST'` | — | HTTP method the mock answers on. |
 | `response_status` | integer | no | `200` | — | Status code the mock returns. |
-| `response_body` | any | no | `{}` | — | JSON body the mock returns; '@name' strings resolve to context variables. |
+| `response_body` | any | no | `{}` | — | JSON body the mock returns. References are written the usual way, '${{ ... }}', and are resolved before the step runs. |
 | `response_headers` | object | no | `{}` | — | Headers the mock returns alongside the body. |
 
 **Output** — the value assertions and `returns:` read
@@ -1385,6 +1385,17 @@ Single output field declared in a step `returns` block.
 |---|---|---|---|---|---|
 | `type` | string | yes | — | — |  |
 | `class` | string | no | `None` | — |  |
+
+### SpecificAssetId
+
+One `specificAssetIds` criterion a shell is searched by.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `name` | string | yes | — | — | Name of the asset identifier, e.g. 'partInstanceId'. |
+| `value` | string | yes | — | — | Value that identifier must have. |
+
+Additional keys sent by the counterpart are passed through unchanged.
 
 ### SpecificAssetId
 

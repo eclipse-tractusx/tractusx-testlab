@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -38,8 +38,8 @@ import contextlib
 
 from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
-from tractusx_testlab.infrastructure.manager import InfrastructureManager
 from tractusx_testlab.infrastructure.mapping import collect_overrides, flatten
+from tractusx_testlab.infrastructure.profiles import InfrastructureManager
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.models import (
     ScriptResult,
@@ -68,7 +68,7 @@ from tractusx_testlab.scripting.script import Tck as Tck
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import get_callback_manager, set_callback_manager
-from tractusx_testlab.services.manager import ServiceManager
+from tractusx_testlab.services.instances import ServiceManager
 from tractusx_testlab.syntax import defaults
 
 

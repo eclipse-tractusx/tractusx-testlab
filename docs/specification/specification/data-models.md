@@ -31,7 +31,7 @@ SPDX-License-Identifier: CC-BY-4.0
 | `ValueSource` | `INLINE`, `FILE`, `VARIABLE` | Where the expected assertion value originates |
 | `SdkCallMode` | `ALLOWLIST`, `OPEN` | SDK function invocation security mode |
 | `ServiceType` | `CONNECTOR_CONSUMER`, `CONNECTOR_PROVIDER`, `DTR` | Type of managed SDK service |
-| `PackageFormat` | `PLAIN`, `ENCRYPTED` | Whether the `.tckpkg` payload is unencrypted or encrypted |
+| `PackageFormat` | `PLAIN`, `ENCRYPTED` | Whether the `.tck` payload is unencrypted or encrypted |
 | `ServiceState` | `DECLARED`, `INITIALIZING`, `READY`, `ACTIVE`, `STOPPING`, `STOPPED`, `FAILED` | Lifecycle state of a managed service instance |
 
 ---
@@ -243,7 +243,7 @@ classDiagram
 |-------|------|-------------|
 | `job_id` | `str` | Unique identifier (e.g., `a1b2c3d4-e5f6-7890-abcd-1234567890ab`) |
 | `status` | `JobStatus` | Current lifecycle state (`QUEUED`, `RUNNING`, `WAITING`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT`) |
-| `package_name` | `str?` | Name of the `.tckpkg` being executed |
+| `package_name` | `str?` | Name of the `.tck` being executed |
 | `tck_id` | `str?` | Test case identifier |
 | `runtime_vars` | `dict` | Runtime variables provided at job creation |
 | `memory` | `JobMemory` | Persistent state bag — survives across steps and wait/resume cycles |

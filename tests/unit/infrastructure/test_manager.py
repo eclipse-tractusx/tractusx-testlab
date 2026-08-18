@@ -28,7 +28,7 @@ from __future__ import annotations
 import pytest
 
 from tractusx_testlab.config.settings import TestlabConfig
-from tractusx_testlab.infrastructure.manager import InfrastructureManager
+from tractusx_testlab.infrastructure.profiles import InfrastructureManager
 from tractusx_testlab.models.authoring.infrastructure import (
     CapabilityRequirement,
     InfrastructureConfig,

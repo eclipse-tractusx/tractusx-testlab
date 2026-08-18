@@ -67,6 +67,21 @@ _DOCUMENT_FIELDS = frozenset({"kind", "syntax", "metadata", "id", "namespace"})
 _FLATTENED_INTO_INSTRUCTIONS = frozenset({"setup", "execution", "teardown"})
 
 
+def _step_keys() -> set[str]:
+    """The keys a step is written with in YAML.
+
+    Field names and YAML keys are not the same set: ``with_`` is written
+    ``with``, ``if_condition`` is written ``if``, and ``assertions`` is written
+    ``validate`` — each because the YAML spelling is not a legal Python name or
+    would shadow something on ``BaseModel``. Comparing against the aliases is
+    comparing against what an author actually types.
+    """
+    return {
+        field.validation_alias or field.alias or name
+        for name, field in StepDefinition.model_fields.items()
+    }
+
+
 def _manifest() -> dict:
     return {
         "syntax": "v1-alpha",
@@ -157,10 +172,7 @@ class TestTheFixtureIsComplete:
 
     def test_the_step_declares_every_step_field(self) -> None:
         step = _script()["execution"][0]
-        aliased = {
-            field.alias or name for name, field in StepDefinition.model_fields.items()
-        }
-        missing = aliased - set(step)
+        missing = _step_keys() - set(step)
         assert not missing, (
             f"The fixture step does not exercise {sorted(missing)}. Add them to _script()."
         )
@@ -184,11 +196,8 @@ class TestEveryStepFieldSurvives:
             i for i in compiled[0]["instructions"] if i["id"] == "act"
         )
 
-        aliased = {
-            field.alias or name for name, field in StepDefinition.model_fields.items()
-        }
         dropped = {
-            name for name in aliased
+            name for name in _step_keys()
             if name not in instruction and _script()["execution"][0].get(name) is not None
         }
         assert not dropped, (

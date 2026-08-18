@@ -1,7 +1,7 @@
 ###############################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -29,7 +29,7 @@ from __future__ import annotations
 import pytest
 
 from tests.paths import CCM_RAW_DIR
-from tractusx_testlab.compiler.validation._rules import (
+from tractusx_testlab.compiler.validation._manifest_validation import (
     _validate_scoped_sides_are_declared,
     _validate_variable_scopes,
 )

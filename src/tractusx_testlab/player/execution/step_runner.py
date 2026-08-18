@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -101,6 +101,12 @@ async def run_step(
     step_instance = step_cls()
     started_at = datetime.now(UTC)
 
+    # Bound here rather than at the composition root so that every context which
+    # reaches a step can run a nested one — including the contexts built directly
+    # by tests. See contracts.StepInvoker for why a flow step is handed the
+    # runner instead of importing it.
+    context.bind_invoker(run_step)
+
     try:
         # Inside the guard: resolving a step's parameters is part of running it,
         # and an unresolvable reference must fail that step rather than escape
@@ -109,11 +115,11 @@ async def run_step(
         output = await step_instance.invoke(params, context, step_def)
 
         assertion_results: list[AssertionResult] = []
-        if step_def.validate:
+        if step_def.assertions:
             assertion_results = [
                 AssertionResult.model_validate(ar.model_dump())
                 for ar in AssertionEngine.evaluate(
-                    _resolve_assertions(step_def.validate, context),
+                    _resolve_assertions(step_def.assertions, context),
                     output,
                 )
             ]
@@ -171,7 +177,7 @@ def store_step_outputs(
         return
 
     from tractusx_testlab.steps._checks.extraction import declared_names
-    from tractusx_testlab.steps.base import StepOutput
+    from tractusx_testlab.steps.step_contract import StepOutput
 
     raw = step_result.output
     full_output: Any = (
@@ -265,7 +271,7 @@ def _declared_assertions(script: TestScript, results: list[StepResult]) -> int:
     """
     ran = {result.step_type for result in results if result.status is not StepStatus.SKIPPED}
     return sum(
-        len(step.validate or [])
+        len(step.assertions or [])
         for phase in (
             script.definition.setup,
             script.definition.execution,

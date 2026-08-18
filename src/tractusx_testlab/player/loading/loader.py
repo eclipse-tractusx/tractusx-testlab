@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Loader — resolves YAML files, .tck archives, and .stck archives into Tck objects."""
+"""Loader — resolves a YAML file or a ``.tck`` archive into a :class:`Tck`."""
 
 from __future__ import annotations
 
@@ -35,7 +35,6 @@ import yaml
 from pydantic import ValidationError
 
 from tractusx_testlab.compiler import package_digest
-from tractusx_testlab.compiler.packager import Packager
 from tractusx_testlab.models.primitives.enums import ScriptKind
 from tractusx_testlab.player.loading._parser import (
     _SCRIPT_ADAPTER,
@@ -108,7 +107,7 @@ def _detect_kind(data: dict) -> ScriptKind:
 
 
 class Loader:
-    """Loads a TCK from a YAML file, .tck archive, or .stck encrypted archive."""
+    """Loads a TCK from a YAML file or a ``.tck`` archive, plain or encrypted."""
 
     __slots__ = ()
 
@@ -123,9 +122,6 @@ class Loader:
         Uses the local parser to support testlab-extended enum values
         (assertion types, service types) that the SDK parser rejects.
         """
-        if path.suffix == ".stck":
-            return self._load_package(path, player_private_key, compiler_public_key)
-
         if path.suffix == ".tck":
             return self._load_tck_package(path, player_private_key, compiler_public_key)
 
@@ -214,8 +210,8 @@ class Loader:
         # A signed package is verified or refused; there is no third outcome.
         # This used to be `if compiler_public_key and sig_raw:`, so a caller that
         # supplied no key simply skipped the check — and `testlab run` only
-        # required one for `.stck`, which meant an encrypted `.tck` decrypted and
-        # ran with its signature unexamined.
+        # required one for the since-deleted `.stck`, which meant an encrypted
+        # `.tck` decrypted and ran with its signature unexamined.
         if sig_raw is None:
             raise ValueError(
                 f"Encrypted package {path.name!r} carries no signature. It cannot "
@@ -251,24 +247,6 @@ class Loader:
 
         data = yaml.safe_load(entries[_TCK_BUNDLE_ENTRY].decode("utf-8"))
         return self._parse_data(data, source_path=path, base_dir=extract_dir)
-
-    def _load_package(
-        self,
-        path: Path,
-        player_private_key: bytes | None,
-        compiler_public_key: bytes | None,
-    ) -> Tck:
-        """Load and verify a .stck archive — fingerprint/checksum verification handled by Packager."""
-        if player_private_key is None or compiler_public_key is None:
-            raise ValueError(
-                "player_private_key and compiler_public_key are required "
-                "to load .stck files"
-            )
-        yaml_bytes = Packager.extract_and_verify(
-            path, player_private_key, compiler_public_key,
-        )
-        data = yaml.safe_load(yaml_bytes)
-        return self._parse_data(data, source_path=path, base_dir=path.parent)
 
     def _load_yaml(self, path: Path) -> Tck:
         """Load a plain YAML file."""

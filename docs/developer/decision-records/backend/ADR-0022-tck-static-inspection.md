@@ -20,7 +20,9 @@
 
 ## Status
 
-Accepted
+Accepted — **amended 2026-08-18.** `.stck` no longer exists; `<package>` is a
+`.tck`, plain or encrypted. `testlab inspect` also absorbed `testlab info` and
+`testlab decompile`, which are now its `--manifest` and `--extract` sections.
 
 ## Date
 

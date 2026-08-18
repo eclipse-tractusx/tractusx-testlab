@@ -33,8 +33,8 @@ import pytest
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.connector.extract import ExtractDatasetStep
-from tractusx_testlab.steps.utility.json_extract import JsonPathExtractStep
-from tractusx_testlab.steps.utility.uuid_gen import GenerateUuidStep
+from tractusx_testlab.steps.util.json_extract import JsonPathExtractStep
+from tractusx_testlab.steps.util.uuid_gen import GenerateUuidStep
 
 
 def _make_mock_context(**variables: Any) -> MagicMock:

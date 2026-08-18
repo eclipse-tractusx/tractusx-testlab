@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #

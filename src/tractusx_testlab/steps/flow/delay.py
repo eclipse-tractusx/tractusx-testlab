@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -31,8 +31,8 @@ from pydantic import Field
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import NoOutput
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams
+from tractusx_testlab.steps.shared_models import NoOutput
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext

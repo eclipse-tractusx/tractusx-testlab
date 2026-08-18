@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -66,13 +66,13 @@ def attach_endpoint_url_stubs(ctx: MagicMock) -> MagicMock:
         return "/".join([root, controller, *(str(segment) for segment in segments)])
 
     def _consumer_url(controller: str, *segments: Any, service: Any = None) -> str:
-        return _join(ctx.get_consumer_base_url(), controller, segments)
+        return _join(ctx.dataspace.consumer_base_url(), controller, segments)
 
     def _provider_url(controller: str, *segments: Any, service: Any = None) -> str:
-        return _join(ctx.get_provider_base_url(), controller, segments)
+        return _join(ctx.dataspace.provider_base_url(), controller, segments)
 
-    ctx.get_consumer_endpoint_url = MagicMock(side_effect=_consumer_url)
-    ctx.get_provider_endpoint_url = MagicMock(side_effect=_provider_url)
+    ctx.dataspace.consumer_endpoint_url = MagicMock(side_effect=_consumer_url)
+    ctx.dataspace.provider_endpoint_url = MagicMock(side_effect=_provider_url)
     return ctx
 
 
@@ -95,4 +95,37 @@ def mock_context() -> MagicMock:
     ctx.set_variable = MagicMock(side_effect=_set)
     ctx.get_variable = MagicMock(side_effect=_get)
     ctx.has_variable = MagicMock(side_effect=_has)
+
+    # The real runner, because `flow/if` and `flow/retry` run the steps nested
+    # inside them and take the runner from the context rather than importing it
+    # (contracts.StepInvoker). A step that contains steps needs something that
+    # can run one, and a MagicMock cannot.
+    from tractusx_testlab.player.execution.step_runner import run_step
+
+    ctx.invoke_step = run_step
     return ctx
+
+
+def http_response(
+    body: object = None,
+    *,
+    status: int = 200,
+    url: str = "https://example.test",
+    headers: dict[str, str] | None = None,
+    text: str | None = None,
+) -> MagicMock:
+    """A stand-in for the ``httpx.Response`` a step now receives.
+
+    Steps read a response through ``steps.http_client``: ``body_of`` looks at
+    the content type before parsing, and ``headers_of`` reads the raw pairs to
+    keep the casing the server sent. A double therefore has to carry both, which
+    is why this lives here rather than being written out per test file.
+    """
+    sent = {"content-type": "application/json", **(headers or {})}
+    response = MagicMock(status_code=status, url=url, text=text or "")
+    response.headers = MagicMock(
+        raw=[(k.encode(), v.encode()) for k, v in sent.items()],
+        **{"get.side_effect": sent.get},
+    )
+    response.json.return_value = body
+    return response

@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -137,7 +137,15 @@ class StepDefinition(BaseModel):
     name: str | None = None
     with_: dict[str, Any] | None = Field(default=None, alias="with")
     returns: dict[str, ReturnFieldDefinition] | None = None
-    validate: list[Assertion] | None = None
+    #: The step's checks. Named ``assertions`` in Python because a field called
+    #: ``validate`` shadows ``BaseModel.validate`` — Pydantic warned about it on
+    #: every import of this library, including every ``testlab`` invocation, and
+    #: mypy reported the override as a type error. Scripts still write
+    #: ``validate:``; the aliases are what make that the only spelling anyone
+    #: outside this file sees.
+    assertions: list[Assertion] | None = Field(
+        default=None, validation_alias="validate", serialization_alias="validate",
+    )
     #: Marks the step as a negative test (syntax spec §9.3): the request is one
     #: the system under test is required to refuse.
     #:

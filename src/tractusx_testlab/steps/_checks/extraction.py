@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -34,20 +34,17 @@ _PREDICATE_RE = re.compile(r"^([^\[]+)\[([^=\]]+)=([^\]]*)\]$")
 _SENTINEL = object()
 
 
-def _snake_to_camel(name: str) -> str:
-    """Convert ``snake_case`` to ``camelCase``."""
-    parts = name.split("_")
-    return parts[0] + "".join(p.capitalize() for p in parts[1:])
-
-
 def _dict_get(d: dict, key: str) -> Any:
-    """Get value from dict, trying original key first, then camelCase fallback."""
-    if key in d:
-        return d[key]
-    camel = _snake_to_camel(key)
-    if camel != key and camel in d:
-        return d[camel]
-    return None
+    """Return ``d[key]``, or ``None`` when the key is not there.
+
+    Exactly the key that was written. A ``snake_case``→``camelCase`` fallback
+    used to run here, so ``header.message_id`` quietly found ``messageId`` — a
+    second spelling for one field, undocumented and unbounded, which made it
+    impossible to say from a script why a path resolved. Where a document really
+    does carry two spellings, the payload model declares the alias: that is what
+    ``authCode`` and ``@id`` already do, and it is visible.
+    """
+    return d.get(key)
 
 
 def _match_predicate_value(actual: Any, expected: str) -> bool:
@@ -218,7 +215,7 @@ def extract_path(
     if path is None:
         return output
 
-    from tractusx_testlab.steps.base import StepOutput as _SO
+    from tractusx_testlab.steps.step_contract import StepOutput as _SO
     if isinstance(output, _SO):
         return _extract_from_step_output(output, path, declared)
 

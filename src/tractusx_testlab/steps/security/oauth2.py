@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -41,13 +41,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
-import requests
 from pydantic import ConfigDict, Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import HttpTransportParams
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps import http_client
+from tractusx_testlab.steps.shared_models import HttpTransportParams
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -179,18 +179,15 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
             else None
         )
 
-        resp = requests.post(
+        resp = await http_client.request(
+            "POST",
             params.token_url,
             data=form,
             auth=auth,
             headers=params.headers,
             timeout=timeout,
         )
-
-        try:
-            body: Any = resp.json()
-        except (ValueError, TypeError):
-            body = resp.text
+        body: Any = http_client.body_of(resp)
 
         request = HttpRequest(
             method="POST",
@@ -204,7 +201,10 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
             body=body,
         )
 
-        if not resp.ok or not isinstance(body, dict):
+        # The status code rather than a client-specific truthiness flag:
+        # ``requests`` spelled this ``resp.ok`` and httpx does not have it, so
+        # reading the code is both correct and independent of the transport.
+        if resp.status_code >= 400 or not isinstance(body, dict):
             logger.error(
                 "Token request refused: url=%s grant=%s status=%s",
                 params.token_url,

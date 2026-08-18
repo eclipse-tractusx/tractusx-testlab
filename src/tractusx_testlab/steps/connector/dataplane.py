@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -29,19 +29,19 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-import requests
 from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import (
+from tractusx_testlab.steps import http_client, sdk_call
+from tractusx_testlab.steps.shared_models import (
     DataAddressPayload,
     HttpBodyOutput,
     HttpCallParams,
     StepParams,
     data_address_token,
 )
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.syntax.context_vars import (
     DATAPLANE_URL,
     EDR_TOKEN,
@@ -111,19 +111,18 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
         headers = {"Authorization": token, **params.headers}
         timeout = params.timeout_or(context.config.default_timeout_s)
 
-        resp = requests.request(
+        resp = await http_client.request(
             params.method, url, headers=headers, json=params.body, timeout=timeout
         )
-        is_json = resp.headers.get("content-type", "").startswith("application/json")
 
         return StepOutput(
-            value=HttpBodyOutput(resp.json() if is_json else resp.text),
+            value=HttpBodyOutput(http_client.body_of(resp)),
             request=HttpRequest(
                 method=params.method, url=url, headers=headers, body=params.body
             ),
             response=HttpResponse(
                 status_code=resp.status_code,
-                headers=dict(resp.headers),
+                headers=http_client.headers_of(resp),
                 body=resp.text,
             ),
         )
@@ -150,7 +149,9 @@ class GetEdrParams(StepParams):
     )
 
 
-def fetch_data_address(consumer: Any, transfer_id: str | None, verify: Any = None) -> dict | None:
+async def fetch_data_address(
+    consumer: Any, transfer_id: str | None, verify: Any = None
+) -> dict | None:
     """Fetch the EDR data address for a transfer, or ``None`` if it cannot be read.
 
     The one place that calls ``consumer.get_edr`` — ``connector/consumer/get_edr``
@@ -163,7 +164,7 @@ def fetch_data_address(consumer: Any, transfer_id: str | None, verify: Any = Non
     if not transfer_id:
         return None
     try:
-        return consumer.get_edr(transfer_id=transfer_id, verify=verify)
+        return await sdk_call.run(consumer.get_edr, transfer_id=transfer_id, verify=verify)
     except ConnectionError:
         logger.warning("Failed to retrieve EDR data address for transfer %s", transfer_id)
         return None
@@ -204,11 +205,11 @@ class GetEdrStep(BaseStep[GetEdrParams, EdrOutput]):
     async def execute(
         self, params: GetEdrParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[EdrOutput]:
-        consumer = context.get_consumer_service()
+        consumer = context.dataspace.consumer()
         transfer_id = params.transfer_id or context.get_variable(TRANSFER_ID)
-        url = context.get_consumer_endpoint_url("edrs", transfer_id, "dataaddress")
+        url = context.dataspace.consumer_endpoint_url("edrs", transfer_id, "dataaddress")
 
-        edr = fetch_data_address(consumer, transfer_id, params.verify)
+        edr = await fetch_data_address(consumer, transfer_id, params.verify)
 
         value = None
         if edr is not None:
@@ -220,5 +221,5 @@ class GetEdrStep(BaseStep[GetEdrParams, EdrOutput]):
         return StepOutput(
             value=value,
             request=HttpRequest(method="GET", url=url),
-            response=HttpResponse(status_code=200 if edr else 404, body=edr),
+            response=HttpResponse(status_code=200, body=edr),
         )

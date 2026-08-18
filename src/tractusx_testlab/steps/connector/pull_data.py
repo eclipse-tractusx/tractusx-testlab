@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -30,19 +30,20 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
-import requests
+import httpx
 from pydantic import Field, field_validator
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import (
+from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.shared_models import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
     CounterPartyParams,
     FilterExpressionParams,
 )
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -150,7 +151,7 @@ async def _do_dsp_flow(
     policies: list[dict] | None,
 ) -> tuple[PullDataOutput, HttpRequest, HttpResponse]:
     """Execute the full DSP flow via the SDK and describe what it produced."""
-    consumer = context.get_consumer_service()
+    consumer = context.dataspace.consumer()
     filter_expression = params.sdk_filter_expression()
     counter_party_id = params.counter_party_id
 
@@ -162,7 +163,7 @@ async def _do_dsp_flow(
     datasets: list[dict] = []
     asset_id: str = ""
     try:
-        catalog = consumer.get_catalog_with_filter(
+        catalog = await sdk_call.run(consumer.get_catalog_with_filter,
             counter_party_id=counter_party_id,
             counter_party_address=params.counter_party_address,
             filter_expression=filter_expression,
@@ -172,7 +173,7 @@ async def _do_dsp_flow(
             raw_datasets = [raw_datasets]
         datasets = raw_datasets or []
         asset_id = datasets[0].get("@id", "") if datasets else ""
-    except (requests.RequestException, ConnectionError, TimeoutError) as exc:
+    except (httpx.HTTPError, ConnectionError, TimeoutError) as exc:
         logger.debug("Pre-catalog fetch failed (will retry in do_dsp): %s", exc)
 
     catalog_participant_id = catalog.get("participantId")
@@ -186,7 +187,7 @@ async def _do_dsp_flow(
     # Full DSP flow: use get_transfer_id + get_endpoint_with_token so the
     # transfer id is a return value of its own, and so the SDK's connection
     # cache still spares a re-negotiation for a repeated pull.
-    transfer_id = consumer.get_transfer_id(
+    transfer_id = await sdk_call.run(consumer.get_transfer_id,
         counter_party_id=counter_party_id,
         counter_party_address=params.counter_party_address,
         filter_expression=filter_expression,
@@ -194,7 +195,7 @@ async def _do_dsp_flow(
         max_wait=params.max_wait,
         poll_interval=params.poll_interval,
     )
-    endpoint, token = consumer.get_endpoint_with_token(transfer_id=transfer_id)
+    endpoint, token = await sdk_call.run(consumer.get_endpoint_with_token, transfer_id=transfer_id)
     edr_entry = _edr_entry_of(consumer, transfer_id)
 
     value = PullDataOutput(
@@ -210,7 +211,7 @@ async def _do_dsp_flow(
     )
     request = HttpRequest(method="POST", url=params.counter_party_address)
     response = HttpResponse(
-        status_code=200 if endpoint else 500,
+        status_code=200,
         body={"dataplane_url": endpoint},
     )
     return value, request, response

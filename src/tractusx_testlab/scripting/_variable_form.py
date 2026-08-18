@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -32,18 +32,18 @@ code paths never drift.
 
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any
 
 import tractusx_testlab.syntax.keys as keys
 from tractusx_testlab.models import VariableDefinition, VariableScope, VariableSource
 
 # A raw variable spec is either a scalar literal (legacy flat form) or a mapping
 # (legacy ``{type, default}`` form or the new verb form).
-VariableSpec = Union[dict, str, int, float, bool, None]
+VariableSpec = dict | str | int | float | bool | None
 
 # A variables block is either a legacy name-keyed mapping or a list of
 # ``id``-keyed verb entries.
-VariablesBlock = Union[dict, list, None]
+VariablesBlock = dict | list | None
 
 _DEFAULT_TYPE = "str"
 

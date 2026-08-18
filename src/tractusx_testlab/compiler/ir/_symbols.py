@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from tractusx_testlab.compiler.ir._helpers import _infer_type
+from tractusx_testlab.compiler.ir._instructions import _infer_type
 
 # The verb-form `returns.value` block describes the variable's own type, not a
 # referenceable sub-field, so it is never emitted as an `env.<id>.value` symbol.

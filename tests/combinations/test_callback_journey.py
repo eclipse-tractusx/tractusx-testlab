@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -320,7 +320,15 @@ class TestTheCallbackDrivesTheRestOfTheScript:
     async def test_the_canned_response_can_carry_a_value_from_the_run(
         self, sut_harness: Harness, server: MockServer
     ) -> None:
-        """``@name`` in a response body is resolved when the mock is registered."""
+        """A response body carries a value from the run, written the usual way.
+
+        It used to be spelled ``@agreed_id`` and resolved by a second pass
+        inside the mock step — the last surviving ``@name`` resolver, kept alive
+        by this test alone. It also treated any JSON-LD value beginning with
+        ``@`` as a variable reference on its way past. The body is a step
+        parameter, so ``${{ ... }}`` in it is already resolved before the step
+        runs, like every other parameter.
+        """
         sut_harness.seed(agreed_id="agr-77")
         opened = await sut_harness.run(
             {
@@ -328,7 +336,7 @@ class TestTheCallbackDrivesTheRestOfTheScript:
                 "uses": "mock/api",
                 "with": {
                     "path": "/certificate/request",
-                    "response_body": {"agreementId": "@agreed_id"},
+                    "response_body": {"agreementId": "${{ env.agreed_id }}"},
                 },
                 "returns": {"full_mock_url": {"type": "string"}},
             }

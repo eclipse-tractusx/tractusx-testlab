@@ -1,7 +1,7 @@
 #################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -22,7 +22,14 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""CLI command for inspecting .tck and .stck package metadata without executing."""
+"""The ``testlab inspect`` command — everything you can learn without running.
+
+There used to be three commands here. ``compile info`` printed the manifest,
+``compile decompile`` wrote the payload back out, and ``inspect`` reported the
+tests — three verbs for one question ("what is in this package?"), each
+accepting a different subset of the options and each having to grow its own
+copy of the decrypt-and-verify dance. They are sections of one command now.
+"""
 
 from __future__ import annotations
 
@@ -32,18 +39,24 @@ from pathlib import Path
 import typer
 
 from tractusx_testlab.cli import app
+from tractusx_testlab.cli._inspect_report import (
+    print_infrastructure,
+    print_inspection,
+    print_manifest,
+    print_variables,
+)
 
 
 @app.command()
 def inspect(
-    package: Path = typer.Argument(..., help="Path to a .tck or .stck package."),
+    package: Path = typer.Argument(..., help="Path to a .tck package."),
     player_keys: Path | None = typer.Option(
         None, "--player-keys", "-k",
-        help="Directory with the player identity (encryption.pem). Required for .stck files.",
+        help="Directory with the player identity (encryption.pem). Required if encrypted.",
     ),
     compiler_pub: Path | None = typer.Option(
         None, "--compiler-pub", "-c",
-        help="Path to the compiler's signing public key (signing.pub). Required for .stck files.",
+        help="The compiler's signing public key (signing.pub). Required if encrypted.",
     ),
     show_variables: bool = typer.Option(
         False, "--variables",
@@ -53,152 +66,116 @@ def inspect(
         False, "--infrastructure",
         help="Show infrastructure capability requirements (engine and SUT sides).",
     ),
+    show_manifest: bool = typer.Option(
+        False, "--manifest",
+        help="Show the package manifest: identity, checksum, signer, players.",
+    ),
+    extract: Path | None = typer.Option(
+        None, "--extract",
+        help="Write the package's verified contents to this directory.",
+    ),
     as_json: bool = typer.Option(
         False, "--json",
         help="Output as JSON. Combines all requested sections into one object.",
     ),
 ) -> None:
-    """Inspect metadata of a .tck or .stck package without executing it."""
+    """Report what a ``.tck`` package contains, without executing it.
+
+    The package is verified first — checksum, and signature where the package
+    carries one — so every section below describes a package that has been
+    shown to be the one its compiler built. Reporting on unverified contents
+    would make this command a way to read a tampered package's own account of
+    itself.
+    """
     if not package.exists():
         typer.echo(f"Error: package not found: {package}", err=True)
         raise typer.Exit(1)
 
-    if package.suffix == ".stck":
-        _require_keys(player_keys, compiler_pub)
+    try:
+        tck, verified_dir = _load_tck(package, player_keys, compiler_pub)
+    except ValueError as exc:
+        typer.echo(f"\nRefused to inspect {package.name}:\n  {exc}", err=True)
+        raise typer.Exit(1) from exc
 
-    tck = _load_tck(package, player_keys, compiler_pub)
-    result = tck.inspect()
+    # Extraction writes files and reports what it wrote; every other section
+    # reports. Done first so `--extract --json` still emits exactly one object.
+    if extract is not None:
+        _extract_package(package, verified_dir, extract, quiet=as_json)
+
+    sections = _gather(tck, verified_dir, show_variables, show_infrastructure, show_manifest)
 
     if as_json:
-        _print_json(result, tck, show_variables, show_infrastructure)
+        typer.echo(json.dumps(sections, indent=2, default=_jsonable))
         return
 
-    _print_inspection(package, result)
+    print_inspection(package, sections["inspection"])
     if show_variables:
-        _print_variables(tck)
+        print_variables(tck)
     if show_infrastructure:
-        _print_infrastructure(tck)
-
-
-def _require_keys(player_keys: Path | None, compiler_pub: Path | None) -> None:
-    """Validate that decryption keys are present for encrypted packages."""
-    if player_keys is None:
-        typer.echo("Error: --player-keys is required for encrypted .stck files.", err=True)
-        raise typer.Exit(1)
-    if compiler_pub is None:
-        typer.echo("Error: --compiler-pub is required for encrypted .stck files.", err=True)
-        raise typer.Exit(1)
+        print_infrastructure(tck)
+    if show_manifest:
+        print_manifest(sections["manifest"])
 
 
 def _load_tck(
     package: Path,
     player_keys: Path | None,
     compiler_pub: Path | None,
-) -> object:
-    """Load a .tck or .stck package into a Tck object."""
+) -> tuple[object, Path]:
+    """Load and verify a package, returning it and the verified bytes on disk.
+
+    The keys are passed whenever they were given; the loader refuses an
+    encrypted package that arrives without them, and refuses a signed one whose
+    signature it was given no key to check. Every section of this command reads
+    the directory the loader wrote *after* those checks, never the archive — so
+    there is no path here that reports on bytes nothing verified.
+    """
     from tractusx_testlab.player.loading.loader import Loader
 
-    loader = Loader()
+    priv = pub = None
+    if player_keys is not None:
+        from tractusx_testlab.security.crypto.keygen import load_private_key
 
-    if package.suffix == ".stck":
-        from tractusx_testlab.security.crypto.keygen import load_private_key, load_public_key
+        priv = load_private_key(player_keys / "encryption.pem")
+    if compiler_pub is not None:
+        from tractusx_testlab.security.crypto.keygen import load_public_key
 
-        priv = load_private_key(player_keys / "encryption.pem")  # type: ignore[operator]
-        pub = load_public_key(compiler_pub)  # type: ignore[arg-type]
-        return loader.load(package, player_private_key=priv, compiler_public_key=pub)
+        pub = load_public_key(compiler_pub)
 
-    return loader.load(package)
-
-
-def _print_inspection(package: Path, result: object) -> None:
-    """Print a human-readable inspection report."""
-    from tractusx_testlab.models.runtime.inspection import TckInspectionResult
-
-    r: TckInspectionResult = result  # type: ignore[assignment]
-    width = 72
-
-    typer.echo()
-    typer.echo("=" * width)
-    typer.echo(f"  Testlab Inspect — {package.name}")
-    typer.echo("=" * width)
-    typer.echo(f"  Name             : {r.name}")
-    typer.echo(f"  Total Steps      : {r.total_steps}")
-    typer.echo(f"  Total Validations: {r.total_validations}")
-    typer.echo(f"  Scripts          : {len(r.scripts)}")
-    typer.echo()
-
-    for script in r.scripts:
-        skippable_label = "Yes" if script.skippable else "No"
-        typer.echo(f"  Script: {script.name}  |  ID: {script.test_id}  |  Skippable: {skippable_label}")
-        typer.echo(f"  {'Step Name':<40} {'Uses':<35} {'Phase':<10} {'Validations'}")
-        typer.echo(f"  {'-'*40} {'-'*35} {'-'*10} {'-'*11}")
-
-        for step in script.steps:
-            phase_label = step.phase.value.title()
-            name_col = step.step_name[:39]
-            uses_col = step.uses[:34]
-            typer.echo(
-                f"  {name_col:<40} {uses_col:<35} {phase_label:<10} {step.validation_count}"
-            )
-
-        typer.echo()
-
-    typer.echo("=" * width)
-    typer.echo()
+    tck = Loader().load(package, player_private_key=priv, compiler_public_key=pub)
+    return tck, Path(tck.base_dir)
 
 
-def _print_variables(tck: object) -> None:
-    """Print a human-readable variables table."""
-    variables = tck.all_variables()  # type: ignore[attr-defined]
-    width = 72
-    typer.echo("  VARIABLES")
-    typer.echo(f"  {'ID':<30} {'Source':<12} {'Scope':<10} {'Type'}")
-    typer.echo(f"  {'-'*30} {'-'*12} {'-'*10} {'-'*10}")
-    for name, var in variables.items():
-        scope = var.scope.value if var.scope else "—"
-        typer.echo(f"  {name:<30} {var.source.value:<12} {scope:<10} {var.type}")
-    typer.echo()
-    typer.echo("=" * width)
-    typer.echo()
+def _jsonable(value: object) -> object:
+    """Serialize the models :func:`_gather` collects.
+
+    Every section is one object under its own key, whichever flags were passed.
+    ``--json`` used to emit the bare inspection result when no section flag was
+    given and an envelope when one was, so a consumer had to know the argv to
+    know the shape.
+    """
+    from pydantic import BaseModel
+
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json")
+    return str(value)
 
 
-def _print_infrastructure(tck: object) -> None:
-    """Print a human-readable infrastructure requirements table."""
-    infra = tck.infrastructure_requirements()  # type: ignore[attr-defined]
-    width = 72
-    typer.echo("  INFRASTRUCTURE")
-    typer.echo(f"  {'Capability':<25} {'Required':<10} {'Standard'}")
-    typer.echo(f"  {'-'*25} {'-'*10} {'-'*20}")
-    for cap, req in infra.engine.items():
-        std = req.standard.id if req.standard else "—"
-        typer.echo(f"  engine.{cap:<18} {req.required!s:<10} {std}")
-    for cap, req in infra.sut.items():
-        std = req.standard.id if req.standard else "—"
-        typer.echo(f"  sut.{cap:<21} {req.required!s:<10} {std}")
-    typer.echo()
-    typer.echo("=" * width)
-    typer.echo()
-
-
-def _print_json(
-    result: object,
+def _gather(
     tck: object,
+    verified_dir: Path,
     show_variables: bool,
     show_infrastructure: bool,
-) -> None:
-    """Emit JSON output, combining requested sections into one envelope."""
-    from tractusx_testlab.models.runtime.inspection import TckInspectionResult
+    show_manifest: bool,
+) -> dict:
+    """Collect the requested sections once, for either output format.
 
-    r: TckInspectionResult = result  # type: ignore[assignment]
-
-    if not show_variables and not show_infrastructure:
-        # backward-compatible: plain inspection result
-        typer.echo(r.model_dump_json(indent=2))
-        return
-
-    envelope: dict = {"inspection": r.model_dump()}
+    One reader for both renderings: the JSON a machine consumes and the table a
+    person reads describe the same package, because they are the same data.
+    """
+    sections: dict = {"inspection": tck.inspect()}  # type: ignore[attr-defined]
     if show_variables:
-        envelope["variables"] = {
+        sections["variables"] = {
             name: {
                 "type": var.type,
                 "source": var.source.value,
@@ -209,5 +186,45 @@ def _print_json(
             for name, var in tck.all_variables().items()  # type: ignore[attr-defined]
         }
     if show_infrastructure:
-        envelope["infrastructure"] = tck.infrastructure_requirements().model_dump()  # type: ignore[attr-defined]
-    typer.echo(json.dumps(envelope, indent=2))
+        sections["infrastructure"] = tck.infrastructure_requirements()  # type: ignore[attr-defined]
+    if show_manifest:
+        sections["manifest"] = _read_manifest(verified_dir)
+    return sections
+
+
+def _read_manifest(verified_dir: Path) -> dict:
+    """Read the manifest out of the verified contents."""
+    import yaml
+
+    manifest_file = verified_dir / "manifest.yaml"
+    if not manifest_file.exists():
+        typer.echo("Error: package carries no manifest.yaml.", err=True)
+        raise typer.Exit(1)
+    return yaml.safe_load(manifest_file.read_text(encoding="utf-8"))
+
+
+def _extract_package(
+    package: Path, verified_dir: Path, destination: Path, quiet: bool = False
+) -> None:
+    """Write the verified package contents out — what ``compile decompile`` did.
+
+    ``decompile`` wrote back only the authoring YAML, and only for encrypted
+    packages. A package is its tests, its assets and its compiled instructions
+    too, so all of it is written, and a plain package extracts the same way.
+    """
+    import shutil
+
+    destination.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(verified_dir, destination, dirs_exist_ok=True)
+    if quiet:
+        return
+
+    written = sorted(
+        path.relative_to(destination).as_posix()
+        for path in destination.rglob("*")
+        if path.is_file()
+    )
+    typer.echo(f"\nExtracted {package.name} -> {destination}/")
+    for name in written:
+        typer.echo(f"  {name}")
+    typer.echo()

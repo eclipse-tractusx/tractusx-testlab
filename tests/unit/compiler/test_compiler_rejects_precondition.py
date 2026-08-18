@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from tractusx_testlab.compiler.validation._rules import _reject_banned_steps
+from tractusx_testlab.compiler.validation._manifest_validation import _reject_banned_steps
 
 
 class TestRejectDeprecatedVerbs:

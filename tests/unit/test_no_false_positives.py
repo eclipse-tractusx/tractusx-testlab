@@ -121,7 +121,6 @@ def _compile(manifest_path: Path, out_dir: Path) -> Path:
         output=out_dir,
         version=None,
         plain=False,
-        encrypt=False,
     )
     archives = list(out_dir.glob("*.tck"))
     assert len(archives) == 1, f"expected one .tck, got {archives}"

@@ -28,7 +28,7 @@ graph LR
     subgraph Testlab
         A["Authoring<br/><i>YAML Tests</i>"]
         B["Compiler<br/><i>Validate · Resolve · Stamp</i>"]
-        C["Package<br/><i>.tckpkg (ZIP)</i><br/><i>manifest + scripts + assets</i>"]
+        C["Package<br/><i>.tck (ZIP)</i><br/><i>manifest + scripts + assets</i>"]
         D[\"Player<br/><i>Load · Execute · Monitor · Assert · Log<br/>Job lifecycle · Wait/Resume</i>\"]
         E["Server<br/><i>Package upload · Execution API<br/>Callback endpoints<br/>Dynamic API routes</i>"]
 
@@ -85,13 +85,13 @@ flowchart TD
         B3[Check step ids<br/>against registry]
         B4[Verify dataspace<br/>version compatibility]
         B5[Stamp metadata<br/>SDK version · timestamp · SHA-256]
-        B6[Package as .tckpkg ZIP]
+        B6[Package as .tck ZIP]
 
         B1 --> B2 --> B3 --> B4 --> B5 --> B6
     end
 
     subgraph Execute ["3. Execute"]
-        C1[Load .tckpkg or raw YAML]
+        C1[Load .tck or raw YAML]
         C2[Verify SHA-256 checksum]
         C1b[Create Job<br/>job_id · QUEUED → RUNNING]
         C2b[Initialize managed services<br/>from services block]
@@ -410,7 +410,7 @@ graph LR
 
 ## Package Security & Encryption
 
-Compiled `.tckpkg` packages can be encrypted so that only authorized Player instances can decrypt and execute them. This uses **hybrid encryption** (symmetric content encryption + asymmetric key wrapping) combined with **digital signatures** for authenticity.
+Compiled `.tck` packages can be encrypted so that only authorized Player instances can decrypt and execute them. This uses **hybrid encryption** (symmetric content encryption + asymmetric key wrapping) combined with **digital signatures** for authenticity.
 
 ### Encryption Flow (Compile-time)
 
@@ -433,7 +433,7 @@ sequenceDiagram
 
     Compiler->>Compiler: Build manifest.yaml<br/>(metadata + security block)
     Compiler->>Compiler: Sign (manifest + payload) with Ed25519<br/>→ signature.sig
-    Compiler->>FS: Write .tckpkg archive<br/>(manifest.yaml + payload.enc + signature.sig)
+    Compiler->>FS: Write .tck archive<br/>(manifest.yaml + payload.enc + signature.sig)
 ```
 
 ### Decryption Flow (Player-side)
@@ -443,7 +443,7 @@ sequenceDiagram
     participant P as Player
     participant KS as Key Store<br/>~/.testlab/keys/
     participant TS as Trust Store<br/>~/.testlab/trusted_compilers/
-    participant PKG as .tckpkg
+    participant PKG as .tck
 
     P->>PKG: Open archive, read manifest.yaml
     P->>P: Detect security.format = "encrypted-v1"
@@ -491,7 +491,7 @@ graph TD
 
     PUB -. "shared with<br/>Compiler" .-> COMPILE["testlab compile<br/>--authorize-player player.pub"]
     CPRIV --> COMPILE
-    COMPILE --> TESTPKG[".tckpkg<br/>(encrypted + signed)"]
+    COMPILE --> TESTPKG[".tck<br/>(encrypted + signed)"]
 
     style PRIV fill:#ffcdd2,stroke:#c62828
     style CPRIV fill:#ffcdd2,stroke:#c62828
@@ -705,7 +705,7 @@ flowchart TD
 | **Variable** | A named value declared in a test's `variables` block. Can have a default value or be marked `runtime: true` (must be provided at execution time). Steps produce output variables that subsequent steps can consume via `${var_name}` syntax. |
 | **Assertion** | An expected-result check attached to a step via the `validate` block. Evaluated after step execution against the step's output. |
 | **Compiler** | The component that parses YAML tests, validates them against the Step Registry and declared variables, and stamps metadata. |
-| **Package (.tckpkg)** | A ZIP archive containing a manifest, compiled tests, and bundled assets (schemas, sample data). Portable, shareable, versionable. |
+| **Package (.tck)** | A ZIP archive containing a manifest, compiled tests, and bundled assets (schemas, sample data). Portable, shareable, versionable. |
 | **Player** | The singleton async executor that loads packages or raw YAML, creates Jobs, executes tests step-by-step, evaluates assertions, and reports results. |
 | **Job** | A stateful execution entity created for every test run. Tracks lifecycle (`QUEUED` → `RUNNING` → `WAITING` → `COMPLETED`), maintains persistent memory across steps and wait/resume cycles, and provides query endpoints for status, memory, and events. |
 | **Job Memory** | A persistent key-value store attached to each Job. Survives across all scripts, steps, wait/resume cycles, and cleanup phases. Accessible via `context.job.memory`. |
@@ -718,14 +718,14 @@ flowchart TD
 | **Callback** | An async webhook pattern where the Player starts a temporary HTTP endpoint, sends a request to an external system, transitions the Job to `WAITING` state, and resumes automatically when the external system calls back with a response within a configurable timeout. |
 | **Callback Server** | A FastAPI-based HTTP server (standalone or embedded) that hosts ephemeral callback routes mounted dynamically by the Player per test execution. |
 | **Listener** | The callback registration created by the `mock/api` step: the mock endpoint's path and HTTP method, plus an `asyncio.Event` that the `mock/wait/http_request` step waits on. |
-| **Encrypted Package** | A `.tckpkg` archive whose payload (scripts + assets) is encrypted with AES-256-GCM. Only authorized Players holding the matching RSA private key can decrypt and execute it. |
+| **Encrypted Package** | A `.tck` archive whose payload (scripts + assets) is encrypted with AES-256-GCM. Only authorized Players holding the matching RSA private key can decrypt and execute it. |
 | **Player Identity** | An RSA key pair assigned to a Player instance. The public key's SHA-256 fingerprint serves as the Player's unique identifier for package authorization. |
 | **Key Block** | An entry in the package manifest's `security.authorized_players` list. Contains a Player's fingerprint and the AES content-encryption key wrapped with that Player's RSA public key. |
 | **Trust Store** | A directory (`~/.testlab/trusted_compilers/`) containing public keys of Compilers whose package signatures the Player will accept. |
 | **Compiler Signature** | An Ed25519 digital signature created by the Compiler over the manifest and encrypted payload. Verified by the Player against the trust store before execution. |
 | **Service Binding** | The mechanism by which a step resolves the managed SDK service for its role (provider, consumer, DTR) from the `StepContext` — steps never name their service in parameters. |
 | **Service Resolution** | How a step's service dependency is satisfied: the first seeded service matching the role's `ServiceType` is initialised lazily, cached, and injected; a missing service raises `ServiceNotFoundError`. |
-| **Package Upload** | The ability to upload `.tckpkg` files (encrypted or plain) to the testlab server via `POST /api/v1/packages`. Uploaded packages are stored on the server and can be referenced by `package_id` in `/run` requests. |
+| **Package Upload** | The ability to upload `.tck` files (encrypted or plain) to the testlab server via `POST /api/v1/packages`. Uploaded packages are stored on the server and can be referenced by `package_id` in `/run` requests. |
 | **Package Storage** | The server-side directory (default: `~/.testlab/packages/`) where uploaded packages are persisted and indexed by `package_id` (`name-version`). |
 | **Vault Backend** | An optional integration with HashiCorp Vault's KV v2 secrets engine for centralized key management. When configured, signing keys and Player keys are stored in and retrieved from Vault instead of the local filesystem. |
 | **Configuration** | The `TestlabConfig` settings model that resolves configuration from `testlab.config.yaml`, environment variables, and CLI flags with defined precedence (CLI > env > file > defaults). |

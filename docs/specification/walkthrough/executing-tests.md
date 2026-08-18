@@ -19,13 +19,13 @@ SPDX-License-Identifier: CC-BY-4.0
 
 # Executing Tests
 
-This section shows how to run compiled `.tckpkg` packages (or raw TCKs) against live dataspace connectors and interpret results.
+This section shows how to run compiled `.tck` packages (or raw TCKs) against live dataspace connectors and interpret results.
 
 ## Prerequisites
 
 You've completed [Compiling Packages](compiling-packages.md) and have:
 
-- A compiled package: `connector_e2e-1.0.tckpkg`
+- A compiled package: `connector_e2e-1.0.tck`
 - Running connector instances (provider + consumer) with known URLs
 - Valid OAuth2 client credentials for each connector
 
@@ -38,7 +38,7 @@ You've completed [Compiling Packages](compiling-packages.md) and have:
 Pass runtime variables with `--var`:
 
 ```bash
-testlab run connector_e2e-1.0.tckpkg \
+testlab run connector_e2e-1.0.tck \
   --var provider_url=https://provider.example.com \
   --var consumer_url=https://consumer.example.com \
   --var token_url=https://auth.example.com/token \
@@ -52,7 +52,7 @@ testlab run connector_e2e-1.0.tckpkg \
 **Expected output:**
 
 ```
-Loading connector_e2e-1.0.tckpkg
+Loading connector_e2e-1.0.tck
    Test case: connector_e2e v1.0
    SDK: 0.5.0 (compiled 2026-03-30T14:22:00Z)
    Checksum: valid
@@ -127,14 +127,14 @@ provider_bpn: "BPNL000000000001"
 ```
 
 ```bash
-testlab run connector_e2e-1.0.tckpkg --vars-file vars.yaml
+testlab run connector_e2e-1.0.tck --vars-file vars.yaml
 ```
 
 Variables from `--var` flags override `--vars-file` values:
 
 ```bash
 # Override provider_url while using vars.yaml for everything else
-testlab run connector_e2e-1.0.tckpkg \
+testlab run connector_e2e-1.0.tck \
   --vars-file vars.yaml \
   --var provider_url=https://staging-provider.example.com
 ```
@@ -157,7 +157,7 @@ testlab run tck.yaml \
   --var provider_bpn=BPNL000000000001
 ```
 
-This performs validate → compile-in-memory → execute in one step. Useful for local development; for CI/CD or distribution, always use compiled `.tckpkg` packages.
+This performs validate → compile-in-memory → execute in one step. Useful for local development; for CI/CD or distribution, always use compiled `.tck` packages.
 
 ---
 
@@ -170,7 +170,7 @@ using the `skip_tests` variable — without modifying the package itself.
 ### Discover which tests are skippable
 
 ```bash
-testlab inspect connector_e2e-1.0.tckpkg
+testlab inspect connector_e2e-1.0.tck
 ```
 
 Each test in the output shows its **ID** and whether it is skippable:
@@ -186,7 +186,7 @@ The display name is for humans only — it cannot be used to identify a test for
 ### Skip a single test
 
 ```bash
-testlab run connector_e2e-1.0.tckpkg \
+testlab run connector_e2e-1.0.tck \
   --var skip_tests=catalog_policy_validation.yaml \
   --var provider_url=https://provider.example.com \
   --var ...
@@ -205,7 +205,7 @@ skip_tests:
 ```
 
 ```bash
-testlab run connector_e2e-1.0.tckpkg \
+testlab run connector_e2e-1.0.tck \
   --config skip.yaml \
   --var provider_url=https://provider.example.com \
   --var ...
@@ -252,7 +252,7 @@ Packages are encrypted by default. To run them, the Player must have:
 See [Compiling Packages - Step 2](compiling-packages.md#step-2-generate-keys-one-time-setup) for key setup.
 
 ```bash
-testlab run connector_e2e-1.0.tckpkg \
+testlab run connector_e2e-1.0.tck \
   --vars-file vars.yaml
 ```
 
@@ -267,7 +267,7 @@ The Player automatically:
 **Expected output:**
 
 ```
-Loading connector_e2e-1.0.tckpkg
+Loading connector_e2e-1.0.tck
    Test case: connector_e2e v1.0
    Encrypted package detected
    Signature verified (compiler:sha256:a1b2c3d4...)
@@ -280,7 +280,7 @@ Plain packages (compiled with `--plain`) skip the decryption steps and load dire
 **Error: unauthorized Player:**
 
 ```
-Loading connector_e2e-1.0.tckpkg
+Loading connector_e2e-1.0.tck
    Encrypted package detected
    Player fingerprint player:sha256:99aabb... not found in authorized_players
    Error: This Player is not authorized to execute this package.
@@ -289,7 +289,7 @@ Loading connector_e2e-1.0.tckpkg
 **Error: untrusted Compiler:**
 
 ```
-Loading connector_e2e-1.0.tckpkg
+Loading connector_e2e-1.0.tck
    Encrypted package detected
    Compiler compiler:sha256:a1b2c3d4... not in trust store
    Error: Package was signed by an untrusted Compiler.
@@ -305,7 +305,7 @@ Loading connector_e2e-1.0.tckpkg
 Every step emits a structured log entry. Use `--log` to write to a file:
 
 ```bash
-testlab run connector_e2e-1.0.tckpkg \
+testlab run connector_e2e-1.0.tck \
   --vars-file vars.yaml \
   --log results.jsonl
 ```
@@ -441,7 +441,7 @@ Each line is a JSON object containing the full request and response details for 
 For CI/CD integration, generate a JUnit XML report:
 
 ```bash
-testlab run connector_e2e-1.0.tckpkg \
+testlab run connector_e2e-1.0.tck \
   --vars-file vars.yaml \
   --junit results.xml
 ```
@@ -451,7 +451,7 @@ testlab run connector_e2e-1.0.tckpkg \
 Use `--report` to generate a Markdown summary:
 
 ```bash
-testlab run connector_e2e-1.0.tckpkg \
+testlab run connector_e2e-1.0.tck \
   --vars-file vars.yaml \
   --report report.md
 ```
@@ -529,7 +529,7 @@ async def run_tests():
     player = Player()
 
     result = await player.run(
-        "connector_e2e-1.0.tckpkg",
+        "connector_e2e-1.0.tck",
         runtime_vars={
             "provider_url": "https://provider.example.com",
             "consumer_url": "https://consumer.example.com",
@@ -599,12 +599,12 @@ testlab serve --port 8100
 
 #### Upload a Package
 
-Upload a `.tckpkg` file to the server so it can be executed later by name. Both encrypted and plain packages are accepted:
+Upload a `.tck` file to the server so it can be executed later by name. Both encrypted and plain packages are accepted:
 
 ```bash
 # Upload an encrypted package
 curl -X POST http://localhost:8100/api/v1/packages \
-  -F "file=@connector_e2e-1.0.tckpkg"
+  -F "file=@connector_e2e-1.0.tck"
 ```
 
 **Response:**
@@ -626,7 +626,7 @@ Upload a plain package:
 ```bash
 # Upload a plain (development) package
 curl -X POST http://localhost:8100/api/v1/packages \
-  -F "file=@connector_e2e-1.0.tckpkg"
+  -F "file=@connector_e2e-1.0.tck"
 ```
 
 ```json
@@ -941,7 +941,7 @@ curl -X POST http://localhost:8100/api/v1/jobs/f9e8d7c6-b5a4-3210-fedc-ba9876543
 
 | Command | Description |
 |---------|-------------|
-| `testlab run <file>` | Execute a `.tckpkg` or raw `tck.yaml` |
+| `testlab run <file>` | Execute a `.tck` or raw `tck.yaml` |
 | `testlab run <file> --var KEY=VALUE` | Pass a runtime variable |
 | `testlab run <file> --vars-file <vars.yaml>` | Load variables from a file |
 | `testlab run <file> --log <file.jsonl>` | Write JSON-lines log |
@@ -957,7 +957,7 @@ curl -X POST http://localhost:8100/api/v1/jobs/f9e8d7c6-b5a4-3210-fedc-ba9876543
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/v1/packages` | Upload a `.tckpkg` package (multipart form, field `file`) |
+| `POST` | `/api/v1/packages` | Upload a `.tck` package (multipart form, field `file`) |
 | `GET` | `/api/v1/packages` | List uploaded packages |
 | `GET` | `/api/v1/packages/{package_id}` | Get package metadata |
 | `DELETE` | `/api/v1/packages/{package_id}` | Delete an uploaded package |

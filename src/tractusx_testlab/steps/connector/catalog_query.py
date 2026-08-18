@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -32,9 +32,15 @@ from typing import TYPE_CHECKING, Any
 from pydantic import Field
 from tractusx_sdk.dataspace.tools import DspTools
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models import (
+    HttpRequest,
+    HttpResponse,
+    StepDefinition,
+    StepExecutionError,
+)
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import (
+from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.shared_models import (
     DATASET_KEY,
     CatalogOutput,
     CatalogPayload,
@@ -43,7 +49,7 @@ from tractusx_testlab.steps._contracts import (
     StepParams,
     as_dataset_list,
 )
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -98,21 +104,20 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogOutput]):
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[CatalogOutput]:
-        consumer = context.get_consumer_service()
-        catalog = consumer.get_catalog_with_filter(
+        consumer = context.dataspace.consumer()
+        catalog = await sdk_call.run(consumer.get_catalog_with_filter,
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
             filter_expression=[entry.to_sdk() for entry in params.filters],
         )
 
-        url = context.get_consumer_endpoint_url("catalogs", "request")
+        url = context.dataspace.consumer_endpoint_url("catalogs", "request")
         request = HttpRequest(method="POST", url=url, body=params.model_dump(mode="json"))
         if not catalog:
-            logger.error("Catalog request returned no result: url=%s", url)
-            return StepOutput(
-                value=None,
-                request=request,
-                response=HttpResponse(status_code=500, body=None),
+            raise StepExecutionError(
+                self.step_type,
+                f"the provider returned no catalog from {url}. The step declares a "
+                f"catalog and its offers, and has neither.",
             )
 
         datasets = as_dataset_list(catalog)
@@ -177,13 +182,13 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOff
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[CatalogOfferOutput]:
-        consumer = context.get_consumer_service()
-        result = consumer.get_catalog_by_asset_id(
+        consumer = context.dataspace.consumer()
+        result = await sdk_call.run(consumer.get_catalog_by_asset_id,
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
             asset_id=params.asset_id,
         )
-        url = context.get_consumer_endpoint_url("catalogs", "request")
+        url = context.dataspace.consumer_endpoint_url("catalogs", "request")
 
         value = CatalogOfferOutput(catalog=result, datasets=as_dataset_list(result))
         offer = _select_offer(result, params.expected_policies)
@@ -193,7 +198,7 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOff
         return StepOutput(
             value=value,
             request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
-            response=HttpResponse(status_code=200 if result else 500, body=result),
+            response=HttpResponse(status_code=200, body=result),
         )
 
 
@@ -243,15 +248,15 @@ class QueryCatalogByBpnlStep(BaseStep[QueryCatalogByBpnlParams, CatalogOutput]):
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[CatalogOutput]:
-        consumer = context.get_consumer_service()
-        result = consumer.get_catalog_with_bpnl(
+        consumer = context.dataspace.consumer()
+        result = await sdk_call.run(consumer.get_catalog_with_bpnl,
             bpnl=params.bpnl,
             counter_party_address=params.counter_party_address,
             filter_expression=[entry.to_sdk() for entry in params.filters] or None,
         )
-        url = context.get_consumer_endpoint_url("catalogs", "request")
+        url = context.dataspace.consumer_endpoint_url("catalogs", "request")
         return StepOutput(
             value=CatalogOutput(catalog=result, datasets=as_dataset_list(result)),
             request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
-            response=HttpResponse(status_code=200 if result else 500, body=result),
+            response=HttpResponse(status_code=200, body=result),
         )

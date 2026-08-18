@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,10 +26,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from conftest import http_response
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.scripting.registry import StepRegistry
@@ -64,12 +65,17 @@ def _definition(uses: str = "security/oauth2/client_credentials") -> StepDefinit
 
 
 def _response(status_code: int = 200, body: dict | None = None) -> MagicMock:
-    resp = MagicMock()
-    resp.status_code = status_code
-    resp.ok = status_code < 400
-    resp.json.return_value = _TOKEN_RESPONSE if body is None else body
-    resp.headers = {"Content-Type": "application/json"}
-    return resp
+    """The token endpoint's answer, shaped like the httpx.Response the step gets.
+
+    Built through the shared helper because a step reads a response via
+    ``steps.http_client``, which inspects the content type before parsing and
+    the raw header pairs to keep the server's casing. A plain dict of headers
+    silently fails the first of those: ``{"Content-Type": ...}.get("content-type")``
+    is ``None``, so the body comes back as text.
+    """
+    return http_response(
+        _TOKEN_RESPONSE if body is None else body, status=status_code,
+    )
 
 
 class TestRegistration:
@@ -107,7 +113,7 @@ class TestOAuth2ClientCredentialsStep:
     async def test_client_credentials_returns_the_token_response(
         self, context: StepContext
     ) -> None:
-        with patch("tractusx_testlab.steps.security.oauth2.requests.post") as post:
+        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             output = await OAuth2ClientCredentialsStep().invoke(
                 {
@@ -133,7 +139,7 @@ class TestOAuth2ClientCredentialsStep:
     async def test_publishes_the_access_token_for_later_steps(
         self, context: StepContext
     ) -> None:
-        with patch("tractusx_testlab.steps.security.oauth2.requests.post") as post:
+        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             await OAuth2ClientCredentialsStep().invoke(
                 {"token_url": _TOKEN_URL, "client_id": "testlab"},
@@ -147,7 +153,7 @@ class TestOAuth2ClientCredentialsStep:
     async def test_basic_auth_keeps_credentials_out_of_the_form(
         self, context: StepContext
     ) -> None:
-        with patch("tractusx_testlab.steps.security.oauth2.requests.post") as post:
+        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             await OAuth2ClientCredentialsStep().invoke(
                 {
@@ -173,7 +179,7 @@ class TestOAuth2ClientCredentialsStep:
     async def test_a_refusal_returns_no_value_but_records_the_response(
         self, context: StepContext
     ) -> None:
-        with patch("tractusx_testlab.steps.security.oauth2.requests.post") as post:
+        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response(401, {"error": "invalid_client"})
             output = await OAuth2ClientCredentialsStep().invoke(
                 {"token_url": _TOKEN_URL, "client_id": "testlab", "client_secret": "wrong"},
@@ -188,7 +194,7 @@ class TestOAuth2ClientCredentialsStep:
     async def test_secrets_are_redacted_from_the_recorded_request(
         self, context: StepContext
     ) -> None:
-        with patch("tractusx_testlab.steps.security.oauth2.requests.post") as post:
+        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             output = await OAuth2ClientCredentialsStep().invoke(
                 {
@@ -208,7 +214,7 @@ class TestOAuth2ClientCredentialsStep:
     async def test_extra_fields_are_merged_into_the_form(
         self, context: StepContext
     ) -> None:
-        with patch("tractusx_testlab.steps.security.oauth2.requests.post") as post:
+        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             await OAuth2ClientCredentialsStep().invoke(
                 {
@@ -227,7 +233,7 @@ class TestOAuth2PasswordStep:
     async def test_password_grant_sends_owner_credentials(
         self, context: StepContext
     ) -> None:
-        with patch("tractusx_testlab.steps.security.oauth2.requests.post") as post:
+        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             await OAuth2PasswordStep().invoke(
                 {
@@ -261,7 +267,7 @@ class TestOAuth2RefreshTokenStep:
     async def test_refresh_grant_exchanges_the_refresh_token(
         self, context: StepContext
     ) -> None:
-        with patch("tractusx_testlab.steps.security.oauth2.requests.post") as post:
+        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             await OAuth2RefreshTokenStep().invoke(
                 {

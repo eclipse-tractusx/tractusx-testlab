@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -40,8 +40,8 @@ from tractusx_testlab.player.execution.infrastructure_seeder import (
     _SUT_DTR_NAME,
     seed_infrastructure_services,
 )
-from tractusx_testlab.services._factory import is_type_compatible
-from tractusx_testlab.services.manager import ServiceManager
+from tractusx_testlab.services._sdk_services import is_type_compatible
+from tractusx_testlab.services.instances import ServiceManager
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -257,10 +257,10 @@ class TestConnectorRoleCompatibility:
         seed_infrastructure_services(svc_mgr, ctx)
 
         with patch(
-            "tractusx_testlab.services.manager.create_instance",
+            "tractusx_testlab.services.instances.create_instance",
             side_effect=lambda definition, expected_type=None: definition.name,
         ):
-            assert ctx.get_provider_service() == _SUT_CONNECTOR_NAME
+            assert ctx.dataspace.provider() == _SUT_CONNECTOR_NAME
 
 
 # ---------------------------------------------------------------------------

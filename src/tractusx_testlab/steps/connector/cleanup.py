@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -38,8 +38,8 @@ from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import DeletionOutput
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams
+from tractusx_testlab.steps.shared_models import DeletionOutput
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -75,9 +75,9 @@ class DeleteAssetStep(BaseStep[DeleteAssetParams, DeletionOutput]):
     async def execute(
         self, params: DeleteAssetParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DeletionOutput]:
-        provider = context.get_provider_service()
+        provider = context.dataspace.provider()
         asset_id = params.asset_id or context.get_variable("asset_id")
-        url = context.get_provider_endpoint_url("assets", asset_id)
+        url = context.dataspace.provider_endpoint_url("assets", asset_id)
 
         result = provider.assets.delete(oid=asset_id)
         status = result.status_code if result is not None else _DELETED
@@ -113,9 +113,9 @@ class DeletePolicyStep(BaseStep[DeletePolicyParams, DeletionOutput]):
     async def execute(
         self, params: DeletePolicyParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DeletionOutput]:
-        provider = context.get_provider_service()
+        provider = context.dataspace.provider()
         policy_id = params.policy_id or context.get_variable("policy_id")
-        url = context.get_provider_endpoint_url("policies", policy_id)
+        url = context.dataspace.provider_endpoint_url("policies", policy_id)
 
         result = provider.policies.delete(oid=policy_id)
         status = result.status_code if result is not None else _DELETED
@@ -161,11 +161,11 @@ class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, Dele
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DeletionOutput]:
-        provider = context.get_provider_service()
+        provider = context.dataspace.provider()
         contract_id = params.contract_definition_id or context.get_variable(
             "contract_definition_id"
         )
-        url = context.get_provider_endpoint_url("contract_definitions", contract_id)
+        url = context.dataspace.provider_endpoint_url("contract_definitions", contract_id)
 
         result = provider.contract_definitions.delete(oid=contract_id)
         status = result.status_code if result is not None else _DELETED

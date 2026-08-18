@@ -96,7 +96,7 @@ below.
 | **P1** | Deletion pass | **done** — 1,060 lines removed, 152 added |
 | **P2** | Close the false-positive class | **done** |
 | **P3** | Rewrite compiler + collapse to one `.tck`, executed from the IR | in-progress — IR made lossless; player wiring next |
-| **P4** | Rewrite execution engine + type the seams | not started |
+| **P4** | Rewrite execution engine + type the seams | **done** |
 | **P5** | Rename, reshape, add invariants | not started |
 
 ### P0 outcome
@@ -128,7 +128,7 @@ P5.
 | --- | --- | --- | --- | --- |
 | F-A01 | Critical | Authoring models accept and drop unknown keys (`extra="ignore"`) | P2 | **done** — all 14 authoring models strict; error names the full path |
 | F-A02 | Critical | Unresolved `${{ }}` reference becomes its own literal text | P2 | **done** — raises `UnresolvedReferenceError`, naming what is in scope |
-| F-A03 | Critical | Steps fabricate `HttpResponse(500)` and still report PASSED (15 sites) | P2 | open |
+| F-A03 | Critical | Steps fabricate `HttpResponse(500)` and still report PASSED (15 sites) | P2 | **done** — 15 sites raise `StepExecutionError`; no step invents a status the SUT never sent |
 | F-A04 | Critical | `run_step` catches 5 exception types; the rest abort the whole job | P2 | **done** — catches broadly, classifies engine fault vs SUT failure |
 | F-A05 | Critical | Assertion with no `operator` silently becomes `not_null`, ignoring `value` | P2 | **done** — operands checked against the operator's declared arity |
 | F-A06 | Critical | Zero executed assertions is a passing result | P2 | **done** — `declared` vs `total` recorded; a run that verified nothing says so |
@@ -174,7 +174,7 @@ That is the concrete cost of F-F02's defensive `getattr` style, in one place.
 | F-B04 | Medium | Undeclared-variable check greps a syntax no script uses | P2 | **done** — scope-aware, now an error; 23 spurious warnings → 0 |
 | F-B05 | Medium | Two accepted shapes for `env.schemas` / `env.testdata` | P3 | **done** — the generated schema describes the list form the models declare |
 | F-B06 | Medium | Three version numbers for one artefact; `v1-alpha2` is not PEP 440 | P3 | **done** — `1.0.0a2`, read from package metadata everywhere |
-| F-B07 | Low | Docstrings promise `.tck`, code writes `.stck`; "inlining" does not inline | P3 | open |
+| F-B07 | Low | Docstrings promise `.tck`, code writes `.stck`; "inlining" does not inline | P3 | **done** — `.stck` deleted; `.tck` is the one format, plain or encrypted |
 | F-B08 | High | Compiler and runtime parse `${{ }}` with different regexes | P3 | **done in P1** — one grammar in `syntax/patterns.py`, five definitions gone |
 
 ## Theme C — Subsystems wired to fields that no longer exist
@@ -191,32 +191,33 @@ That is the concrete cost of F-F02's defensive `getattr` style, in one place.
 
 | ID | Sev | Finding | Phase | Status |
 | --- | --- | --- | --- | --- |
-| F-D01 | High | Folder layout does not predict step identity | P5 | open |
-| F-D02 | High | Import cycle player ↔ steps, held open by deferred imports | P4 | open |
-| F-D03 | High | `StepContext` is a god object; reaches into `ServiceManager._definitions` | P4 | open |
+| F-D01 | High | Folder layout does not predict step identity | P5 | **done** — every step's path mirrors its id; enforced |
+| F-D02 | High | Import cycle player ↔ steps, held open by deferred imports | P4 | **done** — `contracts.StepInvoker`; the edge is one-way |
+| F-D03 | High | `StepContext` is a god object; reaches into `ServiceManager._definitions` | P4 | **done** — `DataspaceAccess` split out; 222 → 151 lines |
 | F-D04 | Medium | Alias shims renaming functions for no behavioural reason | P1 | **done** — 6 files → `phase.py` |
-| F-D05 | Medium | 13 files over 300 lines; 5 folders over 5 files | P5 | open |
-| F-D06 | Medium | No test package for `config`, `logging`, `security`, `syntax`, `schemas` | P3 | open |
+| F-D05 | Medium | 13 files over 300 lines; 5 folders over 5 files | P5 | partial — measured and ratcheted; `dtr.py` 1063 → two modules |
+| F-D06 | Medium | No test package for `config`, `logging`, `security`, `syntax`, `schemas` | P3 | **done** — `tests/unit/security/`, 15 tests over encryption, signing and sealing |
 
 ## Theme E — The same job, done several ways
 
 | ID | Sev | Finding | Phase | Status |
 | --- | --- | --- | --- | --- |
-| F-E01 | High | Blocking `requests` inside `async def`, alongside `httpx` | P4 | open |
+| F-E01 | High | Blocking `requests` inside `async def`, alongside `httpx` | P4 | **done (our half)** — one async client; SDK half is F-E07 |
 | F-E02 | High | 4 undeclared runtime deps: `requests`, `rich`, `cryptography`, `starlette` | P0 | **done** — declared; `starlette` reached via `fastapi`. `requests` goes in P4 |
 | F-E03 | Medium | 16 of 56 steps overlap another step | **P5** | deferred — see note |
 | F-E04 | Medium | Two dot-path extractors with different semantics | P1 | **done** — `_get_nested` deleted with its module |
-| F-E05 | Medium | Hidden camelCase fallback in path lookup | P4 | open |
-| F-E06 | Low | Two lockfiles, one tracked | P0 | open — `poetry.lock` regenerated; `uv.lock` still untracked and drifting |
+| F-E05 | Medium | Hidden camelCase fallback in path lookup | P4 | **done** — a path names the key the document has |
+| F-E06 | Low | Two lockfiles, one tracked | P0 | **done** — `uv.lock` removed; poetry is what CI uses |
+| F-E07 | High | The SDK is synchronous, so ~22 SDK calls block the loop too | P4 | **done** — 18 network calls offloaded via `sdk_call.run` |
 
 ## Theme F — Error model and typing floor
 
 | ID | Sev | Finding | Phase | Status |
 | --- | --- | --- | --- | --- |
 | F-F01 | High | Documented `TestLabError` hierarchy does not exist | P2 | **done** — `TestLabError` → Authoring/Execution/Engine; all 12 reparented |
-| F-F02 | High | Service layer typed `object`; 56 defensive `getattr` sites follow | P4 | open |
-| F-F03 | Medium | `UserWarning` on every import and CLI invocation | P4 | open |
-| F-F04 | Medium | Two typing dialects (`Optional[X]` 62 files, `X \| None` 12) | P4 | open |
+| F-F02 | High | Service layer typed `object`; 56 defensive `getattr` sites follow | P4 | **done** — `contracts/services.py`; mypy in `steps` 59 → 17 |
+| F-F03 | Medium | `UserWarning` on every import and CLI invocation | P4 | **done** — field renamed `assertions`, YAML key unchanged |
+| F-F04 | Medium | Two typing dialects (`Optional[X]` 62 files, `X \| None` 12) | P4 | **done** — `Optional`/`Union` gone; rules enforced |
 
 ## Theme G — Nothing is enforced
 
@@ -243,19 +244,19 @@ and the distributed package disagree about what version this is.
 
 | ID | Sev | Finding | Phase | Status |
 | --- | --- | --- | --- | --- |
-| F-H01 | High | Hand-written env mapping, already drifted (`logs_dir` has no var) | P5 | open |
-| F-H02 | Medium | No sample config; surface documented across 5 pages | P5 | open |
-| F-H03 | Medium | One prefix, two unrelated naming schemes | P5 | open |
+| F-H01 | High | Hand-written env mapping, already drifted (`logs_dir` has no var) | P5 | **done** — pydantic-settings derives every name |
+| F-H02 | Medium | No sample config; surface documented across 5 pages | P5 | **done** — `testlab.config.example.yaml` + `testlab config` |
+| F-H03 | Medium | One prefix, two unrelated naming schemes | P5 | **done** — both derived from their models |
 
 ## Theme I — CLI behaviour and record-keeping
 
 | ID | Sev | Finding | Phase | Status |
 | --- | --- | --- | --- | --- |
-| F-I01 | Medium | `run` compiles as a side effect, writing into the source tree | P5 | open |
-| F-I02 | Medium | Three overlapping package-inspection commands | P5 | open |
-| F-I03 | Low | `util/log` uses `print()`, bypassing structured logging | P5 | open |
-| F-I04 | Low | 150 files carry another project's copyright header | P5 | open |
-| F-I05 | Low | Stray tracked files; inaccurate AI-provenance record | P5 | open |
+| F-I01 | Medium | `run` compiles as a side effect, writing into the source tree | P5 | **done** — builds to a temp dir |
+| F-I02 | Medium | Three overlapping package-inspection commands | P5 | **done** — `info`/`decompile` folded into `inspect --manifest` / `--extract` |
+| F-I03 | Low | `util/log` uses `print()`, bypassing structured logging | P5 | **done** |
+| F-I04 | Low | 150 files carry another project's copyright header | P5 | **done** — 217 files corrected |
+| F-I05 | Low | Stray tracked files; inaccurate AI-provenance record | P5 | **done** — stray files removed; subtitle kept per Q4 |
 
 ---
 
@@ -266,12 +267,12 @@ a second way of doing something reappears.
 
 | # | Invariant | Test | Status |
 | --- | --- | --- | --- |
-| I1 | Every step's module path is derivable from its id | `tests/unit/steps/test_step_registration.py` | partial — inventory covered, path mapping in P5 |
-| I2 | Every registered step is reachable by the validator | — | P1, with F-B02 |
-| I3 | Generated step reference equals the committed one | `testlab docs --check` in CI | **done**. JSON Schema half lands with P3 |
+| I1 | Every step's module path is derivable from its id | `tests/unit/steps/test_step_registration.py` | **done** |
+| I2 | Every registered step is reachable by the validator | `tests/unit/steps/test_step_registration.py` | **done** |
+| I3 | Generated step reference and JSON Schemas equal the committed ones | `testlab docs --check`, `testlab schema --check` | **done** |
 | I6 | Compiling a TCK loses nothing the models declare | `tests/unit/compiler/test_ir_is_lossless.py` | **done** |
 | I4 | A TCK with unknown keys, unresolvable refs, or zero assertions is rejected | `tests/unit/test_no_false_positives.py` | **written — 7 tests, all `xfail(strict)` against P2/P3** |
-| I5 | No duplicate basenames, no file over 300 lines, no banned module names | — | P5 |
+| I5 | No duplicate basenames, no file over 300 lines, no banned module names | `tests/unit/structure/test_module_layout.py` | **done** — with a shrinking allowlist |
 
 ### The P2/P3 ratchet is armed
 
@@ -647,3 +648,246 @@ asserts the step name appears in the output.
 repository and the artefact disagreed about what version this was. Now `1.0.0a2`,
 and the OpenAPI document reads it from package metadata rather than hardcoding
 `0.7.1` — the health endpoint, the API docs and the wheel finally agree.
+
+---
+
+## P4, part 1 — the seams are typed
+
+### F-F03 — the warning on every invocation
+
+`StepDefinition.validate` shadowed `BaseModel.validate`, so Pydantic warned on
+every import of the library — including every `testlab` command — and mypy
+reported the override as a type error. The field is now `assertions`, with
+`validation_alias` and `serialization_alias` both `validate`: scripts, the IR and
+the published JSON Schema are unchanged, and the shadowing is gone.
+
+Renaming it immediately found a reader I had missed. `validator.py` still said
+`step_def.validate`, which no longer resolved to the field — it resolved to
+`BaseModel.validate`, the deprecated method — and failed with
+`TypeError: 'method' object is not iterable`. That is precisely the hazard the
+shadowing created, made visible by removing it.
+
+Test warnings: 28 → 6.
+
+### F-F02 — what the engine requires, stated as types
+
+`contracts/services.py` declares `ConnectorConsumer`, `ConnectorProvider`,
+`RegistryService`, `NotificationService` and `Controller` as Protocols. They are
+deliberately **not** a mirror of the SDK: they are the ~25 members the steps
+actually call, which makes the engine's requirement of a connector readable in
+one place.
+
+The SDK stays untyped at its own boundary, so an SDK object satisfies a Protocol
+structurally and what gets checked is the half we own.
+
+| | Before | After |
+| --- | --- | --- |
+| mypy errors in `steps` | 59 | 17 |
+| `getattr` probes in steps + context | 56 | 22 |
+| ratcheted modules | `steps.*` (whole package) | 10, listed individually |
+
+The remaining 17 are ordinary step-level typing — `Any` flowing out of the SDK
+into a declared payload — not the `object` seam. They are listed module by module
+in `pyproject.toml` so the debt shrinks one file at a time.
+
+### Two defects the Protocols surfaced
+
+**`mock/api` still resolved `@name`.** The last surviving legacy-syntax resolver,
+kept alive by one test. It was also actively wrong: it treated *any* string
+beginning with `@` as a variable reference, so a JSON-LD value like `"@id"` in a
+mock response body was mangled on its way past. The body is a step parameter —
+`${{ ... }}` in it is resolved before the step runs, like every other parameter —
+so the second pass was removed.
+
+**`flow/if` annotated a result `StepResult | None`** when `run_step` never
+returns `None`, which mypy read as a possible `AttributeError` on the next line.
+
+### Still open in P4
+
+F-D02 (the player↔steps import cycle — `contracts/` is now the leaf package that
+can hold the invoker Protocol), F-D03 (`StepContext` still carries the
+connector-shaped accessors), F-E01 (blocking `requests` inside `async def`),
+F-E05 (the camelCase fallback in path extraction), F-F04 (the typing dialect).
+
+### F-D02 — the cycle is one-way now
+
+`flow/if` and `flow/retry` run the steps nested inside them, which means a step
+calling the runner — while the player imports the steps package to register
+them. The edge went both ways, held open by importing `run_step` from inside the
+`execute` bodies. That is legal Python, and it hides a cycle rather than removing
+one.
+
+`contracts.StepInvoker` states the shape of the runner; `StepContext` carries
+one; `run_step` binds itself as it starts. A flow step now asks the context to
+run a nested step and never names the player.
+
+Verified statically, module-level imports outside `TYPE_CHECKING`:
+
+```text
+steps → player : none — the cycle is broken
+player → steps : player/execution/phase.py, player/execution/step_runner.py
+```
+
+The invoker is bound in `run_step` rather than at the composition root, so every
+context that reaches a step can run a nested one — including the ones tests build
+directly. The two flow-step unit tests now hand their mock context the real
+runner, which is honest about what they exercise: a step that contains steps
+needs something that can run one.
+
+`contracts/` is a leaf package — it imports nothing from the rest of testlab — so
+anything may depend on it. That is what makes it the right home for this, and for
+the service Protocols beside it.
+
+---
+
+## F-E01 — one HTTP client, and a bigger problem underneath
+
+`steps/http_client.py` is now the only way a step makes an HTTP call. All eight
+`requests` call sites are converted; `requests` no longer appears anywhere under
+`steps/`.
+
+The harm was concrete: the event loop those calls blocked is the same one running
+the in-process callback server. A step waiting on a slow registry stopped the
+SUT's callbacks from being answered — with a 600-second step timeout, the server
+could be unreachable for ten minutes while the script sat waiting for a callback
+that could not arrive.
+
+### Two behaviours that had to be preserved deliberately
+
+**Header casing.** `dict(httpx_response.headers)` lower-cases every name, because
+httpx's own lookups are case-insensitive and it normalises for them. A script
+gets no such courtesy: a TCK reading `response_headers.X-Next-Cursor` finds
+nothing once the key is `x-next-cursor`. `requests` preserved the wire casing, so
+`headers_of()` rebuilds from the raw pairs. Caught by an existing combination
+test — without it this would have shipped as a silent break in any TCK that reads
+a header.
+
+**`resp.ok`.** A `requests` attribute httpx does not have. On a `MagicMock` it
+read as truthy, so the OAuth2 refusal path stopped refusing. Now reads
+`status_code >= 400`, which is transport-independent.
+
+### The test doubles moved too
+
+`tests/conftest.py::http_response` builds a response shaped like the one a step
+now receives — content type for `body_of`, raw pairs for `headers_of`. It is
+shared rather than repeated per file, because getting either half wrong makes a
+test pass while the step misreads real responses. One local double had
+`{"Content-Type": ...}` as a plain dict, whose case-sensitive `.get("content-type")`
+returns `None`.
+
+Unifying the client also **merged patch targets**: the DTR lookup tests patched
+`requests.post` and `requests.get` separately, and now one mock answers both
+calls in order.
+
+### F-E07 — the SDK is synchronous (new)
+
+Measured while doing this: `tractusx_sdk`'s adapters import `requests`, and no
+service method is a coroutine. So roughly **22 SDK call sites also block the
+loop** — catalog queries, negotiations, transfers, data pulls: exactly the long
+ones.
+
+Converting our eight calls fixes the code we own and is worth having, but it is
+about a quarter of the problem. The rest needs `asyncio.to_thread` at the SDK
+boundary. Recorded as its own finding rather than folded into F-E01, because the
+review measured only our own calls and the scale of the remainder was not known
+until now.
+
+---
+
+## P4 complete
+
+### F-E07 — the SDK calls are off the loop
+
+`steps/sdk_call.py` runs a blocking SDK operation on a worker thread. Eighteen
+network-reaching calls go through it; `get_filter_expression` and
+`_prepare_headers` stay inline because they only build a request, and a thread
+hop costs more than the work.
+
+Three helpers had to become `async` and their callers `await` them —
+`fetch_data_address`, `_register_shell`, `_register_submodel` — which is the
+honest consequence: a function that reaches the network in an async engine
+should say so in its signature.
+
+### F-E05 — a path names the key the document has
+
+`_dict_get` tried the written key and then silently retried its camelCase form,
+so `header.message_id` found `messageId`. A second spelling for one field,
+undocumented and unbounded, and no way to say from a script why a path resolved.
+
+Nothing real depended on it: every path in the shipped TCKs, and every other path
+in the extraction tests, already writes the actual key. One test read
+`submodel_descriptors` and existed to exercise the fallback itself. Where a
+document genuinely carries two spellings the payload model declares the alias —
+`authCode` and `@id` already do — and that is visible.
+
+### F-F04 — one typing dialect
+
+`Optional[...]` and `Union[...]` are gone from `src/` (62 files and 0 remaining
+respectively). `UP007`, `UP045` and `UP046` came off the ratchet and are enforced.
+
+### F-D03 — the context is about a run again
+
+`DataspaceAccess` now owns the eight connector-shaped accessors and the SDK
+controller URL builder. `StepContext` is 222 → 151 lines and carries variables,
+job, config, infrastructure and the step invoker — nothing that knows what a
+catalog is.
+
+Call sites read `context.dataspace.consumer()` rather than
+`context.get_consumer_service()`, which also says where the thing comes from.
+
+`ServiceManager` gained a public `definition_of_type`, so nothing reaches into
+`_definitions` from another module any more.
+
+### F-A03 — a step that could not produce its output now fails
+
+Fifteen sites built an `HttpResponse` with a fabricated status — usually `500`,
+sometimes `200 if x else 500` — when the operation they were meant to perform
+had produced nothing. A step fails on a raise or a hard assertion, so a
+fabricated status is a value that flows into the next step's `${{ }}` and into
+the assertions as if the SUT had sent it. A negotiation with no EDR reported
+PASSED.
+
+All fifteen raise `StepExecutionError` naming what was missing. No step invents
+a status code, so a status in a result came off a wire.
+
+### F-D06 — the code that decides authenticity is tested
+
+`security/` generates the keys, encrypts the payload and verifies the signature
+that say a `.tck` is the one its compiler built, and it had no unit tests. Fifteen
+now cover the round trip, a flipped ciphertext bit, the wrong recipient, the
+multi-recipient unwrap, a signing key handed where an encryption key was meant,
+three signature cases, and the six sealing outcomes — edited entry, renamed
+entry, removed entry, no manifest, no recorded digest, and the good one.
+
+### F-B07 and F-I02 — one format, one command
+
+`.stck` is deleted. It was a second archive format for the same job as an
+encrypted `.tck`, and a strictly weaker one: it carried the authoring YAML
+rather than the compiled package, skipped the package-digest check that
+`_verify_tck_integrity` runs, and resolved `env.schemas` and `env.testdata` from
+whatever sat next to the file on disk — assets outside the sealed envelope, read
+by a package that presents itself as sealed.
+
+With it go `Packager`, `Compiler.compile`, `Compiler.compile_tck`,
+`Loader._load_package`, and the `--encrypt` flag, which had been a third way to
+say what supplying keys already said — and said it by producing a *different
+format*. `compile` now has two independent choices and no third spelling of
+either: `--plain` writes loose files instead of an archive, and supplying both
+`--compiler-keys` and `--player-pub` signs and encrypts. Supplying one without
+the other is an error naming the one that is missing.
+
+`testlab info` and `testlab decompile` are gone into `testlab inspect`. Three
+verbs asked one question — what is in this package? — and each carried its own
+copy of the decrypt-and-verify dance, with `info` and `decompile` reading the
+archive directly rather than through the loader. `inspect` verifies once and
+every section reads the verified bytes, so there is no longer a command that
+reports a tampered package's own account of itself. `--manifest` is what `info`
+printed; `--extract` is what `decompile` did, for every entry rather than one
+YAML, and for plain packages too. `--json` emits one object keyed by section
+whatever the flags — it used to emit a bare result with no flags and an envelope
+with them, so a consumer had to know the argv to know the shape.
+
+One thing found while wiring the smoke test: `compile` echoed the checksum the
+IR builder computed, which is taken *before* the archive is sealed, so the number
+printed by the compile was not the number in the package it had just written.
+`_create_tck_archive` returns the sealed digest and that is what is reported.

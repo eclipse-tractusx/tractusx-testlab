@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -30,16 +30,17 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import CounterPartyParams
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector._polling import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
     NEGOTIATION_TERMINAL,
     poll_until_terminal,
 )
+from tractusx_testlab.steps.shared_models import CounterPartyParams
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.syntax.context_vars import (
     CATALOG_ASSET_ID,
     CATALOG_POLICY,
@@ -119,13 +120,13 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[NegotiationOutput]:
-        consumer = context.get_consumer_service()
+        consumer = context.dataspace.consumer()
         counter_party_address = params.counter_party_address or context.get_variable(
             "provider_address", ""
         )
         counter_party_id = params.counter_party_id or context.get_variable("provider_bpnl", "")
 
-        negotiation_id = consumer.start_edr_negotiation(
+        negotiation_id = await sdk_call.run(consumer.start_edr_negotiation,
             counter_party_id=counter_party_id,
             counter_party_address=counter_party_address,
             target=params.asset_id or context.get_variable(CATALOG_ASSET_ID),
@@ -143,15 +144,22 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
         agreement_id = negotiation.get("contractAgreementId")
         state = negotiation.get("state")
 
+        if not negotiation_id:
+            raise StepExecutionError(
+                self.step_type,
+                "the connector accepted the request but returned no negotiation id, "
+                "so there is nothing to observe.",
+            )
+
         value = NegotiationOutput(
             negotiation_id=negotiation_id, agreement_id=agreement_id, state=state
         )
-        url = context.get_consumer_endpoint_url("edrs")
+        url = context.dataspace.consumer_endpoint_url("edrs")
         return StepOutput(
             value=value,
             request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
             response=HttpResponse(
-                status_code=200 if negotiation_id else 500,
+                status_code=200,
                 body=value.model_dump(mode="json"),
             ),
         )

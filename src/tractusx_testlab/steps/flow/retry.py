@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -33,7 +33,7 @@ from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.scripting.registry import StepRegistry, step
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepValue
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepValue
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -104,8 +104,6 @@ async def _run_sequence(
     nested_defs: list[StepDefinition], context: StepContext
 ) -> list[StepResult]:
     """Run each nested step in order, stopping at the first failure."""
-    from tractusx_testlab.player.execution.step_runner import run_step
-
     results: list[StepResult] = []
     for idx, nested_def in enumerate(nested_defs):
         step_name = f"retry[{idx}]:{nested_def.uses}"
@@ -121,7 +119,7 @@ async def _run_sequence(
             )
             break
 
-        result: Any = await run_step(step_cls, nested_def, step_name, context)
+        result: Any = await context.invoke_step(step_cls, nested_def, step_name, context)
         results.append(result)
         if result.status == StepStatus.FAILED:
             break

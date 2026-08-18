@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -22,11 +22,10 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""CLI commands for compiling, decompiling, and inspecting .tck archives."""
+"""The ``testlab compile`` command — YAML in, a ``.tck`` package out."""
 
 from __future__ import annotations
 
-import json
 import tempfile
 import zipfile
 from pathlib import Path
@@ -40,14 +39,22 @@ from tractusx_testlab.compiler import package_digest
 TCK_BUNDLE_ENTRY = "tck-bundle.yaml"
 
 
-def _create_tck_archive(source_dir: Path, archive_path: Path) -> None:
+def _create_tck_archive(source_dir: Path, archive_path: Path) -> str:
     """Create a ``.tck`` ZIP from *source_dir*, sealing it with a digest of itself.
 
     The digest is stamped here rather than in the IR builder because here is
     where the archive's contents finally exist. The builder ran before the test
     files were copied in, so its digest covered a subset of the package and the
     executed files sat outside it.
+
+    Returns the checksum the archive carries, so the caller reports the number
+    the package actually holds. ``compile`` used to echo the builder's
+    pre-sealing checksum, which no longer matched anything once the archive was
+    sealed — ``testlab inspect --manifest`` on the file just written showed a
+    different digest than the compile that wrote it.
     """
+    import yaml
+
     entries = {
         path.relative_to(source_dir).as_posix(): path.read_bytes()
         for path in sorted(source_dir.rglob("*"))
@@ -60,6 +67,9 @@ def _create_tck_archive(source_dir: Path, archive_path: Path) -> None:
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in sorted(entries):
             zf.writestr(name, entries[name])
+
+    sealed = yaml.safe_load(entries[package_digest.MANIFEST_ENTRY])
+    return str(sealed.get("package", {}).get("checksum", ""))
 
 
 def _embed_bundle_yaml(manifest_path: Path, output_dir: Path) -> None:
@@ -115,15 +125,32 @@ def compile(
     ),
     plain: bool = typer.Option(
         False, "--plain",
-        help="Output loose files to a directory (no ZIP). With --compiler-keys/--player-pub outputs encrypted loose files.",
-    ),
-    encrypt: bool = typer.Option(
-        False, "--encrypt",
-        help="Encrypt the .tck package. Requires --compiler-keys and --player-pub.",
+        help="Write loose files to a directory instead of a .tck archive.",
     ),
 ) -> None:
-    """Compile a YAML test script into a .tck archive."""
+    """Compile a YAML test script into a ``.tck`` package.
+
+    Two independent choices, and no third way to spell either:
+
+    * ``--plain`` writes loose files to a directory; without it, one ``.tck``.
+    * Supplying **both** ``--compiler-keys`` and ``--player-pub`` signs and
+      encrypts the result; supplying neither leaves it readable.
+
+    There used to be a separate ``--encrypt`` flag that wrote a ``.stck``, so
+    the same stated intent produced two different formats depending on which
+    spelling the caller reached for. ``.tck`` is the distribution and execution
+    format; it is now the only one.
+    """
     from tractusx_testlab.compiler.compiler import Compiler
+
+    if bool(compiler_keys) != bool(player_pub):
+        missing = "--player-pub" if compiler_keys else "--compiler-keys"
+        typer.echo(
+            f"Error: {missing} is required to encrypt a package. Supply both "
+            f"--compiler-keys and --player-pub, or neither.",
+            err=True,
+        )
+        raise typer.Exit(1)
 
     compiler = Compiler()
 
@@ -145,19 +172,7 @@ def compile(
             typer.echo(f"  Fingerprint digest: {manifest_dict['compilation']['fingerprint']['digest']}")
         return
 
-    if encrypt:
-        # Encrypted mode requires keys
-        if not compiler_keys:
-            typer.echo("Error: --compiler-keys is required for encrypted compilation.", err=True)
-            raise typer.Exit(1)
-        if not player_pub:
-            typer.echo("Error: --player-pub is required for encrypted compilation.", err=True)
-            raise typer.Exit(1)
-
-        _compile_encrypted(script, compiler_keys, player_pub, output, version, compiler)
-        return
-
-    # Auto-encrypt when both compiler and player keys are provided
+    # Both keys, or neither — checked above.
     if compiler_keys and player_pub:
         _compile_encrypted_tck(script, compiler_keys, player_pub, output, version, compiler)
         return
@@ -183,10 +198,10 @@ def compile(
         else:
             tck_path = script.parent / f"{tck_id}.tck"
         tck_path.parent.mkdir(parents=True, exist_ok=True)
-        _create_tck_archive(tmp_path, tck_path)
+        checksum = _create_tck_archive(tmp_path, tck_path)
 
     typer.echo(f"\nCompiled → {tck_path}")
-    typer.echo(f"  Package checksum : {manifest_dict['package']['checksum']}")
+    typer.echo(f"  Package checksum : {checksum}")
     typer.echo(f"  Fingerprint digest: {manifest_dict['compilation']['fingerprint']['digest']}")
 
 
@@ -324,134 +339,3 @@ def _compile_encrypted_tck(
     typer.echo(f"  Checksum : {redacted['package']['checksum'][:32]}...")
     typer.echo(f"  Signed by: {compiler_identity.signing.fingerprint[:32]}...")
     typer.echo(f"  Players  : {len(authorized_players)}")
-
-
-def _compile_encrypted(
-    script: Path,
-    compiler_keys: Path,
-    player_pub: list[Path],
-    output: Path | None,
-    version: str | None,
-    compiler: object,
-) -> None:
-    """Run encrypted .stck compilation with signing and encryption."""
-    from tractusx_testlab.security.crypto.keygen import _fingerprint
-    from tractusx_testlab.security.trust.identity import PlayerIdentity
-
-    # Load compiler identity
-    compiler_identity = PlayerIdentity.load(compiler_keys)
-
-    # Load recipient public keys
-    recipient_keys: dict[str, bytes] = {}
-    for pub_path in player_pub:
-        pub_bytes = pub_path.read_bytes()
-        fingerprint = _fingerprint(pub_bytes)
-        recipient_keys[fingerprint] = pub_bytes
-        typer.echo(f"  Authorized player: {pub_path.name} ({fingerprint[:16]}...)")
-
-    out = output or script.with_suffix(".stck")
-
-    # Detect whether input is a TCK manifest or a single test
-    import yaml as _yaml
-
-    from tractusx_testlab.models.primitives.enums import ScriptKind
-    from tractusx_testlab.player.loading.loader import _detect_kind
-    with open(script, encoding="utf-8") as script_handle:
-        raw = _yaml.safe_load(script_handle)
-    is_tck = isinstance(raw, dict) and _detect_kind(raw) == ScriptKind.TCK
-
-    try:
-        if is_tck:
-            manifest, validation = compiler.compile_tck(
-                manifest_path=script,
-                compiler_identity=compiler_identity,
-                recipient_keys=recipient_keys,
-                output_path=out,
-                version=version,
-            )
-        else:
-            manifest, validation = compiler.compile(
-                script_path=script,
-                compiler_identity=compiler_identity,
-                recipient_keys=recipient_keys,
-                output_path=out,
-                version=version,
-            )
-    except (ValueError, FileNotFoundError) as exc:
-        typer.echo(f"Compilation failed: {exc}", err=True)
-        raise typer.Exit(1) from exc
-
-    typer.echo(f"\nCompiled (encrypted) → {out}")
-    typer.echo(f"  Checksum : {manifest.checksum[:32]}...")
-    typer.echo(f"  Signed by: {manifest.security.compiler_id[:32]}...")
-    typer.echo(f"  Players  : {len(manifest.security.authorized_players)}")
-
-    if validation.issues:
-        for issue in validation.issues:
-            prefix = "WARN " if issue.level == "warning" else "ERROR"
-            typer.echo(f"  [{prefix}] {issue.message}")
-
-
-@app.command()
-def info(
-    package: Path = typer.Argument(..., help="Path to a .tck archive."),
-) -> None:
-    """Display the manifest of a compiled .tck package."""
-    from tractusx_testlab.compiler.packager import Packager
-
-    manifest = Packager.read_manifest(package)
-    typer.echo(json.dumps(json.loads(manifest.model_dump_json()), indent=2))
-
-
-@app.command()
-def decompile(
-    package: Path = typer.Argument(..., help="Path to the .tck archive to decompile."),
-    player_keys: Path = typer.Option(
-        ..., "--player-keys", "-k",
-        help="Directory containing the player identity (encryption.pem).",
-    ),
-    compiler_pub: Path = typer.Option(
-        ..., "--compiler-pub", "-c",
-        help="Path to the compiler's signing public key (signing.pub).",
-    ),
-    output: Path | None = typer.Option(
-        None, "--output", "-o",
-        help="Output path for the decrypted YAML. Defaults to <package_name>.yaml.",
-    ),
-    stdout: bool = typer.Option(
-        False, "--stdout",
-        help="Print decrypted YAML to stdout instead of writing a file.",
-    ),
-) -> None:
-    """Decrypt and verify an encrypted .stck, extracting the original YAML."""
-    from tractusx_testlab.compiler.packager import Packager
-    from tractusx_testlab.security.crypto.keygen import load_private_key, load_public_key
-
-    priv_key_path = player_keys / "encryption.pem"
-    if not priv_key_path.exists():
-        typer.echo(f"Error: player private key not found: {priv_key_path}", err=True)
-        raise typer.Exit(1)
-
-    if not compiler_pub.exists():
-        typer.echo(f"Error: compiler public key not found: {compiler_pub}", err=True)
-        raise typer.Exit(1)
-
-    priv_key = load_private_key(priv_key_path)
-    pub_key = load_public_key(compiler_pub)
-
-    try:
-        plaintext = Packager.extract_and_verify(package, priv_key, pub_key)
-    except ValueError as exc:
-        typer.echo(f"Decompilation failed: {exc}", err=True)
-        raise typer.Exit(1) from exc
-
-    if stdout:
-        typer.echo(plaintext.decode("utf-8"))
-    else:
-        out_path = output or package.with_suffix(".yaml")
-        out_path.write_bytes(plaintext)
-        manifest = Packager.read_manifest(package)
-        typer.echo(f"Decompiled → {out_path}")
-        typer.echo(f"  Package  : {manifest.name} v{manifest.version}")
-        typer.echo(f"  Checksum : {manifest.checksum[:32]}...")
-        typer.echo("  Verified : signature OK")

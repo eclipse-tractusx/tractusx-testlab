@@ -35,7 +35,7 @@ certificate-management-v2/
 │   └── testdata/
 │       └── request_certificate_body.json
 │
-├── plain/                      ← Plain compiled .tckpkg contents (development mode)
+├── plain/                      ← Plain compiled .tck contents (development mode)
 │   ├── manifest.yaml             Package metadata (allow_asset_override: true)
 │   ├── tck-execution.json        Full compiled IR (env + symbol tables + instructions)
 │   └── assets/
@@ -45,7 +45,7 @@ certificate-management-v2/
 │       └── testdata/             Resolved testdata (variables substituted)
 │           └── request_certificate_body.json
 │
-├── encrypted/                  ← Encrypted compiled .tckpkg contents (certification mode)
+├── encrypted/                  ← Encrypted compiled .tck contents (certification mode)
 │   ├── manifest.yaml             Unencrypted metadata + security block (allow_asset_override: false)
 │   ├── payload.enc               AES-256-GCM encrypted tar (tck-execution.json + assets/)
 │   └── signature.sig             Hybrid Ed25519 + ML-DSA-65 signature

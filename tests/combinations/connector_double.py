@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -140,8 +140,9 @@ class ProviderDouble:
 class ServicesDouble:
     """A ``ServiceManager`` stand-in holding one consumer and one provider.
 
-    ``StepContext`` reaches a service by walking ``service_names`` and calling
-    ``get`` for a type, so that pair is the whole surface to stand in for.
+    ``DataspaceAccess`` reaches a service by walking ``service_names`` and
+    calling ``get`` for a type, and asks ``definition_of_type`` for the declared
+    base URL — that trio is the whole surface to stand in for.
     """
 
     def __init__(
@@ -159,6 +160,14 @@ class ServicesDouble:
     @property
     def service_names(self) -> list[str]:
         return list(self._by_type)
+
+    def definition_of_type(self, service_type: Any) -> object | None:
+        """No declarations here: these doubles carry their own base URLs.
+
+        ``DataspaceAccess`` falls back to the controller's own adapter URL when
+        there is no declaration, which is what these doubles provide.
+        """
+        return None
 
     def get(self, name: str, service_type: Any) -> object:
         """Return the service when *name* is the one registered for that type."""

@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -130,18 +130,19 @@ class TestInspectCommand:
         result = runner.invoke(app, ["inspect", str(tck_archive), "--json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
-        assert data["name"] == "CLI Inspect TCK"
+        # Always an envelope keyed by section, whichever flags were passed.
+        assert data["inspection"]["name"] == "CLI Inspect TCK"
 
     def test_inspect_json_contains_scripts_and_steps(self, tck_archive: Path) -> None:
         result = runner.invoke(app, ["inspect", str(tck_archive), "--json"])
-        data = json.loads(result.output)
+        data = json.loads(result.output)["inspection"]
         assert len(data["scripts"]) == 1
         steps = data["scripts"][0]["steps"]
         assert len(steps) == 3  # setup + execution + teardown
 
     def test_inspect_json_step_has_expected_fields(self, tck_archive: Path) -> None:
         result = runner.invoke(app, ["inspect", str(tck_archive), "--json"])
-        data = json.loads(result.output)
+        data = json.loads(result.output)["inspection"]
         step = data["scripts"][0]["steps"][0]
         assert "step_name" in step
         assert "uses" in step
@@ -151,31 +152,43 @@ class TestInspectCommand:
     def test_inspect_json_total_steps_is_three(self, tck_archive: Path) -> None:
         # setup(1) + execution(1) + teardown(1) = 3
         result = runner.invoke(app, ["inspect", str(tck_archive), "--json"])
-        data = json.loads(result.output)
+        data = json.loads(result.output)["inspection"]
         assert data["total_steps"] == 3
 
     def test_inspect_json_total_validations_is_one(self, tck_archive: Path) -> None:
         # only execution step has 1 validation
         result = runner.invoke(app, ["inspect", str(tck_archive), "--json"])
-        data = json.loads(result.output)
+        data = json.loads(result.output)["inspection"]
         assert data["total_validations"] == 1
 
     def test_inspect_exits_one_for_missing_file(self, tmp_path: Path) -> None:
         result = runner.invoke(app, ["inspect", str(tmp_path / "no-such.tck")])
         assert result.exit_code == 1
 
-    def test_inspect_exits_one_for_stck_without_player_keys(self, tmp_path: Path) -> None:
-        fake_stck = tmp_path / "fake.stck"
-        fake_stck.write_bytes(b"not-real")
-        result = runner.invoke(app, ["inspect", str(fake_stck)])
+    def test_inspect_exits_one_for_a_file_that_is_not_an_archive(self, tmp_path: Path) -> None:
+        not_a_package = tmp_path / "fake.tck"
+        not_a_package.write_bytes(b"not-real")
+        result = runner.invoke(app, ["inspect", str(not_a_package)])
         assert result.exit_code == 1
-        assert "--player-keys" in result.output
+        assert "Refused to inspect" in result.output
 
-    def test_inspect_exits_one_for_stck_without_compiler_pub(self, tmp_path: Path) -> None:
-        fake_stck = tmp_path / "fake.stck"
-        fake_stck.write_bytes(b"not-real")
-        result = runner.invoke(
-            app, ["inspect", str(fake_stck), "--player-keys", str(tmp_path)]
-        )
-        assert result.exit_code == 1
-        assert "--compiler-pub" in result.output
+    def test_inspect_prints_the_manifest(self, tck_archive: Path) -> None:
+        result = runner.invoke(app, ["inspect", str(tck_archive), "--manifest"])
+        assert result.exit_code == 0
+        assert "MANIFEST" in result.output
+        assert "Checksum" in result.output
+
+    def test_inspect_manifest_as_json(self, tck_archive: Path) -> None:
+        """What ``compile info`` printed, now a section of one command."""
+        result = runner.invoke(app, ["inspect", str(tck_archive), "--manifest", "--json"])
+        assert result.exit_code == 0
+        assert "checksum" in json.loads(result.output)["manifest"]["package"]
+
+    def test_inspect_extracts_the_verified_contents(self, tck_archive: Path, tmp_path: Path) -> None:
+        """What ``compile decompile`` did — for every entry, not one YAML."""
+        out = tmp_path / "extracted"
+        result = runner.invoke(app, ["inspect", str(tck_archive), "--extract", str(out)])
+        assert result.exit_code == 0
+        written = {p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file()}
+        assert "manifest.yaml" in written
+        assert "tck-bundle.yaml" in written

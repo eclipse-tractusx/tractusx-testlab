@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -94,7 +94,7 @@ StorageDep = Annotated[PackageStorage, Depends(_get_storage)]
     "/packages",
     status_code=201,
     responses={
-        400: {"description": "File must be a .stck archive"},
+        400: {"description": "File must be a .tck archive"},
         413: {"description": "Package exceeds maximum upload size"},
     },
 )
@@ -103,9 +103,9 @@ async def upload_package(
     player: PlayerDep,
     storage: StorageDep,
 ) -> JSONResponse:
-    """Upload a .stck archive."""
-    if not file.filename or not file.filename.endswith(".stck"):
-        raise HTTPException(400, "File must be a .stck archive")
+    """Upload a .tck archive."""
+    if not file.filename or not file.filename.endswith(".tck"):
+        raise HTTPException(400, "File must be a .tck archive")
 
     data = await file.read()
     max_bytes = player._config.max_upload_bytes

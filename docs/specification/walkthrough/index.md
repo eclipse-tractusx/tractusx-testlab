@@ -19,7 +19,7 @@ SPDX-License-Identifier: CC-BY-4.0
 
 # Walkthrough
 
-This walkthrough guides you through the complete Testlab lifecycle — from writing your first YAML test scripts, through compiling them into a portable `.tckpkg` package, to executing tests and interpreting results.
+This walkthrough guides you through the complete Testlab lifecycle — from writing your first YAML test scripts, through compiling them into a portable `.tck` package, to executing tests and interpreting results.
 
 ## What You'll Build
 
@@ -27,7 +27,7 @@ By the end of this walkthrough, you will have:
 
 1. **Written** two YAML test scripts that validate connector data exchange end-to-end
 2. **Organized** them into a TCK with shared variables and supporting assets
-3. **Compiled** the TCK into a distributable `.tckpkg` package
+3. **Compiled** the TCK into a distributable `.tck` package
 4. **Executed** the tests against live connectors and reviewed the results
 
 ## Workflow Overview
@@ -69,7 +69,7 @@ flowchart LR
 | Section | Description |
 |---------|-------------|
 | [Writing Test Scripts](writing-test-scripts.md) | Create YAML tests, declare variables, define steps and assertions, organize into a TCK with assets |
-| [Compiling Packages](compiling-packages.md) | Validate and package scripts into `.tckpkg`, inspect the compiled output, compile with encryption |
+| [Compiling Packages](compiling-packages.md) | Validate and package scripts into `.tck`, inspect the compiled output, compile with encryption |
 | [Executing Tests](executing-tests.md) | Run tests via CLI, provide runtime variables, read results, use the Player API programmatically |
 
 ---

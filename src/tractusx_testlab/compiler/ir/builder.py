@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -40,10 +40,10 @@ from pydantic import ValidationError
 from tractusx_testlab.compiler._fingerprint import build_fingerprint
 from tractusx_testlab.compiler.ir._assets import build_asset_entries
 from tractusx_testlab.compiler.ir._compilation import build_compiled_tests
-from tractusx_testlab.compiler.ir._helpers import (
+from tractusx_testlab.compiler.ir._instructions import (
     compute_source_hash,
 )
-from tractusx_testlab.compiler.ir._helpers import (
+from tractusx_testlab.compiler.ir._instructions import (
     infer_testdata_type as _infer_testdata_type,
 )
 from tractusx_testlab.compiler.ir._symbols import build_global_symbols
@@ -251,7 +251,7 @@ def _build_tests_list(
     manifest_data: dict[str, Any], base_dir: Path,
 ) -> list[dict[str, Any]]:
     """Build the tests reference list with source hashes."""
-    from tractusx_testlab.compiler.ir._helpers import (
+    from tractusx_testlab.compiler.ir._instructions import (
         load_test_file,
         resolve_test_path,
     )
@@ -301,7 +301,7 @@ def _build_infrastructure(
     answer to "what must I bind to run this package" rather than a transcript
     of where the author happened to write it down.
     """
-    from tractusx_testlab.compiler.ir._helpers import load_test_file, resolve_test_path
+    from tractusx_testlab.compiler.ir._instructions import load_test_file, resolve_test_path
 
     declared = manifest_data.get("infrastructure")
     if isinstance(declared, dict):

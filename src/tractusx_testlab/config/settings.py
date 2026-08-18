@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,7 +26,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from tractusx_testlab.models import VaultConfig
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
@@ -34,8 +35,15 @@ from tractusx_testlab.models.domain.infrastructure import Infrastructure
 _DEFAULT_BASE = Path.home() / ".testlab"
 
 
-class TestlabConfig(BaseModel):
+class TestlabConfig(BaseSettings):
     """Engine settings, resolved from ``testlab.config.yaml``, env and CLI.
+
+    Every field is settable as ``TESTLAB_<FIELD>``, derived from the model rather
+    than listed by hand. The loader used to keep a literal dict of seven names
+    against eleven fields, so ``logs_dir`` — a real setting — had no environment
+    variable at all, for no stated reason. Deriving the names is the same
+    principle ``infrastructure/mapping.py`` already applies to bindings: one
+    declaration, every surface generated from it.
 
     Unknown keys are rejected. A misspelled setting used to be discarded in
     silence and the operator got the default they did not ask for — a
@@ -43,15 +51,17 @@ class TestlabConfig(BaseModel):
     while the config file said otherwise.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = SettingsConfigDict(
+        extra="forbid", env_prefix="TESTLAB_", env_nested_delimiter="__",
+    )
 
     keys_dir: Path = Field(default=_DEFAULT_BASE / "keys")
     trust_store_dir: Path = Field(default=_DEFAULT_BASE / "trusted_compilers")
     storage_dir: Path = Field(default=_DEFAULT_BASE / "packages")
     logs_dir: Path = Field(default=_DEFAULT_BASE / "logs")
-    server_port: int = 8100
-    max_upload_bytes: int = 52_428_800  # 50 MB
-    default_timeout_s: float = 600.0
+    server_port: int = Field(default=8100, ge=1, le=65535)
+    max_upload_bytes: int = Field(default=52_428_800, gt=0)  # 50 MB
+    default_timeout_s: float = Field(default=600.0, gt=0)
     #: The deployment this engine drives — its own connector, registry and
     #: submodel server, and the system under test it talks to. Held here so an
     #: engine is configured once, at startup, rather than per script.

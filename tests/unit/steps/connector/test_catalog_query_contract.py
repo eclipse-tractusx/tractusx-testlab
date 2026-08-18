@@ -28,8 +28,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.steps.base import StepOutput
+from tractusx_testlab.models import StepDefinition, StepExecutionError
 from tractusx_testlab.steps.connector.catalog_query import (
     CatalogOutput,
     CatalogPayload,
@@ -40,6 +39,7 @@ from tractusx_testlab.steps.connector.catalog_query import (
     QueryCatalogParams,
     QueryCatalogStep,
 )
+from tractusx_testlab.steps.step_contract import StepOutput
 from tractusx_testlab.syntax.context_vars import (
     CATALOG_ASSET_ID,
     CATALOG_POLICY,
@@ -65,8 +65,8 @@ def _definition(uses: str) -> StepDefinition:
 
 def _with_consumer(context: MagicMock, consumer: MagicMock) -> MagicMock:
     """Point the shared mock context at a stub consumer service."""
-    context.get_consumer_service.return_value = consumer
-    context.get_consumer_base_url.return_value = "http://consumer"
+    context.dataspace.consumer.return_value = consumer
+    context.dataspace.consumer_base_url.return_value = "http://consumer"
     return context
 
 
@@ -199,13 +199,22 @@ class TestQueryCatalogStep:
         ]
 
     @pytest.mark.asyncio
-    async def test_empty_catalog_reports_a_server_error(self, mock_context: MagicMock) -> None:
+    async def test_an_empty_catalog_fails_the_step(self, mock_context: MagicMock) -> None:
+        """An empty catalog fails the step rather than reporting an invented 500.
+
+        The status was never sent by the provider, and the runner records a
+        step as PASSED unless it raises or an assertion hard-fails — so a
+        provider that answered with nothing produced a passing conformance
+        step.
+        """
         consumer = MagicMock()
         consumer.get_catalog_with_filter.return_value = None
-        output = await QueryCatalogStep().invoke(
-            {}, _with_consumer(mock_context, consumer), _definition("connector/consumer/query_catalog")
-        )
-        assert (output.value, output.response.status_code) == (None, 500)
+        with pytest.raises(StepExecutionError, match="no catalog"):
+            await QueryCatalogStep().invoke(
+                {},
+                _with_consumer(mock_context, consumer),
+                _definition("connector/consumer/query_catalog"),
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -234,10 +243,14 @@ class TestQueryCatalogPublishedOutputs:
 
     @pytest.mark.asyncio
     async def test_empty_catalog_publishes_nothing(self, mock_context: MagicMock) -> None:
+        """A step that failed publishes nothing for a later step to read."""
         consumer = MagicMock()
         consumer.get_catalog_with_filter.return_value = None
         ctx = _with_consumer(mock_context, consumer)
-        await QueryCatalogStep().invoke({}, ctx, _definition("connector/consumer/query_catalog"))
+        with pytest.raises(StepExecutionError):
+            await QueryCatalogStep().invoke(
+                {}, ctx, _definition("connector/consumer/query_catalog")
+            )
         assert not ctx.has_variable(_DATASETS)
 
 

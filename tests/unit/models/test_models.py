@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -51,7 +51,7 @@ class TestStepDefinition:
         step = StepDefinition(uses="connector/provider/create_asset")
         assert step.uses == "connector/provider/create_asset"
         assert step.with_ is None
-        assert (step.validate or []) == []
+        assert (step.assertions or []) == []
 
     def test_step_with_all_fields(self) -> None:
         step = StepDefinition(
@@ -71,8 +71,8 @@ class TestStepDefinition:
                 Assertion(uses="validate/assert", **{"with": {"input": "response_body", "operator": "not_null"}}),
             ],
         )
-        assert len(step.validate) == 2
-        assert step.validate[0].uses == "validate/assert/equals"
+        assert len(step.assertions) == 2
+        assert step.assertions[0].uses == "validate/assert/equals"
 
 
 class TestScriptDefinition:

@@ -74,7 +74,7 @@ holding one stray file with no sibling concern. The boring, readable structure a
 human can navigate always wins over artificial depth.
 
 This is a **behavior-preserving** discipline: modularization changes structure
-only — never runtime behavior, generated output (YAML / `.stck`), or any
+only — never runtime behavior, generated output (YAML ), or any
 observable contract.
 
 ### Engine layers (`src/tractusx_testlab/`)

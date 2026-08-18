@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -41,7 +41,7 @@ from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.phase import _PHASE_TO_NAMESPACE
 from tractusx_testlab.player.execution.step_runner import run_step, store_step_outputs
 from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.services.manager import ServiceManager
+from tractusx_testlab.services.instances import ServiceManager
 
 # Nested steps are looked up version-agnostically, and so is everything here:
 # these tests are about the wiring, not about version overrides.

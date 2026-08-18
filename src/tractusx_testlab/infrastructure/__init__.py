@@ -23,10 +23,6 @@
 
 """Infrastructure bindings — the deployment a run targets, as one typed object."""
 
-from tractusx_testlab.infrastructure.manager import (
-    DEFAULT_PROFILE,
-    InfrastructureManager,
-)
 from tractusx_testlab.infrastructure.mapping import (
     apply_overrides,
     capabilities,
@@ -37,6 +33,10 @@ from tractusx_testlab.infrastructure.mapping import (
     known_keys,
     merge,
     overrides_from_env,
+)
+from tractusx_testlab.infrastructure.profiles import (
+    DEFAULT_PROFILE,
+    InfrastructureManager,
 )
 from tractusx_testlab.infrastructure.standards import (
     CAPABILITY_STANDARDS,

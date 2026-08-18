@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -47,7 +47,7 @@ from tractusx_testlab.steps.connector.provision import (
     WizardCreatePolicyParams,
     WizardCreatePolicyStep,
 )
-from tractusx_testlab.steps.industry.dtr import (
+from tractusx_testlab.steps.digital_twin.provider import (
     CreateShellDescriptorStep,
     WizardCreateShellDescriptorParams,
     WizardCreateShellDescriptorStep,
@@ -77,8 +77,8 @@ def provider() -> MagicMock:
 @pytest.fixture()
 def connector_context(provider: MagicMock) -> MagicMock:
     ctx = attach_endpoint_url_stubs(MagicMock())
-    ctx.get_provider_base_url.return_value = "https://provider.example.com"
-    ctx.get_provider_service.return_value = provider
+    ctx.dataspace.provider_base_url.return_value = "https://provider.example.com"
+    ctx.dataspace.provider.return_value = provider
     return ctx
 
 
@@ -193,7 +193,7 @@ def aas() -> MagicMock:
 @pytest.fixture()
 def dtr_context(aas: MagicMock) -> MagicMock:
     ctx = attach_endpoint_url_stubs(MagicMock())
-    ctx.get_aas_service.return_value = aas
+    ctx.dataspace.registry.return_value = aas
     return ctx
 
 

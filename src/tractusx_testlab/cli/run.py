@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -36,18 +36,18 @@ from tractusx_testlab.cli import app
 
 @app.command()
 def run(
-    target: Path = typer.Argument(..., help="TCK manifest (.yaml), plain package (.tck), or encrypted package (.stck)."),
+    target: Path = typer.Argument(..., help="A TCK manifest (.yaml) or a compiled package (.tck)."),
     config_file: Path | None = typer.Option(
         None, "--config", "-c",
         help="YAML config file with variable overrides (e.g. saturn_tck_int.yaml).",
     ),
     player_keys: Path | None = typer.Option(
         None, "--player-keys", "-k",
-        help="Directory with the player identity (required for .stck encrypted files).",
+        help="Directory with the player identity (required for encrypted packages).",
     ),
     compiler_pub: Path | None = typer.Option(
         None, "--compiler-pub",
-        help="Path to the compiler's signing.pub (required for .stck encrypted files).",
+        help="Path to the compiler's signing.pub (required for encrypted packages).",
     ),
     var: list[str] | None = typer.Option(
         None, "--var",
@@ -64,16 +64,7 @@ def run(
     from tractusx_testlab.models import ScriptStatus, StepStatus
     from tractusx_testlab.player.execution.player import TestlabPlayer
 
-    _compile_target_for_run(target)
-
     runtime_vars = _build_runtime_vars(config_file, var)
-
-    if target.suffix == ".stck" and (player_keys is None or compiler_pub is None):
-        typer.echo(
-            "Error: --player-keys and --compiler-pub are required for encrypted .stck files.",
-            err=True,
-        )
-        raise typer.Exit(1)
 
     # Through the loader, so `testlab.config.yaml` and every TESTLAB_* variable
     # — the engine's infrastructure bindings among them — reach a CLI run the
@@ -99,10 +90,15 @@ def run(
     _print_run_results(result, StepStatus, ScriptStatus)
 
 
-def _compile_target_for_run(target: Path) -> None:
-    """Compile YAML targets before execution; skip already-compiled packages."""
-    if target.suffix in (".tck", ".stck"):
-        return
+def _compile_target_for_run(target: Path, build_dir: Path) -> Path:
+    """Compile a YAML target into *build_dir* and return the package to run.
+
+    Built somewhere temporary rather than beside the manifest. ``run`` used to
+    leave a ``.tck`` in the user's source tree — and in CI, in the checkout — as
+    a side effect of a verb that only says it runs something.
+    """
+    if target.suffix == ".tck":
+        return target
 
     from tractusx_testlab.cli.compile import compile as compile_command
 
@@ -111,12 +107,15 @@ def _compile_target_for_run(target: Path) -> None:
         script=target,
         compiler_keys=None,
         player_pub=None,
-        output=None,
+        output=build_dir,
         version=None,
         plain=False,
-        encrypt=False,
     )
-    return
+    built = sorted(build_dir.glob("*.tck"))
+    if not built:
+        typer.echo(f"Error: compiling {target} produced no package.", err=True)
+        raise typer.Exit(1)
+    return built[0]
 
 
 def _build_runtime_vars(
@@ -171,7 +170,7 @@ def _load_tck(
     player_keys: Path | None,
     compiler_pub: Path | None,
 ):
-    """Load a TCK from YAML, .tck (plain or encrypted), or .stck."""
+    """Load a TCK from a YAML manifest or a .tck package, plain or encrypted."""
     from tractusx_testlab.player.loading.loader import Loader
 
     loader = Loader()

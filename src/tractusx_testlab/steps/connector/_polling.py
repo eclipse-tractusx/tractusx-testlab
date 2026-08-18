@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -42,7 +42,7 @@ from typing import Any
 # here, so the connector steps keep importing them from the module they poll
 # with and no two steps can drift into different waits.
 from tractusx_testlab.models import StepExecutionError
-from tractusx_testlab.steps._contracts import DEFAULT_MAX_WAIT, DEFAULT_POLL_INTERVAL
+from tractusx_testlab.steps.shared_models import DEFAULT_MAX_WAIT, DEFAULT_POLL_INTERVAL
 
 logger = logging.getLogger(__name__)
 

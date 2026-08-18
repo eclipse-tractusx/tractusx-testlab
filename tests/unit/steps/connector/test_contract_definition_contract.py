@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -63,8 +63,8 @@ def provider() -> MagicMock:
 @pytest.fixture()
 def context(provider: MagicMock) -> MagicMock:
     ctx = attach_endpoint_url_stubs(MagicMock())
-    ctx.get_provider_base_url.return_value = "https://provider.example.com"
-    ctx.get_provider_service.return_value = provider
+    ctx.dataspace.provider_base_url.return_value = "https://provider.example.com"
+    ctx.dataspace.provider.return_value = provider
     return ctx
 
 
