@@ -19,19 +19,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""Seed connector services from ``infrastructure.*`` context variables (ADR-0019).
+"""Register SDK services for the infrastructure a run was bound to (ADR-0019).
 
-Reads flat variables whose keys begin with ``infrastructure.engine.connector.*``,
-``infrastructure.sut.connector.*``, or ``infrastructure.sut.dtr.*`` and
-auto-registers the corresponding SDK service instances in the ``ServiceManager``
-before test execution begins.
+Reads the typed :class:`Infrastructure` the player resolved onto the context
+and registers the corresponding SDK service instances in the ``ServiceManager``
+before test execution begins. This is the seam where the declarative topology
+model becomes live services, so a TCK whose only runtime input is a config
+block drives real connector calls without an explicit ``services:`` block.
 
-This bridges the gap between the declarative topology model (ADR-0019) and the
-SDK service layer, enabling TCKs whose only runtime input is a config YAML
-to drive real connector calls without an explicit ``services:`` block.
+The bindings arrive already resolved and validated; nothing here recovers a
+field from a string key, and a capability that was never bound is simply not
+registered rather than half-registered from whatever happened to be present.
 """
 
 from __future__ import annotations
@@ -39,9 +40,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from tractusx_testlab.infrastructure.standards import aas_api_path, connector_dialect
 from tractusx_testlab.models.authoring.definitions import ServiceDefinition
+from tractusx_testlab.models.domain.infrastructure import (
+    ConnectorBinding,
+    DtrBinding,
+)
 from tractusx_testlab.models.primitives.enums import ServiceType
-from tractusx_testlab.syntax import defaults
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -50,15 +55,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
-# Infrastructure variable prefixes (ADR-0019 §1)
+# Stable internal service names — unique to avoid collisions with user-defined
+# services, and the values the ``infrastructure.<side>.<capability>`` variables
+# resolve to so a step param can name a seeded service.
 # ------------------------------------------------------------------
 
-_ENGINE_CONNECTOR_PREFIX = "infrastructure.engine.connector."
-_SUT_CONNECTOR_PREFIX = "infrastructure.sut.connector."
-_SUT_DTR_PREFIX = "infrastructure.sut.dtr."
-
-# Stable internal service names — unique to avoid collisions with user-defined services.
 _ENGINE_CONNECTOR_NAME = "__engine_connector__"
+_ENGINE_DTR_NAME = "__engine_dtr__"
 _SUT_CONNECTOR_NAME = "__sut_connector__"
 _SUT_DTR_NAME = "__sut_dtr__"
 
@@ -69,16 +72,6 @@ _KNOWN_MANAGEMENT_SUFFIXES: tuple[str, ...] = ("/management", "/api/v1/managemen
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
-
-def _collect_prefix(variables: dict, prefix: str) -> dict[str, str]:
-    """Return sub-key → value pairs for all variables starting with *prefix*."""
-    result: dict[str, str] = {}
-    for key, value in variables.items():
-        if key.startswith(prefix):
-            sub_key = key[len(prefix):]
-            result[sub_key] = str(value) if value is not None else ""
-    return result
-
 
 def _strip_management_suffix(url: str) -> tuple[str, str]:
     """Return ``(base_url, dma_path)`` by stripping a known management suffix.
@@ -93,38 +86,31 @@ def _strip_management_suffix(url: str) -> tuple[str, str]:
     return clean, ""
 
 
-def _build_connector_definition(
+def _connector_definition(
     name: str,
     service_type: ServiceType,
-    fields: dict[str, str],
-) -> ServiceDefinition | None:
-    """Build a ``ServiceDefinition`` from extracted connector fields.
+    binding: ConnectorBinding,
+) -> ServiceDefinition:
+    """Build a ``ServiceDefinition`` for a bound connector.
 
-    Returns ``None`` if no management URL can be determined.
+    The ecosystem release the binding carries picks the SDK dialect — the
+    Saturn or Jupiter connector service — and it got there from the TCK's
+    ``dataspace.version`` unless the operator stated one of their own.
     """
-    management_url = fields.get("management_url") or fields.get("base_url", "")
-    if not management_url:
-        logger.debug("No management_url for service '%s' — skipping", name)
-        return None
+    base_url, dma_path = _strip_management_suffix(binding.management_url)
 
-    base_url, dma_path = _strip_management_suffix(management_url)
-    api_key = fields.get("api_key", "")
-    api_key_header = fields.get("api_key_header", "x-api-key")
-    version = fields.get("version") or defaults.DATASPACE_VERSION
-
-    params: dict = {"version": version, "dma_path": dma_path}
-
-    participant_id = fields.get("participant_id")
-    if participant_id:
-        params["participant_id"] = participant_id
-
-    dsp_url = fields.get("dsp_url")
-    if dsp_url:
-        params["dsp_url"] = dsp_url
+    params: dict = {
+        "version": connector_dialect(binding.version),
+        "dma_path": dma_path,
+    }
+    if binding.participant_id:
+        params["participant_id"] = binding.participant_id
+    if binding.dsp_url:
+        params["dsp_url"] = binding.dsp_url
 
     auth: dict = {}
-    if api_key:
-        auth = {"api_key": api_key, "api_key_header": api_key_header}
+    if binding.api_key:
+        auth = {"api_key": binding.api_key, "api_key_header": binding.api_key_header}
 
     return ServiceDefinition(
         name=name,
@@ -135,19 +121,34 @@ def _build_connector_definition(
     )
 
 
-def _build_dtr_definition(name: str, fields: dict[str, str]) -> ServiceDefinition | None:
-    """Build a DTR ``ServiceDefinition`` from extracted fields."""
-    base_url = fields.get("base_url") or fields.get("api_url", "")
-    if not base_url:
-        logger.debug("No base_url for DTR service '%s' — skipping", name)
-        return None
+def _dtr_definition(name: str, binding: DtrBinding) -> ServiceDefinition:
+    """Build a ``ServiceDefinition`` for a bound Digital Twin Registry.
 
+    The AAS API path comes from the ecosystem release rather than from the
+    address, because it is the registry's API generation and not part of the
+    host an operator was given.
+    """
     return ServiceDefinition(
         name=name,
         type=ServiceType.DTR,
-        base_url=base_url,
+        base_url=binding.base_url,
         auth={},
-        params=None,
+        params={"api_path": aas_api_path(binding.version)},
+    )
+
+
+def _register(
+    svc_mgr: "ServiceManager",
+    context: "StepContext",
+    definition: ServiceDefinition,
+    capability_key: str,
+) -> None:
+    """Register *definition* and publish the name under its capability key."""
+    svc_mgr.register(definition)
+    context.set_variable(capability_key, definition.name)
+    logger.info(
+        "Seeded %s service '%s' from infrastructure bindings (base_url=%s)",
+        capability_key, definition.name, definition.base_url,
     )
 
 
@@ -158,79 +159,71 @@ def _build_dtr_definition(name: str, fields: dict[str, str]) -> ServiceDefinitio
 def seed_infrastructure_services(
     svc_mgr: "ServiceManager", context: "StepContext",
 ) -> None:
-    """Register infrastructure connector services derived from context variables.
+    """Register the SDK services the run's infrastructure bindings describe.
 
-    Reads the ``infrastructure.*`` flat variables already loaded into *context*
-    and registers the corresponding services in *svc_mgr*.
+    Called once by the player after the bindings are resolved and validated,
+    before any test execution begins. Already-registered services are never
+    overwritten, so an explicit ``services:`` block in the YAML always takes
+    precedence.
 
-    Called once by the player after ``_seed_context_variables``, before any
-    test execution begins.  Already-registered services are never overwritten so
-    that an explicit ``services:`` block in the YAML always takes precedence.
+    Registration order decides which service a role lookup finds first, so the
+    SUT connector and registry are registered ahead of the engine's own: a
+    provider or registry step is asking about the system under test.
     """
     already = set(svc_mgr.service_names)
-    all_vars = context.variables
+    infrastructure = context.infrastructure
 
-    # engine.connector → CONNECTOR_CONSUMER (testlab engine talks to SUT as consumer)
-    if _ENGINE_CONNECTOR_NAME not in already:
-        engine_fields = _collect_prefix(all_vars, _ENGINE_CONNECTOR_PREFIX)
-        if engine_fields:
-            defn = _build_connector_definition(
-                _ENGINE_CONNECTOR_NAME,
-                ServiceType.CONNECTOR_CONSUMER,
-                engine_fields,
+    # engine.connector → CONNECTOR_CONSUMER (the engine talks to the SUT as consumer)
+    engine_connector = infrastructure.engine.connector
+    if engine_connector.is_bound() and _ENGINE_CONNECTOR_NAME not in already:
+        _register(
+            svc_mgr,
+            context,
+            _connector_definition(
+                _ENGINE_CONNECTOR_NAME, ServiceType.CONNECTOR_CONSUMER, engine_connector,
+            ),
+            "infrastructure.engine.connector",
+        )
+
+        # The same connector also acts as a provider when a script names it,
+        # which is what ``name`` binds: ``service: testlab`` in a provision
+        # step resolves to the engine's own connector under that alias.
+        alias = engine_connector.name
+        if alias and alias not in already:
+            svc_mgr.register(
+                _connector_definition(alias, ServiceType.CONNECTOR_PROVIDER, engine_connector)
             )
-            if defn:
-                svc_mgr.register(defn)
-                # Expose the service name so ${{ infrastructure.engine.connector }}
-                # resolves to a named service lookup in step params.
-                context.set_variable("infrastructure.engine.connector", _ENGINE_CONNECTOR_NAME)
-                logger.info(
-                    "Seeded engine connector service '%s' from infrastructure variables "
-                    "(base_url=%s)", _ENGINE_CONNECTOR_NAME, defn.base_url,
-                )
-
-            # Also register engine connector as CONNECTOR_PROVIDER under its alias
-            # so that ``service: testlab`` in provision steps resolves correctly.
-            engine_alias = engine_fields.get("name")
-            if engine_alias and engine_alias not in already:
-                alias_defn = _build_connector_definition(
-                    engine_alias,
-                    ServiceType.CONNECTOR_PROVIDER,
-                    engine_fields,
-                )
-                if alias_defn:
-                    svc_mgr.register(alias_defn)
-                    logger.info(
-                        "Seeded engine connector provider alias '%s' from infrastructure variables "
-                        "(base_url=%s)", engine_alias, alias_defn.base_url,
-                    )
+            logger.info(
+                "Seeded engine connector provider alias '%s' from infrastructure bindings",
+                alias,
+            )
 
     # sut.connector → CONNECTOR_PROVIDER (the component under test)
-    if _SUT_CONNECTOR_NAME not in already:
-        sut_fields = _collect_prefix(all_vars, _SUT_CONNECTOR_PREFIX)
-        if sut_fields:
-            defn = _build_connector_definition(
-                _SUT_CONNECTOR_NAME,
-                ServiceType.CONNECTOR_PROVIDER,
-                sut_fields,
-            )
-            if defn:
-                svc_mgr.register(defn)
-                context.set_variable("infrastructure.sut.connector", _SUT_CONNECTOR_NAME)
-                logger.info(
-                    "Seeded SUT connector service '%s' from infrastructure variables "
-                    "(base_url=%s)", _SUT_CONNECTOR_NAME, defn.base_url,
-                )
+    sut_connector = infrastructure.sut.connector
+    if sut_connector.is_bound() and _SUT_CONNECTOR_NAME not in already:
+        _register(
+            svc_mgr,
+            context,
+            _connector_definition(
+                _SUT_CONNECTOR_NAME, ServiceType.CONNECTOR_PROVIDER, sut_connector,
+            ),
+            "infrastructure.sut.connector",
+        )
 
-    # sut.dtr → DTR (optional)
-    if _SUT_DTR_NAME not in already:
-        dtr_fields = _collect_prefix(all_vars, _SUT_DTR_PREFIX)
-        if dtr_fields:
-            defn = _build_dtr_definition(_SUT_DTR_NAME, dtr_fields)
-            if defn:
-                svc_mgr.register(defn)
-                context.set_variable("infrastructure.sut.dtr", _SUT_DTR_NAME)
-                logger.info(
-                    "Seeded SUT DTR service '%s' from infrastructure variables "
-                    "(base_url=%s)", _SUT_DTR_NAME, defn.base_url,
-                )
+    # sut.dtr → DTR (the registry under test)
+    sut_dtr = infrastructure.sut.dtr
+    if sut_dtr.is_bound() and _SUT_DTR_NAME not in already:
+        _register(
+            svc_mgr, context, _dtr_definition(_SUT_DTR_NAME, sut_dtr), "infrastructure.sut.dtr",
+        )
+
+    # engine.dtr → DTR (the engine's own registry, registered last so a bare
+    # registry lookup still finds the system under test)
+    engine_dtr = infrastructure.engine.dtr
+    if engine_dtr.is_bound() and _ENGINE_DTR_NAME not in already:
+        _register(
+            svc_mgr,
+            context,
+            _dtr_definition(_ENGINE_DTR_NAME, engine_dtr),
+            "infrastructure.engine.dtr",
+        )

@@ -1,4 +1,4 @@
-###############################################################
+################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
@@ -17,8 +17,4 @@
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-###############################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
-## It was reviewed and tested by a human committer.
-
-"""Unit tests for tractusx_testlab.steps.pull_data."""
+################################################################################

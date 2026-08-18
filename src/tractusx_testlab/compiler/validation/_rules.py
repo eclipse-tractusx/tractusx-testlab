@@ -84,6 +84,11 @@ def validate_tck_manifest(
     env = manifest_data.get("env") or {}
     all_errors.extend(_validate_variable_scopes(env))
 
+    # Validate that every scoped variable has a side that exists to be asked
+    all_errors.extend(
+        _validate_scoped_sides_are_declared(env, manifest_data.get("infrastructure"))
+    )
+
     # Validate each test file
     tests = manifest_data.get("tests", [])
     test_schema = _load_schema("tck_test.schema.json")
@@ -153,6 +158,83 @@ def _validate_variable_scopes(env_data: dict[str, Any]) -> list[str]:
                 f"Variable '{var_id}' has an unrecognized scope: '{scope}'. "
                 f"Valid values are: engine, sut."
             )
+    return errors
+
+
+def _scoped_input_variables(env_data: dict[str, Any]) -> list[tuple[str, str]]:
+    """Return every ``(variable id, scope)`` pair the env block requests."""
+    variables = env_data.get("variables") or []
+    if not isinstance(variables, list):
+        return []
+    pairs: list[tuple[str, str]] = []
+    for entry in variables:
+        if not isinstance(entry, dict):
+            continue
+        with_block = entry.get("with") or {}
+        if str(with_block.get("source", "")) != "input":
+            continue
+        scope = with_block.get("scope")
+        if scope in _VALID_SCOPES:
+            pairs.append((str(entry.get("id", "?")), str(scope)))
+    return pairs
+
+
+def _sides_with_a_required_capability(infrastructure: Any) -> set[str]:
+    """Return the sides that declare at least one ``required: true`` capability.
+
+    A side is only real when something is required of it. Declaring
+    ``sut: {connector: {required: false}}`` describes a capability the run does
+    not need, which is not a system anyone can be asked for a value.
+    """
+    if not isinstance(infrastructure, dict):
+        return set()
+    sides: set[str] = set()
+    for side, capabilities in infrastructure.items():
+        if not isinstance(capabilities, dict):
+            continue
+        for requirement in capabilities.values():
+            if isinstance(requirement, dict) and requirement.get("required") is True:
+                sides.add(str(side))
+                break
+    return sides
+
+
+def _validate_scoped_sides_are_declared(
+    env_data: dict[str, Any],
+    infrastructure: Any,
+) -> list[str]:
+    """Reject a variable scoped to a side the ``infrastructure:`` block never declares.
+
+    ``scope: sut`` means "the operator of the system under test supplies this
+    when the run starts". If nothing is required of the SUT, there is no such
+    system in this TCK and therefore no operator to ask — the variable would sit
+    on the run-start form with no owner, and whatever the run then did with the
+    empty value would fail far from here.
+
+    The check is deliberately per-SIDE rather than per-capability: which
+    capability a given variable belongs to is not recoverable from the manifest,
+    so demanding it would mean inventing a name-to-capability registry that the
+    author could not see or extend. A side declaring nothing at all is the
+    unambiguous case, and it is the one that actually gets authored.
+
+    Skipped entirely when no TCK-level ``infrastructure:`` block is present AND
+    no variable is scoped, since per-script blocks then govern the run.
+    """
+    scoped = _scoped_input_variables(env_data)
+    if not scoped:
+        return []
+
+    declared_sides = _sides_with_a_required_capability(infrastructure)
+    errors: list[str] = []
+    for var_id, scope in scoped:
+        if scope in declared_sides:
+            continue
+        errors.append(
+            f"Variable '{var_id}' is scoped to '{scope}', but the infrastructure "
+            f"block requires no {scope} capability. Declare what the run needs "
+            f"(e.g. infrastructure.{scope}.connector.required: true), or remove "
+            f"the variable."
+        )
     return errors
 
 

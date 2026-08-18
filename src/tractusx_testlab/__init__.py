@@ -29,6 +29,15 @@ from tractusx_testlab.compiler.packager import Packager
 from tractusx_testlab.compiler.validation.validator import ScriptValidator
 from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
+from tractusx_testlab.infrastructure import (
+    ConnectorBinding,
+    DtrBinding,
+    EngineBindings,
+    EngineDtrBinding,
+    Infrastructure,
+    InfrastructureManager,
+    SutBindings,
+)
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.execution.player import TestlabPlayer
@@ -60,6 +69,14 @@ __all__ = [
     # Config
     "ConfigLoader",
     "TestlabConfig",
+    # Infrastructure
+    "ConnectorBinding",
+    "DtrBinding",
+    "EngineBindings",
+    "EngineDtrBinding",
+    "Infrastructure",
+    "InfrastructureManager",
+    "SutBindings",
     # Security
     "PlayerIdentity",
     # Server

@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Pull data executor — delegates to SDK's do_dsp() for the full DSP flow."""
+"""Pull-data shortcut steps — the whole DSP flow (catalog → negotiate → transfer → EDR)."""
 
 from __future__ import annotations
 
@@ -35,15 +35,14 @@ from pydantic import Field, field_validator
 
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps._contracts import (
+    DEFAULT_MAX_WAIT,
+    DEFAULT_POLL_INTERVAL,
     CounterPartyParams,
     FilterExpressionParams,
 )
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
-from tractusx_testlab.steps.pull_data._constants import (
-    DEFAULT_MAX_WAIT,
-    DEFAULT_POLL_INTERVAL,
-)
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -272,6 +271,7 @@ class PullDataFilteredParams(PullDataParams):
         return [converted] if isinstance(converted, dict) else converted
 
 
+@step("connector/consumer/pull_data_filtered")
 class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]):
     """Run the full DSP flow in one step, optionally constrained to one policy.
 
@@ -315,6 +315,7 @@ class PullDataFilteredByPolicyParams(PullDataParams):
         return [_to_odrl_policy(policy) for policy in self.expected_policies]
 
 
+@step("connector/consumer/pull_data_filtered_by_policy")
 class ConnectorPullDataFilteredByPolicy(
     BaseStep[PullDataFilteredByPolicyParams, PullDataOutput]
 ):

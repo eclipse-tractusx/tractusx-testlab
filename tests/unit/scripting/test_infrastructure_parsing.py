@@ -95,6 +95,22 @@ class TestInfrastructureParsing:
         with pytest.raises(ValueError):
             YamlParser.parse_script_from_dict(doc)
 
+    @pytest.mark.parametrize("side", ["engine", "sut"])
+    def test_the_submodel_server_is_not_a_capability_of_its_own(self, side: str) -> None:
+        """It is part of the registry requirement — ``engine.dtr`` covers it."""
+        doc = _doc()
+        doc["infrastructure"][side]["submodel_server"] = {"required": True}
+
+        with pytest.raises(ValueError, match="submodel_server"):
+            YamlParser.parse_script_from_dict(doc)
+
+    def test_unknown_side_is_rejected(self) -> None:
+        doc = _doc()
+        doc["infrastructure"]["backend"] = {"connector": {"required": True}}
+
+        with pytest.raises(ValueError):
+            YamlParser.parse_script_from_dict(doc)
+
 
 class TestInfrastructureReferenceResolution:
     """`${{ infrastructure.* }}` resolves to a canonical $ref, never under env."""

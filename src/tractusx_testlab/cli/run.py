@@ -60,7 +60,7 @@ def run(
     ),
 ) -> None:
     """Load and execute a TCK, printing results to stdout."""
-    from tractusx_testlab.config.settings import TestlabConfig
+    from tractusx_testlab.config.loader import ConfigLoader
     from tractusx_testlab.models import ScriptStatus, StepStatus
     from tractusx_testlab.player.execution.player import TestlabPlayer
 
@@ -78,7 +78,12 @@ def run(
         )
         raise typer.Exit(1)
 
-    config = TestlabConfig(logs_dir=logs_dir or Path.cwd() / "logs")
+    # Through the loader, so `testlab.config.yaml` and every TESTLAB_* variable
+    # — the engine's infrastructure bindings among them — reach a CLI run the
+    # same way they reach the server. The log directory stays a CLI decision.
+    config = ConfigLoader.load(
+        cli_overrides={"logs_dir": logs_dir or Path.cwd() / "logs"},
+    )
     player = TestlabPlayer(config=config)
 
     tck = _load_tck(target, player_keys, compiler_pub)

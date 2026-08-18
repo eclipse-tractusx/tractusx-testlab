@@ -68,12 +68,16 @@ from tractusx_testlab.models.primitives.enums import ServiceType  # local overri
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.primitives.exceptions import (
     DuplicateServiceError,
+    InfrastructureError,
+    MissingBindingError,
     ServiceInitError,
     ServiceNotFoundError,
     ServiceNotReadyError,
     ServiceTypeMismatchError,
     SkipNotAllowedError,
+    StandardConflictError,
     StepConfigError,
+    UnknownBindingKeyError,
 )
 from tractusx_testlab.models.runtime.jobs import (
     Job,
@@ -112,6 +116,15 @@ from tractusx_testlab.models.runtime.events import (
     StepStartedEvent,
     StepWaitingEvent,
 )
+from tractusx_testlab.models.domain.infrastructure import (
+    CapabilityBinding,
+    ConnectorBinding,
+    DtrBinding,
+    EngineBindings,
+    EngineDtrBinding,
+    Infrastructure,
+    SutBindings,
+)
 from tractusx_testlab.models.domain.security import (
     Base64Bytes,
     EncryptedKeyBlock,
@@ -138,11 +151,19 @@ __all__ = [
     "StepStatus",
     "ValueSource",
     "VariableScope",
-    # infrastructure
+    # infrastructure requirements (authored)
     "CapabilityRequirement",
     "DataspaceContext",
     "InfrastructureConfig",
     "Standard",
+    # infrastructure bindings (operated)
+    "CapabilityBinding",
+    "ConnectorBinding",
+    "DtrBinding",
+    "EngineBindings",
+    "EngineDtrBinding",
+    "Infrastructure",
+    "SutBindings",
     # definitions
     "Assertion",
     "EnvDefinition",
@@ -201,6 +222,10 @@ __all__ = [
     "JobMemory",
     # exceptions
     "DuplicateServiceError",
+    "InfrastructureError",
+    "MissingBindingError",
+    "StandardConflictError",
+    "UnknownBindingKeyError",
     "ServiceInitError",
     "ServiceNotFoundError",
     "ServiceNotReadyError",

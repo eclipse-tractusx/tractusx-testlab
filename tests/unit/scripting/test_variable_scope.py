@@ -29,7 +29,10 @@ from __future__ import annotations
 import pytest
 
 from tests.paths import CCM_RAW_DIR
-from tractusx_testlab.compiler.validation._rules import _validate_variable_scopes
+from tractusx_testlab.compiler.validation._rules import (
+    _validate_scoped_sides_are_declared,
+    _validate_variable_scopes,
+)
 from tractusx_testlab.models.primitives.enums import VariableScope, VariableSource
 from tractusx_testlab.scripting._variable_form import parse_variables_block
 
@@ -237,3 +240,85 @@ class TestCcmVariableScopes:
         for name, scope in declared.items():
             expected = VariableScope(scope) if scope else None
             assert variables[name].scope is expected, f"{name} lost its declared scope"
+
+
+class TestScopedSidesAreDeclared:
+    """A variable may only be asked of a side the TCK actually requires."""
+
+    @staticmethod
+    def _env(scope: str) -> dict:
+        return {
+            "variables": [
+                {
+                    "id": "sut_counter_party_id",
+                    "uses": "variable/type/string",
+                    "with": {"source": "input", "scope": scope},
+                    "returns": {"value": {"type": "string"}},
+                }
+            ]
+        }
+
+    @staticmethod
+    def _infrastructure(side: str, required: bool = True) -> dict:
+        return {side: {"connector": {"required": required}}}
+
+    def test_scope_matching_a_required_side_is_accepted(self) -> None:
+        errors = _validate_scoped_sides_are_declared(
+            self._env("sut"), self._infrastructure("sut")
+        )
+
+        assert errors == []
+
+    def test_scope_without_any_infrastructure_block_is_rejected(self) -> None:
+        errors = _validate_scoped_sides_are_declared(self._env("sut"), None)
+
+        assert len(errors) == 1
+        assert "requires no sut capability" in errors[0]
+
+    def test_scope_naming_the_other_side_is_rejected(self) -> None:
+        errors = _validate_scoped_sides_are_declared(
+            self._env("engine"), self._infrastructure("sut")
+        )
+
+        assert len(errors) == 1
+        assert "scoped to 'engine'" in errors[0]
+
+    def test_a_capability_that_is_not_required_does_not_declare_the_side(self) -> None:
+        """`required: false` describes what the run does NOT need — nobody to ask."""
+        errors = _validate_scoped_sides_are_declared(
+            self._env("sut"), self._infrastructure("sut", required=False)
+        )
+
+        assert len(errors) == 1
+
+    def test_a_variable_carrying_its_own_value_needs_no_side(self) -> None:
+        env = {
+            "variables": [
+                {
+                    "id": "timeout",
+                    "uses": "variable/type/integer",
+                    "with": {"value": 300},
+                    "returns": {"value": {"type": "integer"}},
+                }
+            ]
+        }
+
+        assert _validate_scoped_sides_are_declared(env, None) == []
+
+    def test_the_error_names_the_variable_and_the_fix(self) -> None:
+        [error] = _validate_scoped_sides_are_declared(self._env("sut"), {})
+
+        assert "sut_counter_party_id" in error
+        assert "infrastructure.sut.connector.required: true" in error
+
+    def test_the_shipped_example_passes(self) -> None:
+        """The CCM example declares the SUT connector its variables are asked of."""
+        import yaml
+
+        raw = yaml.safe_load((CCM_RAW_DIR / "index.yaml").read_text(encoding="utf-8"))
+
+        errors = _validate_scoped_sides_are_declared(
+            raw.get("env") or {}, raw.get("infrastructure")
+        )
+
+        assert errors == []

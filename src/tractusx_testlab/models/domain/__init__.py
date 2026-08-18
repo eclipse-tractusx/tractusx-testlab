@@ -22,8 +22,17 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
 ## It was reviewed and tested by a human committer.
 
-"""Feature-specific domain models: package security and server state."""
+"""Feature-specific domain models: infrastructure bindings, package security, server state."""
 
+from tractusx_testlab.models.domain.infrastructure import (
+    CapabilityBinding,
+    ConnectorBinding,
+    DtrBinding,
+    EngineBindings,
+    EngineDtrBinding,
+    Infrastructure,
+    SutBindings,
+)
 from tractusx_testlab.models.domain.security import (
     Base64Bytes,
     EncryptedKeyBlock,
@@ -36,6 +45,13 @@ from tractusx_testlab.models.domain.server import (
 )
 
 __all__ = [
+    "CapabilityBinding",
+    "ConnectorBinding",
+    "DtrBinding",
+    "EngineBindings",
+    "EngineDtrBinding",
+    "Infrastructure",
+    "SutBindings",
     "Base64Bytes",
     "EncryptedKeyBlock",
     "PackageManifest",

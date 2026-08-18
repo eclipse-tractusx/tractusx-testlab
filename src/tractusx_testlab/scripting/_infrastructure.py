@@ -26,10 +26,33 @@
 
 from __future__ import annotations
 
+from typing import Iterable
+
 from tractusx_testlab.models.authoring.infrastructure import (
     CapabilityRequirement,
     InfrastructureConfig,
 )
+
+
+def merge_requirements(configs: Iterable[InfrastructureConfig]) -> InfrastructureConfig:
+    """Merge per-script requirement blocks into the one a run is checked against.
+
+    ``required=True`` wins over ``required=False`` for the same capability, and
+    the first non-``None`` ``standard`` wins: a TCK whose second test certifies
+    nothing does not erase what its first test certifies.
+
+    This is the rule the compiler writes into the package manifest and the
+    player enforces before the first step, so an operator reading a compiled
+    package sees exactly what the run will demand of them.
+    """
+    engine: dict[str, CapabilityRequirement] = {}
+    sut: dict[str, CapabilityRequirement] = {}
+
+    for config in configs:
+        _merge_side(engine, config.engine)
+        _merge_side(sut, config.sut)
+
+    return InfrastructureConfig(engine=engine, sut=sut)
 
 
 def collect_infrastructure_requirements(tck: object) -> InfrastructureConfig:
@@ -57,19 +80,15 @@ def collect_infrastructure_requirements(tck: object) -> InfrastructureConfig:
         if tck_infra is not None:
             return tck_infra
 
-    engine: dict[str, CapabilityRequirement] = {}
-    sut: dict[str, CapabilityRequirement] = {}
-
     scripts = getattr(tck, "scripts", None) or []
-    for script in scripts:
-        script_def = getattr(script, "definition", None)
-        script_infra = getattr(script_def, "infrastructure", None)
-        if script_infra is None:
-            continue
-        _merge_side(engine, script_infra.engine)
-        _merge_side(sut, script_infra.sut)
-
-    return InfrastructureConfig(engine=engine, sut=sut)  # type: ignore[arg-type]
+    declared = [
+        infrastructure for infrastructure in (
+            getattr(getattr(script, "definition", None), "infrastructure", None)
+            for script in scripts
+        )
+        if infrastructure is not None
+    ]
+    return merge_requirements(declared)
 
 
 def _merge_side(

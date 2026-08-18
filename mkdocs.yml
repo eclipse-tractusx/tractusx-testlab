@@ -168,6 +168,7 @@ nav:
     - Block Lifecycle: developer/block-lifecycle.md
     - Creating a Step: developer/creating-a-step.md
     - Execution Events: developer/execution-events.md
+    - Infrastructure Bindings: developer/infrastructure-bindings.md
     - Environment Injection Analysis: developer/environment-injection-analysis.md
     - Step Reference Drift Report: developer/step-reference-drift-report.md
     - Decision Records:

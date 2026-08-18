@@ -37,14 +37,31 @@
 #     DID/VC-based IATP trust — the "in-memory identity hub" side of the ask
 #   - one Digital Twin Registry and one data backend per participant, enabled
 #     by the workflow's CI values so the test environment has two of each
-#   - a BDRS directory service + issuer service, both pre-seeded with the
-#     Catena-X membership / DataExchangeGovernance:1.0 VC claims the two
-#     participants need to pass ODRL policy checks out of the box
+#   - a BDRS directory service + an IssuerService
 #
 # testlab plays the "engine" role bound to the consumer connector; the
 # provider connector + its DTR play the "sut" (system under test) role — see
 # tests/e2e/connector-dtr-smoke/ for the TCK this workflow compiles,
 # validates and runs, and tests/e2e/README.md for how to reproduce locally.
+#
+# Three things the chart does NOT do for you, and that this workflow therefore
+# has to do itself — each one is fatal to the run if skipped:
+#
+#   1. **In-cluster DNS.** Every participant addresses its peers by ingress
+#      hostname (`provider.local`, `consumer-dsp.local`, `issuerservice.local`,
+#      …) — that is how did:web resolution, STS token exchange and the DSP
+#      protocol are configured. Those names exist only in the runner's
+#      /etc/hosts, which pods do not read, so CoreDNS is pointed at the ingress
+#      controller for them.
+#   2. **A default IngressClass.** The IdentityHub, data-plane and IssuerService
+#      ingresses are rendered without a class (the profile leaves
+#      `shared-configuration.ingress.className` empty), and ingress-nginx's kind
+#      manifest does not mark its class as the cluster default — so those routes
+#      would be served by nothing at all.
+#   3. **Credential issuance.** The chart seeds the IssuerService's *claim rows*
+#      but never turns them into VCs. Both participants must be walked through
+#      the issuance flow or the TCK's Membership / DataExchangeGovernance
+#      policies can never be satisfied. See ci/issue_credentials.py.
 #
 # Chart internals (ingress paths, subchart defaults) can drift between
 # umbrella releases; where a value isn't pinned by the values file itself
@@ -75,16 +92,40 @@ env:
   UMBRELLA_VALUES_REF: "umbrella-26.03.00"
   KIND_VERSION: "v0.24.0"
   KUBECTL_VERSION: "v1.29.0"
-  HELM_VERSION: "3.14.0"
+  # 3.16+ for `--qps`: `--wait` polls every resource in the release, and with
+  # ~125 of them the default client-side rate limit is what expires first.
+  HELM_VERSION: "3.16.4"
+  # Every JVM in the release boots at once on a 4-vCPU runner. Measured cold
+  # starts land well inside this; the old 5m budget never stood a chance.
+  HELM_TIMEOUT: "25m"
   TCK_INDEX: tests/e2e/connector-dtr-smoke/index.yaml
   TCK_CONFIG: tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml
   UMBRELLA_CI_VALUES: tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml
+  ISSUANCE_SCRIPT: tests/e2e/connector-dtr-smoke/ci/issue_credentials.py
   TCK_OUT: dist/testlab-e2e-connector-dtr-smoke.tck
+  # Single source of truth for the dataspace hostnames, used for both the
+  # runner's /etc/hosts and the cluster's CoreDNS. All of these are fixed by
+  # values-adopter-decentralized-identityhub.yaml plus ci/umbrella.values.yaml.
+  DATASPACE_HOSTS: >-
+    provider.local
+    provider.intranet
+    provider-dsp.local
+    provider-management.local
+    provider-dtr.local
+    provider-submodelserver.local
+    consumer.local
+    consumer.intranet
+    consumer-dsp.local
+    consumer-management.local
+    consumer-dtr.local
+    consumer-submodelserver.local
+    bdrs-server.tx.test
+    issuerservice.local
 
 jobs:
   e2e-umbrella:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       # ------------------------------------------------------------------
@@ -107,6 +148,23 @@ jobs:
       # ------------------------------------------------------------------
       # 2. Ephemeral Kubernetes cluster (kind, in-runner — "in-memory")
       # ------------------------------------------------------------------
+      - name: Reclaim runner disk space
+        run: |
+          # The release pulls ~25 container images (4 EDC runtimes, 2 DTRs, 2
+          # IdentityHubs, 4 Postgres, 3 Vaults, …) into the kind node. The
+          # runner's preinstalled toolchains are worth more as free disk than
+          # they are to this job; without this, kubelet hits disk pressure and
+          # starts evicting pods mid-deploy.
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL || true
+          docker system prune --all --force >/dev/null 2>&1 || true
+          df -h /
+
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
         with:
@@ -142,32 +200,100 @@ jobs:
           EOF
           ./kind create cluster --name tck-e2e --config kind-config.yaml --wait 5m
 
-      - name: Install ingress-nginx (kind provider)
+      - name: Install ingress-nginx and make it the default IngressClass
         run: |
+          set -euo pipefail
           kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
           kubectl wait --namespace ingress-nginx \
             --for=condition=ready pod \
             --selector=app.kubernetes.io/component=controller \
-            --timeout=120s
+            --timeout=300s
+
+          # The IdentityHub, data-plane and IssuerService ingresses render with
+          # no ingressClassName, and ingress-nginx's kind manifest does not
+          # declare its class as the default — so nothing would claim them.
+          kubectl patch ingressclass nginx \
+            -p '{"metadata":{"annotations":{"ingressclass.kubernetes.io/is-default-class":"true"}}}'
 
       - name: Point dataspace hostnames at the runner
         run: |
-          # Hostnames fixed by values-adopter-decentralized-identityhub.yaml.
-          sudo tee -a /etc/hosts >/dev/null <<'EOF'
-          127.0.0.1 provider.local
-          127.0.0.1 provider.intranet
-          127.0.0.1 provider-dsp.local
-          127.0.0.1 provider-management.local
-          127.0.0.1 consumer.local
-          127.0.0.1 consumer.intranet
-          127.0.0.1 consumer-dsp.local
-          127.0.0.1 consumer-management.local
-          127.0.0.1 bdrs-server.tx.test
-          127.0.0.1 issuerservice.local
-          EOF
+          set -euo pipefail
+          for host in ${DATASPACE_HOSTS}; do
+            echo "127.0.0.1 ${host}"
+          done | sudo tee -a /etc/hosts >/dev/null
+          echo "Added to /etc/hosts:"
+          printf '  %s\n' ${DATASPACE_HOSTS}
+
+      - name: Point in-cluster DNS at the ingress controller
+        run: |
+          set -euo pipefail
+          # Pods resolve their peers through CoreDNS, which knows nothing about
+          # the ingress hostnames the participants are configured with. Without
+          # this, did:web resolution, STS token exchange, the DSP handshake and
+          # the credential-service callbacks all fail with UnknownHostException
+          # while every pod still reports itself healthy.
+          ingress_ip="$(kubectl -n ingress-nginx get svc ingress-nginx-controller \
+            -o jsonpath='{.spec.clusterIP}')"
+          if [ -z "${ingress_ip}" ]; then
+            echo "::error::ingress-nginx-controller has no ClusterIP."
+            exit 1
+          fi
+          echo "Resolving the dataspace hostnames to ${ingress_ip} inside the cluster."
+
+          python3 - "${ingress_ip}" ${DATASPACE_HOSTS} <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          ingress_ip, *hosts = sys.argv[1:]
+
+          configmap = json.loads(
+              subprocess.run(
+                  ["kubectl", "-n", "kube-system", "get", "configmap", "coredns", "-o", "json"],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              ).stdout
+          )
+          corefile = configmap["data"]["Corefile"]
+
+          marker = "dataspace-hosts"
+          if marker in corefile:
+              print("CoreDNS already carries the dataspace hosts block.")
+              raise SystemExit(0)
+
+          block_lines = [f"    # {marker}", "    hosts {"]
+          block_lines += [f"        {ingress_ip} {host}" for host in hosts]
+          block_lines += ["        fallthrough", "    }", ""]
+          block = "\n".join(block_lines)
+
+          # CoreDNS fixes its plugin order at build time, so `hosts` is consulted
+          # ahead of `forward` wherever it sits — but keep it above `forward`
+          # anyway so the file reads the way it behaves.
+          lines = corefile.splitlines()
+          for index, line in enumerate(lines):
+              if line.strip().startswith("forward "):
+                  break
+          else:
+              raise SystemExit("::error::No 'forward' directive found in the CoreDNS Corefile.")
+
+          patched = "\n".join([*lines[:index], block, *lines[index:]]) + "\n"
+          subprocess.run(
+              [
+                  "kubectl", "-n", "kube-system", "patch", "configmap", "coredns",
+                  "--type", "merge",
+                  "-p", json.dumps({"data": {"Corefile": patched}}),
+              ],
+              check=True,
+          )
+          print(patched)
+          PY
+
+          kubectl -n kube-system rollout restart deployment/coredns
+          kubectl -n kube-system rollout status deployment/coredns --timeout=120s
 
       # ------------------------------------------------------------------
-      # 3. Deploy the dataspace: two EDCs, two IdentityHubs, DTR(s)
+      # 3. Deploy the dataspace: two EDCs, two IdentityHubs, DTRs, issuer
       # ------------------------------------------------------------------
       - name: Add Tractus-X Helm repo
         run: |
@@ -211,11 +337,28 @@ jobs:
               "provider-dtr",
               "umbrella-consumer-connector-controlplane",
               "umbrella-consumer-connector-dataplane",
+              "umbrella-consumer-identityhub",
+              "umbrella-issuerservice",
               "umbrella-provider-connector-controlplane",
               "umbrella-provider-connector-dataplane",
+              "umbrella-provider-identityhub",
+          }
+          # The vault-setup hooks are what put tokenSignerPrivateKey /
+          # tokenSignerPublicKey / tokenEncryptionAesKey into each participant's
+          # vault. They only render while the connector bundle owns the vault,
+          # so a values change that moves the vault elsewhere silently leaves
+          # every data-plane transfer unable to sign its EDR. Assert them.
+          expected_hooks = {
+              "umbrella-consumer-edc-post-install-vault-setup",
+              "umbrella-provider-edc-post-install-vault-setup",
+              "umbrella-post-install-bdrs-setup",
+              "umbrella-issuer-custom-attestation-claims-seeding",
           }
           with open(sys.argv[1], encoding="utf-8") as stream:
               documents = [document for document in yaml.safe_load_all(stream) if document]
+
+          def annotations(document):
+              return document.get("metadata", {}).get("annotations") or {}
 
           deployments = {
               document["metadata"]["name"]
@@ -226,6 +369,17 @@ jobs:
           if missing:
               raise SystemExit(f"Umbrella manifest is missing deployments: {', '.join(missing)}")
 
+          hooks = {
+              document["metadata"]["name"]
+              for document in documents
+              if document.get("kind") == "Job" and "helm.sh/hook" in annotations(document)
+          }
+          missing_hooks = sorted(expected_hooks - hooks)
+          if missing_hooks:
+              raise SystemExit(
+                  f"Umbrella manifest is missing install hooks: {', '.join(missing_hooks)}"
+              )
+
           install_resources = [
               (
                   document.get("kind"),
@@ -235,7 +389,7 @@ jobs:
               for document in documents
               if document.get("kind")
               and document.get("metadata", {}).get("name")
-              and "helm.sh/hook" not in (document.get("metadata", {}).get("annotations") or {})
+              and "helm.sh/hook" not in annotations(document)
           ]
           duplicates = sorted(key for key, count in Counter(install_resources).items() if count > 1)
           if duplicates:
@@ -270,18 +424,79 @@ jobs:
           )
           if prefixed_routes:
               raise SystemExit(f"Umbrella manifest still has /connector routes: {prefixed_routes}")
-          print("Umbrella manifest contains both connectors, both DTRs, and isolated connector routes.")
+
+          print("Umbrella manifest contains both connectors, both DTRs, the issuer,")
+          print("the vault-setup hooks, and isolated connector routes.")
+          print("Ingress hosts:", ", ".join(sorted(h for h in ingress_routes if h)))
           PY
           echo "UMBRELLA_CHART_DIR=${chart_dir}" >> "${GITHUB_ENV}"
           echo "UMBRELLA_PROFILE_URL=${profile_url}" >> "${GITHUB_ENV}"
+          echo "UMBRELLA_RENDERED=${rendered}" >> "${GITHUB_ENV}"
+
+      - name: Pre-load release images into the kind node
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          # Pulling ~25 images on demand inside a single-node cluster serialises
+          # against the JVM startups it is competing with, and a Docker Hub
+          # throttle shows up as an opaque readiness timeout 20 minutes later.
+          # Doing it up front is best-effort: a miss here just means the kubelet
+          # pulls it itself, but a failure is at least attributed correctly.
+          images="$(grep -hoE '^[[:space:]]*-?[[:space:]]*image:[[:space:]]*"?[^"]+"?$' \
+            "${UMBRELLA_RENDERED}" \
+            | sed -E 's/.*image:[[:space:]]*//; s/"//g' | sort -u)"
+          echo "${images}"
+          for image in ${images}; do
+            if docker pull --quiet "${image}" >/dev/null 2>&1; then
+              ./kind load docker-image --name tck-e2e "${image}" >/dev/null 2>&1 \
+                && echo "loaded  ${image}" \
+                || echo "SKIPPED ${image} (kind load failed)"
+            else
+              echo "SKIPPED ${image} (pull failed)"
+            fi
+          done
+          docker image prune --all --force >/dev/null 2>&1 || true
+          df -h /
 
       - name: Deploy Tractus-X Umbrella (decentralized IdentityHub profile)
         run: |
+          set -uo pipefail
+          # `--wait` is load-bearing, not just convenience: Helm waits for
+          # readiness *before* running post-install hooks, and the hooks seed
+          # the vaults and the issuer's claim table against services that must
+          # already be up.
+          #
+          # A bare 25-minute wait is opaque when it fails, so a watcher reports
+          # what is still outstanding while Helm blocks.
+          columns='NAME:.metadata.name'
+          columns="${columns},PHASE:.status.phase"
+          columns="${columns},RESTARTS:.status.containerStatuses[*].restartCount"
+          columns="${columns},STATE:.status.containerStatuses[*].state.*.reason"
+          columns="${columns},READY:.status.containerStatuses[*].ready"
+          (
+            while true; do
+              sleep 30
+              echo "--- $(date -u +%H:%M:%S) waiting on the release ---"
+              # Print only the pods that are not yet fully ready (READY is the
+              # last column, one 'true'/'false' per container).
+              kubectl get pods -n "${UMBRELLA_NAMESPACE}" \
+                -o "custom-columns=${columns}" 2>/dev/null \
+                | awk 'NR == 1 || $NF !~ /^(true,)*true$/' || true
+            done
+          ) &
+          watcher=$!
+          trap 'kill "${watcher}" 2>/dev/null || true' EXIT
+
           helm install umbrella "${UMBRELLA_CHART_DIR}" \
             --namespace "${UMBRELLA_NAMESPACE}" --create-namespace \
             -f "${UMBRELLA_PROFILE_URL}" \
             -f "${UMBRELLA_CI_VALUES}" \
-            --debug --timeout 5m --wait
+            --burst-limit 400 --qps 200 \
+            --timeout "${HELM_TIMEOUT}" --wait
+          status=$?
+
+          kill "${watcher}" 2>/dev/null || true
+          exit "${status}"
 
       - name: Deploy in-cluster echo backend
         run: |
@@ -293,37 +508,79 @@ jobs:
           kubectl expose pod/tck-echo --namespace "${UMBRELLA_NAMESPACE}" \
             --port=80 --name=tck-echo
           kubectl wait --namespace "${UMBRELLA_NAMESPACE}" \
-            --for=condition=ready pod/tck-echo --timeout=60s
+            --for=condition=ready pod/tck-echo --timeout=120s
 
       - name: Show dataspace pods
         run: |
           # `helm install --wait` above is the real readiness gate (it tracks
           # every resource in the release, not just these labels). This is
-          # just a status dump for the log — component label values can
-          # differ by subchart, so it's informational rather than fatal.
+          # just a status dump for the log.
           kubectl get pods -n "${UMBRELLA_NAMESPACE}" -o wide
-          kubectl get pods -n "${UMBRELLA_NAMESPACE}" \
-            -o custom-columns='NAME:.metadata.name,READY:.status.containerStatuses[*].ready,PHASE:.status.phase' || true
+          kubectl get jobs -n "${UMBRELLA_NAMESPACE}" || true
 
       # ------------------------------------------------------------------
-      # 4. Discover what the chart didn't pin, then sanity-check reachability
+      # 4. Make the dataspace usable: issue the participants' credentials
       # ------------------------------------------------------------------
-      - name: Discover DTR ingress host
+      - name: Issue Catena-X credentials to both participants
+        run: |
+          set -euo pipefail
+          # The IssuerService mints a one-time super-user API key at startup and
+          # only ever prints it to its own log.
+          super_user_key=""
+          for _ in $(seq 1 30); do
+            super_user_key="$(kubectl logs -n "${UMBRELLA_NAMESPACE}" \
+              deployment/umbrella-issuerservice --tail=-1 2>/dev/null \
+              | sed -n 's/.*Please take note of the API Key: *\([^ ]*\).*/\1/p' \
+              | tail -n 1)"
+            if [ -n "${super_user_key}" ]; then
+              break
+            fi
+            sleep 5
+          done
+          if [ -z "${super_user_key}" ]; then
+            echo "::error::Could not find the IssuerService super-user API key in its log."
+            kubectl logs -n "${UMBRELLA_NAMESPACE}" deployment/umbrella-issuerservice --tail=200 || true
+            exit 1
+          fi
+          echo "::add-mask::${super_user_key}"
+
+          poetry run python "${ISSUANCE_SCRIPT}" \
+            --issuer-url "http://issuerservice.local" \
+            --super-user-key "${super_user_key}"
+
+      # ------------------------------------------------------------------
+      # 5. Discover what the chart didn't pin, then sanity-check reachability
+      # ------------------------------------------------------------------
+      - name: Discover DTR ingress host and base URL
         run: |
           set -euo pipefail
           DTR_HOST="$(kubectl get ingress provider-dtr \
             -n "${UMBRELLA_NAMESPACE}" \
             -o jsonpath='{.spec.rules[0].host}')"
-          if [ -z "${DTR_HOST}" ]; then
-            echo "::error::Could not find a Digital Twin Registry ingress in namespace ${UMBRELLA_NAMESPACE}."
-            echo "Ingresses present:"
+          # The DTR's ingress serves the registry under a rewritten prefix
+          # (`/semantics/registry(/|$)(.*)` -> `/$2`), so the API base URL is
+          # the host *plus* that prefix — the bare host answers 404.
+          DTR_PATH="$(kubectl get ingress provider-dtr \
+            -n "${UMBRELLA_NAMESPACE}" \
+            -o jsonpath='{.spec.rules[0].http.paths[0].path}')"
+          if [ -z "${DTR_HOST}" ] || [ -z "${DTR_PATH}" ]; then
+            echo "::error::Could not read the Digital Twin Registry ingress in namespace ${UMBRELLA_NAMESPACE}."
             kubectl get ingress -n "${UMBRELLA_NAMESPACE}"
             exit 1
           fi
-          echo "Discovered DTR ingress host: ${DTR_HOST}"
+          # Strip the regex tail, keeping the literal prefix.
+          DTR_PREFIX="${DTR_PATH%%(*}"
+          DTR_PREFIX="${DTR_PREFIX%/}"
+          DTR_BASE_URL="http://${DTR_HOST}${DTR_PREFIX}"
+          echo "Discovered DTR ingress: host=${DTR_HOST} path=${DTR_PATH}"
+          echo "DTR base URL: ${DTR_BASE_URL}"
           echo "DTR_HOST=${DTR_HOST}" >> "$GITHUB_ENV"
-          echo "${DTR_HOST}" | sudo tee -a /etc/hosts >/dev/null || true
-          echo "127.0.0.1 ${DTR_HOST}" | sudo tee -a /etc/hosts >/dev/null
+          echo "DTR_BASE_URL=${DTR_BASE_URL}" >> "$GITHUB_ENV"
+
+          # ci/umbrella.values.yaml pins this host, so it is already in
+          # /etc/hosts — but add it if a chart bump ever changes it.
+          grep -qE "[[:space:]]${DTR_HOST}\$" /etc/hosts \
+            || echo "127.0.0.1 ${DTR_HOST}" | sudo tee -a /etc/hosts >/dev/null
 
       - name: Preflight — check connector and DTR reachability
         run: |
@@ -339,11 +596,11 @@ jobs:
             echo "${participant} management API: reachable"
           done
           curl --fail-with-body --location --silent --show-error \
-            "http://${DTR_HOST}/api/v3.0/shell-descriptors" > /dev/null
-          echo "provider DTR API: reachable"
+            "${DTR_BASE_URL}/api/v3.0/shell-descriptors" > /dev/null
+          echo "provider DTR API: reachable at ${DTR_BASE_URL}"
 
       # ------------------------------------------------------------------
-      # 5. testlab: validate -> compile -> run, against the live dataspace
+      # 6. testlab: validate -> compile -> run, against the live dataspace
       # ------------------------------------------------------------------
       - name: testlab validate
         run: poetry run testlab validate "${TCK_INDEX}"
@@ -357,11 +614,11 @@ jobs:
         run: |
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
-            --var "infrastructure.sut.dtr.base_url=http://${DTR_HOST}" \
+            --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --logs-dir logs/e2e
 
       # ------------------------------------------------------------------
-      # 6. Diagnostics + cleanup
+      # 7. Diagnostics + cleanup
       # ------------------------------------------------------------------
       - name: Collect cluster diagnostics on failure
         if: failure()
@@ -371,12 +628,16 @@ jobs:
           kubectl get all -n "${UMBRELLA_NAMESPACE}" -o wide > ci-logs/resources.txt 2>&1 || true
           kubectl get nodes -o wide > ci-logs/nodes.txt 2>&1 || true
           kubectl describe nodes > ci-logs/nodes-describe.txt 2>&1 || true
+          kubectl top nodes > ci-logs/nodes-top.txt 2>&1 || true
           kubectl get pods -n "${UMBRELLA_NAMESPACE}" -o wide > ci-logs/pods.txt 2>&1 || true
           kubectl describe pods -n "${UMBRELLA_NAMESPACE}" > ci-logs/pods-describe.txt 2>&1 || true
           kubectl get jobs -n "${UMBRELLA_NAMESPACE}" -o yaml > ci-logs/jobs.yaml 2>&1 || true
           kubectl get ingress -n "${UMBRELLA_NAMESPACE}" -o yaml > ci-logs/ingress.yaml 2>&1 || true
+          kubectl get ingressclass -o yaml > ci-logs/ingressclass.yaml 2>&1 || true
+          kubectl -n kube-system get configmap coredns -o yaml > ci-logs/coredns.yaml 2>&1 || true
           kubectl get events -n "${UMBRELLA_NAMESPACE}" --sort-by=.metadata.creationTimestamp \
             > ci-logs/events.txt 2>&1 || true
+          df -h / > ci-logs/disk.txt 2>&1 || true
           while IFS= read -r pod; do
             pod_name="${pod#pod/}"
             kubectl logs -n "${UMBRELLA_NAMESPACE}" "${pod}" --all-containers --tail=1000 \

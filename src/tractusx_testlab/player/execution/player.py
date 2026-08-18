@@ -35,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
+from tractusx_testlab.infrastructure.manager import InfrastructureManager
+from tractusx_testlab.infrastructure.mapping import collect_overrides, flatten
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.player.execution.infrastructure_seeder import seed_infrastructure_services
 from tractusx_testlab.models import (
@@ -63,10 +65,12 @@ from tractusx_testlab.player.execution._context_seeder import seed_context_varia
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.loader import Loader
 from tractusx_testlab.player.loading.ordering import topological_sort
+from tractusx_testlab.scripting._infrastructure import collect_infrastructure_requirements
 from tractusx_testlab.scripting.script import Tck as Tck, TestScript
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import get_callback_manager, set_callback_manager
 from tractusx_testlab.services.manager import ServiceManager
+from tractusx_testlab.syntax import defaults
 
 # Ensure built-in steps are registered
 import tractusx_testlab.steps  # noqa: F401
@@ -79,17 +83,41 @@ class TestlabPlayer:
 
         player = TestlabPlayer()
         result = await player.run("my_tck.yaml")
+
+    An adopter embedding the player states the deployment it runs against by
+    handing over an :class:`InfrastructureManager` — the engine's own connector,
+    registry and submodel server, and the system under test::
+
+        player = TestlabPlayer(infrastructure=InfrastructureManager(integration))
     """
 
-    __slots__ = ("_config", "_logger", "_monitor", "_jobs", "_loader", "_mock_server")
+    __slots__ = (
+        "_config", "_logger", "_monitor", "_jobs", "_loader", "_mock_server", "_infrastructure",
+    )
 
-    def __init__(self, config: Optional[TestlabConfig] = None) -> None:
+    def __init__(
+        self,
+        config: Optional[TestlabConfig] = None,
+        infrastructure: Optional[InfrastructureManager] = None,
+    ) -> None:
+        """Build a player for *config*, running against *infrastructure*.
+
+        Both are resolved from the engine's own configuration when omitted, so
+        an embedder supplies whichever half it decides and inherits the other
+        from the config file and the environment.
+        """
         self._config = config or ConfigLoader.load()
+        self._infrastructure = infrastructure or InfrastructureManager.from_config(self._config)
         self._logger = StructuredLogger("testlab.player", logs_dir=self._config.logs_dir)
         self._monitor = ExecutionMonitor(self._logger)
         self._jobs = JobManager()
         self._loader = Loader()
         self._mock_server: Optional[_BackgroundMockServer] = None
+
+    @property
+    def infrastructure(self) -> InfrastructureManager:
+        """The deployments this player can run against."""
+        return self._infrastructure
 
     @property
     def jobs(self) -> JobManager:
@@ -146,11 +174,24 @@ class TestlabPlayer:
         monitor.on_job_started(job.job_id, tck.id)
 
         svc_mgr = ServiceManager()
-        context = StepContext(services=svc_mgr, job=job, config=self._config)
-
-        self._ensure_callback_manager()
+        context = StepContext(
+            services=svc_mgr,
+            job=job,
+            config=self._config,
+            infrastructure=self._infrastructure.active,
+        )
 
         seed_context_variables(context, tck, runtime_vars)
+
+        # Before the callback server: a run this engine cannot reach is refused
+        # without having started anything it would then have to shut down.
+        try:
+            self._bind_infrastructure(context, tck)
+        except Exception as exc:
+            self._jobs.fail(job.job_id, str(exc))
+            raise
+
+        self._ensure_callback_manager()
         seed_infrastructure_services(svc_mgr, context)
 
         skip_ids = resolve_skip_ids(tck, runtime_vars)
@@ -177,6 +218,41 @@ class TestlabPlayer:
     # ------------------------------------------------------------------
     # TCK helpers
     # ------------------------------------------------------------------
+
+    def _bind_infrastructure(self, context: StepContext, tck: Tck) -> None:
+        """Settle which deployment this run targets, and refuse one it cannot reach.
+
+        The active deployment is the starting point and the run's own variables
+        are written over it, so an operator overrides a single address for one
+        run — ``--var infrastructure.sut.dtr.base_url=…`` — without touching the
+        registered deployment or the next run.
+
+        What the TCK requires is then checked against what is bound, before the
+        first step: a capability declared ``required: true`` with nothing behind
+        it fails here, naming the key the operator owes, rather than surfacing
+        as an empty URL somewhere in the middle of the run.
+
+        What the TCK certifies against — its ecosystem release and its per-
+        capability standards — is then carried onto the bindings, so the SDK
+        builds Saturn or Jupiter services because the TCK says so and not
+        because a config file repeated it.
+
+        The resolved bindings are published back into the variable namespace so
+        ``${{ infrastructure.sut.connector.dsp_url }}`` resolves the same
+        whether the value came from a profile, the environment, or the CLI.
+        """
+        requirements = collect_infrastructure_requirements(tck)
+        release, release_stated = _target_release(tck)
+
+        resolved = self._infrastructure.resolve(collect_overrides(context.variables))
+        self._infrastructure.validate(requirements, resolved)
+        resolved = self._infrastructure.align(
+            requirements, release, release_stated=release_stated, infrastructure=resolved,
+        )
+
+        context.bind_infrastructure(resolved)
+        for key, value in flatten(resolved).items():
+            context.set_variable(key, value)
 
     def _create_job_monitor(self, job_logger: StructuredLogger) -> ExecutionMonitor:
         """Create a monitor for a job, dynamically forwarding to player-level callbacks."""
@@ -260,6 +336,28 @@ class TestlabPlayer:
             if value is not None:
                 context.set_variable(export_name, value)
                 context.set_variable(f"!{script.name}:{export_name}", value)
+
+
+def _target_release(tck: Tck) -> tuple[str, bool]:
+    """Return the ecosystem release a TCK targets, and whether it said so itself.
+
+    ADR-0019's ``dataspace`` block is the source of the version; the flat
+    ``dataspace_version`` field is the older way of saying the same thing and
+    is read when the block is absent. Whether it was stated at all matters:
+    a release nobody declared is a default, and a default must never be held
+    against an operator who bound a deployment of a different one.
+    """
+    definition = getattr(tck, "definition", None)
+    if definition is None:
+        return defaults.DATASPACE_VERSION, False
+
+    dataspace = getattr(definition, "dataspace", None)
+    if dataspace is not None and getattr(dataspace, "version", ""):
+        return dataspace.version, True
+
+    fields_set = getattr(definition, "model_fields_set", set())
+    version = getattr(definition, "dataspace_version", "") or defaults.DATASPACE_VERSION
+    return version, "dataspace_version" in fields_set
 
 
 def _is_encrypted_tck(path: Path) -> bool:

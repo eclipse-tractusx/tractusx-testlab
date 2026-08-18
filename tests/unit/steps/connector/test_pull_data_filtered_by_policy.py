@@ -30,7 +30,7 @@ import pytest
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.steps.pull_data._executor import ConnectorPullDataFilteredByPolicy
+from tractusx_testlab.steps.connector.pull_data import ConnectorPullDataFilteredByPolicy
 
 
 @pytest.fixture()

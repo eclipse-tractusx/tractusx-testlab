@@ -31,6 +31,7 @@ from __future__ import annotations
 
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.models import Job, ServiceDefinition, ServiceNotFoundError, ServiceType
+from tractusx_testlab.models.domain.infrastructure import Infrastructure
 from tractusx_testlab.services.manager import ServiceManager
 from tractusx_testlab.syntax import defaults
 
@@ -38,17 +39,19 @@ from tractusx_testlab.syntax import defaults
 class StepContext:
     """Mutable execution context shared across steps within a single script run."""
 
-    __slots__ = ("_services", "_variables", "_job", "_config")
+    __slots__ = ("_services", "_variables", "_job", "_config", "_infrastructure")
 
     def __init__(
         self,
         services: ServiceManager,
         job: Job,
         config: TestlabConfig,
+        infrastructure: "Infrastructure | None" = None,
     ) -> None:
         self._services = services
         self._job = job
         self._config = config
+        self._infrastructure = config.infrastructure if infrastructure is None else infrastructure
         self._variables: dict[str, object] = {}
 
     # ------------------------------------------------------------------
@@ -58,6 +61,20 @@ class StepContext:
     @property
     def config(self) -> TestlabConfig:
         return self._config
+
+    @property
+    def infrastructure(self) -> Infrastructure:
+        """The deployment this run targets, after the run's own overrides.
+
+        A step reads an engine-side address from here rather than from a
+        variable a script supplied, because where the engine's own
+        infrastructure lives is the operator's decision and not the test's.
+        """
+        return self._infrastructure
+
+    def bind_infrastructure(self, infrastructure: Infrastructure) -> None:
+        """Fix the deployment for this run — called once, before the first step."""
+        self._infrastructure = infrastructure
 
     @property
     def services(self) -> ServiceManager:

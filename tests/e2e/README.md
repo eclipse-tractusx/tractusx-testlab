@@ -8,9 +8,10 @@ pipeline against a real, ephemeral dataspace instead of mocks:
 - **Two Tractus-X IdentityHub instances** — one per participant — handling
   DID/VC-based IATP trust between the connectors.
 - **Two Digital Twin Registries** — one per participant.
-- A BDRS directory + issuer service, pre-seeded with the Catena-X
-  `Membership` and `DataExchangeGovernance:1.0` VC claims both participants
-  need to pass ODRL policy checks out of the box.
+- A BDRS directory service and an IssuerService, which the workflow drives
+  through the credential-issuance flow so both participants end up holding the
+  Catena-X `Membership` and `DataExchangeGovernance:1.0` VCs the TCK's ODRL
+  policies check.
 
 All of it comes from one Helm install of [Tractus-X
 Umbrella](https://github.com/eclipse-tractusx/tractus-x-umbrella)'s
@@ -34,36 +35,89 @@ Both bind through the `infrastructure.engine.connector` / `sut.connector` /
 `sut.dtr` capabilities (ADR-0019); `ci/umbrella.vars.yaml` supplies the
 concrete endpoints via `testlab run --config`.
 
+## What `helm install` does not give you
+
+A green `helm install --wait` is necessary but nowhere near sufficient. Four
+things have to be true on top of it, and each one fails *silently* — every pod
+reports itself healthy either way, and you only find out when a negotiation
+never reaches `AGREED` or a DTR call answers 404.
+
+1. **The dataspace hostnames must resolve inside the cluster.** Every
+   participant addresses its peers by ingress hostname (`provider.local`,
+   `consumer-dsp.local`, `issuerservice.local`, …) — that is how `did:web`
+   resolution, STS token exchange and the DSP handshake are configured.
+   `/etc/hosts` on your machine does not help pods. The workflow adds a `hosts`
+   block to CoreDNS pointing every name at the ingress controller's ClusterIP.
+2. **`nginx` must be the default IngressClass.** The IdentityHub, data-plane and
+   IssuerService ingresses render *without* a class (the profile leaves
+   `shared-configuration.ingress.className` empty), and ingress-nginx's kind
+   manifest does not mark its class as the default — so nothing claims those
+   routes.
+3. **The participants' vaults must be seeded.** `tokenSignerPrivateKey`,
+   `tokenSignerPublicKey` and `tokenEncryptionAesKey` are written by the
+   connector bundle's `post-install-vault-setup` hook. That hook only renders
+   while the *connector bundle* owns the vault (`install.vault: false` +
+   `dataspace-connector-bundle.vault.enabled: true`); flip those and you get a
+   vault with nothing in it, and every transfer fails to sign its EDR.
+   `ci/umbrella.values.yaml` deliberately leaves the profile's wiring alone, and
+   the workflow's manifest validation asserts both hooks are present.
+4. **The credentials must actually be issued.** The chart seeds the
+   IssuerService's *claim rows* (`custom_attestation_claims`) but never turns
+   them into VCs held by the participants. That is an API flow the Umbrella docs
+   ship as a Bruno collection for humans; `ci/issue_credentials.py` is the same
+   flow, executed non-interactively.
+
 ## Reproducing locally
 
 ```bash
-kind create cluster --name tck-e2e
+kind create cluster --name tck-e2e   # add the :80/:443 extraPortMappings — see the workflow
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+kubectl patch ingressclass nginx \
+  -p '{"metadata":{"annotations":{"ingressclass.kubernetes.io/is-default-class":"true"}}}'
+
+# Resolve the dataspace hostnames on your machine *and* inside the cluster.
+# The full list lives in the workflow's DATASPACE_HOSTS; edit the coredns
+# ConfigMap to add a `hosts` block for them pointing at:
+#   kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.spec.clusterIP}'
 
 helm repo add tractusx-dev https://eclipse-tractusx.github.io/charts/dev
-helm install umbrella tractusx-dev/umbrella --namespace umbrella --create-namespace \
-  -f https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/main/charts/umbrella/values-adopter-decentralized-identityhub.yaml \
-  --set edc-consumer.tx-data-provider.digital-twin-bundle.enabled=true \
-  --set edc-consumer.tx-data-provider.data-persistence-layer-bundle.enabled=true \
-  --wait --timeout 20m
+helm install umbrella tractusx-dev/umbrella --version 26.03.00 \
+  --namespace umbrella --create-namespace \
+  -f https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/umbrella-26.03.00/charts/umbrella/values-adopter-decentralized-identityhub.yaml \
+  -f tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml \
+  --wait --timeout 25m
 
-# /etc/hosts: 127.0.0.1 provider.local provider.intranet consumer.local consumer.intranet
-# find the DTR ingress host: kubectl get ingress -n umbrella | grep -i dtr
+# Umbrella 26.03.00 ships the packaged chart without the nested
+# tx-data-provider bundles; the workflow restores them before installing. See
+# its "Prepare and validate pinned Umbrella chart" step if the install renders
+# without the connectors.
+
+# Issue the credentials, using the super-user key the IssuerService logs once:
+poetry run python tests/e2e/connector-dtr-smoke/ci/issue_credentials.py \
+  --super-user-key "$(kubectl logs -n umbrella deployment/umbrella-issuerservice \
+      | sed -n 's/.*Please take note of the API Key: *\([^ ]*\).*/\1/p' | tail -n 1)"
 
 poetry run testlab run tests/e2e/connector-dtr-smoke/index.yaml \
   --config tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml \
-  --var infrastructure.sut.dtr.base_url=http://<discovered-dtr-host>
+  --var infrastructure.sut.dtr.base_url=http://provider-dtr.local/semantics/registry
 ```
 
 ## Known soft spots
 
-The umbrella chart's subchart internals (ingress paths for the DTR
-specifically) aren't pinned by the values file the same way hostnames, BPNs
-and the management API key are, and can shift between chart releases. The
-workflow discovers the DTR ingress host at deploy time rather than
-hardcoding it, and fails with a clear diagnostic instead of a confusing
-downstream error when it can't find one — see the "Discover DTR ingress
-host" step. If a chart upgrade breaks that discovery or the `--set`
-overrides that enable the consumer's DTR, `helm show values
-tractusx-dev/umbrella` against the new version is the fastest way to find
-the renamed keys.
+**DTR ingress path.** The registry is served under a rewritten prefix
+(`/semantics/registry(/|$)(.*)` → `/$2`), so its API base URL is the host *plus*
+that prefix — the bare host answers 404. That prefix is a subchart default, not
+something the profile pins, so the workflow reads both the host and the path off
+the live `provider-dtr` Ingress and derives the base URL from them, rather than
+hardcoding either. See the "Discover DTR ingress host and base URL" step.
+
+**Runner capacity.** The release is ~125 resources and a dozen JVMs on a 4-vCPU
+runner, all booting at once. The stock liveness delays (30s for the connectors,
+100s for the DTRs) kill pods before they finish starting under that contention,
+so `ci/umbrella.values.yaml` raises them to 240s and trims the over-provisioned
+CPU requests. If a chart bump adds another JVM, expect to do the same for it.
+
+**Chart drift.** If a chart upgrade breaks the DTR discovery, the vault-setup
+hook assertion, or the values keys that enable the consumer's DTR and data
+backend, `helm show values tractusx-dev/umbrella --version <new>` against the
+new version is the fastest way to find the renamed keys.

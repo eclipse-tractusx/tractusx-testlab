@@ -26,7 +26,11 @@
 > Date: 2026-08-06 | Branch: `feat/run_security_consitency`
 > Scope: how operator-supplied configuration, infrastructure bindings, and test
 > variables enter a run and reach a step. Backend only (`src/tractusx_testlab/`).
-> Status: **analysis** — no code changes proposed here are implemented.
+> Status: **partly implemented** — F5 and F7 are fixed, and §4 A (the binding
+> half), §4 B and §4 E.3 shipped with the `InfrastructureManager`. See
+> [Infrastructure Bindings](infrastructure-bindings.md) for the result. The
+> findings below are recorded as they were measured; the sections that have
+> since been addressed say so where they are stated.
 
 ## Summary
 
@@ -154,7 +158,13 @@ representation that never executes, and any divergence is invisible until runtim
 This also explains the dead double-write at `_context_seeder.py:137`:
 `env.testdata.<id>` is never read, because the resolver strips `env.` before looking up.
 
-### F5 — `infrastructure.*` is string-scraped, not modelled
+### F5 — `infrastructure.*` is string-scraped, not modelled — **fixed**
+
+> Fixed by the `Infrastructure` model and `InfrastructureManager`: the fields
+> below are declared, the three surfaces are generated from them, an unknown key
+> is an error, and requirements are checked against bindings before the first
+> step. Suffix-stripping remains, deriving `base_url` and `dma_path` from the
+> declared `management_url`. What follows is the state that motivated it.
 
 ADR-0019 §2 specifies a structured `bindings:` profile with a schema and a loader. It
 was never built — `grep -rn "bindings" src/**/*.py` returns nothing. Instead,
@@ -190,7 +200,11 @@ therefore a function of seeding order, not of anything declared.**
 `context.py:133` additionally reaches into `self._services._definitions` — a private
 field of another class.
 
-### F7 — CLI `run` bypasses `ConfigLoader` entirely
+### F7 — CLI `run` bypasses `ConfigLoader` entirely — **fixed**
+
+> `cli/run.py` now loads through `ConfigLoader`, passing only the log directory
+> as a CLI override, so the file and the environment reach a CLI run exactly as
+> they reach the server.
 
 `cli/run.py:79` constructs `TestlabConfig(logs_dir=...)` directly. `TestlabPlayer`
 only falls back to `ConfigLoader.load()` when `config is None`
@@ -230,7 +244,14 @@ prefixes) is documented **only** in `tests/test_infrastructure_seeder.py:57`.
 
 An operator has no correct document from which to write a run-config.
 
-### F11 — Declaring a capability obliges the operator to nothing
+### F11 — Declaring a capability obliges the operator to nothing — **partly fixed**
+
+> The key vocabulary is now declared per capability, and a `required: true`
+> capability with no binding fails before the first step naming the key it
+> owes. What is not yet built is the rest of §4 E: only the identifying address
+> is obligatory (not a full per-capability contract), and `auth` is still the
+> flat `api_key` / `api_key_header` pair rather than the discriminated union of
+> §4 E.2 — so OAuth-protected infrastructure remains unexpressible.
 
 `infrastructure.sut.connector.required: true` states that the run needs a SUT connector.
 It does **not** state what the operator must supply for it, and nothing anywhere does.
@@ -487,9 +508,9 @@ already specifies but that nothing emits today.
 |---|---|---|---|
 | 1 | Strict resolution + `UnresolvedReferenceError` + provenance dump | low, high signal | immediately exposes how many F2/F3 failures are latent today |
 | 2 | Delete dead `shared_variables` branch; fix validator message; remove dead `env.<folder>.<id>` write | trivial | removes misleading code |
-| 3 | Single `RunEnvironment` factory; route CLI through `ConfigLoader` | low | fixes F7, F8 |
+| 3 | ~~Single `RunEnvironment` factory; route CLI through `ConfigLoader`~~ — **done** for the config and binding halves; `inputs` still unmodelled, so F8 stands | low | fixes F7 |
 | 4 | Add the capability contract registry + `AuthConfig` union (§4 E) | medium | makes required keys declarable and verifiable at all |
-| 5 | `BindingProfile` model + `bind_infrastructure` replacing the scraper | medium | fixes F5, F2; enables ADR-0019 §3 fail-fast |
+| 5 | ~~`BindingProfile` model + `bind_infrastructure` replacing the scraper~~ — **done** as `Infrastructure` + `InfrastructureManager` | medium | fixed F5; ADR-0019 §3 fail-fast now enforced |
 | 6 | `testlab bindings template` + `tck.boot.requirements` event | low | operators stop guessing key names |
 | 7 | Scoped context, role-based service lookup | medium-high | fixes F6, F9 |
 | 8 | Unify compiler/player resolvers | medium | fixes F4 |
