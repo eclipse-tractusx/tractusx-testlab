@@ -99,9 +99,7 @@ def _write_tck(root: Path, *steps: dict) -> Path:
     (root / "tests").mkdir(parents=True, exist_ok=True)
     manifest_path = root / "index.yaml"
     manifest_path.write_text(yaml.dump(_MANIFEST), encoding="utf-8")
-    (root / "tests" / "probe.yaml").write_text(
-        yaml.dump(_test_script(*steps)), encoding="utf-8"
-    )
+    (root / "tests" / "probe.yaml").write_text(yaml.dump(_test_script(*steps)), encoding="utf-8")
     return manifest_path
 
 
@@ -166,9 +164,9 @@ def test_validation_rejects_a_misspelled_step_key(tmp_path: Path) -> None:
         "A step carrying an unknown key 'validte' was accepted. The assertion "
         "the author wrote will never run, and the run will report PASS."
     )
-    assert any(
-        "validte" in issue.message for issue in result.issues
-    ), f"Rejected, but without naming the offending key: {[i.message for i in result.issues]}"
+    assert any("validte" in issue.message for issue in result.issues), (
+        f"Rejected, but without naming the offending key: {[i.message for i in result.issues]}"
+    )
 
 
 def test_validation_rejects_an_unknown_key_on_a_step(tmp_path: Path) -> None:

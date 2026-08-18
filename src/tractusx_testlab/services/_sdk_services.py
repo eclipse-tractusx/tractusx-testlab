@@ -36,15 +36,24 @@ logger = logging.getLogger(__name__)
 
 # All connector service types. Role-specific consumer/provider definitions are
 # deliberately not interchangeable; only the generic EDC types satisfy either role.
-_CONNECTOR_TYPES: frozenset[str] = frozenset({
-    "CONNECTOR_CONSUMER", "CONNECTOR_PROVIDER",
-    "EDC_CONNECTOR", "EDC_CONNECTOR_SATURN", "EDC_CONNECTOR_JUPITER",
-})
+_CONNECTOR_TYPES: frozenset[str] = frozenset(
+    {
+        "CONNECTOR_CONSUMER",
+        "CONNECTOR_PROVIDER",
+        "EDC_CONNECTOR",
+        "EDC_CONNECTOR_SATURN",
+        "EDC_CONNECTOR_JUPITER",
+    }
+)
 
 # Generic connector types that don't specify a consumer/provider role.
-_GENERIC_CONNECTOR_TYPES: frozenset[str] = frozenset({
-    "EDC_CONNECTOR", "EDC_CONNECTOR_SATURN", "EDC_CONNECTOR_JUPITER",
-})
+_GENERIC_CONNECTOR_TYPES: frozenset[str] = frozenset(
+    {
+        "EDC_CONNECTOR",
+        "EDC_CONNECTOR_SATURN",
+        "EDC_CONNECTOR_JUPITER",
+    }
+)
 
 # Types that map to DTR / AAS service.
 _DTR_COMPATIBLE_TYPES: frozenset[str] = frozenset({"DTR", "DIGITAL_TWIN_REGISTRY"})
@@ -72,7 +81,9 @@ def is_type_compatible(actual: ServiceType, expected: ServiceType) -> bool:
 
 
 def cache_key(
-    name: str, definition: ServiceDefinition, expected_type: ServiceType | None,
+    name: str,
+    definition: ServiceDefinition,
+    expected_type: ServiceType | None,
 ) -> str:
     """Return cache key — compound for generic connector types."""
     if expected_type and definition.type.value in _GENERIC_CONNECTOR_TYPES:
@@ -81,7 +92,8 @@ def cache_key(
 
 
 def create_instance(
-    service_definition: ServiceDefinition, expected_type: ServiceType | None = None,
+    service_definition: ServiceDefinition,
+    expected_type: ServiceType | None = None,
 ) -> object:
     """Create a live SDK service from a ServiceDefinition."""
     stype_val = service_definition.type.value
@@ -92,11 +104,13 @@ def create_instance(
         return _create_aas_service(service_definition)
 
     from tractusx_testlab.models import ServiceNotFoundError
+
     raise ServiceNotFoundError(service_definition.name)
 
 
 def _create_connector_service(
-    service_definition: ServiceDefinition, expected_type: ServiceType | None = None,
+    service_definition: ServiceDefinition,
+    expected_type: ServiceType | None = None,
 ) -> object:
     from tractusx_sdk.dataspace.services.connector.service_factory import ServiceFactory
 
@@ -113,9 +127,8 @@ def _create_connector_service(
         key_header = auth.get("api_key_header", "x-api-key").lower()
         headers[key_header] = auth["api_key"]
 
-    is_provider = (
-        stype_val == "CONNECTOR_PROVIDER"
-        or (expected_type is not None and expected_type.value == "CONNECTOR_PROVIDER")
+    is_provider = stype_val == "CONNECTOR_PROVIDER" or (
+        expected_type is not None and expected_type.value == "CONNECTOR_PROVIDER"
     )
 
     if is_provider:

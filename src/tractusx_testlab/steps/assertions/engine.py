@@ -49,9 +49,7 @@ class AssertionEngine:
     @staticmethod
     def evaluate(assertions: list[Assertion], output: object) -> list[AssertionResult]:
         """Evaluate every ``validate:`` entry against the output the step produced."""
-        return [
-            AssertionEngine._evaluate_one(assertion, output) for assertion in assertions
-        ]
+        return [AssertionEngine._evaluate_one(assertion, output) for assertion in assertions]
 
     @staticmethod
     def _evaluate_one(assertion: Assertion, output: object) -> AssertionResult:
@@ -64,8 +62,12 @@ class AssertionEngine:
         # ends up looking like a passing one.
         if isinstance(resolved, str):
             return AssertionResult(
-                assertion=assertion, passed=False, expected=None, actual=None,
-                message=resolved, severity=severity,
+                assertion=assertion,
+                passed=False,
+                expected=None,
+                actual=None,
+                message=resolved,
+                severity=severity,
             )
 
         actual = AssertionEngine._extract_subject(output, params, resolved)
@@ -82,9 +84,7 @@ class AssertionEngine:
         )
 
     @staticmethod
-    def _extract_subject(
-        output: object, params: dict, resolved: ResolvedAssertion
-    ) -> object:
+    def _extract_subject(output: object, params: dict, resolved: ResolvedAssertion) -> object:
         """Find the value the assertion is about.
 
         ``input`` names one of the step's declared returns; ``validate/field``
@@ -116,9 +116,7 @@ class AssertionEngine:
         return params.get("value")
 
     @staticmethod
-    def _check(
-        resolved: ResolvedAssertion, actual: object, expected: object
-    ) -> tuple[bool, str]:
+    def _check(resolved: ResolvedAssertion, actual: object, expected: object) -> tuple[bool, str]:
         """Run the resolved check over the extracted value."""
         if resolved.kind is AssertionKind.SCHEMA:
             return check_schema_validation(actual, expected, None)
@@ -138,8 +136,7 @@ class AssertionEngine:
     @staticmethod
     def has_hard_failure(results: list[AssertionResult]) -> bool:
         return any(
-            not result.passed and result.severity == AssertionSeverity.HARD
-            for result in results
+            not result.passed and result.severity == AssertionSeverity.HARD for result in results
         )
 
     @staticmethod
@@ -165,6 +162,8 @@ class AssertionEngine:
                     failed_soft += 1
         return AssertionSummary(
             declared=total if declared is None else declared,
-            total=total, passed=passed,
-            failed_hard=failed_hard, failed_soft=failed_soft,
+            total=total,
+            passed=passed,
+            failed_hard=failed_hard,
+            failed_soft=failed_soft,
         )

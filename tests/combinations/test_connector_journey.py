@@ -143,9 +143,7 @@ def consumer(http: HttpDouble) -> ConsumerDouble:
 @pytest.fixture()
 def wired(consumer: ConsumerDouble) -> Harness:
     """A harness whose context resolves the consumer and provider services."""
-    return Harness(
-        build_context(services=ServicesDouble(consumer, ProviderDouble()))
-    )
+    return Harness(build_context(services=ServicesDouble(consumer, ProviderDouble())))
 
 
 class TestTheConsumerJourney:
@@ -155,9 +153,7 @@ class TestTheConsumerJourney:
         self, wired: Harness, consumer: ConsumerDouble
     ) -> None:
         outcome = await wired.run(*_journey())
-        assert outcome.passed, [
-            (r.step_name, r.error) for r in outcome.failures
-        ]
+        assert outcome.passed, [(r.step_name, r.error) for r in outcome.failures]
 
     async def test_the_data_arrives_at_the_far_end(
         self, wired: Harness, consumer: ConsumerDouble
@@ -165,9 +161,7 @@ class TestTheConsumerJourney:
         outcome = await wired.run(*_journey())
         assert outcome.output("pull") == {"shells": ["urn:uuid:1"]}
 
-    async def test_the_catalog_selects_the_dataset_the_dct_type_names(
-        self, wired: Harness
-    ) -> None:
+    async def test_the_catalog_selects_the_dataset_the_dct_type_names(self, wired: Harness) -> None:
         outcome = await wired.run(*_journey())
         assert outcome.variables["asset_id"] == _ASSET_ID
         assert outcome.variables["offer_id"] == "offer-1"
@@ -219,9 +213,7 @@ class TestTheJourneyWithoutExplicitWiring:
         steps[4]["with"] = {"method": "GET", "path": "/api/public"}
         return steps
 
-    async def test_the_implicit_chain_reaches_the_same_data(
-        self, wired: Harness
-    ) -> None:
+    async def test_the_implicit_chain_reaches_the_same_data(self, wired: Harness) -> None:
         outcome = await wired.run(*self._implicit())
         assert outcome.passed, [(r.step_name, r.error) for r in outcome.failures]
         assert outcome.output("pull") == {"shells": ["urn:uuid:1"]}
@@ -269,9 +261,7 @@ class TestNegotiateDoesNotInheritFromExtractDataset:
 
         assert consumer.args_of("start_edr_negotiation")["target"] is None
 
-    async def test_the_extract_step_did_publish_it_under_its_own_name(
-        self, wired: Harness
-    ) -> None:
+    async def test_the_extract_step_did_publish_it_under_its_own_name(self, wired: Harness) -> None:
         """So the value is there — it is the name that does not match."""
         outcome = await wired.run(*_journey())
         assert outcome.variables["asset_id"] == _ASSET_ID
@@ -281,9 +271,7 @@ class TestNegotiateDoesNotInheritFromExtractDataset:
 class TestAssertingAlongTheJourney:
     """Checks placed on the steps of a real chain, not on a stub output."""
 
-    async def test_each_hop_can_be_asserted_where_it_happens(
-        self, wired: Harness
-    ) -> None:
+    async def test_each_hop_can_be_asserted_where_it_happens(self, wired: Harness) -> None:
         steps = _journey()
         steps[2]["validate"] = [
             {
@@ -338,15 +326,11 @@ class TestWhenAHopProducesNothing:
         assert outcome.variables["asset_id"] is None
         assert outcome.variables["dataset"] is None
 
-    async def test_the_break_is_catchable_by_an_assertion_at_the_hop(
-        self, wired: Harness
-    ) -> None:
+    async def test_the_break_is_catchable_by_an_assertion_at_the_hop(self, wired: Harness) -> None:
         """Which is how a TCK author is meant to find it."""
         steps = _journey()
         steps[1]["with"]["dct_type"] = "cx-taxo:NoSuchThing"
-        steps[1]["validate"] = [
-            {"uses": "validate/assert/not_null", "with": {"input": "asset_id"}}
-        ]
+        steps[1]["validate"] = [{"uses": "validate/assert/not_null", "with": {"input": "asset_id"}}]
 
         outcome = await wired.run(*steps)
 
@@ -357,9 +341,7 @@ class TestWhenAHopProducesNothing:
 class TestTeardownDeletesWhatSetupMade:
     """A teardown step reads the id the setup phase published."""
 
-    async def test_the_deleted_asset_is_the_one_that_was_created(
-        self, wired: Harness
-    ) -> None:
+    async def test_the_deleted_asset_is_the_one_that_was_created(self, wired: Harness) -> None:
         provider: ProviderDouble = wired.context.services._by_type["CONNECTOR_PROVIDER"]
 
         await wired.run(

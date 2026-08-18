@@ -84,9 +84,7 @@ class ServiceTypeMismatchError(EngineError):
         self.step_type = step_type
         self.expected = expected
         self.actual = actual
-        super().__init__(
-            f"Step '{step_type}' expects {expected.value} but got {actual.value}"
-        )
+        super().__init__(f"Step '{step_type}' expects {expected.value} but got {actual.value}")
 
 
 class StepConfigError(AuthoringError):
@@ -168,8 +166,7 @@ class StandardConflictError(InfrastructureError):
             for side, capability, field, bound, required in conflicts
         )
         super().__init__(
-            "The infrastructure bound does not match what this TCK certifies against:\n"
-            f"{lines}"
+            f"The infrastructure bound does not match what this TCK certifies against:\n{lines}"
         )
 
 
@@ -205,9 +202,7 @@ class UnresolvedReferenceError(AuthoringError):
         self.available = available or []
         listed = ", ".join(sorted(self.available)[:20]) or "nothing"
         more = "" if len(self.available) <= 20 else f" (and {len(self.available) - 20} more)"
-        super().__init__(
-            f"'{reference}' resolves to nothing. In scope: {listed}{more}."
-        )
+        super().__init__(f"'{reference}' resolves to nothing. In scope: {listed}{more}.")
 
 
 class StepExecutionError(ExecutionError):

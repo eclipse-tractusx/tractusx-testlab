@@ -52,7 +52,9 @@ class TestlabConfig(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        extra="forbid", env_prefix="TESTLAB_", env_nested_delimiter="__",
+        extra="forbid",
+        env_prefix="TESTLAB_",
+        env_nested_delimiter="__",
     )
 
     keys_dir: Path = Field(default=_DEFAULT_BASE / "keys")

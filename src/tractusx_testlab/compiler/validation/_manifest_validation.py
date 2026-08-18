@@ -55,9 +55,7 @@ _PHASES = ("setup", "execution", "teardown")
 @cache
 def _validator_for(schema_name: str) -> Draft202012Validator:
     """Return the validator for a schema, reading and compiling it once per process."""
-    schema: dict[str, Any] = json.loads(
-        (_SCHEMAS_DIR / schema_name).read_text(encoding="utf-8")
-    )
+    schema: dict[str, Any] = json.loads((_SCHEMAS_DIR / schema_name).read_text(encoding="utf-8"))
     return Draft202012Validator(schema)
 
 
@@ -87,9 +85,7 @@ def validate_tck_manifest(
     env = manifest_data.get("env") or {}
 
     all_errors: list[str] = [
-        *_collect_errors(
-            _validator_for("tck_index.schema.json"), manifest_data, "index.yaml"
-        ),
+        *_collect_errors(_validator_for("tck_index.schema.json"), manifest_data, "index.yaml"),
         *_validate_file_refs(manifest_data, base_dir),
         *_validate_variable_scopes(env),
         *_validate_scoped_sides_are_declared(env, manifest_data.get("infrastructure")),
@@ -105,9 +101,7 @@ def validate_tck_manifest(
         if not isinstance(test_data, dict):
             all_errors.append(f"Test file '{label}' is not a valid YAML mapping")
             continue
-        all_errors.extend(
-            error for rule in _TEST_FILE_RULES for error in rule(test_data, label)
-        )
+        all_errors.extend(error for rule in _TEST_FILE_RULES for error in rule(test_data, label))
 
     if all_errors:
         error_list = "\n  - ".join(all_errors)
@@ -270,12 +264,9 @@ def _validate_file_refs(
     """Validate that all referenced schema and testdata files exist."""
     env = manifest_data.get("env", {})
     return [
-        f"Referenced {collection.noun} file not found: "
-        f"{collection.key}/{file_name} ({declared_at})"
+        f"Referenced {collection.noun} file not found: {collection.key}/{file_name} ({declared_at})"
         for collection in _FILE_COLLECTIONS
-        for file_name, declared_at in _referenced_files(
-            env.get(collection.key, {}), collection.key
-        )
+        for file_name, declared_at in _referenced_files(env.get(collection.key, {}), collection.key)
         if not (base_dir / collection.key / file_name).is_file()
     ]
 
@@ -300,8 +291,7 @@ _BANNED_STEPS: tuple[BannedStep, ...] = (
     ),
     BannedStep(
         "validate/",
-        "cannot be used as a standalone step. Place it under the parent step's "
-        "'validate:' block.",
+        "cannot be used as a standalone step. Place it under the parent step's 'validate:' block.",
     ),
 )
 
@@ -336,9 +326,7 @@ def _reject_banned_steps(
 
 def _check_test_schema(test_data: dict[str, Any], source_label: str) -> list[str]:
     """Validate a test file against the test JSON schema."""
-    return _collect_errors(
-        _validator_for("tck_test.schema.json"), test_data, source_label
-    )
+    return _collect_errors(_validator_for("tck_test.schema.json"), test_data, source_label)
 
 
 #: Everything asked of a single test file, in the order an author reads it.

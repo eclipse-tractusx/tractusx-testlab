@@ -91,7 +91,9 @@ class Compiler:
         if not validation_result.valid:
             raise ValueError(
                 f"Validation failed with {len(validation_result.issues)} error(s):\n"
-                + "\n".join(f"  [{i.phase or 'step'}] {i.message}" for i in validation_result.issues)
+                + "\n".join(
+                    f"  [{i.phase or 'step'}] {i.message}" for i in validation_result.issues
+                )
             )
 
         if output_path is None:

@@ -105,7 +105,8 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogOutput]):
         definition: StepDefinition,
     ) -> StepOutput[CatalogOutput]:
         consumer = context.dataspace.consumer()
-        catalog = await sdk_call.run(consumer.get_catalog_with_filter,
+        catalog = await sdk_call.run(
+            consumer.get_catalog_with_filter,
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
             filter_expression=[entry.to_sdk() for entry in params.filters],
@@ -137,9 +138,7 @@ class QueryCatalogByAssetIdParams(StepParams):
     """Input contract of ``connector/consumer/query_catalog_by_asset_id``."""
 
     counter_party_id: str = Field(description="BPN of the counter-party.")
-    counter_party_address: str = Field(
-        description="DSP endpoint of the counter-party connector."
-    )
+    counter_party_address: str = Field(description="DSP endpoint of the counter-party connector.")
     asset_id: str = Field(description="Asset ID the catalog is filtered by.")
     expected_policies: list[dict] = Field(
         default_factory=list,
@@ -183,7 +182,8 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOff
         definition: StepDefinition,
     ) -> StepOutput[CatalogOfferOutput]:
         consumer = context.dataspace.consumer()
-        result = await sdk_call.run(consumer.get_catalog_by_asset_id,
+        result = await sdk_call.run(
+            consumer.get_catalog_by_asset_id,
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
             asset_id=params.asset_id,
@@ -207,7 +207,9 @@ def _select_offer(catalog: Any, expected_policies: list[dict]) -> tuple[Any, Any
     if not catalog:
         return None
     try:
-        matches = DspTools.filter_assets_and_policies(catalog=catalog, allowed_policies=expected_policies)
+        matches = DspTools.filter_assets_and_policies(
+            catalog=catalog, allowed_policies=expected_policies
+        )
     except (KeyError, TypeError, ValueError, IndexError):
         return None
     if not matches:
@@ -249,7 +251,8 @@ class QueryCatalogByBpnlStep(BaseStep[QueryCatalogByBpnlParams, CatalogOutput]):
         definition: StepDefinition,
     ) -> StepOutput[CatalogOutput]:
         consumer = context.dataspace.consumer()
-        result = await sdk_call.run(consumer.get_catalog_with_bpnl,
+        result = await sdk_call.run(
+            consumer.get_catalog_with_bpnl,
             bpnl=params.bpnl,
             counter_party_address=params.counter_party_address,
             filter_expression=[entry.to_sdk() for entry in params.filters] or None,

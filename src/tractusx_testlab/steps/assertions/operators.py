@@ -209,102 +209,122 @@ class Operator:
 
 _TABLE: tuple[Operator, ...] = (
     Operator(
-        "not_null", Arity.UNARY,
+        "not_null",
+        Arity.UNARY,
         lambda actual, _expected: actual is not None,
         "Expected a non-null value, got {actual!r}",
     ),
     Operator(
-        "is_null", Arity.UNARY,
+        "is_null",
+        Arity.UNARY,
         lambda actual, _expected: actual is None,
         "Expected null, got {actual!r}",
     ),
     Operator(
-        "not_empty", Arity.UNARY,
+        "not_empty",
+        Arity.UNARY,
         lambda actual, _expected: bool(actual),
         "Expected a non-empty value, got {actual!r}",
     ),
     Operator(
-        "equals", Arity.BINARY,
+        "equals",
+        Arity.BINARY,
         lambda actual, expected: actual == expected or str(actual) == str(expected),
         "Expected {expected!r}, got {actual!r}",
     ),
     Operator(
-        "not_equals", Arity.BINARY,
+        "not_equals",
+        Arity.BINARY,
         lambda actual, expected: actual != expected and str(actual) != str(expected),
         "Expected a value other than {expected!r}, got {actual!r}",
     ),
     Operator(
-        "contains", Arity.BINARY,
+        "contains",
+        Arity.BINARY,
         lambda actual, expected: actual is not None and str(expected) in str(actual),
         "Expected {actual!r} to contain {expected!r}",
     ),
     Operator(
-        "not_contains", Arity.BINARY,
+        "not_contains",
+        Arity.BINARY,
         lambda actual, expected: actual is None or str(expected) not in str(actual),
         "Expected {actual!r} to NOT contain {expected!r}",
     ),
     Operator(
-        "matches_regex", Arity.BINARY,
+        "matches_regex",
+        Arity.BINARY,
         _matches,
         "Pattern {expected!r} not matched in {actual!r}",
     ),
     Operator(
-        "one_of", Arity.BINARY,
+        "one_of",
+        Arity.BINARY,
         _is_member,
         "Expected {actual!r} to be one of {expected!r}",
     ),
     Operator(
-        "none_of", Arity.BINARY,
+        "none_of",
+        Arity.BINARY,
         lambda actual, expected: not _is_member(actual, expected),
         "Expected {actual!r} to be none of {expected!r}",
     ),
     Operator(
-        "has_key", Arity.BINARY,
+        "has_key",
+        Arity.BINARY,
         _has_key,
         "Expected {actual!r} to have key {expected!r}",
     ),
     Operator(
-        "not_has_key", Arity.BINARY,
+        "not_has_key",
+        Arity.BINARY,
         lambda actual, expected: not _has_key(actual, expected),
         "Expected {actual!r} to NOT have key {expected!r}",
     ),
     Operator(
-        "gt", Arity.BINARY,
+        "gt",
+        Arity.BINARY,
         _numeric(lambda left, right: left > right),
         "Expected {actual!r} to be greater than {expected!r}",
     ),
     Operator(
-        "gte", Arity.BINARY,
+        "gte",
+        Arity.BINARY,
         _numeric(lambda left, right: left >= right),
         "Expected {actual!r} to be greater than or equal to {expected!r}",
     ),
     Operator(
-        "lt", Arity.BINARY,
+        "lt",
+        Arity.BINARY,
         _numeric(lambda left, right: left < right),
         "Expected {actual!r} to be less than {expected!r}",
     ),
     Operator(
-        "lte", Arity.BINARY,
+        "lte",
+        Arity.BINARY,
         _numeric(lambda left, right: left <= right),
         "Expected {actual!r} to be less than or equal to {expected!r}",
     ),
     Operator(
-        "length_equals", Arity.BINARY,
+        "length_equals",
+        Arity.BINARY,
         _sized(lambda length, wanted: length == wanted),
         "Expected {actual!r} to have length {expected!r}",
     ),
     Operator(
-        "length_gt", Arity.BINARY,
+        "length_gt",
+        Arity.BINARY,
         _sized(lambda length, wanted: length > wanted),
         "Expected {actual!r} to be longer than {expected!r}",
     ),
     Operator(
-        "length_lt", Arity.BINARY,
+        "length_lt",
+        Arity.BINARY,
         _sized(lambda length, wanted: length < wanted),
         "Expected {actual!r} to be shorter than {expected!r}",
     ),
     Operator(
-        "between", Arity.RANGE,
+        "between",
+        Arity.RANGE,
         _bounded(lambda value, low, high: low <= value <= high),
         "Expected {actual!r} to be between {expected[0]!r} and {expected[1]!r}",
     ),
@@ -332,6 +352,7 @@ def arity_of(operator: str) -> Arity | None:
     """
     known = _OPERATORS.get(operator)
     return known.arity if known is not None else None
+
 
 # A name declared in the vocabulary but missing from the table would fail at
 # runtime as "unknown", which is the confusing way to find out that the two

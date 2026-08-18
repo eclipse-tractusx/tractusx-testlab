@@ -142,8 +142,7 @@ class UploadBackendDataParams(HttpTransportParams):
     submodel_id: str | None = Field(
         default=None,
         description=(
-            "Id to store the submodel under; a unique 'urn:uuid:<uuid4>' is "
-            "generated when omitted."
+            "Id to store the submodel under; a unique 'urn:uuid:<uuid4>' is generated when omitted."
         ),
     )
 
@@ -191,8 +190,7 @@ class UploadBackendDataParams(HttpTransportParams):
         trimmed = candidate.strip("/")
         if "/" in trimmed:
             raise ValueError(
-                "'submodel_id' names one submodel under the server, not a path: "
-                f"{candidate!r}"
+                f"'submodel_id' names one submodel under the server, not a path: {candidate!r}"
             )
         return trimmed or None
 
@@ -275,9 +273,7 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
         timeout = params.timeout_or(context.config.default_timeout_s)
 
         async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                target_url, json=params.data, headers=headers, timeout=timeout
-            )
+            resp = await client.post(target_url, json=params.data, headers=headers, timeout=timeout)
 
         try:
             resp_body = resp.json()
@@ -293,9 +289,7 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
                 semantic_id=params.semantic_id,
                 response=resp_body,
             ),
-            request=HttpRequest(
-                method="POST", url=target_url, headers=headers, body=params.data
-            ),
+            request=HttpRequest(method="POST", url=target_url, headers=headers, body=params.data),
             response=HttpResponse(
                 status_code=resp.status_code,
                 headers=dict(resp.headers),

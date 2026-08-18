@@ -51,7 +51,9 @@ class TestParseKvStep:
     @pytest.mark.asyncio
     async def test_selects_single_key(self, context: StepContext) -> None:
         output = await ParseKvStep().invoke(
-            {"input": _BODY, "select": "id"}, context, _definition(),
+            {"input": _BODY, "select": "id"},
+            context,
+            _definition(),
         )
         assert output.value == "urn:uuid:1234-5678"
 
@@ -59,7 +61,9 @@ class TestParseKvStep:
     async def test_value_containing_separator_is_preserved(self, context: StepContext) -> None:
         # Only the first '=' splits the pair, so the query string survives.
         output = await ParseKvStep().invoke(
-            {"input": _BODY, "select": "dspEndpoint"}, context, _definition(),
+            {"input": _BODY, "select": "dspEndpoint"},
+            context,
+            _definition(),
         )
         assert output.value == "https://provider.example/api/v1/dsp?foo=bar"
 
@@ -92,7 +96,9 @@ class TestParseKvStep:
     @pytest.mark.asyncio
     async def test_whitespace_is_trimmed(self, context: StepContext) -> None:
         output = await ParseKvStep().invoke(
-            {"input": " a = 1 ; b = 2 "}, context, _definition(),
+            {"input": " a = 1 ; b = 2 "},
+            context,
+            _definition(),
         )
         assert output.value == {"a": "1", "b": "2"}
 
@@ -100,7 +106,9 @@ class TestParseKvStep:
     async def test_missing_select_key_raises(self, context: StepContext) -> None:
         with pytest.raises(KeyError, match="'missing' not found"):
             await ParseKvStep().invoke(
-                {"input": _BODY, "select": "missing"}, context, _definition(),
+                {"input": _BODY, "select": "missing"},
+                context,
+                _definition(),
             )
 
     @pytest.mark.asyncio
@@ -112,7 +120,9 @@ class TestParseKvStep:
     async def test_non_string_input_raises(self, context: StepContext) -> None:
         with pytest.raises(ValueError, match="input: Input should be a valid string"):
             await ParseKvStep().invoke(
-                {"input": {"a": 1}, "select": "id"}, context, _definition(),
+                {"input": {"a": 1}, "select": "id"},
+                context,
+                _definition(),
             )
 
     @pytest.mark.asyncio

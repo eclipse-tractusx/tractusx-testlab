@@ -163,9 +163,7 @@ class IfStep(BaseStep[IfParams, IfOutput]):
             # ``outputs`` is set even though it is empty: "nothing ran" is a
             # result, and a script reading it should not find the key missing.
             return StepOutput(
-                value=IfOutput(
-                    condition_result=condition_result, branch_taken="none", outputs=[]
-                )
+                value=IfOutput(condition_result=condition_result, branch_taken="none", outputs=[])
             )
 
         label: Literal["then", "else"] = "then" if condition_result else "else"

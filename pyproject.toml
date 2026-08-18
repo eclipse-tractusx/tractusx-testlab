@@ -103,6 +103,13 @@ line-length = 100
 src = ["src", "tests"]
 extend-exclude = ["site", "stubs", ".venv"]
 
+[tool.ruff.format]
+# The formatter runs over `src` and `tests` in CI (`ruff format --check`), so
+# layout is decided once and never reviewed again. It went in as a single
+# commit, listed in `.git-blame-ignore-revs` so `git blame` still points at
+# whoever wrote a line rather than at the reformat.
+docstring-code-format = true
+
 [tool.ruff.lint]
 select = [
     "F",    # pyflakes — undefined names, unused imports, redefinitions

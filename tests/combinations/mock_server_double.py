@@ -103,9 +103,7 @@ class MockServer:
         timeout: float = 5.0,
     ) -> requests.Response:
         """Call the mock, the way the system under test would."""
-        return requests.request(
-            method, self.local(url), json=json, params=params, timeout=timeout
-        )
+        return requests.request(method, self.local(url), json=json, params=params, timeout=timeout)
 
     def call_soon(self, url: str, delay_s: float = 0.2, **kwargs: Any) -> _LateCall:
         """Call the mock from another thread after *delay_s*.
@@ -120,9 +118,7 @@ class MockServer:
 class _LateCall:
     """A call made from another thread, whose outcome the test can read back."""
 
-    def __init__(
-        self, server: MockServer, url: str, delay_s: float, kwargs: dict
-    ) -> None:
+    def __init__(self, server: MockServer, url: str, delay_s: float, kwargs: dict) -> None:
         self._server = server
         self._url = url
         self._delay_s = delay_s

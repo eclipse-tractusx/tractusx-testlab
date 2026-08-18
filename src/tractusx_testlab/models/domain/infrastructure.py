@@ -259,7 +259,8 @@ def capability_keys(side: str) -> tuple[str, ...]:
     by design, and a requirement may only name what its own side can bind.
     """
     return tuple(
-        capability for declared_side, capability, _ in capability_bindings()
+        capability
+        for declared_side, capability, _ in capability_bindings()
         if declared_side == side
     )
 

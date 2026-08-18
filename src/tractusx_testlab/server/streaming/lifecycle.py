@@ -91,7 +91,8 @@ async def sse_event_generator(
                     event_id = event_buffer.next_id(job_id)
                     timeout_data = {"reason": "No events received within timeout"}
                     event_buffer.append(
-                        job_id, BufferedEvent(id=event_id, event="stream.timeout", data=timeout_data),
+                        job_id,
+                        BufferedEvent(id=event_id, event="stream.timeout", data=timeout_data),
                     )
                     yield format_sse(event_id, "stream.timeout", timeout_data)
                     return

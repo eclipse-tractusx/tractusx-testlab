@@ -47,6 +47,7 @@ from tractusx_testlab.services.instances import ServiceManager
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _infrastructure(variables: dict) -> Infrastructure:
     """Resolve flat binding variables into the typed deployment they describe."""
     return apply_overrides(Infrastructure(), collect_overrides(variables))
@@ -82,6 +83,7 @@ def _base_sut_vars() -> dict:
 # Engine connector registration
 # ---------------------------------------------------------------------------
 
+
 class TestEngineConnectorSeeding:
     """Engine connector is registered as CONNECTOR_CONSUMER."""
 
@@ -116,11 +118,13 @@ class TestEngineConnectorSeeding:
 
     def test_preserves_ingress_prefix_before_management_suffix(self) -> None:
         svc_mgr = ServiceManager()
-        ctx = _make_context({
-            "infrastructure.engine.connector.management_url": (
-                "https://engine.example.com/connector/management"
-            ),
-        })
+        ctx = _make_context(
+            {
+                "infrastructure.engine.connector.management_url": (
+                    "https://engine.example.com/connector/management"
+                ),
+            }
+        )
 
         seed_infrastructure_services(svc_mgr, ctx)
 
@@ -141,6 +145,7 @@ class TestEngineConnectorSeeding:
 # ---------------------------------------------------------------------------
 # Engine connector alias (provider role)
 # ---------------------------------------------------------------------------
+
 
 class TestEngineConnectorAlias:
     """When ``name`` field is set the engine connector is also registered as provider alias."""
@@ -179,7 +184,8 @@ class TestEngineConnectorAlias:
         assert _ENGINE_CONNECTOR_NAME in connector_names
         # No extra provider-type services from engine
         provider_defns = [
-            n for n in connector_names
+            n
+            for n in connector_names
             if svc_mgr._definitions[n].type == ServiceType.CONNECTOR_PROVIDER
         ]
         assert provider_defns == []
@@ -187,6 +193,7 @@ class TestEngineConnectorAlias:
     def test_existing_alias_not_overwritten(self) -> None:
         """An explicit ``services:`` block that already defines 'testlab' is not replaced."""
         from tractusx_testlab.models.authoring.definitions import ServiceDefinition
+
         original = ServiceDefinition(
             name="testlab",
             type=ServiceType.CONNECTOR_PROVIDER,
@@ -206,6 +213,7 @@ class TestEngineConnectorAlias:
 # ---------------------------------------------------------------------------
 # SUT connector registration
 # ---------------------------------------------------------------------------
+
 
 class TestSutConnectorSeeding:
     """SUT connector is registered as CONNECTOR_PROVIDER."""
@@ -268,6 +276,7 @@ class TestConnectorRoleCompatibility:
 # DTR registration
 # ---------------------------------------------------------------------------
 
+
 class TestDtrSeeding:
     """SUT DTR service is registered from infrastructure.sut.dtr.* variables."""
 
@@ -286,6 +295,7 @@ class TestDtrSeeding:
 # ---------------------------------------------------------------------------
 # Idempotency
 # ---------------------------------------------------------------------------
+
 
 class TestSeederIdempotency:
     """Calling seed_infrastructure_services twice is safe and produces no duplicates."""

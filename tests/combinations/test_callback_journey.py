@@ -129,9 +129,7 @@ class TestThePairWorks:
         """The failure this guards against is a 404 the script never sees."""
         opened = await sut_harness.run(_endpoint("/certificate/request"))
 
-        response = server.call(
-            opened.variables["full_mock_url"], json={"cert": "ISO9001"}
-        )
+        response = server.call(opened.variables["full_mock_url"], json={"cert": "ISO9001"})
 
         assert response.status_code == 202
 
@@ -245,9 +243,7 @@ class TestWhenNothingCalls:
         """A SUT calling the wrong address gets a 404, not a silent 200."""
         await sut_harness.run(_endpoint("/certificate/request"))
 
-        response = server.call(
-            f"http://127.0.0.1:{server.port}/certificate/typo", json={}
-        )
+        response = server.call(f"http://127.0.0.1:{server.port}/certificate/typo", json={})
 
         assert response.status_code == 404
 
@@ -350,9 +346,7 @@ class TestTheCallbackDrivesTheRestOfTheScript:
 class TestWithoutTheServer:
     """Neither step is usable on its own, and the failure says which is missing."""
 
-    async def test_waiting_without_a_server_is_a_named_failure(
-        self, harness: Harness
-    ) -> None:
+    async def test_waiting_without_a_server_is_a_named_failure(self, harness: Harness) -> None:
         """The plain ``harness`` fixture has no server behind it.
 
         ``mock/api`` still registers — the registry is module state — so the

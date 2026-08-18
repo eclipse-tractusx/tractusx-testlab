@@ -70,9 +70,7 @@ class _Response:
 
 
 def _definition() -> StepDefinition:
-    return StepDefinition(
-        id="lookup", uses="digital-twin-registry/consumer/dataplane/lookup_shell"
-    )
+    return StepDefinition(id="lookup", uses="digital-twin-registry/consumer/dataplane/lookup_shell")
 
 
 @pytest.fixture()
@@ -164,11 +162,10 @@ class TestAssetIdEncoding:
 
 class TestShellLookup:
     @pytest.mark.asyncio
-    async def test_returns_the_matching_ids_and_their_descriptors(
-        self, context: MagicMock
-    ) -> None:
+    async def test_returns_the_matching_ids_and_their_descriptors(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             # One client answers both calls now — the lookup, then the
             # descriptor read — where there used to be a requests.post and
             # a requests.get to patch separately.
@@ -186,7 +183,8 @@ class TestShellLookup:
         self, context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": []})),
         ) as get:
             await ShellLookupStep().invoke(_params(), context, _definition())
@@ -205,7 +203,8 @@ class TestShellLookup:
         context.set_variable(EDR_TOKEN, _TOKEN)
 
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": []})),
         ) as get:
             await ShellLookupStep().invoke(
@@ -218,12 +217,11 @@ class TestShellLookup:
         assert get.call_args.kwargs["headers"]["Authorization"] == _TOKEN
 
     @pytest.mark.asyncio
-    async def test_a_bare_list_answer_is_read_the_same_way(
-        self, context: MagicMock
-    ) -> None:
+    async def test_a_bare_list_answer_is_read_the_same_way(self, context: MagicMock) -> None:
         """Registries older than the AAS v3 paging shape answer with the list."""
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, [_SHELL_ID]), _Response(200, _DESCRIPTOR)),
         ):
             output = await ShellLookupStep().invoke(_params(), context, _definition())
@@ -233,7 +231,8 @@ class TestShellLookup:
     @pytest.mark.asyncio
     async def test_a_failed_lookup_is_reported_not_raised(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(403, None)),
         ):
             output = await ShellLookupStep().invoke(_params(), context, _definition())
@@ -247,10 +246,9 @@ class TestShellLookup:
     ) -> None:
         """The identifier stays readable, so a script can assert on the gap."""
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
-            side_effect=_responses(
-                _Response(200, {"result": [_SHELL_ID]}), _Response(404, None)
-            ),
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
+            side_effect=_responses(_Response(200, {"result": [_SHELL_ID]}), _Response(404, None)),
         ):
             output = await ShellLookupStep().invoke(_params(), context, _definition())
 
@@ -262,7 +260,8 @@ class TestShellLookup:
         self, context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(
                 _Response(200, {"result": [_SHELL_ID]}), _Response(200, _DESCRIPTOR)
             ),
@@ -315,7 +314,8 @@ class TestProviderShellLookup:
         self, registry_context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(
                 _Response(200, {"result": [_SHELL_ID]}), _Response(200, _DESCRIPTOR)
             ),
@@ -334,7 +334,8 @@ class TestProviderShellLookup:
         self, registry_context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": []})),
         ) as get:
             await ProviderShellLookupStep().invoke(
@@ -353,7 +354,8 @@ class TestProviderShellLookup:
         self, registry_context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": []})),
         ) as get:
             await ProviderShellLookupStep().invoke(
@@ -369,7 +371,8 @@ class TestProviderShellLookup:
         self, registry_context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": []})),
         ) as get:
             await ProviderShellLookupStep().invoke(
@@ -385,7 +388,8 @@ class TestProviderShellLookup:
         self, registry_context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(
                 _Response(200, {"result": [_SHELL_ID]}), _Response(200, _DESCRIPTOR)
             ),
@@ -404,7 +408,8 @@ class TestProviderShellLookup:
         self, registry_context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(404, None)),
         ):
             output = await ProviderShellLookupStep().invoke(
@@ -415,9 +420,7 @@ class TestProviderShellLookup:
 
     def test_a_lookup_with_no_criteria_is_rejected(self) -> None:
         with pytest.raises(ValueError):
-            ProviderShellLookupParams.model_validate(
-                _provider_params(specific_asset_ids=[])
-            )
+            ProviderShellLookupParams.model_validate(_provider_params(specific_asset_ids=[]))
 
 
 # ---------------------------------------------------------------------------
@@ -469,12 +472,11 @@ class TestShellLookupByAssetLink:
         self, context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": []})),
         ) as post:
-            await ShellLookupByAssetLinkStep().invoke(
-                _params(), context, _asset_link_definition()
-            )
+            await ShellLookupByAssetLinkStep().invoke(_params(), context, _asset_link_definition())
 
         url, kwargs = post.call_args.args[1], post.call_args.kwargs
         assert url == f"{_DATAPLANE}/lookup/shellsByAssetLink"
@@ -483,12 +485,13 @@ class TestShellLookupByAssetLink:
         assert kwargs["headers"]["Content-Type"] == "application/json"
 
     @pytest.mark.asyncio
-    async def test_returns_the_matching_ids_and_their_descriptors(
-        self, context: MagicMock
-    ) -> None:
+    async def test_returns_the_matching_ids_and_their_descriptors(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
-            side_effect=_responses(_Response(200, {"result": [_SHELL_ID]}), _Response(200, _DESCRIPTOR)),
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
+            side_effect=_responses(
+                _Response(200, {"result": [_SHELL_ID]}), _Response(200, _DESCRIPTOR)
+            ),
         ):
             output = await ShellLookupByAssetLinkStep().invoke(
                 _params(), context, _asset_link_definition()
@@ -500,7 +503,8 @@ class TestShellLookupByAssetLink:
     @pytest.mark.asyncio
     async def test_the_next_pages_cursor_is_handed_back(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             # One client answers both calls now — the lookup, then the
             # descriptor read — where there used to be a requests.post and
             # a requests.get to patch separately.
@@ -517,7 +521,8 @@ class TestShellLookupByAssetLink:
     @pytest.mark.asyncio
     async def test_the_last_page_reports_no_cursor(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": [], "paging_metadata": {}})),
         ):
             output = await ShellLookupByAssetLinkStep().invoke(
@@ -529,7 +534,8 @@ class TestShellLookupByAssetLink:
     @pytest.mark.asyncio
     async def test_a_bare_list_answer_is_read_the_same_way(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, [_SHELL_ID]), _Response(200, _DESCRIPTOR)),
         ):
             output = await ShellLookupByAssetLinkStep().invoke(
@@ -547,7 +553,8 @@ class TestShellLookupByAssetLink:
         context.set_variable(EDR_TOKEN, _TOKEN)
 
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": []})),
         ) as post:
             await ShellLookupByAssetLinkStep().invoke(
@@ -562,7 +569,8 @@ class TestShellLookupByAssetLink:
     @pytest.mark.asyncio
     async def test_a_failed_lookup_is_reported_not_raised(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(403, None)),
         ):
             output = await ShellLookupByAssetLinkStep().invoke(
@@ -585,11 +593,10 @@ def _dataplane_params(**overrides: Any) -> dict:
 
 class TestDataplaneGetShellDescriptors:
     @pytest.mark.asyncio
-    async def test_lists_the_descriptors_and_their_identifiers(
-        self, context: MagicMock
-    ) -> None:
+    async def test_lists_the_descriptors_and_their_identifiers(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": [_DESCRIPTOR]})),
         ):
             output = await DataplaneGetShellDescriptorsStep().invoke(
@@ -604,7 +611,8 @@ class TestDataplaneGetShellDescriptors:
         self, context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": []})),
         ) as get:
             await DataplaneGetShellDescriptorsStep().invoke(
@@ -622,22 +630,20 @@ class TestDataplaneGetShellDescriptors:
         context.set_variable(EDR_TOKEN, _TOKEN)
 
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, [_DESCRIPTOR])),
         ) as get:
-            output = await DataplaneGetShellDescriptorsStep().invoke(
-                {}, context, _definition()
-            )
+            output = await DataplaneGetShellDescriptorsStep().invoke({}, context, _definition())
 
         assert get.call_args.args[1] == f"{_DATAPLANE}/shell-descriptors"
         assert output.value["shell_descriptors"] == [_DESCRIPTOR]
 
     @pytest.mark.asyncio
-    async def test_a_failed_listing_is_reported_not_raised(
-        self, context: MagicMock
-    ) -> None:
+    async def test_a_failed_listing_is_reported_not_raised(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(403, None)),
         ):
             output = await DataplaneGetShellDescriptorsStep().invoke(
@@ -648,11 +654,10 @@ class TestDataplaneGetShellDescriptors:
         assert output.value["shell_descriptors"] == []
 
     @pytest.mark.asyncio
-    async def test_paging_parameters_travel_as_the_query(
-        self, context: MagicMock
-    ) -> None:
+    async def test_paging_parameters_travel_as_the_query(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, {"result": []})),
         ) as get:
             await DataplaneGetShellDescriptorsStep().invoke(
@@ -662,11 +667,10 @@ class TestDataplaneGetShellDescriptors:
         assert get.call_args.kwargs["params"] == {"limit": 5, "cursor": "c1"}
 
     @pytest.mark.asyncio
-    async def test_the_next_pages_cursor_is_handed_back(
-        self, context: MagicMock
-    ) -> None:
+    async def test_the_next_pages_cursor_is_handed_back(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(
                 _Response(200, {"result": [], "paging_metadata": {"cursor": "next-page"}})
             ),
@@ -680,11 +684,10 @@ class TestDataplaneGetShellDescriptors:
 
 class TestDataplaneGetShellDescriptor:
     @pytest.mark.asyncio
-    async def test_reads_the_descriptor_by_its_encoded_identifier(
-        self, context: MagicMock
-    ) -> None:
+    async def test_reads_the_descriptor_by_its_encoded_identifier(self, context: MagicMock) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(200, _DESCRIPTOR)),
         ) as get:
             output = await DataplaneGetShellDescriptorStep().invoke(
@@ -702,7 +705,8 @@ class TestDataplaneGetShellDescriptor:
         self, context: MagicMock
     ) -> None:
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             side_effect=_responses(_Response(404, None)),
         ):
             output = await DataplaneGetShellDescriptorStep().invoke(

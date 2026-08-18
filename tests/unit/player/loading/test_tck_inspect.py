@@ -117,9 +117,11 @@ execution:
 def single_script_tck() -> object:
     """A Tck loaded from a single-script YAML with setup, execution, and teardown."""
     import yaml
+
     data = yaml.safe_load(_SINGLE_SCRIPT_YAML)
     script_def = _SCRIPT_ADAPTER.validate_python(data)
     from tractusx_testlab.scripting.script import Tck
+
     return Tck.from_single_script(script_def)
 
 
@@ -127,14 +129,15 @@ def single_script_tck() -> object:
 def multi_script_tck(tmp_path) -> object:
     """A Tck loaded from a TCK manifest with two scripts."""
 
-
     archive = tmp_path / "inspect.tck"
-    sealed = package_digest.seal({
-        "manifest.yaml": b"kind: manifest\n",
-        _TCK_BUNDLE_ENTRY: _TCK_WITH_TWO_SCRIPTS.encode(),
-        "tests/script-a.yaml": _SCRIPT_A_YAML.encode(),
-        "tests/script-b.yaml": _SCRIPT_B_YAML.encode(),
-    })
+    sealed = package_digest.seal(
+        {
+            "manifest.yaml": b"kind: manifest\n",
+            _TCK_BUNDLE_ENTRY: _TCK_WITH_TWO_SCRIPTS.encode(),
+            "tests/script-a.yaml": _SCRIPT_A_YAML.encode(),
+            "tests/script-b.yaml": _SCRIPT_B_YAML.encode(),
+        }
+    )
     with zipfile.ZipFile(archive, "w") as zf:
         for name in sorted(sealed):
             zf.writestr(name, sealed[name])
@@ -167,7 +170,12 @@ class TestTckInspectSingleScript:
         result = single_script_tck.inspect()
         steps = result.scripts[0].steps
         phases = [s.phase for s in steps]
-        assert phases == [StepPhase.SETUP, StepPhase.EXECUTION, StepPhase.EXECUTION, StepPhase.TEARDOWN]
+        assert phases == [
+            StepPhase.SETUP,
+            StepPhase.EXECUTION,
+            StepPhase.EXECUTION,
+            StepPhase.TEARDOWN,
+        ]
 
     def test_inspect_extracts_uses_identifier(self, single_script_tck) -> None:
         result = single_script_tck.inspect()

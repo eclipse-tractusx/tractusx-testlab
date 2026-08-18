@@ -181,9 +181,7 @@ class WizardCreateAssetParams(StepParams):
     )
     properties: dict = Field(
         default_factory=dict,
-        description=(
-            "Further EDC asset properties, e.g. 'dct:type' or 'cx-common:version'."
-        ),
+        description=("Further EDC asset properties, e.g. 'dct:type' or 'cx-common:version'."),
     )
 
     def asset_config(self) -> dict[str, Any]:

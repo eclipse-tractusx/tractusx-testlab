@@ -55,7 +55,7 @@ class CliHandler(logging.StreamHandler):
     """StreamHandler that formats structuredLogger records as human-readable text.
     Attach to any logger like a normal handler::
 
-        handler = CliHandler()          # writes to stdout
+        handler = CliHandler()  # writes to stdout
         handler = CliHandler(sys.stderr)
         logger.addHandler(handler)
     """
@@ -71,7 +71,9 @@ class CliHandler(logging.StreamHandler):
         if delegate is not None:
             self.setFormatter(logging.Formatter(fmt=delegate._fmt, datefmt=delegate.datefmt))
         else:
-            self.setFormatter(logging.Formatter(fmt=self._FALLBACK_FMT, datefmt=self._FALLBACK_DATEFMT))
+            self.setFormatter(
+                logging.Formatter(fmt=self._FALLBACK_FMT, datefmt=self._FALLBACK_DATEFMT)
+            )
 
     @staticmethod
     def _root_console_formatter() -> logging.Formatter | None:
@@ -186,9 +188,7 @@ class StructuredLogger:
         )
 
     def _log(self, level: int, msg: str, **kw: object) -> None:
-        record = self._logger.makeRecord(
-            self._logger.name, level, "(testlab)", 0, msg, (), None
-        )
+        record = self._logger.makeRecord(self._logger.name, level, "(testlab)", 0, msg, (), None)
         if kw:
             record.extra_data = kw
         self._logger.handle(record)

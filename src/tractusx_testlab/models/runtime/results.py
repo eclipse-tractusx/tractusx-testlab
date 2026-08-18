@@ -173,8 +173,10 @@ class TckResult(BaseModel):
     def passed(self) -> int:
         """Count of steps with PASSED status across all scripts."""
         return sum(
-            1 for script in self.scripts
-            for step in script.execution if step.status == StepStatus.PASSED
+            1
+            for script in self.scripts
+            for step in script.execution
+            if step.status == StepStatus.PASSED
         )
 
     @property

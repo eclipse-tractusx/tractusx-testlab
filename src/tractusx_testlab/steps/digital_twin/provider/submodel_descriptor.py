@@ -70,9 +70,7 @@ class CreateSubmodelDescriptorParams(ShellDescriptorRefParams):
 
 
 @step("digital-twin/provider/create_submodel_descriptor")
-class CreateSubmodelDescriptorStep(
-    BaseStep[CreateSubmodelDescriptorParams, DescriptorPayload]
-):
+class CreateSubmodelDescriptorStep(BaseStep[CreateSubmodelDescriptorParams, DescriptorPayload]):
     """Create a submodel descriptor under an AAS shell."""
 
     params_model = CreateSubmodelDescriptorParams
@@ -99,8 +97,11 @@ async def _register_submodel(
     from tractusx_sdk.industry.models.aas.v3.base import SubModelDescriptor
 
     aas = context.dataspace.registry()
-    result = await sdk_call.run(aas.create_submodel_descriptor,
-        aas_identifier, SubModelDescriptor(**submodel_descriptor), bpn=bpn
+    result = await sdk_call.run(
+        aas.create_submodel_descriptor,
+        aas_identifier,
+        SubModelDescriptor(**submodel_descriptor),
+        bpn=bpn,
     )
     url = f"{aas.aas_url}/shell-descriptors/{aas_identifier}/submodel-descriptors"
 
@@ -138,9 +139,7 @@ class WizardCreateSubmodelDescriptorParams(ShellDescriptorRefParams):
     written from the constants above.
     """
 
-    id: str = Field(
-        default="", description="Submodel identifier; a fresh URN UUID when omitted."
-    )
+    id: str = Field(default="", description="Submodel identifier; a fresh URN UUID when omitted.")
     id_short: str = Field(
         default="",
         description=(
@@ -172,6 +171,7 @@ class WizardCreateSubmodelDescriptorParams(ShellDescriptorRefParams):
             "SUBMODEL-VALUE-3.X when the href is directly callable as given."
         ),
     )
+
     def endpoint_href(self) -> str:
         """The href the chosen interface asks for (CX-0002).
 
@@ -206,9 +206,7 @@ class WizardCreateSubmodelDescriptorParams(ShellDescriptorRefParams):
                         "endpointProtocol": _ENDPOINT_PROTOCOL,
                         "endpointProtocolVersion": [_ENDPOINT_PROTOCOL_VERSION],
                         "subprotocol": _SUBMODEL_SUBPROTOCOL,
-                        "subprotocolBody": (
-                            f"id={self.asset_id};dspEndpoint={self.dsp_endpoint}"
-                        ),
+                        "subprotocolBody": (f"id={self.asset_id};dspEndpoint={self.dsp_endpoint}"),
                         "subprotocolBodyEncoding": _SUBPROTOCOL_BODY_ENCODING,
                     },
                 }

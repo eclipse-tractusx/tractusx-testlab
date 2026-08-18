@@ -52,13 +52,15 @@ def build_asset_entries(
             logger.warning("Asset file not found, skipping: %s", file_path)
             continue
         mime = "application/json" if folder_name == "schemas" else infer_testdata_type(asset_key)
-        entries.append({
-            "id": asset_id,
-            "file": asset_key,
-            "path": f"assets/{folder_name}/{asset_key}",
-            "digest": compute_source_hash(file_path),
-            "size": file_path.stat().st_size,
-            "mediaType": mime,
-            "location": "filesystem",
-        })
+        entries.append(
+            {
+                "id": asset_id,
+                "file": asset_key,
+                "path": f"assets/{folder_name}/{asset_key}",
+                "digest": compute_source_hash(file_path),
+                "size": file_path.stat().st_size,
+                "mediaType": mime,
+                "location": "filesystem",
+            }
+        )
     return entries

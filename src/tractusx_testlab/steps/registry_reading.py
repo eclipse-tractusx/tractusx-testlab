@@ -60,11 +60,9 @@ def _result_page(response: Any, what: str) -> list:
     return list((body.get("result", []) if isinstance(body, dict) else body) or [])
 
 
-
 def _shell_ids(response: Any) -> list[str]:
     """Read the identifiers out of a lookup answer."""
     return [str(entry) for entry in _result_page(response, "Shell lookup")]
-
 
 
 def _next_cursor(response: Any) -> str | None:
@@ -85,7 +83,6 @@ def _next_cursor(response: Any) -> str | None:
     return str(cursor) if cursor else None
 
 
-
 async def _get_shell_descriptor(
     base: str, shell_id: str, headers: dict, timeout: float
 ) -> tuple[str, Any]:
@@ -98,10 +95,7 @@ async def _get_shell_descriptor(
     return url, await http_client.request("GET", url, headers=headers, timeout=timeout)
 
 
-
-async def _shell_descriptor(
-    base: str, shell_id: str, headers: dict, timeout: float
-) -> dict | None:
+async def _shell_descriptor(base: str, shell_id: str, headers: dict, timeout: float) -> dict | None:
     """Read one shell descriptor by identifier, or ``None`` when it cannot be read.
 
     A shell the lookup named but the registry will not hand over is reported by
@@ -121,4 +115,3 @@ async def _shell_descriptor(
 # ---------------------------------------------------------------------------
 # digital-twin-registry/consumer/dataplane/get_shell_descriptors
 # ---------------------------------------------------------------------------
-

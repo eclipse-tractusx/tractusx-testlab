@@ -62,4 +62,3 @@ def parse_service(raw: dict) -> ServiceDefinition:
         auth=raw.get(keys.AUTH, {}),
         params=raw.get(keys.PARAMS),
     )
-

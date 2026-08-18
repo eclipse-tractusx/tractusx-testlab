@@ -138,8 +138,7 @@ PARTICIPANTS = (
         did="did:web:provider.local:identityhub:BPNL000000000001",
         identity_api="http://provider.intranet/identityhub/api/identity/v1alpha",
         api_key=(
-            "ZGlkOndlYjpwcm92aWRlci5sb2NhbDppZGVudGl0eWh1YjpCUE5MMDAwMDAwMDAwMDAx"
-            ".randomChars"
+            "ZGlkOndlYjpwcm92aWRlci5sb2NhbDppZGVudGl0eWh1YjpCUE5MMDAwMDAwMDAwMDAx.randomChars"
         ),
     ),
     Participant(
@@ -147,8 +146,7 @@ PARTICIPANTS = (
         did="did:web:consumer.local:identityhub:BPNL000000000002",
         identity_api="http://consumer.intranet/identityhub/api/identity/v1alpha",
         api_key=(
-            "ZGlkOndlYjpjb25zdW1lci5sb2NhbDppZGVudGl0eWh1YjpCUE5MMDAwMDAwMDAwMDAy"
-            ".randomChars"
+            "ZGlkOndlYjpjb25zdW1lci5sb2NhbDppZGVudGl0eWh1YjpCUE5MMDAwMDAwMDAwMDAy.randomChars"
         ),
     ),
 )
@@ -186,8 +184,7 @@ def _post(
         return response
     if response.is_error:
         raise IssuanceError(
-            f"{description} failed: POST {url} -> {response.status_code} "
-            f"{response.text.strip()}"
+            f"{description} failed: POST {url} -> {response.status_code} {response.text.strip()}"
         )
     _log(f"  {description}: ok")
     return response
@@ -242,9 +239,10 @@ def _create_issuer_context(client: httpx.Client, issuer_url: str, super_user_key
 
 def _seed_issuer(client: httpx.Client, issuer_url: str, issuer_key: str) -> None:
     """Register the attestation, credential definitions and holders."""
-    admin = f"{issuer_url}/api/admin/v1alpha/participants/" + base64.b64encode(
-        ISSUER_CONTEXT_ID.encode()
-    ).decode()
+    admin = (
+        f"{issuer_url}/api/admin/v1alpha/participants/"
+        + base64.b64encode(ISSUER_CONTEXT_ID.encode()).decode()
+    )
 
     _post(
         client,
@@ -399,9 +397,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with httpx.Client(timeout=30.0, follow_redirects=True) as client:
             _log(f"Creating the issuer's participant context on {issuer_url}")
-            issuer_key = _create_issuer_context(
-                client, issuer_url, arguments.super_user_key
-            )
+            issuer_key = _create_issuer_context(client, issuer_url, arguments.super_user_key)
 
             _log("Registering the attestation, credential definitions and holders")
             _seed_issuer(client, issuer_url, issuer_key)

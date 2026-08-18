@@ -128,9 +128,7 @@ def _register_policy(
     )
     request_body = json.loads(policy_model.to_data())
 
-    result, http_status = _create_or_conflict(
-        provider.create_policy, policy_id=policy_id, **rules
-    )
+    result, http_status = _create_or_conflict(provider.create_policy, policy_id=policy_id, **rules)
 
     return StepOutput(
         value=CreatePolicyOutput(policy_id=policy_id),
@@ -154,18 +152,12 @@ class WizardCreatePolicyParams(StepParams):
     written as its three rule lists instead of as one document.
     """
 
-    policy_id: str = Field(
-        default="", description="Policy ID; a fresh UUID is used when omitted."
-    )
+    policy_id: str = Field(default="", description="Policy ID; a fresh UUID is used when omitted.")
     permissions: list[dict] = Field(
         description="ODRL permission rules: what the consumer is allowed to do."
     )
-    prohibitions: list[dict] = Field(
-        default_factory=list, description="ODRL prohibition rules."
-    )
-    obligations: list[dict] = Field(
-        default_factory=list, description="ODRL obligation rules."
-    )
+    prohibitions: list[dict] = Field(default_factory=list, description="ODRL prohibition rules.")
+    obligations: list[dict] = Field(default_factory=list, description="ODRL obligation rules.")
 
     def policy_document(self) -> dict:
         """The ODRL policy these rule lists describe."""

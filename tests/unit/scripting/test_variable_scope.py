@@ -263,9 +263,7 @@ class TestScopedSidesAreDeclared:
         return {side: {"connector": {"required": required}}}
 
     def test_scope_matching_a_required_side_is_accepted(self) -> None:
-        errors = _validate_scoped_sides_are_declared(
-            self._env("sut"), self._infrastructure("sut")
-        )
+        errors = _validate_scoped_sides_are_declared(self._env("sut"), self._infrastructure("sut"))
 
         assert errors == []
 

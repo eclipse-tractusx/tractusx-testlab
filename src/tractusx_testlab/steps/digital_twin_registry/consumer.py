@@ -238,9 +238,7 @@ class ShellLookupPageOutput(ShellLookupOutput):
 
 
 @step("digital-twin-registry/consumer/dataplane/lookup_shells_by_asset_link")
-class ShellLookupByAssetLinkStep(
-    BaseStep[ShellLookupByAssetLinkParams, ShellLookupPageOutput]
-):
+class ShellLookupByAssetLinkStep(BaseStep[ShellLookupByAssetLinkParams, ShellLookupPageOutput]):
     """Search a counterparty's registry through ``POST /lookup/shellsByAssetLink``.
 
     The same search ``digital-twin-registry/consumer/dataplane/lookup_shell``
@@ -300,11 +298,6 @@ class ShellLookupByAssetLinkStep(
         )
 
 
-
-
-
-
-
 @step("digital-twin-registry/consumer/dataplane/get_shell_descriptors")
 class DataplaneGetShellDescriptorsStep(BaseStep[PagedDataplaneParams, ShellLookupPageOutput]):
     """List a counterparty's shell descriptors over a negotiated data plane.
@@ -330,8 +323,7 @@ class DataplaneGetShellDescriptorsStep(BaseStep[PagedDataplaneParams, ShellLooku
 
         url = f"{base}/shell-descriptors"
         response = await http_client.request(
-            "GET",
-            url, params=params.page_query(), headers=headers, timeout=timeout
+            "GET", url, params=params.page_query(), headers=headers, timeout=timeout
         )
 
         descriptors = [
@@ -394,9 +386,7 @@ class DataplaneGetShellDescriptorStep(
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         base, headers, timeout = params.transport(context)
-        url, response = await _get_shell_descriptor(
-            base, params.aas_identifier, headers, timeout
-        )
+        url, response = await _get_shell_descriptor(base, params.aas_identifier, headers, timeout)
 
         if response.status_code == 200:
             try:

@@ -63,8 +63,7 @@ _REDACTED = "***"
 def _redacted(form: dict[str, str]) -> dict[str, str]:
     """The token request form with every credential value masked."""
     return {
-        key: _REDACTED if key in _SECRET_FIELDS and value else value
-        for key, value in form.items()
+        key: _REDACTED if key in _SECRET_FIELDS and value else value for key, value in form.items()
     }
 
 
@@ -142,9 +141,7 @@ class OAuth2TokenPayload(StepPayload):
     expires_in: int | None = Field(
         default=None, description="Lifetime of the access token in seconds."
     )
-    scope: str | None = Field(
-        default=None, description="Scopes the server actually granted."
-    )
+    scope: str | None = Field(default=None, description="Scopes the server actually granted.")
     refresh_token: str | None = Field(
         default=None, description="Refresh token, when the server issues one."
     )
@@ -178,11 +175,7 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
     ) -> StepOutput[OAuth2TokenPayload]:
         timeout = params.timeout_or(context.config.default_timeout_s)
         form = params.form_fields()
-        auth = (
-            (params.client_id, params.client_secret)
-            if params.client_auth == "basic"
-            else None
-        )
+        auth = (params.client_id, params.client_secret) if params.client_auth == "basic" else None
 
         resp = await http_client.request(
             "POST",
@@ -218,9 +211,7 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
             )
             return StepOutput(value=None, request=request, response=response)
 
-        return StepOutput(
-            value=OAuth2TokenPayload.of(body), request=request, response=response
-        )
+        return StepOutput(value=OAuth2TokenPayload.of(body), request=request, response=response)
 
 
 # ---------------------------------------------------------------------------

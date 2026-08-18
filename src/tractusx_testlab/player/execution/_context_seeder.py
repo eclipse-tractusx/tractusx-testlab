@@ -112,7 +112,10 @@ def _resolve_asset_path(base_dir: Path, folder_name: str, source: str) -> Path |
 
 
 def _load_json_assets(
-    context: StepContext, tck: Any, folder_name: str, entries: Any,
+    context: StepContext,
+    tck: Any,
+    folder_name: str,
+    entries: Any,
 ) -> None:
     """Load JSON assets from *folder_name* and seed them under ``<folder>.<id>``.
 
@@ -125,7 +128,10 @@ def _load_json_assets(
         if path is None:
             logger.warning(
                 "%s file not found, skipping: %s/%s (searched under %s)",
-                folder_name.capitalize(), folder_name, entry.source, tck.base_dir,
+                folder_name.capitalize(),
+                folder_name,
+                entry.source,
+                tck.base_dir,
             )
             continue
         try:

@@ -156,9 +156,7 @@ class TestTheDocumentIsAccepted:
         assert [step.id for step in script.setup] == ["seed_id"]
         assert [step.id for step in script.teardown] == ["drop"]
 
-    async def test_the_validator_reports_nothing(
-        self, parts_api: HttpDouble
-    ) -> None:
+    async def test_the_validator_reports_nothing(self, parts_api: HttpDouble) -> None:
         base = parts_api.start()
         script = YamlParser.parse_script_from_dict(yaml.safe_load(_script(base)))
 
@@ -174,9 +172,7 @@ class TestTheDocumentIsAccepted:
         raw = yaml.safe_load(_script(base))
         raw["execution"][0]["returns"]["statuscode"] = {"type": "integer"}
 
-        result = ScriptValidator().validate(
-            YamlParser.parse_script_from_dict(raw)
-        )
+        result = ScriptValidator().validate(YamlParser.parse_script_from_dict(raw))
 
         errors = [i.message for i in result.issues if i.level == "error"]
         assert any("statuscode" in message for message in errors)
@@ -188,9 +184,7 @@ class TestTheDocumentIsAccepted:
         raw = yaml.safe_load(_script(base))
         raw["execution"][0]["validate"][0]["uses"] = "assert/status_code"
 
-        result = ScriptValidator().validate(
-            YamlParser.parse_script_from_dict(raw)
-        )
+        result = ScriptValidator().validate(YamlParser.parse_script_from_dict(raw))
 
         errors = [i.message for i in result.issues if i.level == "error"]
         assert any("validate/assert" in message for message in errors)
@@ -214,9 +208,7 @@ class TestTheDocumentRuns:
             )
         return outcomes
 
-    async def test_every_phase_passes(
-        self, harness: Harness, parts_api: HttpDouble
-    ) -> None:
+    async def test_every_phase_passes(self, harness: Harness, parts_api: HttpDouble) -> None:
         base = parts_api.start()
         # The read-back asserts the partner it was registered with, so the
         # double has to answer with whatever the setup phase minted.

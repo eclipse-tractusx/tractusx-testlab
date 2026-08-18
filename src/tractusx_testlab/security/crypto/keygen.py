@@ -37,6 +37,7 @@ from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
 @dataclass(frozen=True, slots=True)
 class KeyPair:
     """An asymmetric key pair with its fingerprint."""
+
     private_bytes: bytes
     public_bytes: bytes
     fingerprint: str  # SHA-256 hex of public key DER

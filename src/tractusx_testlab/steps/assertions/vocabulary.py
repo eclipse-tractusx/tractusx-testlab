@@ -94,9 +94,7 @@ def resolve(uses: str, params: dict) -> ResolvedAssertion | str:
     return ResolvedAssertion(kind=kind, operator=suffix)
 
 
-def _resolve_known_prefix(
-    kind: AssertionKind, params: dict
-) -> ResolvedAssertion | str:
+def _resolve_known_prefix(kind: AssertionKind, params: dict) -> ResolvedAssertion | str:
     """Resolve the suffix-less spellings, which read their operator from ``with``."""
     if kind is AssertionKind.SCHEMA:
         return ResolvedAssertion(kind=kind, operator=None)
@@ -151,16 +149,11 @@ def check_operands(operator: str, params: dict) -> str | None:
 
     missing = expected - supplied
     if missing:
-        return (
-            f"Operator '{operator}' needs {', '.join(sorted(missing))}, which is not set."
-        )
+        return f"Operator '{operator}' needs {', '.join(sorted(missing))}, which is not set."
     return None
 
 
 def _unknown_operator(operator: object, uses: str | None) -> str:
     """Say which operator was not understood, and name the ones that are."""
     where = f" in {uses!r}" if uses else ""
-    return (
-        f"Unknown operator {operator!r}{where}. "
-        f"Known operators: {', '.join(sorted(OPERATORS))}"
-    )
+    return f"Unknown operator {operator!r}{where}. Known operators: {', '.join(sorted(OPERATORS))}"

@@ -60,9 +60,7 @@ class TestTheExecutionNamespace:
     ``${{ execution.mint.value }}`` was handed to the next step as its value.
     """
 
-    async def test_a_step_reads_the_previous_steps_return(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_step_reads_the_previous_steps_return(self, harness: Harness) -> None:
         outcome = await harness.run(
             _mint(),
             {
@@ -74,9 +72,7 @@ class TestTheExecutionNamespace:
 
         assert outcome.output("echo") == outcome.output("mint")
 
-    async def test_the_reference_is_not_left_as_its_own_text(
-        self, harness: Harness
-    ) -> None:
+    async def test_the_reference_is_not_left_as_its_own_text(self, harness: Harness) -> None:
         """The failure this guards against did not look like a failure."""
         outcome = await harness.run(
             _mint(),
@@ -96,9 +92,7 @@ class TestTheExecutionNamespace:
         )
         assert outcome.output("echo") == outcome.output("mint")
 
-    async def test_a_second_producer_takes_the_flat_name_over(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_second_producer_takes_the_flat_name_over(self, harness: Harness) -> None:
         """Why the qualified form exists: the flat one is last-writer-wins."""
         outcome = await harness.run(
             _mint("first"),
@@ -118,9 +112,7 @@ class TestTheExecutionNamespace:
 class TestWhatDoesNotResolve:
     """A name that was never published, and how loudly that is said."""
 
-    async def test_only_a_declared_return_gets_the_qualified_name(
-        self, harness: Harness
-    ) -> None:
+    async def test_only_a_declared_return_gets_the_qualified_name(self, harness: Harness) -> None:
         """Without ``returns:``, the value exists — but only under its bare name.
 
         A step with an object payload publishes each of its fields as it runs,
@@ -135,9 +127,7 @@ class TestWhatDoesNotResolve:
         assert outcome.variables["full_mock_url"]
         assert "execution.endpoint.full_mock_url" not in outcome.variables
 
-    async def test_a_bare_value_has_no_field_name_to_publish_under(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_bare_value_has_no_field_name_to_publish_under(self, harness: Harness) -> None:
         """Which is why ``returns:`` is the only way to name one.
 
         ``util/generate_uuid`` returns the UUID itself, not an object with a
@@ -162,9 +152,7 @@ class TestWhatDoesNotResolve:
         )
         assert outcome.variables["generated_id"] is None
 
-    async def test_an_unresolved_reference_fails_the_step(
-        self, harness: Harness
-    ) -> None:
+    async def test_an_unresolved_reference_fails_the_step(self, harness: Harness) -> None:
         """A reference to a step that never ran must stop the step, not become a string.
 
         This used to be documented as a known hazard: the template text itself
@@ -199,9 +187,7 @@ class TestReadingInsideAnOutput:
         )
         assert outcome.variables["value.id"] == "urn:uuid:42"
 
-    async def test_the_inner_value_is_readable_by_the_next_step(
-        self, harness: Harness
-    ) -> None:
+    async def test_the_inner_value_is_readable_by_the_next_step(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "parse",
@@ -231,9 +217,7 @@ class TestPhasesPublishUnderTheirOwnName:
         outcome = await harness.run(_mint(), phase=phase)
         assert f"{namespace}.mint.value" in outcome.variables
 
-    async def test_execution_reads_what_setup_published(
-        self, harness: Harness
-    ) -> None:
+    async def test_execution_reads_what_setup_published(self, harness: Harness) -> None:
         """The ordinary shape of a TCK: set something up, then use it."""
         await harness.run(_mint(), phase="setup")
         outcome = await harness.run(
@@ -254,9 +238,7 @@ class TestAWithKeyTheStepDoesNotDeclare:
     rather than running on with the value silently discarded.
     """
 
-    async def test_an_unknown_parameter_fails_the_step(
-        self, harness: Harness
-    ) -> None:
+    async def test_an_unknown_parameter_fails_the_step(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "parse",
@@ -268,9 +250,7 @@ class TestAWithKeyTheStepDoesNotDeclare:
         assert not outcome.passed
         assert "seperator" in (outcome.error("parse") or "")
 
-    async def test_the_error_names_the_step_it_came_from(
-        self, harness: Harness
-    ) -> None:
+    async def test_the_error_names_the_step_it_came_from(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "parse",

@@ -101,9 +101,7 @@ class TestDeleteAssetStep:
         ctx.dataspace.provider.return_value = provider
         ctx.set_variable("asset_id", "urn:asset:from-context")
 
-        await DeleteAssetStep().invoke(
-            raw_params={}, context=ctx, definition=definition
-        )
+        await DeleteAssetStep().invoke(raw_params={}, context=ctx, definition=definition)
 
         provider.assets.delete.assert_called_once_with(oid="urn:asset:from-context")
 
@@ -164,9 +162,7 @@ class TestDeletePolicyStep:
         ctx.dataspace.provider.return_value = provider
         ctx.set_variable("policy_id", "policy-from-context")
 
-        await DeletePolicyStep().invoke(
-            raw_params={}, context=ctx, definition=definition
-        )
+        await DeletePolicyStep().invoke(raw_params={}, context=ctx, definition=definition)
 
         provider.policies.delete.assert_called_once_with(oid="policy-from-context")
 

@@ -44,7 +44,9 @@ def consumer() -> MagicMock:
     svc.get_endpoint_with_token.return_value = ("http://dataplane.example", "token-abc")
     svc.dataspace_version = "jupiter"
     svc.get_filter_expression.return_value = {
-        "operandLeft": "transferProcessId", "operator": "=", "operandRight": "transfer-1",
+        "operandLeft": "transferProcessId",
+        "operator": "=",
+        "operandRight": "transfer-1",
     }
     # The EDR entry is where the negotiation and the agreement behind a
     # transfer are named — the step reads its ids off exactly this document.
@@ -100,7 +102,9 @@ class TestPullDataFilteredByPolicy:
             )
 
     @pytest.mark.asyncio
-    async def test_returns_edr_and_dataplane_url(self, context: StepContext, consumer: MagicMock) -> None:
+    async def test_returns_edr_and_dataplane_url(
+        self, context: StepContext, consumer: MagicMock
+    ) -> None:
         output = await ConnectorPullDataFilteredByPolicy().invoke(
             {
                 "counter_party_id": "BPNL_PROVIDER",
@@ -119,7 +123,9 @@ class TestPullDataFilteredByPolicy:
         assert output.value["asset_id"] == "asset-1"
 
     @pytest.mark.asyncio
-    async def test_normalizes_simplified_policy_keys(self, context: StepContext, consumer: MagicMock) -> None:
+    async def test_normalizes_simplified_policy_keys(
+        self, context: StepContext, consumer: MagicMock
+    ) -> None:
         await ConnectorPullDataFilteredByPolicy().invoke(
             {
                 "counter_party_id": "BPNL_PROVIDER",
@@ -134,7 +140,9 @@ class TestPullDataFilteredByPolicy:
         assert forwarded_policies == [{"permission": [{"action": "use", "constraint": []}]}]
 
     @pytest.mark.asyncio
-    async def test_accepts_single_policy_dict(self, context: StepContext, consumer: MagicMock) -> None:
+    async def test_accepts_single_policy_dict(
+        self, context: StepContext, consumer: MagicMock
+    ) -> None:
         await ConnectorPullDataFilteredByPolicy().invoke(
             {
                 "counter_party_id": "BPNL_PROVIDER",

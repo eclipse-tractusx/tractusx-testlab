@@ -60,13 +60,16 @@ def build_inspection_result(tck: Tck) -> TckInspectionResult:
         step_metas.extend(_map_steps(script.steps, StepPhase.EXECUTION))
         step_metas.extend(_map_steps(script.teardown, StepPhase.TEARDOWN))
         script_inspections.append(
-            ScriptInspection(name=script.name, test_id=script.test_id, skippable=script.skippable, steps=tuple(step_metas))
+            ScriptInspection(
+                name=script.name,
+                test_id=script.test_id,
+                skippable=script.skippable,
+                steps=tuple(step_metas),
+            )
         )
 
     total_steps = sum(len(s.steps) for s in script_inspections)
-    total_validations = sum(
-        sm.validation_count for s in script_inspections for sm in s.steps
-    )
+    total_validations = sum(sm.validation_count for s in script_inspections for sm in s.steps)
 
     return TckInspectionResult(
         name=tck.name,

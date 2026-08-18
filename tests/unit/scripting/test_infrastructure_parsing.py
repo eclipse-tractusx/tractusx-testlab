@@ -72,7 +72,8 @@ class TestInfrastructureParsing:
             engine={"connector": CapabilityRequirement(required=True)},
             sut={
                 "connector": CapabilityRequirement(
-                    required=True, standard={"id": "CX-0018", "version": "2.1.3"},
+                    required=True,
+                    standard={"id": "CX-0018", "version": "2.1.3"},
                 ),
                 "dtr": CapabilityRequirement(required=True),
             },

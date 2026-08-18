@@ -78,23 +78,32 @@ def _create_tck_archive(source_dir: Path, archive_path: Path) -> str:
 def compile(
     script: Path = typer.Argument(..., help="Path to the YAML test script to compile."),
     compiler_keys: Path | None = typer.Option(
-        None, "--compiler-keys", "-c",
+        None,
+        "--compiler-keys",
+        "-c",
         help="Directory containing the compiler identity (signing.pem, encryption.*).",
     ),
     player_pub: list[Path] | None = typer.Option(
-        None, "--player-pub", "-p",
+        None,
+        "--player-pub",
+        "-p",
         help="Path(s) to player RSA public key(s) (encryption.pub). Can be repeated.",
     ),
     output: Path | None = typer.Option(
-        None, "--output", "-o",
+        None,
+        "--output",
+        "-o",
         help="Output path. Directory for --plain, .tck file otherwise.",
     ),
     version: str | None = typer.Option(
-        None, "--version", "-v",
+        None,
+        "--version",
+        "-v",
         help="Connector version for version-specific validation.",
     ),
     plain: bool = typer.Option(
-        False, "--plain",
+        False,
+        "--plain",
         help="Write loose files to a directory instead of a .tck archive.",
     ),
 ) -> None:
@@ -130,7 +139,9 @@ def compile(
             compile_encrypted_plain(script, compiler_keys, player_pub, out, version, compiler)
         else:
             try:
-                manifest_dict, _ = compiler.compile_plain(manifest_path=script, output_path=out, version=version)
+                manifest_dict, _ = compiler.compile_plain(
+                    manifest_path=script, output_path=out, version=version
+                )
             except (ValueError, FileNotFoundError) as exc:
                 typer.echo(f"Compilation failed: {exc}", err=True)
                 raise typer.Exit(1) from exc
@@ -139,7 +150,9 @@ def compile(
             typer.echo(f"                 → {out}/assets/")
             typer.echo("")
             typer.echo(f"  Package checksum : {manifest_dict['package']['checksum']}")
-            typer.echo(f"  Fingerprint digest: {manifest_dict['compilation']['fingerprint']['digest']}")
+            typer.echo(
+                f"  Fingerprint digest: {manifest_dict['compilation']['fingerprint']['digest']}"
+            )
         return
 
     # Both keys, or neither — checked above.
@@ -151,7 +164,9 @@ def compile(
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         try:
-            manifest_dict, _ = compiler.compile_plain(manifest_path=script, output_path=tmp_path, version=version)
+            manifest_dict, _ = compiler.compile_plain(
+                manifest_path=script, output_path=tmp_path, version=version
+            )
         except (ValueError, FileNotFoundError) as exc:
             typer.echo(f"Compilation failed: {exc}", err=True)
             raise typer.Exit(1) from exc

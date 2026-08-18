@@ -58,10 +58,12 @@ async def compile_yaml(request: Request) -> JSONResponse:
     """
     raw = await request.body()
     if not raw:
-        return JSONResponse(content={
-            "status": "error",
-            "errors": [_error("", "Request body is empty")],
-        })
+        return JSONResponse(
+            content={
+                "status": "error",
+                "errors": [_error("", "Request body is empty")],
+            }
+        )
 
     data = _parse_yaml_body(raw)
     if isinstance(data, JSONResponse):
@@ -88,16 +90,20 @@ def _parse_yaml_body(raw: bytes) -> dict | JSONResponse:
     try:
         data = yaml.safe_load(raw)
     except yaml.YAMLError as exc:
-        return JSONResponse(content={
-            "status": "error",
-            "errors": [_error("", f"Invalid YAML syntax: {exc}")],
-        })
+        return JSONResponse(
+            content={
+                "status": "error",
+                "errors": [_error("", f"Invalid YAML syntax: {exc}")],
+            }
+        )
 
     if not isinstance(data, dict):
-        return JSONResponse(content={
-            "status": "error",
-            "errors": [_error("", "YAML root must be a mapping")],
-        })
+        return JSONResponse(
+            content={
+                "status": "error",
+                "errors": [_error("", "YAML root must be a mapping")],
+            }
+        )
     return data
 
 
@@ -111,14 +117,17 @@ def _resolve_script_kind(data: dict) -> ScriptKind | JSONResponse:
             return ScriptKind(kind_value)
         return ScriptKind.TCK if has_tests else ScriptKind.TEST
     except ValueError:
-        return JSONResponse(content={
-            "status": "error",
-            "errors": [_error("kind", f"Unknown script kind: {kind_value!r}")],
-        })
+        return JSONResponse(
+            content={
+                "status": "error",
+                "errors": [_error("kind", f"Unknown script kind: {kind_value!r}")],
+            }
+        )
 
 
 def _parse_script(
-    data: dict, kind: ScriptKind,
+    data: dict,
+    kind: ScriptKind,
 ) -> JSONResponse | ScriptDefinition | TckDefinition:
     """Parse the YAML data into a script/tck definition or return error response."""
     parser = YamlParser()
@@ -127,20 +136,20 @@ def _parse_script(
             return parser.parse_tck_from_dict(data)
         return parser.parse_script_from_dict(data)
     except ValidationError as exc:
-        errors = [
-            _error(".".join(str(loc) for loc in e["loc"]), e["msg"])
-            for e in exc.errors()
-        ]
+        errors = [_error(".".join(str(loc) for loc in e["loc"]), e["msg"]) for e in exc.errors()]
         return JSONResponse(content={"status": "error", "errors": errors})
     except (ValueError, KeyError, TypeError) as exc:
-        return JSONResponse(content={
-            "status": "error",
-            "errors": [_error("", f"Validation failed: {exc}")],
-        })
+        return JSONResponse(
+            content={
+                "status": "error",
+                "errors": [_error("", f"Validation failed: {exc}")],
+            }
+        )
 
 
 def _run_semantic_validation(
-    parsed: ScriptDefinition | TckDefinition, kind: ScriptKind,
+    parsed: ScriptDefinition | TckDefinition,
+    kind: ScriptKind,
 ) -> list[dict[str, str]]:
     """Run semantic validation and return list of error dicts (empty if OK)."""
     errors: list[dict[str, str]] = []
@@ -160,7 +169,8 @@ def _run_semantic_validation(
         # correctly-authored files.
         dataspace = getattr(parsed, "dataspace", None)
         dataspace_version = (
-            dataspace.version if dataspace is not None and dataspace.version
+            dataspace.version
+            if dataspace is not None and dataspace.version
             else defaults.DATASPACE_VERSION
         )
 
@@ -176,7 +186,11 @@ def _build_issue_path(issue) -> str:
     """Build a structured path string from a validation issue."""
     path = issue.field or ""
     if issue.phase:
-        return f"{issue.phase}[{issue.step_index}].{path}" if path else f"{issue.phase}[{issue.step_index}]"
+        return (
+            f"{issue.phase}[{issue.step_index}].{path}"
+            if path
+            else f"{issue.phase}[{issue.step_index}]"
+        )
     if issue.step_index is not None:
         return f"steps[{issue.step_index}].{path}" if path else f"steps[{issue.step_index}]"
     return path

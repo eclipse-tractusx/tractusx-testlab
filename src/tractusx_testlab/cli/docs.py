@@ -39,19 +39,25 @@ _DEFAULT_OUTPUT = Path("docs/specification/reference/steps.md")
 @app.command("docs")
 def docs(
     output: Path | None = typer.Option(
-        None, "--output", "-o",
+        None,
+        "--output",
+        "-o",
         help=f"Write the page to this path (default: {_DEFAULT_OUTPUT}). Use '-' for stdout.",
     ),
     step: list[str] | None = typer.Option(
-        None, "--step", "-s",
+        None,
+        "--step",
+        "-s",
         help="Document only these step types. Repeatable. Defaults to all registered steps.",
     ),
     as_json: bool = typer.Option(
-        False, "--json",
+        False,
+        "--json",
         help="Emit the raw contracts as JSON Schema instead of Markdown.",
     ),
     check: bool = typer.Option(
-        False, "--check",
+        False,
+        "--check",
         help="Exit non-zero if the file on disk differs from what would be generated.",
     ),
 ) -> None:

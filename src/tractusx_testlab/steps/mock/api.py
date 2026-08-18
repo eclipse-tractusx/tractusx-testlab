@@ -47,8 +47,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-
-
 class MockEndpointParams(MockIdParams):
     """Input contract of ``mock/api``."""
 
@@ -132,7 +130,9 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
 
         logger.info(
             "Registered mock endpoint %s %s -> %d",
-            params.method, params.path, params.response_status,
+            params.method,
+            params.path,
+            params.response_status,
         )
         return StepOutput(
             value=MockEndpointOutput(

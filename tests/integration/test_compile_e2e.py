@@ -67,7 +67,8 @@ class TestTckParseCompilePipeline:
     """Verify the full parse → TckDefinition pipeline with a real YAML fixture."""
 
     def test_parse_tck_from_dict_returns_tck_definition(
-        self, simple_tck_data: dict,
+        self,
+        simple_tck_data: dict,
     ) -> None:
         """YamlParser.parse_tck_from_dict produces a valid TckDefinition."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)
@@ -77,7 +78,8 @@ class TestTckParseCompilePipeline:
         assert definition.syntax == "v1-alpha"
 
     def test_tck_definition_contains_test_paths(
-        self, simple_tck_data: dict,
+        self,
+        simple_tck_data: dict,
     ) -> None:
         """``tests:`` entries are parsed as TckTestEntry models with id and name."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)
@@ -88,7 +90,8 @@ class TestTckParseCompilePipeline:
         assert entry.name == "Make a ping"
 
     def test_tck_scripts_empty_for_path_based_tck(
-        self, simple_tck_data: dict,
+        self,
+        simple_tck_data: dict,
     ) -> None:
         """Tck wrapper has no pre-loaded scripts when tests are path-based."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)

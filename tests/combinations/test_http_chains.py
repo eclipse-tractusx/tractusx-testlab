@@ -44,9 +44,7 @@ class TestRequestThenExtract:
     async def test_a_field_of_the_response_becomes_the_next_steps_input(
         self, harness: Harness, http: HttpDouble
     ) -> None:
-        http.json_route(
-            "GET", "/twins", {"result": [{"id": "urn:uuid:1", "idShort": "gearbox"}]}
-        )
+        http.json_route("GET", "/twins", {"result": [{"id": "urn:uuid:1", "idShort": "gearbox"}]})
         base = http.start()
 
         outcome = await harness.run(

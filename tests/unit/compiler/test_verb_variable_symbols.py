@@ -44,27 +44,48 @@ class TestVerbVariableSymbols:
     """build_global_symbols must register verb-form (list) env variables."""
 
     def test_list_form_variables_do_not_crash(self) -> None:
-        env = {"variables": [{"id": "provider_url", "uses": "variable/type/string",
-                              "with": {"source": "input"},
-                              "returns": {"value": {"type": "string"}}}]}
+        env = {
+            "variables": [
+                {
+                    "id": "provider_url",
+                    "uses": "variable/type/string",
+                    "with": {"source": "input"},
+                    "returns": {"value": {"type": "string"}},
+                }
+            ]
+        }
 
         symbols = build_global_symbols(env)
 
         assert "env.provider_url" in symbols
 
     def test_simple_variable_uses_declared_return_type(self) -> None:
-        env = {"variables": [{"id": "timeout", "uses": "variable/type/integer",
-                              "with": {"value": 300},
-                              "returns": {"value": {"type": "integer"}}}]}
+        env = {
+            "variables": [
+                {
+                    "id": "timeout",
+                    "uses": "variable/type/integer",
+                    "with": {"value": 300},
+                    "returns": {"value": {"type": "integer"}},
+                }
+            ]
+        }
 
         symbols = build_global_symbols(env)
 
         assert symbols["env.timeout"]["type"] == "integer"
 
     def test_simple_variable_value_return_is_not_a_subfield_symbol(self) -> None:
-        env = {"variables": [{"id": "name", "uses": "variable/type/string",
-                              "with": {"value": "x"},
-                              "returns": {"value": {"type": "string"}}}]}
+        env = {
+            "variables": [
+                {
+                    "id": "name",
+                    "uses": "variable/type/string",
+                    "with": {"value": "x"},
+                    "returns": {"value": {"type": "string"}},
+                }
+            ]
+        }
 
         symbols = build_global_symbols(env)
 

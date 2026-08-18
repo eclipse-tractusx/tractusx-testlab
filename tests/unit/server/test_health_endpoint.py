@@ -122,9 +122,7 @@ class TestHealthEndpoint:
         response = client.get("/testlab/health")
 
         # Assert
-        assert response.status_code == 200, (
-            f"Expected 200, got {response.status_code}"
-        )
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
 
     def test_health_response_contains_status_ok(self, client: TestClient) -> None:
         # Act
@@ -150,9 +148,7 @@ class TestHealthEndpoint:
         assert isinstance(version, str), f"Version should be str, got {type(version)}"
         assert len(version) > 0, "Version string must not be empty"
 
-    def test_health_version_matches_package_metadata(
-        self, client: TestClient
-    ) -> None:
+    def test_health_version_matches_package_metadata(self, client: TestClient) -> None:
         """Version returned must match importlib.metadata for the package."""
         import importlib.metadata
 
@@ -167,9 +163,7 @@ class TestHealthEndpoint:
             f"Expected version '{expected_version}', got '{body['version']}'"
         )
 
-    def test_health_response_has_exactly_two_keys(
-        self, client: TestClient
-    ) -> None:
+    def test_health_response_has_exactly_two_keys(self, client: TestClient) -> None:
         """Endpoint should not leak extra fields."""
         # Act
         body = client.get("/testlab/health").json()
@@ -179,9 +173,7 @@ class TestHealthEndpoint:
             f"Unexpected keys in response: {set(body.keys())}"
         )
 
-    def test_health_response_content_type_is_json(
-        self, client: TestClient
-    ) -> None:
+    def test_health_response_content_type_is_json(self, client: TestClient) -> None:
         # Act
         response = client.get("/testlab/health")
 

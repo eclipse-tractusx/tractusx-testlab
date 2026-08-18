@@ -46,11 +46,16 @@ CCM_TESTS_DIR = CCM_RAW_DIR / "tests"
 _CCM_TEST_FILES = sorted(path.name for path in CCM_TESTS_DIR.glob("*.yaml"))
 
 _CCM_STEP_TYPES = [
-    "connector/provider/create_asset", "connector/provider/create_contract_definition",
-    "connector/provider/create_policy", "connector/provider/delete_asset",
-    "connector/provider/delete_policy", "util/generate_uuid",
-    "connector/dataplane/http_request", "mock/api",
-    "connector/consumer/pull_data_filtered", "connector/consumer/query_catalog_with_filters",
+    "connector/provider/create_asset",
+    "connector/provider/create_contract_definition",
+    "connector/provider/create_policy",
+    "connector/provider/delete_asset",
+    "connector/provider/delete_policy",
+    "util/generate_uuid",
+    "connector/dataplane/http_request",
+    "mock/api",
+    "connector/consumer/pull_data_filtered",
+    "connector/consumer/query_catalog_with_filters",
     "mock/wait/http_request",
 ]
 
@@ -198,4 +203,6 @@ class TestCcmStepRegistry:
 
         step_cls = StepRegistry.get(step_type, "saturn")
 
-        assert step_cls is not None, f"Step type '{step_type}' is not registered for dataspace 'saturn'"
+        assert step_cls is not None, (
+            f"Step type '{step_type}' is not registered for dataspace 'saturn'"
+        )

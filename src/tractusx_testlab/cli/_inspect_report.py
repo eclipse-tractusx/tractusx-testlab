@@ -71,17 +71,17 @@ def print_inspection(package: Path, result: object) -> None:
 
     for script in r.scripts:
         skippable_label = "Yes" if script.skippable else "No"
-        typer.echo(f"  Script: {script.name}  |  ID: {script.test_id}  |  Skippable: {skippable_label}")
+        typer.echo(
+            f"  Script: {script.name}  |  ID: {script.test_id}  |  Skippable: {skippable_label}"
+        )
         typer.echo(f"  {'Step Name':<40} {'Uses':<35} {'Phase':<10} {'Validations'}")
-        typer.echo(f"  {'-'*40} {'-'*35} {'-'*10} {'-'*11}")
+        typer.echo(f"  {'-' * 40} {'-' * 35} {'-' * 10} {'-' * 11}")
 
         for step in script.steps:
             phase_label = step.phase.value.title()
             name_col = step.step_name[:39]
             uses_col = step.uses[:34]
-            typer.echo(
-                f"  {name_col:<40} {uses_col:<35} {phase_label:<10} {step.validation_count}"
-            )
+            typer.echo(f"  {name_col:<40} {uses_col:<35} {phase_label:<10} {step.validation_count}")
 
         typer.echo()
 
@@ -94,7 +94,7 @@ def print_variables(tck: object) -> None:
     variables = tck.all_variables()  # type: ignore[attr-defined]
     typer.echo("  VARIABLES")
     typer.echo(f"  {'ID':<30} {'Source':<12} {'Scope':<10} {'Type'}")
-    typer.echo(f"  {'-'*30} {'-'*12} {'-'*10} {'-'*10}")
+    typer.echo(f"  {'-' * 30} {'-' * 12} {'-' * 10} {'-' * 10}")
     for name, var in variables.items():
         scope = var.scope.value if var.scope else "—"
         typer.echo(f"  {name:<30} {var.source.value:<12} {scope:<10} {var.type}")
@@ -108,7 +108,7 @@ def print_infrastructure(tck: object) -> None:
     infra = tck.infrastructure_requirements()  # type: ignore[attr-defined]
     typer.echo("  INFRASTRUCTURE")
     typer.echo(f"  {'Capability':<25} {'Required':<10} {'Standard'}")
-    typer.echo(f"  {'-'*25} {'-'*10} {'-'*20}")
+    typer.echo(f"  {'-' * 25} {'-' * 10} {'-' * 20}")
     for cap, req in infra.engine.items():
         std = req.standard.id if req.standard else "—"
         typer.echo(f"  engine.{cap:<18} {req.required!s:<10} {std}")

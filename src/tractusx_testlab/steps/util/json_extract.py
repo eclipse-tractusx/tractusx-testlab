@@ -55,22 +55,18 @@ def _resolve_predicate(current: object, segment: str, match: re.Match) -> object
     if isinstance(current, list):
         # Step over an intermediate array: apply the predicate to each element.
         containers: list[list] = [
-            item[name] for item in current
+            item[name]
+            for item in current
             if isinstance(item, dict) and isinstance(item.get(name), list)
         ]
         container = [entry for sublist in containers for entry in sublist]
     else:
         container = current.get(name) if isinstance(current, dict) else None
     if not isinstance(container, list):
-        raise TypeError(
-            f"Cannot filter '{name}' — expected a list, got "
-            f"{type(container).__name__}"
-        )
+        raise TypeError(f"Cannot filter '{name}' — expected a list, got {type(container).__name__}")
     found = _find_by_predicate(container, pred_key, pred_val)
     if found is None:
-        raise KeyError(
-            f"No element in '{name}' where {pred_key}={pred_val} (segment '{segment}')"
-        )
+        raise KeyError(f"No element in '{name}' where {pred_key}={pred_val} (segment '{segment}')")
     return found
 
 
@@ -101,9 +97,7 @@ def _extract_by_path(data: object, path: str) -> object:
         elif isinstance(current, (list, tuple)):
             current = current[int(segment)]
         else:
-            raise TypeError(
-                f"Cannot traverse into {type(current).__name__} with key '{segment}'"
-            )
+            raise TypeError(f"Cannot traverse into {type(current).__name__} with key '{segment}'")
     return current
 
 
@@ -122,9 +116,7 @@ class JsonPathExtractParams(StoreInVariableParams):
             "expression is passed — it resolves before the step runs."
         ),
     )
-    path: str = Field(
-        description="Dot-notation path to the desired value, e.g. 'datasets.0.id'."
-    )
+    path: str = Field(description="Dot-notation path to the desired value, e.g. 'datasets.0.id'.")
 
 
 class JsonPathExtractOutput(StepValue[Any]):

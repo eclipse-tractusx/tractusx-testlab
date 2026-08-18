@@ -181,9 +181,7 @@ class TestOverridesFromEnv:
     """The environment is read by generated name, never by splitting one apart."""
 
     def test_reads_a_binding_field(self) -> None:
-        overrides = overrides_from_env(
-            {"TESTLAB_SUT_DTR_BASE_URL": "https://dtr.example.com"}
-        )
+        overrides = overrides_from_env({"TESTLAB_SUT_DTR_BASE_URL": "https://dtr.example.com"})
         assert overrides == {"infrastructure.sut.dtr.base_url": "https://dtr.example.com"}
 
     def test_reads_a_multi_word_field(self) -> None:
@@ -209,15 +207,14 @@ class TestMerge:
     def test_base_survives_where_the_overlay_is_silent(self) -> None:
         base = _bound_sut()
         overlay = Infrastructure(sut=SutBindings(dtr=DtrBinding(base_url="https://dtr")))
-        assert merge(base, overlay).sut.connector.dsp_url == (
-            "https://sut.example.com/api/v1/dsp"
-        )
+        assert merge(base, overlay).sut.connector.dsp_url == ("https://sut.example.com/api/v1/dsp")
 
     def test_a_default_never_overwrites_a_stated_value(self) -> None:
         base = Infrastructure(
             sut=SutBindings(
                 connector=ConnectorBinding(
-                    management_url="https://sut/management", api_key_header="X-Custom",
+                    management_url="https://sut/management",
+                    api_key_header="X-Custom",
                 ),
             ),
         )

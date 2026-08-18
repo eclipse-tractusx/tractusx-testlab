@@ -117,9 +117,7 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
 
         return StepOutput(
             value=HttpBodyOutput(http_client.body_of(resp)),
-            request=HttpRequest(
-                method=params.method, url=url, headers=headers, body=params.body
-            ),
+            request=HttpRequest(method=params.method, url=url, headers=headers, body=params.body),
             response=HttpResponse(
                 status_code=resp.status_code,
                 headers=http_client.headers_of(resp),
@@ -139,8 +137,7 @@ class GetEdrParams(StepParams):
     transfer_id: str | None = Field(
         default=None,
         description=(
-            "Transfer process to read the EDR of; falls back to the "
-            "'transfer_id' context variable."
+            "Transfer process to read the EDR of; falls back to the 'transfer_id' context variable."
         ),
     )
     verify: Any | None = Field(

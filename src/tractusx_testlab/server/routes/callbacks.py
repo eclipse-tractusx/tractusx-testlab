@@ -63,9 +63,7 @@ async def callback_webhook(
         body = await request.json()
 
     query_params = dict(request.query_params)
-    mock = resolve_mock(
-        full_path, method, headers=headers, query_params=query_params, body=body
-    )
+    mock = resolve_mock(full_path, method, headers=headers, query_params=query_params, body=body)
 
     # A path no step opened is refused rather than buffered — see the
     # equivalent guard on the app-level catch-all in ``server.app``.

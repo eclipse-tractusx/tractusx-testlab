@@ -42,8 +42,9 @@ from tractusx_testlab.security.crypto.keygen import (
 @dataclass(frozen=True, slots=True)
 class PlayerIdentity:
     """A player's cryptographic identity for encrypting and signing packages."""
-    encryption: KeyPair   # RSA — for AES key wrapping
-    signing: KeyPair      # Ed25519 — for package signing
+
+    encryption: KeyPair  # RSA — for AES key wrapping
+    signing: KeyPair  # Ed25519 — for package signing
 
     @staticmethod
     def generate() -> PlayerIdentity:

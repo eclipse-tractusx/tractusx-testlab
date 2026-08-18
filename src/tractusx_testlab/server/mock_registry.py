@@ -86,7 +86,12 @@ def get_mock(path: str, method: str) -> MockResponse | MockHandler | None:
 
 
 def resolve_mock(
-    path: str, method: str, *, headers: dict, query_params: dict, body: dict | None,
+    path: str,
+    method: str,
+    *,
+    headers: dict,
+    query_params: dict,
+    body: dict | None,
 ) -> MockResponse | None:
     """Look up a mock and, if it's a dynamic handler, invoke it to get a response."""
     mock = get_mock(path, method)
@@ -94,9 +99,15 @@ def resolve_mock(
         return None
     if isinstance(mock, MockResponse):
         return mock
-    return mock(MockRequest(
-        method=method, path=path, headers=headers, query_params=query_params, body=body,
-    ))
+    return mock(
+        MockRequest(
+            method=method,
+            path=path,
+            headers=headers,
+            query_params=query_params,
+            body=body,
+        )
+    )
 
 
 def remove_mock(path: str, method: str) -> None:

@@ -98,6 +98,7 @@ class ImportDefinition(BaseModel):
 # Syntax v1-alpha models
 # ---------------------------------------------------------------------------
 
+
 class MetadataDefinition(BaseModel):
     """Metadata block common to scripts and TCK manifests."""
 
@@ -144,7 +145,9 @@ class StepDefinition(BaseModel):
     #: ``validate:``; the aliases are what make that the only spelling anyone
     #: outside this file sees.
     assertions: list[Assertion] | None = Field(
-        default=None, validation_alias="validate", serialization_alias="validate",
+        default=None,
+        validation_alias="validate",
+        serialization_alias="validate",
     )
     #: Marks the step as a negative test (syntax spec §9.3): the request is one
     #: the system under test is required to refuse.

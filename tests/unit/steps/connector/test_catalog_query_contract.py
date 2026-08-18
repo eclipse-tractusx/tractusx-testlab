@@ -109,7 +109,8 @@ class TestQueryCatalogParams:
 
     def test_bind_params_error_names_the_step(self) -> None:
         with pytest.raises(
-            ValueError, match="Invalid parameters for step 'connector/consumer/query_catalog_by_asset_id'"
+            ValueError,
+            match="Invalid parameters for step 'connector/consumer/query_catalog_by_asset_id'",
         ):
             QueryCatalogByAssetIdStep.bind_params({})
 

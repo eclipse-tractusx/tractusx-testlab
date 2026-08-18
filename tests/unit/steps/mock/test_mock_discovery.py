@@ -56,7 +56,9 @@ class TestMockDiscoveryStep:
     @pytest.mark.asyncio
     async def test_requires_id(self, context: StepContext) -> None:
         with pytest.raises(ValueError, match="id: Field required"):
-            await MockDiscoveryStep().invoke({"mappings": {"BPNL1": "https://a"}}, context, _definition())
+            await MockDiscoveryStep().invoke(
+                {"mappings": {"BPNL1": "https://a"}}, context, _definition()
+            )
 
     @pytest.mark.asyncio
     async def test_requires_mappings(self, context: StepContext) -> None:
@@ -67,10 +69,15 @@ class TestMockDiscoveryStep:
     async def test_dict_mappings_filtered_by_requested_bpns(self, context: StepContext) -> None:
         await MockDiscoveryStep().invoke(
             {"id": "disc1", "mappings": {"BPNL1": "https://a/dsp", "BPNL2": "https://b/dsp"}},
-            context, _definition(),
+            context,
+            _definition(),
         )
         mock = resolve_mock(
-            _DISCOVERY_PATH, "POST", headers={}, query_params={}, body=["BPNL1"],
+            _DISCOVERY_PATH,
+            "POST",
+            headers={},
+            query_params={},
+            body=["BPNL1"],
         )
         assert mock.status_code == 200
         assert mock.body == [{"bpn": "BPNL1", "connectorEndpoint": ["https://a/dsp"]}]
@@ -82,17 +89,24 @@ class TestMockDiscoveryStep:
                 "id": "disc1",
                 "mappings": [{"bpn": "BPNL1", "endpoint": "https://a/dsp"}],
             },
-            context, _definition(),
+            context,
+            _definition(),
         )
         mock = resolve_mock(
-            _DISCOVERY_PATH, "POST", headers={}, query_params={}, body={"bpns": ["BPNL1"]},
+            _DISCOVERY_PATH,
+            "POST",
+            headers={},
+            query_params={},
+            body={"bpns": ["BPNL1"]},
         )
         assert mock.body == [{"bpn": "BPNL1", "connectorEndpoint": ["https://a/dsp"]}]
 
     @pytest.mark.asyncio
     async def test_no_requested_bpns_returns_all_mappings(self, context: StepContext) -> None:
         await MockDiscoveryStep().invoke(
-            {"id": "disc1", "mappings": {"BPNL1": "https://a/dsp"}}, context, _definition(),
+            {"id": "disc1", "mappings": {"BPNL1": "https://a/dsp"}},
+            context,
+            _definition(),
         )
         mock = resolve_mock(_DISCOVERY_PATH, "POST", headers={}, query_params={}, body=None)
         assert mock.body == [{"bpn": "BPNL1", "connectorEndpoint": ["https://a/dsp"]}]
@@ -100,9 +114,15 @@ class TestMockDiscoveryStep:
     @pytest.mark.asyncio
     async def test_unknown_bpn_is_dropped(self, context: StepContext) -> None:
         await MockDiscoveryStep().invoke(
-            {"id": "disc1", "mappings": {"BPNL1": "https://a/dsp"}}, context, _definition(),
+            {"id": "disc1", "mappings": {"BPNL1": "https://a/dsp"}},
+            context,
+            _definition(),
         )
         mock = resolve_mock(
-            _DISCOVERY_PATH, "POST", headers={}, query_params={}, body=["BPNL_UNKNOWN"],
+            _DISCOVERY_PATH,
+            "POST",
+            headers={},
+            query_params={},
+            body=["BPNL_UNKNOWN"],
         )
         assert mock.body == []

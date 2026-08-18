@@ -65,10 +65,13 @@ class TestReturnsAreChecked:
         assert _errors_for("util/generate_uuid", {"status_code": {"type": "integer"}}) == []
 
     def test_a_path_into_a_declared_output_is_accepted(self) -> None:
-        assert _errors_for(
-            "connector/consumer/initiate_transfer",
-            {"data_address.endpoint": {"type": "string"}},
-        ) == []
+        assert (
+            _errors_for(
+                "connector/consumer/initiate_transfer",
+                {"data_address.endpoint": {"type": "string"}},
+            )
+            == []
+        )
 
     def test_an_unknown_step_is_not_second_guessed(self) -> None:
         # The unknown-step error is the finding; guessing at its outputs is not.
@@ -84,7 +87,10 @@ class TestDeletedOutputNamesAreCaught:
         assert len(errors) == 1
 
     def test_delete_shell_descriptor_now_publishes_a_status_code(self) -> None:
-        assert _errors_for(
-            "digital-twin/provider/delete_shell_descriptor",
-            {"status_code": {"type": "integer"}},
-        ) == []
+        assert (
+            _errors_for(
+                "digital-twin/provider/delete_shell_descriptor",
+                {"status_code": {"type": "integer"}},
+            )
+            == []
+        )

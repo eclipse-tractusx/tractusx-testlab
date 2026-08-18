@@ -68,7 +68,8 @@ class HttpRequestStep(BaseStep[HttpRequestParams, HttpBodyOutput]):
     ) -> StepOutput[HttpBodyOutput]:
         timeout = params.timeout_or(context.config.default_timeout_s)
         payload: dict[str, object] = (
-            {"content": params.body.encode()} if isinstance(params.body, str)
+            {"content": params.body.encode()}
+            if isinstance(params.body, str)
             else {"json": params.body}
         )
         resp = await http_client.request(

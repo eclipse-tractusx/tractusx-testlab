@@ -74,7 +74,8 @@ def _response(status_code: int = 200, body: dict | None = None) -> MagicMock:
     is ``None``, so the body comes back as text.
     """
     return http_response(
-        _TOKEN_RESPONSE if body is None else body, status=status_code,
+        _TOKEN_RESPONSE if body is None else body,
+        status=status_code,
     )
 
 
@@ -96,9 +97,7 @@ class TestRegistration:
         assert StepRegistry.get("security/oauth2/get_token", "") is None
 
     @pytest.mark.asyncio
-    async def test_a_step_cannot_be_asked_for_another_grant(
-        self, context: StepContext
-    ) -> None:
+    async def test_a_step_cannot_be_asked_for_another_grant(self, context: StepContext) -> None:
         """The grant is the step name; ``grant_type`` is not even an input key."""
         with pytest.raises(ValueError, match="grant_type"):
             await OAuth2ClientCredentialsStep().invoke(
@@ -136,9 +135,7 @@ class TestOAuth2ClientCredentialsStep:
         assert post.call_args.kwargs["auth"] is None
 
     @pytest.mark.asyncio
-    async def test_publishes_the_access_token_for_later_steps(
-        self, context: StepContext
-    ) -> None:
+    async def test_publishes_the_access_token_for_later_steps(self, context: StepContext) -> None:
         with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             await OAuth2ClientCredentialsStep().invoke(
@@ -150,9 +147,7 @@ class TestOAuth2ClientCredentialsStep:
         assert context.get_variable("expires_in") == 300
 
     @pytest.mark.asyncio
-    async def test_basic_auth_keeps_credentials_out_of_the_form(
-        self, context: StepContext
-    ) -> None:
+    async def test_basic_auth_keeps_credentials_out_of_the_form(self, context: StepContext) -> None:
         with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             await OAuth2ClientCredentialsStep().invoke(
@@ -169,9 +164,7 @@ class TestOAuth2ClientCredentialsStep:
         assert "client_secret" not in post.call_args.kwargs["data"]
 
     @pytest.mark.asyncio
-    async def test_a_missing_token_url_fails_before_the_request(
-        self, context: StepContext
-    ) -> None:
+    async def test_a_missing_token_url_fails_before_the_request(self, context: StepContext) -> None:
         with pytest.raises(ValueError, match="token_url: Field required"):
             await OAuth2ClientCredentialsStep().invoke({}, context, _definition())
 
@@ -211,9 +204,7 @@ class TestOAuth2ClientCredentialsStep:
         assert post.call_args.kwargs["data"]["client_secret"] == "s3cret"
 
     @pytest.mark.asyncio
-    async def test_extra_fields_are_merged_into_the_form(
-        self, context: StepContext
-    ) -> None:
+    async def test_extra_fields_are_merged_into_the_form(self, context: StepContext) -> None:
         with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             await OAuth2ClientCredentialsStep().invoke(
@@ -230,9 +221,7 @@ class TestOAuth2ClientCredentialsStep:
 
 class TestOAuth2PasswordStep:
     @pytest.mark.asyncio
-    async def test_password_grant_sends_owner_credentials(
-        self, context: StepContext
-    ) -> None:
+    async def test_password_grant_sends_owner_credentials(self, context: StepContext) -> None:
         with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             await OAuth2PasswordStep().invoke(
@@ -264,9 +253,7 @@ class TestOAuth2PasswordStep:
 
 class TestOAuth2RefreshTokenStep:
     @pytest.mark.asyncio
-    async def test_refresh_grant_exchanges_the_refresh_token(
-        self, context: StepContext
-    ) -> None:
+    async def test_refresh_grant_exchanges_the_refresh_token(self, context: StepContext) -> None:
         with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
             post.return_value = _response()
             await OAuth2RefreshTokenStep().invoke(
@@ -283,9 +270,7 @@ class TestOAuth2RefreshTokenStep:
         assert form["refresh_token"] == "the-old-one"
 
     @pytest.mark.asyncio
-    async def test_refresh_grant_requires_the_refresh_token(
-        self, context: StepContext
-    ) -> None:
+    async def test_refresh_grant_requires_the_refresh_token(self, context: StepContext) -> None:
         with pytest.raises(ValueError, match="refresh_token"):
             await OAuth2RefreshTokenStep().invoke(
                 {"token_url": _TOKEN_URL},

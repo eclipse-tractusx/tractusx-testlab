@@ -75,9 +75,7 @@ class InboundCallOutput(StepPayload):
         default_factory=dict, description="Query string parameters of the inbound request."
     )
     request_body: Any = Field(default=None, description="Body of the inbound request.")
-    elapsed_ms: int = Field(
-        description="Milliseconds spent waiting before the request arrived."
-    )
+    elapsed_ms: int = Field(description="Milliseconds spent waiting before the request arrived.")
 
 
 @step("mock/wait/http_request")

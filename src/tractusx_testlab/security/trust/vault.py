@@ -65,10 +65,13 @@ class VaultClient:
 
     def store_key(self, name: str, private_pem: bytes, public_pem: bytes) -> None:
         """Convenience: store a key pair in Vault."""
-        self.write_secret(name, {
-            "private_key": private_pem.decode(),
-            "public_key": public_pem.decode(),
-        })
+        self.write_secret(
+            name,
+            {
+                "private_key": private_pem.decode(),
+                "public_key": public_pem.decode(),
+            },
+        )
 
     def load_key(self, name: str) -> tuple[bytes, bytes] | None:
         """Convenience: load a key pair from Vault. Returns (private, public) or None."""

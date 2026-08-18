@@ -87,8 +87,7 @@ SHELL_DESCRIPTOR = {
 
 # The path a real test uses: it names no idShort and no index.
 _HREF_PATH = (
-    "submodelDescriptors.endpoints[interface='SUBMODEL-VALUE-3.1']"
-    ".protocolInformation.href"
+    "submodelDescriptors.endpoints[interface='SUBMODEL-VALUE-3.1'].protocolInformation.href"
 )
 
 
@@ -198,12 +197,15 @@ class TestJsonPathExtractPredicates:
         path = "submodelDescriptors[idShort=Missing].id"
         with pytest.raises(KeyError, match="No element in 'submodelDescriptors'"):
             await JsonPathExtractStep().invoke(
-                {"input": "dt_body", "path": path}, context, self._definition(),
+                {"input": "dt_body", "path": path},
+                context,
+                self._definition(),
             )
 
     @pytest.mark.asyncio
     async def test_source_may_be_resolved_object_not_only_a_name(
-        self, context: StepContext,
+        self,
+        context: StepContext,
     ) -> None:
         # A ``${{ }}`` expression resolves before the step runs, so ``source``
         # arrives as the dict itself rather than a variable name.  This must not
@@ -219,7 +221,9 @@ class TestJsonPathExtractPredicates:
     async def test_missing_named_source_raises_key_error(self, context: StepContext) -> None:
         with pytest.raises(KeyError, match="Context variable 'nope' not found"):
             await JsonPathExtractStep().invoke(
-                {"input": "nope", "path": "a"}, context, self._definition(),
+                {"input": "nope", "path": "a"},
+                context,
+                self._definition(),
             )
 
     @pytest.mark.asyncio

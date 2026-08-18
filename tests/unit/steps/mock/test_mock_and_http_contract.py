@@ -90,9 +90,7 @@ class TestMockEndpoint:
         assert output.value["mock"]["endpoint_id"] == "ack"
 
     @pytest.mark.asyncio
-    async def test_response_headers_are_part_of_the_canned_reply(
-        self, context: MagicMock
-    ) -> None:
+    async def test_response_headers_are_part_of_the_canned_reply(self, context: MagicMock) -> None:
         """C31 — a mock standing in for a real API has to answer like one."""
         await MockEndpointStep().invoke(
             {
@@ -106,18 +104,12 @@ class TestMockEndpoint:
         assert get_mock(_PATH, "POST").headers == {"content-type": "application/json"}
 
     @pytest.mark.asyncio
-    async def test_a_mock_with_no_headers_answers_with_none(
-        self, context: MagicMock
-    ) -> None:
-        await MockEndpointStep().invoke(
-            {"path": _PATH}, context, _definition("mock/api")
-        )
+    async def test_a_mock_with_no_headers_answers_with_none(self, context: MagicMock) -> None:
+        await MockEndpointStep().invoke({"path": _PATH}, context, _definition("mock/api"))
         assert get_mock(_PATH, "POST").headers == {}
 
     @pytest.mark.asyncio
-    async def test_a_path_without_its_leading_slash_still_matches(
-        self, context: MagicMock
-    ) -> None:
+    async def test_a_path_without_its_leading_slash_still_matches(self, context: MagicMock) -> None:
         output = await MockEndpointStep().invoke(
             {"path": "callback"}, context, _definition("mock/api")
         )
@@ -146,9 +138,7 @@ class TestWaitForCall:
         registered = await MockEndpointStep().invoke(
             {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
         )
-        manager.resolve(
-            _PATH, "POST", {"x-trace": "1"}, {"status": "RECEIVED"}, {"page": "2"}
-        )
+        manager.resolve(_PATH, "POST", {"x-trace": "1"}, {"status": "RECEIVED"}, {"page": "2"})
 
         output = await WaitForCallStep().invoke(
             {"mock": registered.value["mock"], "timeout_s": 1},
@@ -162,9 +152,7 @@ class TestWaitForCall:
         assert output.value["request_body"] == {"status": "RECEIVED"}
 
     @pytest.mark.asyncio
-    async def test_the_query_string_the_sut_sent_is_readable(
-        self, context: MagicMock
-    ) -> None:
+    async def test_the_query_string_the_sut_sent_is_readable(self, context: MagicMock) -> None:
         """C39 — a callback's query parameters are part of what arrived."""
         manager = CallbackManager()
         set_callback_manager(manager)
@@ -199,9 +187,7 @@ class TestWaitForCall:
         assert output.value["elapsed_ms"] >= 0
 
     @pytest.mark.asyncio
-    async def test_a_call_that_never_arrives_fails_the_step(
-        self, context: MagicMock
-    ) -> None:
+    async def test_a_call_that_never_arrives_fails_the_step(self, context: MagicMock) -> None:
         set_callback_manager(CallbackManager())
         registered = await MockEndpointStep().invoke(
             {"path": _PATH}, context, _definition("mock/api")
@@ -218,7 +204,6 @@ class TestWaitForCall:
 # ---------------------------------------------------------------------------
 # C30 — query parameters on the plain HTTP step
 # ---------------------------------------------------------------------------
-
 
 
 def _http_response(url: str, body: object, headers: dict[str, str] | None = None) -> MagicMock:
@@ -244,7 +229,8 @@ class TestHttpRequestQueryParams:
         response = _http_response("https://api.example.com?a=1", {"ok": True})
 
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             return_value=response,
         ) as request:
             await HttpRequestStep().invoke(
@@ -262,7 +248,8 @@ class TestHttpRequestQueryParams:
         response = _http_response("https://api.example.com", {})
 
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             return_value=response,
         ) as request:
             await HttpRequestStep().invoke(
@@ -272,14 +259,13 @@ class TestHttpRequestQueryParams:
         assert request.call_args.kwargs["params"] is None
 
     @pytest.mark.asyncio
-    async def test_the_reported_url_is_the_one_actually_called(
-        self, context: MagicMock
-    ) -> None:
+    async def test_the_reported_url_is_the_one_actually_called(self, context: MagicMock) -> None:
         """A request logged without its query string cannot be replayed."""
         response = _http_response("https://api.example.com?a=1", {})
 
         with patch(
-            "tractusx_testlab.steps.http_client.request", new_callable=AsyncMock,
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
             return_value=response,
         ):
             output = await HttpRequestStep().invoke(

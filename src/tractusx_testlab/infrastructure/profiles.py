@@ -30,8 +30,14 @@ is a typed object passed at construction rather than a set of strings the
 engine hopes to find in its variables::
 
     from tractusx_testlab import (
-        ConnectorBinding, DtrBinding, EngineBindings, EngineDtrBinding,
-        Infrastructure, InfrastructureManager, SutBindings, TestlabPlayer,
+        ConnectorBinding,
+        DtrBinding,
+        EngineBindings,
+        EngineDtrBinding,
+        Infrastructure,
+        InfrastructureManager,
+        SutBindings,
+        TestlabPlayer,
     )
 
     integration = Infrastructure(
@@ -275,7 +281,8 @@ class InfrastructureManager:
             logger.warning(
                 "TCK targets ecosystem release '%s', which is not one the engine knows (%s) — "
                 "the SDK will decide whether it can build services for it",
-                release, ", ".join(KNOWN_RELEASES),
+                release,
+                ", ".join(KNOWN_RELEASES),
             )
 
         conflicts: list[tuple[str, str, str, str, str]] = []

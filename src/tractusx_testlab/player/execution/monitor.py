@@ -137,18 +137,24 @@ class ExecutionMonitor:
         phase: str = "main",
     ) -> None:
         """Publish a step_started event."""
-        self._publish(StepStartedEvent(
-            job_id=job_id,
-            script=script,
-            step_id=step_id,
-            step_index=step_index,
-            step_type=step_type,
-            step_name=step_name,
-            phase=phase,
-        ))
+        self._publish(
+            StepStartedEvent(
+                job_id=job_id,
+                script=script,
+                step_id=step_id,
+                step_index=step_index,
+                step_type=step_type,
+                step_name=step_name,
+                phase=phase,
+            )
+        )
 
     def on_step_completed(
-        self, job_id: str, script: str, step_id: str | None, result: StepResult,
+        self,
+        job_id: str,
+        script: str,
+        step_id: str | None,
+        result: StepResult,
     ) -> None:
         """Publish one assertion_result event per assertion, then the step outcome.
 
@@ -157,25 +163,35 @@ class ExecutionMonitor:
         so a consumer never has to sniff ``step_type`` to know what happened.
         """
         for index, assertion_result in enumerate(result.assertions):
-            self._publish(AssertionResultEvent(
-                job_id=job_id,
-                script=script,
-                step_id=step_id,
-                step_name=result.step_name,
-                index=index,
-                assertion=assertion_result,
-            ))
+            self._publish(
+                AssertionResultEvent(
+                    job_id=job_id,
+                    script=script,
+                    step_id=step_id,
+                    step_name=result.step_name,
+                    index=index,
+                    assertion=assertion_result,
+                )
+            )
 
         if result.status == StepStatus.FAILED:
-            self._publish(StepFailedEvent(job_id=job_id, script=script, step_id=step_id, result=result))
+            self._publish(
+                StepFailedEvent(job_id=job_id, script=script, step_id=step_id, result=result)
+            )
         elif result.status == StepStatus.SKIPPED:
-            self._publish(StepSkippedEvent(job_id=job_id, script=script, step_id=step_id, result=result))
+            self._publish(
+                StepSkippedEvent(job_id=job_id, script=script, step_id=step_id, result=result)
+            )
         else:
-            self._publish(StepCompletedEvent(job_id=job_id, script=script, step_id=step_id, result=result))
+            self._publish(
+                StepCompletedEvent(job_id=job_id, script=script, step_id=step_id, result=result)
+            )
 
     def on_step_waiting(self, job_id: str, step_index: int, listener_url: str) -> None:
         """Publish a step_waiting event."""
-        self._publish(StepWaitingEvent(job_id=job_id, step_index=step_index, listener_url=listener_url))
+        self._publish(
+            StepWaitingEvent(job_id=job_id, step_index=step_index, listener_url=listener_url)
+        )
 
     # ------------------------------------------------------------------
     # Package verification (pre-execution — no job exists yet)

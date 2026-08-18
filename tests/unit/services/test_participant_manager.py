@@ -77,7 +77,8 @@ class TestBpnlFormat:
 
 class TestParticipantManagerCore:
     def test_get_or_create_returns_participant(
-        self, participant_manager: FileSystemParticipantManager,
+        self,
+        participant_manager: FileSystemParticipantManager,
     ) -> None:
         p = participant_manager.get_or_create("Alpha Corp")
         assert isinstance(p, Participant)
@@ -85,37 +86,43 @@ class TestParticipantManagerCore:
         assert p.bpnl.startswith("BPNL")
 
     def test_get_or_create_is_idempotent(
-        self, participant_manager: FileSystemParticipantManager,
+        self,
+        participant_manager: FileSystemParticipantManager,
     ) -> None:
         p1 = participant_manager.get_or_create("Repeat Inc")
         p2 = participant_manager.get_or_create("Repeat Inc")
         assert p1 == p2
 
     def test_get_returns_none_for_unknown(
-        self, participant_manager: FileSystemParticipantManager,
+        self,
+        participant_manager: FileSystemParticipantManager,
     ) -> None:
         assert participant_manager.get("ghost") is None
 
     def test_get_returns_existing(
-        self, participant_manager: FileSystemParticipantManager,
+        self,
+        participant_manager: FileSystemParticipantManager,
     ) -> None:
         created = participant_manager.get_or_create("Findable")
         assert participant_manager.get("Findable") == created
 
     def test_empty_name_raises(
-        self, participant_manager: FileSystemParticipantManager,
+        self,
+        participant_manager: FileSystemParticipantManager,
     ) -> None:
         with pytest.raises(ValueError, match="must not be empty"):
             participant_manager.get_or_create("")
 
     def test_whitespace_only_name_raises(
-        self, participant_manager: FileSystemParticipantManager,
+        self,
+        participant_manager: FileSystemParticipantManager,
     ) -> None:
         with pytest.raises(ValueError, match="must not be empty"):
             participant_manager.get_or_create("   ")
 
     def test_strips_leading_trailing_whitespace(
-        self, participant_manager: FileSystemParticipantManager,
+        self,
+        participant_manager: FileSystemParticipantManager,
     ) -> None:
         p = participant_manager.get_or_create("  Trimmed  ")
         assert p.name == "Trimmed"
@@ -128,7 +135,8 @@ class TestParticipantManagerCore:
 
 class TestParticipantManagerPersistence:
     def test_new_instance_finds_existing(
-        self, tmp_participants_dir: Path,
+        self,
+        tmp_participants_dir: Path,
     ) -> None:
         mgr1 = FileSystemParticipantManager(tmp_participants_dir)
         mgr1.get_or_create("Persisted Co")
@@ -137,7 +145,8 @@ class TestParticipantManagerPersistence:
         assert mgr2.get("Persisted Co") is not None
 
     def test_storage_file_is_valid_json(
-        self, tmp_participants_dir: Path,
+        self,
+        tmp_participants_dir: Path,
         participant_manager: FileSystemParticipantManager,
     ) -> None:
         participant_manager.get_or_create("JSON Check")
@@ -148,7 +157,8 @@ class TestParticipantManagerPersistence:
         assert "JSON Check" in raw["participants"]
 
     def test_multiple_participants_stored_and_retrievable(
-        self, participant_manager: FileSystemParticipantManager,
+        self,
+        participant_manager: FileSystemParticipantManager,
     ) -> None:
         names = ["Alpha", "Bravo", "Charlie"]
         for name in names:
@@ -167,7 +177,8 @@ class TestParticipantManagerPersistence:
 
 class TestParticipantModel:
     def test_participant_is_frozen(
-        self, participant_manager: FileSystemParticipantManager,
+        self,
+        participant_manager: FileSystemParticipantManager,
     ) -> None:
         p = participant_manager.get_or_create("Frozen Corp")
         with pytest.raises(Exception):

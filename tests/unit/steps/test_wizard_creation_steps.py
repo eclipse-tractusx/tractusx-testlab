@@ -276,9 +276,7 @@ class TestWizardCreateSubmodelDescriptor:
         ).submodel_document()
         (endpoint,) = document["endpoints"]
         assert endpoint["interface"] == "SUBMODEL-3.0"
-        assert endpoint["protocolInformation"]["href"] == (
-            "https://dataplane.example.com/submodel"
-        )
+        assert endpoint["protocolInformation"]["href"] == ("https://dataplane.example.com/submodel")
 
     def test_the_asset_and_control_plane_become_the_subprotocol_body(self) -> None:
         document = WizardCreateSubmodelDescriptorParams(
@@ -362,9 +360,7 @@ class TestWizardCreateSubmodelDescriptor:
             dsp_endpoint="https://provider.example.com/api/v1/dsp",
         ).submodel_document()
         (endpoint,) = document["endpoints"]
-        assert endpoint["protocolInformation"]["href"] == (
-            "https://dataplane.example.com/submodel"
-        )
+        assert endpoint["protocolInformation"]["href"] == ("https://dataplane.example.com/submodel")
 
     @pytest.mark.asyncio
     async def test_the_suffix_is_on_the_href_the_registry_is_actually_sent(

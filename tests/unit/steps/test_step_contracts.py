@@ -187,7 +187,7 @@ class TestOutputMustBeTheDeclaredModel:
         assert bound.value == {"ok": False}
 
     def test_none_stays_none(self) -> None:
-        """"Produced nothing on this path" is not the same as an empty payload."""
+        """ "Produced nothing on this path" is not the same as an empty payload."""
         assert _DeclaredStep.bind_output(StepOutput(value=None)).value is None
 
     def test_of_binds_a_counterparts_document(self) -> None:

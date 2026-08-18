@@ -312,9 +312,7 @@ class TestWhatANestedStepPublishes:
     either step's contract.
     """
 
-    async def test_a_nested_step_publishes_its_fields_flatly(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_nested_step_publishes_its_fields_flatly(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "branch",
@@ -335,9 +333,7 @@ class TestWhatANestedStepPublishes:
 
         assert outcome.variables["full_mock_url"]
 
-    async def test_a_nested_step_is_not_reachable_by_its_id(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_nested_step_is_not_reachable_by_its_id(self, harness: Harness) -> None:
         """``${{ execution.mint.value }}`` does not resolve from inside a branch."""
         outcome = await harness.run(
             {
@@ -365,9 +361,7 @@ class TestWhatANestedStepPublishes:
         assert not outcome.passed
         assert "execution.mint.value" in (outcome.error("echo") or "")
 
-    async def test_the_wrapper_carries_the_nested_outputs_instead(
-        self, harness: Harness
-    ) -> None:
+    async def test_the_wrapper_carries_the_nested_outputs_instead(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "branch",
@@ -415,9 +409,7 @@ class TestFlowStepsInsideFlowSteps:
                             "id": "inner",
                             "uses": "flow/if",
                             "with": {
-                                "conditions": [
-                                    {"input": "always", "operator": "not_null"}
-                                ],
+                                "conditions": [{"input": "always", "operator": "not_null"}],
                                 "then": [
                                     {
                                         "id": "gate",
@@ -488,9 +480,7 @@ class TestFlowStepsInsideFlowSteps:
 class TestDelayBetweenSteps:
     """``flow/delay`` sits in a chain without disturbing what flows through it."""
 
-    async def test_a_delay_does_not_interrupt_the_chain(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_delay_does_not_interrupt_the_chain(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "mint",

@@ -52,7 +52,11 @@ def build_instructions(
     step_symbols: list[dict[str, Any]] = []
     global_index = 0
 
-    for phase, steps in [("setup", setup_steps), ("main", main_steps), ("teardown", teardown_steps)]:
+    for phase, steps in [
+        ("setup", setup_steps),
+        ("main", main_steps),
+        ("teardown", teardown_steps),
+    ]:
         for phase_index, step in enumerate(steps):
             instruction = _build_instruction(step, global_index, phase, phase_index)
             instructions.append(instruction)
@@ -75,24 +79,33 @@ def _source_for_phase(phase: str) -> str:
 
 
 def _collect_step_symbols(
-    step: dict[str, Any], global_index: int, source: str,
+    step: dict[str, Any],
+    global_index: int,
+    source: str,
     step_symbols: list[dict[str, Any]],
 ) -> None:
     """Collect output symbols from a step definition."""
     returns = step.get("returns", {})
     for field_name, field_def in returns.items():
-        step_symbols.append({
-            "id": step.get("id", ""),
-            "field": field_name,
-            "type": field_def.get("type", "string") if isinstance(field_def, dict) else "string",
-            "class": field_def.get("class", "") if isinstance(field_def, dict) else "",
-            "produced_by": global_index,
-            "source": source,
-        })
+        step_symbols.append(
+            {
+                "id": step.get("id", ""),
+                "field": field_name,
+                "type": field_def.get("type", "string")
+                if isinstance(field_def, dict)
+                else "string",
+                "class": field_def.get("class", "") if isinstance(field_def, dict) else "",
+                "produced_by": global_index,
+                "source": source,
+            }
+        )
 
 
 def _build_instruction(
-    step: dict[str, Any], index: int, phase: str, phase_index: int,
+    step: dict[str, Any],
+    index: int,
+    phase: str,
+    phase_index: int,
 ) -> dict[str, Any]:
     """Build a single instruction entry from a step definition."""
     with_block = step.get("with", {})
@@ -103,8 +116,7 @@ def _build_instruction(
     for field_name, field_def in returns.items():
         if isinstance(field_def, dict):
             resolved_returns[field_name] = {
-                k: v for k, v in field_def.items()
-                if k in ("type", "class")
+                k: v for k, v in field_def.items() if k in ("type", "class")
             }
         else:
             resolved_returns[field_name] = {"type": "string"}
@@ -180,12 +192,18 @@ def compute_source_hash(path: Path) -> str:
 def _infer_type(value: Any) -> str:
     """Infer the IR type string from a Python value."""
     match value:
-        case bool(): return "boolean"
-        case int(): return "integer"
-        case float(): return "number"
-        case list(): return "array"
-        case dict(): return "object"
-        case _: return "string"
+        case bool():
+            return "boolean"
+        case int():
+            return "integer"
+        case float():
+            return "number"
+        case list():
+            return "array"
+        case dict():
+            return "object"
+        case _:
+            return "string"
 
 
 def infer_testdata_type(filename: str) -> str:

@@ -91,7 +91,10 @@ class TestAssetSeeding:
 
     @pytest.mark.parametrize("layout", ["", "assets"], ids=["raw", "compiled"])
     def test_schemas_are_seeded(
-        self, context: StepContext, tmp_path: Path, layout: str,
+        self,
+        context: StepContext,
+        tmp_path: Path,
+        layout: str,
     ) -> None:
         _write_assets(tmp_path, layout)
         seed_context_variables(context, _make_tck(tmp_path), None)
@@ -101,7 +104,10 @@ class TestAssetSeeding:
 
     @pytest.mark.parametrize("layout", ["", "assets"], ids=["raw", "compiled"])
     def test_testdata_is_seeded(
-        self, context: StepContext, tmp_path: Path, layout: str,
+        self,
+        context: StepContext,
+        tmp_path: Path,
+        layout: str,
     ) -> None:
         _write_assets(tmp_path, layout)
         seed_context_variables(context, _make_tck(tmp_path), None)
@@ -110,14 +116,18 @@ class TestAssetSeeding:
         assert context.get_variable("env.testdata.body") == _TESTDATA
 
     def test_missing_asset_is_skipped_without_raising(
-        self, context: StepContext, tmp_path: Path,
+        self,
+        context: StepContext,
+        tmp_path: Path,
     ) -> None:
         seed_context_variables(context, _make_tck(tmp_path), None)
 
         assert context.get_variable("schemas.cert_schema") is None
 
     def test_schema_reference_resolves_in_step_params(
-        self, context: StepContext, tmp_path: Path,
+        self,
+        context: StepContext,
+        tmp_path: Path,
     ) -> None:
         _write_assets(tmp_path, "assets")
         seed_context_variables(context, _make_tck(tmp_path), None)

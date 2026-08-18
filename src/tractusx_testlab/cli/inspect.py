@@ -51,31 +51,40 @@ from tractusx_testlab.cli._inspect_report import (
 def inspect(
     package: Path = typer.Argument(..., help="Path to a .tck package."),
     player_keys: Path | None = typer.Option(
-        None, "--player-keys", "-k",
+        None,
+        "--player-keys",
+        "-k",
         help="Directory with the player identity (encryption.pem). Required if encrypted.",
     ),
     compiler_pub: Path | None = typer.Option(
-        None, "--compiler-pub", "-c",
+        None,
+        "--compiler-pub",
+        "-c",
         help="The compiler's signing public key (signing.pub). Required if encrypted.",
     ),
     show_variables: bool = typer.Option(
-        False, "--variables",
+        False,
+        "--variables",
         help="Show declared variables with their source and scope.",
     ),
     show_infrastructure: bool = typer.Option(
-        False, "--infrastructure",
+        False,
+        "--infrastructure",
         help="Show infrastructure capability requirements (engine and SUT sides).",
     ),
     show_manifest: bool = typer.Option(
-        False, "--manifest",
+        False,
+        "--manifest",
         help="Show the package manifest: identity, checksum, signer, players.",
     ),
     extract: Path | None = typer.Option(
-        None, "--extract",
+        None,
+        "--extract",
         help="Write the package's verified contents to this directory.",
     ),
     as_json: bool = typer.Option(
-        False, "--json",
+        False,
+        "--json",
         help="Output as JSON. Combines all requested sections into one object.",
     ),
 ) -> None:

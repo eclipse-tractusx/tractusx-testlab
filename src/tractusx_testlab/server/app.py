@@ -118,8 +118,11 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
 
         callbacks: CallbackManager = app.state.callbacks
         mock = resolve_mock(
-            full_path, method,
-            headers=headers, query_params=dict(request.query_params), body=body,
+            full_path,
+            method,
+            headers=headers,
+            query_params=dict(request.query_params),
+            body=body,
         )
 
         # A path no step opened is refused. `resolve` buffers a call nothing is
@@ -131,12 +134,12 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
             raise HTTPException(404, f"No mock or listener for {method} {full_path}")
 
         # Resolve the callback listener (so wait_for_call steps unblock)
-        matched = callbacks.resolve(
-            full_path, method, headers, body, dict(request.query_params)
-        )
+        matched = callbacks.resolve(full_path, method, headers, body, dict(request.query_params))
         if mock is not None:
             _safe_path = full_path[:80].replace("\n", "").replace("\r", "")
-            _logger.debug("Mock catch-all matched %s %s -> %d", method, _safe_path, mock.status_code)
+            _logger.debug(
+                "Mock catch-all matched %s %s -> %d", method, _safe_path, mock.status_code
+            )
             return JSONResponse(
                 content=mock.body, status_code=mock.status_code, headers=mock.headers or None
             )

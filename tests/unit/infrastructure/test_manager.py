@@ -84,9 +84,7 @@ def _staging() -> Infrastructure:
 def _requires(**capabilities: bool) -> InfrastructureConfig:
     """Build a TCK requirement block for the SUT side."""
     return InfrastructureConfig(
-        sut={
-            key: CapabilityRequirement(required=value) for key, value in capabilities.items()
-        },  # type: ignore[arg-type]
+        sut={key: CapabilityRequirement(required=value) for key, value in capabilities.items()},  # type: ignore[arg-type]
     )
 
 
@@ -226,7 +224,8 @@ def _requires_standard(capability: str, standard_id: str, version: str | None = 
     return InfrastructureConfig(
         sut={
             capability: CapabilityRequirement(
-                required=True, standard=Standard(id=standard_id, version=version),
+                required=True,
+                standard=Standard(id=standard_id, version=version),
             ),
         },  # type: ignore[arg-type]
     )
@@ -257,12 +256,15 @@ class TestAlign:
         deployment = Infrastructure(
             sut=SutBindings(
                 connector=ConnectorBinding(
-                    management_url="https://sut/management", version="jupiter",
+                    management_url="https://sut/management",
+                    version="jupiter",
                 ),
             ),
         )
         aligned = InfrastructureManager(deployment).align(
-            InfrastructureConfig(), "jupiter", release_stated=False,
+            InfrastructureConfig(),
+            "jupiter",
+            release_stated=False,
         )
         assert aligned.sut.connector.version == "jupiter"
 
@@ -270,7 +272,8 @@ class TestAlign:
         deployment = Infrastructure(
             sut=SutBindings(
                 connector=ConnectorBinding(
-                    management_url="https://sut/management", version="jupiter",
+                    management_url="https://sut/management",
+                    version="jupiter",
                 ),
             ),
         )
@@ -283,12 +286,15 @@ class TestAlign:
         deployment = Infrastructure(
             sut=SutBindings(
                 connector=ConnectorBinding(
-                    management_url="https://sut/management", version="jupiter",
+                    management_url="https://sut/management",
+                    version="jupiter",
                 ),
             ),
         )
         aligned = InfrastructureManager(deployment).align(
-            _requires(connector=True), "saturn", release_stated=False,
+            _requires(connector=True),
+            "saturn",
+            release_stated=False,
         )
         assert aligned.sut.connector.version == "jupiter"
 
@@ -313,13 +319,15 @@ class TestAlign:
         deployment = Infrastructure(
             sut=SutBindings(
                 connector=ConnectorBinding(
-                    management_url="https://sut/management", standard="CX-0018",
+                    management_url="https://sut/management",
+                    standard="CX-0018",
                 ),
             ),
         )
         with pytest.raises(StandardConflictError):
             InfrastructureManager(deployment).align(
-                _requires_standard("connector", "CX-0126"), "saturn",
+                _requires_standard("connector", "CX-0126"),
+                "saturn",
             )
 
     def test_the_default_standard_never_conflicts_with_a_stated_one(self) -> None:
@@ -327,7 +335,8 @@ class TestAlign:
         deployment = Infrastructure(
             sut=SutBindings(
                 connector=ConnectorBinding(
-                    management_url="https://sut/management", standard="CX-0126",
+                    management_url="https://sut/management",
+                    standard="CX-0126",
                 ),
             ),
         )

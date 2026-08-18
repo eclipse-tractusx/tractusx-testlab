@@ -58,9 +58,7 @@ from tractusx_testlab.steps.digital_twin.submodel import (
 _USES = "digital-twin/submodel/upload"
 _DELETE_USES = "digital-twin/submodel/delete"
 _SEMANTIC_ID = "urn:samm:io.catenax.serial_part:3.0.0#SerialPart"
-_ENCODED_SEMANTIC_ID = (
-    "urn%3Asamm%3Aio.catenax.serial_part%3A3.0.0%23SerialPart"
-)
+_ENCODED_SEMANTIC_ID = "urn%3Asamm%3Aio.catenax.serial_part%3A3.0.0%23SerialPart"
 
 
 def _context(submodel_server_url: str) -> MagicMock:
@@ -201,10 +199,7 @@ async def test_it_publishes_the_server_and_the_path_apart(monkeypatch) -> None:
     # test that only ever saw the joined URL would have to parse it back apart.
     assert output.value["source_url"] == "https://backend.example.com/data"
     assert output.value["path"] == f"{_ENCODED_SEMANTIC_ID}/urn:uuid:abc"
-    assert (
-        output.value["backend_url"]
-        == f"{output.value['source_url']}/{output.value['path']}"
-    )
+    assert output.value["backend_url"] == f"{output.value['source_url']}/{output.value['path']}"
 
 
 @pytest.mark.parametrize(
@@ -214,9 +209,7 @@ async def test_it_publishes_the_server_and_the_path_apart(monkeypatch) -> None:
 def test_surrounding_slashes_are_punctuation_not_id(given: str, stored: str | None) -> None:
     # `/urn:uuid:abc/` and `urn:uuid:abc` name the same submodel; the step must
     # not turn the difference into a double slash or an empty segment.
-    assert (
-        UploadBackendDataParams(data={"test": True}, submodel_id=given).submodel_id == stored
-    )
+    assert UploadBackendDataParams(data={"test": True}, submodel_id=given).submodel_id == stored
 
 
 @pytest.mark.asyncio

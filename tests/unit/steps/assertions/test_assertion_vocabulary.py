@@ -55,11 +55,25 @@ class TestOperatorVocabulary:
 
     def test_the_ratified_operator_set_is_complete(self) -> None:
         assert {
-            "not_null", "is_null", "not_empty",
-            "equals", "not_equals", "contains", "not_contains", "matches_regex",
-            "one_of", "none_of", "has_key", "not_has_key",
-            "gt", "gte", "lt", "lte",
-            "length_equals", "length_gt", "length_lt",
+            "not_null",
+            "is_null",
+            "not_empty",
+            "equals",
+            "not_equals",
+            "contains",
+            "not_contains",
+            "matches_regex",
+            "one_of",
+            "none_of",
+            "has_key",
+            "not_has_key",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "length_equals",
+            "length_gt",
+            "length_lt",
             "between",
         } == OPERATORS
 
@@ -78,25 +92,43 @@ class TestBetween:
     """``between`` reads min/max — the IDE's assert_between block emits exactly this."""
 
     def test_a_value_inside_the_range_passes(self) -> None:
-        result = _run({"status_code": 204}, "validate/assert",
-                      input="status_code", operator="between", min=200, max=299)
+        result = _run(
+            {"status_code": 204},
+            "validate/assert",
+            input="status_code",
+            operator="between",
+            min=200,
+            max=299,
+        )
         assert result.passed, result.message
 
     def test_a_value_outside_the_range_fails(self) -> None:
-        result = _run({"status_code": 500}, "validate/assert",
-                      input="status_code", operator="between", min=200, max=299)
+        result = _run(
+            {"status_code": 500},
+            "validate/assert",
+            input="status_code",
+            operator="between",
+            min=200,
+            max=299,
+        )
         assert not result.passed
         assert "between" in result.message
 
     def test_a_missing_bound_is_reported_not_ignored(self) -> None:
-        result = _run({"status_code": 204}, "validate/assert",
-                      input="status_code", operator="between", min=200)
+        result = _run(
+            {"status_code": 204},
+            "validate/assert",
+            input="status_code",
+            operator="between",
+            min=200,
+        )
         assert not result.passed
         assert "min" in result.message and "max" in result.message
 
     def test_the_suffix_spelling_means_the_same_thing(self) -> None:
-        result = _run({"status_code": 204}, "validate/assert/between",
-                      input="status_code", min=200, max=299)
+        result = _run(
+            {"status_code": 204}, "validate/assert/between", input="status_code", min=200, max=299
+        )
         assert result.passed, result.message
 
 
@@ -110,19 +142,26 @@ class TestSchema:
     }
 
     def test_a_conforming_payload_passes(self) -> None:
-        result = _run({"response_body": {"id": "abc"}}, "validate/schema",
-                      input="response_body", schema=self._SCHEMA)
+        result = _run(
+            {"response_body": {"id": "abc"}},
+            "validate/schema",
+            input="response_body",
+            schema=self._SCHEMA,
+        )
         assert result.passed, result.message
 
     def test_a_non_conforming_payload_fails_for_the_right_reason(self) -> None:
-        result = _run({"response_body": {"id": 42}}, "validate/schema",
-                      input="response_body", schema=self._SCHEMA)
+        result = _run(
+            {"response_body": {"id": 42}},
+            "validate/schema",
+            input="response_body",
+            schema=self._SCHEMA,
+        )
         assert not result.passed
         assert "Schema validation failed" in result.message
 
     def test_a_missing_schema_names_the_missing_key(self) -> None:
-        result = _run({"response_body": {"id": "abc"}}, "validate/schema",
-                      input="response_body")
+        result = _run({"response_body": {"id": "abc"}}, "validate/schema", input="response_body")
         assert not result.passed
         assert "schema" in result.message
 
@@ -133,22 +172,31 @@ class TestFieldPath:
     _OUTPUT = {"response_body": {"header": {"messageId": "m-1"}, "content": []}}
 
     def test_the_path_selects_the_nested_field(self) -> None:
-        result = _run(self._OUTPUT, "validate/field",
-                      input="response_body", path="header.messageId",
-                      operator="equals", value="m-1")
+        result = _run(
+            self._OUTPUT,
+            "validate/field",
+            input="response_body",
+            path="header.messageId",
+            operator="equals",
+            value="m-1",
+        )
         assert result.passed, result.message
         assert result.actual == "m-1"
 
     def test_a_wrong_expectation_at_the_path_fails(self) -> None:
-        result = _run(self._OUTPUT, "validate/field",
-                      input="response_body", path="header.messageId",
-                      operator="equals", value="m-2")
+        result = _run(
+            self._OUTPUT,
+            "validate/field",
+            input="response_body",
+            path="header.messageId",
+            operator="equals",
+            value="m-2",
+        )
         assert not result.passed
         assert result.actual == "m-1"
 
     def test_without_a_path_the_whole_input_is_the_subject(self) -> None:
-        result = _run(self._OUTPUT, "validate/field",
-                      input="response_body", operator="not_null")
+        result = _run(self._OUTPUT, "validate/field", input="response_body", operator="not_null")
         assert result.passed, result.message
         assert result.actual == self._OUTPUT["response_body"]
 

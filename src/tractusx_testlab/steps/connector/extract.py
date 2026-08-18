@@ -52,9 +52,8 @@ def _find_dataset_by_type(datasets: list[dict], dct_type: str) -> dict | None:
     for dataset in datasets:
         dataset_type = dataset.get(_DCT_TYPE_KEY, {})
         is_match = (
-            (isinstance(dataset_type, dict) and dataset_type.get(_DCT_TYPE_ID_KEY) == dct_type)
-            or (isinstance(dataset_type, str) and dataset_type == dct_type)
-        )
+            isinstance(dataset_type, dict) and dataset_type.get(_DCT_TYPE_ID_KEY) == dct_type
+        ) or (isinstance(dataset_type, str) and dataset_type == dct_type)
         if is_match:
             return dataset
     return None
@@ -90,9 +89,7 @@ class ExtractDatasetOutput(StepPayload):
     dataset: dict | None = Field(
         default=None, description="The first dataset whose 'dct:type' matched."
     )
-    offer_id: str | None = Field(
-        default=None, description="Policy/offer ID of the first match."
-    )
+    offer_id: str | None = Field(default=None, description="Policy/offer ID of the first match.")
     asset_id: str | None = Field(default=None, description="Asset ID of the first match.")
 
 
@@ -118,7 +115,5 @@ class ExtractDatasetStep(BaseStep[ExtractDatasetParams, ExtractDatasetOutput]):
             asset_id = dataset.get(_ASSET_ID_KEY) or dataset.get("@id")
 
         return StepOutput(
-            value=ExtractDatasetOutput(
-                dataset=dataset, offer_id=offer_id, asset_id=asset_id
-            )
+            value=ExtractDatasetOutput(dataset=dataset, offer_id=offer_id, asset_id=asset_id)
         )

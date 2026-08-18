@@ -170,7 +170,9 @@ async def run_yaml(
 
 
 async def _execute_tck_bg(
-    player: TestlabPlayer, tck: Tck, job_id: str,
+    player: TestlabPlayer,
+    tck: Tck,
+    job_id: str,
 ) -> None:
     """Run a TCK in the background, emitting failure events on exception."""
     try:
@@ -178,7 +180,10 @@ async def _execute_tck_bg(
     except (RuntimeError, ValueError, OSError, KeyError, TypeError) as exc:
         _logger.warning("Background execution failed for job %s: %s", job_id, type(exc).__name__)
         player.monitor._emit(
-            "job.completed", job_id=job_id, status="FAILED", error=str(exc),
+            "job.completed",
+            job_id=job_id,
+            status="FAILED",
+            error=str(exc),
         )
         player.jobs.fail(job_id, str(exc))
 

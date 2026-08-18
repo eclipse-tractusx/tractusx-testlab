@@ -142,9 +142,7 @@ class InitiateTransferOutput(StepPayload):
     to the destination the request named, so there is no EDR to read back.
     """
 
-    transfer_id: str | None = Field(
-        default=None, description="ID of the transfer process."
-    )
+    transfer_id: str | None = Field(default=None, description="ID of the transfer process.")
     state: str | None = Field(
         default=None,
         description="State the transfer settled at, e.g. 'STARTED' or 'COMPLETED'.",
@@ -194,7 +192,9 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
         """Collect the EDR the negotiation produced and resolve its data address."""
         consumer = context.dataspace.consumer()
         negotiation_id = params.negotiation_id or context.get_str(NEGOTIATION_ID)
-        edr_entry = await sdk_call.run(consumer.get_edr_entry, negotiation_id=negotiation_id, verify=params.verify)
+        edr_entry = await sdk_call.run(
+            consumer.get_edr_entry, negotiation_id=negotiation_id, verify=params.verify
+        )
 
         transfer_id = _transfer_id(edr_entry)
         data_address = await fetch_data_address(consumer, transfer_id, params.verify)
@@ -226,9 +226,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
             request=HttpRequest(
                 method="POST", url=context.dataspace.consumer_endpoint_url("transfer_processes")
             ),
-            response=HttpResponse(
-                status_code=200, body=value.model_dump(mode="json")
-            ),
+            response=HttpResponse(status_code=200, body=value.model_dump(mode="json")),
         )
 
     async def _push(
@@ -259,9 +257,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
             verify=params.verify,
         )
 
-        value = InitiateTransferOutput(
-            transfer_id=transfer_id, state=transfer.get("state")
-        )
+        value = InitiateTransferOutput(transfer_id=transfer_id, state=transfer.get("state"))
         return StepOutput(
             value=value,
             request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),

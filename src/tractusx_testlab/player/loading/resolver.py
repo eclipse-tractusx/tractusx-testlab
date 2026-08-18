@@ -121,5 +121,3 @@ def resolve_params(params: dict, context: StepContext) -> dict:
     for key, value in params.items():
         resolved[key] = _resolve_value(value, context)
     return resolved
-
-

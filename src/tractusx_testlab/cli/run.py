@@ -42,23 +42,31 @@ from tractusx_testlab.cli._run_report import (
 def run(
     target: Path = typer.Argument(..., help="A TCK manifest (.yaml) or a compiled package (.tck)."),
     config_file: Path | None = typer.Option(
-        None, "--config", "-c",
+        None,
+        "--config",
+        "-c",
         help="YAML config file with variable overrides (e.g. saturn_tck_int.yaml).",
     ),
     player_keys: Path | None = typer.Option(
-        None, "--player-keys", "-k",
+        None,
+        "--player-keys",
+        "-k",
         help="Directory with the player identity (required for encrypted packages).",
     ),
     compiler_pub: Path | None = typer.Option(
-        None, "--compiler-pub",
+        None,
+        "--compiler-pub",
         help="Path to the compiler's signing.pub (required for encrypted packages).",
     ),
     var: list[str] | None = typer.Option(
-        None, "--var",
+        None,
+        "--var",
         help="Runtime variable override as KEY=VALUE. Can be repeated.",
     ),
     logs_dir: Path | None = typer.Option(
-        None, "--logs-dir", "-l",
+        None,
+        "--logs-dir",
+        "-l",
         help="Directory for log output. Defaults to ./logs in the current directory.",
     ),
 ) -> None:
@@ -182,9 +190,11 @@ def _load_tck(
     priv = pub = None
     if player_keys:
         from tractusx_testlab.security.crypto.keygen import load_private_key
+
         priv = load_private_key(player_keys / "encryption.pem")
     if compiler_pub:
         from tractusx_testlab.security.crypto.keygen import load_public_key
+
         pub = load_public_key(compiler_pub)
 
     return loader.load(target, player_private_key=priv, compiler_public_key=pub)

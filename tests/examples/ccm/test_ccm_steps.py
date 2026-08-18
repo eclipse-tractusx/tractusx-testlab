@@ -72,7 +72,9 @@ class TestJsonPathExtractStep:
     """Tests for util/json_path_extract step."""
 
     @pytest.mark.asyncio
-    async def test_extracts_nested_value(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_extracts_nested_value(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
         mock_context.variables["catalog"] = {"dcat:dataset": [{"id": "ds-1"}]}
         step = JsonPathExtractStep()
         result = await step.invoke(
@@ -81,29 +83,38 @@ class TestJsonPathExtractStep:
         assert result.value == "ds-1"
 
     @pytest.mark.asyncio
-    async def test_stores_in_variable(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_stores_in_variable(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
         mock_context.variables["data"] = {"key": "val"}
         step = JsonPathExtractStep()
         await step.invoke(
             {"input": "data", "path": "key", "store_in_variable": "extracted"},
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert mock_context.variables["extracted"] == "val"
 
     @pytest.mark.asyncio
-    async def test_missing_input_raises_key_error(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_missing_input_raises_key_error(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
         step = JsonPathExtractStep()
         with pytest.raises(ValueError, match="input: Field required"):
             await step.invoke({"path": "x"}, mock_context, definition)
 
     @pytest.mark.asyncio
-    async def test_nonexistent_variable_raises(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_nonexistent_variable_raises(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
         step = JsonPathExtractStep()
         with pytest.raises(KeyError, match="not found"):
             await step.invoke({"input": "missing", "path": "a"}, mock_context, definition)
 
     @pytest.mark.asyncio
-    async def test_path_no_match_raises(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_path_no_match_raises(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
         mock_context.variables["obj"] = {"a": 1}
         step = JsonPathExtractStep()
         with pytest.raises(KeyError):
@@ -130,7 +141,8 @@ class TestQueryCatalogWithFiltersStep:
         step = QueryCatalogWithFiltersStep()
         result = await step.invoke(
             {"counter_party_address": "http://provider:8080", "filters": []},
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert result.value["datasets"] == [{"@id": "asset-1"}]
         assert mock_context.variables["datasets"] == [{"@id": "asset-1"}]
@@ -145,7 +157,9 @@ class TestQueryCatalogWithFiltersStep:
 
         with pytest.raises(StepExecutionError, match="no catalog"):
             await QueryCatalogWithFiltersStep().invoke(
-                {"counter_party_address": "http://provider:8080"}, mock_context, definition,
+                {"counter_party_address": "http://provider:8080"},
+                mock_context,
+                definition,
             )
 
     @pytest.mark.asyncio
@@ -154,7 +168,9 @@ class TestQueryCatalogWithFiltersStep:
     ) -> None:
         consumer = MagicMock()
         consumer.get_filter_expression.side_effect = lambda key, value, operator: {
-            "operandLeft": key, "operator": operator, "operandRight": value,
+            "operandLeft": key,
+            "operator": operator,
+            "operandRight": value,
         }
         consumer.get_catalog_with_filter.return_value = {"dcat:dataset": []}
         mock_context.dataspace.consumer.return_value = consumer
@@ -164,7 +180,8 @@ class TestQueryCatalogWithFiltersStep:
                 "counter_party_address": "http://provider:8080",
                 "filters": [{"operand_left": "type", "operator": "=", "operand_right": "cert"}],
             },
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert consumer.get_catalog_with_filter.call_args.kwargs["filter_expression"] == [
             {"operandLeft": "type", "operator": "=", "operandRight": "cert"}
@@ -179,7 +196,9 @@ class TestQueryCatalogWithFiltersStep:
         mock_context.dataspace.consumer.return_value = consumer
 
         await QueryCatalogWithFiltersStep().invoke(
-            {"counter_party_address": "http://provider:8080"}, mock_context, definition,
+            {"counter_party_address": "http://provider:8080"},
+            mock_context,
+            definition,
         )
         assert consumer.get_filter_expression.call_count == 0
         assert consumer.get_catalog_with_filter.call_args.kwargs["filter_expression"] == []
@@ -218,7 +237,8 @@ class TestSendNotificationStep:
                 "endpoint_path": "/notify",
                 "notification": {"msg": "hi"},
             },
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert result.value["status_code"] == 200
         assert result.value["response_body"] == {"ok": True}
@@ -247,7 +267,8 @@ class TestSendNotificationStep:
         step = SendNotificationStep()
         result = await step.invoke(
             {"dataplane_url": "http://dp/notify", "edr_token": "tok", "content": {"msg": "hi"}},
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert result.value["status_code"] == 201
         assert mock_client.post.call_args.kwargs["json"] == {"msg": "hi"}
@@ -266,11 +287,15 @@ class TestSendNotificationStep:
         step = SendNotificationStep()
         result = await step.invoke(
             {
-                "notification": {"header": {"context": "cx", "senderBpn": "B1", "receiverBpn": "B2"}, "content": {}},
+                "notification": {
+                    "header": {"context": "cx", "senderBpn": "B1", "receiverBpn": "B2"},
+                    "content": {},
+                },
                 "counter_party_id": "BPNL000000001",
                 "counter_party_address": "http://provider/dsp",
             },
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert result.value["status"] == "sent"
         assert result.value["response_body"] == {"status": "sent"}
@@ -299,7 +324,8 @@ class TestSendNotificationStep:
                 "counter_party_id": "BPNL000000001",
                 "counter_party_address": "http://provider/dsp",
             },
-            mock_context, definition,
+            mock_context,
+            definition,
         )
 
         mock_notif_cls.assert_called_once_with(**document)
@@ -323,7 +349,8 @@ class TestSendNotificationStep:
                 "endpoint_path": "/notify",
                 "timeout": 12,
             },
-            mock_context, definition,
+            mock_context,
+            definition,
         )
 
         kwargs = mock_service.send_notification.call_args.kwargs

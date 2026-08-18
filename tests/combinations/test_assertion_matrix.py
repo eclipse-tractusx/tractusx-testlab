@@ -303,9 +303,7 @@ class TestSchemaValidationInAChain:
         },
     }
 
-    async def test_a_conforming_response_passes(
-        self, harness: Harness, http: HttpDouble
-    ) -> None:
+    async def test_a_conforming_response_passes(self, harness: Harness, http: HttpDouble) -> None:
         http.json_route("GET", "/subject", SUBJECT)
         base = http.start()
         harness.seed(**{"env.schemas.state_schema": self._SCHEMA})
@@ -494,7 +492,6 @@ class TestAnAssertionReferencesWhatTheRunProduced:
         )
 
         assert outcome.passed, outcome.assertion_messages("fetch")
-
 
     async def test_a_path_not_declared_in_returns_does_not_resolve(
         self, harness: Harness, http: HttpDouble

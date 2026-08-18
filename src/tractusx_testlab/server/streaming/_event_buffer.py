@@ -63,7 +63,7 @@ class EventBuffer:
         buf = self._buffers.setdefault(job_id, [])
         buf.append(event)
         if len(buf) > self._max_per_job:
-            self._buffers[job_id] = buf[-self._max_per_job:]
+            self._buffers[job_id] = buf[-self._max_per_job :]
 
     def get_events_after(self, job_id: str, last_id: int) -> list[BufferedEvent]:
         """Return all buffered events with ID > *last_id*."""

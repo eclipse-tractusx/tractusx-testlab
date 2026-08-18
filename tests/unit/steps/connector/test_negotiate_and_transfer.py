@@ -139,9 +139,7 @@ class TestNegotiate:
         consumer.start_edr_negotiation.return_value = _NEGOTIATION_ID
         mock_context.dataspace.consumer.return_value = consumer
 
-        output = await NegotiateStep().invoke(
-            {"poll_interval": 0.0}, mock_context, definition
-        )
+        output = await NegotiateStep().invoke({"poll_interval": 0.0}, mock_context, definition)
 
         assert negotiations.reads == 2
         assert output.value["state"] == "FINALIZED"
@@ -169,9 +167,7 @@ class TestNegotiate:
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
         """A refused negotiation is a result a script asserts on, not a crash."""
-        consumer = _consumer(
-            contract_negotiations=_StatefulController({"state": "TERMINATED"})
-        )
+        consumer = _consumer(contract_negotiations=_StatefulController({"state": "TERMINATED"}))
         consumer.start_edr_negotiation.return_value = _NEGOTIATION_ID
         mock_context.dataspace.consumer.return_value = consumer
 
@@ -215,9 +211,7 @@ class TestNegotiate:
 
 def _pull_consumer(**attrs: Any) -> MagicMock:
     consumer = _consumer(**attrs)
-    consumer.get_edr_entry.return_value = {
-        "@id": _TRANSFER_ID, "transferProcessId": _TRANSFER_ID
-    }
+    consumer.get_edr_entry.return_value = {"@id": _TRANSFER_ID, "transferProcessId": _TRANSFER_ID}
     consumer.get_edr.return_value = {"endpoint": _ENDPOINT, "authorization": _TOKEN}
     return consumer
 
@@ -256,9 +250,7 @@ class TestInitiateTransferPull:
     async def test_reports_the_transfer_state(
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
-        consumer = _pull_consumer(
-            transfer_processes=_StatefulController({"state": "STARTED"})
-        )
+        consumer = _pull_consumer(transfer_processes=_StatefulController({"state": "STARTED"}))
         mock_context.dataspace.consumer.return_value = consumer
         mock_context.set_variable(NEGOTIATION_ID, _NEGOTIATION_ID)
 

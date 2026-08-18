@@ -56,6 +56,7 @@ from tractusx_testlab.scripting._infrastructure import merge_requirements
 
 logger = logging.getLogger(__name__)
 
+
 def build_ir(
     manifest_path: Path,
     output_path: Path | None = None,
@@ -132,7 +133,9 @@ def build_ir(
 
     all_asset_entries = schema_assets + testdata_assets
     package_checksum = _compute_package_checksum(
-        manifest_dict, execution_json_bytes, all_asset_entries,
+        manifest_dict,
+        execution_json_bytes,
+        all_asset_entries,
     )
     manifest_dict["package"]["checksum"] = package_checksum
     logger.info("Package checksum: %s", package_checksum)
@@ -163,7 +166,9 @@ def _compute_package_checksum(
     """
     manifest_copy = {**manifest_dict, "package": {**manifest_dict["package"], "checksum": ""}}
     manifest_bytes = yaml.dump(
-        manifest_copy, default_flow_style=False, sort_keys=False,
+        manifest_copy,
+        default_flow_style=False,
+        sort_keys=False,
     ).encode("utf-8")
 
     asset_digest_bytes = "".join(
@@ -248,7 +253,8 @@ def _build_service_entry(svc: dict[str, Any]) -> dict[str, Any]:
 
 
 def _build_tests_list(
-    manifest_data: dict[str, Any], base_dir: Path,
+    manifest_data: dict[str, Any],
+    base_dir: Path,
 ) -> list[dict[str, Any]]:
     """Build the tests reference list with source hashes."""
     from tractusx_testlab.compiler.ir._instructions import (
@@ -260,17 +266,21 @@ def _build_tests_list(
     tests_list: list[dict[str, Any]] = []
 
     for entry in tests_raw:
-        file_ref = entry if isinstance(entry, str) else entry.get(
-            "test", entry.get("file", entry.get("id", ""))
+        file_ref = (
+            entry
+            if isinstance(entry, str)
+            else entry.get("test", entry.get("file", entry.get("id", "")))
         )
         test_path = resolve_test_path(file_ref, base_dir)
         test_data = load_test_file(test_path)
         source_hash = compute_source_hash(test_path)
 
-        tests_list.append({
-            "id": test_data.get("id", test_path.stem),
-            "source_hash": source_hash,
-        })
+        tests_list.append(
+            {
+                "id": test_data.get("id", test_path.stem),
+                "source_hash": source_hash,
+            }
+        )
 
     return tests_list
 
@@ -290,7 +300,8 @@ def _build_dataspace(manifest_data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _build_infrastructure(
-    manifest_data: dict[str, Any], base_dir: Path,
+    manifest_data: dict[str, Any],
+    base_dir: Path,
 ) -> dict[str, Any]:
     """What the package needs bound before it can run — resolved, not copied.
 
@@ -309,8 +320,10 @@ def _build_infrastructure(
     else:
         per_test: list[InfrastructureConfig] = []
         for entry in manifest_data.get("tests", []):
-            file_ref = entry if isinstance(entry, str) else entry.get(
-                "test", entry.get("file", entry.get("id", ""))
+            file_ref = (
+                entry
+                if isinstance(entry, str)
+                else entry.get("test", entry.get("file", entry.get("id", "")))
             )
             test_path = resolve_test_path(file_ref, base_dir)
             test_declared = load_test_file(test_path).get("infrastructure")

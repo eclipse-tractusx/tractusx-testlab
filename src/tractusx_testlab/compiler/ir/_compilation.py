@@ -46,8 +46,10 @@ def build_compiled_tests(
     compiled: list[dict[str, Any]] = []
 
     for entry in tests_raw:
-        file_ref = entry if isinstance(entry, str) else entry.get(
-            "test", entry.get("file", entry.get("id", ""))
+        file_ref = (
+            entry
+            if isinstance(entry, str)
+            else entry.get("test", entry.get("file", entry.get("id", "")))
         )
         test_path = resolve_test_path(file_ref, base_dir)
         test_data = load_test_file(test_path)

@@ -67,8 +67,14 @@ class TestStepDefinition:
         step = StepDefinition(
             uses="http/http_request",
             validate=[
-                Assertion(uses="validate/assert/equals", **{"with": {"input": "status_code", "value": 200}}),
-                Assertion(uses="validate/assert", **{"with": {"input": "response_body", "operator": "not_null"}}),
+                Assertion(
+                    uses="validate/assert/equals",
+                    **{"with": {"input": "status_code", "value": 200}},
+                ),
+                Assertion(
+                    uses="validate/assert",
+                    **{"with": {"input": "response_body", "operator": "not_null"}},
+                ),
             ],
         )
         assert len(step.assertions) == 2

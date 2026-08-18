@@ -37,12 +37,14 @@ from tractusx_testlab.cli import app
 def keygen(
     out_dir: Path = typer.Option(
         Path(".keys"),
-        "--out-dir", "-o",
+        "--out-dir",
+        "-o",
         help="Directory to write key pairs into.",
     ),
     label: str = typer.Option(
         "default",
-        "--label", "-l",
+        "--label",
+        "-l",
         help="Label prefix for the key files (e.g. 'compiler', 'player').",
     ),
     override_keys: bool = typer.Option(

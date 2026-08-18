@@ -45,9 +45,7 @@ _SHELL_ID = "urn:uuid:11111111-2222-3333-4444-555555555555"
 
 
 def _definition() -> StepDefinition:
-    return StepDefinition(
-        id="delete_twin", uses="digital-twin/provider/delete_shell_descriptor"
-    )
+    return StepDefinition(id="delete_twin", uses="digital-twin/provider/delete_shell_descriptor")
 
 
 def _refusal(*codes: str | None) -> SimpleNamespace:
@@ -131,9 +129,7 @@ class TestDeleteShellDescriptorStatusCode:
         self, mock_context: MagicMock, aas: MagicMock
     ) -> None:
         """AAS lets ``code`` carry a vendor string; it is not an HTTP status."""
-        aas.delete_asset_administration_shell_descriptor.return_value = _refusal(
-            "ERR_NOT_FOUND"
-        )
+        aas.delete_asset_administration_shell_descriptor.return_value = _refusal("ERR_NOT_FOUND")
 
         output = await _delete(mock_context)
 
@@ -143,9 +139,7 @@ class TestDeleteShellDescriptorStatusCode:
     async def test_the_first_usable_code_wins_over_later_messages(
         self, mock_context: MagicMock, aas: MagicMock
     ) -> None:
-        aas.delete_asset_administration_shell_descriptor.return_value = _refusal(
-            None, "403", "500"
-        )
+        aas.delete_asset_administration_shell_descriptor.return_value = _refusal(None, "403", "500")
 
         output = await _delete(mock_context)
 

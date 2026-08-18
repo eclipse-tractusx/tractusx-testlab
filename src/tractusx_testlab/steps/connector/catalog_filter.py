@@ -81,7 +81,8 @@ class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, Catalo
             for entry in params.filters
         ]
 
-        catalog = await sdk_call.run(consumer.get_catalog_with_filter,
+        catalog = await sdk_call.run(
+            consumer.get_catalog_with_filter,
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
             filter_expression=filter_expression,

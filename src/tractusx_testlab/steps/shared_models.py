@@ -219,12 +219,8 @@ class DataAddressPayload(StepPayload):
 
     model_config = ConfigDict(extra="allow")
 
-    endpoint: str | None = Field(
-        default=None, description="Data-plane URL to fetch the data from."
-    )
-    authorization: str | None = Field(
-        default=None, description="Authorization token for that URL."
-    )
+    endpoint: str | None = Field(default=None, description="Data-plane URL to fetch the data from.")
+    authorization: str | None = Field(default=None, description="Authorization token for that URL.")
     auth_code: str | None = Field(
         default=None,
         alias="authCode",

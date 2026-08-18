@@ -72,7 +72,11 @@ class TestMockDtrStep:
     async def test_list_shells_returns_configured_shells(self, context: StepContext) -> None:
         await MockDtrStep().invoke({"id": "dtr1", "shells": [_SHELL]}, context, _definition())
         mock = resolve_mock(
-            "/shell-descriptors", "GET", headers={}, query_params={}, body=None,
+            "/shell-descriptors",
+            "GET",
+            headers={},
+            query_params={},
+            body=None,
         )
         assert mock.status_code == 200
         assert mock.body["result"] == [_SHELL]
@@ -81,8 +85,11 @@ class TestMockDtrStep:
     async def test_get_shell_by_encoded_id(self, context: StepContext) -> None:
         await MockDtrStep().invoke({"id": "dtr1", "shells": [_SHELL]}, context, _definition())
         mock = resolve_mock(
-            f"/shell-descriptors/{_b64url(_SHELL['id'])}", "GET",
-            headers={}, query_params={}, body=None,
+            f"/shell-descriptors/{_b64url(_SHELL['id'])}",
+            "GET",
+            headers={},
+            query_params={},
+            body=None,
         )
         assert mock.status_code == 200
         assert mock.body == _SHELL
@@ -93,8 +100,11 @@ class TestMockDtrStep:
         # falls through to the server's generic 404, rather than this mock.
         await MockDtrStep().invoke({"id": "dtr1", "shells": [_SHELL]}, context, _definition())
         mock = resolve_mock(
-            f"/shell-descriptors/{_b64url('urn:uuid:missing')}", "GET",
-            headers={}, query_params={}, body=None,
+            f"/shell-descriptors/{_b64url('urn:uuid:missing')}",
+            "GET",
+            headers={},
+            query_params={},
+            body=None,
         )
         assert mock is None
 
@@ -103,13 +113,20 @@ class TestMockDtrStep:
         await MockDtrStep().invoke({"id": "dtr1", "shells": []}, context, _definition())
         new_shell = {"id": "urn:uuid:new-shell"}
         register = resolve_mock(
-            "/shell-descriptors", "POST", headers={}, query_params={}, body=new_shell,
+            "/shell-descriptors",
+            "POST",
+            headers={},
+            query_params={},
+            body=new_shell,
         )
         assert register.status_code == 201
 
         fetched = resolve_mock(
-            f"/shell-descriptors/{_b64url(new_shell['id'])}", "GET",
-            headers={}, query_params={}, body=None,
+            f"/shell-descriptors/{_b64url(new_shell['id'])}",
+            "GET",
+            headers={},
+            query_params={},
+            body=None,
         )
         assert fetched.status_code == 200
         assert fetched.body == new_shell
@@ -119,7 +136,11 @@ class TestMockDtrStep:
         await MockDtrStep().invoke({"id": "dtr1", "shells": [_SHELL]}, context, _definition())
         encoded = _b64url(json.dumps([{"name": "partInstanceId", "value": "P-1"}]))
         mock = resolve_mock(
-            "/lookup/shells", "GET", headers={}, query_params={"assetIds": encoded}, body=None,
+            "/lookup/shells",
+            "GET",
+            headers={},
+            query_params={"assetIds": encoded},
+            body=None,
         )
         assert mock.status_code == 200
         assert mock.body["result"] == [_SHELL["id"]]
@@ -129,6 +150,10 @@ class TestMockDtrStep:
         await MockDtrStep().invoke({"id": "dtr1", "shells": [_SHELL]}, context, _definition())
         encoded = _b64url(json.dumps([{"name": "partInstanceId", "value": "does-not-exist"}]))
         mock = resolve_mock(
-            "/lookup/shells", "GET", headers={}, query_params={"assetIds": encoded}, body=None,
+            "/lookup/shells",
+            "GET",
+            headers={},
+            query_params={"assetIds": encoded},
+            body=None,
         )
         assert mock.body["result"] == []

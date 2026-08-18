@@ -94,9 +94,7 @@ class ConsumerDouble:
         for called, kwargs in self.calls:
             if called == name:
                 return kwargs
-        raise AssertionError(
-            f"{name!r} was never called. Called: {[c for c, _ in self.calls]}"
-        )
+        raise AssertionError(f"{name!r} was never called. Called: {[c for c, _ in self.calls]}")
 
     # -- the SDK surface the steps use ------------------------------------
 

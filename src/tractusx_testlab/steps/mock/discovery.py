@@ -87,12 +87,17 @@ class MockDiscoveryStep(BaseStep[MockDiscoveryParams, NoOutput]):
     output_model = NoOutput
 
     async def execute(
-        self, params: MockDiscoveryParams, context: StepContext, definition: StepDefinition,
+        self,
+        params: MockDiscoveryParams,
+        context: StepContext,
+        definition: StepDefinition,
     ) -> StepOutput[NoOutput]:
         bpn_to_endpoint = params.mappings
 
         def _discover(req: MockRequest) -> MockResponse:
-            requested_bpns = req.body if isinstance(req.body, list) else (req.body or {}).get("bpns", [])
+            requested_bpns = (
+                req.body if isinstance(req.body, list) else (req.body or {}).get("bpns", [])
+            )
             if not requested_bpns:
                 requested_bpns = list(bpn_to_endpoint.keys())
             result = [
@@ -107,6 +112,7 @@ class MockDiscoveryStep(BaseStep[MockDiscoveryParams, NoOutput]):
 
         logger.info(
             "Registered mock discovery service '%s' with %d mappings",
-            params.id, len(bpn_to_endpoint),
+            params.id,
+            len(bpn_to_endpoint),
         )
         return StepOutput(value=NoOutput(None))

@@ -147,6 +147,7 @@ class ServiceState(str, enum.Enum):
 
 class StepPhase(str, enum.Enum):
     """Identifies which execution phase a step belongs to."""
+
     SETUP = "SETUP"
     EXECUTION = "EXECUTION"
     TEARDOWN = "TEARDOWN"
@@ -154,6 +155,7 @@ class StepPhase(str, enum.Enum):
 
 class ScriptKind(str, enum.Enum):
     """Explicit type discriminator for YAML files, following the Kubernetes ``kind:`` convention."""
+
     TEST = "test"
     TCK = "tck"
 

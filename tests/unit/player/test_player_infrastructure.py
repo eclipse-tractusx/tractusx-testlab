@@ -96,10 +96,7 @@ def _tck(release: str | None = None, **required: bool) -> Tck:
                 else None
             ),
             infrastructure=InfrastructureConfig(
-                sut={
-                    key: CapabilityRequirement(required=value)
-                    for key, value in required.items()
-                },  # type: ignore[arg-type]
+                sut={key: CapabilityRequirement(required=value) for key, value in required.items()},  # type: ignore[arg-type]
             ),
         )
     )
@@ -141,7 +138,9 @@ class TestBinding:
 
     def test_bindings_are_published_as_variables(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = _context(player, config)
 
         player._bind_infrastructure(context, _tck(connector=True))
@@ -174,7 +173,9 @@ class TestBinding:
 
     def test_the_context_carries_the_resolved_deployment(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = _context(player, config)
 
         player._bind_infrastructure(context, _tck())
@@ -219,7 +220,9 @@ class TestRelease:
 
     def test_the_tcks_release_reaches_the_bindings(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = _context(player, config)
 
         player._bind_infrastructure(context, _tck(release="jupiter", connector=True))
@@ -228,7 +231,9 @@ class TestRelease:
 
     def test_the_release_is_published_as_a_variable(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = _context(player, config)
 
         player._bind_infrastructure(context, _tck(release="jupiter", connector=True))
@@ -238,7 +243,9 @@ class TestRelease:
     def test_the_release_reaches_the_seeded_sdk_service(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
         services = ServiceManager()
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = StepContext(
             services=services,
             job=Job(job_id="release-test"),
@@ -255,7 +262,9 @@ class TestRelease:
 
     def test_the_capabilitys_standard_is_recorded(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = _context(player, config)
 
         player._bind_infrastructure(context, _tck(release="saturn", connector=True))
@@ -297,4 +306,3 @@ class TestRelease:
         )
 
         assert _target_release(tck) == ("saturn", False)
-

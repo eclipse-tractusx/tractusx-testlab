@@ -69,11 +69,7 @@ def _decode(text: str, *, url_safe: bool) -> str:
     """
     padded = text + "=" * (-len(text) % 4)
     try:
-        raw = (
-            base64.urlsafe_b64decode(padded)
-            if url_safe
-            else base64.b64decode(padded)
-        )
+        raw = base64.urlsafe_b64decode(padded) if url_safe else base64.b64decode(padded)
     except (binascii.Error, ValueError) as exc:
         raise ValueError(f"Input is not valid base64: {exc}") from exc
     return raw.decode(_ENCODINGS)
@@ -123,7 +119,10 @@ class Base64Step(BaseStep[Base64Params, Base64Output]):
     output_model = Base64Output
 
     async def execute(
-        self, params: Base64Params, context: StepContext, definition: StepDefinition,
+        self,
+        params: Base64Params,
+        context: StepContext,
+        definition: StepDefinition,
     ) -> StepOutput[Base64Output]:
         if params.mode == "encode":
             result = _encode(

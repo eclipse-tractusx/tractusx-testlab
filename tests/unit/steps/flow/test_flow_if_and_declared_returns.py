@@ -57,14 +57,10 @@ def _log(step_id: str) -> dict:
 
 class TestIfStep:
     @pytest.mark.asyncio
-    async def test_a_true_condition_runs_the_then_branch(
-        self, mock_context: MagicMock
-    ) -> None:
+    async def test_a_true_condition_runs_the_then_branch(self, mock_context: MagicMock) -> None:
         output = await IfStep().invoke(
             {
-                "conditions": [
-                    {"input": "push", "operator": "equals", "value": "push"}
-                ],
+                "conditions": [{"input": "push", "operator": "equals", "value": "push"}],
                 "then": [_log("in_then")],
             },
             mock_context,
@@ -76,14 +72,10 @@ class TestIfStep:
         assert len(output.value["outputs"]) == 1
 
     @pytest.mark.asyncio
-    async def test_a_false_condition_runs_the_else_branch(
-        self, mock_context: MagicMock
-    ) -> None:
+    async def test_a_false_condition_runs_the_else_branch(self, mock_context: MagicMock) -> None:
         output = await IfStep().invoke(
             {
-                "conditions": [
-                    {"input": "pull", "operator": "equals", "value": "push"}
-                ],
+                "conditions": [{"input": "pull", "operator": "equals", "value": "push"}],
                 "then": [_log("in_then")],
                 "else": [_log("in_else")],
             },
@@ -101,9 +93,7 @@ class TestIfStep:
         """'none' is a result a script can assert on; silence is not."""
         output = await IfStep().invoke(
             {
-                "conditions": [
-                    {"input": "pull", "operator": "equals", "value": "push"}
-                ],
+                "conditions": [{"input": "pull", "operator": "equals", "value": "push"}],
                 "then": [_log("in_then")],
             },
             mock_context,
@@ -114,9 +104,7 @@ class TestIfStep:
         assert output.value["outputs"] == []
 
     @pytest.mark.asyncio
-    async def test_a_failing_nested_step_fails_the_branch(
-        self, mock_context: MagicMock
-    ) -> None:
+    async def test_a_failing_nested_step_fails_the_branch(self, mock_context: MagicMock) -> None:
         with pytest.raises(RuntimeError, match="'then' branch"):
             await IfStep().invoke(
                 {
@@ -128,9 +116,7 @@ class TestIfStep:
             )
 
     @pytest.mark.asyncio
-    async def test_a_branch_with_no_steps_is_rejected(
-        self, mock_context: MagicMock
-    ) -> None:
+    async def test_a_branch_with_no_steps_is_rejected(self, mock_context: MagicMock) -> None:
         """An 'if' whose 'then' does nothing is a script mistake, not a no-op."""
         with pytest.raises(ValueError, match="then"):
             await IfStep().invoke(
@@ -138,9 +124,7 @@ class TestIfStep:
             )
 
     @pytest.mark.asyncio
-    async def test_all_means_every_condition_has_to_hold(
-        self, mock_context: MagicMock
-    ) -> None:
+    async def test_all_means_every_condition_has_to_hold(self, mock_context: MagicMock) -> None:
         output = await IfStep().invoke(
             {
                 "conditions": [
@@ -171,9 +155,7 @@ class TestIfStep:
         assert output.value["condition_result"] is True
 
     @pytest.mark.asyncio
-    async def test_a_condition_reads_into_its_input_by_path(
-        self, mock_context: MagicMock
-    ) -> None:
+    async def test_a_condition_reads_into_its_input_by_path(self, mock_context: MagicMock) -> None:
         output = await IfStep().invoke(
             {
                 "conditions": [
@@ -245,13 +227,9 @@ class TestReturnsRestriction:
 
     def test_a_declared_name_still_resolves(self) -> None:
         output = StepOutput(value={"negotiation_id": "neg-1"})
-        assert (
-            extract_path(output, "negotiation_id", frozenset({"negotiation_id"})) == "neg-1"
-        )
+        assert extract_path(output, "negotiation_id", frozenset({"negotiation_id"})) == "neg-1"
 
-    def test_returns_reads_only_what_the_step_declared(
-        self, mock_context: MagicMock
-    ) -> None:
+    def test_returns_reads_only_what_the_step_declared(self, mock_context: MagicMock) -> None:
         """A `returns:` name the step never declared must not be invented."""
         step_def = StepDefinition(
             id="neg",
@@ -265,9 +243,7 @@ class TestReturnsRestriction:
             step_name="neg",
             step_type="connector/consumer/negotiate",
             output={"negotiation_id": "neg-1"},
-            response=HttpResponse(
-                status_code=200, body={"contractAgreementId": "agr-1"}
-            ),
+            response=HttpResponse(status_code=200, body={"contractAgreementId": "agr-1"}),
         )
 
         store_step_outputs(step_def, result, mock_context)

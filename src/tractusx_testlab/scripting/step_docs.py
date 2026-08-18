@@ -147,11 +147,7 @@ def _annotation_models(annotation: Any) -> list[type[BaseModel]]:
     """Pull every Pydantic model out of a possibly-generic annotation."""
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):
         return [annotation]
-    return [
-        model
-        for arg in get_args(annotation)
-        for model in _annotation_models(arg)
-    ]
+    return [model for arg in get_args(annotation) for model in _annotation_models(arg)]
 
 
 # ---------------------------------------------------------------------------

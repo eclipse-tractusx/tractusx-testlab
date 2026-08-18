@@ -69,9 +69,7 @@ def context(provider: MagicMock) -> MagicMock:
 
 
 def _definition() -> StepDefinition:
-    return StepDefinition(
-        id="cd", uses="connector/provider/create_contract_definition"
-    )
+    return StepDefinition(id="cd", uses="connector/provider/create_contract_definition")
 
 
 def _sent(provider: MagicMock) -> dict:
@@ -182,9 +180,7 @@ class TestAssetSelector:
             {
                 "access_policy_id": "ap-1",
                 "contract_policy_id": "cp-1",
-                "asset_selector": [
-                    {"operand_left": "version", "operand_right": "3.0"}
-                ],
+                "asset_selector": [{"operand_left": "version", "operand_right": "3.0"}],
             },
             context,
             _definition(),

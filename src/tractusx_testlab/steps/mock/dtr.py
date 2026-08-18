@@ -101,7 +101,10 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
     output_model = NoOutput
 
     async def execute(
-        self, params: MockDtrParams, context: StepContext, definition: StepDefinition,
+        self,
+        params: MockDtrParams,
+        context: StepContext,
+        definition: StepDefinition,
     ) -> StepOutput[NoOutput]:
         shells: list[dict] = list(params.shells)
 
@@ -113,18 +116,24 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
                 try:
                     shell_id = _b64url_decode(encoded_id)
                 except (binascii.Error, ValueError):
-                    return MockResponse(status_code=400, body={"error": "invalid identifier encoding"})
+                    return MockResponse(
+                        status_code=400, body={"error": "invalid identifier encoding"}
+                    )
                 found = next((s for s in shells if s.get("id") == shell_id), None)
                 if found is None:
-                    return MockResponse(status_code=404, body={"error": f"shell '{shell_id}' not found"})
+                    return MockResponse(
+                        status_code=404, body={"error": f"shell '{shell_id}' not found"}
+                    )
                 return MockResponse(status_code=200, body=found)
+
             return _handler
 
         def _register_shell(req: MockRequest) -> MockResponse:
             descriptor = req.body or {}
             shells.append(descriptor)
             register_mock(
-                f"{_BASE_PATH}/{_b64url_encode(descriptor.get('id', ''))}", "GET",
+                f"{_BASE_PATH}/{_b64url_encode(descriptor.get('id', ''))}",
+                "GET",
                 _get_shell(_b64url_encode(descriptor.get("id", ""))),
             )
             return MockResponse(status_code=201, body=descriptor)
@@ -162,7 +171,11 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
         for shell in shells:
             shell_id = shell.get("id")
             if shell_id:
-                register_mock(f"{_BASE_PATH}/{_b64url_encode(shell_id)}", "GET", _get_shell(_b64url_encode(shell_id)))
+                register_mock(
+                    f"{_BASE_PATH}/{_b64url_encode(shell_id)}",
+                    "GET",
+                    _get_shell(_b64url_encode(shell_id)),
+                )
 
         logger.info(
             "Registered mock DTR '%s' with %d pre-configured shells", params.id, len(shells)

@@ -142,7 +142,9 @@ async def poll_until_terminal(
             if allow_timeout:
                 logger.warning(
                     "Entity %s did not settle within %ss (state=%r); allowed by the step",
-                    oid, max_wait, entity.get("state"),
+                    oid,
+                    max_wait,
+                    entity.get("state"),
                 )
                 return entity
             raise StepExecutionError(

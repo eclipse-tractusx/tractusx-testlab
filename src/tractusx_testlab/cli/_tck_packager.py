@@ -193,7 +193,9 @@ def compile_encrypted_plain(
         tmp_path = Path(tmp)
         try:
             manifest_dict, _ = compiler.compile_plain(
-                manifest_path=script, output_path=tmp_path, version=version,
+                manifest_path=script,
+                output_path=tmp_path,
+                version=version,
             )
         except (ValueError, FileNotFoundError) as exc:
             typer.echo(f"Compilation failed: {exc}", err=True)
@@ -205,12 +207,16 @@ def compile_encrypted_plain(
     sig_b64 = base64.b64encode(signature).decode()
     payload_b64, authorized_players = build_encrypted_payload(tar_bytes, recipient_keys)
     redacted = build_redacted_manifest(
-        manifest_dict, compiler_identity.signing.fingerprint, authorized_players, sig_b64,
+        manifest_dict,
+        compiler_identity.signing.fingerprint,
+        authorized_players,
+        sig_b64,
     )
 
     out.mkdir(parents=True, exist_ok=True)
     (out / "manifest.yaml").write_text(
-        _yaml.dump(redacted, default_flow_style=False, sort_keys=False), encoding="utf-8",
+        _yaml.dump(redacted, default_flow_style=False, sort_keys=False),
+        encoding="utf-8",
     )
     (out / "payload.enc").write_text(payload_b64, encoding="utf-8")
     (out / "signature.sig").write_text(sig_b64, encoding="utf-8")
@@ -271,7 +277,9 @@ def compile_encrypted_tck(
         tmp_path = Path(tmp)
         try:
             manifest_dict, _ = compiler.compile_plain(
-                manifest_path=script, output_path=tmp_path, version=version,
+                manifest_path=script,
+                output_path=tmp_path,
+                version=version,
             )
         except (ValueError, FileNotFoundError) as exc:
             typer.echo(f"Compilation failed: {exc}", err=True)
@@ -283,7 +291,10 @@ def compile_encrypted_tck(
     sig_b64 = base64.b64encode(signature).decode()
     payload_b64, authorized_players = build_encrypted_payload(tar_bytes, recipient_keys)
     redacted = build_redacted_manifest(
-        manifest_dict, compiler_identity.signing.fingerprint, authorized_players, sig_b64,
+        manifest_dict,
+        compiler_identity.signing.fingerprint,
+        authorized_players,
+        sig_b64,
     )
     tck_path = resolve_tck_output_path(script, manifest_dict, output)
     write_encrypted_tck(tck_path, redacted, payload_b64, sig_b64)

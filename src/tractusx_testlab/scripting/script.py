@@ -205,13 +205,16 @@ class Tck:
 
     @classmethod
     def from_single_script(
-        cls, script_def: ScriptDefinition, base_dir: Path | None = None,
+        cls,
+        script_def: ScriptDefinition,
+        base_dir: Path | None = None,
     ) -> Tck:
         """Wrap a single ScriptDefinition in a minimal TckDefinition and return a Tck."""
         from tractusx_testlab.models.authoring.definitions import (
             TckDefinition,
             TckMetadataDefinition,
         )
+
         tck_def = TckDefinition(
             kind="tck",
             syntax="v1-alpha",

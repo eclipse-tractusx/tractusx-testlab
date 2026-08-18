@@ -62,9 +62,7 @@ def _parse_variable_list(entries: list[Any]) -> dict[str, VariableDefinition]:
     result: dict[str, VariableDefinition] = {}
     for entry in entries:
         if not isinstance(entry, dict):
-            raise ValueError(
-                f"variable list entries must be mappings, got {type(entry).__name__}"
-            )
+            raise ValueError(f"variable list entries must be mappings, got {type(entry).__name__}")
         name = entry.get(keys.ID)
         if not name:
             raise ValueError("variable list entry is missing required 'id'")

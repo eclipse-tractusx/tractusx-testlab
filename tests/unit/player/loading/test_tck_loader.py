@@ -65,7 +65,6 @@ execution:
 """
 
 
-
 def _write_sealed(archive: Path, entries: dict[str, bytes]) -> None:
     """Write a ``.tck`` sealed the way the compiler seals one.
 
@@ -83,10 +82,13 @@ def _write_sealed(archive: Path, entries: dict[str, bytes]) -> None:
 def tck_archive(tmp_path: Path) -> Path:
     """Build a .tck ZIP archive with tck-bundle.yaml + tests/ and return the path."""
     archive_path = tmp_path / "bundle.tck"
-    _write_sealed(archive_path, {
-        _TCK_BUNDLE_ENTRY: _TCK_MANIFEST_YAML.encode(),
-        "tests/inline-test-one.yaml": _TEST_SCRIPT_YAML.encode(),
-    })
+    _write_sealed(
+        archive_path,
+        {
+            _TCK_BUNDLE_ENTRY: _TCK_MANIFEST_YAML.encode(),
+            "tests/inline-test-one.yaml": _TEST_SCRIPT_YAML.encode(),
+        },
+    )
     return archive_path
 
 

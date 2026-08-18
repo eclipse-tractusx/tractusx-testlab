@@ -86,6 +86,7 @@ execution:
     uses: connector/consumer/no_such_step
 """
 
+
 @pytest.fixture()
 def valid_yaml_file() -> Path:
     # Use the real CCM example which is known-valid and satisfies JSON schema.
@@ -138,7 +139,9 @@ class TestValidateCommand:
         assert "Valid" in result.stdout
 
 
-@pytest.mark.skip(reason="CLI refactored — compile now requires --compiler-keys and --player-pub; needs rewrite")
+@pytest.mark.skip(
+    reason="CLI refactored — compile now requires --compiler-keys and --player-pub; needs rewrite"
+)
 class TestCompileCommand:
     def test_compile_valid_file(self, valid_yaml_file: Path) -> None:
         result = runner.invoke(app, ["compile", str(valid_yaml_file)])

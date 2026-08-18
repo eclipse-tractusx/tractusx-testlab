@@ -98,7 +98,9 @@ class TestPauseResumeEvents:
 
     @pytest.mark.asyncio
     async def test_paused_job_emits_event(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck-1")
         mock_player.jobs.start(job.job_id)
@@ -116,7 +118,9 @@ class TestPauseResumeEvents:
 
     @pytest.mark.asyncio
     async def test_resumed_job_emits_event(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck-1")
         mock_player.jobs.start(job.job_id)
@@ -143,7 +147,9 @@ class TestCancelPausedJob:
 
     @pytest.mark.asyncio
     async def test_cancel_paused_job_sets_cancelled(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck-1")
         mock_player.jobs.start(job.job_id)
@@ -159,7 +165,8 @@ class TestCancelPausedJob:
 
     @pytest.mark.asyncio
     async def test_cancel_paused_job_unblocks_pause_event(
-        self, mock_player: MagicMock,
+        self,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck-1")
         mock_player.jobs.start(job.job_id)

@@ -78,8 +78,7 @@ def _to_odrl_policy[T](value: T) -> T:
     """
     if isinstance(value, dict):
         return {  # type: ignore[return-value]
-            _SIMPLIFIED_KEY_MAP.get(k, k): _to_odrl_policy(v)
-            for k, v in value.items()
+            _SIMPLIFIED_KEY_MAP.get(k, k): _to_odrl_policy(v) for k, v in value.items()
         }
     if isinstance(value, list):
         return [_to_odrl_policy(item) for item in value]  # type: ignore[return-value]
@@ -163,11 +162,15 @@ async def _do_dsp_flow(
     datasets: list[dict] = []
     asset_id: str = ""
     try:
-        catalog = await sdk_call.run(consumer.get_catalog_with_filter,
-            counter_party_id=counter_party_id,
-            counter_party_address=params.counter_party_address,
-            filter_expression=filter_expression,
-        ) or {}
+        catalog = (
+            await sdk_call.run(
+                consumer.get_catalog_with_filter,
+                counter_party_id=counter_party_id,
+                counter_party_address=params.counter_party_address,
+                filter_expression=filter_expression,
+            )
+            or {}
+        )
         raw_datasets = catalog.get("dataset", [])
         if isinstance(raw_datasets, dict):
             raw_datasets = [raw_datasets]
@@ -180,14 +183,16 @@ async def _do_dsp_flow(
     if catalog_participant_id and catalog_participant_id != counter_party_id:
         logger.info(
             "Resolved provider participantId from catalog: %s (config had: %s)",
-            catalog_participant_id, counter_party_id,
+            catalog_participant_id,
+            counter_party_id,
         )
         counter_party_id = catalog_participant_id
 
     # Full DSP flow: use get_transfer_id + get_endpoint_with_token so the
     # transfer id is a return value of its own, and so the SDK's connection
     # cache still spares a re-negotiation for a repeated pull.
-    transfer_id = await sdk_call.run(consumer.get_transfer_id,
+    transfer_id = await sdk_call.run(
+        consumer.get_transfer_id,
         counter_party_id=counter_party_id,
         counter_party_address=params.counter_party_address,
         filter_expression=filter_expression,
@@ -291,9 +296,7 @@ class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[PullDataOutput]:
-        value, request, response = await _do_dsp_flow(
-            context, params, params.allowed_policies()
-        )
+        value, request, response = await _do_dsp_flow(context, params, params.allowed_policies())
         return StepOutput(value=value, request=request, response=response)
 
 
@@ -317,9 +320,7 @@ class PullDataFilteredByPolicyParams(PullDataParams):
 
 
 @step("connector/consumer/pull_data_filtered_by_policy")
-class ConnectorPullDataFilteredByPolicy(
-    BaseStep[PullDataFilteredByPolicyParams, PullDataOutput]
-):
+class ConnectorPullDataFilteredByPolicy(BaseStep[PullDataFilteredByPolicyParams, PullDataOutput]):
     """Run the full DSP flow, accepting an offer that matches any of several policies.
 
     Unlike ``pull_data_filtered``, where ``expected_policies`` is optional and
@@ -337,7 +338,5 @@ class ConnectorPullDataFilteredByPolicy(
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[PullDataOutput]:
-        value, request, response = await _do_dsp_flow(
-            context, params, params.allowed_policies()
-        )
+        value, request, response = await _do_dsp_flow(context, params, params.allowed_policies())
         return StepOutput(value=value, request=request, response=response)

@@ -174,11 +174,19 @@ def _resolve_path_segment(current: Any, part: str) -> Any:
 
 #: Names every step output carries whatever it declares — the ``StepOutput``
 #: slots and the response fields a script can always assert on.
-UNIVERSAL_RETURNS = frozenset({
-    "value", "request", "response",
-    "status_code", "headers", "body", "duration_ms",
-    "response_body", "response_headers",
-})
+UNIVERSAL_RETURNS = frozenset(
+    {
+        "value",
+        "request",
+        "response",
+        "status_code",
+        "headers",
+        "body",
+        "duration_ms",
+        "response_body",
+        "response_headers",
+    }
+)
 
 
 def declared_names(step_cls: Any) -> frozenset[str]:
@@ -199,9 +207,7 @@ def declared_names(step_cls: Any) -> frozenset[str]:
     return frozenset(names)
 
 
-def extract_path(
-    output: Any, path: str | None, declared: frozenset[str] | None = None
-) -> Any:
+def extract_path(output: Any, path: str | None, declared: frozenset[str] | None = None) -> Any:
     """Extract a value from a nested dict/list/object using dot-separated *path*.
 
     Supports predicate-based array filtering: ``items[key='value']``
@@ -216,6 +222,7 @@ def extract_path(
         return output
 
     from tractusx_testlab.steps.step_contract import StepOutput as _SO
+
     if isinstance(output, _SO):
         return _extract_from_step_output(output, path, declared)
 
@@ -285,9 +292,11 @@ def _resolve_response_body(output: Any) -> Any:
         return output.value
     return output.response.body if output.response else None
 
+
 def _resolve_response_headers(output: Any) -> Any:
     """Resolve the 'response_headers' alias to the response's headers dict."""
     return output.response.headers if output.response else None
+
 
 def _fallback_resolution(output: Any, first: str) -> Any:
     """Try response attrs, response body dict, and StepOutput slots in order."""

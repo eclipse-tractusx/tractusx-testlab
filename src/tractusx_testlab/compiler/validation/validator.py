@@ -43,6 +43,7 @@ from tractusx_testlab.syntax import defaults, patterns
 @dataclass(slots=True)
 class ValidationIssue:
     """A single validation finding."""
+
     level: str  # "error" | "warning"
     message: str
     step_index: int | None = None
@@ -53,6 +54,7 @@ class ValidationIssue:
 @dataclass(slots=True)
 class ValidationResult:
     """Aggregated validation outcome."""
+
     issues: list[ValidationIssue] = field(default_factory=list)
 
     @property
@@ -64,8 +66,6 @@ class ValidationResult:
 
     def add_warning(self, msg: str, **kw) -> None:
         self.issues.append(ValidationIssue(level="warning", message=msg, **kw))
-
-
 
 
 def _format_errors(exc: ValidationError) -> str:
@@ -144,7 +144,9 @@ def _env_variable_ids(variables: object) -> list[str]:
 class ScriptValidator:
     """Validates a ScriptDefinition for correctness before execution."""
 
-    def validate_tck(self, tck: TckDefinition, base_dir: Path, version: str | None = None) -> ValidationResult:
+    def validate_tck(
+        self, tck: TckDefinition, base_dir: Path, version: str | None = None
+    ) -> ValidationResult:
         """Validate all test files referenced by a TCK manifest."""
         combined = ValidationResult()
         for entry in tck.tests:
@@ -153,12 +155,11 @@ class ScriptValidator:
                 combined.add_error(f"Referenced test file not found: tests/{entry.id}")
                 continue
             from tractusx_testlab.scripting.parser import YamlParser
+
             try:
                 script = YamlParser.parse_script(test_path)
             except ValidationError as exc:
-                combined.add_error(
-                    f"tests/{entry.id}: parse error — {_format_errors(exc)}"
-                )
+                combined.add_error(f"tests/{entry.id}: parse error — {_format_errors(exc)}")
                 continue
             except Exception as exc:
                 combined.add_error(f"tests/{entry.id}: failed to parse — {exc}")
@@ -323,14 +324,20 @@ class ScriptValidator:
             resolved = resolve_assertion(assertion.uses, params)
             if isinstance(resolved, str):
                 result.add_error(
-                    resolved, step_index=step_idx, field="validate.uses", phase=phase,
+                    resolved,
+                    step_index=step_idx,
+                    field="validate.uses",
+                    phase=phase,
                 )
                 continue
             if resolved.operator is not None:
                 mismatch = check_operands(resolved.operator, params)
                 if mismatch:
                     result.add_error(
-                        mismatch, step_index=step_idx, field="validate.with", phase=phase,
+                        mismatch,
+                        step_index=step_idx,
+                        field="validate.with",
+                        phase=phase,
                     )
                     continue
 

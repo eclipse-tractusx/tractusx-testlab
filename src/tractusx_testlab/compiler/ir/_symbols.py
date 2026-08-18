@@ -55,7 +55,8 @@ def build_global_symbols(
 
 
 def _collect_variable_symbols(
-    variables: Any, symbols: dict[str, Any],
+    variables: Any,
+    symbols: dict[str, Any],
 ) -> None:
     """Add env.variables to the symbol table (legacy mapping or verb-form list)."""
     if isinstance(variables, list):
@@ -70,7 +71,8 @@ def _collect_variable_symbols(
 
 
 def _collect_verb_variable_symbols(
-    variables: list[dict[str, Any]], symbols: dict[str, Any],
+    variables: list[dict[str, Any]],
+    symbols: dict[str, Any],
 ) -> None:
     """Add verb-form (``id``/``uses``/``with``/``returns``) env variables.
 
@@ -94,7 +96,9 @@ def _collect_verb_variable_symbols(
             if field_name == _VALUE_RETURN_KEY:
                 continue
             symbols[f"env.{var_id}.{field_name}"] = _build_field_entry(
-                field_def, _VARIABLES_SOURCE, default_type="object",
+                field_def,
+                _VARIABLES_SOURCE,
+                default_type="object",
             )
 
 
@@ -107,7 +111,8 @@ def _base_variable_type(returns: dict[str, Any], value: Any) -> str:
 
 
 def _collect_service_symbols(
-    services: list[dict[str, Any]], symbols: dict[str, Any],
+    services: list[dict[str, Any]],
+    symbols: dict[str, Any],
 ) -> None:
     """Add env.services to the symbol table."""
     for svc in services:
@@ -137,7 +142,10 @@ def _build_field_entry(field_def: Any, source: str, default_type: str = "string"
 
 
 def _collect_simple_symbols(
-    entries: Any, prefix: str, type_str: str, symbols: dict[str, Any],
+    entries: Any,
+    prefix: str,
+    type_str: str,
+    symbols: dict[str, Any],
 ) -> None:
     """Add schemas or testdata symbols to the symbol table.
 

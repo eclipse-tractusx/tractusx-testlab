@@ -144,4 +144,3 @@ class ConditionEvaluator:
 
         # Unrecognised expression → do not skip (safe default)
         return True
-

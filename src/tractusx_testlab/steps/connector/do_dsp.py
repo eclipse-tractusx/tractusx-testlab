@@ -92,7 +92,8 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
         self, params: DoDspParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.dataspace.consumer()
-        endpoint, token = await sdk_call.run(consumer.do_dsp,
+        endpoint, token = await sdk_call.run(
+            consumer.do_dsp,
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
             filter_expression=params.sdk_filter_expression(),
@@ -139,7 +140,8 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
         self, params: DoDspWithBpnlParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.dataspace.consumer()
-        endpoint, token = await sdk_call.run(consumer.do_dsp_with_bpnl,
+        endpoint, token = await sdk_call.run(
+            consumer.do_dsp_with_bpnl,
             bpnl=params.bpnl,
             counter_party_address=params.counter_party_address,
             filter_expression=params.sdk_filter_expression() or None,
@@ -190,7 +192,8 @@ class DiscoverDtrAuthStep(BaseStep[DiscoverDtrAuthParams, DspFlowOutput]):
         definition: StepDefinition,
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.dataspace.consumer()
-        endpoint, token = await sdk_call.run(consumer.do_dsp_by_dct_type,
+        endpoint, token = await sdk_call.run(
+            consumer.do_dsp_by_dct_type,
             counter_party_id=params.counter_party_id,
             counter_party_address=params.counter_party_address,
             dct_type=params.dct_type,

@@ -63,7 +63,8 @@ def _test_script(execution_steps: list | None = None) -> dict:
             "version": "1.0",
             "description": "A minimal test script.",
         },
-        "execution": execution_steps if execution_steps is not None
+        "execution": execution_steps
+        if execution_steps is not None
         else [{"id": "gen", "uses": "util/generate_uuid", "name": "gen"}],
     }
 
@@ -131,7 +132,9 @@ class TestCompilerValidation:
 
     def test_validate_rejects_unknown_step_type(self, tmp_path: Path) -> None:
         # Arrange
-        script_path = _write_tck(tmp_path, [{"id": "bad", "uses": "nonexistent_step_type_xyz", "name": "bad"}])
+        script_path = _write_tck(
+            tmp_path, [{"id": "bad", "uses": "nonexistent_step_type_xyz", "name": "bad"}]
+        )
         compiler = Compiler()
 
         # Act
@@ -160,7 +163,9 @@ class TestCompilerValidation:
 
     def test_compile_raises_on_invalid_script(self, tmp_path: Path) -> None:
         # Arrange
-        script_path = _write_tck(tmp_path, [{"id": "bogus", "uses": "totally_bogus_step", "name": "bogus"}])
+        script_path = _write_tck(
+            tmp_path, [{"id": "bogus", "uses": "totally_bogus_step", "name": "bogus"}]
+        )
         compiler = Compiler()
 
         # Act & Assert

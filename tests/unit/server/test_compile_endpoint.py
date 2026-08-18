@@ -146,9 +146,9 @@ class TestCompileYamlEndpoint:
         # Assert
         body = response.json()
         assert body["status"] == "error", f"Expected status 'error', got {body['status']!r}"
-        assert any(
-            "empty" in err["message"].lower() for err in body["errors"]
-        ), f"Expected an error mentioning 'empty', got {body['errors']}"
+        assert any("empty" in err["message"].lower() for err in body["errors"]), (
+            f"Expected an error mentioning 'empty', got {body['errors']}"
+        )
 
     def test_compile_malformed_yaml_returns_error(self, client: TestClient) -> None:
         """Unparseable YAML produces a syntax error."""
@@ -194,14 +194,10 @@ class TestCompileYamlEndpoint:
             pytest.param(b"kind: unknown_thing\n", id="unknown-kind"),
         ],
     )
-    def test_compile_always_returns_200(
-        self, client: TestClient, content: bytes
-    ) -> None:
+    def test_compile_always_returns_200(self, client: TestClient, content: bytes) -> None:
         """The compile endpoint always returns HTTP 200 — errors are application-level."""
         # Act
         response = client.post("/testlab/compile", content=content)
 
         # Assert
-        assert response.status_code == 200, (
-            f"Expected HTTP 200, got {response.status_code}"
-        )
+        assert response.status_code == 200, f"Expected HTTP 200, got {response.status_code}"

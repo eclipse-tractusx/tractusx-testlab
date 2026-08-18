@@ -86,9 +86,7 @@ class HttpDouble:
         self._routes[(method.upper(), path)] = list(responses)
         return self
 
-    def json_route(
-        self, method: str, path: str, body: Any, status: int = 200
-    ) -> HttpDouble:
+    def json_route(self, method: str, path: str, body: Any, status: int = 200) -> HttpDouble:
         """The common case — one JSON response, every time."""
         return self.route(method, path, Response(status=status, body=body))
 

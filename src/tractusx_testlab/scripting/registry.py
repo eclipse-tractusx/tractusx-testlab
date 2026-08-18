@@ -57,6 +57,7 @@ class StepRegistry:
             dataspace_version: Restrict to a specific version (e.g., ``saturn``).
                 If ``None``, the step is available for all versions.
         """
+
         def decorator(cls: type[BaseStep]) -> type[BaseStep]:
             # Stamp the canonical key onto the class so a step can describe its
             # own contract (BaseStep.describe) without a registry lookup.
@@ -69,6 +70,7 @@ class StepRegistry:
                 _GLOBAL_REGISTRY[step_type] = cls
                 logger.debug("Registered global step %s", step_type)
             return cls
+
         return decorator
 
     @staticmethod

@@ -99,7 +99,9 @@ async def run_phase(
     for step_idx, step_def in enumerate(steps_source):
         await _handle_pause_gate(jobs, job_id, config)
 
-        step_name = _format_step_name(script.definition.id, step_idx, step_def.uses, config.phase_label, step_def.id)
+        step_name = _format_step_name(
+            script.definition.id, step_idx, step_def.uses, config.phase_label, step_def.id
+        )
         monitor.on_step_started(
             job_id,
             script.definition.id,
@@ -114,7 +116,9 @@ async def run_phase(
             jobs.set_current_step(job_id, step_name)
 
         if config.evaluate_conditions and not ConditionEvaluator.should_run(
-            step_def.if_condition, results, context,
+            step_def.if_condition,
+            results,
+            context,
         ):
             skipped = _make_skipped_result(step_name, step_def.uses, config.phase)
             results.append(skipped)
@@ -124,7 +128,14 @@ async def run_phase(
             continue
 
         failed = await _resolve_and_run_step(
-            script, step_def, step_name, context, job_id, monitor, config, results,
+            script,
+            step_def,
+            step_name,
+            context,
+            job_id,
+            monitor,
+            config,
+            results,
         )
         if failed:
             return results, ScriptStatus.FAILED
@@ -133,7 +144,9 @@ async def run_phase(
 
 
 async def _handle_pause_gate(
-    jobs: JobManager | None, job_id: str, config: PhaseConfig,
+    jobs: JobManager | None,
+    job_id: str,
+    config: PhaseConfig,
 ) -> None:
     """Wait on the pause gate if configured."""
     if config.use_pause_gate and jobs is not None:
@@ -181,7 +194,9 @@ def _get_steps_for_phase(script: TestScript, phase: StepPhase) -> list:
     return script.definition.execution
 
 
-def _format_step_name(script_name: str, idx: int, step_type: str, phase_label: str, step_id: str | None = None) -> str:
+def _format_step_name(
+    script_name: str, idx: int, step_type: str, phase_label: str, step_id: str | None = None
+) -> str:
     """Format a step identifier using step id when available, index otherwise."""
     step_ref = step_id if step_id else f"{idx}"
     if phase_label == "execution":

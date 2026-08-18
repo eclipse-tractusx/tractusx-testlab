@@ -71,9 +71,7 @@ logger = logging.getLogger(__name__)
 class CreateShellDescriptorParams(DtrParams):
     """Input contract of ``digital-twin/provider/create_shell_descriptor``."""
 
-    shell_descriptor: dict = Field(
-        description="The AAS shell descriptor document to register."
-    )
+    shell_descriptor: dict = Field(description="The AAS shell descriptor document to register.")
 
 
 @step("digital-twin/provider/create_shell_descriptor")
@@ -103,8 +101,10 @@ async def _register_shell(
     from tractusx_sdk.industry.models.aas.v3.base import ShellDescriptor
 
     aas = context.dataspace.registry()
-    result = await sdk_call.run(aas.create_asset_administration_shell_descriptor,
-        ShellDescriptor(**shell_descriptor), bpn=bpn
+    result = await sdk_call.run(
+        aas.create_asset_administration_shell_descriptor,
+        ShellDescriptor(**shell_descriptor),
+        bpn=bpn,
     )
     url = f"{aas.aas_url}/shell-descriptors"
 
@@ -128,9 +128,7 @@ class WizardCreateShellDescriptorParams(DtrParams):
     registers, described field by field instead of as one AAS document.
     """
 
-    id: str = Field(
-        default="", description="Shell identifier; a fresh URN UUID when omitted."
-    )
+    id: str = Field(default="", description="Shell identifier; a fresh URN UUID when omitted.")
     id_short: str = Field(description="Short, human-readable name for the shell.")
     global_asset_id: str = Field(
         default="", description="Global asset ID the twin represents, as a URN."
@@ -206,8 +204,10 @@ class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayloa
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         aas = context.dataspace.registry()
-        result = await sdk_call.run(aas.get_asset_administration_shell_descriptor_by_id,
-            params.aas_identifier, bpn=params.bpn
+        result = await sdk_call.run(
+            aas.get_asset_administration_shell_descriptor_by_id,
+            params.aas_identifier,
+            bpn=params.bpn,
         )
         url = f"{aas.aas_url}/shell-descriptors/{params.aas_identifier}"
 
@@ -350,8 +350,8 @@ class DeleteShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DeletionOutpu
         definition: StepDefinition,
     ) -> StepOutput[DeletionOutput]:
         aas = context.dataspace.registry()
-        result = await sdk_call.run(aas.delete_asset_administration_shell_descriptor,
-            params.aas_identifier, bpn=params.bpn
+        result = await sdk_call.run(
+            aas.delete_asset_administration_shell_descriptor, params.aas_identifier, bpn=params.bpn
         )
         url = f"{aas.aas_url}/shell-descriptors/{params.aas_identifier}"
         status = _delete_status(result)

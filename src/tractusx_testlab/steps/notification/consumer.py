@@ -135,9 +135,7 @@ class SendNotificationOutput(StepPayload):
     status_code: int | None = Field(
         default=None, description="Status code the receiver answered with."
     )
-    response_body: Any | None = Field(
-        default=None, description="Body the receiver answered with."
-    )
+    response_body: Any | None = Field(default=None, description="Body the receiver answered with.")
     response_headers: dict | None = Field(
         default=None, description="Headers the receiver answered with."
     )
@@ -167,7 +165,9 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
         return await self._execute_sdk_notification(params, context)
 
     async def _execute_sdk_notification(
-        self, params: SendNotificationParams, context: StepContext,
+        self,
+        params: SendNotificationParams,
+        context: StepContext,
     ) -> StepOutput[SendNotificationOutput]:
         """Canonical mode: send via SDK NotificationConsumerService."""
         notif_service = context.dataspace.notifications()
@@ -185,12 +185,14 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
 
         status_code = 200
         return StepOutput(
-            value=SendNotificationOutput.model_validate({
-                **(result if isinstance(result, dict) else {}),
-                "status_code": status_code,
-                "response_body": result,
-                "response_headers": {},
-            }),
+            value=SendNotificationOutput.model_validate(
+                {
+                    **(result if isinstance(result, dict) else {}),
+                    "status_code": status_code,
+                    "response_body": result,
+                    "response_headers": {},
+                }
+            ),
             request=HttpRequest(
                 method="POST", url=params.counter_party_address, body=notification.to_data()
             ),
@@ -198,7 +200,8 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
         )
 
     async def _execute_dataplane_direct(
-        self, params: SendNotificationParams,
+        self,
+        params: SendNotificationParams,
     ) -> StepOutput[SendNotificationOutput]:
         """CCM mode: POST directly to dataplane URL with EDR auth token."""
         url = params.direct_url()
@@ -210,9 +213,7 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
         response_headers: dict[str, str] = {}
         try:
             async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    url, json=body, headers=headers, timeout=params.timeout
-                )
+                resp = await client.post(url, json=body, headers=headers, timeout=params.timeout)
                 result = resp.json() if resp.content else {}
                 status_code = resp.status_code
                 response_headers = dict(resp.headers)
@@ -222,16 +223,16 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
             status_code = 500
 
         return StepOutput(
-            value=SendNotificationOutput.model_validate({
-                **(result if isinstance(result, dict) else {}),
-                "status_code": status_code,
-                "response_body": result,
-                "response_headers": response_headers,
-            }),
-            request=HttpRequest(method="POST", url=url, body=body),
-            response=HttpResponse(
-                status_code=status_code, headers=response_headers, body=result
+            value=SendNotificationOutput.model_validate(
+                {
+                    **(result if isinstance(result, dict) else {}),
+                    "status_code": status_code,
+                    "response_body": result,
+                    "response_headers": response_headers,
+                }
             ),
+            request=HttpRequest(method="POST", url=url, body=body),
+            response=HttpResponse(status_code=status_code, headers=response_headers, body=result),
         )
 
 
@@ -266,7 +267,8 @@ class DiscoverNotificationAssetsStep(
         definition: StepDefinition,
     ) -> StepOutput[NotificationAssetsOutput]:
         notif_service = context.dataspace.notifications()
-        datasets = await sdk_call.run(notif_service.discover_notification_assets,
+        datasets = await sdk_call.run(
+            notif_service.discover_notification_assets,
             provider_bpn=params.counter_party_id,
             provider_dsp_url=params.counter_party_address,
             timeout=params.timeout,

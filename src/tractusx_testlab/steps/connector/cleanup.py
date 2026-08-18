@@ -162,9 +162,7 @@ class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, Dele
         definition: StepDefinition,
     ) -> StepOutput[DeletionOutput]:
         provider = context.dataspace.provider()
-        contract_id = params.contract_definition_id or context.get_str(
-            "contract_definition_id"
-        )
+        contract_id = params.contract_definition_id or context.get_str("contract_definition_id")
         url = context.dataspace.provider_endpoint_url("contract_definitions", contract_id)
 
         result = provider.contract_definitions.delete(oid=contract_id)

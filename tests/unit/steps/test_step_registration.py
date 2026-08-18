@@ -74,26 +74,18 @@ def _step_class_names() -> dict[str, str]:
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
-            bases = [
-                re.sub(r"\[.*\]", "", ast.unparse(base)).split(".")[-1]
-                for base in node.bases
-            ]
+            bases = [re.sub(r"\[.*\]", "", ast.unparse(base)).split(".")[-1] for base in node.bases]
             classes[node.name] = (f"{path.relative_to(_STEPS_DIR)}:{node.lineno}", bases)
 
     def derives_from_base_step(name: str, seen: frozenset[str] = frozenset()) -> bool:
         if name in seen or name not in classes:
             return False
         return any(
-            base == BaseStep.__name__
-            or derives_from_base_step(base, seen | {name})
+            base == BaseStep.__name__ or derives_from_base_step(base, seen | {name})
             for base in classes[name][1]
         )
 
-    return {
-        name: where
-        for name, (where, _) in classes.items()
-        if derives_from_base_step(name)
-    }
+    return {name: where for name, (where, _) in classes.items() if derives_from_base_step(name)}
 
 
 def _decorated_class_names() -> set[str]:
@@ -132,8 +124,7 @@ class TestStepRegistration:
         """
         undeclared = set(StepRegistry.list_step_types()) - set(_decorated_step_types())
         assert not undeclared, (
-            "registered without a @step decorator on the class: "
-            f"{sorted(undeclared)}"
+            f"registered without a @step decorator on the class: {sorted(undeclared)}"
         )
 
     def test_every_step_class_carries_a_decorator(self):
@@ -141,8 +132,7 @@ class TestStepRegistration:
         undecorated = {
             name: where
             for name, where in _step_class_names().items()
-            if name not in _decorated_class_names()
-            and name not in _ABSTRACT_STEP_CLASSES
+            if name not in _decorated_class_names() and name not in _ABSTRACT_STEP_CLASSES
         }
         assert not undecorated, (
             "BaseStep subclass with no @step decorator — register it, or add it to "
@@ -189,9 +179,7 @@ class TestEveryRegisteredStepIsReachable:
         rejected = [
             step_type
             for step_type in StepRegistry.list_step_types()
-            if _reject_banned_steps(
-                {"execution": [{"id": "s", "uses": step_type}]}, "probe"
-            )
+            if _reject_banned_steps({"execution": [{"id": "s", "uses": step_type}]}, "probe")
         ]
         assert not rejected, (
             f"The registry advertises {rejected}, which the compiler refuses to "

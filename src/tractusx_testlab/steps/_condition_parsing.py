@@ -47,22 +47,16 @@ if TYPE_CHECKING:
 STATUS_FN_RE = re.compile(r"^(success|failure|always)\(\)$")
 
 # Step outcome: steps.<name>.outcome == 'value'
-STEP_OUTCOME_RE = re.compile(
-    r"^steps\.([^\s.]+)\.outcome\s*(==|!=)\s*'([^']*)'$"
-)
+STEP_OUTCOME_RE = re.compile(r"^steps\.([^\s.]+)\.outcome\s*(==|!=)\s*'([^']*)'$")
 
 # Variable comparison: vars.<name> == 'value' (quoted) or vars.<name> == value (unquoted)
-VARS_COMPARISON_RE = re.compile(
-    r"^vars\.([^\s=!]+)\s*(==|!=)\s*(?:'([^']*)'|(\S+))$"
-)
+VARS_COMPARISON_RE = re.compile(r"^vars\.([^\s=!]+)\s*(==|!=)\s*(?:'([^']*)'|(\S+))$")
 
 # Variable truthy: vars.<name>
 VARS_TRUTHY_RE = re.compile(r"^vars\.([^\s]+)$")
 
 # Legacy ${var} comparison (backward compat)
-LEGACY_COMPARISON_RE = re.compile(
-    r"^\$\{([^}]+)\}\s*(==|!=)\s*(?:'([^']*)'|(\S+))$"
-)
+LEGACY_COMPARISON_RE = re.compile(r"^\$\{([^}]+)\}\s*(==|!=)\s*(?:'([^']*)'|(\S+))$")
 
 # Legacy ${var} truthy (backward compat)
 LEGACY_TRUTHY_RE = re.compile(r"^\$\{([^}]+)\}$")

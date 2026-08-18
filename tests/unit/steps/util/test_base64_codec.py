@@ -55,14 +55,18 @@ class TestBase64Step:
     @pytest.mark.asyncio
     async def test_encode_standard(self, context: StepContext) -> None:
         output = await Base64Step().invoke(
-            {"input": _AAS_ID}, context, _definition(),
+            {"input": _AAS_ID},
+            context,
+            _definition(),
         )
         assert output.value == _STD
 
     @pytest.mark.asyncio
     async def test_encode_url_safe(self, context: StepContext) -> None:
         output = await Base64Step().invoke(
-            {"input": _AAS_ID, "url_safe": True}, context, _definition(),
+            {"input": _AAS_ID, "url_safe": True},
+            context,
+            _definition(),
         )
         assert output.value == _URLSAFE
         assert "/" not in output.value
@@ -71,7 +75,9 @@ class TestBase64Step:
     @pytest.mark.asyncio
     async def test_decode_standard(self, context: StepContext) -> None:
         output = await Base64Step().invoke(
-            {"input": _STD, "mode": "decode"}, context, _definition(),
+            {"input": _STD, "mode": "decode"},
+            context,
+            _definition(),
         )
         assert output.value == _AAS_ID
 
@@ -105,7 +111,9 @@ class TestBase64Step:
         text = "Bauteil-Ännderung — 車両"
         encoded = await Base64Step().invoke({"input": text}, context, _definition())
         decoded = await Base64Step().invoke(
-            {"input": encoded.value, "mode": "decode"}, context, _definition(),
+            {"input": encoded.value, "mode": "decode"},
+            context,
+            _definition(),
         )
         assert decoded.value == text
 
@@ -132,12 +140,16 @@ class TestBase64Step:
     async def test_invalid_mode_raises(self, context: StepContext) -> None:
         with pytest.raises(ValueError, match="mode: Input should be 'encode' or 'decode'"):
             await Base64Step().invoke(
-                {"input": _AAS_ID, "mode": "flip"}, context, _definition(),
+                {"input": _AAS_ID, "mode": "flip"},
+                context,
+                _definition(),
             )
 
     @pytest.mark.asyncio
     async def test_decode_invalid_base64_raises(self, context: StepContext) -> None:
         with pytest.raises(ValueError, match="not valid base64"):
             await Base64Step().invoke(
-                {"input": "!!!not base64!!!", "mode": "decode"}, context, _definition(),
+                {"input": "!!!not base64!!!", "mode": "decode"},
+                context,
+                _definition(),
             )

@@ -37,11 +37,14 @@ from tractusx_testlab.compiler import schema_export
 @app.command("schema")
 def schema(
     output: Path | None = typer.Option(
-        None, "--output", "-o",
+        None,
+        "--output",
+        "-o",
         help="Directory to write the schemas to (default: the packaged schemas/).",
     ),
     check: bool = typer.Option(
-        False, "--check",
+        False,
+        "--check",
         help="Exit non-zero if the committed schemas differ from the models.",
     ),
 ) -> None:

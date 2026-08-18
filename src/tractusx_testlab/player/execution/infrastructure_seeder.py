@@ -73,6 +73,7 @@ _KNOWN_MANAGEMENT_SUFFIXES: tuple[str, ...] = ("/management", "/api/v1/managemen
 # Helpers
 # ------------------------------------------------------------------
 
+
 def _strip_management_suffix(url: str) -> tuple[str, str]:
     """Return ``(base_url, dma_path)`` by stripping a known management suffix.
 
@@ -148,7 +149,9 @@ def _register(
     context.set_variable(capability_key, definition.name)
     logger.info(
         "Seeded %s service '%s' from infrastructure bindings (base_url=%s)",
-        capability_key, definition.name, definition.base_url,
+        capability_key,
+        definition.name,
+        definition.base_url,
     )
 
 
@@ -156,8 +159,10 @@ def _register(
 # Public API
 # ------------------------------------------------------------------
 
+
 def seed_infrastructure_services(
-    svc_mgr: ServiceManager, context: StepContext,
+    svc_mgr: ServiceManager,
+    context: StepContext,
 ) -> None:
     """Register the SDK services the run's infrastructure bindings describe.
 
@@ -180,7 +185,9 @@ def seed_infrastructure_services(
             svc_mgr,
             context,
             _connector_definition(
-                _ENGINE_CONNECTOR_NAME, ServiceType.CONNECTOR_CONSUMER, engine_connector,
+                _ENGINE_CONNECTOR_NAME,
+                ServiceType.CONNECTOR_CONSUMER,
+                engine_connector,
             ),
             "infrastructure.engine.connector",
         )
@@ -205,7 +212,9 @@ def seed_infrastructure_services(
             svc_mgr,
             context,
             _connector_definition(
-                _SUT_CONNECTOR_NAME, ServiceType.CONNECTOR_PROVIDER, sut_connector,
+                _SUT_CONNECTOR_NAME,
+                ServiceType.CONNECTOR_PROVIDER,
+                sut_connector,
             ),
             "infrastructure.sut.connector",
         )
@@ -214,7 +223,10 @@ def seed_infrastructure_services(
     sut_dtr = infrastructure.sut.dtr
     if sut_dtr.is_bound() and _SUT_DTR_NAME not in already:
         _register(
-            svc_mgr, context, _dtr_definition(_SUT_DTR_NAME, sut_dtr), "infrastructure.sut.dtr",
+            svc_mgr,
+            context,
+            _dtr_definition(_SUT_DTR_NAME, sut_dtr),
+            "infrastructure.sut.dtr",
         )
 
     # engine.dtr → DTR (the engine's own registry, registered last so a bare

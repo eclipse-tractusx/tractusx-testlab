@@ -80,6 +80,7 @@ def _load_test_scripts(tests: list, base_dir: Path) -> list[TestScript]:
         )
     return scripts
 
+
 def _detect_kind(data: dict) -> ScriptKind:
     """Detect the kind of a YAML document.
 
@@ -140,9 +141,7 @@ class Loader:
         a temporary directory so that relative asset paths resolve.
         """
         if not zipfile.is_zipfile(path):
-            raise ValueError(
-                f"File has .tck extension but is not a valid ZIP archive: {path}"
-            )
+            raise ValueError(f"File has .tck extension but is not a valid ZIP archive: {path}")
 
         with zipfile.ZipFile(path, "r") as zf:
             names = zf.namelist()
@@ -255,8 +254,7 @@ class Loader:
         return self._parse_data(data, source_path=path, base_dir=path.parent)
 
     def _parse_data(self, data: object, source_path: Path, base_dir: Path) -> Tck:
-        """Parse raw YAML data into a Tck runtime object.
-        """
+        """Parse raw YAML data into a Tck runtime object."""
         if not isinstance(data, dict):
             raise ValueError(
                 f"Expected a YAML mapping from {source_path}, got {type(data).__name__}"

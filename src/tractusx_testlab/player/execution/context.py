@@ -162,4 +162,3 @@ class StepContext:
     @property
     def variables(self) -> dict[str, object]:
         return dict(self._variables)
-

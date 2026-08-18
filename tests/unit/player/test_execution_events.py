@@ -89,9 +89,7 @@ def _assertion(passed: bool) -> AssertionResult:
 
 
 class TestEventKindIsTheDiscriminator:
-    def test_every_event_carries_its_kind(
-        self, monitor: ExecutionMonitor, published: list
-    ) -> None:
+    def test_every_event_carries_its_kind(self, monitor: ExecutionMonitor, published: list) -> None:
         monitor.on_job_started("job-1", "ccm-tck")
         monitor.on_script_started("job-1", "script-1", 0)
         monitor.on_step_started(
@@ -120,10 +118,7 @@ class TestEventKindIsTheDiscriminator:
 
     def test_every_declared_kind_has_a_payload_model(self) -> None:
         """A kind with no model could be emitted as an untyped dict."""
-        modelled = {
-            member.model_fields["kind"].default
-            for member in ExecutionEvent.__args__
-        }
+        modelled = {member.model_fields["kind"].default for member in ExecutionEvent.__args__}
         assert modelled == set(EventKind)
 
 
@@ -142,8 +137,11 @@ class TestStepOutcome:
         ],
     )
     def test_the_outcome_kind_follows_the_result_status(
-        self, monitor: ExecutionMonitor, published: list,
-        status: StepStatus, expected: str,
+        self,
+        monitor: ExecutionMonitor,
+        published: list,
+        status: StepStatus,
+        expected: str,
     ) -> None:
         monitor.on_step_completed("job-1", "script-1", "neg", _step_result(status))
         assert published[-1][0] == expected
@@ -154,12 +152,16 @@ class TestAssertionEvents:
         self, monitor: ExecutionMonitor, published: list
     ) -> None:
         monitor.on_step_completed(
-            "job-1", "script-1", "neg",
+            "job-1",
+            "script-1",
+            "neg",
             _step_result(StepStatus.PASSED, [_assertion(True), _assertion(True)]),
         )
 
         assert [event for event, _ in published] == [
-            "assertion.result", "assertion.result", "step.completed",
+            "assertion.result",
+            "assertion.result",
+            "step.completed",
         ]
 
     def test_an_assertion_reports_its_own_outcome(
@@ -167,7 +169,9 @@ class TestAssertionEvents:
     ) -> None:
         """This is what replaces guessing at an assertion from the step type."""
         monitor.on_step_completed(
-            "job-1", "script-1", "neg",
+            "job-1",
+            "script-1",
+            "neg",
             _step_result(StepStatus.FAILED, [_assertion(False)]),
         )
         _, payload = published[0]
@@ -188,9 +192,7 @@ class TestAssertionEvents:
 
 
 class TestJobLifecycle:
-    def test_a_failed_job_carries_why(
-        self, monitor: ExecutionMonitor, published: list
-    ) -> None:
+    def test_a_failed_job_carries_why(self, monitor: ExecutionMonitor, published: list) -> None:
         monitor.on_job_failed("job-1", error="One or more scripts failed")
         _, payload = published[-1]
         assert payload["kind"] == EventKind.JOB_FAILED.value
@@ -205,8 +207,11 @@ class TestJobLifecycle:
         ],
     )
     def test_the_terminal_kinds_are_the_ones_that_close_the_stream(
-        self, monitor: ExecutionMonitor, published: list,
-        publish: Any, expected: str,
+        self,
+        monitor: ExecutionMonitor,
+        published: list,
+        publish: Any,
+        expected: str,
     ) -> None:
         publish(monitor)
         assert published[-1][0] == expected
@@ -225,9 +230,7 @@ class TestScriptLifecycle:
         self, monitor: ExecutionMonitor, published: list
     ) -> None:
         """There is no script_failed kind — the result already carries status."""
-        monitor.on_script_completed(
-            "job-1", ScriptResult(script_name="s", status="FAILED")
-        )
+        monitor.on_script_completed("job-1", ScriptResult(script_name="s", status="FAILED"))
         _, payload = published[-1]
         assert payload["kind"] == EventKind.SCRIPT_COMPLETED.value
         assert payload["result"]["status"] == "FAILED"

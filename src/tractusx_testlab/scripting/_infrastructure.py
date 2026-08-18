@@ -82,7 +82,8 @@ def collect_infrastructure_requirements(tck: object) -> InfrastructureConfig:
 
     scripts = getattr(tck, "scripts", None) or []
     declared = [
-        infrastructure for infrastructure in (
+        infrastructure
+        for infrastructure in (
             getattr(getattr(script, "definition", None), "infrastructure", None)
             for script in scripts
         )

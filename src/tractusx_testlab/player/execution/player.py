@@ -137,6 +137,7 @@ class TestlabPlayer:
         """Load and execute a TCK, emitting package verification events before execution."""
         resolved = Path(path)
         import zipfile as _zf
+
         encrypted = _zf.is_zipfile(resolved) and _is_encrypted_tck(resolved)
         self._monitor.on_package_verify_start(resolved.name, encrypted=encrypted)
         try:
@@ -200,7 +201,11 @@ class TestlabPlayer:
 
         tck_started_at = datetime.now(UTC)
         script_results = await self._execute_scripts(
-            tck.scripts, context, job, monitor, skip_ids,
+            tck.scripts,
+            context,
+            job,
+            monitor,
+            skip_ids,
         )
         tck_finished_at = datetime.now(UTC)
 
@@ -211,7 +216,10 @@ class TestlabPlayer:
             self._mock_server = None
 
         result = build_tck_result(
-            tck.name, script_results, tck_started_at, tck_finished_at,
+            tck.name,
+            script_results,
+            tck_started_at,
+            tck_finished_at,
         )
         finalize_job(self._jobs, job, result, monitor, job_logger)
         return result
@@ -248,7 +256,10 @@ class TestlabPlayer:
         resolved = self._infrastructure.resolve(collect_overrides(context.variables))
         self._infrastructure.validate(requirements, resolved)
         resolved = self._infrastructure.align(
-            requirements, release, release_stated=release_stated, infrastructure=resolved,
+            requirements,
+            release,
+            release_stated=release_stated,
+            infrastructure=resolved,
         )
 
         context.bind_infrastructure(resolved)
@@ -336,10 +347,10 @@ def _target_release(tck: Tck) -> tuple[str, bool]:
     return defaults.DATASPACE_VERSION, False
 
 
-
 def _is_encrypted_tck(path: Path) -> bool:
     """Return True if the .tck ZIP contains payload.enc (encrypted package format)."""
     import zipfile
+
     try:
         with zipfile.ZipFile(path, "r") as zf:
             return "payload.enc" in zf.namelist()

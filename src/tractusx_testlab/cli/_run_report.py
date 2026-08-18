@@ -81,18 +81,15 @@ def execute_with_progress(player, tck, runtime_vars: dict[str, str], total_steps
     ) as progress:
         task_id = progress.add_task("Starting...", total=total_steps)
         player.monitor.add_callback(_make_progress_callback(progress, task_id))
-        return asyncio.run(
-            player.run_tck(tck, runtime_vars=runtime_vars or None)
-        )
+        return asyncio.run(player.run_tck(tck, runtime_vars=runtime_vars or None))
 
 
 def _make_progress_callback(progress, task_id):
     """Create a progress callback for the player monitor."""
+
     def _on_progress(event: str, payload: dict) -> None:
         if event == "step.started":
-            progress.update(
-                task_id, description=f"  Running: {payload.get('step_type') or ''}"
-            )
+            progress.update(task_id, description=f"  Running: {payload.get('step_type') or ''}")
         elif event == "step.completed":
             # The outcome lives on the event's nested `result`, not at the top
             # level. Reading `payload["status"]` found nothing, so the comparison
@@ -102,11 +99,10 @@ def _make_progress_callback(progress, task_id):
             step = payload.get("result") or {}
             passed = str(step.get("status", "")).upper() == "PASSED"
             icon = "[green]PASS" if passed else "[red]FAIL"
-            progress.update(
-                task_id, advance=1, description=f"  {icon} {step.get('step_name', '')}"
-            )
+            progress.update(task_id, advance=1, description=f"  {icon} {step.get('step_name', '')}")
         elif event == "script.started":
             progress.update(task_id, description=f"  Script: {payload.get('script', '')}")
+
     return _on_progress
 
 

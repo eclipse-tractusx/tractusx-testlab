@@ -65,15 +65,13 @@ class NegotiateParams(CounterPartyParams):
     asset_id: Any | None = Field(
         default=None,
         description=(
-            "Asset ID to negotiate for; falls back to the 'catalog_asset_id' "
-            "context variable."
+            "Asset ID to negotiate for; falls back to the 'catalog_asset_id' context variable."
         ),
     )
     policy: Any | None = Field(
         default=None,
         description=(
-            "ODRL policy to negotiate under; falls back to the 'catalog_policy' "
-            "context variable."
+            "ODRL policy to negotiate under; falls back to the 'catalog_policy' context variable."
         ),
     )
     max_wait: float = Field(
@@ -89,9 +87,7 @@ class NegotiateParams(CounterPartyParams):
 class NegotiationOutput(StepPayload):
     """Output contract of ``connector/consumer/negotiate``."""
 
-    negotiation_id: str | None = Field(
-        default=None, description="ID of the started negotiation."
-    )
+    negotiation_id: str | None = Field(default=None, description="ID of the started negotiation.")
     agreement_id: str | None = Field(
         default=None,
         description="ID of the contract agreement, once the negotiation finalised.",
@@ -121,12 +117,11 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
         definition: StepDefinition,
     ) -> StepOutput[NegotiationOutput]:
         consumer = context.dataspace.consumer()
-        counter_party_address = params.counter_party_address or context.get_str(
-            "provider_address"
-        )
+        counter_party_address = params.counter_party_address or context.get_str("provider_address")
         counter_party_id = params.counter_party_id or context.get_str("provider_bpnl")
 
-        negotiation_id = await sdk_call.run(consumer.start_edr_negotiation,
+        negotiation_id = await sdk_call.run(
+            consumer.start_edr_negotiation,
             counter_party_id=counter_party_id,
             counter_party_address=counter_party_address,
             # `get_variable`, not `get_str`: the SDK is handed the absence as

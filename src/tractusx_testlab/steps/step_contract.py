@@ -156,9 +156,11 @@ class BaseStep[ParamsT, PayloadT](ABC):
             datasets: list[dict]
             dct_type: str
 
+
         class ExtractDatasetOutput(StepPayload):
             dataset: dict | None = None
             asset_id: str | None = None
+
 
         @step("connector/consumer/extract_dataset")
         class ExtractDatasetStep(BaseStep[ExtractDatasetParams, ExtractDatasetOutput]):
@@ -328,10 +330,7 @@ def _require_declared_contract(cls: type[BaseStep]) -> None:
             f"Step '{cls.__name__}' must set params_model to a StepParams subclass "
             f"declaring the keys it accepts under 'with:'."
         )
-    if not (
-        isinstance(output_model, type)
-        and issubclass(output_model, (StepPayload, StepValue))
-    ):
+    if not (isinstance(output_model, type) and issubclass(output_model, (StepPayload, StepValue))):
         raise TypeError(
             f"Step '{cls.__name__}' must set output_model to a StepPayload subclass "
             f"(an object) or a StepValue subclass (a bare value, NoOutput for none)."

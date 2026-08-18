@@ -120,8 +120,12 @@ def _script() -> dict:
         "dataspace": {"ecosystem": "Catena-X", "version": "jupiter"},
         "infrastructure": {"sut": {"connector": {"required": True}}},
         "setup": [
-            {"id": "seed", "name": "Seed", "uses": "util/generate_uuid",
-             "returns": {"value": {"type": "string"}}}
+            {
+                "id": "seed",
+                "name": "Seed",
+                "uses": "util/generate_uuid",
+                "returns": {"value": {"type": "string"}},
+            }
         ],
         "execution": [
             {
@@ -133,9 +137,7 @@ def _script() -> dict:
                 "if": "success()",
                 "expects": "fail",
                 "timeout_s": 30.0,
-                "validate": [
-                    {"uses": "validate/assert/not_null", "with": {"input": "value"}}
-                ],
+                "validate": [{"uses": "validate/assert/not_null", "with": {"input": "value"}}],
             }
         ],
         "teardown": [
@@ -147,9 +149,7 @@ def _script() -> dict:
 def _compile(tmp_path) -> tuple[dict, list[dict]]:
     """Write the fixture TCK and return (global_symbols, compiled_tests)."""
     (tmp_path / "tests").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "tests" / "everything.yaml").write_text(
-        yaml.dump(_script()), encoding="utf-8"
-    )
+    (tmp_path / "tests" / "everything.yaml").write_text(yaml.dump(_script()), encoding="utf-8")
     manifest = _manifest()
     return build_global_symbols(manifest["env"]), build_compiled_tests(manifest, tmp_path)
 
@@ -192,12 +192,11 @@ class TestEveryStepFieldSurvives:
 
     def test_no_step_field_is_dropped(self, tmp_path) -> None:
         _, compiled = _compile(tmp_path)
-        instruction = next(
-            i for i in compiled[0]["instructions"] if i["id"] == "act"
-        )
+        instruction = next(i for i in compiled[0]["instructions"] if i["id"] == "act")
 
         dropped = {
-            name for name in _step_keys()
+            name
+            for name in _step_keys()
             if name not in instruction and _script()["execution"][0].get(name) is not None
         }
         assert not dropped, (
@@ -224,9 +223,7 @@ class TestEveryScriptFieldSurvives:
         test = compiled[0]
 
         expected = (
-            set(ScriptDefinition.model_fields)
-            - _DOCUMENT_FIELDS
-            - _FLATTENED_INTO_INSTRUCTIONS
+            set(ScriptDefinition.model_fields) - _DOCUMENT_FIELDS - _FLATTENED_INTO_INSTRUCTIONS
         )
         dropped = expected - set(test)
         assert not dropped, (

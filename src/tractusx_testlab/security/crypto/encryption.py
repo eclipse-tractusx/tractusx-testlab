@@ -121,7 +121,9 @@ def encrypt_for_recipients(
     return nonce, ciphertext, key_blocks
 
 
-def decrypt_package(encrypted_key: bytes, nonce: bytes, ciphertext: bytes, private_pem: bytes) -> bytes:
+def decrypt_package(
+    encrypted_key: bytes, nonce: bytes, ciphertext: bytes, private_pem: bytes
+) -> bytes:
     """Unwrap AES key with RSA-OAEP, then decrypt AES-256-GCM ciphertext."""
     aes_key = _rsa_private_key(private_pem).decrypt(encrypted_key, _oaep())
     aesgcm = AESGCM(aes_key)

@@ -96,10 +96,14 @@ class ConfigLoader:
 
     @staticmethod
     def _load_file(config_path: Path | None = None) -> dict:
-        candidates = [config_path] if config_path else [
-            Path.cwd() / _CONFIG_FILENAME,
-            Path.home() / ".testlab" / _CONFIG_FILENAME,
-        ]
+        candidates = (
+            [config_path]
+            if config_path
+            else [
+                Path.cwd() / _CONFIG_FILENAME,
+                Path.home() / ".testlab" / _CONFIG_FILENAME,
+            ]
+        )
         for path in candidates:
             if path and path.is_file():
                 with open(path, encoding="utf-8") as f:

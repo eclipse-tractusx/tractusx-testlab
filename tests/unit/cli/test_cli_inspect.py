@@ -73,7 +73,6 @@ teardown:
 """
 
 
-
 def _write_sealed(archive: Path, entries: dict[str, bytes]) -> None:
     """Write a ``.tck`` sealed the way the compiler seals one.
 
@@ -91,10 +90,13 @@ def _write_sealed(archive: Path, entries: dict[str, bytes]) -> None:
 def tck_archive(tmp_path: Path) -> Path:
     """Build a plain .tck ZIP archive for CLI tests."""
     archive = tmp_path / "cli-inspect.tck"
-    _write_sealed(archive, {
-        _TCK_BUNDLE_ENTRY: _TCK_BUNDLE_YAML.encode(),
-        "tests/inspect-script.yaml": _SCRIPT_YAML.encode(),
-    })
+    _write_sealed(
+        archive,
+        {
+            _TCK_BUNDLE_ENTRY: _TCK_BUNDLE_YAML.encode(),
+            "tests/inspect-script.yaml": _SCRIPT_YAML.encode(),
+        },
+    )
     return archive
 
 
@@ -184,7 +186,9 @@ class TestInspectCommand:
         assert result.exit_code == 0
         assert "checksum" in json.loads(result.output)["manifest"]["package"]
 
-    def test_inspect_extracts_the_verified_contents(self, tck_archive: Path, tmp_path: Path) -> None:
+    def test_inspect_extracts_the_verified_contents(
+        self, tck_archive: Path, tmp_path: Path
+    ) -> None:
         """What ``compile decompile`` did — for every entry, not one YAML."""
         out = tmp_path / "extracted"
         result = runner.invoke(app, ["inspect", str(tck_archive), "--extract", str(out)])

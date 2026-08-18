@@ -73,7 +73,7 @@ class JobManager:
         jobs = list(self._jobs.values())
         if status:
             jobs = [job for job in jobs if job.status == status]
-        return jobs[offset: offset + limit]
+        return jobs[offset : offset + limit]
 
     # ------------------------------------------------------------------
     # State transitions
@@ -169,8 +169,10 @@ class JobManager:
 
     @staticmethod
     def _event(job: Job, event_type: str, description: str) -> None:
-        job.memory.log_event(JobEvent(
-            timestamp=datetime.now(UTC),
-            event_type=event_type,
-            description=description,
-        ))
+        job.memory.log_event(
+            JobEvent(
+                timestamp=datetime.now(UTC),
+                event_type=event_type,
+                description=description,
+            )
+        )

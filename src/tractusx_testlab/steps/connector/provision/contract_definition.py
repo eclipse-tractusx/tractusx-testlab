@@ -75,8 +75,7 @@ class CreateContractDefinitionParams(StepParams):
     asset_id: Any = Field(
         default="",
         description=(
-            "Single asset the contract definition offers; ignored when "
-            "'asset_selector' is given."
+            "Single asset the contract definition offers; ignored when 'asset_selector' is given."
         ),
     )
     asset_selector: list[FilterExpression] = Field(

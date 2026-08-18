@@ -40,12 +40,12 @@ from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.scripting.script import TestScript
 
-_NON_FAILING_STATUSES: frozenset[ScriptStatus] = frozenset({
-    ScriptStatus.COMPLETED,
-    ScriptStatus.SKIPPED,
-})
-
-
+_NON_FAILING_STATUSES: frozenset[ScriptStatus] = frozenset(
+    {
+        ScriptStatus.COMPLETED,
+        ScriptStatus.SKIPPED,
+    }
+)
 
 
 def make_intentionally_skipped_result(script: TestScript) -> ScriptResult:

@@ -75,7 +75,9 @@ class TestDoDspStep:
     """Tests for DoDspStep — full DSP flow via SDK consumer.do_dsp()."""
 
     @pytest.mark.asyncio
-    async def test_stores_endpoint_and_token_in_context(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_stores_endpoint_and_token_in_context(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         # Arrange
         consumer = MagicMock()
         consumer.do_dsp.return_value = (_ENDPOINT, _TOKEN)
@@ -96,7 +98,9 @@ class TestDoDspStep:
         assert ctx.variables[EDR_TOKEN] == _TOKEN
 
     @pytest.mark.asyncio
-    async def test_output_value_contains_endpoint_and_token(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_output_value_contains_endpoint_and_token(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         # Arrange
         consumer = MagicMock()
         consumer.do_dsp.return_value = (_ENDPOINT, _TOKEN)
@@ -157,7 +161,9 @@ class TestDoDspStep:
             )
 
     @pytest.mark.asyncio
-    async def test_passes_filter_expression_and_policies_to_sdk(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_passes_filter_expression_and_policies_to_sdk(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         # Arrange
         consumer = MagicMock()
         consumer.do_dsp.return_value = (_ENDPOINT, _TOKEN)
@@ -187,7 +193,9 @@ class TestDoDspStep:
         )
 
     @pytest.mark.asyncio
-    async def test_does_not_store_none_endpoint_in_context(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_does_not_store_none_endpoint_in_context(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp.return_value = (None, None)
         ctx.dataspace.consumer.return_value = consumer
@@ -210,7 +218,9 @@ class TestDoDspWithBpnlStep:
     """Tests for DoDspWithBpnlStep — BPNL-based DSP flow via SDK consumer.do_dsp_with_bpnl()."""
 
     @pytest.mark.asyncio
-    async def test_stores_endpoint_and_token_in_context(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_stores_endpoint_and_token_in_context(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp_with_bpnl.return_value = (_ENDPOINT, _TOKEN)
         ctx.dataspace.consumer.return_value = consumer
@@ -227,7 +237,9 @@ class TestDoDspWithBpnlStep:
         assert output.response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_passes_bpnl_and_optional_params_to_sdk(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_passes_bpnl_and_optional_params_to_sdk(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp_with_bpnl.return_value = (_ENDPOINT, _TOKEN)
         ctx.dataspace.consumer.return_value = consumer
@@ -278,7 +290,9 @@ class TestDiscoverDtrAuthStep:
     """Tests for DiscoverDtrAuthStep — DTR access via SDK consumer.do_dsp_by_dct_type()."""
 
     @pytest.mark.asyncio
-    async def test_stores_endpoint_and_token_in_context(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_stores_endpoint_and_token_in_context(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp_by_dct_type.return_value = (_ENDPOINT, _TOKEN)
         ctx.dataspace.consumer.return_value = consumer
@@ -298,7 +312,9 @@ class TestDiscoverDtrAuthStep:
         assert output.response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_filters_by_the_standard_dct_type_by_default(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_filters_by_the_standard_dct_type_by_default(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp_by_dct_type.return_value = (_ENDPOINT, _TOKEN)
         ctx.dataspace.consumer.return_value = consumer
@@ -320,7 +336,9 @@ class TestDiscoverDtrAuthStep:
         )
 
     @pytest.mark.asyncio
-    async def test_passes_overridden_dct_type_and_policies_to_sdk(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_passes_overridden_dct_type_and_policies_to_sdk(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp_by_dct_type.return_value = (_ENDPOINT, _TOKEN)
         ctx.dataspace.consumer.return_value = consumer

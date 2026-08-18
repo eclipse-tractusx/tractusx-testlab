@@ -28,12 +28,14 @@ from __future__ import annotations
 def create_app(*args, **kwargs):
     """Lazy proxy to app.create_app — avoids circular import at module load."""
     from tractusx_testlab.server.app import create_app as _create_app
+
     return _create_app(*args, **kwargs)
 
 
 def __getattr__(name):
     if name == "PackageStorage":
         from tractusx_testlab.server.storage import PackageStorage
+
         return PackageStorage
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

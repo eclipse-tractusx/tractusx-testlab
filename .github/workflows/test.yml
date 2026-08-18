@@ -58,9 +58,12 @@ jobs:
       - name: Lint (ruff)
         run: poetry run ruff check src tests tools
 
-      # Gated on the packages that are already clean. The ratchet lives in
-      # [[tool.mypy.overrides]]; removing an entry there is how a package
-      # graduates. See docs/developer/architecture-cleanup/README.md.
+      # Layout is decided by the formatter, so it is never a review comment.
+      - name: Format (ruff)
+        run: poetry run ruff format --check src tests
+
+      # Every module is gated — there are no [[tool.mypy.overrides]] exemptions
+      # left. See docs/developer/architecture-cleanup/README.md.
       - name: Types (mypy)
         run: poetry run mypy
 
