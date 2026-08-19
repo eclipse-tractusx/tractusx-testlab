@@ -300,141 +300,125 @@ Loading connector_e2e-1.0.tck
 
 ## Step 6 — Result Logs and Reports
 
-### JSON-Lines Log
+### The Two Records a Run Leaves
 
-Every step emits a structured log entry. Use `--log` to write to a file:
+Every run writes two files, and they are not two formats of the same thing.
+
+| | Transcript | Execution trace |
+|---|---|---|
+| **Where** | `./logs/<date>/<time>_<job_id>.log` | `./data/<date>/<time>_<job_id>.jsonl` |
+| **Override** | `--logs-dir` (or `TESTLAB_LOGS_DIR`) | `--data-dir` (or `TESTLAB_DATA_DIR`) |
+| **Format** | Plain text, identical to what scrolled past on the console | CloudEvents v1.0 JSON-lines ([ADR-0016](../../developer/decision-records/backend/ADR-0016-execution-trace-format.md)) |
+| **Read it when** | You want to see what happened | You want to know exactly what went over the wire, or you are feeding a tool |
 
 ```bash
 testlab run connector_e2e-1.0.tck \
   --vars-file vars.yaml \
-  --log results.jsonl
+  --logs-dir ./logs \
+  --data-dir ./data
 ```
 
-Each line is a JSON object containing the full request and response details for traceability:
+#### The transcript
 
-**Passed step:**
+Everything the console showed, in order: the compile narration, the run header, the execution events, any traceback, and the result banner. It is copied from `stdout`/`stderr` rather than from a logger, so nothing a run prints is left out. Colour is stripped and the progress bar collapses to one line.
+
+```text
+Preparing run package from index.yaml ...
+Compiled → /tmp/testlab-run-50qwd21f/industry-core-part-type-tck-v2.1.1.tck
+  Package checksum : blake2b:62915239b916b565…
+...
+2026-08-18 15:38:12 [INFO    ] [testlab.player.17bc9b69] step.started [dtr-filterability] pull_dtr connector/consumer/pull_data_filtered (execution)
+2026-08-18 15:38:13 [INFO    ] [testlab.player.17bc9b69] step.failed [dtr-filterability] pull_dtr connector/consumer/pull_data_filtered FAILED 538ms — [Connector Service]: catalog request refused, 403
+  → POST https://connector.example.com/api/data/v3/catalog/request body={"@type": "CatalogRequest", …}
+  ← 403 in 44ms body=<html>…403 Forbidden…</html>
+  (2 calls — full request/response in the execution trace)
+Engine fault while running step dtr-filterability[pull_dtr]:connector/consumer/pull_data_filtered
+Traceback (most recent call last):
+  ...
+ConnectionError: [Connector Service]: It was not possible to get the catalog…
+...
+  RESULT: FAIL  |  1 passed  1 failed  |  Duration: 1205ms
+```
+
+#### The execution trace
+
+One CloudEvent per line. Each is self-contained: it says which TCK, which test, which phase, and which step it belongs to, so no reader has to track state across lines.
+
+**A step that passed** — its checks are nested in `validations`, not emitted as separate events:
 
 ```json
-{
-  "timestamp": "2026-03-30T14:30:12.345Z",
-  "tck": "connector_e2e",
-  "script": "provision_and_consume",
-  "step": "query_catalog",
-  "step_index": 4,
-  "status": "PASS",
-  "duration_ms": 420,
-  "request": {
-    "method": "POST",
-    "url": "https://consumer.example.com/management/v3/catalog/request",
-    "headers": {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer ***"
-    },
-    "body": {
-      "@context": {},
-      "counterPartyAddress": "https://provider.example.com/api/v1/dsp"
-    }
-  },
-  "response": {
-    "status_code": 200,
-    "headers": {
-      "Content-Type": "application/json"
-    },
-    "body": {
-      "@type": "dcat:Catalog",
-      "dcat:dataset": ["...3 offers..."]
-    },
-    "duration_ms": 415
-  },
-  "assertions": [
-    {"field": "status_code", "operator": "equals", "expected": 200, "actual": 200, "pass": true},
-    {"field": "body.dcat:dataset", "operator": "min_length", "expected": 1, "actual": 3, "pass": true}
-  ],
-  "error": null
-}
+{"specversion":"1.0",
+ "id":"industry-core-tck/dtr-filterability/execution/encode_filter/tck.test.step.passed/fb82f7ea7668",
+ "source":"util/base64","type":"tck.test.step.passed",
+ "time":"2026-08-18T13:38:12.992Z","sequence":4,
+ "data":{"attempt":1,"duration_ms":0.085,
+  "outputs":{"value":"W3sibmFtZSI6ImRpZ2l0YWxUd2luVHlwZSIsInZhbHVlIjoiUGFydFR5cGUifV0="},
+  "validations":[{"source":"validate/assert","field":"value",
+   "inputs":{"assertion":"not_null"},
+   "outputs":{"actual":"W3sibmFtZSI6…","passed":true}}]}}
 ```
 
-**Failed step:**
+**A step that failed** — with the request that failed and the answer it got. Credential headers are replaced with `***`; `exchanges[]` appears when the step made more than one call:
 
 ```json
-{
-  "timestamp": "2026-03-30T14:30:20.780Z",
-  "tck": "connector_e2e",
-  "script": "provision_and_consume",
-  "step": "negotiate_contract",
-  "step_index": 5,
-  "status": "FAIL",
-  "duration_ms": 30200,
-  "request": {
-    "method": "POST",
-    "url": "https://consumer.example.com/management/v3/contractnegotiations",
-    "headers": {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer ***"
-    },
-    "body": {
-      "@context": {},
-      "connectorAddress": "https://provider.example.com/api/v1/dsp",
-      "offerId": "offer-abc-123"
-    }
-  },
-  "response": {
-    "status_code": 502,
-    "headers": {
-      "Content-Type": "application/json"
-    },
-    "body": {
-      "message": "Bad Gateway"
-    },
-    "duration_ms": 30150
-  },
-  "assertions": [
-    {"field": "status_code", "operator": "equals", "expected": 200, "actual": 502, "pass": false}
-  ],
-  "error": {
-    "type": "AssertionError",
-    "message": "Expected status_code=200, got 502",
-    "traceback": null
-  }
-}
+{"specversion":"1.0",
+ "id":"industry-core-tck/dtr-filterability/execution/pull_dtr/tck.test.step.failed/fa97a93c0fef",
+ "source":"connector/consumer/pull_data_filtered","type":"tck.test.step.failed",
+ "time":"2026-08-18T13:38:13.536Z","sequence":6,
+ "data":{"attempt":1,"duration_ms":538.4,"validations":[],
+  "request":{"method":"POST",
+   "url":"https://connector.example.com/api/data/v3/catalog/request",
+   "headers":{"Content-Type":"application/json","x-api-key":"***"},
+   "body":{"@type":"CatalogRequest","counterPartyAddress":"https://sut.example.com/api/v1/dsp/2025-1"}},
+  "response":{"status_code":403,
+   "headers":{"Server":"awselb/2.0","Content-Type":"text/html"},
+   "body":"<html>…403 Forbidden…</html>","duration_ms":43.7},
+  "exchanges":[{"request":{"…":"…"},"response":{"status_code":403}},
+               {"request":{"…":"…"},"response":{"status_code":403}}],
+  "errors":[{"code":"ENGINE_FAULT","origin":"engine","retryable":false,
+   "message":"[Connector Service]: catalog request refused, 403"}]}}
 ```
 
-**Stopped step (timeout):**
+`errors[].origin` tells you who to go to: `sut` means the system under test answered wrongly, `engine` means TestLab itself broke and the run says nothing about the SUT.
+
+**A step that failed on the policy** — a DSP step turns down every offer whose policy is not one the script named, and says which condition turned them down. `context` carries the same comparison structurally, so the IDE renders it:
 
 ```json
-{
-  "timestamp": "2026-03-30T14:35:00.000Z",
-  "tck": "connector_e2e",
-  "script": "provision_and_consume",
-  "step": "transfer_data",
-  "step_index": 6,
-  "status": "STOP",
-  "duration_ms": 60000,
-  "request": {
-    "method": "POST",
-    "url": "https://consumer.example.com/management/v3/transferprocesses",
-    "headers": {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer ***"
-    },
-    "body": {
-      "@context": {},
-      "contractId": "contract-xyz-789",
-      "dataDestination": {"type": "HttpProxy"}
-    }
-  },
-  "response": null,
-  "assertions": [],
-  "error": {
-    "type": "TimeoutError",
-    "message": "Step timed out after 60s waiting for state=COMPLETED (polled 20x)",
-    "traceback": "tractusx_sdk.extensions.testlab.player.TimeoutError: ..."
-  }
-}
+{"specversion":"1.0",
+ "id":"industry-core-tck/dtr-filterability/execution/pull_dtr/tck.test.step.failed/84b7ffbb879d",
+ "source":"connector/consumer/pull_data_filtered","type":"tck.test.step.failed",
+ "time":"2026-08-19T10:14:14.391Z","sequence":8,
+ "data":{"attempt":1,"duration_ms":2363.3,"validations":[],
+  "errors":[{"code":"POLICY_MISMATCH","origin":"sut","retryable":false,
+   "message":"no offer from https://sut.example.com/api/v1/dsp/2025-1 is made under a policy this step accepts…",
+   "context":{"offers_compared":2,
+    "expected_policies":[["FrameworkAgreement eq DataExchangeGovernance:1.0",
+                          "UsagePurpose isAnyOf cx.core.digitalTwinRegistry:1"]],
+    "offers":[{"asset_id":"ichub:asset:dtr:9foUM7pmSTrr5LZnx0NqiQ",
+               "offer_id":"aWNodWI6Y29udHJhY3Q6T0Js…",
+               "offered_not_expected":["Membership eq active"],
+               "expected_not_offered":[]}]}}]}}
 ```
 
-!!! note "Sensitive header redaction"
-    The `Authorization` header value is automatically redacted to `***` in log output to prevent credential leakage. Other sensitive headers (configurable via `--redact-headers`) are also masked.
+Read it as a set difference. `offered_not_expected` is what the provider requires and your `expected_policies` does not carry — the offer is refused for it just as surely as for something missing, so a deployment that added `Membership` to its policy fails a TCK that never listed it. `expected_not_offered` is the other direction: what the script requires and the provider does not offer.
+
+#### Reading a trace
+
+```bash
+# Every step that failed, and why
+jq -c 'select(.type == "tck.test.step.failed") | {id, err: .data.errors[0].message}' data/*/*.jsonl
+
+# Which condition refused every offer, for a step that failed on the policy
+jq -c '.data.errors[]? | select(.code == "POLICY_MISMATCH") | .context.offers[]
+       | {asset_id, offered_not_expected, expected_not_offered}' data/*/*.jsonl
+
+# Every call one step made
+jq 'select(.id | contains("/pull_dtr/")) | .data.exchanges[]?' data/*/*.jsonl
+
+# Drop a noisy teardown and look only at execution
+jq 'select(.id | contains("/execution/"))' data/*/*.jsonl
+```
+
 
 ### JUnit XML Report
 
@@ -944,7 +928,8 @@ curl -X POST http://localhost:8100/api/v1/jobs/f9e8d7c6-b5a4-3210-fedc-ba9876543
 | `testlab run <file>` | Execute a `.tck` or raw `tck.yaml` |
 | `testlab run <file> --var KEY=VALUE` | Pass a runtime variable |
 | `testlab run <file> --vars-file <vars.yaml>` | Load variables from a file |
-| `testlab run <file> --log <file.jsonl>` | Write JSON-lines log |
+| `testlab run <file> --logs-dir <dir>` | Where the run transcript is written (default `./logs`) |
+| `testlab run <file> --data-dir <dir>` | Where the CloudEvents execution trace is written (default `./data`) |
 | `testlab run <file> --junit <file.xml>` | Write JUnit XML report |
 | `testlab run <file> --report <file.md>` | Write Markdown summary report |
 | `testlab run <file> --timeout 300` | Set global timeout in seconds (default: 600) |

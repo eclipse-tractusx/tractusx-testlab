@@ -32,6 +32,7 @@ from tractusx_testlab.models.domain.infrastructure import (
     EngineDtrBinding,
     Infrastructure,
     SutBindings,
+    SutConnectorBinding,
 )
 from tractusx_testlab.models.domain.security import (
     Base64Bytes,
@@ -56,6 +57,7 @@ __all__ = [
     "PackageManifest",
     "SecurityBlock",
     "SutBindings",
+    "SutConnectorBinding",
     "UploadedPackage",
     "VaultConfig",
 ]

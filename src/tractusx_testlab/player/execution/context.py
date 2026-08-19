@@ -29,8 +29,10 @@ Provides access to services, variables, job memory, and configuration.
 
 from __future__ import annotations
 
+from typing import Any
+
 from tractusx_testlab.config.settings import TestlabConfig
-from tractusx_testlab.contracts import StepInvoker
+from tractusx_testlab.contracts import CallReporter, StepInvoker
 from tractusx_testlab.models import Job
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
 from tractusx_testlab.player.execution.dataspace_access import DataspaceAccess
@@ -45,6 +47,7 @@ class StepContext:
         "_infrastructure",
         "_invoker",
         "_job",
+        "_reporter",
         "_services",
         "_variables",
     )
@@ -62,6 +65,7 @@ class StepContext:
         self._infrastructure = config.infrastructure if infrastructure is None else infrastructure
         self._variables: dict[str, object] = {}
         self._invoker: StepInvoker | None = None
+        self._reporter: CallReporter | None = None
 
     # ------------------------------------------------------------------
     # Configuration
@@ -123,6 +127,29 @@ class StepContext:
                 "A flow step reached one built outside the player."
             )
         return self._invoker
+
+    # ------------------------------------------------------------------
+    # Reporting a call while it is still happening
+    # ------------------------------------------------------------------
+
+    def bind_call_reporter(self, reporter: CallReporter | None) -> None:
+        """Give this context somewhere to publish a call — the phase runner does.
+
+        Bound on the context rather than passed to the runner so that a nested
+        step reports too: ``flow/retry`` runs its steps on this same context, and
+        a retried negotiation is exactly the traffic somebody is watching for.
+        """
+        self._reporter = reporter
+
+    def report_call(self, step_type: str, step_id: str | None, index: int, call: Any) -> None:
+        """Publish one finished call, if anything is listening.
+
+        A context built outside the player has no reporter, and a run that
+        nobody is watching still runs: reporting is an option the player takes,
+        not a dependency a step carries.
+        """
+        if self._reporter is not None:
+            self._reporter(step_type, step_id, index, call)
 
     # ------------------------------------------------------------------
     # Job / Memory

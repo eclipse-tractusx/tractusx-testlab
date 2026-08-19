@@ -36,6 +36,7 @@ from typing import Any
 
 import tractusx_testlab.syntax.keys as keys
 from tractusx_testlab.models import VariableDefinition, VariableScope, VariableSource
+from tractusx_testlab.syntax.variables import verb_for
 
 # A raw variable spec is either a scalar literal (legacy flat form) or a mapping
 # (legacy ``{type, default}`` form or the new verb form).
@@ -88,7 +89,16 @@ def _build_verb_variable(name: str, spec: dict) -> VariableDefinition:
     segments = [segment for segment in uses.split("/") if segment]
     namespace = segments[0] if segments else ""
     source, generator, default, placeholder = _resolve_origin(namespace, segments, with_block)
-    declared_type = value_return.get(keys.TYPE) or _type_from_verb_path(namespace, segments)
+    # The verb decides the type; what the entry declares only restates it, and
+    # the compiler rejects a restatement that disagrees. The declared type is
+    # still read for the forms that have no verb — the legacy name-keyed
+    # mapping, and a namespace the catalog does not carry.
+    verb = verb_for(uses)
+    declared_type = (
+        verb.type
+        if verb
+        else value_return.get(keys.TYPE) or _type_from_verb_path(namespace, segments)
+    )
 
     raw_scope = with_block.get(keys.SCOPE)
     scope: VariableScope | None = VariableScope(raw_scope) if raw_scope else None

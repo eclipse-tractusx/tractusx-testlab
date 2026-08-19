@@ -26,7 +26,9 @@
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -36,6 +38,7 @@ from tractusx_testlab.cli._run_report import (
     print_run_header,
     print_run_results,
 )
+from tractusx_testlab.logging import transcript
 
 
 @app.command()
@@ -67,13 +70,21 @@ def run(
         None,
         "--logs-dir",
         "-l",
-        help="Directory for log output. Defaults to ./logs in the current directory.",
+        help="Directory for the run's console transcript. Defaults to ./logs.",
+    ),
+    data_dir: Path | None = typer.Option(
+        None,
+        "--data-dir",
+        "-d",
+        help=(
+            "Directory for the CloudEvents execution trace — every step's "
+            "outputs, checks, and request/response. Defaults to ./data."
+        ),
     ),
 ) -> None:
     """Load and execute a TCK, printing results to stdout."""
     # Register all local step executors (triggers @step() decorators)
     from tractusx_testlab.config.loader import ConfigLoader
-    from tractusx_testlab.models import ScriptStatus, StepStatus
     from tractusx_testlab.player.execution.player import TestlabPlayer
 
     runtime_vars = _build_runtime_vars(config_file, var)
@@ -82,22 +93,76 @@ def run(
     # — the engine's infrastructure bindings among them — reach a CLI run the
     # same way they reach the server. The log directory stays a CLI decision.
     config = ConfigLoader.load(
-        cli_overrides={"logs_dir": logs_dir or Path.cwd() / "logs"},
+        cli_overrides={
+            "logs_dir": logs_dir or Path.cwd() / "logs",
+            "data_dir": data_dir or Path.cwd() / "data",
+        },
     )
     player = TestlabPlayer(config=config)
 
-    try:
-        tck = _load_tck(target, player_keys, compiler_pub)
-    except ValueError as exc:
-        # A package that fails verification is a security outcome, not a stack
-        # trace: the operator needs to see which package was refused and why.
-        typer.echo(f"\nRefused to run {target.name}:\n  {exc}", err=True)
-        raise typer.Exit(1) from exc
-    total_steps = tck.total_steps()
+    # Opened here, before anything is compiled, because the compiler's output is
+    # part of what a person reads the transcript for — as are the run header and
+    # the result banner, neither of which goes through a logger at all. The id
+    # is committed to now so the transcript, the execution trace and the job all
+    # name the same run.
+    run_id = transcript.new_run_id()
+    with transcript.recording(transcript.transcript_path(config.logs_dir, run_id)):
+        _run_compiled(
+            target,
+            config_file,
+            config,
+            player,
+            runtime_vars,
+            run_id,
+            player_keys=player_keys,
+            compiler_pub=compiler_pub,
+        )
 
-    print_run_header(target, config_file, config, runtime_vars, total_steps)
 
-    result = execute_with_progress(player, tck, runtime_vars, total_steps)
+def _run_compiled(
+    target: Path,
+    config_file: Path | None,
+    config: Any,
+    player: Any,
+    runtime_vars: dict[str, str],
+    run_id: str,
+    *,
+    player_keys: Path | None,
+    compiler_pub: Path | None,
+) -> None:
+    """Compile if needed, execute, and report — all of it inside the transcript."""
+    from tractusx_testlab.models import AuthoringError, ScriptStatus, StepStatus
+
+    # Nothing executes that has not been compiled. A YAML manifest is compiled
+    # into a throwaway package first, so every run — not only the ones that
+    # happen to be handed a `.tck` — passes the validator, carries a
+    # fingerprint, and is checked against its own package digest on load.
+    with tempfile.TemporaryDirectory(prefix="testlab-run-") as build:
+        package = _compile_target_for_run(target, Path(build))
+
+        try:
+            tck = _load_tck(package, player_keys, compiler_pub)
+        except ValueError as exc:
+            # A package that fails verification is a security outcome, not a
+            # stack trace: the operator needs to see which package was refused
+            # and why.
+            typer.echo(f"\nRefused to run {target.name}:\n  {exc}", err=True)
+            raise typer.Exit(1) from exc
+        total_steps = tck.total_steps()
+
+        # The banner names what the operator typed, not the temporary package
+        # that was built from it.
+        print_run_header(target, config_file, config, runtime_vars, total_steps)
+
+        try:
+            result = execute_with_progress(player, tck, runtime_vars, total_steps, run_id)
+        except AuthoringError as exc:
+            # A run that was never given what it needs — an unbound capability,
+            # an unsupplied input — is a configuration outcome, not a crash.
+            # The message already names every key the operator owes; a stack
+            # trace through asyncio on top of it only hides the list.
+            typer.echo(f"\nCannot run {target.name}:\n  {exc}", err=True)
+            raise typer.Exit(1) from exc
 
     print_run_results(result, StepStatus, ScriptStatus)
 
@@ -111,6 +176,8 @@ def _compile_target_for_run(target: Path, build_dir: Path) -> Path:
     """
     if target.suffix == ".tck":
         return target
+
+    _reject_bare_test_script(target)
 
     from tractusx_testlab.cli.compile import compile as compile_command
 
@@ -128,6 +195,39 @@ def _compile_target_for_run(target: Path, build_dir: Path) -> Path:
         typer.echo(f"Error: compiling {target} produced no package.", err=True)
         raise typer.Exit(1)
     return built[0]
+
+
+def _reject_bare_test_script(target: Path) -> None:
+    """Refuse a lone test script, naming the manifest it needs.
+
+    The compiler's unit is a TCK: it validates the manifest's env, resolves the
+    services and assets the tests reference, and seals them into the package.
+    A single ``kind: test`` file carries none of that, so there is nothing to
+    compile and nothing to seal. ``run`` used to accept one anyway by handing it
+    straight to the loader — which is exactly the uncompiled path this call
+    site closes. The error says what to write instead of leaving the author
+    with the TckDefinition validation dump.
+    """
+    import yaml as _yaml
+
+    if not target.exists():
+        typer.echo(f"Error: target not found: {target}", err=True)
+        raise typer.Exit(1)
+
+    try:
+        data = _yaml.safe_load(target.read_text(encoding="utf-8"))
+    except _yaml.YAMLError as exc:
+        typer.echo(f"Error: {target} is not readable YAML:\n  {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if isinstance(data, dict) and "tests" not in data:
+        typer.echo(
+            f"Error: {target.name} is a single test script, not a TCK manifest.\n"
+            f"  'run' executes compiled packages, and the compiler's unit is a TCK.\n"
+            f"  List it in an index.yaml alongside a 'tests:' entry and run that.",
+            err=True,
+        )
+        raise typer.Exit(1)
 
 
 def _build_runtime_vars(

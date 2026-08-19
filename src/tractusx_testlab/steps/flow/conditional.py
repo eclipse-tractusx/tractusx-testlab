@@ -41,11 +41,6 @@ from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParam
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
-# Version-specific step overrides are not resolvable from within a step body
-# (only the script's dataspace_version, held by the phase runner, knows that),
-# so nested steps are looked up in the global (version-agnostic) registry.
-_ANY_VERSION = ""
-
 
 # ---------------------------------------------------------------------------
 # flow/if
@@ -192,7 +187,10 @@ async def _run_sequence(
     results: list[StepResult] = []
     for idx, nested_def in enumerate(nested_defs):
         step_name = f"if.{label}[{idx}]:{nested_def.uses}"
-        step_cls = StepRegistry.get(nested_def.uses, _ANY_VERSION)
+        # A nested step is resolved by name alone: only the phase runner holds
+        # the script's dataspace_version, so a version-specific step is looked
+        # up by what it declares rather than skipped for want of a version.
+        step_cls = StepRegistry.get_any(nested_def.uses)
         if step_cls is None:
             results.append(
                 StepResult(

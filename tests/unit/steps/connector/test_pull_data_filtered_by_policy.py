@@ -27,9 +27,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from tractusx_sdk.dataspace.tools import PolicyMismatchError as SdkPolicyMismatchError
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
+from tractusx_testlab.steps.connector.policy_mismatch import PolicyMismatchError
 from tractusx_testlab.steps.connector.pull_data import ConnectorPullDataFilteredByPolicy
 
 
@@ -90,7 +92,9 @@ def _definition() -> StepDefinition:
 class TestPullDataFilteredByPolicy:
     @pytest.mark.asyncio
     async def test_requires_policies(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="policies: Field required"):
+        with pytest.raises(
+            ValueError, match="expected_policies: required key 'expected_policies' is missing"
+        ):
             await ConnectorPullDataFilteredByPolicy().invoke(
                 {
                     "counter_party_id": "BPNL_PROVIDER",
@@ -155,3 +159,75 @@ class TestPullDataFilteredByPolicy:
         )
         forwarded_policies = consumer.get_transfer_id.call_args.kwargs["policies"]
         assert forwarded_policies == [{"permission": [{"action": "use"}]}]
+
+    @pytest.mark.asyncio
+    async def test_a_rejected_offer_reports_the_constraint_that_rejected_it(
+        self, context: StepContext, consumer: MagicMock
+    ) -> None:
+        """The step's verdict names the offers, not just that none was accepted."""
+        offered = {
+            "@id": "offer-1",
+            "permission": [
+                {
+                    "action": "use",
+                    "constraint": [
+                        {
+                            "and": [
+                                {
+                                    "leftOperand": "FrameworkAgreement",
+                                    "operator": "eq",
+                                    "rightOperand": "DataExchangeGovernance:1.0",
+                                },
+                                {
+                                    "leftOperand": "Membership",
+                                    "operator": "eq",
+                                    "rightOperand": "active",
+                                },
+                            ]
+                        }
+                    ],
+                }
+            ],
+        }
+        expected = {
+            "permission": [
+                {
+                    "action": "use",
+                    "constraint": [
+                        {
+                            "leftOperand": "FrameworkAgreement",
+                            "operator": "eq",
+                            "rightOperand": "DataExchangeGovernance:1.0",
+                        }
+                    ],
+                }
+            ]
+        }
+        catalog = {"dataset": [{"@id": "asset-1", "hasPolicy": [offered]}]}
+        cause = SdkPolicyMismatchError(
+            "No valid policy was found for any item in the list. No valid asset found!",
+            catalog=catalog,
+            allowed_policies=[expected],
+        )
+        failure = RuntimeError(
+            "[Connector Service]: [https://provider.example/dsp] It was not possible "
+            "to find a valid policy in the catalog!"
+        )
+        failure.__cause__ = cause
+        consumer.get_transfer_id.side_effect = failure
+
+        with pytest.raises(PolicyMismatchError) as raised:
+            await ConnectorPullDataFilteredByPolicy().invoke(
+                {
+                    "counter_party_id": "BPNL_PROVIDER",
+                    "counter_party_address": "https://provider.example/dsp",
+                    "filters": [],
+                    "expected_policies": [expected],
+                },
+                context,
+                _definition(),
+            )
+
+        assert "Membership eq active" in str(raised.value)
+        assert raised.value.code == "POLICY_MISMATCH"
+        assert raised.value.diagnostics["offers"][0]["asset_id"] == "asset-1"

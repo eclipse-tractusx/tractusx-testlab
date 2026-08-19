@@ -56,6 +56,7 @@ from tractusx_testlab.models.domain.infrastructure import (
     EngineDtrBinding,
     Infrastructure,
     SutBindings,
+    SutConnectorBinding,
 )
 from tractusx_testlab.models.domain.security import (
     Base64Bytes,
@@ -66,6 +67,13 @@ from tractusx_testlab.models.domain.security import (
 from tractusx_testlab.models.domain.server import (
     UploadedPackage,
     VaultConfig,
+)
+from tractusx_testlab.models.primitives.binding_errors import (
+    InfrastructureError,
+    MissingBindingError,
+    MissingInputVariableError,
+    StandardConflictError,
+    UnknownBindingKeyError,
 )
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
@@ -88,20 +96,17 @@ from tractusx_testlab.models.primitives.exceptions import (
     DuplicateServiceError,
     EngineError,
     ExecutionError,
-    InfrastructureError,
-    MissingBindingError,
     NoAssertionsExecutedError,
     ServiceInitError,
     ServiceNotFoundError,
     ServiceNotReadyError,
     ServiceTypeMismatchError,
     SkipNotAllowedError,
-    StandardConflictError,
     StepConfigError,
     StepExecutionError,
     TestLabError,
-    UnknownBindingKeyError,
     UnresolvedReferenceError,
+    VariableTypeError,
 )
 from tractusx_testlab.models.runtime.events import (
     AssertionResultEvent,
@@ -114,6 +119,7 @@ from tractusx_testlab.models.runtime.events import (
     JobStartedEvent,
     ScriptCompletedEvent,
     ScriptStartedEvent,
+    StepCallEvent,
     StepCompletedEvent,
     StepFailedEvent,
     StepSkippedEvent,
@@ -134,6 +140,7 @@ from tractusx_testlab.models.runtime.results import (
     AssertionResult,
     AssertionSummary,
     CallbackResult,
+    HttpExchange,
     HttpRequest,
     HttpResponse,
     ScriptResult,
@@ -172,6 +179,7 @@ __all__ = [
     "EventKind",
     "ExecutionError",
     "ExecutionEvent",
+    "HttpExchange",
     "HttpRequest",
     "HttpResponse",
     "ImportDefinition",
@@ -191,6 +199,7 @@ __all__ = [
     "JobStatus",
     "MetadataDefinition",
     "MissingBindingError",
+    "MissingInputVariableError",
     "NoAssertionsExecutedError",
     "PackageFormat",
     "PackageManifest",
@@ -215,6 +224,7 @@ __all__ = [
     "SkipNotAllowedError",
     "Standard",
     "StandardConflictError",
+    "StepCallEvent",
     "StepCompletedEvent",
     "StepConfigError",
     "StepDefinition",
@@ -228,6 +238,7 @@ __all__ = [
     "StepStatus",
     "StepWaitingEvent",
     "SutBindings",
+    "SutConnectorBinding",
     "TckDefinition",
     "TckInspectionResult",
     "TckMetadataDefinition",
@@ -241,5 +252,6 @@ __all__ = [
     "VariableDefinition",
     "VariableScope",
     "VariableSource",
+    "VariableTypeError",
     "VaultConfig",
 ]

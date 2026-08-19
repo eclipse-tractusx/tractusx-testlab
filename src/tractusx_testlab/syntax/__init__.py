@@ -24,6 +24,24 @@
 
 """YAML syntax constants — keys, defaults, and patterns."""
 
-from tractusx_testlab.syntax import context_vars, defaults, keys, patterns
+from tractusx_testlab.syntax import (
+    context_vars,
+    defaults,
+    diagnostics,
+    keys,
+    model_keys,
+    patterns,
+    variables,
+    yaml_marks,
+)
 
-__all__ = ["context_vars", "defaults", "keys", "patterns"]
+__all__ = [
+    "context_vars",
+    "defaults",
+    "diagnostics",
+    "keys",
+    "model_keys",
+    "patterns",
+    "variables",
+    "yaml_marks",
+]

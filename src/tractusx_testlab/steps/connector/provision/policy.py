@@ -56,14 +56,14 @@ class CreatePolicyParams(StepParams):
     The policy arrives as one object rather than as separate rule lists: it is
     declared once in the manifest's ``env.variables`` with
     ``uses: config/connector/policy`` and wired in as
-    ``policy: ${{ env.<id>.policy }}``.
+    ``policy: ${{ env.<id> }}``.
     """
 
     policy: dict = Field(
         default_factory=dict,
         description=(
             "The whole ODRL policy, as declared by a 'config/connector/policy' "
-            "manifest variable and referenced as '${{ env.<id>.policy }}'. Carries "
+            "manifest variable and referenced as '${{ env.<id> }}'. Carries "
             "'permissions', 'prohibitions', 'obligations', an optional '@context' "
             "and an optional 'policy_id'; a fresh UUID names the policy without one."
         ),

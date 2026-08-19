@@ -180,6 +180,7 @@ class EventKind(str, enum.Enum):
     SCRIPT_STARTED = "script_started"
     SCRIPT_COMPLETED = "script_completed"
     STEP_STARTED = "step_started"
+    STEP_CALL = "step_call"
     STEP_COMPLETED = "step_completed"
     STEP_FAILED = "step_failed"
     STEP_SKIPPED = "step_skipped"

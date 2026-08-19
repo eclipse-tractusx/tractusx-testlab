@@ -30,8 +30,8 @@ Run the full DSP flow (catalog → negotiation → transfer) via the SDK.
 
 Params:
 - `filters`: array[FilterExpression] — Filter criteria applied to the catalog request.
-- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector.
-- `counter_party_id`: string (default: `""`) — BPN of the counter-party.
+- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector; defaults to the bound SUT connector's `dsp_url`.
+- `counter_party_id`: string (default: `""`) — Dataspace identity of the counter-party; defaults to the bound SUT connector's `participant_id`.
 - `expected_policies`: array[object] — ODRL policies the negotiation is allowed to accept.
 Outputs:
 - `dataplane_url`: string — Data-plane URL the negotiated data is fetched from.
@@ -79,7 +79,7 @@ Params:
 - `negotiation_id`: string — PULL only — negotiation to collect the EDR for; falls back to the 'negotiation_id' context variable.
 - `agreement_id`: string — PUSH only — contract agreement the transfer runs under; falls back to the 'agreement_id' context variable.
 - `data_destination`: object — PUSH only — the EDC data address the provider pushes to.
-- `counter_party_address`: string (default: `""`) — PUSH only — DSP endpoint of the provider; falls back to 'provider_address'.
+- `counter_party_address`: string (default: `""`) — PUSH only — DSP endpoint of the provider; defaults to the bound SUT connector's `dsp_url`.
 - `max_wait`: number (default: `60.0`) — PUSH only — seconds to wait for the transfer to reach a final state.
 - `poll_interval`: number (default: `1.0`) — PUSH only — seconds between two transfer state reads.
 - `verify`: any — TLS verification passed through to the SDK; None keeps its default.
@@ -95,8 +95,8 @@ Outputs:
 Negotiate a contract with the provider and wait for the outcome.
 
 Params:
-- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector.
-- `counter_party_id`: string (default: `""`) — BPN of the counter-party.
+- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector; defaults to the bound SUT connector's `dsp_url`.
+- `counter_party_id`: string (default: `""`) — Dataspace identity of the counter-party; defaults to the bound SUT connector's `participant_id`.
 - `asset_id`: any — Asset ID to negotiate for; falls back to the 'catalog_asset_id' context variable.
 - `policy`: any — ODRL policy to negotiate under; falls back to the 'catalog_policy' context variable.
 - `max_wait`: number (default: `60.0`) — Seconds to wait for the negotiation to reach a final state.
@@ -111,8 +111,8 @@ Run the full DSP flow in one step, optionally constrained to one policy.
 
 Params:
 - `filters`: array[FilterExpression] — Filter criteria applied to the catalog request.
-- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector.
-- `counter_party_id`: string (default: `""`) — BPN of the counter-party.
+- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector; defaults to the bound SUT connector's `dsp_url`.
+- `counter_party_id`: string (default: `""`) — Dataspace identity of the counter-party; defaults to the bound SUT connector's `participant_id`.
 - `max_wait`: number (default: `60.0`) — Seconds to wait for the transfer to complete.
 - `poll_interval`: number (default: `1.0`) — Seconds between transfer-state polls.
 - `expected_policies`: any — Policies the offer must satisfy, in ODRL or the testlab simplified form, as one document or a list; omitted means the SDK picks the first offer.
@@ -132,8 +132,8 @@ Run the full DSP flow, accepting an offer that matches any of several policies.
 
 Params:
 - `filters`: array[FilterExpression] — Filter criteria applied to the catalog request.
-- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector.
-- `counter_party_id`: string (default: `""`) — BPN of the counter-party.
+- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector; defaults to the bound SUT connector's `dsp_url`.
+- `counter_party_id`: string (default: `""`) — Dataspace identity of the counter-party; defaults to the bound SUT connector's `participant_id`.
 - `max_wait`: number (default: `60.0`) — Seconds to wait for the transfer to complete.
 - `poll_interval`: number (default: `1.0`) — Seconds between transfer-state polls.
 - `expected_policies`: array[object] **(required)** — ODRL policies, any one of which the negotiated offer must satisfy.
@@ -152,8 +152,8 @@ Outputs:
 Query a provider's catalog via the SDK connector consumer service.
 
 Params:
-- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector.
-- `counter_party_id`: string (default: `""`) — BPN of the counter-party.
+- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector; defaults to the bound SUT connector's `dsp_url`.
+- `counter_party_id`: string (default: `""`) — Dataspace identity of the counter-party; defaults to the bound SUT connector's `participant_id`.
 - `filters`: array[FilterExpression] — Filter criteria applied to the catalog request.
 Outputs:
 - `catalog`: CatalogPayload — The provider's catalog document, unchanged.
@@ -163,8 +163,8 @@ Outputs:
 Query the catalog filtered by a specific asset ID.
 
 Params:
-- `counter_party_id`: string **(required)** — BPN of the counter-party.
-- `counter_party_address`: string **(required)** — DSP endpoint of the counter-party connector.
+- `counter_party_id`: string (default: `""`) — Dataspace identity of the counter-party; defaults to the bound SUT connector's `participant_id`.
+- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector; defaults to the bound SUT connector's `dsp_url`.
 - `asset_id`: string **(required)** — Asset ID the catalog is filtered by.
 - `expected_policies`: array[object] — Policies accepted for the returned offer; the first match is exported.
 Outputs:
@@ -189,8 +189,8 @@ Query a provider's catalog with multiple filter expressions via the SDK.
 
 Params:
 - `filters`: array[FilterExpression] — Filter criteria applied to the catalog request.
-- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector.
-- `counter_party_id`: string (default: `""`) — BPN of the counter-party.
+- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector; defaults to the bound SUT connector's `dsp_url`.
+- `counter_party_id`: string (default: `""`) — Dataspace identity of the counter-party; defaults to the bound SUT connector's `participant_id`.
 Outputs:
 - `catalog`: CatalogPayload — The provider's catalog document, unchanged.
 - `datasets`: array[object] — Dataset offers from the catalog, always as a list.
@@ -211,8 +211,8 @@ Params:
 Get authorization to a counterparty's Digital Twin Registry.
 
 Params:
-- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector.
-- `counter_party_id`: string (default: `""`) — BPN of the counter-party.
+- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector; defaults to the bound SUT connector's `dsp_url`.
+- `counter_party_id`: string (default: `""`) — Dataspace identity of the counter-party; defaults to the bound SUT connector's `participant_id`.
 - `dct_type`: string (default: `"https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"`) — `dct:type` the registry asset is offered under in the catalog.
 - `expected_policies`: array[object] — ODRL policies the negotiation is allowed to accept.
 Outputs:
@@ -223,7 +223,7 @@ Outputs:
 Register an asset at the provider connector.
 
 Params:
-- `asset`: object — The whole asset definition, as declared by a 'config/connector/asset' manifest variable and referenced as '${{ env.<id>.asset }}'. Carries 'base_url', 'dct_type' or 'properties', 'version', 'semantic_id', 'proxy_params', 'headers', 'private_properties' and an optional '@context'.
+- `asset`: object — The whole asset definition, as declared by a 'config/connector/asset' manifest variable and referenced as '${{ env.<id> }}'. Carries 'base_url', 'dct_type' or 'properties', 'version', 'semantic_id', 'proxy_params', 'headers', 'private_properties' and an optional '@context'.
 Outputs:
 - `asset_id`: string — ID of the asset that now exists at the provider.
 
@@ -243,7 +243,7 @@ Outputs:
 Register an ODRL policy definition at the provider connector.
 
 Params:
-- `policy`: object — The whole ODRL policy, as declared by a 'config/connector/policy' manifest variable and referenced as '${{ env.<id>.policy }}'. Carries 'permissions', 'prohibitions', 'obligations', an optional '@context' and an optional 'policy_id'; a fresh UUID names the policy without one.
+- `policy`: object — The whole ODRL policy, as declared by a 'config/connector/policy' manifest variable and referenced as '${{ env.<id> }}'. Carries 'permissions', 'prohibitions', 'obligations', an optional '@context' and an optional 'policy_id'; a fresh UUID names the policy without one.
 Outputs:
 - `policy_id`: string — ID of the policy that now exists at the provider.
 
@@ -545,16 +545,16 @@ Outputs:
 Discover notification assets in a provider catalog.
 
 Params:
-- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector.
-- `counter_party_id`: string (default: `""`) — BPN of the counter-party.
+- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector; defaults to the bound SUT connector's `dsp_url`.
+- `counter_party_id`: string (default: `""`) — Dataspace identity of the counter-party; defaults to the bound SUT connector's `participant_id`.
 - `timeout`: number (default: `60`) — Discovery timeout in seconds.
 
 ### `notification/consumer/send`
 Send a notification through the dataspace.
 
 Params:
-- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector.
-- `counter_party_id`: string (default: `""`) — BPN of the counter-party.
+- `counter_party_address`: string (default: `""`) — DSP endpoint of the counter-party connector; defaults to the bound SUT connector's `dsp_url`.
+- `counter_party_id`: string (default: `""`) — Dataspace identity of the counter-party; defaults to the bound SUT connector's `participant_id`.
 - `notification`: object — The notification document to send.
 - `endpoint_path`: string (default: `""`) — Notification API path appended to the endpoint.
 - `dataplane_url`: string — Direct mode: data-plane URL to POST to; its presence selects that mode.

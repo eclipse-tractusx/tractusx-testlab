@@ -33,7 +33,7 @@ types: ``query_catalog`` returns a :class:`CatalogPayload` and
 
 The mixins here are meant to be inherited by a step's own params model::
 
-    class QueryCatalogParams(CounterPartyParams):
+    class QueryCatalogParams(FilterExpressionParams):
         asset_id: str = ""
 """
 
@@ -43,10 +43,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from tractusx_testlab.steps.dsp_keys import DATASET_KEYS, first_present
 from tractusx_testlab.steps.step_contract import StepParams, StepPayload, StepValue
-
-#: JSON-LD key holding the dataset offers of a DCAT catalog.
-DATASET_KEY = "dcat:dataset"
 
 #: The waiting every step declaring ``max_wait`` and ``poll_interval`` defaults
 #: to, in seconds — one pair of numbers for the whole catalog, so an author who
@@ -91,19 +89,6 @@ class StoreInVariableParams(StepParams):
     store_in_variable: str = Field(
         default="",
         description="Name of a context variable to also store the result in.",
-    )
-
-
-class CounterPartyParams(StepParams):
-    """The counter-party a DSP request is addressed to."""
-
-    counter_party_address: str = Field(
-        default="",
-        description="DSP endpoint of the counter-party connector.",
-    )
-    counter_party_id: str = Field(
-        default="",
-        description="BPN of the counter-party.",
     )
 
 
@@ -160,12 +145,21 @@ class CatalogPayload(StepPayload):
     """A provider's DCAT catalog.
 
     The catalog is a JSON-LD document defined by DSP rather than by testlab, so
-    the well-known keys scripts assert on are named here and everything else
+    the three envelope keys scripts assert on are named here and everything else
     the provider sends round-trips untouched.
 
     Only the JSON-LD spellings populate these fields — no ``populate_by_name``
     — so a provider that happens to send a plain ``id`` key keeps it rather
     than having it rewritten as ``@id``.
+
+    The offers are deliberately *not* a declared field.  Their key is the one
+    part of the document that changes with the provider's DSP generation —
+    ``dcat:dataset`` from a legacy connector, ``dataset`` from a DSP 2025-1 one
+    (see :mod:`tractusx_testlab.steps.dsp_keys`) — and a single declared field
+    could only round-trip one of the two, rewriting the other provider's
+    document on the way out.  They pass through untouched under whichever
+    spelling arrived, and the reading a script is meant to use is
+    :attr:`CatalogOutput.datasets`, which is a list in either generation.
     """
 
     model_config = ConfigDict(extra="allow")
@@ -173,23 +167,17 @@ class CatalogPayload(StepPayload):
     context: Any = Field(default=None, alias="@context", description="JSON-LD context.")
     id: str | None = Field(default=None, alias="@id", description="Catalog ID.")
     type: Any = Field(default=None, alias="@type", description="JSON-LD type.")
-    # Left as Any rather than list[dict]: a provider offering exactly one
-    # dataset sends a bare object, and coercing it here would silently change
-    # the document that assertions run against.
-    datasets: Any = Field(
-        default=None,
-        alias="dcat:dataset",  # == DATASET_KEY, spelled out: aliases must be literals
-        description="Dataset offers — a list, or a bare object when there is exactly one.",
-    )
 
 
 class CatalogOutput(StepPayload):
     """What every catalog query returns: the document, and its offers as a list.
 
-    The raw catalog is a JSON-LD document whose offers live under
-    ``dcat:dataset`` — a key no script should have to spell.  Wrapping it means
-    a ``returns:`` block reads ``catalog`` for the document and ``datasets`` for
-    the offers, whichever shape the provider sent them in.
+    The raw catalog is a JSON-LD document whose offers live under a key that
+    depends on the provider's DSP generation — a key no script should have to
+    spell, and no script can spell once for both.  Wrapping it means a
+    ``returns:`` block reads ``catalog`` for the document and ``datasets`` for
+    the offers, whichever spelling and whichever shape the provider sent them
+    in.
     """
 
     catalog: CatalogPayload | None = Field(
@@ -202,8 +190,13 @@ class CatalogOutput(StepPayload):
 
 
 def as_dataset_list(catalog: dict | None) -> list[dict]:
-    """Return a catalog's datasets, normalising the single-offer object form."""
-    datasets = (catalog or {}).get(DATASET_KEY, [])
+    """Return a catalog's datasets, whichever DSP generation wrote it.
+
+    Normalises both differences at once: the key the offers arrive under
+    (``dataset`` or ``dcat:dataset``) and the single-offer form, which a
+    provider sends as a bare object rather than a one-element list.
+    """
+    datasets = first_present(catalog, DATASET_KEYS)
     if isinstance(datasets, dict):
         return [datasets]
     return datasets or []

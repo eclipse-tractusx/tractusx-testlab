@@ -76,10 +76,17 @@ env:
   testdata:
     sample_body:
       file: sample_body.json
-tests:
-  - tests/test_one.yaml
-  - tests/test_two.yaml
+tests:                       # ordered; entries are mappings, never bare strings
+  - id: test_one.yaml        # the file name in tests/
+    name: What test one proves
+  - id: test_two.yaml
+    name: What test two proves
+    skippable: true          # optional; the operator may omit it via skip_tests
 ```
+
+`skippable` defaults to `false`. The player rejects the whole run when
+`skip_tests` names a test that is unknown or not marked, so only what the author
+allowed can ever be skipped.
 
 ---
 
@@ -118,6 +125,7 @@ teardown: []
       class: SemanticClass
   validate:
     - uses: validate/assert
+      name: "Human-readable label for this check"   # optional
       with: { input: output_name, operator: not_null }
   if: "${{ success() }}"
   timeout_s: 30.0
@@ -137,7 +145,6 @@ teardown: []
 | `${{ env.schemas.schema_name }}` | Schema file content |
 | `${{ steps.step_id.output_name }}` | Output from a step in `steps:` |
 | `${{ setup.step_id.output_name }}` | Output from a step in `setup:` |
-| `${{ env.var_id.field }}` | Output field of a typed `env.variables` definition (e.g., `.policy`) |
 | `${{ metadata.dataspace_version }}` | Metadata field value |
 | `${{ testdata.data_name }}` | Shorthand for testdata reference |
 
@@ -176,6 +183,7 @@ Assertions reference the step's **own output names** directly (not `${{ }}` for 
 ```yaml
 validate:
   - uses: validate/assert
+    name: "the request is accepted"   # optional; the report calls the check this
     with:
       input: status_code
       operator: equals
@@ -307,7 +315,7 @@ padding automatically, so an unpadded value round-trips without extra `=`.
 - id: encode_aas_id
   uses: util/base64
   with:
-    input: "${{ env.variables.twin_id }}"   # "urn:uuid:1234" or a URL
+    input: "${{ env.twin_id }}"   # "urn:uuid:1234" or a URL
     mode: encode                             # encode (default) | decode
     url_safe: true                           # -/_ instead of +//; needed for DTR
     strip_padding: false                     # drop trailing '=' when encoding
@@ -330,8 +338,10 @@ Asserts nothing and always passes; remove once a test is finalised.
 ## Complex Variables (TCK only)
 
 Typed variables in `env.variables` cover everything a test needs before its steps
-run: runtime inputs, generated values, and reusable access policies. Declare each
-one once and reference it via `${{ env.<id>.<field> }}`.
+run: runtime inputs and reusable config objects such as policies and assets.
+Declare each one once and reference it by its id — `${{ env.<id> }}`. Every
+variable publishes one value under `value`, whatever its type, and its `uses:`
+verb decides that type: the compiler refuses a `returns:` that says otherwise.
 
 ```yaml
 env:
@@ -342,11 +352,11 @@ env:
       name: SUT DSP Endpoint URL
       with:
         source: input
+        scope: sut
+        placeholder: "https://connector.example.com/api/dsp"
       returns:
         value:
           type: string
-          class: Url
-          placeholder: "https://connector.example.com/api/dsp"
 
     # Constant value with a default
     - id: sut_response_timeout
@@ -371,7 +381,7 @@ env:
                     operator: isAnyOf
                     right_operand: "cx.ccm.base:1"
       returns:
-        policy:
+        value:
           type: object
           class: Policy
 
@@ -388,13 +398,13 @@ env:
               "@id": "https://w3id.org/catenax/taxonomy#CCMAPI"
             cx-common:version: "3.0"
       returns:
-        asset:
+        value:
           type: object
           class: Asset
 ```
 
-**Reference in tests:** `${{ env.sut_dsp_url.value }}`, `${{ env.usage_policy.policy }}`,
-`${{ env.api_asset.asset }}`.
+**Reference in tests:** `${{ env.sut_dsp_url }}`, `${{ env.usage_policy }}`,
+`${{ env.api_asset }}` — the id alone, for every type.
 
 ---
 

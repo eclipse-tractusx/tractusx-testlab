@@ -48,6 +48,7 @@ from tractusx_testlab.models.domain.infrastructure import (
     EngineDtrBinding,
     Infrastructure,
 )
+from tractusx_testlab.steps import http_client
 from tractusx_testlab.steps.digital_twin.submodel import (
     DeleteBackendDataParams,
     DeleteBackendDataStep,
@@ -76,15 +77,21 @@ def _context(submodel_server_url: str) -> MagicMock:
 
 
 def _capture_post(monkeypatch) -> dict[str, object]:
-    """Record the request the step makes instead of sending it."""
+    """Record the request the step makes instead of sending it.
+
+    Stubbed at ``http_client.request`` — the one transport every step calls —
+    rather than at ``httpx.AsyncClient.post``, so a test cannot pass while the
+    step bypasses the client that records the exchange for the trace.
+    """
     captured: dict[str, object] = {}
 
-    async def fake_post(self, url, json=None, headers=None, timeout=None):
+    async def fake_request(method, url, *, json=None, headers=None, timeout=None, **kwargs):
+        captured["method"] = method
         captured["url"] = url
         captured["json"] = json
-        return httpx.Response(201, json={"ok": True})
+        return httpx.Response(201, json={"ok": True}, request=httpx.Request(method, url))
 
-    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    monkeypatch.setattr(http_client, "request", fake_request)
     return captured
 
 
@@ -283,11 +290,12 @@ def _capture_delete(monkeypatch, status: int = 204) -> dict[str, object]:
     """Record the delete the step makes instead of sending it."""
     captured: dict[str, object] = {}
 
-    async def fake_delete(self, url, headers=None, timeout=None):
+    async def fake_request(method, url, *, headers=None, timeout=None, **kwargs):
+        captured["method"] = method
         captured["url"] = url
-        return httpx.Response(status)
+        return httpx.Response(status, request=httpx.Request(method, url))
 
-    monkeypatch.setattr(httpx.AsyncClient, "delete", fake_delete)
+    monkeypatch.setattr(http_client, "request", fake_request)
     return captured
 
 

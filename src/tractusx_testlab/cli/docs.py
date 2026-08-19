@@ -94,7 +94,7 @@ def _as_json(step_types: list[str] | None) -> str:
     names = sorted(step_types or StepRegistry.list_step_types())
     contracts = []
     for name in names:
-        step_cls = StepRegistry.get(name, "")
+        step_cls = StepRegistry.get_any(name)
         if step_cls is not None:
             contracts.append(step_cls.describe().model_dump(exclude_none=True))
     return json.dumps(contracts, indent=2) + "\n"

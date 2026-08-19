@@ -41,9 +41,9 @@ execution:
     uses: connector/consumer/pull_data_filtered
     name: Query catalog for CCMAPI assets and obtain dataplane credentials
     with:
-      counter_party_address: "${{ env.sut_counter_party_address.value }}"
-      counter_party_id: "${{ env.sut_counter_party_id.value }}"
-      expected_policies: "${{ env.ccm_usage_policy.policy }}"
+      counter_party_address: "${{ env.sut_counter_party_address }}"
+      counter_party_id: "${{ env.sut_counter_party_id }}"
+      expected_policies: "${{ env.ccm_usage_policy }}"
       filters:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/type"
           operator: "="

@@ -47,7 +47,7 @@ setup:
     uses: connector/provider/create_policy
     name: Create the catalog access policy
     with:
-      policy: "${{ env.access_policy.policy }}"
+      policy: "${{ env.access_policy }}"
     returns:
       policy_id:
         type: string
@@ -59,7 +59,7 @@ setup:
     uses: connector/provider/create_policy
     name: Create the contract usage policy
     with:
-      policy: "${{ env.usage_policy.policy }}"
+      policy: "${{ env.usage_policy }}"
     returns:
       policy_id:
         type: string
@@ -71,7 +71,7 @@ setup:
     uses: connector/provider/create_asset
     name: Create the HTTP test asset
     with:
-      asset: "${{ env.stepwise_asset.asset }}"
+      asset: "${{ env.stepwise_asset }}"
     returns:
       asset_id:
         type: string
@@ -143,7 +143,7 @@ execution:
       counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
       counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
       asset_id: "${{ execution.dataset.asset_id }}"
-      policy: "${{ env.usage_policy.policy }}"
+      policy: "${{ env.usage_policy }}"
       max_wait: 90
       poll_interval: 2
     returns:

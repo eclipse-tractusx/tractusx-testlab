@@ -36,6 +36,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tractusx_testlab.models import UnresolvedReferenceError
+from tractusx_testlab.models.primitives.exceptions import TestLabError
 from tractusx_testlab.syntax import patterns
 
 if TYPE_CHECKING:
@@ -121,3 +122,18 @@ def resolve_params(params: dict, context: StepContext) -> dict:
     for key, value in params.items():
         resolved[key] = _resolve_value(value, context)
     return resolved
+
+
+def try_resolve_params(params: dict, context: StepContext) -> dict | None:
+    """Resolve a ``with:`` block, or answer ``None`` rather than raise.
+
+    For the callers that resolve a block *before* running the step — the phase
+    runner, which publishes what the step is about to be given — and for which a
+    reference naming nothing is not their failure to report. They hand the
+    unresolved block on, and the step runner raises the same error where it can
+    be turned into a failed step.
+    """
+    try:
+        return resolve_params(params, context)
+    except TestLabError:
+        return None

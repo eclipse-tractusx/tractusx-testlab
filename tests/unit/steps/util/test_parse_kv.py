@@ -113,7 +113,7 @@ class TestParseKvStep:
 
     @pytest.mark.asyncio
     async def test_missing_input_raises(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="input: Field required"):
+        with pytest.raises(ValueError, match="input: required key 'input' is missing"):
             await ParseKvStep().invoke({"select": "id"}, context, _definition())
 
     @pytest.mark.asyncio

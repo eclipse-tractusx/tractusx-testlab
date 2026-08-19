@@ -166,6 +166,43 @@ class TestRunCommand:
         result = runner.invoke(app, ["run", str(invalid_yaml_file)])
         assert result.exit_code == 1
 
+    def test_run_compiles_the_manifest_first(self, bad_step_yaml_file: Path) -> None:
+        """A TCK the validator rejects must not reach the player.
+
+        ``run`` compiled its target for one release and then stopped: the call
+        was dropped while the helper around it was rewritten, so a YAML target
+        went straight to the loader — Pydantic parsing only, no validator, no
+        fingerprint, no package digest. This TCK names a step that does not
+        exist, which the loader happily parses and only the compiler catches.
+        """
+        result = runner.invoke(app, ["run", str(bad_step_yaml_file)])
+        assert result.exit_code == 1
+        assert "Compilation failed" in result.output
+
+    def test_run_leaves_no_package_beside_the_manifest(self, tmp_path: Path) -> None:
+        """The build is a throwaway; the source tree — and CI's checkout — stays clean."""
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "bad-step.yaml").write_text(_BAD_STEP_TEST_YAML)
+        manifest = tmp_path / "index.yaml"
+        manifest.write_text(_BAD_STEP_YAML)
+
+        runner.invoke(app, ["run", str(manifest)])
+
+        assert list(tmp_path.rglob("*.tck")) == []
+
+    def test_run_refuses_a_lone_test_script(self, tmp_path: Path) -> None:
+        """A single ``kind: test`` file has no manifest to compile, so it is refused.
+
+        It used to run — by the one path that skipped compilation entirely.
+        """
+        script = tmp_path / "solo.yaml"
+        script.write_text(_BAD_STEP_TEST_YAML)
+
+        result = runner.invoke(app, ["run", str(script)])
+
+        assert result.exit_code == 1
+        assert "not a TCK manifest" in result.output
+
 
 @pytest.mark.skip(reason="CLI refactored — version command removed")
 class TestVersionCommand:
@@ -178,12 +215,29 @@ class TestVersionCommand:
 
 class TestPrintReport:
     def test_print_report_with_error(self, tmp_path: Path) -> None:
-        """Test report with a step that has an error."""
-        yaml_content = """\
+        """Test report with a step that has an error.
+
+        Written as a manifest plus a test file rather than a lone script: ``run``
+        compiles its target, and the compiler's unit is a TCK.
+        """
+        manifest = """\
+syntax: v1-alpha
+kind: tck
+id: error-tck
+metadata:
+  name: Error TCK
+  version: "1.0"
+  authors: []
+  copyright_holders: []
+  license: Apache-2.0
+tests:
+  - id: error.yaml
+"""
+        test_yaml = """\
 syntax: v1-alpha
 kind: test
 id: error-test
-namespace: testlab.cli
+namespace: error-tck
 metadata:
   name: Error Test
   version: "1.0"
@@ -193,8 +247,10 @@ execution:
     with:
       url: "http://127.0.0.1:1/nonexistent"
 """
-        f = tmp_path / "error.yaml"
-        f.write_text(yaml_content)
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "error.yaml").write_text(test_yaml)
+        f = tmp_path / "index.yaml"
+        f.write_text(manifest)
         result = runner.invoke(app, ["run", str(f)])
         assert result.exit_code == 1
 
@@ -218,3 +274,24 @@ execution:
         result = runner.invoke(app, ["run", str(f)])
         # noop returns status 200, so STATUS_CODE 200 should pass
         assert "Register" in result.stdout
+
+
+class TestErrorRendering:
+    """A failure that took several lines to explain still reads as one failure."""
+
+    def test_the_explanation_stays_under_the_error_label(self, capsys) -> None:
+        from tractusx_testlab.cli._run_report import _print_error
+
+        _print_error(
+            "no offer is made under a policy this step accepts\n"
+            "  1 offer compared, none matched:\n"
+            "    the provider also requires: 'Membership eq active'"
+        )
+        first, second, third = capsys.readouterr().out.splitlines()
+        label = "           Error: "
+        assert first == f"{label}no offer is made under a policy this step accepts"
+        # The rest is indented to align under the message rather than starting at
+        # column zero, where it reads as unrelated output.
+        assert second == f"{' ' * len(label)}  1 offer compared, none matched:"
+        assert third.startswith(" " * len(label))
+        assert "the provider also requires" in third

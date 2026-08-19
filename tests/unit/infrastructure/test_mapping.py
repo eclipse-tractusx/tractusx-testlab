@@ -38,21 +38,25 @@ from tractusx_testlab.infrastructure.mapping import (
     merge,
     overrides_from_env,
 )
+from tractusx_testlab.models.authoring.infrastructure import (
+    CapabilityRequirement,
+    InfrastructureConfig,
+)
 from tractusx_testlab.models.domain.infrastructure import (
-    ConnectorBinding,
     DtrBinding,
     EngineBindings,
     EngineDtrBinding,
     Infrastructure,
     SutBindings,
+    SutConnectorBinding,
 )
-from tractusx_testlab.models.primitives.exceptions import UnknownBindingKeyError
+from tractusx_testlab.models.primitives.binding_errors import UnknownBindingKeyError
 
 
 def _bound_sut() -> Infrastructure:
     return Infrastructure(
         sut=SutBindings(
-            connector=ConnectorBinding(
+            connector=SutConnectorBinding(
                 management_url="https://sut.example.com/management",
                 dsp_url="https://sut.example.com/api/v1/dsp",
             ),
@@ -136,10 +140,24 @@ class TestCollectOverrides:
             collect_overrides({"infrastructure.sut.connector.managment_url": "x"})
         assert "managment_url" in str(error.value)
 
-    def test_rejection_lists_the_accepted_keys(self) -> None:
+    def test_rejection_suggests_the_closest_legal_key(self) -> None:
         with pytest.raises(UnknownBindingKeyError) as error:
-            collect_overrides({"infrastructure.sut.connector.typo": "x"})
-        assert "infrastructure.sut.connector.management_url" in str(error.value)
+            collect_overrides({"infrastructure.sut.connector.dspurl": "x"})
+        assert "Did you mean" in str(error.value)
+        assert "infrastructure.sut.connector.dsp_url" in str(error.value)
+
+    def test_rejection_names_what_this_tck_needs_and_not_the_whole_model(self) -> None:
+        """The list beside a typo is the run's obligations, not every legal key."""
+        requirements = InfrastructureConfig(
+            sut={"connector": CapabilityRequirement(required=True)},
+        )
+        with pytest.raises(UnknownBindingKeyError) as error:
+            collect_overrides({"infrastructure.sut.connector.typo": "x"}, requirements)
+        message = str(error.value)
+        assert "infrastructure.sut.connector.dsp_url" in message
+        assert "infrastructure.sut.connector.participant_id" in message
+        # A capability this TCK never asked for is not the operator's problem.
+        assert "infrastructure.engine.dtr.submodel_base_url" not in message
 
     def test_an_unknown_side_is_rejected(self) -> None:
         with pytest.raises(UnknownBindingKeyError):
@@ -212,14 +230,14 @@ class TestMerge:
     def test_a_default_never_overwrites_a_stated_value(self) -> None:
         base = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
+                connector=SutConnectorBinding(
                     management_url="https://sut/management",
                     api_key_header="X-Custom",
                 ),
             ),
         )
         overlay = Infrastructure(
-            sut=SutBindings(connector=ConnectorBinding(api_key="secret")),
+            sut=SutBindings(connector=SutConnectorBinding(api_key="secret")),
         )
         merged = merge(base, overlay)
         assert merged.sut.connector.api_key_header == "X-Custom"

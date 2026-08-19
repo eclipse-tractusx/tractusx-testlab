@@ -55,13 +55,16 @@ def print_run_header(
     if config_file:
         typer.echo(f"  Config:   {config_file}")
     typer.echo(f"  Logs dir: {config.logs_dir}")
+    typer.echo(f"  Data dir: {config.data_dir}")
     if runtime_vars:
         typer.echo(f"  Vars:     {', '.join(runtime_vars.keys())}")
     typer.echo(f"  Steps:    {total_steps}")
     typer.echo()
 
 
-def execute_with_progress(player, tck, runtime_vars: dict[str, str], total_steps: int):
+def execute_with_progress(
+    player, tck, runtime_vars: dict[str, str], total_steps: int, run_id: str | None = None
+):
     """Run the TCK with a rich progress bar and return the result."""
     from rich.progress import (
         BarColumn,
@@ -81,7 +84,7 @@ def execute_with_progress(player, tck, runtime_vars: dict[str, str], total_steps
     ) as progress:
         task_id = progress.add_task("Starting...", total=total_steps)
         player.monitor.add_callback(_make_progress_callback(progress, task_id))
-        return asyncio.run(player.run_tck(tck, runtime_vars=runtime_vars or None))
+        return asyncio.run(player.run_tck(tck, runtime_vars=runtime_vars or None, job_id=run_id))
 
 
 def _make_progress_callback(progress, task_id):
@@ -144,7 +147,10 @@ def _print_script_result(script, step_status_cls) -> None:
         duration = f"{step.duration_s:.2f}s" if step.duration_s else "---"
         typer.echo(f"    [{icon}] {step.step_name:<50} {duration}")
         if step.error:
-            typer.echo(f"           Error: {step.error}")
+            _print_error(step.error)
+        for check in step.assertions:
+            if not check.passed:
+                typer.echo(f"           Failed: {_check_label(check)} — {check.message}")
 
     if script.assertion_summary:
         s = script.assertion_summary
@@ -164,3 +170,29 @@ def _print_script_result(script, step_status_cls) -> None:
                 "    NOTE: this script evaluated no assertions. It exercised the "
                 "steps but verified nothing about the system under test."
             )
+
+
+def _print_error(error: str) -> None:
+    """Print a step's failure, keeping an explanation that runs to several lines.
+
+    A message is not always a sentence. A failure that compared two documents —
+    the offers a provider made against the policy a script expects — says which
+    offers and which constraints, one per line, and printing that after a
+    ``Error:`` label left every line but the first hanging at column zero,
+    reading as unrelated output. The continuation is indented under the label
+    instead, so the whole explanation is visibly one failure.
+    """
+    first, *rest = error.splitlines()
+    typer.echo(f"           Error: {first}")
+    for line in rest:
+        typer.echo(f"                  {line}")
+
+
+def _check_label(check) -> str:
+    """What to call a failed check: what the author named it, else what it is.
+
+    A step with four ``validate/assert`` entries reported four identical labels,
+    so a reader could not tell which requirement had failed. Naming an assertion
+    is optional, and this is where writing one pays off.
+    """
+    return check.assertion.name or check.assertion.uses

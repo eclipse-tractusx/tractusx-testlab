@@ -1701,7 +1701,7 @@ the operator's binding profile before execution begins. Example:
 ```yaml
 with:
   connector_service: ${{ infrastructure.engine.connector }}
-  counter_party_address: ${{ infrastructure.sut.connector.counter_party_address }}
+  counter_party_address: ${{ infrastructure.sut.connector.dsp_url }}
 ```
 
 ### A.5 Deprecated Verb Rejection (Compiler)

@@ -79,6 +79,14 @@ Anything **outside** that set now resolves only when the step declared it
 in from the raw HTTP response, so class C is a real break rather than a value
 that arrives by accident.
 
+A step restricted to one dataspace release is compared too. The engine decides
+the restriction — `@step("...", dataspace_version="saturn")` — and the block
+mirrors it as `dataspace_version`, which is what the toolbox reads to hide the
+block while no service of that release is configured and what the block header
+reads to badge itself. The two disagreeing is class **H**: a block that omits a
+restriction the engine enforces keeps offering a step to tests that cannot
+resolve it, and a block that invents one hides a step that runs fine.
+
 A field that accepts **more than one** key is reported as class **G** and
 counted as a divergence like any other. It is the mildest class, because it
 fails no run today; it is still two names for one field, and the whole point of
@@ -97,6 +105,7 @@ count went from **62** before it to **0**, across 53 blocks:
 | **B** — IDE parameters the engine does not accept | yes | 0 |
 | **C** — IDE returns the engine never produces | yes | 0 |
 | **G** — parameters that bind only through an alias | yes | 0 |
+| **H** — the two sides disagree on the dataspace release | yes | 0 |
 | **D** — required in IDE, optional in engine | no | 33 steps |
 | **E** — engine parameters the IDE does not offer | no | 5 steps |
 | **F** — engine steps with no IDE block | no | 0 |
@@ -276,12 +285,36 @@ different document than an author who supplied both expected.
 
 The document is the right shape to keep: it is the EDC / AAS payload verbatim,
 so it does not go stale as those standards add fields, and a script can hand it
-straight from a manifest variable (`${{ env.<id>.asset }}`).
+straight from a manifest variable (`${{ env.<id> }}`).
 
 Authoring the document by hand is a separate job, and it gets a separate step.
 The `wizard/*` steps take the flat fields, assemble the document, and create the
 resource — one step id per shape, so which one a script uses is visible in the
 `uses:` line rather than inferred from which keys were filled in.
+
+## The other half: the document schema
+
+The step catalog is what this comparison measures, and it is not the whole
+contract. The shape of the document *around* the steps — which keys a script,
+a step, a `returns:` entry or a `validate:` entry may carry — is published as
+`compiler/schemas/tck_test.schema.json` and `tck_index.schema.json`, generated
+from the authoring models by `testlab schema` and checked by
+`testlab schema --check`. The IDE validates against those files, so a change to
+an authoring model is a change to the IDE's contract whether or not any step
+moved.
+
+Latest such change: a `validate:` entry now takes an optional `name`. Nothing
+in the engine reads it — the check is entirely `uses` and `with` — but the run
+report calls the check by it, so a step carrying four `validate/assert` entries
+says which requirement each one covers instead of printing the same id four
+times. An IDE validate block should therefore offer a free-text `name` beside
+`uses`, optional and report-only.
+
+The same generated schemas back the `/compile` endpoint the IDE posts to. Its
+error payload is now the authored form — the location names the step by its id
+rather than by its list position, and the message names the keys that would
+have been accepted (see `syntax/diagnostics.py`), so the IDE can surface a
+rejection without translating it first.
 
 ## Keeping it from drifting again
 

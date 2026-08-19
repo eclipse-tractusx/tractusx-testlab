@@ -31,7 +31,11 @@ license = { text = "Apache-2.0" }
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
-    "tractusx-sdk (>=0.7.0)",
+    # 0.8.2-rc1 is where the SDK records the requests it sends and the responses
+    # it gets (`tractusx_sdk.dataspace.tools.Tracer` / `trace_call`), which is
+    # how a step's exchanges reach the execution trace (ADR-0016). Before it,
+    # the engine had to patch `requests` to see the SDK's traffic at all.
+    "tractusx-sdk (>=0.8.2rc1)",
     "pydantic (>=2.6.0,<3.0.0)",
     "httpx (>=0.26.0,<1.0.0)",
     "pyyaml (>=6.0.0,<7.0.0)",

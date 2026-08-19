@@ -120,7 +120,7 @@ class TestDspStepByStep:
         harness = _harness(
             consumer,
             **{
-                "usage_policy.policy": {"permission": []},
+                "usage_policy": {"permission": []},
                 "setup.asset.asset_id": _ASSET_ID,
             },
         )
@@ -188,7 +188,7 @@ class TestDspStepByStep:
         consumer._catalog = {"dcat:dataset": []}
         harness = _harness(
             consumer,
-            **{"usage_policy.policy": {"permission": []}, "setup.asset.asset_id": _ASSET_ID},
+            **{"usage_policy": {"permission": []}, "setup.asset.asset_id": _ASSET_ID},
         )
         outcome = await harness.run(*_phase("dsp_step_by_step.yaml", "execution"))
 

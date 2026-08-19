@@ -21,7 +21,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""Infrastructure bindings — where the deployment an engine drives actually is.
+"""The topology a run targets — which capabilities each side of it has.
 
 This is the *binding* half of ADR-0019, and the counterpart of
 :mod:`tractusx_testlab.models.authoring.infrastructure`, which models the
@@ -30,11 +30,11 @@ is needed; a binding is supplied by whoever operates the engine and says where
 that capability lives. The two meet once per run, when the player checks every
 required capability against the bindings it was given.
 
-The two sides are asymmetric on purpose (ADR-0019 §4). The **engine** side is
-infrastructure TestLab operates — a connector it drives through the management
-API and a registry it writes to — so it carries credentials. The **sut** side is
-a counter-party TestLab only talks to, so it carries an identity and an
-endpoint.
+The capability types themselves are in
+:mod:`tractusx_testlab.models.domain.capabilities`. What this module adds is
+the arrangement: which capabilities the engine has, which the SUT has, and the
+registry :func:`capability_bindings` derives from that arrangement — the single
+place anything else reads to learn what capabilities exist at all.
 
 The submodel server is not a capability of its own: a registry entry is a
 pointer to a payload, so the backend those payloads live on is part of the
@@ -42,143 +42,32 @@ registry the engine operates and is bound as a field of it
 (``engine.dtr.submodel_base_url``). It is engine-side only, because the engine
 hosts the data a test provisions and a test that could name its own server
 would be testing an address rather than the provider's backend.
-
-Every field here is one leaf of the naming rule these bindings exist to make
-mechanical — a field named ``dsp_url`` on ``sut.connector`` is the config key
-``sut.connector.dsp_url``, the context variable
-``infrastructure.sut.connector.dsp_url``, and the environment variable
-``TESTLAB_SUT_CONNECTOR_DSP_URL``, with no lookup table in between. See
-:mod:`tractusx_testlab.infrastructure.mapping` for the projection itself.
 """
 
 from __future__ import annotations
 
-from typing import ClassVar
-
 from pydantic import BaseModel, ConfigDict, Field
 
+from tractusx_testlab.models.domain.capabilities import (
+    CapabilityBinding,
+    ConnectorBinding,
+    DtrBinding,
+    EngineDtrBinding,
+    SutConnectorBinding,
+)
 
-class CapabilityBinding(BaseModel):
-    """One bound capability — the base every side's capabilities share.
-
-    Bindings are frozen because a run resolves them once, before the first
-    step, and every later reader must see the same deployment. They forbid
-    extra fields because a misspelled key is the failure this model exists to
-    turn into a message: the old string-scraped form dropped
-    ``managment_url`` silently and failed twenty steps later.
-    """
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    #: Field whose presence decides whether this capability was bound at all.
-    identity_field: ClassVar[str] = ""
-
-    version: str = Field(
-        default="",
-        description=(
-            "Ecosystem release this deployment speaks — 'saturn' or 'jupiter'. It "
-            "decides which SDK dialect is built against it. Inherited from the TCK's "
-            "'dataspace.version' when left empty, which is the normal case."
-        ),
-    )
-    standard: str = Field(
-        default="",
-        description=(
-            "Id of the Catena-X standard this capability implements, e.g. 'CX-0018' "
-            "for a connector. Inherited from the TCK's requirement when left empty."
-        ),
-    )
-    standard_version: str = Field(
-        default="",
-        description=(
-            "Version of that standard, e.g. '2.1.3'. Inherited from the TCK's "
-            "requirement when left empty."
-        ),
-    )
-
-    def is_bound(self) -> bool:
-        """Whether the operator supplied enough for this capability to be used.
-
-        A capability is bound when its identifying address is present. Every
-        other field qualifies an address that must already exist — an
-        ``api_key`` with no connector to send it to binds nothing, and neither
-        does a standard with no deployment implementing it.
-        """
-        return bool(str(getattr(self, self.identity_field, "") or "").strip())
-
-
-class ConnectorBinding(CapabilityBinding):
-    """An EDC connector, on either side of the topology."""
-
-    identity_field: ClassVar[str] = "management_url"
-
-    management_url: str = Field(
-        default="",
-        description=(
-            "Management API URL of the connector, including its management path "
-            "— e.g. 'https://connector.example.com/management'. The base URL and "
-            "the management path are split back out of it when the SDK service is built."
-        ),
-    )
-    api_key: str = Field(
-        default="",
-        description="Management API key. Empty when the connector is unauthenticated.",
-    )
-    api_key_header: str = Field(
-        default="x-api-key",
-        description="Header the management API key is sent in.",
-    )
-    participant_id: str = Field(
-        default="",
-        description="BPN-L the connector presents as its dataspace identity.",
-    )
-    dsp_url: str = Field(
-        default="",
-        description=(
-            "DSP endpoint URL a counter-party negotiates against — the address "
-            "catalog and negotiation steps use, not the management one."
-        ),
-    )
-    name: str = Field(
-        default="",
-        description=(
-            "Optional service name this connector is additionally registered under, "
-            "so a script naming it explicitly resolves to the same deployment."
-        ),
-    )
-
-
-class DtrBinding(CapabilityBinding):
-    """A Digital Twin Registry, on either side of the topology."""
-
-    identity_field: ClassVar[str] = "base_url"
-
-    base_url: str = Field(
-        default="",
-        description=(
-            "Root URL the registry answers on, including any ingress path prefix "
-            "— e.g. 'https://registry.example.com/semantics/registry'."
-        ),
-    )
-
-
-class EngineDtrBinding(DtrBinding):
-    """The registry the engine operates, and the backend its entries point at.
-
-    A shell descriptor is a pointer: the registry says where a submodel lives
-    and something else serves it. Both halves are one deployment the operator
-    stands up for the engine, so the payload backend is a field of the registry
-    capability rather than a capability the TCK has to require separately.
-    """
-
-    submodel_base_url: str = Field(
-        default="",
-        description=(
-            "Root URL submodel payloads are stored under, and the address the "
-            "engine's registry entries point at. The engine addresses submodels "
-            "beneath it; a script never names a server of its own."
-        ),
-    )
+__all__ = [
+    "CapabilityBinding",
+    "ConnectorBinding",
+    "DtrBinding",
+    "EngineBindings",
+    "EngineDtrBinding",
+    "Infrastructure",
+    "SutBindings",
+    "SutConnectorBinding",
+    "capability_bindings",
+    "capability_keys",
+]
 
 
 class EngineBindings(BaseModel):
@@ -195,7 +84,7 @@ class SutBindings(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    connector: ConnectorBinding = Field(default_factory=ConnectorBinding)
+    connector: SutConnectorBinding = Field(default_factory=SutConnectorBinding)
     dtr: DtrBinding = Field(default_factory=DtrBinding)
 
 

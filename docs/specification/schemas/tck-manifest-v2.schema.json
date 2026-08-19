@@ -239,12 +239,12 @@
         "id": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]{0,49}$",
-          "description": "Unique variable identifier. Referenced via ${{ env.id.field }}."
+          "description": "Unique variable identifier. Referenced via ${{ env.<id> }}."
         },
         "uses": {
           "type": "string",
           "pattern": "^(variable/[a-z][a-z0-9_/]*|config/[a-z][a-z0-9_/]*)$",
-          "description": "Variable capability. 'variable/type/<type>' declares a typed value (a constant 'value' or 'source: input' to prompt the user); 'config/connector/policy' declares a reusable access policy. Referenced via ${{ env.id.field }}."
+          "description": "Variable capability. 'variable/type/<type>' declares a typed value (a constant 'value' or 'source: input' to prompt the user); 'config/connector/policy' declares a reusable access policy. Referenced via ${{ env.<id> }}."
         },
         "name": {
           "type": "string",
@@ -260,7 +260,7 @@
           "additionalProperties": {
             "$ref": "#/$defs/variableReturnField"
           },
-          "description": "Named output declarations produced by this variable. Referenced via ${{ env.id.field }}."
+          "description": "Named output declarations produced by this variable. Referenced via ${{ env.<id> }}."
         }
       }
     },

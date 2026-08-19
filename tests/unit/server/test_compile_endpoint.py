@@ -166,6 +166,25 @@ class TestCompileYamlEndpoint:
             for err in body["errors"]
         ), f"Expected YAML syntax error, got {body['errors']}"
 
+    def test_a_rejected_key_is_returned_in_the_authored_form(self, client: TestClient) -> None:
+        """The IDE shows this payload verbatim, so it has to read as advice."""
+        # Arrange — a step with a misspelled key, in a named step
+        yaml_body = _VALID_YAML.replace(
+            "execution: []",
+            "execution:\n  - id: log_it\n    uses: util/log\n    wth: {message: hi}\n",
+        ).encode()
+
+        # Act
+        response = client.post("/testlab/compile", content=yaml_body)
+
+        # Assert
+        body = response.json()
+        assert body["status"] == "error"
+        finding = next(err for err in body["errors"] if "wth" in err["message"])
+        assert "execution[0] 'log_it'" in finding["path"]
+        assert "did you mean 'with'?" in finding["message"]
+        assert "pydantic" not in finding["message"].lower()
+
     def test_compile_unknown_kind_returns_error(self, client: TestClient) -> None:
         """An unrecognised ``kind`` value produces a structured error."""
         # Arrange

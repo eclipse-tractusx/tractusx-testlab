@@ -36,6 +36,7 @@ from tractusx_testlab.models import (
     HttpResponse,
     StepDefinition,
 )
+from tractusx_testlab.syntax import diagnostics
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -180,6 +181,9 @@ class BaseStep[ParamsT, PayloadT](ABC):
 
     #: Canonical step key from the ``@step`` decorator (e.g. ``util/generate_uuid``).
     step_type: ClassVar[str] = ""
+    #: Dataspace release the ``@step`` decorator restricted this step to, or
+    #: ``None`` when it runs on every release.
+    dataspace_version: ClassVar[str | None] = None
     #: Input contract — the keys this step accepts under ``with:``.
     params_model: ClassVar[type[StepParams]]
     #: Output contract — a :class:`StepPayload` for an object, a
@@ -240,8 +244,8 @@ class BaseStep[ParamsT, PayloadT](ABC):
             return cls.params_model.model_validate(raw_params)
         except ValidationError as exc:
             raise ValueError(
-                f"Invalid parameters for step '{cls.step_type or cls.__name__}': "
-                f"{_format_validation_errors(exc)}"
+                f"Invalid parameters for step '{cls.step_type or cls.__name__}':\n"
+                f"{diagnostics.render(exc, model=cls.params_model, data=raw_params)}"
             ) from exc
 
     @classmethod
@@ -353,11 +357,3 @@ def _dump_payload(payload: StepPayload | StepValue) -> Any:
         # whatever a provider sent.
         return payload.root
     return payload.model_dump(mode="json", by_alias=True, exclude_unset=True)
-
-
-def _format_validation_errors(exc: ValidationError) -> str:
-    """Render Pydantic errors as a compact ``field: message`` list."""
-    return "; ".join(
-        f"{'.'.join(str(part) for part in error['loc']) or '<root>'}: {error['msg']}"
-        for error in exc.errors()
-    )

@@ -33,6 +33,7 @@ from tractusx_testlab.infrastructure.mapping import (
     known_keys,
     merge,
     overrides_from_env,
+    required_keys,
 )
 from tractusx_testlab.infrastructure.profiles import (
     DEFAULT_PROFILE,
@@ -55,6 +56,7 @@ from tractusx_testlab.models.domain.infrastructure import (
     EngineDtrBinding,
     Infrastructure,
     SutBindings,
+    SutConnectorBinding,
 )
 
 __all__ = [
@@ -69,6 +71,7 @@ __all__ = [
     "Infrastructure",
     "InfrastructureManager",
     "SutBindings",
+    "SutConnectorBinding",
     "aas_api_path",
     "apply_overrides",
     "capabilities",
@@ -83,4 +86,5 @@ __all__ = [
     "merge",
     "overrides_from_env",
     "release_or_default",
+    "required_keys",
 ]

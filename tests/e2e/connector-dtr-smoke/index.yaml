@@ -89,7 +89,7 @@ env:
           dct_type: "https://w3id.org/catenax/taxonomy#TestData"
           version: "1.0"
       returns:
-        asset:
+        value:
           type: object
           class: Asset
 
@@ -107,7 +107,7 @@ env:
                 operator: eq
                 right_operand: active
       returns:
-        policy:
+        value:
           type: object
           class: Policy
 
@@ -122,7 +122,7 @@ env:
           dct_type: "https://w3id.org/catenax/taxonomy#TestData"
           version: "1.0"
       returns:
-        asset:
+        value:
           type: object
           class: Asset
 
@@ -144,7 +144,7 @@ env:
                     operator: eq
                     right_operand: "DataExchangeGovernance:1.0"
       returns:
-        policy:
+        value:
           type: object
           class: Policy
 

@@ -59,6 +59,10 @@ _BASE_PATH = "/shell-descriptors"
 _LOOKUP_PATH = "/lookup/shells"
 _LOOKUP_BY_ASSET_LINK_PATH = "/lookup/shellsByAssetLink"
 
+#: The query parameter ``GET /lookup/shells`` takes its criteria in, one value
+#: per criterion.
+_ASSET_IDS_PARAM = "assetIds"
+
 
 def _b64url_encode(text: str) -> str:
     return base64.urlsafe_b64encode(text.encode("utf-8")).decode("ascii").rstrip("=")
@@ -95,6 +99,13 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
     Shells registered through the mock's own ``POST /shell-descriptors`` become
     retrievable the same way the pre-configured ones are, so a script can
     exercise the write path and the read path against one registry.
+
+    It answers the AAS v3 API as a real registry does, which is what makes it
+    worth testing against: ``GET /lookup/shells`` takes one ``assetIds`` value
+    per criterion, each a base64url-encoded ``SpecificAssetId`` object, and a
+    value holding the whole list is refused with a 400 that says so. The
+    consumer-side steps already send it that way, so a script that uses them
+    needs to know none of this.
     """
 
     params_model = MockDtrParams
@@ -139,13 +150,39 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
             return MockResponse(status_code=201, body=descriptor)
 
         def _lookup_shells(req: MockRequest) -> MockResponse:
-            raw = req.query_params.get("assetIds")
+            """The query-carried spelling of the lookup, as AAS v3 defines it.
+
+            One ``assetIds`` value per criterion, each a base64url-encoded
+            SpecificAssetId **object** — not one value holding the whole list.
+            That is what a real registry reads and what this engine's own
+            ``digital-twin-registry/consumer/dataplane/lookup_shell`` sends
+            (``registry_models._asset_ids_query``); a mock that read the list
+            form answered a request no AAS client makes and failed every request
+            they do make. No criteria at all matches every shell, the way an
+            absent ``assetIds`` does.
+            """
+            raw = req.query_all(_ASSET_IDS_PARAM)
             if not raw:
                 return MockResponse(status_code=200, body={"result": [s.get("id") for s in shells]})
             try:
-                requested = json.loads(_b64url_decode(raw))
+                requested = [json.loads(_b64url_decode(value)) for value in raw]
             except (binascii.Error, ValueError, json.JSONDecodeError):
                 return MockResponse(status_code=400, body={"error": "invalid assetIds encoding"})
+            if not all(isinstance(entry, dict) for entry in requested):
+                # The list-in-one-value spelling lands here. Refusing it by name
+                # is the point: a script that built the query by hand is told
+                # which encoding the endpoint takes, instead of being answered
+                # as though it had asked for something.
+                return MockResponse(
+                    status_code=400,
+                    body={
+                        "error": (
+                            "each 'assetIds' value must be one base64url-encoded "
+                            "SpecificAssetId object; repeat the parameter for "
+                            "several criteria"
+                        )
+                    },
+                )
             matches = [s.get("id") for s in shells if _matches_asset_ids(s, requested)]
             return MockResponse(status_code=200, body={"result": matches})
 

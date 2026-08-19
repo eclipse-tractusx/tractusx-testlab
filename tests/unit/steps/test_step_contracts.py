@@ -48,7 +48,7 @@ _ALL_STEP_TYPES = sorted(StepRegistry.list_step_types())
 
 
 def _step_class(step_type: str) -> type[BaseStep]:
-    step_cls = StepRegistry.get(step_type, "")
+    step_cls = StepRegistry.get_any(step_type)
     assert step_cls is not None, f"'{step_type}' is listed but not resolvable"
     return step_cls
 

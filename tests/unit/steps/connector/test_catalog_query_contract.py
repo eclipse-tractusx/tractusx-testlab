@@ -35,10 +35,12 @@ from tractusx_testlab.steps.connector.catalog_query import (
     FilterExpression,
     QueryCatalogByAssetIdParams,
     QueryCatalogByAssetIdStep,
+    QueryCatalogByBpnlParams,
     QueryCatalogByBpnlStep,
     QueryCatalogParams,
     QueryCatalogStep,
 )
+from tractusx_testlab.steps.shared_models import as_dataset_list
 from tractusx_testlab.steps.step_contract import StepOutput
 from tractusx_testlab.syntax.context_vars import (
     CATALOG_ASSET_ID,
@@ -48,6 +50,9 @@ from tractusx_testlab.syntax.context_vars import (
 #: Output field every catalog step returns its offers under, and therefore the
 #: context variable it is published as.
 _DATASETS = "datasets"
+
+#: A protocol a script pins explicitly, distinct from either release default.
+_PROTOCOL = "dataspace-protocol-http:2025-1"
 
 _DATASET = {"@id": "offer-abc", "odrl:hasPolicy": {"@id": "policy-1"}}
 _CATALOG = {
@@ -115,6 +120,95 @@ class TestQueryCatalogParams:
             QueryCatalogByAssetIdStep.bind_params({})
 
 
+class TestDspProtocolOverride:
+    """The release decides the protocol; a script may still pin one.
+
+    The SDK's consumer service carries the default for its own release —
+    ``dataspace-protocol-http:2025-1`` on Saturn, ``dataspace-protocol-http`` on
+    Jupiter — so "not picked" has to reach it as an absent argument rather than
+    as an empty one.
+    """
+
+    def test_no_protocol_is_picked_by_default(self) -> None:
+        assert QueryCatalogParams.model_validate({}).protocol == ""
+
+    def test_an_unpicked_protocol_is_not_sent_to_the_sdk(self) -> None:
+        assert QueryCatalogParams.model_validate({}).sdk_protocol() == {}
+
+    def test_a_picked_protocol_is_sent_to_the_sdk(self) -> None:
+        params = QueryCatalogParams.model_validate({"protocol": _PROTOCOL})
+        assert params.sdk_protocol() == {"protocol": _PROTOCOL}
+
+    @pytest.mark.asyncio
+    async def test_query_catalog_leaves_the_protocol_to_the_release(
+        self, mock_context: MagicMock
+    ) -> None:
+        consumer = MagicMock()
+        consumer.get_catalog_with_filter.return_value = _CATALOG
+        await QueryCatalogStep().invoke(
+            {"counter_party_address": "http://p/dsp", "counter_party_id": "BPNL01"},
+            _with_consumer(mock_context, consumer),
+            _definition("connector/consumer/query_catalog"),
+        )
+        assert "protocol" not in consumer.get_catalog_with_filter.call_args.kwargs
+
+    @pytest.mark.asyncio
+    async def test_query_catalog_forwards_a_picked_protocol(self, mock_context: MagicMock) -> None:
+        consumer = MagicMock()
+        consumer.get_catalog_with_filter.return_value = _CATALOG
+        await QueryCatalogStep().invoke(
+            {
+                "counter_party_address": "http://p/dsp",
+                "counter_party_id": "BPNL01",
+                "protocol": _PROTOCOL,
+            },
+            _with_consumer(mock_context, consumer),
+            _definition("connector/consumer/query_catalog"),
+        )
+        assert consumer.get_catalog_with_filter.call_args.kwargs["protocol"] == _PROTOCOL
+
+    @pytest.mark.asyncio
+    async def test_query_catalog_by_asset_id_forwards_a_picked_protocol(
+        self, mock_context: MagicMock
+    ) -> None:
+        consumer = MagicMock()
+        consumer.get_catalog_by_asset_id.return_value = _CATALOG
+        await QueryCatalogByAssetIdStep().invoke(
+            {
+                "counter_party_address": "http://p/dsp",
+                "counter_party_id": "BPNL01",
+                "asset_id": "asset-1",
+                "protocol": _PROTOCOL,
+            },
+            _with_consumer(mock_context, consumer),
+            _definition("connector/consumer/query_catalog_by_asset_id"),
+        )
+        assert consumer.get_catalog_by_asset_id.call_args.kwargs["protocol"] == _PROTOCOL
+
+    @pytest.mark.asyncio
+    async def test_the_protocol_is_recorded_on_the_request_it_was_sent_on(
+        self, mock_context: MagicMock
+    ) -> None:
+        """A run report has to show which protocol the catalog was asked under."""
+        consumer = MagicMock()
+        consumer.get_catalog_with_filter.return_value = _CATALOG
+        output = await QueryCatalogStep().invoke(
+            {
+                "counter_party_address": "http://p/dsp",
+                "counter_party_id": "BPNL01",
+                "protocol": _PROTOCOL,
+            },
+            _with_consumer(mock_context, consumer),
+            _definition("connector/consumer/query_catalog"),
+        )
+        assert output.request is not None
+        assert output.request.body["protocol"] == _PROTOCOL
+
+    def test_discovery_based_lookup_takes_no_protocol(self) -> None:
+        """Discovery answers with the protocol, so a second answer here would compete."""
+        assert "protocol" not in QueryCatalogByBpnlParams.model_fields
+
+
 class TestFilterExpression:
     def test_snake_case_serialises_to_the_sdk_camel_case_shape(self) -> None:
         expression = FilterExpression.model_validate(
@@ -139,6 +233,25 @@ class TestFilterExpression:
 # ---------------------------------------------------------------------------
 
 
+class TestDatasetOffers:
+    """``as_dataset_list`` reads the offers whichever DSP generation wrote them."""
+
+    def test_legacy_prefixed_key_is_read(self) -> None:
+        assert as_dataset_list({"dcat:dataset": [_DATASET]}) == [_DATASET]
+
+    def test_dsp_2025_unprefixed_key_is_read(self) -> None:
+        """A DSP 2025-1 catalog expands the prefix away — same offers, other key."""
+        assert as_dataset_list({"dataset": [_DATASET]}) == [_DATASET]
+
+    def test_a_single_offer_object_becomes_a_list_in_either_generation(self) -> None:
+        for key in ("dcat:dataset", "dataset"):
+            assert as_dataset_list({key: _DATASET}) == [_DATASET]
+
+    def test_a_catalog_without_offers_is_an_empty_list(self) -> None:
+        assert as_dataset_list({"@id": "catalog-123"}) == []
+        assert as_dataset_list(None) == []
+
+
 class TestCatalogPayload:
     def test_provider_document_round_trips_unchanged(self) -> None:
         dumped = CatalogPayload.model_validate(_CATALOG).model_dump(
@@ -156,9 +269,13 @@ class TestCatalogPayload:
         )
         assert dumped == {"id": "plain"}
 
-    def test_single_dataset_object_is_not_coerced_to_a_list(self) -> None:
-        payload = CatalogPayload.model_validate({"dcat:dataset": _DATASET})
-        assert payload.datasets == _DATASET
+    def test_offers_keep_the_key_the_provider_sent_them_under(self) -> None:
+        """Neither DSP generation's dataset key is rewritten into the other's."""
+        for key in ("dcat:dataset", "dataset"):
+            dumped = CatalogPayload.model_validate({key: _DATASET}).model_dump(
+                by_alias=True, exclude_none=True
+            )
+            assert dumped == {key: _DATASET}
 
     def test_absent_json_ld_keys_are_not_invented(self) -> None:
         """A catalog without ``@type`` must not come back carrying ``"@type": null``."""
@@ -285,6 +402,36 @@ class TestQueryCatalogByAssetIdPublishedOutputs:
         )
 
     @pytest.mark.asyncio
+    async def test_every_policy_is_acceptable_to_a_catalog_query(
+        self, mock_context: MagicMock, monkeypatch
+    ) -> None:
+        """The step reports the offer's policy; it does not judge it.
+
+        ``allowed_policies=None`` is the SDK's "any policy"; ``[]`` is its
+        "none", which is what the removed filter's empty default used to send —
+        so a query with no policies named selected nothing at all.
+        """
+        from tractusx_testlab.steps.connector import catalog_query
+
+        seen: dict = {}
+
+        def _record(catalog, allowed_policies):
+            seen["allowed_policies"] = allowed_policies
+            return [("asset-1", {"@id": "policy-1"})]
+
+        monkeypatch.setattr(
+            catalog_query.DspTools, "filter_assets_and_policies", staticmethod(_record)
+        )
+        consumer = MagicMock()
+        consumer.get_catalog_by_asset_id.return_value = _CATALOG
+        ctx = _with_consumer(mock_context, consumer)
+        await QueryCatalogByAssetIdStep().invoke(
+            self._params(), ctx, _definition("connector/consumer/query_catalog_by_asset_id")
+        )
+        assert seen["allowed_policies"] is None
+        assert ctx.get_variable(CATALOG_ASSET_ID) == "asset-1"
+
+    @pytest.mark.asyncio
     async def test_no_matching_offer_leaves_the_variables_unset(
         self, mock_context: MagicMock, monkeypatch
     ) -> None:
@@ -350,5 +497,5 @@ class TestDeclaredContracts:
             "counter_party_id",
             "counter_party_address",
             "asset_id",
-            "expected_policies",
+            "protocol",
         }

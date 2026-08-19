@@ -30,6 +30,7 @@ step needs the *shape* of the runner, not the runner itself.
 """
 
 from tractusx_testlab.contracts.services import (
+    CallReporter,
     ConnectorConsumer,
     ConnectorProvider,
     Controller,
@@ -39,6 +40,7 @@ from tractusx_testlab.contracts.services import (
 )
 
 __all__ = [
+    "CallReporter",
     "ConnectorConsumer",
     "ConnectorProvider",
     "Controller",

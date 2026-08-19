@@ -130,6 +130,25 @@ class NotificationService(Protocol):
 
 
 @runtime_checkable
+class CallReporter(Protocol):
+    """Publishing one call a step made, the moment it is answered.
+
+    Handed to the context by the phase runner, which is what knows the job and
+    the script a call belongs to; taken from the context by the step runner,
+    which is what knows the step. A nested step reports through the same one,
+    because it runs on the same context.
+    """
+
+    def __call__(
+        self,
+        step_type: str,
+        step_id: str | None,
+        index: int,
+        call: Any,
+    ) -> None: ...
+
+
+@runtime_checkable
 class StepInvoker(Protocol):
     """Running one step — the part of the runner a nested step needs.
 

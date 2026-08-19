@@ -31,6 +31,7 @@ delegating fully to Pydantic for alias resolution and model validation.
 from __future__ import annotations
 
 import logging
+import zipfile
 from pathlib import Path
 
 import yaml
@@ -77,3 +78,17 @@ def parse_tck_file(path: Path) -> TckDefinition:
     data = _load_yaml(path)
     normalized = _normalize_discriminator(data, path)
     return _TCK_ADAPTER.validate_python(normalized)
+
+
+def is_encrypted_package(path: Path) -> bool:
+    """True when the ``.tck`` at *path* holds ``payload.enc``.
+
+    Anything that is not a readable ZIP is simply not an encrypted package.
+    Whether it is a package at all is the loader's call, and it says so with an
+    error a person can act on; this only decides which of the two shapes it is.
+    """
+    try:
+        with zipfile.ZipFile(path, "r") as archive:
+            return "payload.enc" in archive.namelist()
+    except (OSError, zipfile.BadZipFile):
+        return False

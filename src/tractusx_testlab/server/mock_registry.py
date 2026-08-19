@@ -31,7 +31,7 @@ through ``StepContext``.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -50,13 +50,53 @@ class MockResponse:
 
 @dataclass(frozen=True)
 class MockRequest:
-    """Inbound request data passed to a dynamic mock handler."""
+    """Inbound request data passed to a dynamic mock handler.
+
+    ``query_params`` is the query as HTTP actually carries it: a multimap, since
+    a name may legitimately repeat. It used to be flattened to one value per
+    name, which silently dropped every repeat but the last — and a repeated name
+    is not an oddity, it is how the AAS API asks for several search criteria
+    (``?assetIds=<a>&assetIds=<b>``). A mock that cannot see the second one
+    answers a question it was not asked.
+
+    This is deliberately not the shape a *script* reads: ``mock/wait`` publishes
+    ``request_query_params`` as one value per name, because a script asserting on
+    a callback's ``state`` wants the value and not a list holding it. A handler
+    is a server and has to see the request; a result is a value and has to be
+    readable.
+    """
 
     method: str
     path: str
     headers: dict
-    query_params: dict
+    query_params: dict[str, list[str]]
     body: Any | None
+
+    def query(self, name: str) -> str | None:
+        """The value of a parameter given once, or ``None`` if it was not given.
+
+        The first value when a name repeats: a handler asking for one has
+        already decided the parameter is single-valued.
+        """
+        values = self.query_params.get(name) or []
+        return values[0] if values else None
+
+    def query_all(self, name: str) -> list[str]:
+        """Every value a parameter was given, in the order they arrived."""
+        return list(self.query_params.get(name) or [])
+
+
+def query_of(pairs: Iterable[tuple[str, str]]) -> dict[str, list[str]]:
+    """The query string as a handler sees it, from the pairs it was sent as.
+
+    Built from pairs rather than from a mapping because the mapping is where the
+    repeats were lost: ``dict(request.query_params)`` keeps the last value for a
+    name and discards the rest.
+    """
+    query: dict[str, list[str]] = {}
+    for name, value in pairs:
+        query.setdefault(name, []).append(value)
+    return query
 
 
 # A dynamic handler computes the response from the inbound request — used by
@@ -90,7 +130,7 @@ def resolve_mock(
     method: str,
     *,
     headers: dict,
-    query_params: dict,
+    query_params: dict[str, list[str]],
     body: dict | None,
 ) -> MockResponse | None:
     """Look up a mock and, if it's a dynamic handler, invoke it to get a response."""

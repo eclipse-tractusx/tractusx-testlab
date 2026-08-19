@@ -33,44 +33,26 @@ TCK at once instead of one per compile.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from functools import cache
 from pathlib import Path
 from typing import Any
 
 import yaml
-from jsonschema import Draft202012Validator
+
+from tractusx_testlab.compiler.validation._variable_declarations import (
+    declared_variable_ids,
+    validate_variable_declarations,
+    validate_variable_references,
+)
+from tractusx_testlab.compiler.validation.json_schema_findings import collect_errors, validator_for
+from tractusx_testlab.syntax import diagnostics
 
 logger = logging.getLogger(__name__)
 
-_SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
-
 #: The phases a step can sit in; a rule about steps means all three.
 _PHASES = ("setup", "execution", "teardown")
-
-
-@cache
-def _validator_for(schema_name: str) -> Draft202012Validator:
-    """Return the validator for a schema, reading and compiling it once per process."""
-    schema: dict[str, Any] = json.loads((_SCHEMAS_DIR / schema_name).read_text(encoding="utf-8"))
-    return Draft202012Validator(schema)
-
-
-def _collect_errors(
-    validator: Draft202012Validator,
-    data: dict[str, Any],
-    source_label: str,
-) -> list[str]:
-    """Collect all validation errors with human-readable messages."""
-    errors: list[str] = []
-    for error in validator.iter_errors(data):
-        path = ".".join(str(p) for p in error.absolute_path) if error.absolute_path else ""
-        location = f"'{path}' in {source_label}" if path else source_label
-        errors.append(f"{error.message} (at {location})")
-    return errors
 
 
 def validate_tck_manifest(
@@ -85,23 +67,30 @@ def validate_tck_manifest(
     env = manifest_data.get("env") or {}
 
     all_errors: list[str] = [
-        *_collect_errors(_validator_for("tck_index.schema.json"), manifest_data, "index.yaml"),
+        *collect_errors(validator_for("tck_index.schema.json"), manifest_data, "index.yaml"),
         *_validate_file_refs(manifest_data, base_dir),
+        *validate_variable_declarations(env),
         *_validate_variable_scopes(env),
         *_validate_scoped_sides_are_declared(env, manifest_data.get("infrastructure")),
     ]
 
+    variable_ids = declared_variable_ids(env)
     for test_file in _referenced_test_files(manifest_data):
         label = f"tests/{test_file}"
         test_path = base_dir / "tests" / test_file
         if not test_path.is_file():
             all_errors.append(f"Referenced test file not found: {label}")
             continue
-        test_data = yaml.safe_load(test_path.read_text(encoding="utf-8"))
+        try:
+            test_data = yaml.safe_load(test_path.read_text(encoding="utf-8"))
+        except yaml.YAMLError as exc:
+            all_errors.append(str(diagnostics.unparseable(exc, test_path)))
+            continue
         if not isinstance(test_data, dict):
             all_errors.append(f"Test file '{label}' is not a valid YAML mapping")
             continue
         all_errors.extend(error for rule in _TEST_FILE_RULES for error in rule(test_data, label))
+        all_errors.extend(validate_variable_references(test_data, variable_ids, label))
 
     if all_errors:
         error_list = "\n  - ".join(all_errors)
@@ -113,11 +102,14 @@ def validate_tck_manifest(
 
 
 def _referenced_test_files(manifest_data: dict[str, Any]) -> Iterator[str]:
-    """Yield the file name of every test the manifest lists, however it spells it."""
+    """Yield the file name of every test the manifest lists.
+
+    One spelling: an entry is a mapping and ``id`` is the file under ``tests/``.
+    Anything else is already reported by the schema check that runs alongside
+    this one, so it is passed over here rather than guessed at.
+    """
     for entry in manifest_data.get("tests", []):
-        if isinstance(entry, str):
-            yield entry
-        elif name := entry.get("file", entry.get("id", "")):
+        if isinstance(entry, dict) and (name := entry.get("id")):
             yield str(name)
 
 
@@ -326,7 +318,7 @@ def _reject_banned_steps(
 
 def _check_test_schema(test_data: dict[str, Any], source_label: str) -> list[str]:
     """Validate a test file against the test JSON schema."""
-    return _collect_errors(_validator_for("tck_test.schema.json"), test_data, source_label)
+    return collect_errors(validator_for("tck_test.schema.json"), test_data, source_label)
 
 
 #: Everything asked of a single test file, in the order an author reads it.

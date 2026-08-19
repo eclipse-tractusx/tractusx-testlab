@@ -100,7 +100,7 @@ class TestJsonPathExtractStep:
         self, mock_context: MagicMock, definition: StepDefinition
     ) -> None:
         step = JsonPathExtractStep()
-        with pytest.raises(ValueError, match="input: Field required"):
+        with pytest.raises(ValueError, match=r"input: required key 'input' is missing"):
             await step.invoke({"path": "x"}, mock_context, definition)
 
     @pytest.mark.asyncio
@@ -163,6 +163,40 @@ class TestQueryCatalogWithFiltersStep:
             )
 
     @pytest.mark.asyncio
+    async def test_the_protocol_is_left_to_the_release_unless_picked(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
+        consumer = MagicMock()
+        consumer.get_catalog_with_filter.return_value = {"dcat:dataset": []}
+        mock_context.dataspace.consumer.return_value = consumer
+
+        await QueryCatalogWithFiltersStep().invoke(
+            {"counter_party_address": "http://provider:8080"}, mock_context, definition
+        )
+        assert "protocol" not in consumer.get_catalog_with_filter.call_args.kwargs
+
+    @pytest.mark.asyncio
+    async def test_a_picked_protocol_reaches_the_sdk(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
+        consumer = MagicMock()
+        consumer.get_catalog_with_filter.return_value = {"dcat:dataset": []}
+        mock_context.dataspace.consumer.return_value = consumer
+
+        await QueryCatalogWithFiltersStep().invoke(
+            {
+                "counter_party_address": "http://provider:8080",
+                "protocol": "dataspace-protocol-http:2025-1",
+            },
+            mock_context,
+            definition,
+        )
+        assert (
+            consumer.get_catalog_with_filter.call_args.kwargs["protocol"]
+            == "dataspace-protocol-http:2025-1"
+        )
+
+    @pytest.mark.asyncio
     async def test_each_filter_is_translated_by_the_sdk(
         self, mock_context: MagicMock, definition: StepDefinition
     ) -> None:
@@ -213,21 +247,19 @@ class TestSendNotificationStep:
     """Tests for notification/consumer/send step."""
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock)
     async def test_dataplane_direct_mode_posts(
-        self, mock_client_cls: MagicMock, mock_context: MagicMock, definition: StepDefinition
+        self, mock_request: AsyncMock, mock_context: MagicMock, definition: StepDefinition
     ) -> None:
+        # Stubbed at the canonical client rather than at ``httpx.AsyncClient``:
+        # that is the transport every step goes through, and the one that
+        # records the exchange the trace reports.
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.content = b'{"ok": true}'
         mock_resp.json.return_value = {"ok": True}
         mock_resp.headers = {"content-type": "application/json"}
-
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_resp
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client_cls.return_value = mock_client
+        mock_request.return_value = mock_resp
 
         step = SendNotificationStep()
         result = await step.invoke(
@@ -243,26 +275,21 @@ class TestSendNotificationStep:
         assert result.value["status_code"] == 200
         assert result.value["response_body"] == {"ok": True}
         assert result.value["response_headers"] == {"content-type": "application/json"}
-        mock_client.post.assert_called_once()
-        assert mock_client.post.call_args.args[0] == "http://dp/notify"
-        assert mock_client.post.call_args.kwargs["json"] == {"msg": "hi"}
+        mock_request.assert_called_once()
+        assert mock_request.call_args.args == ("POST", "http://dp/notify")
+        assert mock_request.call_args.kwargs["json"] == {"msg": "hi"}
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock)
     async def test_direct_mode_still_accepts_content_as_the_body(
-        self, mock_client_cls: MagicMock, mock_context: MagicMock, definition: StepDefinition
+        self, mock_request: AsyncMock, mock_context: MagicMock, definition: StepDefinition
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.status_code = 201
         mock_resp.content = b"{}"
         mock_resp.json.return_value = {}
         mock_resp.headers = {}
-
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_resp
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client_cls.return_value = mock_client
+        mock_request.return_value = mock_resp
 
         step = SendNotificationStep()
         result = await step.invoke(
@@ -271,7 +298,7 @@ class TestSendNotificationStep:
             definition,
         )
         assert result.value["status_code"] == 201
-        assert mock_client.post.call_args.kwargs["json"] == {"msg": "hi"}
+        assert mock_request.call_args.kwargs["json"] == {"msg": "hi"}
 
     @pytest.mark.asyncio
     @patch("tractusx_sdk.industry.models.notifications.notification.Notification")

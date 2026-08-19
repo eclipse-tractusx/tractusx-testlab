@@ -42,9 +42,11 @@ from typing import Any
 from tractusx_testlab.models import ScriptStatus, StepStatus
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.results import StepResult
+from tractusx_testlab.player.execution._not_run import missing_step_result, skipped_result
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
+from tractusx_testlab.player.loading.resolver import try_resolve_params
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.conditions import ConditionEvaluator
@@ -96,12 +98,30 @@ async def run_phase(
     steps_source = _get_steps_for_phase(script, config.phase)
     results: list[StepResult] = []
 
+    # A call is published while the step that made it is still running, and this
+    # is the layer that knows which job and which script it belongs to. The step
+    # runner adds the step, including for the steps nested inside a flow step,
+    # which run on this same context (contracts.CallReporter).
+    context.bind_call_reporter(
+        lambda step_type, step_id, index, call: monitor.on_step_call(
+            job_id, script.definition.id, step_id, step_type, config.phase_label, index, call
+        )
+    )
+
     for step_idx, step_def in enumerate(steps_source):
         await _handle_pause_gate(jobs, job_id, config)
 
         step_name = _format_step_name(
             script.definition.id, step_idx, step_def.uses, config.phase_label, step_def.id
         )
+        # Resolved before the event rather than inside the runner: what the
+        # step is about to be given is what ``step.start`` has to report, and a
+        # trace repeating ``${{ env.usage_policy }}`` names the variable without
+        # ever saying what the run seeded it with. ``None`` — a reference that
+        # names nothing — publishes the block as written and leaves the failure
+        # to the runner, which is the only place that can turn it into a failed
+        # step.
+        params = try_resolve_params(step_def.with_ or {}, context)
         monitor.on_step_started(
             job_id,
             script.definition.id,
@@ -110,6 +130,7 @@ async def run_phase(
             step_def.uses,
             step_name,
             config.phase_label,
+            step_def.with_ if params is None else params,
         )
 
         if config.use_pause_gate and jobs is not None:
@@ -120,7 +141,7 @@ async def run_phase(
             results,
             context,
         ):
-            skipped = _make_skipped_result(step_name, step_def.uses, config.phase)
+            skipped = skipped_result(step_name, step_def.uses, config.phase)
             results.append(skipped)
             monitor.on_step_completed(job_id, script.definition.id, step_def.id, skipped)
             # A step whose `if:` said no must not then run: recording SKIPPED and
@@ -136,6 +157,7 @@ async def run_phase(
             monitor,
             config,
             results,
+            params,
         )
         if failed:
             return results, ScriptStatus.FAILED
@@ -162,18 +184,20 @@ async def _resolve_and_run_step(
     monitor: ExecutionMonitor,
     config: PhaseConfig,
     results: list[StepResult],
+    params: dict[str, Any] | None = None,
 ) -> bool:
     """Resolve step class, execute, store outputs. Returns True if phase should abort."""
-    from tractusx_testlab.player.execution.step_runner import run_step, store_step_outputs
+    from tractusx_testlab.player.execution._step_outputs import store_step_outputs
+    from tractusx_testlab.player.execution.step_runner import run_step
 
     step_cls = StepRegistry.get(step_def.uses, script.dataspace_version)
     if step_cls is None:
-        missing = _make_missing_step_result(step_name, step_def.uses, config.phase)
+        missing = missing_step_result(step_name, step_def.uses, config.phase)
         results.append(missing)
         monitor.on_step_completed(job_id, script.definition.id, step_def.id, missing)
         return config.failure_policy == FailurePolicy.STOP
 
-    step_result = await run_step(step_cls, step_def, step_name, context)
+    step_result = await run_step(step_cls, step_def, step_name, context, params)
     step_result.phase = config.phase
     results.append(step_result)
     monitor.on_step_completed(job_id, script.definition.id, step_def.id, step_result)
@@ -202,27 +226,6 @@ def _format_step_name(
     if phase_label == "execution":
         return f"{script_name}[{step_ref}]:{step_type}"
     return f"{script_name}[{phase_label}:{step_ref}]:{step_type}"
-
-
-def _make_skipped_result(step_name: str, step_type: str, phase: StepPhase) -> StepResult:
-    """Create a StepResult for a condition-skipped step."""
-    return StepResult(
-        step_name=step_name,
-        step_type=step_type,
-        phase=phase,
-        status=StepStatus.SKIPPED,
-    )
-
-
-def _make_missing_step_result(step_name: str, step_type: str, phase: StepPhase) -> StepResult:
-    """Create a StepResult for a step with no registered implementation."""
-    return StepResult(
-        step_name=step_name,
-        step_type=step_type,
-        phase=phase,
-        status=StepStatus.FAILED,
-        error=f"No implementation found for step type '{step_type}'",
-    )
 
 
 # ---------------------------------------------------------------------------

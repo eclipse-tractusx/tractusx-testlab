@@ -40,6 +40,7 @@ from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import (
     get_callback_manager,
+    query_of,
     resolve_mock,
     set_callback_manager,
 )
@@ -121,7 +122,10 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
             full_path,
             method,
             headers=headers,
-            query_params=dict(request.query_params),
+            # Every value, not the last one: `?assetIds=<a>&assetIds=<b>` is one
+            # request with two criteria, and `dict(...)` would hand the handler
+            # only `<b>` (mock_registry.query_of).
+            query_params=query_of(request.query_params.multi_items()),
             body=body,
         )
 

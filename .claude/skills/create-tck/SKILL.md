@@ -73,9 +73,9 @@ infrastructure:              # declare per side what capability is required
 
 env:
   variables:                 # a LIST of step-shaped entries — never a flat key: value map
-    - id: sut_counter_party_address
-      uses: variable/type/string          # or variable/type/integer|boolean,
-      with: { source: input, scope: sut } #    config/connector/policy, config/connector/asset
+    - id: shell_descriptor_id             # what the operator must tell the run; never the
+      uses: variable/type/string          # SUT's DSP address or BPN — those are bindings
+      with: { source: input, scope: sut } # or config/connector/policy, config/connector/asset
       returns:
         value: { type: string }
     - id: ccm_usage_policy
@@ -84,7 +84,7 @@ env:
         source: value                     # inline value instead of runtime input
         value: { permissions: [ ... ] }   # the whole ODRL policy document
       returns:
-        policy: { type: object, class: Policy }
+        value: { type: object, class: Policy }
   schemas:
     - id: certificate_schema
       source: business_partner_certificate_schema-v3.0.1.json   # file in schemas/
@@ -96,12 +96,24 @@ env:
 tests:                       # ordered; each id is the filename: ^[a-zA-Z0-9_\-.]+\.yaml$
   - id: request_certificate.yaml
     name: Request a certificate via CCMAPI
-    # skippable: false (optional)
+    skippable: true          # optional, default false — see below
 ```
 
-Rules: `source: input` variables **must** declare `scope: engine|sut`. Tests run
-sequentially but **independently** — a test must never read another test's outputs;
-anything shared belongs in `env`.
+Rules: `source: input` variables **must** declare `scope: engine|sut`. **Every
+variable publishes one value under `value`** — write
+`returns: { value: { type: <the verb's type> } }`, add `class: Policy` / `class: Asset`
+for the two `config/connector/*` verbs, and reference the whole variable as
+`${{ env.<id> }}`. The compiler rejects any other `returns:` key, an unknown
+`uses:` verb, a type the verb does not publish, and a variable that neither
+carries a `with.value` nor asks the operator for one. Tests run sequentially but
+**independently** — a test must never read another test's outputs; anything shared
+belongs in `env`. `id`, `name` and `skippable` are the only keys an entry accepts.
+
+`skippable: true` marks a test the operator may omit at run time via the
+`skip_tests` variable — use it when the standard makes the behaviour a MAY or the
+deployment optional, and leave it off for anything normative. The player refuses
+the whole run if `skip_tests` names a test that is not marked, so a mandatory test
+can never be skipped.
 
 ## Test scripts (`kind: test`)
 
@@ -125,6 +137,15 @@ teardown: [ ... ]    # optional; no validate:; always runs, even after failure
 
 Test files have **no `env:` block** — they inherit the manifest's.
 
+### The counter-party is a binding, not a variable
+
+Never declare `counter_party_address` / `counter_party_id` as `env` variables, and never
+pass them to a connector step that addresses the system under test. Both default to the
+infrastructure binding — `infrastructure.sut.connector.dsp_url` and
+`infrastructure.sut.connector.participant_id` — which `sut.connector.required: true`
+already obliges the operator to supply. Declaring them again asks for the same values
+twice. Pass them explicitly only to address somebody the binding does not describe.
+
 ### Step shape
 
 Field order: `id → uses → name → with → returns → validate → if → timeout_s`.
@@ -134,9 +155,9 @@ execution:
   - id: pull_ccmapi_endpoint            # ^[a-z][a-z0-9_]{0,49}$, unique per test
     uses: connector/consumer/pull_data_filtered
     name: Discover CCMAPI offer and obtain dataplane credentials
-    with:
-      counter_party_address: "${{ env.sut_counter_party_address.value }}"
-      expected_policies: "${{ env.ccm_usage_policy.policy }}"
+    with:                               # no counter_party_address / counter_party_id:
+      expected_policies: "${{ env.ccm_usage_policy }}"   # they default to the
+                                          # bound SUT connector
     returns:
       edr_token: { type: string, class: AuthToken }
       dataplane_url: { type: string }
@@ -174,7 +195,7 @@ execution:
 
 ### References — `${{ ... }}` only (ADR-0010)
 
-`${{ env.<var-id>.<return-key> }}` · `${{ env.schemas.<id> }}` · `${{ env.testdata.<id> }}` ·
+`${{ env.<var-id> }}` · `${{ env.schemas.<id> }}` · `${{ env.testdata.<id> }}` ·
 `${{ execution.<step-id>.<return-key> }}` · `${{ setup.<step-id>.<key> }}` ·
 `${{ metadata.<key> }}` · `${{ infrastructure.<engine|sut>.<capability> }}`
 

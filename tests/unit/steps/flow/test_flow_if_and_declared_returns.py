@@ -33,7 +33,7 @@ from pydantic import ValidationError
 
 from tractusx_testlab.models import HttpResponse, StepDefinition
 from tractusx_testlab.models.runtime.results import StepResult
-from tractusx_testlab.player.execution.step_runner import store_step_outputs
+from tractusx_testlab.player.execution._step_outputs import store_step_outputs
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps._checks.extraction import declared_names, extract_path
 from tractusx_testlab.steps.assertions import apply_operator

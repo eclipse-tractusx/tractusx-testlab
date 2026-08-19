@@ -47,11 +47,30 @@ so the runner can classify without guessing, and so an embedder can write
 
 from __future__ import annotations
 
+from typing import Any
+
 from tractusx_testlab.models.primitives.enums import ServiceState, ServiceType
 
 
 class TestLabError(Exception):
-    """Base class for every error TestLab raises deliberately."""
+    """Base class for every error TestLab raises deliberately.
+
+    An error may also *name* itself and carry the evidence behind it.
+    ``code`` is the machine-readable name the trace publishes as
+    ``errors[].code`` and ``diagnostics`` is what a reader needs in order to act
+    on it — the offers that were compared, the states that were polled — which
+    the trace publishes as ``errors[].context`` (ADR-0016). Both default to
+    nothing, so an error with only a sentence to say stays a one-line class, and
+    the sentence is still all the trace carries.
+    """
+
+    #: Machine-readable name of this failure, or ``None`` to be classified by
+    #: origin alone (``STEP_FAILED`` for a verdict, ``ENGINE_FAULT`` for a bug).
+    code: str | None = None
+
+    #: Structured evidence for the message, published under the error's
+    #: ``context``. JSON-serialisable, because that is where it ends up.
+    diagnostics: dict[str, Any] | None = None
 
 
 class AuthoringError(TestLabError):
@@ -106,67 +125,6 @@ class SkipNotAllowedError(AuthoringError):
         super().__init__(
             f"Cannot skip test(s) {ids_str}: {reason}. "
             f"Set skippable: true on the test entry in the TCK manifest to allow skipping."
-        )
-
-
-class InfrastructureError(AuthoringError):
-    """Base for problems with the infrastructure bindings an engine was given."""
-
-
-class UnknownBindingKeyError(InfrastructureError):
-    """Raised when a binding key names no field of the infrastructure model.
-
-    A misspelled key used to be dropped in silence and surface as an empty URL
-    several steps later, so the key is rejected where it is written and the
-    accepted ones are listed beside it.
-    """
-
-    def __init__(self, key: str, known: list[str]) -> None:
-        self.key = key
-        self.known = known
-        listed = "\n  ".join(known)
-        super().__init__(
-            f"Unknown infrastructure binding key: '{key}'. Accepted keys are:\n  {listed}"
-        )
-
-
-class MissingBindingError(InfrastructureError):
-    """Raised before the first step when a required capability was never bound.
-
-    Reports every unbound capability at once, each with the key the operator
-    still owes, so one run tells them everything they have to supply.
-    """
-
-    def __init__(self, missing: list[tuple[str, str, str]]) -> None:
-        self.missing = missing
-        lines = "\n".join(
-            f"  {side}.{capability} — set '{key}' "
-            f"(or {'TESTLAB_' + key.split('.', 1)[1].replace('.', '_').upper()})"
-            for side, capability, key in missing
-        )
-        capabilities = ", ".join(f"{side}.{capability}" for side, capability, _ in missing)
-        super().__init__(
-            f"This TCK requires infrastructure that is not bound: {capabilities}\n{lines}"
-        )
-
-
-class StandardConflictError(InfrastructureError):
-    """Raised when a binding claims a different standard or release than the TCK certifies.
-
-    A TCK that certifies against Saturn cannot prove anything by running
-    against a connector the operator declared as Jupiter — one of the two is
-    wrong, and which one is the operator's call, so both are printed.
-    """
-
-    def __init__(self, conflicts: list[tuple[str, str, str, str, str]]) -> None:
-        self.conflicts = conflicts
-        lines = "\n".join(
-            f"  {side}.{capability}.{field}: bound as '{bound}', "
-            f"but this TCK certifies against '{required}'"
-            for side, capability, field, bound, required in conflicts
-        )
-        super().__init__(
-            f"The infrastructure bound does not match what this TCK certifies against:\n{lines}"
         )
 
 
@@ -229,6 +187,34 @@ class UnresolvedReferenceError(AuthoringError):
                 f" it, then reference '{self.reference}'."
             )
         return ""
+
+
+class VariableTypeError(AuthoringError):
+    """Raised when an ``env`` variable's value cannot be read as the type it declares.
+
+    ``returns.<key>.type`` is the variable's contract with every step that reads
+    it, and YAML alone cannot keep it: a policy written as a ``value: |`` block
+    is text, and it used to be seeded as text under a declaration saying
+    ``object``. Steps compensated one at a time — the connector steps parse JSON
+    out of a policy string — and the ones that did not saw a string where the
+    manifest promised a mapping.
+
+    The declaration decides instead, so this is the narrow case left over: a
+    variable declaring a structure, written as text that is not the structure it
+    declares — the text is read as YAML, so a pasted JSON document parses as
+    readily as an unindented block. It is refused where it is written rather
+    than handed on as a value that reads wrong several steps later.
+    """
+
+    def __init__(self, name: str, declared: str, reason: str) -> None:
+        self.name = name
+        self.declared = declared
+        shape = "a mapping" if declared == "object" else "a list"
+        super().__init__(
+            f"Variable '{name}' declares 'type: {declared}' and its value {reason}. "
+            f"Write it under 'with.value' as {shape} — inline, or as JSON or YAML "
+            f"text in a 'value: |' block."
+        )
 
 
 class StepExecutionError(ExecutionError):

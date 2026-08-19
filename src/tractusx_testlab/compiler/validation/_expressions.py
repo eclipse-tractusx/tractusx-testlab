@@ -70,8 +70,8 @@ def _resolve_string_expr(value: str) -> Any:
 #: ``metadata.`` and, per ADR-0019, ``infrastructure.`` — is already canonical
 #: and is kept verbatim. (``infrastructure.<side>.<capability>`` is a first-class
 #: capability handle; deeper segments such as
-#: ``infrastructure.sut.connector.counter_party_address`` are operator-supplied
-#: binding fields resolved from the binding profile at runtime.)
+#: ``infrastructure.sut.connector.dsp_url`` are operator-supplied binding fields
+#: resolved from the binding profile at runtime.)
 _ENV_SCOPED_ROOTS = ("testdata.", "schemas.")
 
 

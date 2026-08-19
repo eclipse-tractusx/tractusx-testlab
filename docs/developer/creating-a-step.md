@@ -179,18 +179,16 @@ class CounterPartyParams(StepParams):
 When a parameter legitimately arrives in more than one shape, fold it in a validator so `execute` sees one shape. A pattern from the codebase:
 
 ```python
-class PullDataFilteredByPolicyParams(PullDataParams):
-    expected_policies: list[dict] = Field(
-        min_length=1,
-        description="ODRL policies, any one of which the negotiated offer must satisfy.",
-    )
+class ExpectedPoliciesParams(StepParams):
+    """Normalises ``expected_policies`` for every step that filters offers by policy."""
 
-    @field_validator("expected_policies", mode="before")
+    @field_validator("expected_policies", mode="before", check_fields=False)
     @classmethod
-    def _one_policy_is_a_list_of_one(cls, value: Any) -> Any:
-        """A single policy document is as valid as a list holding it."""
-        return [value] if isinstance(value, dict) else value
+    def _as_raw_odrl_policies(cls, value: Any) -> Any:
+        return as_policy_list(value)
 ```
+
+When several steps take the same shape, the validator belongs to a mixin they inherit rather than to each of them — `check_fields=False` lets the mixin normalise a field every step declares for itself, so one step can require the policy and the next default it away while both still accept every spelling of one. The folding itself (`as_policy_list` in `steps/connector/policies.py`) is a plain function, testable without a step.
 
 Give the params model helper methods when a value needs converting for a downstream API. `sdk_filter_expression()` and `timeout_or()` exist for exactly that, and they keep `execute` about the step's logic rather than about reshaping its own inputs.
 
@@ -248,6 +246,10 @@ return StepOutput(value=CatalogPayload.of(catalog))
 
 Note what `CatalogPayload` deliberately does *not* set: `populate_by_name`. Only the JSON-LD spellings populate those fields, so a provider that happens to send a plain `id` key keeps it as `id` rather than having it silently rewritten to `@id`.
 
+A key whose *spelling* depends on the counterpart's DSP generation must not be a declared field at all. The catalog's offers arrive under `dcat:dataset` from a legacy connector (EDC 0.8-0.10) and under `dataset` from a DSP 2025-1 one (EDC 0.11+), because the newer `@context` sets `@vocab` and expands the prefix away. A single field can round-trip only one of those two spellings and would rewrite the other provider's document on the way out. So the varying key passes through as an extra, and the step's own wrapper declares the reading a script uses — `CatalogOutput.datasets`, a list in either generation.
+
+Read such a key through [`steps/dsp_keys.py`](../../src/tractusx_testlab/steps/dsp_keys.py), never through a literal. The spellings there come from `tractusx_sdk.dataspace.constants`: the SDK is the component that speaks both dialects, and a key it renames must not need renaming here too. Every spelling is tried, in the SDK's own order, because the run's `dataspace_version` says which connector *we* drive — the document was written by the counter-party's, which is free to be a generation behind.
+
 ### What gets serialised
 
 `bind_output` dumps the payload with `by_alias=True, exclude_unset=True`. The rule is **the output contains exactly what the step produced**:
@@ -289,7 +291,7 @@ Some variable names come from the script, not the step: `store_in_variable`, or 
 
 When two steps talk about the same thing, they share one model. Sharing is what makes the wiring visible: every transfer-completing step returns the `dataplane_url` / `edr_token` pair, `connector/dataplane/http_request` reads exactly those variables, and both say so in their types.
 
-Shared models live in `tractusx_testlab.steps._contracts`:
+Shared models live in `tractusx_testlab.steps.shared_models`:
 
 | Model | Kind | Use it for |
 |---|---|---|
@@ -304,17 +306,17 @@ Shared models live in `tractusx_testlab.steps._contracts`:
 | `HttpBodyOutput` | value | a response body — parsed JSON, or text |
 | `NoOutput` | value | a step that produces nothing |
 
-Mock-server steps additionally share `MockIdParams` and `RequiredMockIdParams` from `tractusx_testlab.steps.server._contracts`.
+Mock-server steps additionally share `MockIdParams` and `RequiredMockIdParams` from `tractusx_testlab.steps.server._contracts`, and every consumer-side connector step that filters offers by policy shares `ExpectedPoliciesParams` from `tractusx_testlab.steps.connector.policies`.
 
 Compose them by inheritance:
 
 ```python
-class DoDspParams(CounterPartyParams, FilterExpressionParams):
+class DoDspParams(CounterPartyParams, FilterExpressionParams, ExpectedPoliciesParams):
     """Input contract of ``connector/consumer/do_dsp``."""
 
     expected_policies: list[dict] = Field(
         default_factory=list,
-        description="ODRL policies the negotiation is allowed to accept.",
+        description="ODRL policies the negotiation is allowed to accept, ...",
     )
 ```
 

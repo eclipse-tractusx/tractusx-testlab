@@ -72,6 +72,7 @@ execution:
         type: array
     validate:
       - uses: validate/assert
+        name: the SUT published at least one offer   # optional
         with: { input: datasets, operator: not_empty }
 ```
 
@@ -101,7 +102,18 @@ class StepDefinition(BaseModel):
   these declared returns, and later steps reference them as
   `${{ steps.<id>.<field> }}`.
 - **`validate`** is a list of `Assertion` entries, themselves in verb form
-  (`uses: validate/assert`, `with: {input, operator, expected}`).
+  (`uses: validate/assert`, `with: {input, operator, expected}`), each with an
+  optional `name`. Nothing in the engine reads the name; the run report calls
+  the check by it, so a step carrying four `validate/assert` entries says which
+  requirement each one covers instead of listing the same id four times.
+
+When any of this does not hold up, the author is told so by
+`syntax/diagnostics.py` rather than by Pydantic: the finding names the step by
+its id, the line the key sits on, and — for a rejected key — the keys that
+would have been accepted, with a near-miss called out as the likely typo. The
+same renderer serves the compiler, the player, the IDE compile endpoint and a
+step binding its `with:` block at runtime, so one wrong key reads the same
+wherever it is caught.
 
 ### TCK manifests (`kind: tck`)
 
@@ -206,6 +218,7 @@ TckResult
 └── scripts: list[ScriptResult]
     ├── execution: list[StepResult]
     │   ├── request / response: HttpRequest / HttpResponse
+    │   ├── exchanges: list[HttpExchange]
     │   └── assertions: list[AssertionResult]
     ├── assertion_summary: AssertionSummary
     └── callback_results: list[CallbackResult]
@@ -214,7 +227,11 @@ TckResult
 `StepResult` is the workhorse: `step_name`, `step_type`, `phase` (`StepPhase`),
 `status` (`StepStatus`), timing (`started_at` / `finished_at` / `duration_s`), the
 captured `request` / `response`, the serialised `output`, an optional
-`error` / `error_traceback`, and the evaluated `assertions`. `CallbackResult`
+`error` / `error_traceback`, and the evaluated `assertions`. `exchanges` holds
+*every* call the step made - both the engine's own `httpx` calls and the ones
+`tractusx-sdk` made on its behalf, each naming in `context` the method that sent
+it - while `request` / `response` name the one the script is about
+([ADR-0016](decision-records/backend/ADR-0016-execution-trace-format.md)). `CallbackResult`
 records a callback received (or timed out) on a mock listener.
 
 ## Execution events (`models/runtime/events.py`)

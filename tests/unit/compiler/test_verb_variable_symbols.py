@@ -36,7 +36,7 @@ def _policy_variable() -> dict:
         "uses": "config/connector/policy",
         "name": "Required CCMAPI Usage Policy",
         "with": {"value": {"permissions": [{"action": "use"}]}},
-        "returns": {"policy": {"type": "object", "class": "Policy"}},
+        "returns": {"value": {"type": "object", "class": "Policy"}},
     }
 
 
@@ -96,13 +96,21 @@ class TestVerbVariableSymbols:
 
         assert symbols["env.ccm_usage_policy"]["source"] == "env.variables"
 
-    def test_policy_capability_exposes_returns_subfield(self) -> None:
+    def test_policy_capability_carries_its_class_on_the_base_symbol(self) -> None:
+        """One variable, one symbol: the id is the reference, class and all."""
         symbols = build_global_symbols({"variables": [_policy_variable()]})
 
-        policy_symbol = symbols["env.ccm_usage_policy.policy"]
+        policy_symbol = symbols["env.ccm_usage_policy"]
 
         assert policy_symbol["type"] == "object"
         assert policy_symbol["class"] == "Policy"
+
+    def test_a_variable_publishes_no_artifact_subfield(self) -> None:
+        """`env.<id>.policy` was a second name for what `env.<id>` already is."""
+        symbols = build_global_symbols({"variables": [_policy_variable()]})
+
+        assert "env.ccm_usage_policy.policy" not in symbols
+        assert "env.ccm_usage_policy.value" not in symbols
 
     def test_legacy_mapping_form_still_supported(self) -> None:
         env = {"variables": {"region": "eu", "retries": 3}}

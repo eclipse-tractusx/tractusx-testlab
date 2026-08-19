@@ -29,7 +29,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
-import httpx
 from pydantic import Field, field_validator
 
 from tractusx_testlab.models import (
@@ -39,6 +38,7 @@ from tractusx_testlab.models import (
     StepDefinition,
 )
 from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.steps import http_client
 from tractusx_testlab.steps.shared_models import DeletionOutput, HttpTransportParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
@@ -272,8 +272,9 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
         headers = {"Content-Type": "application/json", **params.headers}
         timeout = params.timeout_or(context.config.default_timeout_s)
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(target_url, json=params.data, headers=headers, timeout=timeout)
+        resp = await http_client.request(
+            "POST", target_url, json=params.data, headers=headers, timeout=timeout
+        )
 
         try:
             resp_body = resp.json()
@@ -367,8 +368,7 @@ class DeleteBackendDataStep(BaseStep[DeleteBackendDataParams, DeletionOutput]):
         headers = dict(params.headers)
         timeout = params.timeout_or(context.config.default_timeout_s)
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.delete(target_url, headers=headers, timeout=timeout)
+        resp = await http_client.request("DELETE", target_url, headers=headers, timeout=timeout)
 
         try:
             resp_body: Any = resp.json()

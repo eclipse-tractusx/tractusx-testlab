@@ -40,6 +40,7 @@ from tractusx_testlab.models.authoring.definitions import (
     ScriptDefinition,
     TckDefinition,
 )
+from tractusx_testlab.syntax import diagnostics
 
 _SCRIPT_ADAPTER: TypeAdapter[ScriptDefinition] = TypeAdapter(ScriptDefinition)
 _TCK_ADAPTER: TypeAdapter[TckDefinition] = TypeAdapter(TckDefinition)
@@ -48,9 +49,18 @@ _INCLUDE_PREFIX = "!include "
 
 
 def _load_yaml(path: Path) -> dict:
-    """Load a YAML file, returning the top-level mapping."""
-    with open(path, encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+    """Load a YAML file, returning the top-level mapping.
+
+    A parse failure is turned into the author's finding here, where the file
+    that failed is known. Left as a ``yaml.YAMLError`` it reached the terminal
+    as a rich traceback of the compiler's own call stack — the parser's line
+    and column were in there, several screens down.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        raise ValueError(str(diagnostics.unparseable(exc, path))) from exc
     if not isinstance(data, dict):
         raise ValueError(f"Expected YAML mapping at top level in {path}")
     return data

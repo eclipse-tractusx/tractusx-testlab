@@ -28,10 +28,13 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from itertools import count
 from typing import Any
 
+from tractusx_testlab.logging import wire
 from tractusx_testlab.models import EngineError, ScriptStatus, StepStatus, TestLabError
 from tractusx_testlab.models.runtime.results import (
+    ENGINE_FAULT_PREFIX,
     AssertionResult,
     ScriptResult,
     StepResult,
@@ -45,7 +48,6 @@ from tractusx_testlab.player.execution.phase import (
 )
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
-from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.assertions import AssertionEngine
 
@@ -71,22 +73,21 @@ def _resolve_assertions(assertions: list[Any], context: StepContext) -> list[Any
     ]
 
 
-#: Marks a result whose failure came from TestLab, not from the SUT.
-#:
-#: There is no ``StepStatus.ERROR`` yet — adding one changes the event payload
-#: the IDE consumes, so it lands in P4 with the rest of that contract. Until
-#: then the distinction is carried in the message, which is at least visible in
-#: the report instead of being lost entirely.
-ENGINE_FAULT_PREFIX = "[engine fault] "
-
-
 async def run_step(
     step_cls: type,
     step_def: Any,
     step_name: str,
     context: StepContext,
+    params: dict[str, Any] | None = None,
 ) -> StepResult:
     """Execute a single step, evaluate its assertions, and decide its outcome.
+
+    *params* is the ``with:`` block already resolved against *context* — the
+    phase runner resolves it to publish it on the ``step.start`` event, and
+    passing it on means the same references are read once rather than twice.
+    ``None`` means "not resolved yet", either because a caller had no reason to
+    (a flow step running a nested one) or because resolution failed; either way
+    it is resolved below, inside the guard.
 
     This is a supervisory boundary, so it catches broadly on purpose: a step
     that raises must fail *that step*, not abort the TCK. It used to catch five
@@ -107,11 +108,46 @@ async def run_step(
     # runner instead of importing it.
     context.bind_invoker(run_step)
 
+    # The SDK's traffic is the traffic worth seeing and the engine never makes
+    # it. Both it and the engine's own calls are recorded for the duration of
+    # this block, under the step's name, and each one is published as it comes
+    # back rather than all of them once the step is over (logging.wire).
+    calls = count(1)
+
+    def report(call: Any) -> None:
+        context.report_call(step_def.uses, getattr(step_def, "id", None), next(calls), call)
+
+    with wire.recording(step_name, on_call=report) as recorder:
+        result = await _run_step_guarded(
+            step_instance, step_def, step_name, context, started_at, params
+        )
+    wire.attach_to(result, recorder)
+    return result
+
+
+async def _run_step_guarded(
+    step_instance: Any,
+    step_def: Any,
+    step_name: str,
+    context: StepContext,
+    started_at: datetime,
+    params: dict[str, Any] | None = None,
+) -> StepResult:
+    """Run one step and classify its outcome; never raises."""
+    inputs: dict[str, Any] | None = None
     try:
         # Inside the guard: resolving a step's parameters is part of running it,
         # and an unresolvable reference must fail that step rather than escape
-        # and take the run down with it.
-        params = resolve_params(step_def.with_ or {}, context)
+        # and take the run down with it. A caller that already resolved them
+        # hands them over; one that could not, or never tried, passes ``None``
+        # and the same call is made here.
+        if params is None:
+            params = resolve_params(step_def.with_ or {}, context)
+        # What the step was actually given, once every ``${{ ... }}`` was
+        # resolved. A step that failed on what a reference resolved to cannot be
+        # debugged from the script, which only says which reference was written.
+        inputs = dict(params)
+
         output = await step_instance.invoke(params, context, step_def)
 
         assertion_results: list[AssertionResult] = []
@@ -134,6 +170,7 @@ async def run_step(
             started_at=started_at,
             finished_at=finished_at,
             duration_s=(finished_at - started_at).total_seconds(),
+            inputs=inputs,
             output=output.value,
             request=output.request,
             response=output.response,
@@ -153,51 +190,18 @@ async def run_step(
             started_at=started_at,
             finished_at=finished_at,
             duration_s=(finished_at - started_at).total_seconds(),
+            # ``None`` when resolution itself failed, which is the one case
+            # where the step was never given anything at all.
+            inputs=inputs,
             error=f"{ENGINE_FAULT_PREFIX if engine_fault else ''}{exc}",
+            # An error that named itself keeps its name and its evidence: a
+            # message is what a person reads, and the code and the comparison
+            # behind it are what the IDE renders and what a report groups by
+            # (ADR-0016). Read off the exception rather than declared per raise
+            # site, so an error that has nothing extra to say costs nothing.
+            error_code=getattr(exc, "code", None),
+            error_context=getattr(exc, "diagnostics", None),
         )
-
-
-def store_step_outputs(
-    step_def: Any,
-    step_result: StepResult,
-    context: StepContext,
-    *,
-    step_namespace: str | None = None,
-) -> None:
-    """Persist step outputs into context variables when returns is configured.
-
-    Stores each return field both flat (``field``) and, when *step_namespace* and
-    ``step_def.id`` are set, as a namespaced key (``{ns}.{id}.{field}``).
-    """
-    if step_result.output is None:
-        return
-
-    returns = getattr(step_def, "returns", None) or {}
-    if not returns:
-        return
-
-    from tractusx_testlab.steps._checks.extraction import declared_names
-    from tractusx_testlab.steps.step_contract import StepOutput
-
-    raw = step_result.output
-    full_output: Any = (
-        StepOutput(value=raw, request=step_result.request, response=step_result.response)
-        if not isinstance(raw, StepOutput)
-        else raw
-    )
-
-    # A `returns:` name is only readable when the step declared it, so a typo
-    # or a guess at the step's internals fails here rather than as a `None`
-    # several steps later.
-    step_cls = StepRegistry.get(step_def.uses, "")
-    declared = declared_names(step_cls) if step_cls is not None else None
-
-    step_id = getattr(step_def, "id", None)
-    for var_name in returns:
-        value = AssertionEngine.extract_path(full_output, var_name, declared)
-        context.set_variable(var_name, value)
-        if step_id and step_namespace:
-            context.set_variable(f"{step_namespace}.{step_id}.{var_name}", value)
 
 
 async def run_script(
@@ -252,6 +256,7 @@ async def run_script(
         script_status = ScriptStatus.FAILED
 
     return ScriptResult(
+        script_id=script.definition.id,
         script_name=script.name,
         dataspace_version=script.dataspace_version,
         status=script_status,

@@ -55,14 +55,14 @@ def _definition() -> StepDefinition:
 class TestMockDiscoveryStep:
     @pytest.mark.asyncio
     async def test_requires_id(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="id: Field required"):
+        with pytest.raises(ValueError, match="id: required key 'id' is missing"):
             await MockDiscoveryStep().invoke(
                 {"mappings": {"BPNL1": "https://a"}}, context, _definition()
             )
 
     @pytest.mark.asyncio
     async def test_requires_mappings(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="mappings: Field required"):
+        with pytest.raises(ValueError, match="mappings: required key 'mappings' is missing"):
             await MockDiscoveryStep().invoke({"id": "disc1"}, context, _definition())
 
     @pytest.mark.asyncio

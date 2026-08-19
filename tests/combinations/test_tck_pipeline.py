@@ -132,7 +132,7 @@ def _wiring_test(base_url: str) -> str:
               method: POST
               url: {base_url}/reservations
               body:
-                part: "${{{{ env.part_number.value }}}}"
+                part: "${{{{ env.part_number }}}}"
             returns:
               body.ticket:
                 type: string

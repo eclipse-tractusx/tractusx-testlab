@@ -36,6 +36,7 @@ from tractusx_testlab.infrastructure import (
     Infrastructure,
     InfrastructureManager,
     SutBindings,
+    SutConnectorBinding,
 )
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.player import TestlabPlayer
@@ -70,6 +71,7 @@ __all__ = [
     "StepOutput",
     "StepRegistry",
     "SutBindings",
+    "SutConnectorBinding",
     "Tck",
     "TestScript",
     "TestlabConfig",

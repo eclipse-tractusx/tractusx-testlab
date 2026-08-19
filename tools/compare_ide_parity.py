@@ -44,6 +44,12 @@ by how it fails at runtime:
 ``F`` — a registered step with no IDE block.
 ``G`` — an IDE parameter that binds only through a ``validation_alias``.  It
         runs today; it is still two spellings of one field.
+``H`` — the two sides disagree on which dataspace release the step runs on.
+        The engine's registration decides whether a script resolves the step at
+        all; the block's ``dataspace_version`` decides whether the toolbox
+        offers it and whether the block badges itself.  A block that omits a
+        restriction the engine enforces keeps offering a step to tests that
+        cannot run it, and one that invents a restriction hides a step that can.
 
 Aliases are resolved on both sides, so a field the engine accepts under
 ``validation_alias`` counts as present, and a return name the runtime resolves
@@ -153,12 +159,13 @@ def read_engine() -> dict:
     """The registry's real input and output surface, aliases resolved."""
     engine: dict[str, dict] = {}
     for step_type in StepRegistry.list_step_types():
-        cls = StepRegistry.get(step_type, "v1")
+        cls = StepRegistry.get_any(step_type)
         if cls is None:
             continue
         engine[step_type] = {
             "params": _describe_model(getattr(cls, "params_model", None)),
             "output": _describe_model(getattr(cls, "output_model", None)),
+            "dataspace_version": StepRegistry.version_of(step_type),
         }
     return engine
 
@@ -263,6 +270,12 @@ def compare(engine: dict, blocks: list[dict]) -> dict:
         ]
         engine_only_outputs = [name for name in readable if name not in declared]
 
+        ide_version = block.get("dataspace_version")
+        engine_version = step["dataspace_version"]
+        version_drift = (
+            None if ide_version == engine_version else {"ide": ide_version, "engine": engine_version}
+        )
+
         rows.append({
             "kind": "matched", "uses": uses, "engine": resolved,
             "renamed": uses != resolved, "path": block["_path"], "label": block.get("label"),
@@ -271,6 +284,7 @@ def compare(engine: dict, blocks: list[dict]) -> dict:
             "required_drift": required_drift, "engine_only_params": engine_only_params,
             "unreadable_returns": sorted(unreadable),
             "engine_only_outputs": sorted(engine_only_outputs),
+            "version_drift": version_drift,
         })
     return {"rows": rows, "engine_only_steps": sorted(n for n in engine if n not in matched)}
 
@@ -337,11 +351,19 @@ def report(result: dict) -> int:
          for r in matched if any(p["via_alias"] for p in r["bound_params"])],
     )
 
+    section(
+        "H. dataspace release the two sides disagree on",
+        [f"   {r['uses']}: block says {r['version_drift']['ide'] or 'every release'}, "
+         f"engine registers {r['version_drift']['engine'] or 'every release'}"
+         for r in matched if r["version_drift"]],
+    )
+
     breaking = (
         len(renamed) + len(unresolvable)
         + sum(len(r["dropped_params"]) for r in matched)
         + sum(len(r["unreadable_returns"]) for r in matched)
         + sum(1 for r in matched for p in r["bound_params"] if p["via_alias"])
+        + sum(1 for r in matched if r["version_drift"])
     )
     print(f"\n{breaking} breaking divergence(s) across {len(rows)} IDE blocks.")
     return 1 if breaking else 0

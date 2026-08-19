@@ -29,8 +29,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
+import yaml
 
 from tractusx_testlab.cli import app
+from tractusx_testlab.syntax import diagnostics
 
 
 @app.command()
@@ -47,7 +49,16 @@ def validate(
     from tractusx_testlab.compiler.compiler import Compiler
 
     compiler = Compiler()
-    result = compiler.validate(script, version=version)
+    try:
+        result = compiler.validate(script, version=version)
+    except (ValueError, yaml.YAMLError) as exc:
+        # A manifest that does not parse is the author's problem to fix, not a
+        # crash to report: nothing downstream can run, so it is the only
+        # finding there is, and a traceback of our own call stack buries it.
+        message = exc if isinstance(exc, ValueError) else diagnostics.unparseable(exc, script)
+        typer.echo(f"  [ERROR] {message}")
+        typer.echo("\nInvalid — 1 error(s)")
+        raise typer.Exit(1) from exc
 
     if not result.issues:
         typer.echo(f"OK — {script.name} is valid (no issues)")

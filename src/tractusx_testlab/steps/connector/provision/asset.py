@@ -55,7 +55,7 @@ class CreateAssetParams(StepParams):
     The asset arrives as one object rather than as a dozen flat fields: it is
     declared once in the manifest's ``env.variables`` with
     ``uses: config/connector/asset`` and wired in as
-    ``asset: ${{ env.<id>.asset }}``.
+    ``asset: ${{ env.<id> }}``.
 
     Inside that object both spellings are accepted: the canonical flat one
     (``asset_id``, ``dct_type``, ``version``) and the CCM one (``name`` plus a
@@ -66,7 +66,7 @@ class CreateAssetParams(StepParams):
         default_factory=dict,
         description=(
             "The whole asset definition, as declared by a 'config/connector/asset' "
-            "manifest variable and referenced as '${{ env.<id>.asset }}'. Carries "
+            "manifest variable and referenced as '${{ env.<id> }}'. Carries "
             "'base_url', 'dct_type' or 'properties', 'version', 'semantic_id', "
             "'proxy_params', 'headers', 'private_properties' and an optional '@context'."
         ),

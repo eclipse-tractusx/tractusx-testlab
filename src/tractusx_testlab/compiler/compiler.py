@@ -60,9 +60,8 @@ class Compiler:
             manifest_data = yaml.safe_load(script_path.read_text(encoding="utf-8"))
             validate_tck_manifest(manifest_data, script_path.parent)
         except ValueError as exc:
-            for line in str(exc).splitlines():
-                if line.startswith("  - "):
-                    result.add_error(line[4:])
+            for message in _new_findings(str(exc), result):
+                result.add_error(message)
 
         return result
 
@@ -104,3 +103,33 @@ class Compiler:
             output_path=output_path,
             version=version,
         )
+
+
+def _new_findings(report: str, already: ValidationResult) -> list[str]:
+    """The JSON-Schema findings that say something the model pass has not.
+
+    The schemas are generated from the authoring models, so the two passes state
+    one contract from two directions and agree about most of it. Reported side
+    by side, one missing file was "Referenced test file not found" twice and one
+    misspelled key was two differently-worded errors — an author counting errors
+    to know how much is wrong counted double.
+
+    A file the model pass already spoke about is therefore left to it: its
+    findings name the step and the line, and the schema's cannot.
+    """
+    spoken_for = {
+        issue.message.split(":", 1)[0]
+        for issue in already.issues
+        if issue.message.startswith("tests/")
+    }
+    seen = {issue.message for issue in already.issues}
+    findings: list[str] = []
+    for line in report.splitlines():
+        if not line.startswith("  - "):
+            continue
+        message = line[4:]
+        if message in seen or any(f"in {name})" in message for name in spoken_for):
+            continue
+        seen.add(message)
+        findings.append(message)
+    return findings

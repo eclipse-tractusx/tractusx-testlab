@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 import time
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -42,12 +43,20 @@ _logger = logging.getLogger(__name__)
 def create_event_queue(monitor: ExecutionMonitor) -> asyncio.Queue[tuple[str, dict[str, Any]]]:
     """Register a callback on *monitor* that pushes events into a queue.
 
-    Returns the queue. The callback is sync-safe (uses ``put_nowait``).
+    Returns the queue. Not every event is published from the event loop: a step
+    reports each call as it comes back, and the SDK's calls come back on the
+    worker thread they were dispatched to. ``asyncio.Queue`` is not thread safe,
+    so an event raised off the loop is handed to it through the loop instead of
+    being pushed from where it was raised.
     """
     queue: asyncio.Queue[tuple[str, dict[str, Any]]] = asyncio.Queue()
+    loop = asyncio.get_event_loop()
 
     def _push_event(event: str, payload: dict[str, Any]) -> None:
-        queue.put_nowait((event, payload))
+        if threading.current_thread() is threading.main_thread():
+            queue.put_nowait((event, payload))
+        else:
+            loop.call_soon_threadsafe(queue.put_nowait, (event, payload))
 
     monitor.add_callback(_push_event)
     return queue

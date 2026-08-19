@@ -40,7 +40,12 @@ from typing import Literal
 from pydantic import BaseModel
 
 from tractusx_testlab.models.primitives.enums import EventKind, JobStatus
-from tractusx_testlab.models.runtime.results import AssertionResult, ScriptResult, StepResult
+from tractusx_testlab.models.runtime.results import (
+    AssertionResult,
+    HttpExchange,
+    ScriptResult,
+    StepResult,
+)
 
 
 class _ExecutionEvent(BaseModel):
@@ -115,6 +120,30 @@ class StepStartedEvent(_ExecutionEvent):
     step_type: str
     step_name: str
     phase: str
+    #: The step's ``with:`` block with every ``${{ … }}`` reference already
+    #: substituted — what the step is about to be given, not the template the
+    #: script wrote. It falls back to the template when a reference names
+    #: nothing in scope, which is the failure the terminal event then reports.
+    inputs: dict | None = None
+
+
+class StepCallEvent(_ExecutionEvent):
+    """One call a step made, published as soon as the answer came back.
+
+    A step is not one call, and the long ones are long precisely because they
+    are many: a DSP pull is a catalog query, a negotiation and a poll loop that
+    can run for a minute. Waiting for the step's terminal event to say what it
+    had been doing all that time leaves whoever is watching with a spinner, so
+    each call is published when it completes rather than all of them at the end.
+    """
+
+    kind: Literal[EventKind.STEP_CALL] = EventKind.STEP_CALL
+    script: str
+    step_id: str | None = None
+    step_type: str
+    #: Position of the call within the step, from 1.
+    index: int
+    call: HttpExchange
 
 
 class StepCompletedEvent(_ExecutionEvent):
@@ -184,6 +213,7 @@ ExecutionEvent = (
     | ScriptStartedEvent
     | ScriptCompletedEvent
     | StepStartedEvent
+    | StepCallEvent
     | StepCompletedEvent
     | StepFailedEvent
     | StepSkippedEvent

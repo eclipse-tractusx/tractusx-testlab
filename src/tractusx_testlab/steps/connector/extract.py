@@ -33,6 +33,12 @@ from pydantic import Field
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.steps.dsp_keys import (
+    ASSET_ID_KEYS,
+    ID_KEY,
+    POLICY_KEYS,
+    first_present,
+)
 from tractusx_testlab.steps.shared_models import StepParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
@@ -41,31 +47,31 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+#: ``dct:type`` keeps its prefix in both DSP generations — the SDK writes the
+#: ``dct`` mapping into the asset's own ``@context`` when it creates the asset,
+#: so the term is not the connector's to expand.
 _DCT_TYPE_KEY = "dct:type"
-_DCT_TYPE_ID_KEY = "@id"
-_ODRL_HAS_POLICY = "odrl:hasPolicy"
-_ASSET_ID_KEY = "edc:id"
 
 
 def _find_dataset_by_type(datasets: list[dict], dct_type: str) -> dict | None:
     """Return the first dataset matching the given dct:type @id."""
     for dataset in datasets:
         dataset_type = dataset.get(_DCT_TYPE_KEY, {})
-        is_match = (
-            isinstance(dataset_type, dict) and dataset_type.get(_DCT_TYPE_ID_KEY) == dct_type
-        ) or (isinstance(dataset_type, str) and dataset_type == dct_type)
+        is_match = (isinstance(dataset_type, dict) and dataset_type.get(ID_KEY) == dct_type) or (
+            isinstance(dataset_type, str) and dataset_type == dct_type
+        )
         if is_match:
             return dataset
     return None
 
 
 def _extract_offer_id(dataset: dict) -> str | None:
-    """Extract the first offer/policy ID from a dataset."""
-    policy = dataset.get(_ODRL_HAS_POLICY)
+    """Extract the first offer/policy ID from a dataset, in either DSP generation."""
+    policy = first_present(dataset, POLICY_KEYS)
     if isinstance(policy, list) and policy:
-        return policy[0].get(_DCT_TYPE_ID_KEY)
+        return policy[0].get(ID_KEY)
     if isinstance(policy, dict):
-        return policy.get(_DCT_TYPE_ID_KEY)
+        return policy.get(ID_KEY)
     return None
 
 
@@ -112,7 +118,7 @@ class ExtractDatasetStep(BaseStep[ExtractDatasetParams, ExtractDatasetOutput]):
         asset_id: str | None = None
         if dataset is not None:
             offer_id = _extract_offer_id(dataset)
-            asset_id = dataset.get(_ASSET_ID_KEY) or dataset.get("@id")
+            asset_id = first_present(dataset, ASSET_ID_KEYS)
 
         return StepOutput(
             value=ExtractDatasetOutput(dataset=dataset, offer_id=offer_id, asset_id=asset_id)

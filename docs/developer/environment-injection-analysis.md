@@ -376,7 +376,7 @@ infrastructure.sut.connector.required: true
 
 | Side + capability | Required keys | Optional keys (with defaults) |
 |---|---|---|
-| `sut.connector` | `counter_party_id` (BPNL), `counter_party_address` (DSP URL) | — |
+| `sut.connector` | `participant_id` (BPNL), `dsp_url` (DSP endpoint) | `management_url` — only when the operator runs the SUT too |
 | `sut.dtr` | `base_url` | `api_path` = `/api/v3.0`, `auth` = `{type: none}` |
 | `engine.connector` | `base_url`, `participant_id` (BPNL), `auth` | `management_path` = `/management`, `dsp_path` = `/api/v1/dsp`, `version` ← `dataspace.version` |
 | `engine.dtr` | `base_url`, `auth` | `api_path` = `/api/v3.0` |
@@ -442,9 +442,9 @@ conventions of F9 within the infrastructure namespace:
 
 | Surface | Form | Example |
 |---|---|---|
-| Binding profile YAML | `<side>.<capability>.<field>` | `sut.connector.counter_party_address` |
-| Context variable | `infrastructure.<side>.<capability>.<field>` | `infrastructure.sut.connector.counter_party_address` |
-| Environment variable | `TESTLAB_<SIDE>_<CAPABILITY>_<FIELD>` | `TESTLAB_SUT_CONNECTOR_COUNTER_PARTY_ADDRESS` |
+| Binding profile YAML | `<side>.<capability>.<field>` | `sut.connector.dsp_url` |
+| Context variable | `infrastructure.<side>.<capability>.<field>` | `infrastructure.sut.connector.dsp_url` |
+| Environment variable | `TESTLAB_<SIDE>_<CAPABILITY>_<FIELD>` | `TESTLAB_SUT_CONNECTOR_DSP_URL` |
 
 Nested fields extend the path (`engine.connector.auth.client_id` →
 `TESTLAB_ENGINE_CONNECTOR_AUTH_CLIENT_ID`). The env-var form is generated from the model,
@@ -475,8 +475,8 @@ $ testlab bindings template ./certificate-management-tck
 # Required by infrastructure.sut.connector (required: true)
 sut:
   connector:
-    counter_party_id: ""            # BPNL of the system under test
-    counter_party_address: ""       # DSP endpoint URL
+    participant_id: ""              # BPNL of the system under test
+    dsp_url: ""                     # DSP endpoint URL
 
 # Required by infrastructure.engine.connector (required: true)
 engine:
@@ -546,7 +546,7 @@ Four questions must be answered before implementation begins.
 4. **Migration of the hand-declared SUT variables.** The CCM TCK declares
    `sut_counter_party_id` / `sut_counter_party_address` as `source: input` variables today.
    Should the contract keys be **aliased** to those names for one release, or should the
-   TCKs be rewritten to reference `${{ infrastructure.sut.connector.counter_party_id }}`
+   TCKs be rewritten to reference `${{ infrastructure.sut.connector.participant_id }}`
    directly? (ADR-0019 §4's 2026-07 amendment already permits the direct form.)
 
 ## References

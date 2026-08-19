@@ -104,7 +104,10 @@ class InitiateTransferParams(StepParams):
     )
     counter_party_address: str = Field(
         default="",
-        description="PUSH only — DSP endpoint of the provider; falls back to 'provider_address'.",
+        description=(
+            "PUSH only — DSP endpoint of the provider; defaults to the bound SUT "
+            "connector's 'dsp_url'."
+        ),
     )
     max_wait: float = Field(
         default=DEFAULT_MAX_WAIT,
@@ -238,7 +241,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
         request_model = ModelFactory.get_transfer_process_model(
             dataspace_version=consumer.dataspace_version,
             counter_party_address=(
-                params.counter_party_address or context.get_str("provider_address")
+                params.counter_party_address or context.infrastructure.sut.connector.dsp_url
             ),
             transfer_type=params.transfer_type,
             contract_id=params.agreement_id or context.get_str(AGREEMENT_ID),

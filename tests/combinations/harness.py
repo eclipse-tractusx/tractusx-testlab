@@ -37,9 +37,10 @@ from typing import Any
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.models import Job, StepDefinition, StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
+from tractusx_testlab.player.execution._step_outputs import store_step_outputs
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.phase import _PHASE_TO_NAMESPACE
-from tractusx_testlab.player.execution.step_runner import run_step, store_step_outputs
+from tractusx_testlab.player.execution.step_runner import run_step
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.services.instances import ServiceManager
 

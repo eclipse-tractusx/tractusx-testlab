@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Loader — resolves a YAML file or a ``.tck`` archive into a :class:`Tck`."""
+"""Loader — resolves a ``.tck`` archive into a :class:`Tck`."""
 
 from __future__ import annotations
 
@@ -35,6 +35,7 @@ import yaml
 from pydantic import ValidationError
 
 from tractusx_testlab.compiler import package_digest
+from tractusx_testlab.models.authoring.definitions import ScriptDefinition
 from tractusx_testlab.models.primitives.enums import ScriptKind
 from tractusx_testlab.player.loading._parser import (
     _SCRIPT_ADAPTER,
@@ -44,6 +45,7 @@ from tractusx_testlab.player.loading._parser import (
 )
 from tractusx_testlab.scripting.script import Tck as Tck
 from tractusx_testlab.scripting.script import TestScript
+from tractusx_testlab.syntax import diagnostics
 
 # Entry name for the bundled authoring YAML inside .tck ZIP archives
 _TCK_BUNDLE_ENTRY = "tck-bundle.yaml"
@@ -69,9 +71,10 @@ def _load_test_scripts(tests: list, base_dir: Path) -> list[TestScript]:
         try:
             script_def = parse_script_file(test_path)
             scripts.append(TestScript(script_def, skippable=entry.skippable, test_id=entry.id))
-        except ValidationError as e:
+        except ValidationError as exc:
             # 3. if Pydantic fails, capture exception to add filename
-            validation_errors.append(f"File: {entry.id}\n{e}")
+            findings = diagnostics.render(exc, model=ScriptDefinition, source=test_path)
+            validation_errors.append(f"File: {entry.id}\n{findings}")
     if validation_errors:
         separator = "\n" + "-" * 80 + "\n"
         raise ValueError(
@@ -108,7 +111,13 @@ def _detect_kind(data: dict) -> ScriptKind:
 
 
 class Loader:
-    """Loads a TCK from a YAML file or a ``.tck`` archive, plain or encrypted."""
+    """Loads a TCK from a ``.tck`` archive, plain or encrypted.
+
+    A package and nothing else. The loader used to take authoring YAML too,
+    and that branch was the one way into the player that skipped the compiler:
+    no validator, no fingerprint, and no digest to check the executed files
+    against. ``testlab run`` compiles a manifest and hands over the result.
+    """
 
     __slots__ = ()
 
@@ -118,15 +127,22 @@ class Loader:
         player_private_key: bytes | None = None,
         compiler_public_key: bytes | None = None,
     ) -> Tck:
-        """Load a TCK from *path*.
+        """Load a TCK from the ``.tck`` package at *path*.
 
         Uses the local parser to support testlab-extended enum values
         (assertion types, service types) that the SDK parser rejects.
-        """
-        if path.suffix == ".tck":
-            return self._load_tck_package(path, player_private_key, compiler_public_key)
 
-        return self._load_yaml(path)
+        Raises:
+            ValueError: If *path* is not a ``.tck`` package.
+        """
+        if path.suffix != ".tck":
+            raise ValueError(
+                f"The player executes compiled packages, and {path.name!r} is not one. "
+                f"Compile it first: `testlab compile {path} -o dist/`, then load the "
+                f".tck this produces."
+            )
+
+        return self._load_tck_package(path, player_private_key, compiler_public_key)
 
     def _load_tck_package(
         self,
@@ -246,12 +262,6 @@ class Loader:
 
         data = yaml.safe_load(entries[_TCK_BUNDLE_ENTRY].decode("utf-8"))
         return self._parse_data(data, source_path=path, base_dir=extract_dir)
-
-    def _load_yaml(self, path: Path) -> Tck:
-        """Load a plain YAML file."""
-        with open(path, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        return self._parse_data(data, source_path=path, base_dir=path.parent)
 
     def _parse_data(self, data: object, source_path: Path, base_dir: Path) -> Tck:
         """Parse raw YAML data into a Tck runtime object."""

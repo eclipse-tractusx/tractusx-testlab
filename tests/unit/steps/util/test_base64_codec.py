@@ -128,7 +128,7 @@ class TestBase64Step:
 
     @pytest.mark.asyncio
     async def test_missing_input_raises(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="input: Field required"):
+        with pytest.raises(ValueError, match="input: required key 'input' is missing"):
             await Base64Step().invoke({"mode": "encode"}, context, _definition())
 
     @pytest.mark.asyncio
@@ -138,7 +138,7 @@ class TestBase64Step:
 
     @pytest.mark.asyncio
     async def test_invalid_mode_raises(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="mode: Input should be 'encode' or 'decode'"):
+        with pytest.raises(ValueError, match="mode: 'flip' is not allowed here"):
             await Base64Step().invoke(
                 {"input": _AAS_ID, "mode": "flip"},
                 context,

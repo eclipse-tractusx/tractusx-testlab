@@ -99,7 +99,7 @@ For detailed rationale: [ADR-0010: YAML Syntax v2](../developer/decision-records
 | Command | Description |
 |---------|-------------|
 | `testlab compile <source>` | Compile a TCK source directory into a `.tck` package |
-| `testlab run <package>` | Execute a compiled TCK package against a live dataspace |
+| `testlab run <target>` | Execute a TCK against a live dataspace. A `.tck` package runs as given; a manifest is compiled into a throwaway package first, so nothing executes that has not compiled |
 | `testlab validate <package>` | Validate a compiled TCK package without executing steps |
 | `testlab inspect <package>` | Report what a package contains — tests, manifest, variables, infrastructure — without running it |
 

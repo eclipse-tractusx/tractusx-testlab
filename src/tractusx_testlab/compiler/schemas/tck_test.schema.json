@@ -5,6 +5,18 @@
       "additionalProperties": false,
       "description": "Assertion using ``uses`` / ``with`` verb-form keys.",
       "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
         "uses": {
           "title": "Uses",
           "type": "string"

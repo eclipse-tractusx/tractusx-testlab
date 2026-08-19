@@ -35,8 +35,8 @@ from pydantic import ConfigDict, Field, model_validator
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps import sdk_call
-from tractusx_testlab.steps.shared_models import CounterPartyParams
+from tractusx_testlab.steps import http_client, sdk_call
+from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload, StepValue
 
 if TYPE_CHECKING:
@@ -174,10 +174,11 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
         from tractusx_sdk.industry.models.notifications.notification import Notification
 
         notification = Notification(**params.document())
+        party = params.counter_party(context)
         result = await asyncio.to_thread(
             notif_service.send_notification,
-            provider_bpn=params.counter_party_id,
-            provider_dsp_url=params.counter_party_address,
+            provider_bpn=party.identity,
+            provider_dsp_url=party.address,
             notification=notification,
             endpoint_path=params.endpoint_path,
             timeout=params.timeout,
@@ -193,9 +194,7 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
                     "response_headers": {},
                 }
             ),
-            request=HttpRequest(
-                method="POST", url=params.counter_party_address, body=notification.to_data()
-            ),
+            request=HttpRequest(method="POST", url=party.address, body=notification.to_data()),
             response=HttpResponse(status_code=status_code, body=result),
         )
 
@@ -212,11 +211,12 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
 
         response_headers: dict[str, str] = {}
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(url, json=body, headers=headers, timeout=params.timeout)
-                result = resp.json() if resp.content else {}
-                status_code = resp.status_code
-                response_headers = dict(resp.headers)
+            resp = await http_client.request(
+                "POST", url, json=body, headers=headers, timeout=params.timeout
+            )
+            result = resp.json() if resp.content else {}
+            status_code = resp.status_code
+            response_headers = dict(resp.headers)
         except (httpx.HTTPError, ValueError) as exc:
             _logger.warning("Dataplane notification failed: %s", exc)
             result = {"error": str(exc)}
@@ -267,15 +267,16 @@ class DiscoverNotificationAssetsStep(
         definition: StepDefinition,
     ) -> StepOutput[NotificationAssetsOutput]:
         notif_service = context.dataspace.notifications()
+        party = params.counter_party(context)
         datasets = await sdk_call.run(
             notif_service.discover_notification_assets,
-            provider_bpn=params.counter_party_id,
-            provider_dsp_url=params.counter_party_address,
+            provider_bpn=party.identity,
+            provider_dsp_url=party.address,
             timeout=params.timeout,
         )
 
         return StepOutput(
             value=NotificationAssetsOutput(datasets),
-            request=HttpRequest(method="POST", url=params.counter_party_address),
+            request=HttpRequest(method="POST", url=party.address),
             response=HttpResponse(status_code=200, body=datasets),
         )

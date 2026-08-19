@@ -54,14 +54,16 @@ OVERSIZED: dict[str, int] = {
     "compiler/validation/validator.py": 373,
     "steps/digital_twin/provider/shell.py": 363,
     "steps/step_contract.py": 363,
-    "player/execution/player.py": 358,
     "compiler/ir/builder.py": 344,
-    "steps/connector/pull_data.py": 342,
     "compiler/validation/_manifest_validation.py": 337,
     "steps/_checks/extraction.py": 330,
     "infrastructure/profiles.py": 329,
     "scripting/step_docs.py": 314,
     "cli/_tck_packager.py": 305,
+    # One class doing one thing — publishing every transition to the log, the
+    # stream and the trace. Splitting it by event family would scatter that
+    # single job across three files to save three lines.
+    "player/execution/monitor.py": 302,
 }
 
 #: Words that name a layer rather than a thing. A module called `utils` tells a

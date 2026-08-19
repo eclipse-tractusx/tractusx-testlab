@@ -41,8 +41,9 @@ from tractusx_testlab.models.domain.infrastructure import (
     EngineDtrBinding,
     Infrastructure,
     SutBindings,
+    SutConnectorBinding,
 )
-from tractusx_testlab.models.primitives.exceptions import (
+from tractusx_testlab.models.primitives.binding_errors import (
     InfrastructureError,
     MissingBindingError,
     StandardConflictError,
@@ -63,7 +64,7 @@ def _integration() -> Infrastructure:
             ),
         ),
         sut=SutBindings(
-            connector=ConnectorBinding(
+            connector=SutConnectorBinding(
                 management_url="https://sut.example.com/management",
                 participant_id="BPNL000000000001",
                 dsp_url="https://sut.example.com/api/v1/dsp",
@@ -76,7 +77,7 @@ def _integration() -> Infrastructure:
 def _staging() -> Infrastructure:
     return Infrastructure(
         sut=SutBindings(
-            connector=ConnectorBinding(management_url="https://staging.example.com/management"),
+            connector=SutConnectorBinding(management_url="https://staging.example.com/management"),
         ),
     )
 
@@ -207,7 +208,7 @@ class TestValidate:
     def test_a_capability_bound_only_by_a_qualifier_is_not_bound(self) -> None:
         """An api_key with no connector to send it to binds nothing."""
         manager = InfrastructureManager(
-            Infrastructure(sut=SutBindings(connector=ConnectorBinding(api_key="orphan")))
+            Infrastructure(sut=SutBindings(connector=SutConnectorBinding(api_key="orphan")))
         )
         with pytest.raises(MissingBindingError):
             manager.validate(_requires(connector=True))
@@ -255,8 +256,8 @@ class TestAlign:
         """An operator who knows their connector speaks another release has said so."""
         deployment = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
-                    management_url="https://sut/management",
+                connector=SutConnectorBinding(
+                    dsp_url="https://sut/api/v1/dsp",
                     version="jupiter",
                 ),
             ),
@@ -271,8 +272,8 @@ class TestAlign:
     def test_a_contradicted_release_is_refused(self) -> None:
         deployment = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
-                    management_url="https://sut/management",
+                connector=SutConnectorBinding(
+                    dsp_url="https://sut/api/v1/dsp",
                     version="jupiter",
                 ),
             ),
@@ -285,8 +286,8 @@ class TestAlign:
     def test_a_release_the_tck_never_stated_is_not_held_against_a_binding(self) -> None:
         deployment = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
-                    management_url="https://sut/management",
+                connector=SutConnectorBinding(
+                    dsp_url="https://sut/api/v1/dsp",
                     version="jupiter",
                 ),
             ),
@@ -318,8 +319,8 @@ class TestAlign:
     def test_a_contradicted_standard_is_refused(self) -> None:
         deployment = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
-                    management_url="https://sut/management",
+                connector=SutConnectorBinding(
+                    dsp_url="https://sut/api/v1/dsp",
                     standard="CX-0018",
                 ),
             ),
@@ -334,8 +335,8 @@ class TestAlign:
         """The engine's fallback is a convenience, not a claim to hold anyone to."""
         deployment = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
-                    management_url="https://sut/management",
+                connector=SutConnectorBinding(
+                    dsp_url="https://sut/api/v1/dsp",
                     standard="CX-0126",
                 ),
             ),

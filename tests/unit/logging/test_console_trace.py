@@ -163,6 +163,84 @@ class TestAStepOutcomeLine:
         assert len(line) < 1000
 
 
+_STEP_CALL = {
+    "kind": "step_call",
+    "script": "dtr-filterability",
+    "step_id": "pull_dtr",
+    "step_type": "connector/consumer/pull_data_filtered",
+    "index": 3,
+    "call": {
+        "context": "CatalogController.get_catalog",
+        "request": {"method": "POST", "url": "http://edc/management/v3/catalog/request"},
+        "response": {"status_code": 200, "duration_ms": 1373.2},
+    },
+    "event_id": "ic-tck/dtr-filterability/execution/pull_dtr/calls/3/tck.test.step.call/2229712",
+}
+
+
+class TestACallLine:
+    def test_it_names_the_step_the_call_and_who_made_it(self) -> None:
+        """Fourteen calls of one step used to print as fourteen identical lines."""
+        line = render("step.call", _STEP_CALL)
+        assert "pull_dtr" in line
+        assert "#3" in line
+        assert "CatalogController.get_catalog" in line
+        assert "→ POST http://edc/management/v3/catalog/request" in line
+        assert "← 200 in 1373ms" in line
+
+    def test_a_step_the_script_did_not_name_falls_back_to_what_it_is(self) -> None:
+        """The same name the event's own id is built from, so the two agree."""
+        line = render("step.call", {**_STEP_CALL, "step_id": None})
+        assert "pull_data_filtered" in line
+
+    def test_a_call_whose_transport_raised_says_so_instead_of_a_status(self) -> None:
+        refused = {
+            **_STEP_CALL,
+            "call": {
+                "context": "testlab/http_client",
+                "request": {"method": "GET", "url": "http://sut/probe"},
+                "error": "connection refused",
+            },
+        }
+        line = render("step.call", refused)
+        assert "connection refused" in line
+        assert "←" not in line
+
+    def test_the_body_is_left_to_the_trace(self) -> None:
+        """One line per call, and there are hundreds of calls in a poll loop."""
+        loud = {
+            **_STEP_CALL,
+            "call": {
+                **_STEP_CALL["call"],
+                "request": {**_STEP_CALL["call"]["request"], "body": {"blob": "x" * 5000}},
+            },
+        }
+        assert len(render("step.call", loud)) < 300
+
+
+class TestTheTracedEventId:
+    def test_a_line_names_the_event_it_was_rendered_from(self) -> None:
+        assert render("step.call", _STEP_CALL).endswith(f"id={_STEP_CALL['event_id']}")
+
+    def test_an_untraced_run_says_nothing_about_an_id(self) -> None:
+        untraced = {key: value for key, value in _STEP_CALL.items() if key != "event_id"}
+        assert "id=" not in render("step.call", untraced)
+
+    def test_the_id_goes_on_the_event_not_on_the_last_wire_line(self) -> None:
+        """A step outcome prints its request and response underneath itself."""
+        line = render("step.completed", {**_STEP_WITH_EXCHANGE, "event_id": "ic-tck/x/step.passed"})
+        head, _, rest = line.partition("\n")
+        assert head.endswith("id=ic-tck/x/step.passed")
+        assert rest.startswith("  → GET")
+
+    def test_every_kind_carries_it_including_the_ones_with_no_branch(self) -> None:
+        line = render(
+            "job.started",
+            {"kind": "job_started", "tck_id": "probe", "event_id": "probe/tck.start/ab"},
+        )
+        assert line == "job.started [probe] id=probe/tck.start/ab"
+
+
 class TestTheOtherLines:
     def test_a_started_step_names_itself_and_its_phase(self) -> None:
         line = render(

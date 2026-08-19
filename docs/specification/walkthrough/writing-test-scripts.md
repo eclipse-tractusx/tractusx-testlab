@@ -237,7 +237,7 @@ All references use the `${{ }}` expression syntax:
 
 | Pattern | Resolves to |
 |---------|-------------|
-| `${{ env.variables.my_var }}` | TCK-level variable |
+| `${{ env.my_var }}` | TCK-level variable |
 | `${{ env.services.name.output }}` | Service output |
 | `${{ env.testdata.name }}` | Testdata file content |
 | `${{ env.schemas.name }}` | Schema file content |
@@ -247,11 +247,16 @@ All references use the `${{ }}` expression syntax:
 
 ## Step 5 — Assertions
 
-Every step can include a `validate:` block with one or more assertions:
+Every step can include a `validate:` block with one or more assertions. Each
+entry may carry an optional `name:` — nothing in the engine reads it, but the
+run report calls the check by it, so four `validate/assert` entries on one step
+say which requirement each one covers instead of printing the same id four
+times:
 
 ```yaml
 validate:
   - uses: validate/assert
+    name: the request was accepted        # optional
     with: { input: status_code, operator: equals, value: 200 }
   - uses: validate/assert
     with: { input: response_body, operator: not_null }
@@ -274,7 +279,7 @@ steps:
   - id: query_dt
     uses: get_shell_descriptor
     with:
-      aas_identifier: "${{ env.variables.twin_id }}"
+      aas_identifier: "${{ env.twin_id }}"
     returns:
       response_body:
         type: object
@@ -320,7 +325,7 @@ for the full predicate syntax and utility-step options.
 
 | v0 (obsolete) | v1-alpha (current) |
 |---------------|-------------------|
-| `${variable}` | `${{ env.variables.variable }}` |
+| `${variable}` | `${{ env.variable }}` |
 | `type: connector_service` | `uses: service/connector_service` |
 | `params:` | `with:` |
 | `shared_variables:` | `env.variables:` (simple key-value) |

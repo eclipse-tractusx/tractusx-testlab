@@ -103,7 +103,7 @@ src/tractusx_testlab/
   cli/        Typer command groups — thin; delegate, never compute
   compiler/   compile-time: YAML → IR (ir/) → validation (validation/) → package
   config/     configuration loading & settings (data + I/O only)
-  logging/    structured logging — cross-cutting, depends on nothing
+  logging/    structured logging, transcript and wire recording — cross-cutting
   models/     Pydantic data only — no behavior, no I/O
   player/     run-time: load (loading/) → execute (execution/) → track jobs
   scripting/  script object model + builder DSL (author-facing)
@@ -111,7 +111,7 @@ src/tractusx_testlab/
   server/     FastAPI mock server: routes (routes/) + SSE streaming (streaming/)
   services/   SDK service wiring + lifecycle (no protocol reimplementation)
   steps/      step executors — one domain per sub-package (connector/, industry/, …)
-  syntax/     leaf: default syntax constants — no testlab imports
+  syntax/     leaf: syntax constants + author-facing diagnostics — no testlab imports
   schemas/    packaged JSON-schema assets (data, no code)
 ```
 

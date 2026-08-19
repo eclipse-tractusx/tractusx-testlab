@@ -37,6 +37,7 @@ engine hopes to find in its variables::
         Infrastructure,
         InfrastructureManager,
         SutBindings,
+        SutConnectorBinding,
         TestlabPlayer,
     )
 
@@ -53,8 +54,7 @@ engine hopes to find in its variables::
             ),
         ),
         sut=SutBindings(
-            connector=ConnectorBinding(
-                management_url="https://sut.example.com/management",
+            connector=SutConnectorBinding(
                 participant_id="BPNL000000000001",
                 dsp_url="https://sut.example.com/api/v1/dsp",
             ),
@@ -93,7 +93,7 @@ from tractusx_testlab.infrastructure.standards import (
 )
 from tractusx_testlab.models.authoring.infrastructure import InfrastructureConfig
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
-from tractusx_testlab.models.primitives.exceptions import (
+from tractusx_testlab.models.primitives.binding_errors import (
     InfrastructureError,
     MissingBindingError,
     StandardConflictError,
@@ -231,22 +231,21 @@ class InfrastructureManager:
     ) -> None:
         """Check every required capability against what is bound, and say what is missing.
 
-        Reports all unbound capabilities at once rather than the first, so an
-        operator learns everything they owe from a single run. Requirements
-        marked ``required: false`` are optional by definition and are not
-        checked.
+        Reports every unbound capability at once and, within each, every
+        field the operator still owes — not only the address that identifies
+        it — so one run tells them everything rather than one key per attempt.
+        ``required: false`` is optional by definition and is not checked.
         """
         resolved = self.active if infrastructure is None else infrastructure
-        missing: list[tuple[str, str, str]] = []
+        missing: list[tuple[str, str, list[str]]] = []
 
-        for side, capability, binding_type in capabilities():
+        for side, capability, _ in capabilities():
             requirement = getattr(requirements, side, {}).get(capability)
-            if requirement is None or not requirement.required:
+            binding = resolved.binding(side, capability)
+            if requirement is None or not requirement.required or binding is None:
                 continue
-            if not resolved.bound(side, capability):
-                missing.append(
-                    (side, capability, context_key(side, capability, binding_type.identity_field))
-                )
+            if owed := binding.missing_fields():
+                missing.append((side, capability, [context_key(side, capability, f) for f in owed]))
 
         if missing:
             raise MissingBindingError(missing)

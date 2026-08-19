@@ -29,10 +29,7 @@ from __future__ import annotations
 from typing import Any
 
 from tractusx_testlab.compiler.ir._instructions import _infer_type
-
-# The verb-form `returns.value` block describes the variable's own type, not a
-# referenceable sub-field, so it is never emitted as an `env.<id>.value` symbol.
-_VALUE_RETURN_KEY = "value"
+from tractusx_testlab.syntax.variables import VALUE_KEY, VariableVerb, verb_for
 
 # Source tag recorded on every symbol that originates from the env.variables block.
 _VARIABLES_SOURCE = "env.variables"
@@ -76,38 +73,49 @@ def _collect_verb_variable_symbols(
 ) -> None:
     """Add verb-form (``id``/``uses``/``with``/``returns``) env variables.
 
-    Each entry yields a base ``env.<id>`` symbol carrying its provided value, and
-    every declared return field other than ``value`` becomes a referenceable
-    ``env.<id>.<field>`` symbol. This is how complex capabilities such as
-    ``config/connector/policy`` expose their artifact (e.g. ``env.<id>.policy``).
+    One entry, one symbol: ``env.<id>``, carrying the value the manifest
+    provided and the type its verb publishes. There used to be a second symbol
+    per declared return field, because a complex variable published its artifact
+    under a noun of its own (``env.<id>.policy``); every variable now publishes
+    one value, so the id *is* the reference and the noun is gone.
+
+    The class survives on the base symbol rather than on a field of it — it is
+    what tells a consumer that ``env.<id>`` is a ``Policy`` and not an untyped
+    document.
     """
     for entry in variables:
         var_id = entry.get("id", "")
         if not var_id:
             continue
         value = (entry.get("with") or {}).get("value")
-        returns = entry.get("returns") or {}
-        symbols[f"env.{var_id}"] = {
+        verb = verb_for(str(entry.get("uses", "")))
+        symbol: dict[str, Any] = {
             "source": _VARIABLES_SOURCE,
-            "type": _base_variable_type(returns, value),
+            "type": _base_variable_type(entry.get("returns") or {}, value, verb),
             "default": value,
         }
-        for field_name, field_def in returns.items():
-            if field_name == _VALUE_RETURN_KEY:
-                continue
-            symbols[f"env.{var_id}.{field_name}"] = _build_field_entry(
-                field_def,
-                _VARIABLES_SOURCE,
-                default_type="object",
-            )
+        declared_class = _declared_class(entry, verb)
+        if declared_class:
+            symbol["class"] = declared_class
+        symbols[f"env.{var_id}"] = symbol
 
 
-def _base_variable_type(returns: dict[str, Any], value: Any) -> str:
-    """Resolve a verb variable's base type from its ``returns.value`` or value."""
-    value_def = returns.get(_VALUE_RETURN_KEY)
+def _base_variable_type(returns: dict[str, Any], value: Any, verb: VariableVerb | None) -> str:
+    """Resolve a verb variable's base type: its verb first, then what it declares."""
+    if verb is not None:
+        return str(verb.type)
+    value_def = returns.get(VALUE_KEY)
     if isinstance(value_def, dict) and value_def.get("type"):
         return str(value_def["type"])
     return _infer_type(value)
+
+
+def _declared_class(entry: dict[str, Any], verb: VariableVerb | None) -> str:
+    """Return the semantic class of the value, from the verb or the declaration."""
+    if verb is not None and verb.class_:
+        return str(verb.class_)
+    value_def = (entry.get("returns") or {}).get(VALUE_KEY)
+    return str(value_def.get("class", "")) if isinstance(value_def, dict) else ""
 
 
 def _collect_service_symbols(

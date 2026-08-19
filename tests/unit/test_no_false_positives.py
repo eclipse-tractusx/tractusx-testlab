@@ -192,15 +192,17 @@ def test_validation_rejects_an_unknown_key_on_a_step(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_an_unresolvable_reference_fails_the_run(tmp_path: Path) -> None:
+def test_an_unresolvable_reference_fails_the_run(tmp_path: Path) -> None:
     """``${{ env.does_not_exist }}`` must stop the run, not become a string.
 
     A URL built from an unresolved reference is requested verbatim; a BPN
     compared against one compares as text containing braces.  Either way the
     step runs against data nobody wrote, and reports on what it found there.
-    """
-    from tractusx_testlab.player.execution.player import TestlabPlayer
 
+    Asserted against the compiler rather than the run result, because the run
+    can no longer be reached: the player takes compiled packages only, so an
+    unresolvable reference is refused before a step exists to receive it.
+    """
     manifest_path = _write_tck(
         tmp_path,
         {
@@ -211,12 +213,14 @@ async def test_an_unresolvable_reference_fails_the_run(tmp_path: Path) -> None:
         },
     )
 
-    player = TestlabPlayer()
-    result = await player.run(manifest_path)
+    result = Compiler().validate(manifest_path)
 
-    assert result.status.value != "COMPLETED", (
-        "A run referencing an undefined variable completed successfully. The "
-        "step received the literal text '${{ env.does_not_exist }}' as its value."
+    assert not result.valid, (
+        "A TCK referencing an undefined variable compiled successfully. The "
+        "step would receive the literal text '${{ env.does_not_exist }}'."
+    )
+    assert any("does_not_exist" in issue.message for issue in result.issues), (
+        f"The refusal does not name the reference: {[issue.message for issue in result.issues]}"
     )
 
 
@@ -294,7 +298,7 @@ async def test_a_run_that_executed_no_declared_assertion_fails(tmp_path: Path) -
     )
 
     player = TestlabPlayer()
-    result = await player.run(manifest_path)
+    result = await player.run(_compile(manifest_path, tmp_path / "dist"))
 
     summary = result.scripts[0].assertion_summary
     assert summary is not None, "The script produced no assertion summary at all."

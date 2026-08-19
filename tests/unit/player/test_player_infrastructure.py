@@ -42,16 +42,17 @@ from tractusx_testlab.models.authoring.infrastructure import (
     InfrastructureConfig,
 )
 from tractusx_testlab.models.domain.infrastructure import (
-    ConnectorBinding,
     Infrastructure,
     SutBindings,
+    SutConnectorBinding,
 )
-from tractusx_testlab.models.primitives.exceptions import MissingBindingError
+from tractusx_testlab.models.primitives.binding_errors import MissingBindingError
+from tractusx_testlab.player.execution._binding import _target_release, bind_infrastructure
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.infrastructure_seeder import (
     seed_infrastructure_services,
 )
-from tractusx_testlab.player.execution.player import TestlabPlayer, _target_release
+from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.scripting.script import Tck
 from tractusx_testlab.services.instances import ServiceManager
 
@@ -66,8 +67,9 @@ def _config(tmp_path: Path, infrastructure: Infrastructure | None = None) -> Tes
 def _sut_connector() -> Infrastructure:
     return Infrastructure(
         sut=SutBindings(
-            connector=ConnectorBinding(
+            connector=SutConnectorBinding(
                 management_url="https://sut.example.com/management",
+                participant_id="BPNL000000000SUT",
                 dsp_url="https://sut.example.com/api/v1/dsp",
             ),
         ),
@@ -143,7 +145,7 @@ class TestBinding:
         )
         context = _context(player, config)
 
-        player._bind_infrastructure(context, _tck(connector=True))
+        bind_infrastructure(player.infrastructure, context, _tck(connector=True))
 
         assert context.get_variable("infrastructure.sut.connector.dsp_url") == (
             "https://sut.example.com/api/v1/dsp"
@@ -156,7 +158,7 @@ class TestBinding:
         context = _context(player, config)
         context.set_variable("infrastructure.sut.dtr.base_url", "https://dtr.from.cli")
 
-        player._bind_infrastructure(context, _tck(connector=True, dtr=True))
+        bind_infrastructure(player.infrastructure, context, _tck(connector=True, dtr=True))
 
         assert context.infrastructure.sut.dtr.base_url == "https://dtr.from.cli"
 
@@ -167,7 +169,7 @@ class TestBinding:
         context = _context(player, config)
         context.set_variable("infrastructure.sut.dtr.base_url", "https://dtr.from.cli")
 
-        player._bind_infrastructure(context, _tck(dtr=True))
+        bind_infrastructure(player.infrastructure, context, _tck(dtr=True))
 
         assert manager.active.sut.dtr.base_url == ""
 
@@ -178,7 +180,7 @@ class TestBinding:
         )
         context = _context(player, config)
 
-        player._bind_infrastructure(context, _tck())
+        bind_infrastructure(player.infrastructure, context, _tck())
 
         assert context.infrastructure.sut.connector.is_bound()
 
@@ -192,7 +194,7 @@ class TestFailFast:
         context = _context(player, config)
 
         with pytest.raises(MissingBindingError):
-            player._bind_infrastructure(context, _tck(connector=True))
+            bind_infrastructure(player.infrastructure, context, _tck(connector=True))
 
     def test_the_refusal_names_the_key_the_operator_owes(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
@@ -200,7 +202,7 @@ class TestFailFast:
         context = _context(player, config)
 
         with pytest.raises(MissingBindingError) as error:
-            player._bind_infrastructure(context, _tck(dtr=True))
+            bind_infrastructure(player.infrastructure, context, _tck(dtr=True))
 
         assert "infrastructure.sut.dtr.base_url" in str(error.value)
 
@@ -210,7 +212,7 @@ class TestFailFast:
         context = _context(player, config)
         context.set_variable("infrastructure.sut.dtr.base_url", "https://dtr.from.cli")
 
-        player._bind_infrastructure(context, _tck(dtr=True))
+        bind_infrastructure(player.infrastructure, context, _tck(dtr=True))
 
         assert context.infrastructure.sut.dtr.base_url == "https://dtr.from.cli"
 
@@ -225,7 +227,7 @@ class TestRelease:
         )
         context = _context(player, config)
 
-        player._bind_infrastructure(context, _tck(release="jupiter", connector=True))
+        bind_infrastructure(player.infrastructure, context, _tck(release="jupiter", connector=True))
 
         assert context.infrastructure.sut.connector.version == "jupiter"
 
@@ -236,7 +238,7 @@ class TestRelease:
         )
         context = _context(player, config)
 
-        player._bind_infrastructure(context, _tck(release="jupiter", connector=True))
+        bind_infrastructure(player.infrastructure, context, _tck(release="jupiter", connector=True))
 
         assert context.get_variable("infrastructure.sut.connector.version") == "jupiter"
 
@@ -253,7 +255,7 @@ class TestRelease:
             infrastructure=player.infrastructure.active,
         )
 
-        player._bind_infrastructure(context, _tck(release="jupiter", connector=True))
+        bind_infrastructure(player.infrastructure, context, _tck(release="jupiter", connector=True))
         seed_infrastructure_services(services, context)
 
         definition = services._definitions["__sut_connector__"]
@@ -267,7 +269,7 @@ class TestRelease:
         )
         context = _context(player, config)
 
-        player._bind_infrastructure(context, _tck(release="saturn", connector=True))
+        bind_infrastructure(player.infrastructure, context, _tck(release="saturn", connector=True))
 
         assert context.infrastructure.sut.connector.standard == "CX-0018"
 
@@ -306,3 +308,52 @@ class TestRelease:
         )
 
         assert _target_release(tck) == ("saturn", False)
+
+
+class TestWhatTheOperatorOwes:
+    """A run says everything it was never given, before it starts anything."""
+
+    def test_a_counter_party_is_bound_by_its_dsp_endpoint(self, tmp_path: Path) -> None:
+        """A SUT the operator cannot manage is still bound (ADR-0019 §4)."""
+        deployment = Infrastructure(
+            sut=SutBindings(
+                connector=SutConnectorBinding(
+                    participant_id="BPNL000000000SUT",
+                    dsp_url="https://sut.example.com/api/v1/dsp",
+                ),
+            ),
+        )
+        config = _config(tmp_path)
+        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(deployment))
+
+        bind_infrastructure(player.infrastructure, _context(player, config), _tck(connector=True))
+
+    def test_every_owed_field_is_named_at_once_not_only_the_address(self, tmp_path: Path) -> None:
+        deployment = Infrastructure(
+            sut=SutBindings(connector=SutConnectorBinding(dsp_url="")),
+        )
+        config = _config(tmp_path)
+        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(deployment))
+
+        with pytest.raises(MissingBindingError) as error:
+            bind_infrastructure(
+                player.infrastructure, _context(player, config), _tck(connector=True)
+            )
+        message = str(error.value)
+        assert "infrastructure.sut.connector.dsp_url" in message
+        assert "infrastructure.sut.connector.participant_id" in message
+        # Inherited from the TCK, or defaulted — never the operator's to supply.
+        assert "infrastructure.sut.connector.standard" not in message
+        assert "infrastructure.sut.connector.api_key_header" not in message
+
+    def test_the_environment_form_of_each_owed_key_is_shown(self, tmp_path: Path) -> None:
+        config = _config(tmp_path)
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(Infrastructure())
+        )
+
+        with pytest.raises(MissingBindingError) as error:
+            bind_infrastructure(
+                player.infrastructure, _context(player, config), _tck(connector=True)
+            )
+        assert "TESTLAB_SUT_CONNECTOR_DSP_URL" in str(error.value)

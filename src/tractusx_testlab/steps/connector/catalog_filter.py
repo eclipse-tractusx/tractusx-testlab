@@ -32,9 +32,10 @@ from typing import TYPE_CHECKING
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.counter_party import CounterPartyParams
+from tractusx_testlab.steps.dsp_protocol import DspProtocolParams
 from tractusx_testlab.steps.shared_models import (
     CatalogOutput,
-    CounterPartyParams,
     FilterExpressionParams,
     as_dataset_list,
 )
@@ -51,7 +52,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class QueryCatalogWithFiltersParams(CounterPartyParams, FilterExpressionParams):
+class QueryCatalogWithFiltersParams(CounterPartyParams, FilterExpressionParams, DspProtocolParams):
     """Input contract of ``connector/consumer/query_catalog_with_filters``."""
 
 
@@ -81,14 +82,16 @@ class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, Catalo
             for entry in params.filters
         ]
 
+        party = params.counter_party(context)
         catalog = await sdk_call.run(
             consumer.get_catalog_with_filter,
-            counter_party_id=params.counter_party_id,
-            counter_party_address=params.counter_party_address,
+            counter_party_id=party.identity,
+            counter_party_address=party.address,
             filter_expression=filter_expression,
+            **params.sdk_protocol(),
         )
 
-        url = f"{params.counter_party_address}/catalog/request"
+        url = f"{party.address}/catalog/request"
         request = HttpRequest(method="POST", url=url, body=params.model_dump(mode="json"))
         if not catalog:
             raise StepExecutionError(

@@ -37,7 +37,7 @@ from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps._checks.extraction import declared_names
 from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
-from tractusx_testlab.syntax import defaults, patterns
+from tractusx_testlab.syntax import defaults, diagnostics, patterns
 
 
 @dataclass(slots=True)
@@ -68,29 +68,16 @@ class ValidationResult:
         self.issues.append(ValidationIssue(level="warning", message=msg, **kw))
 
 
-def _format_errors(exc: ValidationError) -> str:
-    """Render Pydantic's errors with the full path to each offending key.
-
-    Only ``loc[0]`` used to be printed, so a misspelled key three levels down
-    reported as ``execution: Extra inputs are not permitted`` — the author was
-    told which *phase* was wrong out of a file with dozens of steps in it, and
-    not which step or which key. The path is the whole value of the message.
-    """
-    lines = []
-    for error in exc.errors():
-        where = ".".join(str(part) for part in error["loc"]) or "<root>"
-        lines.append(f"{where}: {error['msg']}")
-    return "; ".join(lines)
-
-
 def _root_of(reference: str) -> str:
     """The part of a reference that has to exist for the rest to be reachable.
 
-    ``env.sut_bpn.value`` hangs off the manifest variable ``env.sut_bpn``;
-    ``execution.fetch.response_body`` off the step ``execution.fetch``;
-    ``infrastructure.sut.connector.dsp_url`` off the binding key, which is four
-    segments. Checking the root is what can be checked statically — how deep a
-    declared output can be walked is the step's business, not the manifest's.
+    ``execution.fetch.response_body`` hangs off the step ``execution.fetch``;
+    ``env.testdata.request_body`` off the file the manifest declared, which is
+    three segments; ``infrastructure.sut.connector.dsp_url`` off the binding
+    key, which is four. Checking the root is what can be checked statically —
+    how deep a declared output can be walked is the step's business, not the
+    manifest's. A manifest variable has no depth to check: its id is the whole
+    reference, and one that reaches past it is refused by name.
     """
     parts = reference.split(".")
     if parts[0] == "infrastructure":
@@ -159,7 +146,15 @@ class ScriptValidator:
             try:
                 script = YamlParser.parse_script(test_path)
             except ValidationError as exc:
-                combined.add_error(f"tests/{entry.id}: parse error — {_format_errors(exc)}")
+                # One issue per finding, each naming the step, the key and the
+                # line — see :mod:`tractusx_testlab.syntax.diagnostics`.
+                for finding in diagnostics.explain(exc, model=ScriptDefinition, source=test_path):
+                    combined.add_error(f"tests/{entry.id}: {finding}")
+                continue
+            except ValueError as exc:
+                # The file does not parse at all. The finding already names it
+                # and the line, so prefixing it again would say it twice.
+                combined.add_error(str(exc))
                 continue
             except Exception as exc:
                 combined.add_error(f"tests/{entry.id}: failed to parse — {exc}")

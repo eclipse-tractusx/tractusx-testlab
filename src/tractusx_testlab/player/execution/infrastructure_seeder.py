@@ -206,8 +206,15 @@ def seed_infrastructure_services(
             )
 
     # sut.connector → CONNECTOR_PROVIDER (the component under test)
+    #
+    # Bound and operable are not the same thing on this side: the SUT is bound
+    # by its DSP endpoint, which is all a conformance run against someone
+    # else's connector ever has. A service is only registered when the operator
+    # also gave a management URL — an SDK client built on an empty address is
+    # not a connector anyone can talk to, and the run does not need one, since
+    # the engine reaches the SUT through its own connector.
     sut_connector = infrastructure.sut.connector
-    if sut_connector.is_bound() and _SUT_CONNECTOR_NAME not in already:
+    if sut_connector.management_url and _SUT_CONNECTOR_NAME not in already:
         _register(
             svc_mgr,
             context,

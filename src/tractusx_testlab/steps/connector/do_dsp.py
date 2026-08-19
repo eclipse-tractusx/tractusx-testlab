@@ -33,8 +33,10 @@ from pydantic import Field
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.connector import policy_mismatch
+from tractusx_testlab.steps.connector.policies import ExpectedPoliciesParams
+from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.shared_models import (
-    CounterPartyParams,
     FilterExpressionParams,
     StepParams,
 )
@@ -67,12 +69,16 @@ class DspFlowOutput(StepPayload):
 # ---------------------------------------------------------------------------
 
 
-class DoDspParams(CounterPartyParams, FilterExpressionParams):
+class DoDspParams(CounterPartyParams, FilterExpressionParams, ExpectedPoliciesParams):
     """Input contract of ``connector/consumer/do_dsp``."""
 
     expected_policies: list[dict] = Field(
         default_factory=list,
-        description="ODRL policies the negotiation is allowed to accept.",
+        description=(
+            "ODRL policies the negotiation is allowed to accept, as the raw "
+            "policy document, the testlab simplified spelling, JSON text, or "
+            "the whole 'config/connector/policy' variable that holds one."
+        ),
     )
 
 
@@ -92,13 +98,18 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
         self, params: DoDspParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.dataspace.consumer()
-        endpoint, token = await sdk_call.run(
-            consumer.do_dsp,
-            counter_party_id=params.counter_party_id,
-            counter_party_address=params.counter_party_address,
-            filter_expression=params.sdk_filter_expression(),
-            policies=params.expected_policies,
-        )
+        party = params.counter_party(context)
+        # Every flow step turns down offers by policy, and the SDK reports only
+        # that it turned all of them down. The guard reports which offers those
+        # were and how they differed (steps.connector.policy_mismatch).
+        with policy_mismatch.explained(party.address):
+            endpoint, token = await sdk_call.run(
+                consumer.do_dsp,
+                counter_party_id=party.identity,
+                counter_party_address=party.address,
+                filter_expression=params.sdk_filter_expression(),
+                policies=params.expected_policies,
+            )
         return _build_output(self.step_type, context, params, endpoint, token)
 
 
@@ -107,7 +118,7 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
 # ---------------------------------------------------------------------------
 
 
-class DoDspWithBpnlParams(FilterExpressionParams):
+class DoDspWithBpnlParams(FilterExpressionParams, ExpectedPoliciesParams):
     """Input contract of ``connector/consumer/do_dsp_with_bpnl``.
 
     Unlike ``do_dsp``, the optional fields stay ``None`` rather than defaulting
@@ -122,7 +133,11 @@ class DoDspWithBpnlParams(FilterExpressionParams):
     )
     expected_policies: list[dict] | None = Field(
         default=None,
-        description="ODRL policies the negotiation is allowed to accept.",
+        description=(
+            "ODRL policies the negotiation is allowed to accept, as the raw "
+            "policy document, the testlab simplified spelling, JSON text, or "
+            "the whole 'config/connector/policy' variable that holds one."
+        ),
     )
 
 
@@ -140,13 +155,14 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
         self, params: DoDspWithBpnlParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.dataspace.consumer()
-        endpoint, token = await sdk_call.run(
-            consumer.do_dsp_with_bpnl,
-            bpnl=params.bpnl,
-            counter_party_address=params.counter_party_address,
-            filter_expression=params.sdk_filter_expression() or None,
-            policies=params.expected_policies,
-        )
+        with policy_mismatch.explained(params.counter_party_address or params.bpnl):
+            endpoint, token = await sdk_call.run(
+                consumer.do_dsp_with_bpnl,
+                bpnl=params.bpnl,
+                counter_party_address=params.counter_party_address,
+                filter_expression=params.sdk_filter_expression() or None,
+                policies=params.expected_policies,
+            )
         return _build_output(self.step_type, context, params, endpoint, token)
 
 
@@ -155,7 +171,7 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
 # ---------------------------------------------------------------------------
 
 
-class DiscoverDtrAuthParams(CounterPartyParams):
+class DiscoverDtrAuthParams(CounterPartyParams, ExpectedPoliciesParams):
     """Input contract of ``connector/discover/digital-twin-registry/auth``.
 
     ``expected_policies`` stays ``None`` rather than defaulting to empty: the
@@ -168,7 +184,11 @@ class DiscoverDtrAuthParams(CounterPartyParams):
     )
     expected_policies: list[dict] | None = Field(
         default=None,
-        description="ODRL policies the negotiation is allowed to accept.",
+        description=(
+            "ODRL policies the negotiation is allowed to accept, as the raw "
+            "policy document, the testlab simplified spelling, JSON text, or "
+            "the whole 'config/connector/policy' variable that holds one."
+        ),
     )
 
 
@@ -192,13 +212,15 @@ class DiscoverDtrAuthStep(BaseStep[DiscoverDtrAuthParams, DspFlowOutput]):
         definition: StepDefinition,
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.dataspace.consumer()
-        endpoint, token = await sdk_call.run(
-            consumer.do_dsp_by_dct_type,
-            counter_party_id=params.counter_party_id,
-            counter_party_address=params.counter_party_address,
-            dct_type=params.dct_type,
-            policies=params.expected_policies,
-        )
+        party = params.counter_party(context)
+        with policy_mismatch.explained(party.address):
+            endpoint, token = await sdk_call.run(
+                consumer.do_dsp_by_dct_type,
+                counter_party_id=party.identity,
+                counter_party_address=party.address,
+                dct_type=params.dct_type,
+                policies=params.expected_policies,
+            )
         return _build_output(self.step_type, context, params, endpoint, token)
 
 

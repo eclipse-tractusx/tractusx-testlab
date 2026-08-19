@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
@@ -39,7 +39,8 @@ from tractusx_testlab.steps.connector._polling import (
     NEGOTIATION_TERMINAL,
     poll_until_terminal,
 )
-from tractusx_testlab.steps.shared_models import CounterPartyParams
+from tractusx_testlab.steps.connector.policies import as_raw_policy
+from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.syntax.context_vars import (
     CATALOG_ASSET_ID,
@@ -71,7 +72,9 @@ class NegotiateParams(CounterPartyParams):
     policy: Any | None = Field(
         default=None,
         description=(
-            "ODRL policy to negotiate under; falls back to the 'catalog_policy' context variable."
+            "ODRL policy to negotiate under, as the policy document itself, its "
+            "JSON text, or the whole 'config/connector/policy' variable that "
+            "holds it; falls back to the 'catalog_policy' context variable."
         ),
     )
     max_wait: float = Field(
@@ -82,6 +85,12 @@ class NegotiateParams(CounterPartyParams):
         default=DEFAULT_POLL_INTERVAL,
         description="Seconds between two negotiation state reads.",
     )
+
+    @field_validator("policy", mode="before")
+    @classmethod
+    def _as_raw_policy(cls, value: Any) -> Any:
+        """The SDK negotiates with the policy definition, not with what carries it."""
+        return as_raw_policy(value)
 
 
 class NegotiationOutput(StepPayload):
@@ -117,13 +126,12 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
         definition: StepDefinition,
     ) -> StepOutput[NegotiationOutput]:
         consumer = context.dataspace.consumer()
-        counter_party_address = params.counter_party_address or context.get_str("provider_address")
-        counter_party_id = params.counter_party_id or context.get_str("provider_bpnl")
+        party = params.counter_party(context)
 
         negotiation_id = await sdk_call.run(
             consumer.start_edr_negotiation,
-            counter_party_id=counter_party_id,
-            counter_party_address=counter_party_address,
+            counter_party_id=party.identity,
+            counter_party_address=party.address,
             # `get_variable`, not `get_str`: the SDK is handed the absence as
             # `None`, and an empty string would say a target was named.
             target=params.asset_id or context.get_variable(CATALOG_ASSET_ID),

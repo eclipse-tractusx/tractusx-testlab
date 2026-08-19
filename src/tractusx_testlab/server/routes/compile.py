@@ -37,7 +37,7 @@ from tractusx_testlab.compiler.validation.validator import ScriptValidator
 from tractusx_testlab.models.authoring.definitions import ScriptDefinition, TckDefinition
 from tractusx_testlab.models.primitives.enums import ScriptKind
 from tractusx_testlab.scripting.parser import YamlParser
-from tractusx_testlab.syntax import defaults
+from tractusx_testlab.syntax import defaults, diagnostics
 
 _logger = logging.getLogger(__name__)
 _validator = ScriptValidator()
@@ -136,7 +136,17 @@ def _parse_script(
             return parser.parse_tck_from_dict(data)
         return parser.parse_script_from_dict(data)
     except ValidationError as exc:
-        errors = [_error(".".join(str(loc) for loc in e["loc"]), e["msg"]) for e in exc.errors()]
+        # The IDE shows these verbatim, so they are the authored form: the
+        # location names the step and the message names the keys that would
+        # have been accepted. See `tractusx_testlab.syntax.diagnostics`.
+        model = TckDefinition if kind == ScriptKind.TCK else ScriptDefinition
+        errors = [
+            _error(
+                finding.where,
+                f"{finding.message} — {finding.hint}" if finding.hint else finding.message,
+            )
+            for finding in diagnostics.explain(exc, model=model, data=data)
+        ]
         return JSONResponse(content={"status": "error", "errors": errors})
     except (ValueError, KeyError, TypeError) as exc:
         return JSONResponse(

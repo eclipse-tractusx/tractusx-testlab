@@ -40,11 +40,11 @@ from tractusx_testlab.models import (
 )
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.counter_party import CounterPartyParams
+from tractusx_testlab.steps.dsp_protocol import DspProtocolParams
 from tractusx_testlab.steps.shared_models import (
-    DATASET_KEY,
     CatalogOutput,
     CatalogPayload,
-    CounterPartyParams,
     FilterExpression,
     StepParams,
     as_dataset_list,
@@ -57,7 +57,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "DATASET_KEY",
     "CatalogOfferOutput",
     "CatalogOutput",
     "CatalogPayload",
@@ -77,7 +76,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-class QueryCatalogParams(CounterPartyParams):
+class QueryCatalogParams(CounterPartyParams, DspProtocolParams):
     """Input contract of ``connector/consumer/query_catalog``."""
 
     filters: list[FilterExpression] = Field(
@@ -91,8 +90,9 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogOutput]):
     """Query a provider's catalog via the SDK connector consumer service.
 
     Returns the catalog document and its offers side by side, so a ``returns:``
-    block reads ``datasets`` rather than the JSON-LD ``dcat:dataset`` key, and
-    downstream steps read the same offers.
+    block reads ``datasets`` rather than the JSON-LD key the provider's DSP
+    generation happens to spell them with, and downstream steps read the same
+    offers.
     """
 
     params_model = QueryCatalogParams
@@ -105,11 +105,13 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogOutput]):
         definition: StepDefinition,
     ) -> StepOutput[CatalogOutput]:
         consumer = context.dataspace.consumer()
+        party = params.counter_party(context)
         catalog = await sdk_call.run(
             consumer.get_catalog_with_filter,
-            counter_party_id=params.counter_party_id,
-            counter_party_address=params.counter_party_address,
+            counter_party_id=party.identity,
+            counter_party_address=party.address,
             filter_expression=[entry.to_sdk() for entry in params.filters],
+            **params.sdk_protocol(),
         )
 
         url = context.dataspace.consumer_endpoint_url("catalogs", "request")
@@ -134,33 +136,34 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogOutput]):
 # ---------------------------------------------------------------------------
 
 
-class QueryCatalogByAssetIdParams(StepParams):
-    """Input contract of ``connector/consumer/query_catalog_by_asset_id``."""
+class QueryCatalogByAssetIdParams(CounterPartyParams, DspProtocolParams):
+    """Input contract of ``connector/consumer/query_catalog_by_asset_id``.
 
-    counter_party_id: str = Field(description="BPN of the counter-party.")
-    counter_party_address: str = Field(description="DSP endpoint of the counter-party connector.")
+    The asset ID is the whole filter.  Narrowing the result further by policy is
+    what ``pull_data_filtered_by_policy`` and ``do_dsp`` are for; a catalog query
+    that also picked its offer by policy was two steps wearing one name, and the
+    policy half of it silently selected nothing whenever a script left it out.
+    """
+
     asset_id: str = Field(description="Asset ID the catalog is filtered by.")
-    expected_policies: list[dict] = Field(
-        default_factory=list,
-        description="Policies accepted for the returned offer; the first match is exported.",
-    )
 
 
 class CatalogOfferOutput(CatalogOutput):
     """Output contract of ``connector/consumer/query_catalog_by_asset_id``.
 
-    Extends the catalog document with the offer it selected.  Both selection
-    fields stay unset when no offer matches ``expected_policies`` — selection
-    is best-effort here and ``negotiate`` is what reports the failure.
+    Extends the catalog document with the first offer it carries, which is what
+    ``negotiate`` reads back when a script does not name an offer itself.  Both
+    fields stay unset when the catalog carries no offer at all — selection is
+    best-effort here and ``negotiate`` is what reports the failure.
     """
 
     catalog_asset_id: Any | None = Field(
         default=None,
-        description="Asset ID of the first offer whose policy is expected.",
+        description="Asset ID of the first offer in the catalog.",
     )
     catalog_policy: Any | None = Field(
         default=None,
-        description="The accepted ODRL policy of that offer.",
+        description="The ODRL policy that offer is made under.",
     )
 
 
@@ -168,8 +171,11 @@ class CatalogOfferOutput(CatalogOutput):
 class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOfferOutput]):
     """Query the catalog filtered by a specific asset ID.
 
-    Returns the first offer matching ``expected_policies`` as ``catalog_asset_id`` /
-    ``catalog_policy`` for the negotiation step that follows.
+    Returns the catalog's first offer as ``catalog_asset_id`` / ``catalog_policy``
+    for the negotiation step that follows.  Which policy that offer carries is
+    reported, not judged: a step that asserts on the policy reads it from the
+    output, and a step that must *only* accept certain policies is
+    ``pull_data_filtered_by_policy``.
     """
 
     params_model = QueryCatalogByAssetIdParams
@@ -182,16 +188,18 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOff
         definition: StepDefinition,
     ) -> StepOutput[CatalogOfferOutput]:
         consumer = context.dataspace.consumer()
+        party = params.counter_party(context)
         result = await sdk_call.run(
             consumer.get_catalog_by_asset_id,
-            counter_party_id=params.counter_party_id,
-            counter_party_address=params.counter_party_address,
+            counter_party_id=party.identity,
+            counter_party_address=party.address,
             asset_id=params.asset_id,
+            **params.sdk_protocol(),
         )
         url = context.dataspace.consumer_endpoint_url("catalogs", "request")
 
         value = CatalogOfferOutput(catalog=result, datasets=as_dataset_list(result))
-        offer = _select_offer(result, params.expected_policies)
+        offer = _first_offer(result)
         if offer is not None:
             value.catalog_asset_id, value.catalog_policy = offer
 
@@ -202,14 +210,18 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOff
         )
 
 
-def _select_offer(catalog: Any, expected_policies: list[dict]) -> tuple[Any, Any] | None:
-    """Pick the first offer matching ``expected_policies``, or nothing."""
+def _first_offer(catalog: Any) -> tuple[Any, Any] | None:
+    """Pick the catalog's first offer and the policy it is made under, or nothing.
+
+    ``allowed_policies=None`` is the SDK's "accept any policy"; ``[]`` is its
+    "accept none", and passing the latter is how this step used to select
+    nothing at all whenever a script named no policies — the empty default of a
+    filter that has now been removed.
+    """
     if not catalog:
         return None
     try:
-        matches = DspTools.filter_assets_and_policies(
-            catalog=catalog, allowed_policies=expected_policies
-        )
+        matches = DspTools.filter_assets_and_policies(catalog=catalog, allowed_policies=None)
     except (KeyError, TypeError, ValueError, IndexError):
         return None
     if not matches:
@@ -239,7 +251,14 @@ class QueryCatalogByBpnlParams(StepParams):
 
 @step("connector/consumer/query_catalog_by_bpnl")
 class QueryCatalogByBpnlStep(BaseStep[QueryCatalogByBpnlParams, CatalogOutput]):
-    """Query the catalog using BPNL-based connector discovery."""
+    """Query the catalog using BPNL-based connector discovery.
+
+    Alone among the catalog steps this takes no ``protocol``: discovery is what
+    answers with one, so a protocol given here would be an assumption competing
+    with the connector's own answer.  Pin it by discovering explicitly with
+    ``connector/consumer/discover_connector`` and passing the endpoint it
+    resolves to ``query_catalog``.
+    """
 
     params_model = QueryCatalogByBpnlParams
     output_model = CatalogOutput

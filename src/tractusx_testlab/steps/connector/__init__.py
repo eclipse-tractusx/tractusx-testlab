@@ -29,6 +29,7 @@ import tractusx_testlab.steps.connector.catalog_filter
 import tractusx_testlab.steps.connector.catalog_query
 import tractusx_testlab.steps.connector.cleanup
 import tractusx_testlab.steps.connector.dataplane
+import tractusx_testlab.steps.connector.discover_connector
 import tractusx_testlab.steps.connector.do_dsp
 import tractusx_testlab.steps.connector.extract
 import tractusx_testlab.steps.connector.negotiate

@@ -125,6 +125,12 @@ class Assertion(BaseModel):
     model_config = _STRICT
 
     uses: str
+    #: What this check is for, in the author's words. Optional, and purely for
+    #: the reader of a run: a report that lists ``validate/assert`` four times
+    #: under one step says nothing about which requirement each one covers,
+    #: which is exactly what a certification result has to say. Nothing in the
+    #: engine reads it — the check itself is entirely in ``uses`` and ``with``.
+    name: str | None = None
     with_: dict[str, Any] | None = Field(default=None, alias="with")
 
 

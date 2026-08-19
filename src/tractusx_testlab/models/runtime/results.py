@@ -39,6 +39,15 @@ from tractusx_testlab.models.primitives.enums import (
     StepStatus,
 )
 
+#: Marks a ``StepResult.error`` whose failure came from TestLab, not from the SUT.
+#:
+#: There is no ``StepStatus.ERROR`` yet — adding one changes the event payload
+#: the IDE consumes, so it lands in P4 with the rest of that contract. Until
+#: then the distinction is carried in the message, which is at least visible in
+#: the report instead of being lost entirely, and the trace turns it back into a
+#: structured ``origin`` on the step's error (ADR-0016).
+ENGINE_FAULT_PREFIX = "[engine fault] "
+
 
 class HttpRequest(BaseModel):
     """Captured HTTP request details for a step execution."""
@@ -46,6 +55,10 @@ class HttpRequest(BaseModel):
     method: str
     url: str
     headers: dict | None = None
+    #: Query parameters passed alongside the URL rather than inside it. Recorded
+    #: separately because that is how they were sent: folding them into ``url``
+    #: would report a request nobody wrote.
+    params: dict | None = None
     body: Any | None = None
 
 
@@ -56,6 +69,33 @@ class HttpResponse(BaseModel):
     headers: dict | None = None
     body: Any | None = None
     duration_ms: float = 0.0
+
+
+class HttpExchange(BaseModel):
+    """One request a step sent and the answer it got.
+
+    A step is not one call. ``connector/consumer/pull_data_filtered`` runs a
+    catalog query, a negotiation, a poll loop and a transfer before it returns
+    anything, and when the SUT answers 403 to the first of them the only trace
+    used to be the exception text. Every call the step makes is recorded here,
+    in order, so the run can be debugged from the trace instead of re-run with
+    a packet capture attached.
+
+    ``failed`` marks the exchange whose transport raised — a refused
+    connection, a timeout, a TLS failure. Those have a request and no response,
+    which is exactly the case worth seeing.
+    """
+
+    request: HttpRequest
+    response: HttpResponse | None = None
+    error: str | None = None
+    #: Who made the call: the SDK method for a call the SDK made on the engine's
+    #: behalf (``CatalogController.get_catalog``), and ``testlab/http_client``
+    #: for one the engine made itself. A step is several calls through two
+    #: transports, and "which layer sent this" is the first question asked of a
+    #: failing one.
+    context: str | None = None
+    started_at: datetime | None = None
 
 
 class AssertionResult(BaseModel):
@@ -79,9 +119,31 @@ class StepResult(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     duration_s: float | None = None
+    #: What the step was actually given — its ``with:`` block after every
+    #: ``${{ ... }}`` reference was resolved. Recorded because a step that failed
+    #: on the value a reference resolved to cannot be debugged from the script,
+    #: which only says which reference it wrote.
+    inputs: dict | None = None
+    #: The exchange the step is *about* — what a script asserts on and what the
+    #: console prints. Set by the step itself; when the step did not name one,
+    #: the runner fills it from the last recorded exchange so a step that raised
+    #: before returning still reports what it sent.
     request: HttpRequest | None = None
     response: HttpResponse | None = None
+    #: Every call the step made, in order. Written to the execution trace, not
+    #: to the console: the console prints the subject exchange, the trace keeps
+    #: the whole conversation (ADR-0016).
+    exchanges: list[HttpExchange] = Field(default_factory=list)
     error: str | None = None
+    #: What kind of failure this was, when the error named itself — the trace
+    #: publishes it as ``errors[].code`` (ADR-0016). ``None`` leaves the code to
+    #: be classified by origin alone: a verdict about the SUT, or an engine bug.
+    error_code: str | None = None
+    #: The evidence behind the message: the offers a policy was compared
+    #: against, the states a poll loop saw. Published as ``errors[].context``,
+    #: so the IDE renders the comparison instead of parsing it back out of a
+    #: sentence.
+    error_context: dict | None = None
     error_traceback: str | None = None
     output: Any | None = None
     assertions: list[AssertionResult] = Field(default_factory=list)

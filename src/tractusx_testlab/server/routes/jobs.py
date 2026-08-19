@@ -149,7 +149,7 @@ async def delete_package(package_id: str, storage: StorageDep) -> None:
     "/run/package",
     status_code=202,
     responses={
-        400: {"description": "Missing 'package_id' or 'path' in request body"},
+        400: {"description": "Missing 'package_id'/'path', or 'path' is not a .tck"},
         404: {"description": "Package or file not found"},
     },
 )
@@ -158,10 +158,12 @@ async def run_test(
     player: PlayerDep,
     storage: StorageDep,
 ) -> JSONResponse:
-    """Execute a TCK from an uploaded package or a YAML path.
+    """Execute a TCK from an uploaded package or a path to one.
 
     Body: ``{"package_id": "...", "runtime_vars": {...}}``
     or    ``{"path": "...", "runtime_vars": {...}}``
+
+    Both name a compiled ``.tck``; ``path`` used to take an uncompiled manifest.
     """
     body = await request.json()
 
@@ -181,6 +183,14 @@ async def run_test(
         target = Path(path)
         if not target.exists():
             raise HTTPException(404, f"File not found: {path}")
+        # Caught here, not in the background task: the caller is told, rather
+        # than getting a 202 for a job that dies into a log line.
+        if target.suffix != ".tck":
+            raise HTTPException(
+                400,
+                f"'{target.name}' is not a compiled package — run "
+                f"`testlab compile` and submit the .tck.",
+            )
 
     job = player.jobs.create(target.stem)
     task = asyncio.create_task(_execute_in_background(player, target, runtime_vars))

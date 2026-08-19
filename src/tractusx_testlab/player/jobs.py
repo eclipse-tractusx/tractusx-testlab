@@ -43,10 +43,18 @@ class JobManager:
         self._jobs: dict[str, Job] = {}
         self._pause_events: dict[str, asyncio.Event] = {}
 
-    def create(self, tck_id: str, package_name: str | None = None) -> Job:
-        """Create a new job in QUEUED state."""
+    def create(
+        self, tck_id: str, package_name: str | None = None, job_id: str | None = None
+    ) -> Job:
+        """Create a new job in QUEUED state.
+
+        *job_id* is accepted so a caller that has already committed to an id can
+        hand it over: the CLI opens the run transcript before it has a TCK to
+        make a job from, and the transcript, the trace and the job all naming
+        the same run is the point of the id.
+        """
         job = Job(
-            job_id=uuid.uuid4().hex,
+            job_id=job_id or uuid.uuid4().hex,
             tck_id=tck_id,
             package_name=package_name,
             status=JobStatus.QUEUED,

@@ -165,7 +165,7 @@ class TestOAuth2ClientCredentialsStep:
 
     @pytest.mark.asyncio
     async def test_a_missing_token_url_fails_before_the_request(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="token_url: Field required"):
+        with pytest.raises(ValueError, match="token_url: required key 'token_url' is missing"):
             await OAuth2ClientCredentialsStep().invoke({}, context, _definition())
 
     @pytest.mark.asyncio

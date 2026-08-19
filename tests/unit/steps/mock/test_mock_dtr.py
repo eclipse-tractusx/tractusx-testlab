@@ -33,11 +33,17 @@ import pytest
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.server.mock_registry import clear_mocks, resolve_mock
+from tractusx_testlab.steps.digital_twin_registry.consumer import ShellLookupParams
 from tractusx_testlab.steps.mock.dtr import MockDtrStep
 
 
 def _b64url(text: str) -> str:
     return base64.urlsafe_b64encode(text.encode("utf-8")).decode("ascii").rstrip("=")
+
+
+def _criteria(*entries: dict) -> list[str]:
+    """The criteria as ``GET /lookup/shells`` takes them: one value per criterion."""
+    return [_b64url(json.dumps(entry)) for entry in entries]
 
 
 @pytest.fixture(autouse=True)
@@ -65,7 +71,7 @@ _SHELL = {
 class TestMockDtrStep:
     @pytest.mark.asyncio
     async def test_requires_id(self, context: StepContext) -> None:
-        with pytest.raises(ValueError, match="id: Field required"):
+        with pytest.raises(ValueError, match="id: required key 'id' is missing"):
             await MockDtrStep().invoke({}, context, _definition())
 
     @pytest.mark.asyncio
@@ -134,12 +140,11 @@ class TestMockDtrStep:
     @pytest.mark.asyncio
     async def test_lookup_by_specific_asset_ids_matches(self, context: StepContext) -> None:
         await MockDtrStep().invoke({"id": "dtr1", "shells": [_SHELL]}, context, _definition())
-        encoded = _b64url(json.dumps([{"name": "partInstanceId", "value": "P-1"}]))
         mock = resolve_mock(
             "/lookup/shells",
             "GET",
             headers={},
-            query_params={"assetIds": encoded},
+            query_params={"assetIds": _criteria({"name": "partInstanceId", "value": "P-1"})},
             body=None,
         )
         assert mock.status_code == 200
@@ -148,12 +153,75 @@ class TestMockDtrStep:
     @pytest.mark.asyncio
     async def test_lookup_no_match_returns_empty(self, context: StepContext) -> None:
         await MockDtrStep().invoke({"id": "dtr1", "shells": [_SHELL]}, context, _definition())
-        encoded = _b64url(json.dumps([{"name": "partInstanceId", "value": "does-not-exist"}]))
         mock = resolve_mock(
             "/lookup/shells",
             "GET",
             headers={},
-            query_params={"assetIds": encoded},
+            query_params={
+                "assetIds": _criteria({"name": "partInstanceId", "value": "does-not-exist"})
+            },
             body=None,
         )
         assert mock.body["result"] == []
+
+    @pytest.mark.asyncio
+    async def test_every_repeated_criterion_has_to_match(self, context: StepContext) -> None:
+        """Several criteria travel as several ``assetIds`` values, and all of them count."""
+        await MockDtrStep().invoke({"id": "dtr1", "shells": [_SHELL]}, context, _definition())
+        both = _criteria(
+            {"name": "partInstanceId", "value": "P-1"},
+            {"name": "digitalTwinType", "value": "PartInstance"},
+        )
+        mock = resolve_mock(
+            "/lookup/shells", "GET", headers={}, query_params={"assetIds": both}, body=None
+        )
+        # The shell carries the first criterion and not the second, so it is not
+        # a match — a registry that saw only the last value would have said it was.
+        assert mock.body["result"] == []
+
+    @pytest.mark.asyncio
+    async def test_the_encoding_the_consumer_step_sends_is_the_one_the_mock_reads(
+        self, context: StepContext
+    ) -> None:
+        """The seam this mock exists to serve: the engine's own lookup step.
+
+        The two sides were tested only against themselves and disagreed —
+        ``lookup_shell`` sends one base64url-encoded object per criterion (AAS
+        v3), the mock read one value holding the whole list — so the mock raised
+        ``AttributeError`` on a request the engine actually makes.
+        """
+        await MockDtrStep().invoke({"id": "dtr1", "shells": [_SHELL]}, context, _definition())
+        params = ShellLookupParams.model_validate(
+            {
+                "dataplane_url": "https://dataplane.example",
+                "edr_token": "token",
+                "specific_asset_ids": [{"name": "partInstanceId", "value": "P-1"}],
+            }
+        )
+        # Exactly what the step hands the HTTP client as its query.
+        mock = resolve_mock(
+            "/lookup/shells",
+            "GET",
+            headers={},
+            query_params={"assetIds": params.asset_id_query()},
+            body=None,
+        )
+        assert mock.status_code == 200
+        assert mock.body["result"] == [_SHELL["id"]]
+
+    @pytest.mark.asyncio
+    async def test_a_value_holding_the_whole_list_is_refused_by_name(
+        self, context: StepContext
+    ) -> None:
+        """The wrong encoding gets an answer that says which one to use."""
+        await MockDtrStep().invoke({"id": "dtr1", "shells": [_SHELL]}, context, _definition())
+        whole_list = _b64url(json.dumps([{"name": "partInstanceId", "value": "P-1"}]))
+        mock = resolve_mock(
+            "/lookup/shells",
+            "GET",
+            headers={},
+            query_params={"assetIds": [whole_list]},
+            body=None,
+        )
+        assert mock.status_code == 400
+        assert "one base64url-encoded SpecificAssetId object" in mock.body["error"]

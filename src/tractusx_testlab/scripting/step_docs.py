@@ -290,7 +290,7 @@ def render_catalog(step_types: list[str] | None = None) -> str:
     """
 
     names = sorted(step_types or StepRegistry.list_step_types())
-    step_classes = [cls for cls in (StepRegistry.get(name, "") for name in names) if cls]
+    step_classes = [cls for cls in (StepRegistry.get_any(name) for name in names) if cls]
 
     lines = [
         "# Step reference",

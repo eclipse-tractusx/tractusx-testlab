@@ -40,6 +40,9 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
+from tractusx_sdk.dataspace.tools import trace_call
+
+from tractusx_testlab.logging import wire
 
 
 async def request(
@@ -60,19 +63,37 @@ async def request(
     A client per call rather than a pooled one: a TCK makes tens of requests,
     not thousands, and a shared client would need a lifecycle tied to the run —
     which is a thing to get wrong for a benefit nothing here can measure.
+
+    Every call is recorded into the trace the step is being recorded into —
+    including one that raises, which is the case a trace is read for.
+    ``trace_call`` is the SDK's own instrumentation point, used here so the
+    engine's calls and the SDK's land in one ordered list: it records the
+    request before sending it, completes the entry with the response or with the
+    exception, and does nothing at all outside a step. See
+    :mod:`tractusx_testlab.logging.wire`.
     """
     async with httpx.AsyncClient(follow_redirects=follow_redirects) as client:
-        return await client.request(
+        with trace_call(
             method.upper(),
-            url,
+            str(url),
             headers=headers,
             params=params,
-            json=json,
-            data=data,
-            content=content,
-            auth=auth,
-            timeout=timeout,
-        )
+            body=json if json is not None else data or content,
+            context=wire.ENGINE_CONTEXT,
+        ) as call:
+            response = await client.request(
+                method.upper(),
+                url,
+                headers=headers,
+                params=params,
+                json=json,
+                data=data,
+                content=content,
+                auth=auth,
+                timeout=timeout,
+            )
+            call.set_response(response)
+        return response
 
 
 def body_of(response: httpx.Response) -> Any:

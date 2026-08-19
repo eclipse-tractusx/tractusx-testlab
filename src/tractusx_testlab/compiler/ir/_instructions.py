@@ -148,10 +148,19 @@ def _build_instruction(
 
 
 def _build_validate_block(step: dict[str, Any]) -> list[dict[str, Any]]:
-    """Build the validate array from step's validate block or inline assertion."""
+    """Build the validate array from step's validate block or inline assertion.
+
+    An assertion's optional ``name`` is carried through when the author wrote
+    one. It is what the run report calls the check, and dropping it here would
+    have left every compiled TCK reporting ``validate/assert`` four times over.
+    """
     validate_raw = step.get("validate", [])
     validations: list[dict[str, Any]] = [
-        {"uses": v.get("uses", "validate/assert"), "with": resolve_expression(v.get("with", {}))}
+        {
+            "uses": v.get("uses", "validate/assert"),
+            **({"name": v["name"]} if v.get("name") else {}),
+            "with": resolve_expression(v.get("with", {})),
+        }
         for v in validate_raw
     ]
     # For assert steps, also include the step itself as a validation

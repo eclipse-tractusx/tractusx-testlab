@@ -60,7 +60,15 @@ class TestlabConfig(BaseSettings):
     keys_dir: Path = Field(default=_DEFAULT_BASE / "keys")
     trust_store_dir: Path = Field(default=_DEFAULT_BASE / "trusted_compilers")
     storage_dir: Path = Field(default=_DEFAULT_BASE / "packages")
+    #: Where the console transcript of a run is written — the same lines the
+    #: operator watches go by, kept as text.
     logs_dir: Path = Field(default=_DEFAULT_BASE / "logs")
+    #: Where the CloudEvents execution trace is written (ADR-0016). Separate from
+    #: ``logs_dir`` on purpose: the log is for a person, the trace is the
+    #: machine-readable evidence — every step's outputs, checks, and the full
+    #: request/response of every call it made — and one file cannot serve both
+    #: without the transcript becoming unreadable.
+    data_dir: Path = Field(default=_DEFAULT_BASE / "data")
     server_port: int = Field(default=8100, ge=1, le=65535)
     max_upload_bytes: int = Field(default=52_428_800, gt=0)  # 50 MB
     default_timeout_s: float = Field(default=600.0, gt=0)

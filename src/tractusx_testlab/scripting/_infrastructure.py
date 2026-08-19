@@ -28,10 +28,27 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from pydantic import ValidationError
+
 from tractusx_testlab.models.authoring.infrastructure import (
     CapabilityRequirement,
     InfrastructureConfig,
 )
+from tractusx_testlab.syntax import diagnostics
+
+
+def as_requirements(declared: dict, source: str) -> InfrastructureConfig:
+    """Read one ``infrastructure`` block, naming the file when it does not hold up.
+
+    The findings are rendered for whoever wrote the block — which key, on which
+    line — rather than dumped as Pydantic wrote them. See
+    :mod:`tractusx_testlab.syntax.diagnostics`.
+    """
+    try:
+        return InfrastructureConfig.model_validate(declared)
+    except ValidationError as exc:
+        findings = diagnostics.render(exc, model=InfrastructureConfig, data=declared)
+        raise ValueError(f"Invalid 'infrastructure' block in {source}:\n{findings}") from exc
 
 
 def merge_requirements(configs: Iterable[InfrastructureConfig]) -> InfrastructureConfig:
