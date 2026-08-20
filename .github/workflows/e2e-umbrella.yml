@@ -507,14 +507,35 @@ jobs:
           columns="${columns},STATE:.status.containerStatuses[*].state.*.reason"
           columns="${columns},READY:.status.containerStatuses[*].ready"
           (
+            tick=0
             while true; do
               sleep 30
+              tick=$((tick + 1))
               echo "--- $(date -u +%H:%M:%S) waiting on the release ---"
               # Print only the pods that are not yet fully ready (READY is the
               # last column, one 'true'/'false' per container).
-              kubectl get pods -n "${UMBRELLA_NAMESPACE}" \
+              outstanding="$(kubectl get pods -n "${UMBRELLA_NAMESPACE}" \
                 -o "custom-columns=${columns}" 2>/dev/null \
-                | awk 'NR == 1 || $NF !~ /^(true,)*true$/' || true
+                | awk 'NR == 1 || $NF !~ /^(true,)*true$/')"
+              printf '%s\n' "${outstanding}"
+              # Everything in this release is normally ready inside three
+              # minutes. Past that a pod is stuck rather than starting, and
+              # "what is outstanding" stops being enough — the probe's own
+              # message is what separates the cases. A refused connection is a
+              # runtime that never opened its port; a 503 is one that opened it
+              # and reports itself unhealthy; a 404 is a probe aimed at a path
+              # the runtime does not serve. Without this the only record of a
+              # ten-minute stall is a pod name repeated twenty times.
+              if [ "${tick}" -ge 6 ]; then
+                printf '%s\n' "${outstanding}" | awk 'NR > 1 { print $1 }' \
+                  | while IFS= read -r stuck; do
+                      [ -n "${stuck}" ] || continue
+                      kubectl get events -n "${UMBRELLA_NAMESPACE}" \
+                        --field-selector "involvedObject.name=${stuck},type=Warning" \
+                        -o "custom-columns=POD:.involvedObject.name,REASON:.reason,MESSAGE:.message" \
+                        --no-headers 2>/dev/null | tail -2
+                    done
+              fi
             done
           ) &
           watcher=$!
@@ -727,8 +748,12 @@ jobs:
       # ------------------------------------------------------------------
       # 7. Diagnostics + cleanup
       # ------------------------------------------------------------------
-      - name: Collect cluster diagnostics on failure
-        if: failure()
+      # `failure()` alone is false for a cancelled job, so cancelling a run that
+      # is stuck — the natural thing to do when the deploy is visibly wedged —
+      # threw away the only record of why it was stuck. `cancelled()` keeps the
+      # cluster's state, which is the whole reason this step exists.
+      - name: Collect cluster diagnostics
+        if: ${{ failure() || cancelled() }}
         run: |
           mkdir -p ci-logs
           helm status umbrella -n "${UMBRELLA_NAMESPACE}" > ci-logs/helm-status.txt 2>&1 || true
@@ -763,7 +788,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload cluster diagnostics
-        if: failure()
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: umbrella-diagnostics-${{ github.run_id }}
