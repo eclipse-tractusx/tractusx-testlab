@@ -110,6 +110,25 @@ edc-provider:
           dataSource:
             url: jdbc:postgresql://provider-dtr-postgresql:5432/dtr
           ingress:
+            # The registry is the only component in this release whose ingress
+            # carries a `tls:` section, pointing at a chart-generated self-signed
+            # certificate. ingress-nginx answers plain HTTP on a TLS-bearing host
+            # with a 308 to HTTPS, and that certificate then fails verification —
+            # `curl: (60) SSL certificate problem: self-signed certificate` in the
+            # preflight, and the same failure inside the four `testlab run`
+            # invocations, which all address the DTR over `http://`.
+            #
+            # Turning the redirect off is what makes the DTR behave like every
+            # other ingress here — plain HTTP, on hostnames that only resolve
+            # inside this job, in a cluster that lives for one run. The
+            # alternative, `registry.ingress.tls.enabled: false`, looks tidier
+            # and is a trap: in digital-twin-registry 0.11.0 that branch of
+            # registry-ingress.yaml emits a stray `[]` under `spec:`, which YAML
+            # folds into the line above it, and the ingress comes out with
+            # `ingressClassName: "nginx []"` — silently claimed by no controller
+            # at all.
+            annotations:
+              nginx.ingress.kubernetes.io/ssl-redirect: "false"
             rules:
               - host: provider-dtr.local
                 http:
@@ -195,6 +214,25 @@ edc-consumer:
           dataSource:
             url: jdbc:postgresql://consumer-dtr-postgresql:5432/dtr
           ingress:
+            # The registry is the only component in this release whose ingress
+            # carries a `tls:` section, pointing at a chart-generated self-signed
+            # certificate. ingress-nginx answers plain HTTP on a TLS-bearing host
+            # with a 308 to HTTPS, and that certificate then fails verification —
+            # `curl: (60) SSL certificate problem: self-signed certificate` in the
+            # preflight, and the same failure inside the four `testlab run`
+            # invocations, which all address the DTR over `http://`.
+            #
+            # Turning the redirect off is what makes the DTR behave like every
+            # other ingress here — plain HTTP, on hostnames that only resolve
+            # inside this job, in a cluster that lives for one run. The
+            # alternative, `registry.ingress.tls.enabled: false`, looks tidier
+            # and is a trap: in digital-twin-registry 0.11.0 that branch of
+            # registry-ingress.yaml emits a stray `[]` under `spec:`, which YAML
+            # folds into the line above it, and the ingress comes out with
+            # `ingressClassName: "nginx []"` — silently claimed by no controller
+            # at all.
+            annotations:
+              nginx.ingress.kubernetes.io/ssl-redirect: "false"
             rules:
               - host: consumer-dtr.local
                 http:
