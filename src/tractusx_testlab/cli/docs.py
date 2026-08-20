@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -39,25 +38,30 @@ _DEFAULT_OUTPUT = Path("docs/specification/reference/steps.md")
 
 @app.command("docs")
 def docs(
-    output: Optional[Path] = typer.Option(
-        None, "--output", "-o",
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
         help=f"Write the page to this path (default: {_DEFAULT_OUTPUT}). Use '-' for stdout.",
     ),
-    step: Optional[list[str]] = typer.Option(
-        None, "--step", "-s",
+    step: list[str] | None = typer.Option(
+        None,
+        "--step",
+        "-s",
         help="Document only these step types. Repeatable. Defaults to all registered steps.",
     ),
     as_json: bool = typer.Option(
-        False, "--json",
+        False,
+        "--json",
         help="Emit the raw contracts as JSON Schema instead of Markdown.",
     ),
     check: bool = typer.Option(
-        False, "--check",
+        False,
+        "--check",
         help="Exit non-zero if the file on disk differs from what would be generated.",
     ),
 ) -> None:
     """Generate the step reference from the steps' declared input/output models."""
-    import tractusx_testlab.steps  # noqa: F401  — registers every step
 
     if step:
         _reject_unknown_steps(step)
@@ -85,12 +89,12 @@ def _reject_unknown_steps(step_types: list[str]) -> None:
         raise typer.Exit(1)
 
 
-def _as_json(step_types: Optional[list[str]]) -> str:
+def _as_json(step_types: list[str] | None) -> str:
     """Render every step's contract as a JSON Schema document."""
     names = sorted(step_types or StepRegistry.list_step_types())
     contracts = []
     for name in names:
-        step_cls = StepRegistry.get(name, "")
+        step_cls = StepRegistry.get_any(name)
         if step_cls is not None:
             contracts.append(step_cls.describe().model_dump(exclude_none=True))
     return json.dumps(contracts, indent=2) + "\n"

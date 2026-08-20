@@ -249,7 +249,7 @@ env:
                     operator: eq
                     right_operand: "DataExchangeGovernance:1.0"
       returns:
-        policy:
+        value:
           type: object
           class: Policy
 ```
@@ -262,9 +262,10 @@ env:
 | `with` | R | Configuration for the definition. |
 | `with.source` | R | `input` \| `generated` \| `value`. See below. |
 | `with.value` | O | Present when `source: value`. The literal payload. |
-| `returns` | R | Declares the outputs of this variable type. Key names are **fixed per definition type** (e.g. `value` for `variable/type/*`, `policy` for `config/connector/policy`). |
-| `returns.<key>.type` | R | `string` \| `object` \| `number` \| `array` \| `bool`. |
-| `returns.<key>.class` | O | Semantic type (e.g. `Policy`, `AuthToken`, `DataplaneUrl`). |
+| `returns` | R | Declares what the variable publishes. **Always the single key `value`**, whatever the type — so the whole variable is `${{ env.<id> }}` and there is no artifact noun to look up. Its `type` and `class` are the verb's own and are checked against it. |
+| `returns.value.type` | R | The type the `uses` verb publishes — see the table below. Declaring another one is an error. |
+| `returns.value.class` | O/R | The semantic type the verb publishes (`Policy`, `Asset`). Required for the verbs that name one, rejected for the verbs that do not. |
+| `returns.value.format` | O | The shape an operator-supplied value must have (`bpn`, `uuid`). The author's note; no verb knows it. |
 
 **`with.source` semantics [SPEC]:**
 
@@ -276,14 +277,21 @@ env:
 
 **Variable definition types [OBS/PROP]** — `v1-alpha` baseline:
 
-| `uses` | Purpose | `returns` keys |
+Every verb publishes one value under `value`; what differs is its type and, for
+the domain objects, its class. The compiler checks the declaration against the
+verb, so a `returns:` that disagrees with its `uses:` is refused rather than
+believed.
+
+| `uses` | Purpose | `returns.value` |
 |---|---|---|
-| `variable/type/string` | Scalar string variable | `value` |
-| `variable/type/number` **[PROP]** | Scalar number | `value` |
-| `variable/type/bool` **[PROP]** | Boolean | `value` |
-| `variable/type/object` **[PROP]** | Structured object | `value` |
-| `config/connector/policy` | An ODRL policy used for provisioning/catalog/negotiation | `policy` |
-| `config/connector/asset` | An asset definition used for provisioning | `asset` |
+| `variable/type/string` | A text value | `type: string` |
+| `variable/type/integer` | A whole number | `type: integer` |
+| `variable/type/number` | A decimal number | `type: number` |
+| `variable/type/boolean` | True or false | `type: boolean` |
+| `variable/type/object` | A structured document | `type: object` |
+| `variable/type/array` | A list of values | `type: array` |
+| `config/connector/policy` | An ODRL policy used for provisioning/catalog/negotiation | `type: object`, `class: Policy` |
+| `config/connector/asset` | An asset definition used for provisioning | `type: object`, `class: Asset` |
 
 Policies and assets are **never inlined in a step**. Each is declared once here and passed to every
 step that needs it as a single input — `policy` on the consumer side
@@ -305,7 +313,7 @@ env:
               "@id": "https://w3id.org/catenax/taxonomy#CCMAPI"
             cx-common:version: "3.0"
       returns:
-        asset:
+        value:
           type: object
           class: Asset
 
@@ -313,12 +321,12 @@ env:
 - id: create_asset
   uses: connector/provider/create_asset
   with:
-    asset: "${{ env.ccm_api_asset.asset }}"
+    asset: "${{ env.ccm_api_asset }}"
 
 - id: create_policy
   uses: connector/provider/create_policy
   with:
-    policy: "${{ env.ccm_usage_policy.policy }}"
+    policy: "${{ env.ccm_usage_policy }}"
 ```
 
 #### 3.5.2 `env.schemas` **[SPEC]**
@@ -366,12 +374,16 @@ tests:
     name: Validate CX-0135 catalog policy constraints
   - id: request_certificate.yaml
     name: Request a certificate via CCMAPI
+    skippable: true          # the standard makes this one a MAY
 ```
 
 | Field | R/O | Notes |
 |---|---|---|
-| `id` | R | **Name of the test file** in `/tests`. |
-| `name` | R | Short name of the test, shown in the Preview and Mission Control views. |
+| `id` | R | **Name of the test file** in `/tests`. Must match `^[a-zA-Z0-9_\-.]+\.yaml$`. |
+| `name` | O | Short name of the test, shown in the Preview and Mission Control views. |
+| `skippable` | O | Whether the operator may omit this test at run time. Defaults to `false`. |
+
+No other key is accepted here — an entry with anything else fails validation.
 
 **Execution semantics [SPEC]:**
 
@@ -380,6 +392,24 @@ tests:
   what lets a Service Provider see all non-conformities in a single run.
 - Consequence: a test must never consume another test's `returns`. Anything shared belongs in `env`.
 - The user may explicitly skip failed tests in the Mission Control view (emits `tck.test.skipped`).
+
+**`skippable` [SPEC]:**
+
+Only the TCK author decides what may be omitted, and the entry is where they say
+it. Mark a test `skippable: true` when the standard it covers makes the
+behaviour a MAY or the deployment an option; leave it out when the test is
+normative. The flag then travels the whole way:
+
+- `testlab inspect` reports it per test, so a runner can offer the choice.
+- The compiled package carries it in its `tests:` section — a consumer reads it
+  without the sources.
+- At run time the operator names files in the `skip_tests` variable. The player
+  refuses the **entire run** if any named test is unknown or not `skippable`,
+  so a mandatory test cannot be skipped by accident or on purpose.
+
+Skipped tests are reported as `SKIPPED` and do not count as passes.
+See [Executing tests](../walkthrough/executing-tests.md#step-3--skip-optional-tests)
+for the operator side.
 
 ---
 
@@ -476,6 +506,7 @@ execution:
         # …
     validate:
       - uses: <validation-function-key>
+        name: <what this check is for>        # optional
         with:
           input: <a variable which was returned and needs to be validated>
           # … more params, depending on the validation function
@@ -492,6 +523,7 @@ execution:
 | `returns.<key>.class` | O | Semantic type for the return (e.g. `AuthToken`, `DataplaneUrl`, `StatusCode`, `ResponseBody`, `Policy`). |
 | `validate` | R in `execution` | Array of validations. Same syntax as a step, **but with no return**. |
 | `validate[].uses` | R | Validation function key. |
+| `validate[].name` | O | What this check is for, in the author's words. Nothing in the engine reads it; the run report calls the check by it, so a step carrying four `validate/assert` entries says which requirement each one covers. Falls back to `uses` when absent. |
 | `validate[].with` | R | Inputs depend on the selected validation function; they validate the step's `returns` variables. |
 | `cac` | O **[PROP]** | CAC identifiers this step/validation verifies. See §9.1. |
 | `if` | O **[PROP]** | Expression guarding execution of the step or validation. See §9.2. |
@@ -503,20 +535,18 @@ Values are interpolated with `${{ … }}`.
 
 | Form | Resolves to | Example |
 |---|---|---|
-| `${{ env.<var-id>.<return-key> }}` | A manifest variable's output | `${{ env.sut_connector.counter_party_address }}` |
-| `${{ env.<var-id>.policy }}` | A policy variable | `${{ env.ccm_usage_policy.policy }}` |
+| `${{ env.<var-id> }}` | A manifest variable's value, whatever its type | `${{ env.ccm_usage_policy }}` |
 | `${{ env.schemas.<schema-id> }}` | A declared JSON Schema | `${{ env.schemas.certificate_schema }}` |
 | `${{ testdata.<testdata-id> }}` | A declared test data file's content | `${{ testdata.send_feedback_body }}` |
 | `${{ execution.<step-id>.<return-key> }}` | A prior step's declared return | `${{ execution.pull_notification_endpoint.edr_token }}` |
 | `${{ setup.<step-id>.<return-key> }}` **[PROP]** | A setup step's return | `${{ setup.create_asset.asset_id }}` |
 
-> ⚠️ **Second known inconsistency.** Slide 20 declares the input variables as `sut_counter_party_id` and
-> `sut_counter_party_address` (each with a `value` return key), but slide 29 references them as
-> `${{ env.sut_connector.counter_party_address }}` — i.e. a single `sut_connector` variable with
-> `counter_party_*` return keys. **This document treats slide 20 as normative**: a variable is referenced as
-> `env.<variable-id>.<return-key>`, so the correct form is `${{ env.sut_counter_party_address.value }}`.
-> Alternatively, ratify a compound `variable/type/connector` definition returning `counter_party_id` and
-> `counter_party_address` — which is arguably the better modelling. **Decide before freezing `v1-alpha`.**
+> **Resolved.** Slide 29 referenced a compound `sut_connector` variable with `counter_party_*` return keys,
+> while slide 20 declared one variable per value. One value per variable is normative, and a variable is
+> referenced by its id alone — `${{ env.sut_counter_party_address }}`. A variable that published several
+> named artifacts was the reason a reference had to name one, and the reason the same value had two
+> spellings; there is now nothing to name. Counter-party address and id are not variables at all: they come
+> from the SUT's infrastructure binding (§ `infrastructure`).
 
 Rules **[PROP]**:
 
@@ -610,6 +640,7 @@ log (§8).
 ```yaml
 validate:
   - uses: validate/assert
+    name: "an EDR token is issued for the offer"      # optional, report-only
     with: { input: edr_token, operator: not_null }
 
   - uses: validate/field
@@ -837,7 +868,7 @@ env:
                     operator: eq
                     right_operand: "DataExchangeGovernance:1.0"
       returns:
-        policy:
+        value:
           type: object
           class: Policy
 
@@ -889,9 +920,9 @@ execution:
     uses: connector/consumer/pull_data_filtered
     name: Find CCMAPI endpoint and obtain dataplane credentials
     with:
-      counter_party_address: "${{ env.sut_counter_party_address.value }}"
-      counter_party_id: "${{ env.sut_counter_party_id.value }}"
-      policy: "${{ env.ccm_usage_policy.policy }}"
+      counter_party_address: "${{ env.sut_counter_party_address }}"
+      counter_party_id: "${{ env.sut_counter_party_id }}"
+      policy: "${{ env.ccm_usage_policy }}"
       filters:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/type"
           operator: "="

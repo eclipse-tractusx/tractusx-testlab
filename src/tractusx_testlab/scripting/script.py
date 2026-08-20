@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -38,12 +38,14 @@ from tractusx_testlab.models.runtime.inspection import TckInspectionResult
 from tractusx_testlab.scripting._infrastructure import collect_infrastructure_requirements
 from tractusx_testlab.scripting._inspection import build_inspection_result
 from tractusx_testlab.scripting._variable_form import parse_variables_block
+from tractusx_testlab.syntax import defaults
+
 
 class TestScript:
     """Runtime wrapper for a single script definition."""
 
     __test__ = False  # Prevent pytest from collecting this class
-    __slots__ = ("definition", "_skippable", "_test_id")
+    __slots__ = ("_skippable", "_test_id", "definition")
 
     def __init__(
         self,
@@ -74,8 +76,14 @@ class TestScript:
 
     @property
     def dataspace_version(self) -> str:
-        """Target dataspace version — resolved from the script definition (default: 'saturn')."""
-        return self.definition.dataspace_version
+        """The ecosystem release this script runs against.
+
+        Read from the ``dataspace:`` block, which is the only place it is
+        stated; the flat field of the same name is gone. Used to pick a
+        version-specific step implementation from the registry.
+        """
+        dataspace = self.definition.dataspace
+        return dataspace.version if dataspace is not None else defaults.DATASPACE_VERSION
 
     @property
     def steps(self):
@@ -92,29 +100,19 @@ class TestScript:
         """List of teardown step definitions."""
         return self.definition.teardown
 
-    @property
-    def services(self):
-        """Service declarations (resolved from TCK env)."""
-        return []
-
-    @property
-    def variables(self):
-        """Variable declarations (resolved from TCK env)."""
-        return {}
-
-    @property
-    def depends_on(self) -> list[str]:
-        """Dependency list — not used in v1-alpha scripts."""
-        return []
-
-    @property
-    def outputs(self) -> dict[str, str]:
-        """Declared output variable mappings — not used in v1-alpha scripts."""
-        return {}
-
     def step_count(self) -> int:
-        """Return the number of main execution steps."""
-        return len(self.definition.execution)
+        """Return how many steps this script runs, across all three phases.
+
+        Setup and teardown are steps: they invoke the same catalog, publish
+        under the same rules and can fail the script. Counting only
+        ``execution`` made ``testlab run`` announce "Steps: 2" for a run that
+        went on to execute five, and gave the progress bar a total it passed.
+        """
+        return (
+            len(self.definition.setup)
+            + len(self.definition.execution)
+            + len(self.definition.teardown)
+        )
 
     @property
     def definition_version(self) -> str:
@@ -125,7 +123,7 @@ class TestScript:
 class Tck:
     """Runtime wrapper for a TCK definition."""
 
-    __slots__ = ("definition", "_scripts", "base_dir")
+    __slots__ = ("_scripts", "base_dir", "definition")
 
     def __init__(self, definition: TckDefinition, base_dir: Path | None = None):
         """Initialize with a TCK definition and optional base directory."""
@@ -183,7 +181,7 @@ class Tck:
             if var.runtime and var.default is None
         }
 
-    def inspect(self) -> "TckInspectionResult":
+    def inspect(self) -> TckInspectionResult:
         """Extract static metadata from this TCK without executing any steps.
 
         Returns general metadata (name, total steps, total validations) and
@@ -217,13 +215,16 @@ class Tck:
 
     @classmethod
     def from_single_script(
-        cls, script_def: ScriptDefinition, base_dir: Path | None = None,
-    ) -> "Tck":
+        cls,
+        script_def: ScriptDefinition,
+        base_dir: Path | None = None,
+    ) -> Tck:
         """Wrap a single ScriptDefinition in a minimal TckDefinition and return a Tck."""
         from tractusx_testlab.models.authoring.definitions import (
             TckDefinition,
             TckMetadataDefinition,
         )
+
         tck_def = TckDefinition(
             kind="tck",
             syntax="v1-alpha",

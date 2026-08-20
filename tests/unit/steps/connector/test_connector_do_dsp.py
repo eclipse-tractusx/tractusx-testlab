@@ -32,6 +32,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from tests.conftest import attach_endpoint_url_stubs
+from tractusx_testlab.models import StepExecutionError
 from tractusx_testlab.steps.connector.do_dsp import (
     DTR_DCT_TYPE,
     DiscoverDtrAuthStep,
@@ -59,8 +60,9 @@ def ctx() -> MagicMock:
 
     mock.set_variable = MagicMock(side_effect=_set)
     mock.get_variable = MagicMock(side_effect=_get)
+    mock.get_str = MagicMock(side_effect=lambda n, d="": str(_get(n, d) or d))
     mock.variables = variables
-    mock.get_consumer_base_url.return_value = _BASE_URL
+    mock.dataspace.consumer_base_url.return_value = _BASE_URL
     return attach_endpoint_url_stubs(mock)
 
 
@@ -73,11 +75,13 @@ class TestDoDspStep:
     """Tests for DoDspStep — full DSP flow via SDK consumer.do_dsp()."""
 
     @pytest.mark.asyncio
-    async def test_stores_endpoint_and_token_in_context(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_stores_endpoint_and_token_in_context(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         # Arrange
         consumer = MagicMock()
         consumer.do_dsp.return_value = (_ENDPOINT, _TOKEN)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
 
         # Act
         await DoDspStep().invoke(
@@ -94,11 +98,13 @@ class TestDoDspStep:
         assert ctx.variables[EDR_TOKEN] == _TOKEN
 
     @pytest.mark.asyncio
-    async def test_output_value_contains_endpoint_and_token(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_output_value_contains_endpoint_and_token(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         # Arrange
         consumer = MagicMock()
         consumer.do_dsp.return_value = (_ENDPOINT, _TOKEN)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
 
         # Act
         output = await DoDspStep().invoke(
@@ -117,7 +123,7 @@ class TestDoDspStep:
     async def test_status_200_on_success(self, ctx: MagicMock, definition: MagicMock) -> None:
         consumer = MagicMock()
         consumer.do_dsp.return_value = (_ENDPOINT, _TOKEN)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
 
         output = await DoDspStep().invoke(
             raw_params={
@@ -131,28 +137,37 @@ class TestDoDspStep:
         assert output.response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_status_500_when_endpoint_is_none(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_a_flow_without_an_endpoint_fails_the_step(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
+        """A DSP flow that produced no endpoint fails, rather than reporting a 500.
+
+        The status was invented — the counterpart never sent one — and the
+        runner recorded the step as PASSED, because a step fails only on a
+        raise or a hard assertion.
+        """
         consumer = MagicMock()
         consumer.do_dsp.return_value = (None, None)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
 
-        output = await DoDspStep().invoke(
-            raw_params={
-                "counter_party_id": "BPNL000000000001",
-                "counter_party_address": "https://provider.example.com/dsp",
-            },
-            context=ctx,
-            definition=definition,
-        )
-
-        assert output.response.status_code == 500
+        with pytest.raises(StepExecutionError, match="endpoint"):
+            await DoDspStep().invoke(
+                raw_params={
+                    "counter_party_id": "BPNL000000000001",
+                    "counter_party_address": "https://provider.example.com/dsp",
+                },
+                context=ctx,
+                definition=definition,
+            )
 
     @pytest.mark.asyncio
-    async def test_passes_filter_expression_and_policies_to_sdk(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_passes_filter_expression_and_policies_to_sdk(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         # Arrange
         consumer = MagicMock()
         consumer.do_dsp.return_value = (_ENDPOINT, _TOKEN)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
         filter_expr = [{"operand_left": "edc:id", "operator": "=", "operand_right": "asset-1"}]
         sdk_filter_expr = [{"operandLeft": "edc:id", "operator": "=", "operandRight": "asset-1"}]
         policies = [{"@id": "policy-1"}]
@@ -178,19 +193,22 @@ class TestDoDspStep:
         )
 
     @pytest.mark.asyncio
-    async def test_does_not_store_none_endpoint_in_context(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_does_not_store_none_endpoint_in_context(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp.return_value = (None, None)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
 
-        await DoDspStep().invoke(
-            raw_params={
-                "counter_party_id": "BPNL000000000001",
-                "counter_party_address": "https://provider.example.com/dsp",
-            },
-            context=ctx,
-            definition=definition,
-        )
+        with pytest.raises(StepExecutionError):
+            await DoDspStep().invoke(
+                raw_params={
+                    "counter_party_id": "BPNL000000000001",
+                    "counter_party_address": "https://provider.example.com/dsp",
+                },
+                context=ctx,
+                definition=definition,
+            )
 
         assert DATAPLANE_URL not in ctx.variables
         assert EDR_TOKEN not in ctx.variables
@@ -200,10 +218,12 @@ class TestDoDspWithBpnlStep:
     """Tests for DoDspWithBpnlStep — BPNL-based DSP flow via SDK consumer.do_dsp_with_bpnl()."""
 
     @pytest.mark.asyncio
-    async def test_stores_endpoint_and_token_in_context(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_stores_endpoint_and_token_in_context(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp_with_bpnl.return_value = (_ENDPOINT, _TOKEN)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
 
         output = await DoDspWithBpnlStep().invoke(
             raw_params={"bpnl": "BPNL000000000001"},
@@ -217,10 +237,12 @@ class TestDoDspWithBpnlStep:
         assert output.response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_passes_bpnl_and_optional_params_to_sdk(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_passes_bpnl_and_optional_params_to_sdk(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp_with_bpnl.return_value = (_ENDPOINT, _TOKEN)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
         filter_expr = [{"operand_left": "edc:id", "operator": "=", "operand_right": "asset-2"}]
         sdk_filter_expr = [{"operandLeft": "edc:id", "operator": "=", "operandRight": "asset-2"}]
 
@@ -243,28 +265,37 @@ class TestDoDspWithBpnlStep:
         )
 
     @pytest.mark.asyncio
-    async def test_status_500_when_endpoint_is_none(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_a_flow_without_an_endpoint_fails_the_step(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
+        """A DSP flow that produced no endpoint fails, rather than reporting a 500.
+
+        The status was invented — the counterpart never sent one — and the
+        runner recorded the step as PASSED, because a step fails only on a
+        raise or a hard assertion.
+        """
         consumer = MagicMock()
         consumer.do_dsp_with_bpnl.return_value = (None, None)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
 
-        output = await DoDspWithBpnlStep().invoke(
-            raw_params={"bpnl": "BPNL000000000001"},
-            context=ctx,
-            definition=definition,
-        )
-
-        assert output.response.status_code == 500
+        with pytest.raises(StepExecutionError, match="endpoint"):
+            await DoDspWithBpnlStep().invoke(
+                raw_params={"bpnl": "BPNL000000000001"},
+                context=ctx,
+                definition=definition,
+            )
 
 
 class TestDiscoverDtrAuthStep:
     """Tests for DiscoverDtrAuthStep — DTR access via SDK consumer.do_dsp_by_dct_type()."""
 
     @pytest.mark.asyncio
-    async def test_stores_endpoint_and_token_in_context(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_stores_endpoint_and_token_in_context(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp_by_dct_type.return_value = (_ENDPOINT, _TOKEN)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
 
         output = await DiscoverDtrAuthStep().invoke(
             raw_params={
@@ -281,10 +312,12 @@ class TestDiscoverDtrAuthStep:
         assert output.response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_filters_by_the_standard_dct_type_by_default(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_filters_by_the_standard_dct_type_by_default(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp_by_dct_type.return_value = (_ENDPOINT, _TOKEN)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
 
         await DiscoverDtrAuthStep().invoke(
             raw_params={
@@ -303,10 +336,12 @@ class TestDiscoverDtrAuthStep:
         )
 
     @pytest.mark.asyncio
-    async def test_passes_overridden_dct_type_and_policies_to_sdk(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_passes_overridden_dct_type_and_policies_to_sdk(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
         consumer = MagicMock()
         consumer.do_dsp_by_dct_type.return_value = (_ENDPOINT, _TOKEN)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
         policies = [{"@id": "policy-1"}]
 
         await DiscoverDtrAuthStep().invoke(
@@ -328,20 +363,27 @@ class TestDiscoverDtrAuthStep:
         )
 
     @pytest.mark.asyncio
-    async def test_status_500_when_endpoint_is_none(self, ctx: MagicMock, definition: MagicMock) -> None:
+    async def test_a_flow_without_an_endpoint_fails_the_step(
+        self, ctx: MagicMock, definition: MagicMock
+    ) -> None:
+        """A DSP flow that produced no endpoint fails, rather than reporting a 500.
+
+        The status was invented — the counterpart never sent one — and the
+        runner recorded the step as PASSED, because a step fails only on a
+        raise or a hard assertion.
+        """
         consumer = MagicMock()
         consumer.do_dsp_by_dct_type.return_value = (None, None)
-        ctx.get_consumer_service.return_value = consumer
+        ctx.dataspace.consumer.return_value = consumer
 
-        output = await DiscoverDtrAuthStep().invoke(
-            raw_params={
-                "counter_party_id": "BPNL000000000001",
-                "counter_party_address": "https://provider.example.com/dsp",
-            },
-            context=ctx,
-            definition=definition,
-        )
-
-        assert output.response.status_code == 500
+        with pytest.raises(StepExecutionError, match="endpoint"):
+            await DiscoverDtrAuthStep().invoke(
+                raw_params={
+                    "counter_party_id": "BPNL000000000001",
+                    "counter_party_address": "https://provider.example.com/dsp",
+                },
+                context=ctx,
+                definition=definition,
+            )
         assert DATAPLANE_URL not in ctx.variables
         assert EDR_TOKEN not in ctx.variables

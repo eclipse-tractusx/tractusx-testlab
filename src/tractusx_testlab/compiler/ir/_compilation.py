@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,15 +26,30 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from tractusx_testlab.compiler.ir._helpers import (
+from tractusx_testlab.compiler.ir._instructions import (
     build_instructions,
     load_test_file,
     resolve_test_path,
 )
 from tractusx_testlab.compiler.ir._symbols import build_test_symbols
+from tractusx_testlab.models.authoring.definitions import TckTestEntry
+
+
+def iter_test_entries(manifest_data: dict[str, Any]) -> Iterator[TckTestEntry]:
+    """Yield the manifest's ``tests:`` entries, in order, as the model states them.
+
+    A manifest entry is a mapping naming the test file in ``id`` and carrying
+    the two things an author may say about it — its ``name`` and whether it is
+    ``skippable``. Reading it through :class:`TckTestEntry` is what keeps the
+    compiler on the one spelling the schema accepts: entries written any other
+    way are rejected here rather than half-understood.
+    """
+    for entry in manifest_data.get("tests", []):
+        yield TckTestEntry.model_validate(entry)
 
 
 def build_compiled_tests(
@@ -42,14 +57,10 @@ def build_compiled_tests(
     base_dir: Path,
 ) -> list[dict[str, Any]]:
     """Build compiled test dicts with symbol tables and instructions."""
-    tests_raw = manifest_data.get("tests", [])
     compiled: list[dict[str, Any]] = []
 
-    for entry in tests_raw:
-        file_ref = entry if isinstance(entry, str) else entry.get(
-            "test", entry.get("file", entry.get("id", ""))
-        )
-        test_path = resolve_test_path(file_ref, base_dir)
+    for entry in iter_test_entries(manifest_data):
+        test_path = resolve_test_path(entry.id, base_dir)
         test_data = load_test_file(test_path)
         compiled.append(_compile_single_test(test_data))
 
@@ -71,9 +82,22 @@ def _compile_single_test(
     instructions, step_symbols = build_instructions(test_data)
     symbol_table = build_test_symbols(step_symbols)
 
-    return {
+    compiled: dict[str, Any] = {
         "id": test_data.get("id", ""),
         "metadata": metadata,
         "symbol_table": symbol_table,
         "instructions": instructions,
     }
+
+    # What the test requires of the deployment, and which ecosystem release it
+    # certifies against, are part of the test — not decoration on the YAML. The
+    # compiled form dropped both, so a run driven from it would demand no
+    # capabilities and default to the wrong connector dialect.
+    #
+    # ``namespace`` is deliberately not carried: it is required to equal the TCK
+    # id, which the manifest already states, so it is derivable rather than lost.
+    for declared in ("dataspace", "infrastructure"):
+        if test_data.get(declared) is not None:
+            compiled[declared] = test_data[declared]
+
+    return compiled

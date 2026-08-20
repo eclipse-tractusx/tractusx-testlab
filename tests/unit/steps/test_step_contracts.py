@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -34,10 +34,9 @@ from __future__ import annotations
 
 import pytest
 
-import tractusx_testlab.steps  # noqa: F401  — registers every step
 from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.steps._contracts import NoOutput
-from tractusx_testlab.steps.base import (
+from tractusx_testlab.steps.shared_models import NoOutput
+from tractusx_testlab.steps.step_contract import (
     BaseStep,
     StepOutput,
     StepParams,
@@ -49,7 +48,7 @@ _ALL_STEP_TYPES = sorted(StepRegistry.list_step_types())
 
 
 def _step_class(step_type: str) -> type[BaseStep]:
-    step_cls = StepRegistry.get(step_type, "")
+    step_cls = StepRegistry.get_any(step_type)
     assert step_cls is not None, f"'{step_type}' is listed but not resolvable"
     return step_cls
 
@@ -188,7 +187,7 @@ class TestOutputMustBeTheDeclaredModel:
         assert bound.value == {"ok": False}
 
     def test_none_stays_none(self) -> None:
-        """"Produced nothing on this path" is not the same as an empty payload."""
+        """ "Produced nothing on this path" is not the same as an empty payload."""
         assert _DeclaredStep.bind_output(StepOutput(value=None)).value is None
 
     def test_of_binds_a_counterparts_document(self) -> None:

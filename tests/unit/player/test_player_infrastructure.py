@@ -26,30 +26,35 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 from tractusx_testlab.config.settings import TestlabConfig
-from tractusx_testlab.infrastructure.manager import InfrastructureManager
+from tractusx_testlab.infrastructure.profiles import InfrastructureManager
 from tractusx_testlab.models import Job
+from tractusx_testlab.models.authoring.definitions import (
+    TckDefinition,
+    TckMetadataDefinition,
+)
 from tractusx_testlab.models.authoring.infrastructure import (
     CapabilityRequirement,
     DataspaceContext,
     InfrastructureConfig,
 )
 from tractusx_testlab.models.domain.infrastructure import (
-    ConnectorBinding,
     Infrastructure,
     SutBindings,
+    SutConnectorBinding,
 )
-from tractusx_testlab.models.primitives.exceptions import MissingBindingError
+from tractusx_testlab.models.primitives.binding_errors import MissingBindingError
+from tractusx_testlab.player.execution._binding import _target_release, bind_infrastructure
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.infrastructure_seeder import (
     seed_infrastructure_services,
 )
 from tractusx_testlab.player.execution.player import TestlabPlayer
-from tractusx_testlab.services.manager import ServiceManager
+from tractusx_testlab.scripting.script import Tck
+from tractusx_testlab.services.instances import ServiceManager
 
 
 def _config(tmp_path: Path, infrastructure: Infrastructure | None = None) -> TestlabConfig:
@@ -62,31 +67,40 @@ def _config(tmp_path: Path, infrastructure: Infrastructure | None = None) -> Tes
 def _sut_connector() -> Infrastructure:
     return Infrastructure(
         sut=SutBindings(
-            connector=ConnectorBinding(
+            connector=SutConnectorBinding(
                 management_url="https://sut.example.com/management",
+                participant_id="BPNL000000000SUT",
                 dsp_url="https://sut.example.com/api/v1/dsp",
             ),
         ),
     )
 
 
-def _tck(release: str | None = None, **required: bool) -> SimpleNamespace:
-    """A TCK stub carrying the requirements — and optionally the release — under test."""
-    return SimpleNamespace(
-        definition=SimpleNamespace(
+def _tck(release: str | None = None, **required: bool) -> Tck:
+    """A TCK carrying the requirements — and optionally the release — under test.
+
+    Built from the real models rather than a ``SimpleNamespace``.  A stub only
+    has the attributes someone remembered to give it, so it agrees with whatever
+    the code under test happens to read: when the player looked for
+    a field the model does not declare, the stub was as silent about it as the
+    real model, and the release fell back to the default with nobody the wiser.
+    Using the declared models means a field that moves breaks this test instead
+    of the run.
+    """
+    return Tck(
+        TckDefinition(
+            syntax="v1-alpha",
+            id="infrastructure-probe",
+            metadata=TckMetadataDefinition(name="Infrastructure probe"),
             dataspace=(
                 DataspaceContext(ecosystem="Catena-X", version=release)
                 if release is not None
                 else None
             ),
             infrastructure=InfrastructureConfig(
-                sut={
-                    key: CapabilityRequirement(required=value)
-                    for key, value in required.items()
-                },  # type: ignore[arg-type]
+                sut={key: CapabilityRequirement(required=value) for key, value in required.items()},  # type: ignore[arg-type]
             ),
-        ),
-        scripts=[],
+        )
     )
 
 
@@ -126,10 +140,12 @@ class TestBinding:
 
     def test_bindings_are_published_as_variables(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = _context(player, config)
 
-        player._bind_infrastructure(context, _tck(connector=True))
+        bind_infrastructure(player.infrastructure, context, _tck(connector=True))
 
         assert context.get_variable("infrastructure.sut.connector.dsp_url") == (
             "https://sut.example.com/api/v1/dsp"
@@ -142,7 +158,7 @@ class TestBinding:
         context = _context(player, config)
         context.set_variable("infrastructure.sut.dtr.base_url", "https://dtr.from.cli")
 
-        player._bind_infrastructure(context, _tck(connector=True, dtr=True))
+        bind_infrastructure(player.infrastructure, context, _tck(connector=True, dtr=True))
 
         assert context.infrastructure.sut.dtr.base_url == "https://dtr.from.cli"
 
@@ -153,16 +169,18 @@ class TestBinding:
         context = _context(player, config)
         context.set_variable("infrastructure.sut.dtr.base_url", "https://dtr.from.cli")
 
-        player._bind_infrastructure(context, _tck(dtr=True))
+        bind_infrastructure(player.infrastructure, context, _tck(dtr=True))
 
         assert manager.active.sut.dtr.base_url == ""
 
     def test_the_context_carries_the_resolved_deployment(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = _context(player, config)
 
-        player._bind_infrastructure(context, _tck())
+        bind_infrastructure(player.infrastructure, context, _tck())
 
         assert context.infrastructure.sut.connector.is_bound()
 
@@ -176,7 +194,7 @@ class TestFailFast:
         context = _context(player, config)
 
         with pytest.raises(MissingBindingError):
-            player._bind_infrastructure(context, _tck(connector=True))
+            bind_infrastructure(player.infrastructure, context, _tck(connector=True))
 
     def test_the_refusal_names_the_key_the_operator_owes(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
@@ -184,7 +202,7 @@ class TestFailFast:
         context = _context(player, config)
 
         with pytest.raises(MissingBindingError) as error:
-            player._bind_infrastructure(context, _tck(dtr=True))
+            bind_infrastructure(player.infrastructure, context, _tck(dtr=True))
 
         assert "infrastructure.sut.dtr.base_url" in str(error.value)
 
@@ -194,7 +212,7 @@ class TestFailFast:
         context = _context(player, config)
         context.set_variable("infrastructure.sut.dtr.base_url", "https://dtr.from.cli")
 
-        player._bind_infrastructure(context, _tck(dtr=True))
+        bind_infrastructure(player.infrastructure, context, _tck(dtr=True))
 
         assert context.infrastructure.sut.dtr.base_url == "https://dtr.from.cli"
 
@@ -204,26 +222,32 @@ class TestRelease:
 
     def test_the_tcks_release_reaches_the_bindings(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = _context(player, config)
 
-        player._bind_infrastructure(context, _tck(release="jupiter", connector=True))
+        bind_infrastructure(player.infrastructure, context, _tck(release="jupiter", connector=True))
 
         assert context.infrastructure.sut.connector.version == "jupiter"
 
     def test_the_release_is_published_as_a_variable(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = _context(player, config)
 
-        player._bind_infrastructure(context, _tck(release="jupiter", connector=True))
+        bind_infrastructure(player.infrastructure, context, _tck(release="jupiter", connector=True))
 
         assert context.get_variable("infrastructure.sut.connector.version") == "jupiter"
 
     def test_the_release_reaches_the_seeded_sdk_service(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
         services = ServiceManager()
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = StepContext(
             services=services,
             job=Job(job_id="release-test"),
@@ -231,7 +255,7 @@ class TestRelease:
             infrastructure=player.infrastructure.active,
         )
 
-        player._bind_infrastructure(context, _tck(release="jupiter", connector=True))
+        bind_infrastructure(player.infrastructure, context, _tck(release="jupiter", connector=True))
         seed_infrastructure_services(services, context)
 
         definition = services._definitions["__sut_connector__"]
@@ -240,9 +264,96 @@ class TestRelease:
 
     def test_the_capabilitys_standard_is_recorded(self, tmp_path: Path) -> None:
         config = _config(tmp_path)
-        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(_sut_connector()))
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(_sut_connector())
+        )
         context = _context(player, config)
 
-        player._bind_infrastructure(context, _tck(release="saturn", connector=True))
+        bind_infrastructure(player.infrastructure, context, _tck(release="saturn", connector=True))
 
         assert context.infrastructure.sut.connector.standard == "CX-0018"
+
+    def test_the_dataspace_block_is_the_only_source_of_the_release(self) -> None:
+        """``dataspace.version`` states the release; nothing else does.
+
+        A flat ``dataspace_version`` field used to say the same thing in a second
+        place, and the player read it off the definition — where it had never
+        lived — so a TCK naming one release ran as another and reported the
+        release as unstated, which is the flag that suppresses the conflict
+        check. The field is gone; the block is the source.
+        """
+        tck = Tck(
+            TckDefinition(
+                syntax="v1-alpha",
+                id="declared-release",
+                metadata=TckMetadataDefinition(name="Declared"),
+                dataspace=DataspaceContext(ecosystem="Catena-X", version="jupiter"),
+            )
+        )
+
+        assert _target_release(tck) == ("jupiter", True)
+
+    def test_an_undeclared_release_is_the_default_and_says_so(self, tmp_path: Path) -> None:
+        """Nothing stated means the default release, flagged as *not* stated.
+
+        The second half is what keeps the default from being held against an
+        operator who bound a deployment of a different release.
+        """
+        tck = Tck(
+            TckDefinition(
+                syntax="v1-alpha",
+                id="no-release",
+                metadata=TckMetadataDefinition(name="No release"),
+            )
+        )
+
+        assert _target_release(tck) == ("saturn", False)
+
+
+class TestWhatTheOperatorOwes:
+    """A run says everything it was never given, before it starts anything."""
+
+    def test_a_counter_party_is_bound_by_its_dsp_endpoint(self, tmp_path: Path) -> None:
+        """A SUT the operator cannot manage is still bound (ADR-0019 §4)."""
+        deployment = Infrastructure(
+            sut=SutBindings(
+                connector=SutConnectorBinding(
+                    participant_id="BPNL000000000SUT",
+                    dsp_url="https://sut.example.com/api/v1/dsp",
+                ),
+            ),
+        )
+        config = _config(tmp_path)
+        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(deployment))
+
+        bind_infrastructure(player.infrastructure, _context(player, config), _tck(connector=True))
+
+    def test_every_owed_field_is_named_at_once_not_only_the_address(self, tmp_path: Path) -> None:
+        deployment = Infrastructure(
+            sut=SutBindings(connector=SutConnectorBinding(dsp_url="")),
+        )
+        config = _config(tmp_path)
+        player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(deployment))
+
+        with pytest.raises(MissingBindingError) as error:
+            bind_infrastructure(
+                player.infrastructure, _context(player, config), _tck(connector=True)
+            )
+        message = str(error.value)
+        assert "infrastructure.sut.connector.dsp_url" in message
+        assert "infrastructure.sut.connector.participant_id" in message
+        # Inherited from the TCK, or defaulted — never the operator's to supply.
+        assert "infrastructure.sut.connector.standard" not in message
+        assert "infrastructure.sut.connector.api_key_header" not in message
+
+    def test_the_environment_form_of_each_owed_key_is_shown(self, tmp_path: Path) -> None:
+        config = _config(tmp_path)
+        player = TestlabPlayer(
+            config=config, infrastructure=InfrastructureManager(Infrastructure())
+        )
+
+        with pytest.raises(MissingBindingError) as error:
+            bind_infrastructure(
+                player.infrastructure, _context(player, config), _tck(connector=True)
+            )
+        assert "TESTLAB_SUT_CONNECTOR_DSP_URL" in str(error.value)

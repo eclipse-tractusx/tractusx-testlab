@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -22,6 +22,7 @@
 
 from tractusx_testlab.scripting.parser import YamlParser
 from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.scripting.script import TestScript, Tck as Tck  # SDK alias
+from tractusx_testlab.scripting.script import Tck as Tck
+from tractusx_testlab.scripting.script import TestScript  # SDK alias
 
-__all__ = ["YamlParser", "StepRegistry", "TestScript", "Tck"]
+__all__ = ["StepRegistry", "Tck", "TestScript", "YamlParser"]

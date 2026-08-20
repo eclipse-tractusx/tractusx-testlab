@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -39,15 +39,15 @@ the grant names are the public step names.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
-import requests
 from pydantic import ConfigDict, Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import HttpTransportParams
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps import http_client
+from tractusx_testlab.steps.shared_models import HttpTransportParams, StepParams
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -63,8 +63,7 @@ _REDACTED = "***"
 def _redacted(form: dict[str, str]) -> dict[str, str]:
     """The token request form with every credential value masked."""
     return {
-        key: _REDACTED if key in _SECRET_FIELDS and value else value
-        for key, value in form.items()
+        key: _REDACTED if key in _SECRET_FIELDS and value else value for key, value in form.items()
     }
 
 
@@ -133,19 +132,17 @@ class OAuth2TokenPayload(StepPayload):
 
     model_config = ConfigDict(extra="allow")
 
-    access_token: Optional[str] = Field(
+    access_token: str | None = Field(
         default=None, description="The bearer token to present to protected services."
     )
-    token_type: Optional[str] = Field(
+    token_type: str | None = Field(
         default=None, description="Type of the issued token, normally 'Bearer'."
     )
-    expires_in: Optional[int] = Field(
+    expires_in: int | None = Field(
         default=None, description="Lifetime of the access token in seconds."
     )
-    scope: Optional[str] = Field(
-        default=None, description="Scopes the server actually granted."
-    )
-    refresh_token: Optional[str] = Field(
+    scope: str | None = Field(default=None, description="Scopes the server actually granted.")
+    refresh_token: str | None = Field(
         default=None, description="Refresh token, when the server issues one."
     )
 
@@ -162,35 +159,33 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
     never appear in the recorded request.
     """
 
-    params_model = OAuth2GetTokenParams
+    # Annotated rather than inferred: the grant-specific subclasses each bind a
+    # different `OAuth2GetTokenParams` subclass, and an inferred
+    # `type[OAuth2GetTokenParams]` here makes those siblings incompatible
+    # overrides. The base contract is `type[StepParams]` and that is what this
+    # slot holds.
+    params_model: ClassVar[type[StepParams]] = OAuth2GetTokenParams
     output_model = OAuth2TokenPayload
 
     async def execute(
         self,
         params: OAuth2GetTokenParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[OAuth2TokenPayload]:
         timeout = params.timeout_or(context.config.default_timeout_s)
         form = params.form_fields()
-        auth = (
-            (params.client_id, params.client_secret)
-            if params.client_auth == "basic"
-            else None
-        )
+        auth = (params.client_id, params.client_secret) if params.client_auth == "basic" else None
 
-        resp = requests.post(
+        resp = await http_client.request(
+            "POST",
             params.token_url,
             data=form,
             auth=auth,
             headers=params.headers,
             timeout=timeout,
         )
-
-        try:
-            body: Any = resp.json()
-        except (ValueError, TypeError):
-            body = resp.text
+        body: Any = http_client.body_of(resp)
 
         request = HttpRequest(
             method="POST",
@@ -204,7 +199,10 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
             body=body,
         )
 
-        if not resp.ok or not isinstance(body, dict):
+        # The status code rather than a client-specific truthiness flag:
+        # ``requests`` spelled this ``resp.ok`` and httpx does not have it, so
+        # reading the code is both correct and independent of the transport.
+        if resp.status_code >= 400 or not isinstance(body, dict):
             logger.error(
                 "Token request refused: url=%s grant=%s status=%s",
                 params.token_url,
@@ -213,9 +211,7 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
             )
             return StepOutput(value=None, request=request, response=response)
 
-        return StepOutput(
-            value=OAuth2TokenPayload.of(body), request=request, response=response
-        )
+        return StepOutput(value=OAuth2TokenPayload.of(body), request=request, response=response)
 
 
 # ---------------------------------------------------------------------------

@@ -100,7 +100,7 @@ validate:
   - uses: validate/assert
     with: { input: edr_token, operator: not_null }
   - uses: validate/field
-    with: { input: response_body, path: header.messageId, operator: equals, value: "${{ env.message_id.value }}" }
+    with: { input: response_body, path: header.messageId, operator: equals, value: "${{ env.message_id }}" }
 ```
 
 `output:` and `source:` are removed as spellings of the input; `path:` keeps its

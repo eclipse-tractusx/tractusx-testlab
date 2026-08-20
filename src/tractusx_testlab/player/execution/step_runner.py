@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,24 +26,32 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
+from itertools import count
 from typing import Any
 
-from tractusx_testlab.models import ScriptStatus, StepStatus
+from tractusx_testlab.logging import wire
+from tractusx_testlab.models import EngineError, ScriptStatus, StepStatus, TestLabError
+from tractusx_testlab.models.runtime.results import (
+    ENGINE_FAULT_PREFIX,
+    AssertionResult,
+    ScriptResult,
+    StepResult,
+)
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
+from tractusx_testlab.player.execution.phase import (
+    run_execution,
+    run_setup,
+    run_teardown,
+)
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
-from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.assertions import AssertionEngine
-from tractusx_testlab.models.runtime.results import AssertionResult, AssertionSummary, ScriptResult, StepResult
-from tractusx_testlab.player.execution._helpers import seed_script_defaults, register_script_services
-from tractusx_testlab.player.execution._phase_runners import (
-    execute_setup_steps,
-    execute_main_steps,
-    execute_teardown_steps,
-)
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_assertions(assertions: list[Any], context: StepContext) -> list[Any]:
@@ -60,36 +68,99 @@ def _resolve_assertions(assertions: list[Any], context: StepContext) -> list[Any
     reference to resolve.
     """
     return [
-        assertion.model_copy(
-            update={"with_": resolve_params(assertion.with_ or {}, context)}
-        )
+        assertion.model_copy(update={"with_": resolve_params(assertion.with_ or {}, context)})
         for assertion in assertions
     ]
 
 
 async def run_step(
-    step_cls: type, step_def: Any, step_name: str, context: StepContext,
+    step_cls: type,
+    step_def: Any,
+    step_name: str,
+    context: StepContext,
+    params: dict[str, Any] | None = None,
 ) -> StepResult:
-    """Execute a single step and evaluate its assertions."""
-    step_instance = step_cls()
-    params = resolve_params(step_def.with_ or {}, context)
-    started_at = datetime.now(timezone.utc)
+    """Execute a single step, evaluate its assertions, and decide its outcome.
 
+    *params* is the ``with:`` block already resolved against *context* — the
+    phase runner resolves it to publish it on the ``step.start`` event, and
+    passing it on means the same references are read once rather than twice.
+    ``None`` means "not resolved yet", either because a caller had no reason to
+    (a flow step running a nested one) or because resolution failed; either way
+    it is resolved below, inside the guard.
+
+    This is a supervisory boundary, so it catches broadly on purpose: a step
+    that raises must fail *that step*, not abort the TCK. It used to catch five
+    exception types by name, which meant a ``requests.RequestException`` — the
+    single most likely thing to happen when testing a remote SUT — escaped and
+    killed the whole run at step 3 of 40, losing the teardown with it.
+
+    Catching broadly is only safe if the outcome is then classified, and that is
+    the second half: an ``EngineError``, or any exception TestLab did not raise
+    deliberately, is a defect in the engine rather than a verdict about the SUT.
+    """
+    step_instance = step_cls()
+    started_at = datetime.now(UTC)
+
+    # Bound here rather than at the composition root so that every context which
+    # reaches a step can run a nested one — including the contexts built directly
+    # by tests. See contracts.StepInvoker for why a flow step is handed the
+    # runner instead of importing it.
+    context.bind_invoker(run_step)
+
+    # The SDK's traffic is the traffic worth seeing and the engine never makes
+    # it. Both it and the engine's own calls are recorded for the duration of
+    # this block, under the step's name, and each one is published as it comes
+    # back rather than all of them once the step is over (logging.wire).
+    calls = count(1)
+
+    def report(call: Any) -> None:
+        context.report_call(step_def.uses, getattr(step_def, "id", None), next(calls), call)
+
+    with wire.recording(step_name, on_call=report) as recorder:
+        result = await _run_step_guarded(
+            step_instance, step_def, step_name, context, started_at, params
+        )
+    wire.attach_to(result, recorder)
+    return result
+
+
+async def _run_step_guarded(
+    step_instance: Any,
+    step_def: Any,
+    step_name: str,
+    context: StepContext,
+    started_at: datetime,
+    params: dict[str, Any] | None = None,
+) -> StepResult:
+    """Run one step and classify its outcome; never raises."""
+    inputs: dict[str, Any] | None = None
     try:
+        # Inside the guard: resolving a step's parameters is part of running it,
+        # and an unresolvable reference must fail that step rather than escape
+        # and take the run down with it. A caller that already resolved them
+        # hands them over; one that could not, or never tried, passes ``None``
+        # and the same call is made here.
+        if params is None:
+            params = resolve_params(step_def.with_ or {}, context)
+        # What the step was actually given, once every ``${{ ... }}`` was
+        # resolved. A step that failed on what a reference resolved to cannot be
+        # debugged from the script, which only says which reference was written.
+        inputs = dict(params)
+
         output = await step_instance.invoke(params, context, step_def)
 
         assertion_results: list[AssertionResult] = []
-        if step_def.validate:
+        if step_def.assertions:
             assertion_results = [
                 AssertionResult.model_validate(ar.model_dump())
                 for ar in AssertionEngine.evaluate(
-                    _resolve_assertions(step_def.validate, context),
+                    _resolve_assertions(step_def.assertions, context),
                     output,
-                    context.variables,
                 )
             ]
 
-        finished_at = datetime.now(timezone.utc)
+        finished_at = datetime.now(UTC)
         failed = AssertionEngine.has_hard_failure(assertion_results)
 
         return StepResult(
@@ -99,13 +170,19 @@ async def run_step(
             started_at=started_at,
             finished_at=finished_at,
             duration_s=(finished_at - started_at).total_seconds(),
+            inputs=inputs,
             output=output.value,
             request=output.request,
             response=output.response,
             assertions=assertion_results,
         )
-    except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
-        finished_at = datetime.now(timezone.utc)
+    except Exception as exc:
+        finished_at = datetime.now(UTC)
+        engine_fault = isinstance(exc, EngineError) or not isinstance(
+            exc, TestLabError | ValueError
+        )
+        if engine_fault:
+            logger.exception("Engine fault while running step %s", step_name)
         return StepResult(
             step_name=step_name,
             step_type=step_def.uses,
@@ -113,43 +190,18 @@ async def run_step(
             started_at=started_at,
             finished_at=finished_at,
             duration_s=(finished_at - started_at).total_seconds(),
-            error=str(exc),
+            # ``None`` when resolution itself failed, which is the one case
+            # where the step was never given anything at all.
+            inputs=inputs,
+            error=f"{ENGINE_FAULT_PREFIX if engine_fault else ''}{exc}",
+            # An error that named itself keeps its name and its evidence: a
+            # message is what a person reads, and the code and the comparison
+            # behind it are what the IDE renders and what a report groups by
+            # (ADR-0016). Read off the exception rather than declared per raise
+            # site, so an error that has nothing extra to say costs nothing.
+            error_code=getattr(exc, "code", None),
+            error_context=getattr(exc, "diagnostics", None),
         )
-
-
-def store_step_outputs(
-    step_def: Any, step_result: StepResult, context: StepContext,
-    *, step_namespace: str | None = None,
-) -> None:
-    """Persist step outputs into context variables when returns is configured.
-
-    Stores each return field both flat (``field``) and, when *step_namespace* and
-    ``step_def.id`` are set, as a namespaced key (``{ns}.{id}.{field}``).
-    """
-    if step_result.output is None:
-        return
-
-    returns = getattr(step_def, "returns", None) or {}
-    if not returns:
-        return
-
-    from tractusx_testlab.steps._checks.extraction import declared_names
-    from tractusx_testlab.steps.base import StepOutput
-    raw = step_result.output
-    full_output: Any = StepOutput(value=raw, request=step_result.request, response=step_result.response) if not isinstance(raw, StepOutput) else raw
-
-    # A `returns:` name is only readable when the step declared it, so a typo
-    # or a guess at the step's internals fails here rather than as a `None`
-    # several steps later.
-    step_cls = StepRegistry.get(step_def.uses, "")
-    declared = declared_names(step_cls) if step_cls is not None else None
-
-    step_id = getattr(step_def, "id", None)
-    for var_name in returns:
-        value = AssertionEngine.extract_path(full_output, var_name, declared)
-        context.set_variable(var_name, value)
-        if step_id and step_namespace:
-            context.set_variable(f"{step_namespace}.{step_id}.{var_name}", value)
 
 
 async def run_script(
@@ -160,30 +212,51 @@ async def run_script(
     jobs: JobManager,
 ) -> ScriptResult:
     """Execute all steps in a script sequentially (setup → main → teardown)."""
-    seed_script_defaults(script, context)
-    register_script_services(script, context)
-
-    script_start = datetime.now(timezone.utc)
+    script_start = datetime.now(UTC)
 
     step_results: list[StepResult] = []
-    setup_results, setup_status = await execute_setup_steps(
-        script, context, job_id, monitor, jobs,
+    setup_results, setup_status = await run_setup(
+        script,
+        context,
+        job_id,
+        monitor,
+        jobs,
     )
     if setup_status == ScriptStatus.FAILED:
         script_status = ScriptStatus.FAILED
     else:
-        step_results, script_status = await execute_main_steps(
-            script, context, job_id, monitor, jobs,
+        step_results, script_status = await run_execution(
+            script,
+            context,
+            job_id,
+            monitor,
+            jobs,
         )
 
-    teardown_results = await execute_teardown_steps(
-        script, context, job_id, monitor,
+    teardown_results = await run_teardown(
+        script,
+        context,
+        job_id,
+        monitor,
     )
 
-    script_end = datetime.now(timezone.utc)
+    script_end = datetime.now(UTC)
     all_step_results = setup_results + step_results + teardown_results
 
+    summary = AssertionEngine.build_summary(
+        all_step_results, declared=_declared_assertions(script, all_step_results)
+    )
+
+    # Checks that were asked for and did not run mean the result describes less
+    # than the script claimed to verify. The engine evaluates assertions one for
+    # one, so this should be unreachable — which is exactly why it is measured
+    # rather than trusted: the defect this whole review started from was
+    # assertions going missing between the script and the result.
+    if summary.unevaluated:
+        script_status = ScriptStatus.FAILED
+
     return ScriptResult(
+        script_id=script.definition.id,
         script_name=script.name,
         dataspace_version=script.dataspace_version,
         status=script_status,
@@ -191,5 +264,24 @@ async def run_script(
         started_at=script_start,
         finished_at=script_end,
         total_duration_s=(script_end - script_start).total_seconds(),
-        assertion_summary=AssertionEngine.build_summary(all_step_results),
+        assertion_summary=summary,
+    )
+
+
+def _declared_assertions(script: TestScript, results: list[StepResult]) -> int:
+    """Count the assertions the steps that actually ran had asked for.
+
+    Steps skipped by ``if:`` are excluded: a check that was never reached was
+    not dropped, it was correctly not applicable.
+    """
+    ran = {result.step_type for result in results if result.status is not StepStatus.SKIPPED}
+    return sum(
+        len(step.assertions or [])
+        for phase in (
+            script.definition.setup,
+            script.definition.execution,
+            script.definition.teardown,
+        )
+        for step in phase
+        if step.uses in ran
     )

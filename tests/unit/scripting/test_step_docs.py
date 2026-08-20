@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -24,13 +24,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import pytest
 from pydantic import BaseModel, Field
 
-import tractusx_testlab.steps  # noqa: F401  — registers every step
 from tests.paths import DOCS_DIR
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.scripting.step_docs import (
@@ -51,7 +49,7 @@ class _Nested(BaseModel):
 
 class _Sample(BaseModel):
     plain: str
-    optional_text: Optional[str] = None
+    optional_text: str | None = None
     choice: Literal["a", "b"] = "a"
     items: list[_Nested] = Field(default_factory=list)
     anything: Any = None
@@ -63,7 +61,7 @@ class TestTypeName:
         assert type_name(str) == "string"
 
     def test_optional_drops_the_none_member(self) -> None:
-        assert type_name(Optional[str]) == "string"
+        assert type_name(str | None) == "string"
 
     def test_literal_lists_the_allowed_values(self) -> None:
         assert type_name(Literal["a", "b"]) == "`a` \\| `b`"

@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -35,13 +35,15 @@ app = typer.Typer(
 )
 
 # Register all commands by importing their modules (each calls @app.command())
-from tractusx_testlab.cli import keys as _keys  # noqa: E402, F401
-from tractusx_testlab.cli import validate as _validate  # noqa: E402, F401
-from tractusx_testlab.cli import compile as _compile  # noqa: E402, F401
-from tractusx_testlab.cli import run as _run  # noqa: E402, F401
-from tractusx_testlab.cli import serve as _serve  # noqa: E402, F401
-from tractusx_testlab.cli import inspect as _inspect  # noqa: E402, F401
-from tractusx_testlab.cli import docs as _docs  # noqa: E402, F401
+from tractusx_testlab.cli import compile as _compile
+from tractusx_testlab.cli import config as _config
+from tractusx_testlab.cli import docs as _docs
+from tractusx_testlab.cli import inspect as _inspect
+from tractusx_testlab.cli import keys as _keys
+from tractusx_testlab.cli import run as _run
+from tractusx_testlab.cli import schema as _schema
+from tractusx_testlab.cli import serve as _serve
+from tractusx_testlab.cli import validate as _validate
 
 
 def main() -> None:

@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,12 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Security models — encryption key blocks, package manifests, and Base64 type helpers."""
@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import base64
 from datetime import datetime
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 from pydantic import BaseModel, BeforeValidator, Field, PlainSerializer
 
@@ -58,7 +58,7 @@ class EncryptedKeyBlock(BaseModel):
 
 
 class SecurityBlock(BaseModel):
-    format: str = "stck"
+    format: str = "tck"
     algorithm: str = "AES-256-GCM"
     key_derivation: str = "RSA-OAEP-SHA256"
     compiler_id: str = ""
@@ -69,8 +69,8 @@ class PackageManifest(BaseModel):
     name: str
     version: str
     sdk_version: str = ""
-    compiled_at: Optional[datetime] = None
+    compiled_at: datetime | None = None
     dataspace_versions: list[str] = Field(default_factory=list)
     scripts: list[str] = Field(default_factory=list)
     checksum: str = ""
-    security: Optional[SecurityBlock] = None
+    security: SecurityBlock | None = None

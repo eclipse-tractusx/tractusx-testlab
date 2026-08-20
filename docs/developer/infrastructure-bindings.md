@@ -40,9 +40,23 @@ Infrastructure
 │   │                      # participant_id, dsp_url, name
 │   └── dtr                # base_url, submodel_base_url
 └── sut                    # infrastructure TestLab talks to — an identity and an endpoint
-    ├── connector          # same fields as above
+    ├── connector          # participant_id, dsp_url — management_url only if you
+    │                      # happen to operate the SUT as well
     └── dtr                # base_url
 ```
+
+A capability counts as **bound** when the field that identifies it is present,
+and each side identifies a connector differently: the engine's own connector by
+its `management_url`, because the engine drives it; the SUT's by its `dsp_url`,
+because that is all a conformance run against someone else's connector ever
+has. Asking an operator for a management URL they were never given is asking
+for a credential the topology says does not exist.
+
+Being bound is not the same as being complete. Each capability also declares
+which of its fields the **operator** must supply — an address or an identity,
+never a release or a standard, which come from the TCK, and never a field with
+a working default like `api_key_header`. When a TCK requires a capability, every
+one of those fields is checked, and all the missing ones are reported together:
 
 Every capability, on both sides, additionally carries **`version`**,
 **`standard`** and **`standard_version`** — see [What a run certifies
@@ -120,7 +134,6 @@ states nothing about a field leaves it alone:
          submodel_base_url: https://backend.example.com
      sut:
        connector:
-         management_url: https://sut.example.com/management
          participant_id: BPNL000000000001
          dsp_url: https://sut.example.com/api/v1/dsp
          # version / standard / standard_version are normally left out —
@@ -149,7 +162,8 @@ constructed and type-checked by the caller, not looked up out of a string:
 ```python
 from tractusx_testlab import (
     ConnectorBinding, DtrBinding, EngineBindings, EngineDtrBinding,
-    Infrastructure, InfrastructureManager, SutBindings, TestlabPlayer,
+    Infrastructure, InfrastructureManager, SutBindings, SutConnectorBinding,
+    TestlabPlayer,
 )
 
 integration = Infrastructure(
@@ -165,8 +179,7 @@ integration = Infrastructure(
         ),
     ),
     sut=SutBindings(
-        connector=ConnectorBinding(
-            management_url="https://sut.example.com/management",
+        connector=SutConnectorBinding(
             participant_id="BPNL000000000001",
             dsp_url="https://sut.example.com/api/v1/dsp",
         ),
@@ -194,18 +207,28 @@ a CLI or server run needs no code at all.
 
 1. The active deployment is taken as the starting point.
 2. The run's own `infrastructure.*` variables are written over it.
-3. Every capability the TCK marks `required: true` is checked against the
-   result. An unbound one raises `MissingBindingError` **before the first
-   step**, naming every missing capability at once and the key each one owes.
-4. The release and standards the TCK certifies against are written onto every
+3. Every input variable the TCK declares `source: input` is checked against
+   what the operator supplied. A missing one raises
+   `MissingInputVariableError` **before the first step**, listing every
+   unsupplied name with the description the TCK gave it.
+4. Every capability the TCK marks `required: true` is checked against the
+   result. One that is missing any operator-supplied field raises
+   `MissingBindingError` **before the first step**, naming every capability at
+   once and, within each, every key still owed — in both its config and its
+   `TESTLAB_*` form. A key that names no field at all raises
+   `UnknownBindingKeyError`, which answers with the closest legal key and with
+   what this TCK needs, not with the whole model.
+5. The release and standards the TCK certifies against are written onto every
    bound capability that does not state its own; a binding that contradicts
    them raises `StandardConflictError`.
-5. The resolved deployment is published back into the variable namespace, so
+6. The resolved deployment is published back into the variable namespace, so
    `${{ infrastructure.sut.connector.dsp_url }}` resolves identically whether
    the value came from a profile, the environment, or the CLI.
-6. SDK services are registered from the typed bindings — the engine connector as
-   consumer, the SUT connector as provider, the registries as DTR, each built
-   for the release its binding carries.
+7. SDK services are registered from the typed bindings — the engine connector as
+   consumer, the registries as DTR, each built for the release its binding
+   carries. The SUT connector becomes a service only when a `management_url`
+   was given for it: a counter-party is an address the engine negotiates
+   against through its own connector, not a client it can drive.
 
 A step reads engine-side infrastructure from `context.infrastructure` rather
 than from a variable a script supplied, because where the engine's own backend

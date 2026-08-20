@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,49 +14,72 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""JSON-lines structured logger for test execution output."""
+"""The run's console transcript — the same lines on screen and on disk.
+
+This used to write JSON-lines to the log file while the console got readable
+text, which meant the file an operator opened to see what happened was the one
+audience-mismatched artifact in the system: too verbose to read, and duplicating
+what the execution trace already holds in a form tools actually parse.
+
+The split is now by audience rather than by destination. This module writes the
+transcript — text, identical to the console — under ``logs_dir``. The
+machine-readable record is :mod:`tractusx_testlab.logging.trace`, which writes
+CloudEvents under ``data_dir`` (ADR-0016).
+"""
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import IO, Optional
+from typing import IO
+
+from tractusx_testlab.logging.console import render
 
 
-class _JsonFormatter(logging.Formatter):
-    """Emit each log record as a single JSON line."""
+class _LazyStdout:
+    """Stands in for ``sys.stdout``, resolved on every write."""
 
-    def format(self, record: logging.LogRecord) -> str:
-        entry: dict[str, object] = {
-            "ts": datetime.now(timezone.utc).isoformat(),
-            "level": record.levelname,
-            "logger": record.name,
-            "msg": record.getMessage(),
-        }
-        if hasattr(record, "extra_data"):
-            entry["data"] = record.extra_data
-        if record.exc_info and record.exc_info[1]:
-            entry["error"] = str(record.exc_info[1])
-        return json.dumps(entry, default=str, separators=(",", ":"))
+    def write(self, text: str) -> int:
+        return sys.stdout.write(text)
+
+    def flush(self) -> None:
+        sys.stdout.flush()
+
+
+def _readable(record: logging.LogRecord) -> logging.LogRecord:
+    """A copy of *record* whose message is the rendered execution event.
+
+    Shared by the console handler and the file handler so the transcript on disk
+    is the transcript on screen — byte for byte, rather than two renderings that
+    drift apart.
+    """
+    if not (hasattr(record, "extra_data") or (record.exc_info and record.exc_info[1])):
+        return record
+    record = logging.makeLogRecord(record.__dict__)
+    if hasattr(record, "extra_data"):
+        record.msg = render(record.getMessage(), dict(record.extra_data))
+        record.args = None
+    if record.exc_info and record.exc_info[1]:
+        record.msg = record.getMessage() + f" exception:[{record.exc_info[1]}]"
+        record.args = None
+        record.exc_info = None
+    return record
 
 
 class CliHandler(logging.StreamHandler):
     """StreamHandler that formats structuredLogger records as human-readable text.
     Attach to any logger like a normal handler::
 
-        handler = CliHandler()          # writes to stdout
+        handler = CliHandler()  # writes to stdout
         handler = CliHandler(sys.stderr)
         logger.addHandler(handler)
     """
@@ -65,69 +88,37 @@ class CliHandler(logging.StreamHandler):
     _FALLBACK_FMT = "%(asctime)s [%(levelname)-8s] [%(name)-15s] %(message)s"
     _FALLBACK_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
-    def __init__(self, stream: IO = sys.stdout) -> None:
-        super().__init__(stream)
+    def __init__(self, stream: IO | None = None) -> None:
+        # Resolved at write time, not here: the run transcript replaces
+        # ``sys.stdout`` while the engine is running, and a handler that had
+        # already captured the original stream would write past it.
+        super().__init__(stream or _LazyStdout())
         # Inherit the engine's console formatter so logging.yml changes apply here too.
         delegate = self._root_console_formatter()
         if delegate is not None:
             self.setFormatter(logging.Formatter(fmt=delegate._fmt, datefmt=delegate.datefmt))
         else:
-            self.setFormatter(logging.Formatter(fmt=self._FALLBACK_FMT, datefmt=self._FALLBACK_DATEFMT))
+            self.setFormatter(
+                logging.Formatter(fmt=self._FALLBACK_FMT, datefmt=self._FALLBACK_DATEFMT)
+            )
 
     @staticmethod
-    def _root_console_formatter() -> Optional[logging.Formatter]:
+    def _root_console_formatter() -> logging.Formatter | None:
         for handler in logging.getLogger().handlers:
             if isinstance(handler, logging.StreamHandler) and handler.formatter is not None:
                 return handler.formatter
         return None
 
-    @classmethod
-    def _build_inline_message(cls, base_msg: str, extra_data: dict[str, object]) -> str:
-        parts: list[str] = [base_msg]
-
-        # Add extra_data fields
-        if "tck" in extra_data:
-            parts.append(f"[{extra_data['tck']}]")
-        if "script" in extra_data:
-            parts.append(f"[{extra_data['script']}]")
-        if "step_type" in extra_data:
-            parts.append(f"[{extra_data['step_type']}]")
-        if "phase" in extra_data:
-            parts.append(f"[{extra_data['phase']}]")
-        if "status" in extra_data:
-            parts.append(f"[{extra_data['status']}]")
-        if "duration_s" in extra_data:
-            parts.append(f"[{extra_data['duration_s']}s]")
-        if "request" in extra_data:
-            parts.append(f"request:[{json.dumps(extra_data['request'], default=str)}]")
-        if "response" in extra_data:
-            parts.append(f"response:[{json.dumps(extra_data['response'], default=str)}]")
-        if "error" in extra_data:
-            parts.append(f"error:[{extra_data['error']}]")
-
-        return " ".join(parts)
-
     def emit(self, record: logging.LogRecord) -> None:
-        if hasattr(record, "extra_data") or (record.exc_info and record.exc_info[1]):
-            record = logging.makeLogRecord(record.__dict__)
-            if hasattr(record, "extra_data"):
-                extra_data = dict(record.extra_data)  # type: ignore[attr-defined]
-                record.msg = self._build_inline_message(record.getMessage(), extra_data)
-
-                record.args = None
-            if record.exc_info and record.exc_info[1]:
-                record.msg = record.getMessage() + f" exception:[{record.exc_info[1]}]"
-                record.args = None
-                record.exc_info = None
-        super().emit(record)
+        super().emit(_readable(record))
 
 
 class StructuredLogger:
-    """Provides JSON-lines logging to a file and/or stream.
+    """Writes the run transcript to a stream and, per job, to a file.
 
-    Log files are organised by date and named after the job ID::
+    Log files are organised by date and named after the job::
 
-        <logs_dir>/2026-03-30/<job_id>.jsonl
+        <logs_dir>/2026-03-30/11-56-35-777_<job_id>.log
 
     Usage::
 
@@ -136,62 +127,56 @@ class StructuredLogger:
         job_log.info("Step started", step_index=0, step_type="create_asset")
     """
 
-    __slots__ = ("_logger", "_file_handler", "_logs_dir")
+    __slots__ = ("_file_handler", "_logger", "_logs_dir")
 
     def __init__(
         self,
         name: str = "testlab",
-        logs_dir: Optional[Path] = None,
-        log_file: Optional[Path] = None,
-        stream: Optional[IO] = None,
+        logs_dir: Path | None = None,
+        log_file: Path | None = None,
+        stream: IO | None = None,
         level: int = logging.DEBUG,
     ) -> None:
         self._logger = logging.getLogger(name)
         self._logger.setLevel(level)
         self._logger.propagate = False
-        self._file_handler: Optional[logging.FileHandler] = None
+        self._file_handler: logging.FileHandler | None = None
         self._logs_dir = logs_dir
 
         # Always enable console output stream
         self._logger.addHandler(CliHandler(stream or sys.stdout))
 
-        json_formatter = _JsonFormatter()
-
-        # Explicit file handler (optional, for backward compat)
         if log_file:
             log_file.parent.mkdir(parents=True, exist_ok=True)
             file_handler = logging.FileHandler(str(log_file), encoding="utf-8")
-            file_handler.setFormatter(json_formatter)
+            file_handler.setFormatter(
+                logging.Formatter(
+                    fmt=CliHandler._FALLBACK_FMT, datefmt=CliHandler._FALLBACK_DATEFMT
+                )
+            )
             self._logger.addHandler(file_handler)
             self._file_handler = file_handler
 
-    def for_job(self, job_id: str) -> "StructuredLogger":
-        """Create a child logger that writes to ``<logs_dir>/<date>/<time>_<job_id>.jsonl``.
+    def for_job(self, job_id: str) -> StructuredLogger:
+        """Create a child logger named for the job, writing to the console.
 
-        The date directory is derived from the current UTC date.
-        The file name is prefixed with the current UTC time (HH-MM-SS-fff)
-        so that execution runs are ordered chronologically.
+        No file of its own: the run transcript is taken at ``sys.stdout`` and
+        ``sys.stderr`` (see :mod:`tractusx_testlab.logging.transcript`), so a
+        second handler here would copy these lines into it twice while still
+        missing everything that does not come through this logger — the compile
+        narration, the result banner, and the tracebacks, which is what made a
+        per-logger file the wrong mechanism in the first place.
         """
-        log_file: Optional[Path] = None
-        if self._logs_dir:
-            now = datetime.now(timezone.utc)
-            date_dir = self._logs_dir / now.strftime("%Y-%m-%d")
-            time_prefix = now.strftime("%H-%M-%S-") + f"{now.microsecond // 1000:03d}"
-            log_file = date_dir / f"{time_prefix}_{job_id}.jsonl"
-
         return StructuredLogger(
             name=f"{self._logger.name}.{job_id}",
-            log_file=log_file,
             stream=None,
             level=self._logger.level,
         )
 
     def _log(self, level: int, msg: str, **kw: object) -> None:
-        record = self._logger.makeRecord(
-            self._logger.name, level, "(testlab)", 0, msg, (), None
-        )
+        record = self._logger.makeRecord(self._logger.name, level, "(testlab)", 0, msg, (), None)
         if kw:
-            record.extra_data = kw  # type: ignore[attr-defined]
+            record.extra_data = kw
         self._logger.handle(record)
 
     def debug(self, msg: str, **kw: object) -> None:

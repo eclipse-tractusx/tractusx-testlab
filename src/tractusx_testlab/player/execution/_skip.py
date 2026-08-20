@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -29,7 +29,7 @@ the pure skip-validation logic from the execution coordinator.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from tractusx_testlab.models.primitives.exceptions import SkipNotAllowedError
 
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.scripting.script import Tck
 
 
-def resolve_skip_ids(tck: "Tck", runtime_vars: Optional[dict]) -> frozenset[str]:
+def resolve_skip_ids(tck: Tck, runtime_vars: dict | None) -> frozenset[str]:
     """Return the resolved set of test IDs to skip, validating each is allowed.
 
     Reads the ``skip_tests`` key from *runtime_vars* and cross-references it

@@ -23,10 +23,6 @@
 
 """Infrastructure bindings — the deployment a run targets, as one typed object."""
 
-from tractusx_testlab.infrastructure.manager import (
-    DEFAULT_PROFILE,
-    InfrastructureManager,
-)
 from tractusx_testlab.infrastructure.mapping import (
     apply_overrides,
     capabilities,
@@ -37,6 +33,11 @@ from tractusx_testlab.infrastructure.mapping import (
     known_keys,
     merge,
     overrides_from_env,
+    required_keys,
+)
+from tractusx_testlab.infrastructure.profiles import (
+    DEFAULT_PROFILE,
+    InfrastructureManager,
 )
 from tractusx_testlab.infrastructure.standards import (
     CAPABILITY_STANDARDS,
@@ -55,20 +56,22 @@ from tractusx_testlab.models.domain.infrastructure import (
     EngineDtrBinding,
     Infrastructure,
     SutBindings,
+    SutConnectorBinding,
 )
 
 __all__ = [
     "CAPABILITY_STANDARDS",
+    "DEFAULT_PROFILE",
     "KNOWN_RELEASES",
     "CapabilityBinding",
     "ConnectorBinding",
-    "DEFAULT_PROFILE",
     "DtrBinding",
     "EngineBindings",
     "EngineDtrBinding",
     "Infrastructure",
     "InfrastructureManager",
     "SutBindings",
+    "SutConnectorBinding",
     "aas_api_path",
     "apply_overrides",
     "capabilities",
@@ -83,4 +86,5 @@ __all__ = [
     "merge",
     "overrides_from_env",
     "release_or_default",
+    "required_keys",
 ]

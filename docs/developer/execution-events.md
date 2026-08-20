@@ -205,6 +205,7 @@ result already carries its status and its steps.
 | `step_type` | string | What the step *is* — `connector/consumer/negotiate`. Never an outcome. |
 | `step_name` | string | Display name the engine composed for it. |
 | `phase` | string | `setup`, `execution` or `teardown` — the script's own three keys. |
+| `inputs` | object \| null | The step's `with:` block **resolved** — every `${{ … }}` reference substituted for the value the run seeded or produced. A reference that names nothing in scope leaves the block as written, and the terminal event reports it as the step's failure. |
 
 ```json
 {
@@ -215,7 +216,54 @@ result already carries its status and its steps.
   "step_index": 1,
   "step_type": "connector/consumer/negotiate",
   "step_name": "[2/6] negotiate_offer",
-  "phase": "execution"
+  "phase": "execution",
+  "inputs": {"dataset_id": "urn:uuid:9b7c…"}
+}
+```
+
+#### `step_call`
+
+One call the step made, published **as soon as its answer came back** — while the
+step is still running. A step is not one call, and the long ones are long because
+they are many: a DSP pull is a catalog query, a negotiation and a poll loop that
+can run for a minute. A consumer that waited for `step_completed` to learn what
+the step had been doing would show a spinner for that minute, and the step's
+terminal event would have to carry the whole conversation a second time.
+
+Zero or more of these arrive between a step's `step_started` and its terminal
+event, in the order the calls completed. A step that makes no HTTP call publishes
+none.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"step_call"` | |
+| `job_id` | string | |
+| `script` | string | |
+| `step_id` | string \| null | |
+| `step_type` | string | The step's `uses:` value. |
+| `index` | integer | Position of the call within the step, from 1. |
+| `call` | `HttpExchange` | `request`, `response` (absent when the transport raised), `error`, `context` and `started_at`. |
+
+`call.context` names who sent it: the SDK method for a call `tractusx-sdk` made on
+the engine's behalf (`CatalogController.get_catalog`), `testlab/http_client` for
+one the engine made itself. Credential-bearing headers are masked, per
+[ADR-0016](decision-records/backend/ADR-0016-execution-trace-format.md).
+
+```json
+{
+  "kind": "step_call",
+  "job_id": "3f1c…",
+  "script": "pull-ccmapi",
+  "step_id": "pull_ccmapi_endpoint",
+  "step_type": "connector/consumer/pull_data_filtered",
+  "index": 3,
+  "call": {
+    "context": "ContractNegotiationController.get_by_id",
+    "request": {"method": "GET", "url": "https://connector.example.com/management/v3/contractnegotiations/9d6c…", "headers": {"x-api-key": "***"}, "params": null, "body": null},
+    "response": {"status_code": 404, "headers": {"content-type": "application/json"}, "body": {"detail": "Not Found"}, "duration_ms": 4.0},
+    "error": null,
+    "started_at": "2026-08-19T06:24:53.437Z"
+  }
 }
 ```
 
@@ -258,6 +306,14 @@ All three share a shape:
   }
 }
 ```
+
+A failure that can say more than a sentence also carries `result.error_code` —
+the machine-readable name the trace publishes as `errors[].code` — and
+`result.error_context`, the evidence behind the message, published as
+`errors[].context` (ADR-0016). `connector/consumer/pull_data_filtered` failing on
+the policy sets `POLICY_MISMATCH` and a context holding every offer it compared
+and how each differed, so a consumer renders the comparison instead of parsing
+it back out of `error`. Both are absent when the error has only its sentence.
 
 ### Assertions
 

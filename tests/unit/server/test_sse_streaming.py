@@ -103,7 +103,9 @@ class TestYamlSubmission:
 
     @pytest.mark.asyncio
     async def test_run_yaml_returns_job_id(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         mock_def = MagicMock()
         mock_def.name = "my-test"
@@ -129,7 +131,8 @@ class TestYamlSubmission:
 
     @pytest.mark.asyncio
     async def test_run_yaml_rejects_invalid_yaml(
-        self, client: AsyncClient,
+        self,
+        client: AsyncClient,
     ) -> None:
         response = await client.post(
             "/testlab/test-execution/run",
@@ -139,7 +142,8 @@ class TestYamlSubmission:
 
     @pytest.mark.asyncio
     async def test_run_yaml_rejects_empty_body(
-        self, client: AsyncClient,
+        self,
+        client: AsyncClient,
     ) -> None:
         response = await client.post("/testlab/test-execution/run", content=b"")
         assert response.status_code == 400
@@ -155,7 +159,9 @@ class TestSseStreaming:
 
     @pytest.mark.asyncio
     async def test_stream_returns_event_stream_content_type(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck")
         queue = _make_event_queue(("job.completed", {"status": "completed"}))
@@ -167,19 +173,25 @@ class TestSseStreaming:
 
     @pytest.mark.asyncio
     async def test_stream_unknown_job_returns_404(
-        self, client: AsyncClient,
+        self,
+        client: AsyncClient,
     ) -> None:
         response = await client.get("/testlab/test-execution/nonexistent/stream")
         assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_stream_emits_step_events(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck")
         queue = _make_event_queue(
             ("step.started", {"step_index": 0, "step_type": "connector/provider/create_asset"}),
-            ("step.completed", {"step_name": "connector/provider/create_asset", "status": "passed"}),
+            (
+                "step.completed",
+                {"step_name": "connector/provider/create_asset", "status": "passed"},
+            ),
             ("job.completed", {"status": "completed"}),
         )
 
@@ -192,7 +204,9 @@ class TestSseStreaming:
 
     @pytest.mark.asyncio
     async def test_stream_emits_job_completed(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck")
         queue = _make_event_queue(
@@ -208,7 +222,9 @@ class TestSseStreaming:
 
     @pytest.mark.asyncio
     async def test_stream_event_format_is_valid_sse(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck")
         queue = _make_event_queue(
@@ -240,7 +256,8 @@ class TestCorsMiddleware:
 
     @pytest.mark.asyncio
     async def test_cors_headers_present_on_response(
-        self, client: AsyncClient,
+        self,
+        client: AsyncClient,
     ) -> None:
         response = await client.get(
             "/testlab/test-execution/nonexistent/stream",
@@ -250,7 +267,8 @@ class TestCorsMiddleware:
 
     @pytest.mark.asyncio
     async def test_cors_preflight_options(
-        self, client: AsyncClient,
+        self,
+        client: AsyncClient,
     ) -> None:
         response = await client.options(
             "/testlab/run",

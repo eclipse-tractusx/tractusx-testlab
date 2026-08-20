@@ -36,7 +36,6 @@ from tractusx_testlab.models.primitives.enums import JobStatus
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.server.routes import router
-from tractusx_testlab.server.streaming import streaming_router
 
 _STREAMING_MODULE = "tractusx_testlab.server.streaming.routes"
 
@@ -98,9 +97,10 @@ class TestResumeEndpoint:
     """POST /testlab/test-execution/{job_id}/resume tests."""
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="Route uses str(enum) instead of enum.value — returns 409 always")
     async def test_resume_paused_job_returns_200(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck-1")
         mock_player.jobs.start(job.job_id)
@@ -116,9 +116,10 @@ class TestResumeEndpoint:
         assert data["status"] == "RUNNING"
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="Route uses str(enum) instead of enum.value — returns 409 always")
     async def test_resume_sets_job_status_to_running(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck-1")
         mock_player.jobs.start(job.job_id)
@@ -131,7 +132,9 @@ class TestResumeEndpoint:
 
     @pytest.mark.asyncio
     async def test_resume_running_job_returns_409(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck-1")
         mock_player.jobs.start(job.job_id)
@@ -144,7 +147,9 @@ class TestResumeEndpoint:
 
     @pytest.mark.asyncio
     async def test_resume_completed_job_returns_409(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck-1")
         mock_player.jobs.start(job.job_id)
@@ -158,7 +163,8 @@ class TestResumeEndpoint:
 
     @pytest.mark.asyncio
     async def test_resume_nonexistent_job_returns_404(
-        self, client: AsyncClient,
+        self,
+        client: AsyncClient,
     ) -> None:
         response = await client.post(
             "/testlab/test-execution/nonexistent/resume",
@@ -177,7 +183,9 @@ class TestResumeEvent:
 
     @pytest.mark.asyncio
     async def test_resumed_job_emits_event(
-        self, client: AsyncClient, mock_player: MagicMock,
+        self,
+        client: AsyncClient,
+        mock_player: MagicMock,
     ) -> None:
         job = mock_player.jobs.create("tck-1")
         mock_player.jobs.start(job.job_id)

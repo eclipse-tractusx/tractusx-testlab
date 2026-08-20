@@ -1,0 +1,244 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: dsp-step-by-step
+
+metadata:
+  name: "DSP, one step at a time"
+  version: "v1.0.0"
+  description: >
+    The same journey connector_negotiation.yaml runs as a single
+    `pull_data_filtered` step, driven instead as six separate steps against the
+    live connectors. Each step reads what the one before it published, so this
+    is the test that fails if the runtime's variable wiring stops carrying a
+    real value across a phase boundary — a catalog offer into a negotiation, a
+    negotiation into a transfer, a transfer's EDR into a data-plane fetch.
+    Every step asserts on what it produced, so a break is attributed to the
+    step that caused it rather than to the end of the chain.
+
+setup:
+  - id: access_policy
+    uses: connector/provider/create_policy
+    name: Create the catalog access policy
+    with:
+      policy: "${{ env.access_policy }}"
+    returns:
+      policy_id:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: policy_id, operator: not_null }
+
+  - id: usage_policy
+    uses: connector/provider/create_policy
+    name: Create the contract usage policy
+    with:
+      policy: "${{ env.usage_policy }}"
+    returns:
+      policy_id:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: policy_id, operator: not_null }
+
+  - id: asset
+    uses: connector/provider/create_asset
+    name: Create the HTTP test asset
+    with:
+      asset: "${{ env.stepwise_asset }}"
+    returns:
+      asset_id:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: asset_id, operator: equals, value: testlab-e2e-stepwise-asset }
+
+  - id: contract
+    uses: connector/provider/create_contract_definition
+    name: Publish the asset under both policies
+    with:
+      contract_definition_id: testlab-e2e-stepwise-contract
+      access_policy_id: "${{ setup.access_policy.policy_id }}"
+      contract_policy_id: "${{ setup.usage_policy.policy_id }}"
+      asset_id: "${{ setup.asset.asset_id }}"
+    returns:
+      contract_definition_id:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: contract_definition_id, operator: not_null }
+
+execution:
+  # 1. Ask the SUT what it offers.
+  - id: catalog
+    uses: connector/consumer/query_catalog_with_filters
+    name: Query the SUT catalog for the asset setup just published
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
+          operator: "="
+          operand_right: "${{ setup.asset.asset_id }}"
+    returns:
+      datasets:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: datasets, operator: not_empty }
+      - uses: validate/assert
+        with: { input: datasets, operator: length_equals, value: 1 }
+
+  # 2. Pick the offer out of the catalog document.
+  - id: dataset
+    uses: connector/consumer/extract_dataset
+    name: Select the offer by its dct:type
+    with:
+      datasets: "${{ execution.catalog.datasets }}"
+      dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+    returns:
+      asset_id:
+        type: string
+      offer_id:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: asset_id, operator: equals, value: "${{ setup.asset.asset_id }}" }
+      - uses: validate/assert
+        with: { input: offer_id, operator: not_null }
+
+  # 3. Negotiate for that offer. The policy comes from the catalog, not from
+  #    the script — negotiating under a policy the provider did not offer is
+  #    the mistake this step exists to make impossible.
+  - id: negotiation
+    uses: connector/consumer/negotiate
+    name: Negotiate a contract for the offered asset
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      asset_id: "${{ execution.dataset.asset_id }}"
+      policy: "${{ env.usage_policy }}"
+      max_wait: 90
+      poll_interval: 2
+    returns:
+      negotiation_id:
+        type: string
+      agreement_id:
+        type: string
+      state:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: state, operator: equals, value: FINALIZED }
+      - uses: validate/assert
+        with: { input: agreement_id, operator: not_null }
+
+  # 4. Turn the agreement into a transfer, and the transfer into an EDR.
+  - id: transfer
+    uses: connector/consumer/initiate_transfer
+    name: Start a PULL transfer for the negotiated agreement
+    with:
+      transfer_type: HttpData-PULL
+      negotiation_id: "${{ execution.negotiation.negotiation_id }}"
+    returns:
+      transfer_id:
+        type: string
+      dataplane_url:
+        type: string
+      edr_token:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: transfer_id, operator: not_null }
+      - uses: validate/assert
+        with: { input: dataplane_url, operator: not_null }
+      - uses: validate/assert
+        with: { input: edr_token, operator: not_null }
+
+  # 5. Read the EDR back on its own, so the transfer's copy and the EDR
+  #    endpoint's copy are compared rather than assumed equal.
+  - id: edr
+    uses: connector/consumer/get_edr
+    name: Read the EDR for the transfer
+    with:
+      transfer_id: "${{ execution.transfer.transfer_id }}"
+    returns:
+      dataplane_url:
+        type: string
+      edr_token:
+        type: string
+    validate:
+      - uses: validate/assert
+        with:
+          input: dataplane_url
+          operator: equals
+          value: "${{ execution.transfer.dataplane_url }}"
+      - uses: validate/assert
+        with: { input: edr_token, operator: not_null }
+
+  # 6. Spend the EDR. This is the only step that proves the whole chain
+  #    carried real values: a token assembled from unresolved references does
+  #    not open a data plane.
+  - id: fetch
+    uses: connector/dataplane/http_request
+    name: Fetch the payload with the EDR this run negotiated
+    with:
+      dataplane_url: "${{ execution.edr.dataplane_url }}"
+      edr_token: "${{ execution.edr.edr_token }}"
+      method: GET
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/assert
+        with: { input: body, operator: not_null }
+
+teardown:
+  - id: drop_contract
+    uses: connector/provider/delete_contract_definition
+    name: Remove the contract definition
+    with:
+      contract_definition_id: "${{ setup.contract.contract_definition_id }}"
+
+  - id: drop_asset
+    uses: connector/provider/delete_asset
+    name: Remove the asset
+    with:
+      asset_id: "${{ setup.asset.asset_id }}"
+
+  - id: drop_usage_policy
+    uses: connector/provider/delete_policy
+    name: Remove the usage policy
+    with:
+      policy_id: "${{ setup.usage_policy.policy_id }}"
+
+  - id: drop_access_policy
+    uses: connector/provider/delete_policy
+    name: Remove the access policy
+    with:
+      policy_id: "${{ setup.access_policy.policy_id }}"

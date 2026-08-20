@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -36,18 +36,17 @@ from tractusx_testlab.models.primitives.enums import ServiceType
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.infrastructure_seeder import (
     _ENGINE_CONNECTOR_NAME,
-    _ENGINE_DTR_NAME,
     _SUT_CONNECTOR_NAME,
     _SUT_DTR_NAME,
     seed_infrastructure_services,
 )
-from tractusx_testlab.services._factory import is_type_compatible
-from tractusx_testlab.services.manager import ServiceManager
-
+from tractusx_testlab.services._sdk_services import is_type_compatible
+from tractusx_testlab.services.instances import ServiceManager
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _infrastructure(variables: dict) -> Infrastructure:
     """Resolve flat binding variables into the typed deployment they describe."""
@@ -61,6 +60,7 @@ def _make_context(variables: dict) -> MagicMock:
     ctx.variables = store
     ctx.set_variable.side_effect = lambda k, v: store.update({k: v})
     ctx.get_variable.side_effect = lambda k, d=None: store.get(k, d)
+    ctx.get_str.side_effect = lambda k, d="": str(store.get(k, d) or d)
     ctx.infrastructure = _infrastructure(store)
     return ctx
 
@@ -82,6 +82,7 @@ def _base_sut_vars() -> dict:
 # ---------------------------------------------------------------------------
 # Engine connector registration
 # ---------------------------------------------------------------------------
+
 
 class TestEngineConnectorSeeding:
     """Engine connector is registered as CONNECTOR_CONSUMER."""
@@ -117,11 +118,13 @@ class TestEngineConnectorSeeding:
 
     def test_preserves_ingress_prefix_before_management_suffix(self) -> None:
         svc_mgr = ServiceManager()
-        ctx = _make_context({
-            "infrastructure.engine.connector.management_url": (
-                "https://engine.example.com/connector/management"
-            ),
-        })
+        ctx = _make_context(
+            {
+                "infrastructure.engine.connector.management_url": (
+                    "https://engine.example.com/connector/management"
+                ),
+            }
+        )
 
         seed_infrastructure_services(svc_mgr, ctx)
 
@@ -142,6 +145,7 @@ class TestEngineConnectorSeeding:
 # ---------------------------------------------------------------------------
 # Engine connector alias (provider role)
 # ---------------------------------------------------------------------------
+
 
 class TestEngineConnectorAlias:
     """When ``name`` field is set the engine connector is also registered as provider alias."""
@@ -180,7 +184,8 @@ class TestEngineConnectorAlias:
         assert _ENGINE_CONNECTOR_NAME in connector_names
         # No extra provider-type services from engine
         provider_defns = [
-            n for n in connector_names
+            n
+            for n in connector_names
             if svc_mgr._definitions[n].type == ServiceType.CONNECTOR_PROVIDER
         ]
         assert provider_defns == []
@@ -188,6 +193,7 @@ class TestEngineConnectorAlias:
     def test_existing_alias_not_overwritten(self) -> None:
         """An explicit ``services:`` block that already defines 'testlab' is not replaced."""
         from tractusx_testlab.models.authoring.definitions import ServiceDefinition
+
         original = ServiceDefinition(
             name="testlab",
             type=ServiceType.CONNECTOR_PROVIDER,
@@ -207,6 +213,7 @@ class TestEngineConnectorAlias:
 # ---------------------------------------------------------------------------
 # SUT connector registration
 # ---------------------------------------------------------------------------
+
 
 class TestSutConnectorSeeding:
     """SUT connector is registered as CONNECTOR_PROVIDER."""
@@ -259,15 +266,16 @@ class TestConnectorRoleCompatibility:
         seed_infrastructure_services(svc_mgr, ctx)
 
         with patch(
-            "tractusx_testlab.services.manager.create_instance",
+            "tractusx_testlab.services.instances.create_instance",
             side_effect=lambda definition, expected_type=None: definition.name,
         ):
-            assert ctx.get_provider_service() == _SUT_CONNECTOR_NAME
+            assert ctx.dataspace.provider() == _SUT_CONNECTOR_NAME
 
 
 # ---------------------------------------------------------------------------
 # DTR registration
 # ---------------------------------------------------------------------------
+
 
 class TestDtrSeeding:
     """SUT DTR service is registered from infrastructure.sut.dtr.* variables."""
@@ -287,6 +295,7 @@ class TestDtrSeeding:
 # ---------------------------------------------------------------------------
 # Idempotency
 # ---------------------------------------------------------------------------
+
 
 class TestSeederIdempotency:
     """Calling seed_infrastructure_services twice is safe and produces no duplicates."""

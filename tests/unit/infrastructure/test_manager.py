@@ -28,7 +28,7 @@ from __future__ import annotations
 import pytest
 
 from tractusx_testlab.config.settings import TestlabConfig
-from tractusx_testlab.infrastructure.manager import InfrastructureManager
+from tractusx_testlab.infrastructure.profiles import InfrastructureManager
 from tractusx_testlab.models.authoring.infrastructure import (
     CapabilityRequirement,
     InfrastructureConfig,
@@ -41,8 +41,9 @@ from tractusx_testlab.models.domain.infrastructure import (
     EngineDtrBinding,
     Infrastructure,
     SutBindings,
+    SutConnectorBinding,
 )
-from tractusx_testlab.models.primitives.exceptions import (
+from tractusx_testlab.models.primitives.binding_errors import (
     InfrastructureError,
     MissingBindingError,
     StandardConflictError,
@@ -63,7 +64,7 @@ def _integration() -> Infrastructure:
             ),
         ),
         sut=SutBindings(
-            connector=ConnectorBinding(
+            connector=SutConnectorBinding(
                 management_url="https://sut.example.com/management",
                 participant_id="BPNL000000000001",
                 dsp_url="https://sut.example.com/api/v1/dsp",
@@ -76,7 +77,7 @@ def _integration() -> Infrastructure:
 def _staging() -> Infrastructure:
     return Infrastructure(
         sut=SutBindings(
-            connector=ConnectorBinding(management_url="https://staging.example.com/management"),
+            connector=SutConnectorBinding(management_url="https://staging.example.com/management"),
         ),
     )
 
@@ -84,9 +85,7 @@ def _staging() -> Infrastructure:
 def _requires(**capabilities: bool) -> InfrastructureConfig:
     """Build a TCK requirement block for the SUT side."""
     return InfrastructureConfig(
-        sut={
-            key: CapabilityRequirement(required=value) for key, value in capabilities.items()
-        },  # type: ignore[arg-type]
+        sut={key: CapabilityRequirement(required=value) for key, value in capabilities.items()},  # type: ignore[arg-type]
     )
 
 
@@ -209,7 +208,7 @@ class TestValidate:
     def test_a_capability_bound_only_by_a_qualifier_is_not_bound(self) -> None:
         """An api_key with no connector to send it to binds nothing."""
         manager = InfrastructureManager(
-            Infrastructure(sut=SutBindings(connector=ConnectorBinding(api_key="orphan")))
+            Infrastructure(sut=SutBindings(connector=SutConnectorBinding(api_key="orphan")))
         )
         with pytest.raises(MissingBindingError):
             manager.validate(_requires(connector=True))
@@ -226,7 +225,8 @@ def _requires_standard(capability: str, standard_id: str, version: str | None = 
     return InfrastructureConfig(
         sut={
             capability: CapabilityRequirement(
-                required=True, standard=Standard(id=standard_id, version=version),
+                required=True,
+                standard=Standard(id=standard_id, version=version),
             ),
         },  # type: ignore[arg-type]
     )
@@ -256,21 +256,25 @@ class TestAlign:
         """An operator who knows their connector speaks another release has said so."""
         deployment = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
-                    management_url="https://sut/management", version="jupiter",
+                connector=SutConnectorBinding(
+                    dsp_url="https://sut/api/v1/dsp",
+                    version="jupiter",
                 ),
             ),
         )
         aligned = InfrastructureManager(deployment).align(
-            InfrastructureConfig(), "jupiter", release_stated=False,
+            InfrastructureConfig(),
+            "jupiter",
+            release_stated=False,
         )
         assert aligned.sut.connector.version == "jupiter"
 
     def test_a_contradicted_release_is_refused(self) -> None:
         deployment = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
-                    management_url="https://sut/management", version="jupiter",
+                connector=SutConnectorBinding(
+                    dsp_url="https://sut/api/v1/dsp",
+                    version="jupiter",
                 ),
             ),
         )
@@ -282,13 +286,16 @@ class TestAlign:
     def test_a_release_the_tck_never_stated_is_not_held_against_a_binding(self) -> None:
         deployment = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
-                    management_url="https://sut/management", version="jupiter",
+                connector=SutConnectorBinding(
+                    dsp_url="https://sut/api/v1/dsp",
+                    version="jupiter",
                 ),
             ),
         )
         aligned = InfrastructureManager(deployment).align(
-            _requires(connector=True), "saturn", release_stated=False,
+            _requires(connector=True),
+            "saturn",
+            release_stated=False,
         )
         assert aligned.sut.connector.version == "jupiter"
 
@@ -312,22 +319,25 @@ class TestAlign:
     def test_a_contradicted_standard_is_refused(self) -> None:
         deployment = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
-                    management_url="https://sut/management", standard="CX-0018",
+                connector=SutConnectorBinding(
+                    dsp_url="https://sut/api/v1/dsp",
+                    standard="CX-0018",
                 ),
             ),
         )
         with pytest.raises(StandardConflictError):
             InfrastructureManager(deployment).align(
-                _requires_standard("connector", "CX-0126"), "saturn",
+                _requires_standard("connector", "CX-0126"),
+                "saturn",
             )
 
     def test_the_default_standard_never_conflicts_with_a_stated_one(self) -> None:
         """The engine's fallback is a convenience, not a claim to hold anyone to."""
         deployment = Infrastructure(
             sut=SutBindings(
-                connector=ConnectorBinding(
-                    management_url="https://sut/management", standard="CX-0126",
+                connector=SutConnectorBinding(
+                    dsp_url="https://sut/api/v1/dsp",
+                    standard="CX-0126",
                 ),
             ),
         )

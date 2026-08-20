@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -31,21 +31,26 @@ to decide what happened.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
+from tests.paths import DOCS_DIR
+from tractusx_testlab.models.authoring.definitions import Assertion, StepDefinition
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
     EventKind,
     StepStatus,
 )
-from tests.paths import DOCS_DIR
-from tractusx_testlab.models.authoring.definitions import Assertion, StepDefinition
 from tractusx_testlab.models.runtime.events import ExecutionEvent
-from tractusx_testlab.models.runtime.results import AssertionResult, ScriptResult, StepResult
+from tractusx_testlab.models.runtime.results import (
+    AssertionResult,
+    HttpRequest,
+    HttpResponse,
+    ScriptResult,
+    StepResult,
+)
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.server.streaming.formatter import TERMINAL_EVENTS
 
@@ -90,9 +95,7 @@ def _assertion(passed: bool) -> AssertionResult:
 
 
 class TestEventKindIsTheDiscriminator:
-    def test_every_event_carries_its_kind(
-        self, monitor: ExecutionMonitor, published: list
-    ) -> None:
+    def test_every_event_carries_its_kind(self, monitor: ExecutionMonitor, published: list) -> None:
         monitor.on_job_started("job-1", "ccm-tck")
         monitor.on_script_started("job-1", "script-1", 0)
         monitor.on_step_started(
@@ -121,10 +124,7 @@ class TestEventKindIsTheDiscriminator:
 
     def test_every_declared_kind_has_a_payload_model(self) -> None:
         """A kind with no model could be emitted as an untyped dict."""
-        modelled = {
-            member.model_fields["kind"].default
-            for member in ExecutionEvent.__args__
-        }
+        modelled = {member.model_fields["kind"].default for member in ExecutionEvent.__args__}
         assert modelled == set(EventKind)
 
 
@@ -143,8 +143,11 @@ class TestStepOutcome:
         ],
     )
     def test_the_outcome_kind_follows_the_result_status(
-        self, monitor: ExecutionMonitor, published: list,
-        status: StepStatus, expected: str,
+        self,
+        monitor: ExecutionMonitor,
+        published: list,
+        status: StepStatus,
+        expected: str,
     ) -> None:
         monitor.on_step_completed("job-1", "script-1", "neg", _step_result(status))
         assert published[-1][0] == expected
@@ -155,12 +158,16 @@ class TestAssertionEvents:
         self, monitor: ExecutionMonitor, published: list
     ) -> None:
         monitor.on_step_completed(
-            "job-1", "script-1", "neg",
+            "job-1",
+            "script-1",
+            "neg",
             _step_result(StepStatus.PASSED, [_assertion(True), _assertion(True)]),
         )
 
         assert [event for event, _ in published] == [
-            "assertion.result", "assertion.result", "step.completed",
+            "assertion.result",
+            "assertion.result",
+            "step.completed",
         ]
 
     def test_an_assertion_reports_its_own_outcome(
@@ -168,7 +175,9 @@ class TestAssertionEvents:
     ) -> None:
         """This is what replaces guessing at an assertion from the step type."""
         monitor.on_step_completed(
-            "job-1", "script-1", "neg",
+            "job-1",
+            "script-1",
+            "neg",
             _step_result(StepStatus.FAILED, [_assertion(False)]),
         )
         _, payload = published[0]
@@ -189,9 +198,7 @@ class TestAssertionEvents:
 
 
 class TestJobLifecycle:
-    def test_a_failed_job_carries_why(
-        self, monitor: ExecutionMonitor, published: list
-    ) -> None:
+    def test_a_failed_job_carries_why(self, monitor: ExecutionMonitor, published: list) -> None:
         monitor.on_job_failed("job-1", error="One or more scripts failed")
         _, payload = published[-1]
         assert payload["kind"] == EventKind.JOB_FAILED.value
@@ -206,8 +213,11 @@ class TestJobLifecycle:
         ],
     )
     def test_the_terminal_kinds_are_the_ones_that_close_the_stream(
-        self, monitor: ExecutionMonitor, published: list,
-        publish: Any, expected: str,
+        self,
+        monitor: ExecutionMonitor,
+        published: list,
+        publish: Any,
+        expected: str,
     ) -> None:
         publish(monitor)
         assert published[-1][0] == expected
@@ -226,9 +236,7 @@ class TestScriptLifecycle:
         self, monitor: ExecutionMonitor, published: list
     ) -> None:
         """There is no script_failed kind — the result already carries status."""
-        monitor.on_script_completed(
-            "job-1", ScriptResult(script_name="s", status="FAILED")
-        )
+        monitor.on_script_completed("job-1", ScriptResult(script_name="s", status="FAILED"))
         _, payload = published[-1]
         assert payload["kind"] == EventKind.SCRIPT_COMPLETED.value
         assert payload["result"]["status"] == "FAILED"
@@ -259,10 +267,10 @@ class TestConditionalSkip:
     ) -> None:
         """Recording SKIPPED and executing anyway is the one outcome `if:` rules out."""
         from tractusx_testlab.models.primitives.enums import StepPhase
-        from tractusx_testlab.player.execution.phases._run_phase import (
+        from tractusx_testlab.player.execution.phase import (
             FailurePolicy,
             PhaseConfig,
-            _run_phase,
+            run_phase,
         )
 
         script = MagicMock()
@@ -275,9 +283,9 @@ class TestConditionalSkip:
                 if_condition="${{ failure() }}",
             )
         ]
-        script.dataspace_version = "jupiter"
+        script.definition.dataspace = None
 
-        results, _ = await _run_phase(
+        results, _ = await run_phase(
             script,
             mock_context,
             "job-1",
@@ -295,3 +303,129 @@ class TestConditionalSkip:
 
         assert [result.status for result in results] == [StepStatus.SKIPPED]
         assert [event for event, _ in published] == ["step.started", "step.skipped"]
+
+
+# ---------------------------------------------------------------------------
+# What the step is about to be given
+# ---------------------------------------------------------------------------
+
+
+def _encode_phase() -> Any:
+    """A one-step phase whose ``with:`` reads a variable the run seeded."""
+    from tractusx_testlab.models.primitives.enums import StepPhase
+    from tractusx_testlab.player.execution.phase import FailurePolicy, PhaseConfig
+
+    script = MagicMock()
+    script.definition.id = "script-1"
+    script.definition.dataspace = None
+    script.dataspace_version = None
+    script.definition.execution = [
+        StepDefinition(
+            id="encode",
+            uses="util/base64",
+            with_={"input": "${{ env.usage_policy }}", "url_safe": True},
+        )
+    ]
+    config = PhaseConfig(
+        phase=StepPhase.EXECUTION,
+        phase_label="execution",
+        failure_policy=FailurePolicy.CONTINUE,
+        evaluate_conditions=True,
+        use_pause_gate=False,
+        store_outputs=False,
+    )
+    return script, config
+
+
+class TestStepStartedReportsResolvedInputs:
+    """``step_started.inputs`` says what the step gets, not what names it."""
+
+    @pytest.mark.asyncio
+    async def test_references_are_substituted_before_the_event_is_published(
+        self, monitor: ExecutionMonitor, published: list, mock_context: MagicMock
+    ) -> None:
+        from tractusx_testlab.player.execution.phase import run_phase
+
+        mock_context.set_variable("usage_policy", '{"permission": []}')
+        script, config = _encode_phase()
+
+        await run_phase(script, mock_context, "job-1", monitor, None, config)
+
+        started = next(payload for event, payload in published if event == "step.started")
+        assert started["inputs"] == {"input": '{"permission": []}', "url_safe": True}
+
+    @pytest.mark.asyncio
+    async def test_a_reference_naming_nothing_is_published_as_written_and_fails_the_step(
+        self, monitor: ExecutionMonitor, published: list, mock_context: MagicMock
+    ) -> None:
+        """Nothing resolved it, so there is nothing else to show — and the step fails."""
+        from tractusx_testlab.player.execution.phase import run_phase
+
+        script, config = _encode_phase()
+
+        results, _ = await run_phase(script, mock_context, "job-1", monitor, None, config)
+
+        started = next(payload for event, payload in published if event == "step.started")
+        assert started["inputs"] == {"input": "${{ env.usage_policy }}", "url_safe": True}
+        assert [result.status for result in results] == [StepStatus.FAILED]
+        assert "env.usage_policy" in (results[0].error or "")
+
+
+# ---------------------------------------------------------------------------
+# What is written down
+# ---------------------------------------------------------------------------
+
+
+def _step_with_a_credential() -> StepResult:
+    """A step naming its own subject, built from the token it was told to send."""
+    return StepResult(
+        step_name="[1/1] pull",
+        step_type="connector/consumer/dataplane_call",
+        status=StepStatus.PASSED,
+        request=HttpRequest(
+            method="GET",
+            url="https://sut.example/data",
+            headers={"Authorization": "Bearer EDR-TOKEN", "Accept": "application/json"},
+        ),
+        response=HttpResponse(status_code=200, headers={"Set-Cookie": "session=abc"}),
+    )
+
+
+class TestCredentialsAreNotPublished:
+    """The tracer redacts what it records; a step's own summary is redacted here.
+
+    The step builds ``request``/``response`` out of what it was handed — the EDR
+    token included — and that is the exchange a reader looks at first, so it
+    reaches the transcript, the stream and the trace unless it is masked.
+    """
+
+    def test_a_step_event_does_not_carry_the_token_the_step_sent(
+        self, monitor: ExecutionMonitor, published: list
+    ) -> None:
+        monitor.on_step_completed("job-1", "script-1", "pull", _step_with_a_credential())
+
+        [(_, payload)] = published
+        headers = payload["result"]["request"]["headers"]
+        assert headers["Authorization"] == "***"
+        assert headers["Accept"] == "application/json"
+        assert payload["result"]["response"]["headers"]["Set-Cookie"] == "***"
+
+    def test_the_run_keeps_the_headers_a_script_may_name(
+        self, monitor: ExecutionMonitor, published: list
+    ) -> None:
+        """``returns: {response_headers: ...}`` reads what the SUT sent."""
+        result = _step_with_a_credential()
+        monitor.on_step_completed("job-1", "script-1", "pull", result)
+
+        assert result.request.headers["Authorization"] == "Bearer EDR-TOKEN"
+
+    def test_a_script_event_does_not_carry_it_either(
+        self, monitor: ExecutionMonitor, published: list
+    ) -> None:
+        """The script event repeats every step it ran, wire included."""
+        script = ScriptResult(script_id="script-1", execution=[_step_with_a_credential()])
+        monitor.on_script_completed("job-1", script)
+
+        [(_, payload)] = published
+        step = payload["result"]["execution"][0]
+        assert step["request"]["headers"]["Authorization"] == "***"

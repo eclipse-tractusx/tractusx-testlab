@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,33 +26,35 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from pydantic import ValidationError
 
+from tractusx_testlab.infrastructure.mapping import known_keys
 from tractusx_testlab.models import ScriptDefinition, StepDefinition, TckDefinition
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps._checks.extraction import declared_names
+from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
-from tractusx_testlab.syntax import defaults
+from tractusx_testlab.syntax import defaults, diagnostics, patterns
 
 
 @dataclass(slots=True)
 class ValidationIssue:
     """A single validation finding."""
+
     level: str  # "error" | "warning"
     message: str
-    step_index: Optional[int] = None
-    field: Optional[str] = None
-    phase: Optional[str] = None
+    step_index: int | None = None
+    field: str | None = None
+    phase: str | None = None
 
 
 @dataclass(slots=True)
 class ValidationResult:
     """Aggregated validation outcome."""
+
     issues: list[ValidationIssue] = field(default_factory=list)
 
     @property
@@ -66,13 +68,72 @@ class ValidationResult:
         self.issues.append(ValidationIssue(level="warning", message=msg, **kw))
 
 
-_VAR_REF = re.compile(r"\$\{(\w+)}")
+def _root_of(reference: str) -> str:
+    """The part of a reference that has to exist for the rest to be reachable.
+
+    ``execution.fetch.response_body`` hangs off the step ``execution.fetch``;
+    ``env.testdata.request_body`` off the file the manifest declared, which is
+    three segments; ``infrastructure.sut.connector.dsp_url`` off the binding
+    key, which is four. Checking the root is what can be checked statically —
+    how deep a declared output can be walked is the step's business, not the
+    manifest's. A manifest variable has no depth to check: its id is the whole
+    reference, and one that reaches past it is refused by name.
+    """
+    parts = reference.split(".")
+    if parts[0] == "infrastructure":
+        return ".".join(parts[:4])
+    if parts[0] == "env" and len(parts) > 1 and parts[1] in ("testdata", "schemas"):
+        return ".".join(parts[:3])
+    return ".".join(parts[:2]) if len(parts) > 1 else reference
+
+
+def _scope_of(tck: TckDefinition, script: ScriptDefinition) -> frozenset[str]:
+    """Every name a reference in *script* may legally resolve to.
+
+    Assembled from the manifest's ``env`` block, the script's own step ids, and
+    the infrastructure binding keys. This is the namespace the runtime will
+    actually have, so a name missing from here is a name that will be missing
+    from the run.
+    """
+    names: set[str] = set()
+
+    env = tck.env
+    if env is not None:
+        for variable_id in _env_variable_ids(env.variables):
+            names.add(f"env.{variable_id}")
+        for testdata in env.testdata or []:
+            names.add(f"env.testdata.{testdata.id}")
+        for schema in env.schemas or []:
+            names.add(f"env.schemas.{schema.id}")
+
+    for phase, steps in (
+        ("setup", script.setup),
+        ("execution", script.execution),
+        ("teardown", script.teardown),
+    ):
+        for step in steps:
+            if step.id:
+                names.add(f"{phase}.{step.id}")
+
+    names.update(known_keys())
+    return frozenset(names)
+
+
+def _env_variable_ids(variables: object) -> list[str]:
+    """Ids of the manifest's declared variables, whichever shape they arrive in."""
+    if isinstance(variables, list):
+        return [str(v["id"]) for v in variables if isinstance(v, dict) and "id" in v]
+    if isinstance(variables, dict):
+        return [str(key) for key in variables]
+    return []
 
 
 class ScriptValidator:
     """Validates a ScriptDefinition for correctness before execution."""
 
-    def validate_tck(self, tck: TckDefinition, base_dir: Path, version: Optional[str] = None) -> ValidationResult:
+    def validate_tck(
+        self, tck: TckDefinition, base_dir: Path, version: str | None = None
+    ) -> ValidationResult:
         """Validate all test files referenced by a TCK manifest."""
         combined = ValidationResult()
         for entry in tck.tests:
@@ -81,17 +142,24 @@ class ScriptValidator:
                 combined.add_error(f"Referenced test file not found: tests/{entry.id}")
                 continue
             from tractusx_testlab.scripting.parser import YamlParser
+
             try:
                 script = YamlParser.parse_script(test_path)
             except ValidationError as exc:
-                # Format kind: error log
-                issues = "; ".join(f"{e['loc'][0]}: {e['msg']}" for e in exc.errors())
-                combined.add_error(f"tests/{entry.id}: parse error — {issues}")
+                # One issue per finding, each naming the step, the key and the
+                # line — see :mod:`tractusx_testlab.syntax.diagnostics`.
+                for finding in diagnostics.explain(exc, model=ScriptDefinition, source=test_path):
+                    combined.add_error(f"tests/{entry.id}: {finding}")
                 continue
-            except Exception as exc:  # noqa: BLE001
+            except ValueError as exc:
+                # The file does not parse at all. The finding already names it
+                # and the line, so prefixing it again would say it twice.
+                combined.add_error(str(exc))
+                continue
+            except Exception as exc:
                 combined.add_error(f"tests/{entry.id}: failed to parse — {exc}")
                 continue
-            result = self.validate(script, version=version)
+            result = self.validate(script, version=version, scope=_scope_of(tck, script))
             # Validate tck id and test namespace
             if script.namespace != tck.id:
                 result.add_error(
@@ -103,20 +171,42 @@ class ScriptValidator:
                 combined.issues.append(issue)
         return combined
 
-    def validate(self, script: ScriptDefinition, version: Optional[str] = None) -> ValidationResult:
+    def validate(
+        self,
+        script: ScriptDefinition,
+        version: str | None = None,
+        scope: frozenset[str] | None = None,
+    ) -> ValidationResult:
+        """Check *script*, resolving its references against *scope*.
+
+        *scope* is every name the run will be able to supply — the TCK's ``env``
+        entries, its steps' ids, and the infrastructure bindings. Passed as
+        ``None`` (a script validated on its own, with no manifest around it),
+        reference checking is skipped rather than guessed at: warning about every
+        reference in a file whose namespace is not visible is noise, and noise is
+        what got the previous check ignored.
+        """
         result = ValidationResult()
-        declared_vars: set[str] = set()
+        declared = set(scope) if scope is not None else None
 
-        # Collect variables declared in the script header (in TCK env)
-        declared_vars.update(getattr(script, "variables", {}))
-
-        # Validate setup steps
-        for idx, step_def in enumerate(script.setup):
-            self._validate_step(step_def, idx, declared_vars, version, result, phase="setup")
-
-        # Validate each step
-        for idx, step_def in enumerate(script.execution):
-            self._validate_step(step_def, idx, declared_vars, version, result)
+        # All three phases. `teardown` used to be left out, so a teardown step
+        # could name a step type that does not exist, assert with an operand its
+        # operator never reads, or declare a `returns:` the step does not
+        # publish — and `testlab validate` answered OK. The shipped e2e TCK had
+        # exactly that: a `delete_shell_descriptor` assertion the engine would
+        # have refused, in a file the validator called clean.
+        #
+        # The label is the phase the author writes in a reference
+        # (`${{ execution.<id>.<field> }}`), not an engine-internal synonym: an
+        # error in the main phase used to be reported against "main", a word
+        # that appears nowhere in the syntax.
+        for phase, steps in (
+            ("setup", script.setup),
+            ("execution", script.execution),
+            ("teardown", script.teardown),
+        ):
+            for idx, step_def in enumerate(steps):
+                self._validate_step(step_def, idx, declared, version, result, phase=phase)
 
         return result
 
@@ -124,10 +214,10 @@ class ScriptValidator:
         self,
         step_def: StepDefinition,
         idx: int,
-        declared_vars: set[str],
-        version: Optional[str],
+        declared: set[str] | None,
+        version: str | None,
         result: ValidationResult,
-        phase: str = "main",
+        phase: str = "execution",
     ) -> None:
         effective_version = version or defaults.DATASPACE_VERSION
 
@@ -149,20 +239,17 @@ class ScriptValidator:
                 )
 
         # Check variable references in with_ params resolve
-        self._check_var_refs(step_def.with_ or {}, idx, declared_vars, result)
+        self._check_var_refs(step_def.with_ or {}, idx, declared, result)
 
         # Enforce plain-string validate inputs for inline validate assertions.
         self._validate_inline_assert_inputs(step_def, idx, result, phase)
 
-        # If returns is set, auto-declare the output variables
         self._validate_returns(step_def, step_cls, idx, result, phase)
-        for key in (step_def.returns or {}):
-            declared_vars.add(key)
 
     def _validate_returns(
         self,
         step_def: StepDefinition,
-        step_cls: Optional[type],
+        step_cls: type | None,
         step_idx: int,
         result: ValidationResult,
         phase: str,
@@ -193,22 +280,37 @@ class ScriptValidator:
             )
 
     def _check_var_refs(
-        self, params: dict, step_idx: int, declared: set[str], result: ValidationResult
+        self, params: dict, step_idx: int, declared: set[str] | None, result: ValidationResult
     ) -> None:
+        """Reject a reference to a name nothing in this TCK supplies.
+
+        An error rather than a warning, because at run time it is now fatal
+        (F-A02): the reference used to survive as its own template text and the
+        warning was the only hint. It said "may be provided via shared_variables,
+        runtime_vars, or output propagation" — which was true of every reference,
+        so the warning carried no information and was correctly ignored.
+        """
+        if declared is None:
+            return
         for key, value in params.items():
             if isinstance(value, str):
-                for match in _VAR_REF.finditer(value):
-                    var_name = match.group(1)
-                    if var_name not in declared:
-                        result.add_warning(
-                            f"Variable '${{{var_name}}}' referenced in param '{key}' "
-                            f"is not declared in this script's variables block at step {step_idx} "
-                            f"(may be provided via shared_variables, runtime_vars, or output propagation)",
-                            step_index=step_idx,
-                            field=key,
-                        )
+                for match in patterns.EXPR_REF.finditer(value):
+                    reference = match.group(1)
+                    if _root_of(reference) in declared:
+                        continue
+                    result.add_error(
+                        f"'${{{{ {reference} }}}}' in param '{key}' names nothing this "
+                        f"TCK supplies. Available: {', '.join(sorted(declared)[:12])}"
+                        f"{'…' if len(declared) > 12 else ''}.",
+                        step_index=step_idx,
+                        field=key,
+                    )
             elif isinstance(value, dict):
                 self._check_var_refs(value, step_idx, declared, result)
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        self._check_var_refs(item, step_idx, declared, result)
 
     def _validate_inline_assert_inputs(
         self,
@@ -225,14 +327,28 @@ class ScriptValidator:
         ``returns`` (e.g. ``"edr_token"``), not a ``${{ ... }}`` expression.
         """
         valid_keys = set(step_def.returns or {})
-        for assertion in step_def.validate or []:
+        for assertion in step_def.assertions or []:
             params = assertion.with_ or {}
             resolved = resolve_assertion(assertion.uses, params)
             if isinstance(resolved, str):
                 result.add_error(
-                    resolved, step_index=step_idx, field="validate.uses", phase=phase,
+                    resolved,
+                    step_index=step_idx,
+                    field="validate.uses",
+                    phase=phase,
                 )
                 continue
+            if resolved.operator is not None:
+                mismatch = check_operands(resolved.operator, params)
+                if mismatch:
+                    result.add_error(
+                        mismatch,
+                        step_index=step_idx,
+                        field="validate.with",
+                        phase=phase,
+                    )
+                    continue
+
             input_value = params.get("input")
             if not isinstance(input_value, str):
                 result.add_error(

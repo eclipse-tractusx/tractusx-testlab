@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -30,14 +30,13 @@ from pathlib import Path
 
 import pytest
 
-from tractusx_testlab.player.loading.loader import Loader, _TCK_BUNDLE_ENTRY
-
+from tractusx_testlab.compiler import package_digest
+from tractusx_testlab.player.loading.loader import _TCK_BUNDLE_ENTRY, Loader
 
 _TCK_MANIFEST_YAML = """\
 syntax: v1-alpha
 kind: tck
 id: tck-smoke
-namespace: testlab.test
 metadata:
   name: tck-smoke-test
   version: "1.0"
@@ -52,7 +51,6 @@ syntax: v1-alpha
 kind: test
 id: inline-test-one
 namespace: testlab.test
-dataspace_version: saturn
 metadata:
   name: inline-test-one
   version: "1.0"
@@ -67,14 +65,30 @@ execution:
 """
 
 
+def _write_sealed(archive: Path, entries: dict[str, bytes]) -> None:
+    """Write a ``.tck`` sealed the way the compiler seals one.
+
+    Goes through :func:`package_digest.seal`, the same function the compiler
+    uses, so a fixture is by construction a package the loader will accept — a
+    test cannot pass against a sealing rule that exists only in the test.
+    """
+    sealed = package_digest.seal({"manifest.yaml": b"kind: manifest\n", **entries})
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in sorted(sealed):
+            zf.writestr(name, sealed[name])
+
+
 @pytest.fixture()
 def tck_archive(tmp_path: Path) -> Path:
     """Build a .tck ZIP archive with tck-bundle.yaml + tests/ and return the path."""
     archive_path = tmp_path / "bundle.tck"
-    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(_TCK_BUNDLE_ENTRY, _TCK_MANIFEST_YAML)
-        zf.writestr("tests/inline-test-one.yaml", _TEST_SCRIPT_YAML)
-        zf.writestr("manifest.yaml", "kind: manifest\n")
+    _write_sealed(
+        archive_path,
+        {
+            _TCK_BUNDLE_ENTRY: _TCK_MANIFEST_YAML.encode(),
+            "tests/inline-test-one.yaml": _TEST_SCRIPT_YAML.encode(),
+        },
+    )
     return archive_path
 
 

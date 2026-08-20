@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,12 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Enumerations used across the Testlab module."""
@@ -147,6 +147,7 @@ class ServiceState(str, enum.Enum):
 
 class StepPhase(str, enum.Enum):
     """Identifies which execution phase a step belongs to."""
+
     SETUP = "SETUP"
     EXECUTION = "EXECUTION"
     TEARDOWN = "TEARDOWN"
@@ -154,6 +155,7 @@ class StepPhase(str, enum.Enum):
 
 class ScriptKind(str, enum.Enum):
     """Explicit type discriminator for YAML files, following the Kubernetes ``kind:`` convention."""
+
     TEST = "test"
     TCK = "tck"
 
@@ -178,6 +180,7 @@ class EventKind(str, enum.Enum):
     SCRIPT_STARTED = "script_started"
     SCRIPT_COMPLETED = "script_completed"
     STEP_STARTED = "step_started"
+    STEP_CALL = "step_call"
     STEP_COMPLETED = "step_completed"
     STEP_FAILED = "step_failed"
     STEP_SKIPPED = "step_skipped"

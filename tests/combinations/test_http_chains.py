@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -44,9 +44,7 @@ class TestRequestThenExtract:
     async def test_a_field_of_the_response_becomes_the_next_steps_input(
         self, harness: Harness, http: HttpDouble
     ) -> None:
-        http.json_route(
-            "GET", "/twins", {"result": [{"id": "urn:uuid:1", "idShort": "gearbox"}]}
-        )
+        http.json_route("GET", "/twins", {"result": [{"id": "urn:uuid:1", "idShort": "gearbox"}]})
         base = http.start()
 
         outcome = await harness.run(
@@ -251,7 +249,7 @@ class TestRequestThenAssert:
             },
         )
 
-        assert not outcome.result("create").status.value == "passed"
+        assert outcome.result("create").status.value != "passed"
         assert outcome.output("read_back") == "asset-9"
 
 

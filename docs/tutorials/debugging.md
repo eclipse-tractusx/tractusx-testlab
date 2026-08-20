@@ -67,8 +67,39 @@ To capture a derived value under a name of your own, use the util steps that tak
 2. `mock/wait/http_request` needs the `mock` object returned by the registering step, and fails after `timeout_s` (default 30s) — raise it if the SUT is slow to call back.
 3. The mock server binds locally; make sure the SUT can actually reach the engine's host and port.
 
+## No offer is made under a policy the step accepts
+
+A consumer-side DSP step (`connector/consumer/pull_data_filtered`, `pull_data_filtered_by_policy`, `do_dsp`, `do_dsp_with_bpnl`, `connector/discover/digital-twin-registry/auth`) accepts an offer only when its policy matches one of the `expected_policies` **in full**. When none does, the step reports the comparison rather than the verdict alone:
+
+```
+[FAIL] dtr-filterability[pull_dtr]:connector/consumer/pull_data_filtered 2.36s
+       Error: no offer from https://sut.example/api/v1/dsp/2025-1 is made under a policy this step accepts
+                2 offers compared, none matched:
+                  offer 'aWNodWI6Y29udHJhY3Q6T0Js…' on asset 'ichub:asset:dtr:9foUM7pm…':
+                    the provider also requires: 'Membership eq active'
+                expected: 'FrameworkAgreement eq DataExchangeGovernance:1.0', 'UsagePurpose isAnyOf cx.core.digitalTwinRegistry:1'
+```
+
+- **"the provider also requires"** — the deployment's policy carries a condition your `expected_policies` does not. Matching is exact, so an *extra* condition refuses the offer just as a missing one does. Add it to the policy variable the script uses, or accept that the deployment is not offering what the TCK requires.
+- **"the provider does not offer"** — the other direction: the script asks for a condition the offers do not carry.
+- **"the same conditions on both sides"** — the conditions agree and the policy documents still differ (an action, a rule kind, an operand spelled with a namespace prefix on one side only). Compare the two documents in the trace.
+- **`'expected_policies' is an empty list`** — an empty list accepts nothing at all. Name the policies, or omit the key to take any offer.
+
+The same comparison is in the trace under `data.errors[0].context`, with the full offer and asset ids:
+
+```bash
+jq -c '.data.errors[]? | select(.code == "POLICY_MISMATCH") | .context.offers[]' data/*/*.jsonl
+```
+
 ## Where to look at runtime
 
-- `testlab run` writes its log files to `./logs` by default; point it elsewhere with `--logs-dir`.
+- `testlab run` leaves two records. The **transcript** (`./logs/<date>/<time>_<job>.log`, `--logs-dir`) is byte-for-byte what the console showed - compile output, run header, tracebacks, result banner and all. The **execution trace** (`./data/<date>/<time>_<job>.jsonl`, `--data-dir`) is CloudEvents JSON-lines, and it holds every request a step sent and every answer it got — including the calls the SDK made on the engine's behalf, which is where a 403 three calls into a DSP flow becomes visible. See [ADR-0016](../developer/decision-records/backend/ADR-0016-execution-trace-format.md).
+- Every transcript line ends with `id=` and the id of the CloudEvent it reports, which is the way from one to the other. A line reading `step.call [dtr-filterability] pull_dtr #3 CatalogController.get_catalog → POST …/catalog/request ← 200 in 1373ms id=ic-tck/dtr-filterability/execution/pull_dtr/calls/3/tck.test.step.call/2229712…` says which call of which step it was and who made it; the id fetches the whole exchange, headers and bodies included:
+
+  ```bash
+  jq -c 'select(.id == "ic-tck/dtr-filterability/execution/pull_dtr/calls/3/tck.test.step.call/2229712…")' data/*/*.jsonl
+  ```
+
+- To find why a step failed: `jq -c 'select(.type == "tck.test.step.failed")' data/*/*.jsonl`. `data.errors[0].origin` says whether the SUT answered wrongly (`sut`) or TestLab itself broke (`engine`).
 - `testlab inspect <package>` shows what a compiled `.tck` actually contains (`--show-variables`, `--show-infrastructure`, `--json`).
 - Every failed step reports the step id, the exception, and — for `validate/*` steps — the operator and the compared values in its error message.

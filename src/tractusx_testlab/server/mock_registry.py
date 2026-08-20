@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -31,8 +31,9 @@ through ``StepContext``.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from tractusx_testlab.server.callbacks import CallbackManager
@@ -49,13 +50,53 @@ class MockResponse:
 
 @dataclass(frozen=True)
 class MockRequest:
-    """Inbound request data passed to a dynamic mock handler."""
+    """Inbound request data passed to a dynamic mock handler.
+
+    ``query_params`` is the query as HTTP actually carries it: a multimap, since
+    a name may legitimately repeat. It used to be flattened to one value per
+    name, which silently dropped every repeat but the last — and a repeated name
+    is not an oddity, it is how the AAS API asks for several search criteria
+    (``?assetIds=<a>&assetIds=<b>``). A mock that cannot see the second one
+    answers a question it was not asked.
+
+    This is deliberately not the shape a *script* reads: ``mock/wait`` publishes
+    ``request_query_params`` as one value per name, because a script asserting on
+    a callback's ``state`` wants the value and not a list holding it. A handler
+    is a server and has to see the request; a result is a value and has to be
+    readable.
+    """
 
     method: str
     path: str
     headers: dict
-    query_params: dict
-    body: Optional[Any]
+    query_params: dict[str, list[str]]
+    body: Any | None
+
+    def query(self, name: str) -> str | None:
+        """The value of a parameter given once, or ``None`` if it was not given.
+
+        The first value when a name repeats: a handler asking for one has
+        already decided the parameter is single-valued.
+        """
+        values = self.query_params.get(name) or []
+        return values[0] if values else None
+
+    def query_all(self, name: str) -> list[str]:
+        """Every value a parameter was given, in the order they arrived."""
+        return list(self.query_params.get(name) or [])
+
+
+def query_of(pairs: Iterable[tuple[str, str]]) -> dict[str, list[str]]:
+    """The query string as a handler sees it, from the pairs it was sent as.
+
+    Built from pairs rather than from a mapping because the mapping is where the
+    repeats were lost: ``dict(request.query_params)`` keeps the last value for a
+    name and discards the rest.
+    """
+    query: dict[str, list[str]] = {}
+    for name, value in pairs:
+        query.setdefault(name, []).append(value)
+    return query
 
 
 # A dynamic handler computes the response from the inbound request — used by
@@ -64,38 +105,49 @@ class MockRequest:
 MockHandler = Callable[["MockRequest"], MockResponse]
 
 # path+method -> canned response or dynamic handler
-_mock_routes: dict[str, Union[MockResponse, MockHandler]] = {}
+_mock_routes: dict[str, MockResponse | MockHandler] = {}
 
 # Singleton holder for the active CallbackManager
-_callback_manager: Optional["CallbackManager"] = None
+_callback_manager: CallbackManager | None = None
 
 
 def _key(path: str, method: str) -> str:
     return f"{method.upper()}:{path}"
 
 
-def register_mock(path: str, method: str, response: Union[MockResponse, MockHandler]) -> None:
+def register_mock(path: str, method: str, response: MockResponse | MockHandler) -> None:
     """Register a canned response, or a dynamic handler, for the given path and method."""
     _mock_routes[_key(path, method)] = response
 
 
-def get_mock(path: str, method: str) -> Optional[Union[MockResponse, MockHandler]]:
+def get_mock(path: str, method: str) -> MockResponse | MockHandler | None:
     """Look up a canned response or dynamic handler, or ``None`` if not registered."""
     return _mock_routes.get(_key(path, method))
 
 
 def resolve_mock(
-    path: str, method: str, *, headers: dict, query_params: dict, body: Optional[dict],
-) -> Optional[MockResponse]:
+    path: str,
+    method: str,
+    *,
+    headers: dict,
+    query_params: dict[str, list[str]],
+    body: dict | None,
+) -> MockResponse | None:
     """Look up a mock and, if it's a dynamic handler, invoke it to get a response."""
     mock = get_mock(path, method)
     if mock is None:
         return None
     if isinstance(mock, MockResponse):
         return mock
-    return mock(MockRequest(
-        method=method, path=path, headers=headers, query_params=query_params, body=body,
-    ))
+    return mock(
+        MockRequest(
+            method=method,
+            path=path,
+            headers=headers,
+            query_params=query_params,
+            body=body,
+        )
+    )
 
 
 def remove_mock(path: str, method: str) -> None:
@@ -108,13 +160,13 @@ def clear_mocks() -> None:
     _mock_routes.clear()
 
 
-def set_callback_manager(manager: "CallbackManager") -> None:
+def set_callback_manager(manager: CallbackManager) -> None:
     """Store the active ``CallbackManager`` for step access."""
     global _callback_manager
     _callback_manager = manager
 
 
-def get_callback_manager() -> Optional["CallbackManager"]:
+def get_callback_manager() -> CallbackManager | None:
     """Return the active ``CallbackManager``, or ``None``."""
     return _callback_manager
 

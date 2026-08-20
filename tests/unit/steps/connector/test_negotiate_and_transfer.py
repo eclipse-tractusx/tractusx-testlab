@@ -31,12 +31,13 @@ ends: what ``negotiate`` publishes is exactly what ``initiate_transfer`` reads.
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
 
+from tractusx_testlab.models import StepExecutionError
 from tractusx_testlab.steps.connector.dataplane import DataplaneCallParams
 from tractusx_testlab.steps.connector.negotiate import NegotiateStep
 from tractusx_testlab.steps.connector.transfer import InitiateTransferStep
@@ -60,7 +61,7 @@ _TOKEN = "Bearer eyJhbGciOiJSUzI1NiJ9.test"
 class _Response:
     """The bare shape of a ``requests.Response`` the SDK controllers hand back."""
 
-    def __init__(self, status_code: int = 200, body: Optional[dict] = None) -> None:
+    def __init__(self, status_code: int = 200, body: dict | None = None) -> None:
         self.status_code = status_code
         self._body = body
 
@@ -112,11 +113,15 @@ class TestNegotiate:
         """A script that ran ``query_catalog_by_asset_id`` first passes nothing."""
         consumer = _consumer()
         consumer.start_edr_negotiation.return_value = _NEGOTIATION_ID
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
         mock_context.set_variable(CATALOG_ASSET_ID, "urn:asset:1")
         mock_context.set_variable(CATALOG_POLICY, {"@type": "odrl:Set"})
 
-        await NegotiateStep().invoke({}, mock_context, definition)
+        # The consumer here exposes no readable negotiation controller, so the
+        # step now fails once it tries to observe the state (F-A07). What this
+        # test is about is the request that went out before that.
+        with pytest.raises(StepExecutionError):
+            await NegotiateStep().invoke({}, mock_context, definition)
 
         call = consumer.start_edr_negotiation.call_args.kwargs
         assert (call["target"], call["policy"]) == ("urn:asset:1", {"@type": "odrl:Set"})
@@ -132,11 +137,9 @@ class TestNegotiate:
         )
         consumer = _consumer(contract_negotiations=negotiations)
         consumer.start_edr_negotiation.return_value = _NEGOTIATION_ID
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
 
-        output = await NegotiateStep().invoke(
-            {"poll_interval": 0.0}, mock_context, definition
-        )
+        output = await NegotiateStep().invoke({"poll_interval": 0.0}, mock_context, definition)
 
         assert negotiations.reads == 2
         assert output.value["state"] == "FINALIZED"
@@ -152,7 +155,7 @@ class TestNegotiate:
             )
         )
         consumer.start_edr_negotiation.return_value = _NEGOTIATION_ID
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
 
         await NegotiateStep().invoke({"poll_interval": 0.0}, mock_context, definition)
 
@@ -164,11 +167,9 @@ class TestNegotiate:
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
         """A refused negotiation is a result a script asserts on, not a crash."""
-        consumer = _consumer(
-            contract_negotiations=_StatefulController({"state": "TERMINATED"})
-        )
+        consumer = _consumer(contract_negotiations=_StatefulController({"state": "TERMINATED"}))
         consumer.start_edr_negotiation.return_value = _NEGOTIATION_ID
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
 
         output = await NegotiateStep().invoke({"poll_interval": 0.0}, mock_context, definition)
 
@@ -178,15 +179,19 @@ class TestNegotiate:
     async def test_gives_up_when_the_negotiation_cannot_be_read(
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
-        """An unreadable negotiation must not burn the whole wait window."""
+        """An unreadable negotiation fails fast rather than burning the wait window.
+
+        It used to return whatever had been observed — nothing — and the step
+        passed publishing ``state: None``. A negotiation whose state cannot be
+        read is not a negotiation that succeeded, so it is now an error, and it
+        is still raised immediately rather than after ``max_wait`` (F-A07).
+        """
         consumer = _consumer()
         consumer.start_edr_negotiation.return_value = _NEGOTIATION_ID
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
 
-        output = await NegotiateStep().invoke({}, mock_context, definition)
-
-        assert output.value["negotiation_id"] == _NEGOTIATION_ID
-        assert output.value["state"] is None
+        with pytest.raises(StepExecutionError, match="controller"):
+            await NegotiateStep().invoke({}, mock_context, definition)
 
     def test_target_is_no_longer_an_accepted_spelling(self) -> None:
         """C10 — the field is ``asset_id`` and nothing else.
@@ -206,9 +211,7 @@ class TestNegotiate:
 
 def _pull_consumer(**attrs: Any) -> MagicMock:
     consumer = _consumer(**attrs)
-    consumer.get_edr_entry.return_value = {
-        "@id": _TRANSFER_ID, "transferProcessId": _TRANSFER_ID
-    }
+    consumer.get_edr_entry.return_value = {"@id": _TRANSFER_ID, "transferProcessId": _TRANSFER_ID}
     consumer.get_edr.return_value = {"endpoint": _ENDPOINT, "authorization": _TOKEN}
     return consumer
 
@@ -218,7 +221,7 @@ class TestInitiateTransferPull:
     async def test_resolves_the_negotiation_down_to_a_data_address(
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
-        mock_context.get_consumer_service.return_value = _pull_consumer()
+        mock_context.dataspace.consumer.return_value = _pull_consumer()
         mock_context.set_variable(NEGOTIATION_ID, _NEGOTIATION_ID)
 
         output = await InitiateTransferStep().invoke({}, mock_context, definition)
@@ -232,7 +235,7 @@ class TestInitiateTransferPull:
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
         """C34 — one name for the data-plane URL, and it is ``dataplane_url``."""
-        mock_context.get_consumer_service.return_value = _pull_consumer()
+        mock_context.dataspace.consumer.return_value = _pull_consumer()
         mock_context.set_variable(NEGOTIATION_ID, _NEGOTIATION_ID)
 
         await InitiateTransferStep().invoke({}, mock_context, definition)
@@ -247,10 +250,8 @@ class TestInitiateTransferPull:
     async def test_reports_the_transfer_state(
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
-        consumer = _pull_consumer(
-            transfer_processes=_StatefulController({"state": "STARTED"})
-        )
-        mock_context.get_consumer_service.return_value = consumer
+        consumer = _pull_consumer(transfer_processes=_StatefulController({"state": "STARTED"}))
+        mock_context.dataspace.consumer.return_value = consumer
         mock_context.set_variable(NEGOTIATION_ID, _NEGOTIATION_ID)
 
         output = await InitiateTransferStep().invoke({}, mock_context, definition)
@@ -258,17 +259,21 @@ class TestInitiateTransferPull:
         assert output.value["state"] == "STARTED"
 
     @pytest.mark.asyncio
-    async def test_a_negotiation_without_an_edr_is_a_failed_response(
+    async def test_a_negotiation_without_an_edr_fails_the_step(
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
+        """No EDR means no data-plane address, which is not a result.
+
+        This used to return normally with a fabricated ``HttpResponse(500)`` — a
+        status the connector never sent — and the runner recorded the step as
+        PASSED, because a step fails only on a raise or a hard assertion.
+        """
         consumer = _consumer()
         consumer.get_edr_entry.return_value = None
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
 
-        output = await InitiateTransferStep().invoke({}, mock_context, definition)
-
-        assert output.response.status_code == 500
-        assert output.value["dataplane_url"] is None
+        with pytest.raises(StepExecutionError, match="no EDR"):
+            await InitiateTransferStep().invoke({}, mock_context, definition)
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +292,7 @@ class TestInitiateTransferPush:
         transfers = _StatefulController({"state": "REQUESTED"}, {"state": "COMPLETED"})
         transfers.create = MagicMock(return_value=_Response(200, {"@id": _TRANSFER_ID}))
         consumer = _consumer(transfer_processes=transfers)
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
         mock_context.set_variable(AGREEMENT_ID, _AGREEMENT_ID)
 
         output = await InitiateTransferStep().invoke(
@@ -311,7 +316,7 @@ class TestInitiateTransferPush:
     ) -> None:
         transfers = _StatefulController({"state": "STARTED"})
         transfers.create = MagicMock(return_value=_Response(200, {"@id": _TRANSFER_ID}))
-        mock_context.get_consumer_service.return_value = _consumer(transfer_processes=transfers)
+        mock_context.dataspace.consumer.return_value = _consumer(transfer_processes=transfers)
         mock_context.set_variable(AGREEMENT_ID, _AGREEMENT_ID)
 
         await InitiateTransferStep().invoke(
@@ -345,7 +350,7 @@ class TestInitiateTransferPush:
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
         consumer = _pull_consumer()
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
 
         await InitiateTransferStep().invoke({}, mock_context, definition)
 

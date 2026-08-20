@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -36,10 +36,8 @@ from tractusx_testlab.models.authoring.definitions import (
     MetadataDefinition,
     ReturnFieldDefinition,
     ScriptDefinition,
-    ScriptDefinition,
     ServiceDefinition,
     StepDefinition,
-    TckDefinition,
     TckDefinition,
     TckMetadataDefinition,
     VariableDefinition,
@@ -50,54 +48,65 @@ from tractusx_testlab.models.authoring.infrastructure import (
     InfrastructureConfig,
     Standard,
 )
+from tractusx_testlab.models.domain.infrastructure import (
+    CapabilityBinding,
+    ConnectorBinding,
+    DtrBinding,
+    EngineBindings,
+    EngineDtrBinding,
+    Infrastructure,
+    SutBindings,
+    SutConnectorBinding,
+)
+from tractusx_testlab.models.domain.security import (
+    Base64Bytes,
+    EncryptedKeyBlock,
+    PackageManifest,
+    SecurityBlock,
+)
+from tractusx_testlab.models.domain.server import (
+    UploadedPackage,
+    VaultConfig,
+)
+from tractusx_testlab.models.primitives.binding_errors import (
+    InfrastructureError,
+    MissingBindingError,
+    MissingInputVariableError,
+    StandardConflictError,
+    UnknownBindingKeyError,
+)
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
     EventKind,
     JobStatus,
     PackageFormat,
+    ScriptKind,  # local override — adds TCK
     ScriptStatus,
     SdkCallMode,
     ServiceState,
+    ServiceType,  # local override — adds EDC connector types
+    StepPhase,
     StepStatus,
     ValueSource,
+    VariableScope,  # verb-form variable scope
+    VariableSource,  # verb-form variable source
 )
-from tractusx_testlab.models.primitives.enums import VariableSource  # verb-form variable source
-from tractusx_testlab.models.primitives.enums import VariableScope  # verb-form variable scope
-from tractusx_testlab.models.primitives.enums import ScriptKind  # local override — adds TCK
-from tractusx_testlab.models.primitives.enums import ServiceType  # local override — adds EDC connector types
-from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.primitives.exceptions import (
+    AuthoringError,
     DuplicateServiceError,
-    InfrastructureError,
-    MissingBindingError,
+    EngineError,
+    ExecutionError,
+    NoAssertionsExecutedError,
     ServiceInitError,
     ServiceNotFoundError,
     ServiceNotReadyError,
     ServiceTypeMismatchError,
     SkipNotAllowedError,
-    StandardConflictError,
     StepConfigError,
-    UnknownBindingKeyError,
-)
-from tractusx_testlab.models.runtime.jobs import (
-    Job,
-    JobEvent,
-    JobMemory,
-)
-from tractusx_testlab.models.runtime.inspection import (
-    ScriptInspection,
-    StepMeta,
-    TckInspectionResult,
-)
-from tractusx_testlab.models.runtime.results import (
-    AssertionResult,
-    AssertionSummary,
-    CallbackResult,
-    HttpRequest,
-    HttpResponse,
-    ScriptResult,
-    StepResult,
-    TckResult
+    StepExecutionError,
+    TestLabError,
+    UnresolvedReferenceError,
+    VariableTypeError,
 )
 from tractusx_testlab.models.runtime.events import (
     AssertionResultEvent,
@@ -110,126 +119,139 @@ from tractusx_testlab.models.runtime.events import (
     JobStartedEvent,
     ScriptCompletedEvent,
     ScriptStartedEvent,
+    StepCallEvent,
     StepCompletedEvent,
     StepFailedEvent,
     StepSkippedEvent,
     StepStartedEvent,
     StepWaitingEvent,
 )
-from tractusx_testlab.models.domain.infrastructure import (
-    CapabilityBinding,
-    ConnectorBinding,
-    DtrBinding,
-    EngineBindings,
-    EngineDtrBinding,
-    Infrastructure,
-    SutBindings,
+from tractusx_testlab.models.runtime.inspection import (
+    ScriptInspection,
+    StepMeta,
+    TckInspectionResult,
 )
-from tractusx_testlab.models.domain.security import (
-    Base64Bytes,
-    EncryptedKeyBlock,
-    PackageManifest,
-    SecurityBlock,
+from tractusx_testlab.models.runtime.jobs import (
+    Job,
+    JobEvent,
+    JobMemory,
 )
-from tractusx_testlab.models.domain.server import (
-    UploadedPackage,
-    VaultConfig,
+from tractusx_testlab.models.runtime.results import (
+    AssertionResult,
+    AssertionSummary,
+    CallbackResult,
+    HttpExchange,
+    HttpRequest,
+    HttpResponse,
+    ScriptResult,
+    StepResult,
+    TckResult,
 )
 
 __all__ = [
-    # enums
-    "AssertionSeverity",
-    "EventKind",
-    "JobStatus",
-    "PackageFormat",
-    "ScriptKind",
-    "ScriptStatus",
-    "SdkCallMode",
-    "ServiceState",
-    "ServiceType",
-    "StepPhase",
-    "StepStatus",
-    "ValueSource",
-    "VariableScope",
-    # infrastructure requirements (authored)
-    "CapabilityRequirement",
-    "DataspaceContext",
-    "InfrastructureConfig",
-    "Standard",
-    # infrastructure bindings (operated)
-    "CapabilityBinding",
-    "ConnectorBinding",
-    "DtrBinding",
-    "EngineBindings",
-    "EngineDtrBinding",
-    "Infrastructure",
-    "SutBindings",
     # definitions
     "Assertion",
-    "EnvDefinition",
-    "ImportDefinition",
-    "MetadataDefinition",
-    "ReturnFieldDefinition",
-    "ScriptDefinition",
-    "ScriptDefinition",
-    "ServiceDefinition",
-    "StepDefinition",
-    "TckDefinition",
-    "TckDefinition",
-    "TckMetadataDefinition",
-    "VariableDefinition",
-    "VariableSource",
-    # security
-    "Base64Bytes",
-    "EncryptedKeyBlock",
-    "PackageManifest",
-    "SecurityBlock",
-    # server
-    "UploadedPackage",
-    "VaultConfig",
-    # inspection
-    "ScriptInspection",
-    "StepMeta",
-    "TckInspectionResult",
     # results
     "AssertionResult",
-    "AssertionSummary",
-    "CallbackResult",
-    "HttpRequest",
-    "HttpResponse",
-    "ScriptResult",
-    "StepResult",
-    "TckResult",
     # execution events
     "AssertionResultEvent",
+    # enums
+    "AssertionSeverity",
+    "AssertionSummary",
+    # exceptions
+    "AuthoringError",
+    # security
+    "Base64Bytes",
+    "CallbackResult",
+    # infrastructure bindings (operated)
+    "CapabilityBinding",
+    # infrastructure requirements (authored)
+    "CapabilityRequirement",
+    "ConnectorBinding",
+    "DataspaceContext",
+    "DtrBinding",
+    "DuplicateServiceError",
+    "EncryptedKeyBlock",
+    "EngineBindings",
+    "EngineDtrBinding",
+    "EngineError",
+    "EnvDefinition",
+    "EventKind",
+    "ExecutionError",
     "ExecutionEvent",
+    "HttpExchange",
+    "HttpRequest",
+    "HttpResponse",
+    "ImportDefinition",
+    "Infrastructure",
+    "InfrastructureConfig",
+    "InfrastructureError",
+    # jobs
+    "Job",
     "JobCancelledEvent",
     "JobCompletedEvent",
+    "JobEvent",
     "JobFailedEvent",
+    "JobMemory",
     "JobPausedEvent",
     "JobResumedEvent",
     "JobStartedEvent",
-    "ScriptCompletedEvent",
-    "ScriptStartedEvent",
-    "StepCompletedEvent",
-    "StepFailedEvent",
-    "StepSkippedEvent",
-    "StepStartedEvent",
-    "StepWaitingEvent",
-    # jobs
-    "Job",
-    "JobEvent",
-    "JobMemory",
-    # exceptions
-    "DuplicateServiceError",
-    "InfrastructureError",
+    "JobStatus",
+    "MetadataDefinition",
     "MissingBindingError",
-    "StandardConflictError",
-    "UnknownBindingKeyError",
+    "MissingInputVariableError",
+    "NoAssertionsExecutedError",
+    "PackageFormat",
+    "PackageManifest",
+    "ReturnFieldDefinition",
+    "ScriptCompletedEvent",
+    "ScriptDefinition",
+    # inspection
+    "ScriptInspection",
+    "ScriptKind",
+    "ScriptResult",
+    "ScriptStartedEvent",
+    "ScriptStatus",
+    "SdkCallMode",
+    "SecurityBlock",
+    "ServiceDefinition",
     "ServiceInitError",
     "ServiceNotFoundError",
     "ServiceNotReadyError",
+    "ServiceState",
+    "ServiceType",
     "ServiceTypeMismatchError",
     "SkipNotAllowedError",
+    "Standard",
+    "StandardConflictError",
+    "StepCallEvent",
+    "StepCompletedEvent",
     "StepConfigError",
+    "StepDefinition",
+    "StepExecutionError",
+    "StepFailedEvent",
+    "StepMeta",
+    "StepPhase",
+    "StepResult",
+    "StepSkippedEvent",
+    "StepStartedEvent",
+    "StepStatus",
+    "StepWaitingEvent",
+    "SutBindings",
+    "SutConnectorBinding",
+    "TckDefinition",
+    "TckInspectionResult",
+    "TckMetadataDefinition",
+    "TckResult",
+    "TestLabError",
+    "UnknownBindingKeyError",
+    "UnresolvedReferenceError",
+    # server
+    "UploadedPackage",
+    "ValueSource",
+    "VariableDefinition",
+    "VariableScope",
+    "VariableSource",
+    "VariableTypeError",
+    "VaultConfig",
 ]

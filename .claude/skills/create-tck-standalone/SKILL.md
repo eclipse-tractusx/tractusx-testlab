@@ -90,7 +90,7 @@ infrastructure:              # per side, which capability the run requires
 
 env:
   variables:                 # a LIST of step-shaped entries — never a flat key: value map
-    - id: sut_counter_party_address
+    - id: shell_descriptor_id
       uses: variable/type/string
       with: { source: input, scope: sut }   # operator supplies the value at run time
       returns:
@@ -109,7 +109,7 @@ env:
                     operator: isAnyOf
                     right_operand: "cx.ccm.base:1"
       returns:
-        policy: { type: object, class: Policy }
+        value: { type: object, class: Policy }
   schemas:
     - id: certificate_schema
       source: business_partner_certificate_schema-v3.0.1.json   # file in schemas/
@@ -121,15 +121,26 @@ env:
 tests:                       # ordered; each id is the exact filename in tests/
   - id: request_certificate.yaml            # ^[a-zA-Z0-9_\-.]+\.yaml$
     name: Request a certificate via CCMAPI
-    # skippable: false (optional)
+    skippable: true                         # optional, default false
 ```
 
+`id`, `name` and `skippable` are the only keys a test entry accepts.
+`skippable: true` marks a test the operator may omit at run time via the
+`skip_tests` variable — use it when the standard makes the behaviour a MAY or the
+deployment optional, and leave it off for anything normative. The player refuses
+the whole run if `skip_tests` names a test that is not marked skippable.
+
 Env variable `uses:` verbs (these are the only env verbs — regular steps do not go
-in `env`): `variable/type/string`, `variable/type/integer`, `variable/type/boolean`
-(simple typed values), `config/connector/policy` (returns `policy`, class `Policy`),
-`config/connector/asset` (returns `asset`, class `Asset`). With `source: input` the
-`scope: engine|sut` key is **mandatory** and an optional
-`returns.value.placeholder` documents the expected shape for the operator.
+in `env`): `variable/type/string`, `variable/type/integer`, `variable/type/number`,
+`variable/type/boolean`, `variable/type/object`, `variable/type/array` (simple typed
+values), `config/connector/policy` (`class: Policy`) and `config/connector/asset`
+(`class: Asset`). **Every variable publishes one value under `value`** — write
+`returns: { value: { type: <the verb's type> } }`, add `class:` for the two
+`config/` verbs, and reference the whole variable as `${{ env.<id> }}`. The
+compiler rejects any other `returns:` key, a type the verb does not publish, and a
+variable that neither carries a `with.value` nor asks the operator for one. With
+`source: input` the `scope: engine|sut` key is **mandatory** and an optional
+`with.placeholder` documents the expected shape for the operator.
 
 Rules: tests run sequentially but **independently** — a test must never read another
 test's outputs; anything shared belongs in `env`. Connector/DTR service endpoints are
@@ -166,10 +177,8 @@ execution:
   - id: pull_ccmapi_endpoint            # ^[a-z][a-z0-9_]{0,49}$, unique per test
     uses: connector/consumer/pull_data_filtered
     name: Discover CCMAPI offer and obtain dataplane credentials
-    with:
-      counter_party_address: "${{ env.sut_counter_party_address.value }}"
-      counter_party_id: "${{ env.sut_counter_party_id.value }}"
-      expected_policies: "${{ env.ccm_usage_policy.policy }}"
+    with:                                 # counter_party_address / counter_party_id are
+      expected_policies: "${{ env.ccm_usage_policy }}"   # omitted — see below
       filters:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/type"
           operator: "="
@@ -219,10 +228,23 @@ execution:
 - Optional control keys: `if:` (list of Condition objects gating the step) and
   `timeout_s: 30.0`.
 
+### The counter-party is a binding, not a variable
+
+Never declare `counter_party_address` / `counter_party_id` as `env` variables, and
+never pass them to a connector step that addresses the system under test. The engine
+seeds both from the infrastructure binding the operator supplied —
+`infrastructure.sut.connector.dsp_url` and `infrastructure.sut.connector.participant_id`
+— which `infrastructure.sut.connector.required: true` already obliges them to give.
+Declaring them again as `env` inputs asks the operator for the same two values twice
+and lets the two copies disagree.
+
+Pass them explicitly only to address somebody the binding does not describe — a second
+provider, or an endpoint a discovery step resolved.
+
 ### References — `${{ ... }}` only
 
 ```
-${{ env.<var-id>.<return-key> }}      ${{ env.schemas.<id> }}      ${{ env.testdata.<id> }}
+${{ env.<var-id> }}      ${{ env.schemas.<id> }}      ${{ env.testdata.<id> }}
 ${{ execution.<step-id>.<return-key> }}   ${{ setup.<step-id>.<key> }}
 ${{ metadata.<key> }}                 ${{ infrastructure.<engine|sut>.<capability> }}
 ```

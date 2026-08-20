@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -25,11 +25,10 @@
 
 from __future__ import annotations
 
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 
-import tractusx_testlab.steps  # noqa: F401  — registers every step type
 from combinations.harness import Harness, build_context
 from combinations.http_double import HttpDouble
 

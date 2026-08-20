@@ -1,0 +1,63 @@
+###############################################################################
+# Eclipse Tractus-X - Tractus-X TestLab — example engine configuration
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+# SPDX-License-Identifier: Apache-2.0
+###############################################################################
+##
+## Copy to `testlab.config.yaml` in the working directory, or to
+## `~/.testlab/testlab.config.yaml`, and edit. Every setting below is optional:
+## what is shown is the default.
+##
+## Precedence, lowest to highest:   defaults  <  this file  <  environment  <  --var
+##
+## Every field is also settable from the environment as TESTLAB_<FIELD>, e.g.
+## TESTLAB_LOGS_DIR. The names are derived from the settings model, so this list
+## and the environment cannot fall out of step.
+##
+## Unknown keys are rejected rather than ignored — a misspelled setting is an
+## error, not a silent default.
+##
+## Run `testlab config show` to print what actually resolved, and where from.
+
+# -- Where the engine keeps things -------------------------------------------
+keys_dir: ~/.testlab/keys                 # this player's identity
+trust_store_dir: ~/.testlab/trusted_compilers
+storage_dir: ~/.testlab/packages          # uploaded .tck packages
+logs_dir: ~/.testlab/logs
+
+# -- Server ------------------------------------------------------------------
+server_port: 8100                         # also serves step callbacks
+max_upload_bytes: 52428800                # 50 MB
+default_timeout_s: 600.0                  # per step, unless the step overrides
+
+# -- The deployment this engine drives ---------------------------------------
+#
+# `engine` is TestLab's own infrastructure; `sut` is the system under test.
+# A TCK declares which capabilities it requires; a capability required and not
+# bound here stops the run before the first step, naming the key you owe.
+#
+# Each field is also settable as TESTLAB_<SIDE>_<CAPABILITY>_<FIELD>, e.g.
+# TESTLAB_SUT_CONNECTOR_DSP_URL.
+infrastructure:
+  engine:
+    connector:
+      management_url: ""                  # https://engine.example.com/management
+      api_key: ""
+      participant_id: ""                  # BPNL000000000TLB
+    dtr:
+      base_url: ""                        # https://engine.example.com/semantics/registry
+      submodel_base_url: ""
+  sut:
+    connector:
+      management_url: ""
+      dsp_url: ""                         # https://sut.example.com/api/v1/dsp
+      participant_id: ""                  # BPNL000000000001
+    dtr:
+      base_url: ""
+
+# -- Optional: read secrets from a vault instead of this file ----------------
+# vault:
+#   vault_url: https://vault.example.com
+#   vault_token: ""
+#   vault_secret_path: secret/data/testlab

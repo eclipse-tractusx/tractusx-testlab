@@ -26,22 +26,17 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
-import json
-import sys
-from pathlib import Path
-from typing import Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import yaml
-from fastapi import APIRouter, FastAPI
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from tests.paths import FIXTURES_DIR, SRC_DIR
-from tractusx_testlab.models.authoring.definitions import ScriptDefinition, TckDefinition
+from tractusx_testlab.models.authoring.definitions import TckDefinition
 from tractusx_testlab.scripting.parser import YamlParser
-from tractusx_testlab.scripting.script import Tck, TestScript
+from tractusx_testlab.scripting.script import Tck
 
 _SRC_DIR = str(SRC_DIR)
 
@@ -72,7 +67,8 @@ class TestTckParseCompilePipeline:
     """Verify the full parse → TckDefinition pipeline with a real YAML fixture."""
 
     def test_parse_tck_from_dict_returns_tck_definition(
-        self, simple_tck_data: dict,
+        self,
+        simple_tck_data: dict,
     ) -> None:
         """YamlParser.parse_tck_from_dict produces a valid TckDefinition."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)
@@ -82,7 +78,8 @@ class TestTckParseCompilePipeline:
         assert definition.syntax == "v1-alpha"
 
     def test_tck_definition_contains_test_paths(
-        self, simple_tck_data: dict,
+        self,
+        simple_tck_data: dict,
     ) -> None:
         """``tests:`` entries are parsed as TckTestEntry models with id and name."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)
@@ -93,7 +90,8 @@ class TestTckParseCompilePipeline:
         assert entry.name == "Make a ping"
 
     def test_tck_scripts_empty_for_path_based_tck(
-        self, simple_tck_data: dict,
+        self,
+        simple_tck_data: dict,
     ) -> None:
         """Tck wrapper has no pre-loaded scripts when tests are path-based."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)

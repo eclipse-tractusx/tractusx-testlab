@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -35,12 +35,17 @@ See ``docs/developer/execution-events.md`` for the full wire contract.
 
 from __future__ import annotations
 
-from typing import Literal, Optional, Union
+from typing import Literal
 
 from pydantic import BaseModel
 
 from tractusx_testlab.models.primitives.enums import EventKind, JobStatus
-from tractusx_testlab.models.runtime.results import AssertionResult, ScriptResult, StepResult
+from tractusx_testlab.models.runtime.results import (
+    AssertionResult,
+    HttpExchange,
+    ScriptResult,
+    StepResult,
+)
 
 
 class _ExecutionEvent(BaseModel):
@@ -80,7 +85,7 @@ class JobFailedEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.JOB_FAILED] = EventKind.JOB_FAILED
     status: Literal[JobStatus.FAILED] = JobStatus.FAILED
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class JobCancelledEvent(_ExecutionEvent):
@@ -110,11 +115,35 @@ class StepStartedEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.STEP_STARTED] = EventKind.STEP_STARTED
     script: str
-    step_id: Optional[str] = None
+    step_id: str | None = None
     step_index: int
     step_type: str
     step_name: str
     phase: str
+    #: The step's ``with:`` block with every ``${{ … }}`` reference already
+    #: substituted — what the step is about to be given, not the template the
+    #: script wrote. It falls back to the template when a reference names
+    #: nothing in scope, which is the failure the terminal event then reports.
+    inputs: dict | None = None
+
+
+class StepCallEvent(_ExecutionEvent):
+    """One call a step made, published as soon as the answer came back.
+
+    A step is not one call, and the long ones are long precisely because they
+    are many: a DSP pull is a catalog query, a negotiation and a poll loop that
+    can run for a minute. Waiting for the step's terminal event to say what it
+    had been doing all that time leaves whoever is watching with a spinner, so
+    each call is published when it completes rather than all of them at the end.
+    """
+
+    kind: Literal[EventKind.STEP_CALL] = EventKind.STEP_CALL
+    script: str
+    step_id: str | None = None
+    step_type: str
+    #: Position of the call within the step, from 1.
+    index: int
+    call: HttpExchange
 
 
 class StepCompletedEvent(_ExecutionEvent):
@@ -122,7 +151,7 @@ class StepCompletedEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.STEP_COMPLETED] = EventKind.STEP_COMPLETED
     script: str
-    step_id: Optional[str] = None
+    step_id: str | None = None
     result: StepResult
 
 
@@ -131,7 +160,7 @@ class StepFailedEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.STEP_FAILED] = EventKind.STEP_FAILED
     script: str
-    step_id: Optional[str] = None
+    step_id: str | None = None
     result: StepResult
 
 
@@ -140,7 +169,7 @@ class StepSkippedEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.STEP_SKIPPED] = EventKind.STEP_SKIPPED
     script: str
-    step_id: Optional[str] = None
+    step_id: str | None = None
     result: StepResult
 
 
@@ -163,7 +192,7 @@ class AssertionResultEvent(_ExecutionEvent):
 
     kind: Literal[EventKind.ASSERTION_RESULT] = EventKind.ASSERTION_RESULT
     script: str
-    step_id: Optional[str] = None
+    step_id: str | None = None
     step_name: str
     #: Position in the step's ``validate:`` block, from 0.
     #
@@ -174,19 +203,20 @@ class AssertionResultEvent(_ExecutionEvent):
     assertion: AssertionResult
 
 
-ExecutionEvent = Union[
-    JobStartedEvent,
-    JobPausedEvent,
-    JobResumedEvent,
-    JobCompletedEvent,
-    JobFailedEvent,
-    JobCancelledEvent,
-    ScriptStartedEvent,
-    ScriptCompletedEvent,
-    StepStartedEvent,
-    StepCompletedEvent,
-    StepFailedEvent,
-    StepSkippedEvent,
-    StepWaitingEvent,
-    AssertionResultEvent,
-]
+ExecutionEvent = (
+    JobStartedEvent
+    | JobPausedEvent
+    | JobResumedEvent
+    | JobCompletedEvent
+    | JobFailedEvent
+    | JobCancelledEvent
+    | ScriptStartedEvent
+    | ScriptCompletedEvent
+    | StepStartedEvent
+    | StepCallEvent
+    | StepCompletedEvent
+    | StepFailedEvent
+    | StepSkippedEvent
+    | StepWaitingEvent
+    | AssertionResultEvent
+)

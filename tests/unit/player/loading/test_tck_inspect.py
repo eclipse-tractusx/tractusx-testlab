@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -25,24 +25,23 @@
 
 from __future__ import annotations
 
-import pytest
 import zipfile
+
+import pytest
 import yaml
 
+from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.inspection import TckInspectionResult
-from tractusx_testlab.player.loading.loader import Loader, _TCK_BUNDLE_ENTRY
 from tractusx_testlab.player.loading._parser import _SCRIPT_ADAPTER
+from tractusx_testlab.player.loading.loader import _TCK_BUNDLE_ENTRY, Loader
 from tractusx_testlab.scripting.script import Tck
-
-
 
 _SINGLE_SCRIPT_YAML = """\
 syntax: v1-alpha
 kind: test
 id: test-inspect-single
 namespace: testlab.test
-dataspace_version: saturn
 metadata:
   name: Single Script Test
   version: "1.0"
@@ -75,7 +74,6 @@ _TCK_WITH_TWO_SCRIPTS = """\
 syntax: v1-alpha
 kind: tck
 id: tck-inspect
-namespace: testlab.test
 metadata:
   name: Multi-Script TCK
   version: "1.0"
@@ -91,7 +89,6 @@ syntax: v1-alpha
 kind: test
 id: script-a
 namespace: testlab.test
-dataspace_version: saturn
 metadata:
   name: Script A
   version: "1.0"
@@ -105,7 +102,6 @@ syntax: v1-alpha
 kind: test
 id: script-b
 namespace: testlab.test
-dataspace_version: saturn
 metadata:
   name: Script B
   version: "1.0"
@@ -121,22 +117,30 @@ execution:
 def single_script_tck() -> object:
     """A Tck loaded from a single-script YAML with setup, execution, and teardown."""
     import yaml
+
     data = yaml.safe_load(_SINGLE_SCRIPT_YAML)
     script_def = _SCRIPT_ADAPTER.validate_python(data)
     from tractusx_testlab.scripting.script import Tck
+
     return Tck.from_single_script(script_def)
 
 
 @pytest.fixture()
 def multi_script_tck(tmp_path) -> object:
     """A Tck loaded from a TCK manifest with two scripts."""
-    
 
     archive = tmp_path / "inspect.tck"
+    sealed = package_digest.seal(
+        {
+            "manifest.yaml": b"kind: manifest\n",
+            _TCK_BUNDLE_ENTRY: _TCK_WITH_TWO_SCRIPTS.encode(),
+            "tests/script-a.yaml": _SCRIPT_A_YAML.encode(),
+            "tests/script-b.yaml": _SCRIPT_B_YAML.encode(),
+        }
+    )
     with zipfile.ZipFile(archive, "w") as zf:
-        zf.writestr(_TCK_BUNDLE_ENTRY, _TCK_WITH_TWO_SCRIPTS)
-        zf.writestr("tests/script-a.yaml", _SCRIPT_A_YAML)
-        zf.writestr("tests/script-b.yaml", _SCRIPT_B_YAML)
+        for name in sorted(sealed):
+            zf.writestr(name, sealed[name])
 
     return Loader().load(archive)
 
@@ -166,7 +170,12 @@ class TestTckInspectSingleScript:
         result = single_script_tck.inspect()
         steps = result.scripts[0].steps
         phases = [s.phase for s in steps]
-        assert phases == [StepPhase.SETUP, StepPhase.EXECUTION, StepPhase.EXECUTION, StepPhase.TEARDOWN]
+        assert phases == [
+            StepPhase.SETUP,
+            StepPhase.EXECUTION,
+            StepPhase.EXECUTION,
+            StepPhase.TEARDOWN,
+        ]
 
     def test_inspect_extracts_uses_identifier(self, single_script_tck) -> None:
         result = single_script_tck.inspect()

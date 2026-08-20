@@ -84,7 +84,8 @@ def _write_tck(
     tests_dir.mkdir(parents=True, exist_ok=True)
     for name, infrastructure in tests.items():
         (tests_dir / name).write_text(
-            yaml.dump(_test_doc(Path(name).stem, infrastructure)), encoding="utf-8",
+            yaml.dump(_test_doc(Path(name).stem, infrastructure)),
+            encoding="utf-8",
         )
 
     index = tmp_path / "index.yaml"
@@ -101,12 +102,15 @@ class TestDeclaredTopology:
     """What the manifest declares is carried into the package verbatim."""
 
     def test_infrastructure_reaches_the_manifest(self, tmp_path: Path) -> None:
-        index = _write_tck(tmp_path, manifest_extra={
-            "infrastructure": {
-                "engine": {"connector": {"required": True}},
-                "sut": {"dtr": {"required": True}},
+        index = _write_tck(
+            tmp_path,
+            manifest_extra={
+                "infrastructure": {
+                    "engine": {"connector": {"required": True}},
+                    "sut": {"dtr": {"required": True}},
+                },
             },
-        })
+        )
 
         assert _tck_section(index)["infrastructure"] == {
             "engine": {"connector": {"required": True}},
@@ -114,16 +118,19 @@ class TestDeclaredTopology:
         }
 
     def test_standard_constraints_survive(self, tmp_path: Path) -> None:
-        index = _write_tck(tmp_path, manifest_extra={
-            "infrastructure": {
-                "sut": {
-                    "connector": {
-                        "required": True,
-                        "standard": {"id": "CX-0018", "version": "v4.2.0"},
+        index = _write_tck(
+            tmp_path,
+            manifest_extra={
+                "infrastructure": {
+                    "sut": {
+                        "connector": {
+                            "required": True,
+                            "standard": {"id": "CX-0018", "version": "v4.2.0"},
+                        },
                     },
                 },
             },
-        })
+        )
 
         assert _tck_section(index)["infrastructure"]["sut"]["connector"]["standard"] == {
             "id": "CX-0018",
@@ -131,9 +138,12 @@ class TestDeclaredTopology:
         }
 
     def test_dataspace_reaches_the_manifest(self, tmp_path: Path) -> None:
-        index = _write_tck(tmp_path, manifest_extra={
-            "dataspace": {"ecosystem": "Catena-X", "version": "jupiter"},
-        })
+        index = _write_tck(
+            tmp_path,
+            manifest_extra={
+                "dataspace": {"ecosystem": "Catena-X", "version": "jupiter"},
+            },
+        )
 
         assert _tck_section(index)["dataspace"] == {
             "ecosystem": "Catena-X",
@@ -145,12 +155,16 @@ class TestResolvedTopology:
     """The manifest answers what the run needs, not where the author wrote it."""
 
     def test_per_test_blocks_are_merged_when_the_manifest_states_none(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
-        index = _write_tck(tmp_path, tests={
-            "first.yaml": {"sut": {"connector": {"required": True}}},
-            "second.yaml": {"sut": {"dtr": {"required": True}}},
-        })
+        index = _write_tck(
+            tmp_path,
+            tests={
+                "first.yaml": {"sut": {"connector": {"required": True}}},
+                "second.yaml": {"sut": {"dtr": {"required": True}}},
+            },
+        )
 
         assert _tck_section(index)["infrastructure"]["sut"] == {
             "connector": {"required": True},
@@ -158,10 +172,13 @@ class TestResolvedTopology:
         }
 
     def test_a_required_capability_wins_over_an_optional_one(self, tmp_path: Path) -> None:
-        index = _write_tck(tmp_path, tests={
-            "first.yaml": {"sut": {"dtr": {"required": False}}},
-            "second.yaml": {"sut": {"dtr": {"required": True}}},
-        })
+        index = _write_tck(
+            tmp_path,
+            tests={
+                "first.yaml": {"sut": {"dtr": {"required": False}}},
+                "second.yaml": {"sut": {"dtr": {"required": True}}},
+            },
+        )
 
         assert _tck_section(index)["infrastructure"]["sut"]["dtr"]["required"] is True
 
@@ -189,19 +206,26 @@ class TestRejectedTopology:
     """A package never ships a requirement the engine could not bind."""
 
     def test_a_capability_the_engine_cannot_bind_fails_the_compile(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
-        index = _write_tck(tmp_path, manifest_extra={
-            "infrastructure": {"sut": {"submodel_server": {"required": True}}},
-        })
+        index = _write_tck(
+            tmp_path,
+            manifest_extra={
+                "infrastructure": {"sut": {"submodel_server": {"required": True}}},
+            },
+        )
 
         with pytest.raises(ValueError, match="index.yaml"):
             build_ir(index)
 
     def test_a_bad_test_block_names_its_file(self, tmp_path: Path) -> None:
-        index = _write_tck(tmp_path, tests={
-            "first.yaml": {"engine": {"conector": {"required": True}}},
-        })
+        index = _write_tck(
+            tmp_path,
+            tests={
+                "first.yaml": {"engine": {"conector": {"required": True}}},
+            },
+        )
 
         with pytest.raises(ValueError, match="tests/first.yaml"):
             build_ir(index)

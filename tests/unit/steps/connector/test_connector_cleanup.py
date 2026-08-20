@@ -1,7 +1,7 @@
 ################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -61,8 +61,9 @@ def ctx() -> MagicMock:
 
     mock.set_variable = MagicMock(side_effect=_set)
     mock.get_variable = MagicMock(side_effect=_get)
+    mock.get_str = MagicMock(side_effect=lambda n, d="": str(_get(n, d) or d))
     mock.variables = variables
-    mock.get_provider_base_url.return_value = _BASE_URL
+    mock.dataspace.provider_base_url.return_value = _BASE_URL
     return attach_endpoint_url_stubs(mock)
 
 
@@ -81,7 +82,7 @@ class TestDeleteAssetStep:
         # Arrange
         provider = MagicMock()
         provider.assets.delete.return_value = _make_delete_response(204)
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
 
         # Act
         await DeleteAssetStep().invoke(
@@ -97,12 +98,10 @@ class TestDeleteAssetStep:
     ) -> None:
         provider = MagicMock()
         provider.assets.delete.return_value = _make_delete_response(204)
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
         ctx.set_variable("asset_id", "urn:asset:from-context")
 
-        await DeleteAssetStep().invoke(
-            raw_params={}, context=ctx, definition=definition
-        )
+        await DeleteAssetStep().invoke(raw_params={}, context=ctx, definition=definition)
 
         provider.assets.delete.assert_called_once_with(oid="urn:asset:from-context")
 
@@ -112,7 +111,7 @@ class TestDeleteAssetStep:
     ) -> None:
         provider = MagicMock()
         provider.assets.delete.return_value = _make_delete_response(204)
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
 
         output = await DeleteAssetStep().invoke(
             raw_params={"asset_id": "urn:asset:001"}, context=ctx, definition=definition
@@ -128,7 +127,7 @@ class TestDeleteAssetStep:
         """Provider controller returns None on successful delete in some SDK versions."""
         provider = MagicMock()
         provider.assets.delete.return_value = None
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
 
         output = await DeleteAssetStep().invoke(
             raw_params={"asset_id": "urn:asset:001"}, context=ctx, definition=definition
@@ -146,7 +145,7 @@ class TestDeletePolicyStep:
     ) -> None:
         provider = MagicMock()
         provider.policies.delete.return_value = _make_delete_response(204)
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
 
         await DeletePolicyStep().invoke(
             raw_params={"policy_id": "policy-uuid-001"}, context=ctx, definition=definition
@@ -160,12 +159,10 @@ class TestDeletePolicyStep:
     ) -> None:
         provider = MagicMock()
         provider.policies.delete.return_value = _make_delete_response(204)
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
         ctx.set_variable("policy_id", "policy-from-context")
 
-        await DeletePolicyStep().invoke(
-            raw_params={}, context=ctx, definition=definition
-        )
+        await DeletePolicyStep().invoke(raw_params={}, context=ctx, definition=definition)
 
         provider.policies.delete.assert_called_once_with(oid="policy-from-context")
 
@@ -175,7 +172,7 @@ class TestDeletePolicyStep:
     ) -> None:
         provider = MagicMock()
         provider.policies.delete.return_value = _make_delete_response(204)
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
 
         output = await DeletePolicyStep().invoke(
             raw_params={"policy_id": "policy-uuid-001"}, context=ctx, definition=definition
@@ -194,7 +191,7 @@ class TestDeleteContractDefinitionStep:
     ) -> None:
         provider = MagicMock()
         provider.contract_definitions.delete.return_value = _make_delete_response(204)
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
 
         await DeleteContractDefinitionStep().invoke(
             raw_params={"contract_definition_id": "contract-uuid-001"},
@@ -210,7 +207,7 @@ class TestDeleteContractDefinitionStep:
     ) -> None:
         provider = MagicMock()
         provider.contract_definitions.delete.return_value = _make_delete_response(204)
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
         ctx.set_variable("contract_definition_id", "contract-from-context")
 
         await DeleteContractDefinitionStep().invoke(
@@ -225,7 +222,7 @@ class TestDeleteContractDefinitionStep:
     ) -> None:
         provider = MagicMock()
         provider.contract_definitions.delete.return_value = _make_delete_response(204)
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
 
         output = await DeleteContractDefinitionStep().invoke(
             raw_params={"contract_definition_id": "contract-uuid-001"},
@@ -240,7 +237,7 @@ class TestDeleteContractDefinitionStep:
     async def test_cleanup_method_is_noop(self, ctx: MagicMock) -> None:
         """cleanup() must not raise and must not call any service method."""
         provider = MagicMock()
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
 
         await DeleteContractDefinitionStep().cleanup(ctx)
 
@@ -286,7 +283,7 @@ class TestDeleteStepsPublishStatusCode:
         # Arrange
         provider = MagicMock()
         getattr(provider, controller).delete.return_value = _make_delete_response(status)
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
 
         # Act
         output = await step_cls().invoke(
@@ -311,7 +308,7 @@ class TestDeleteStepsPublishStatusCode:
         """Some SDK versions return None from a successful delete."""
         provider = MagicMock()
         getattr(provider, controller).delete.return_value = None
-        ctx.get_provider_service.return_value = provider
+        ctx.dataspace.provider.return_value = provider
 
         output = await step_cls().invoke(
             raw_params={param: oid}, context=ctx, definition=definition

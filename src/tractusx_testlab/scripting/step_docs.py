@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -37,14 +37,15 @@ from __future__ import annotations
 import re
 import types
 import typing
-from typing import Any, Optional, Union, get_args, get_origin
+from collections.abc import Callable
+from typing import Any, Union, cast, get_args, get_origin
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
 from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.steps.base import BaseStep, StepValue
+from tractusx_testlab.steps.step_contract import BaseStep, StepValue
 
 _PRIMITIVES: dict[type, str] = {
     str: "string",
@@ -120,7 +121,10 @@ def default_repr(field: FieldInfo) -> str:
     if field.default is not PydanticUndefined and field.default is not None:
         return f"`{field.default!r}`"
     if field.default_factory is not None:
-        return f"`{field.default_factory()!r}`"
+        # Pydantic's factories take either no argument or the validated data;
+        # a documented default is always the argument-free kind.
+        factory = cast("Callable[[], object]", field.default_factory)
+        return f"`{factory()!r}`"
     return "`None`"
 
 
@@ -143,11 +147,7 @@ def _annotation_models(annotation: Any) -> list[type[BaseModel]]:
     """Pull every Pydantic model out of a possibly-generic annotation."""
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):
         return [annotation]
-    return [
-        model
-        for arg in get_args(annotation)
-        for model in _annotation_models(arg)
-    ]
+    return [model for arg in get_args(annotation) for model in _annotation_models(arg)]
 
 
 # ---------------------------------------------------------------------------
@@ -262,14 +262,18 @@ def render_shared_models(step_classes: list[type[BaseStep]]) -> list[str]:
         return []
 
     lines = ["## Nested objects", ""]
-    for model in sorted(collected, key=lambda m: m.__name__):
-        lines += [f"### {model.__name__}", "", _docstring(model), ""]
+    for nested_model in sorted(collected, key=lambda m: m.__name__):
+        lines += [f"### {nested_model.__name__}", "", _docstring(nested_model), ""]
         lines += _table(
-            model,
+            nested_model,
             ["Field", "Type", "Required", "Default", "Also accepts", "Description"],
             with_aliases=True,
         )
-        if model.model_config.get("extra") == "allow":
+        # `nested_model`, not `model`: this used to read the outer loop's
+        # leftover variable — the last step's output model — so the note was
+        # printed for whichever model happened to be there rather than for the
+        # one being documented.
+        if nested_model.model_config.get("extra") == "allow":
             lines += [
                 "Additional keys sent by the counterpart are passed through unchanged.",
                 "",
@@ -277,17 +281,16 @@ def render_shared_models(step_classes: list[type[BaseStep]]) -> list[str]:
     return lines
 
 
-def render_catalog(step_types: Optional[list[str]] = None) -> str:
+def render_catalog(step_types: list[str] | None = None) -> str:
     """Render the full step reference page.
 
     Every registered step is documented: `@step` refuses to register one that
     has not declared its models, so there is no undocumented remainder to
     account for.
     """
-    import tractusx_testlab.steps  # noqa: F401  — registers every step
 
     names = sorted(step_types or StepRegistry.list_step_types())
-    step_classes = [cls for cls in (StepRegistry.get(name, "") for name in names) if cls]
+    step_classes = [cls for cls in (StepRegistry.get_any(name) for name in names) if cls]
 
     lines = [
         "# Step reference",

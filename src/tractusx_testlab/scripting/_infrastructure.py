@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,12 +26,29 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
+
+from pydantic import ValidationError
 
 from tractusx_testlab.models.authoring.infrastructure import (
     CapabilityRequirement,
     InfrastructureConfig,
 )
+from tractusx_testlab.syntax import diagnostics
+
+
+def as_requirements(declared: dict, source: str) -> InfrastructureConfig:
+    """Read one ``infrastructure`` block, naming the file when it does not hold up.
+
+    The findings are rendered for whoever wrote the block — which key, on which
+    line — rather than dumped as Pydantic wrote them. See
+    :mod:`tractusx_testlab.syntax.diagnostics`.
+    """
+    try:
+        return InfrastructureConfig.model_validate(declared)
+    except ValidationError as exc:
+        findings = diagnostics.render(exc, model=InfrastructureConfig, data=declared)
+        raise ValueError(f"Invalid 'infrastructure' block in {source}:\n{findings}") from exc
 
 
 def merge_requirements(configs: Iterable[InfrastructureConfig]) -> InfrastructureConfig:
@@ -82,7 +99,8 @@ def collect_infrastructure_requirements(tck: object) -> InfrastructureConfig:
 
     scripts = getattr(tck, "scripts", None) or []
     declared = [
-        infrastructure for infrastructure in (
+        infrastructure
+        for infrastructure in (
             getattr(getattr(script, "definition", None), "infrastructure", None)
             for script in scripts
         )

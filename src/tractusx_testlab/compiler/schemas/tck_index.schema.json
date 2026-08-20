@@ -1,151 +1,377 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://eclipse-tractusx.github.io/tractusx-testlab/schemas/tck_index.schema.json",
-  "title": "TCK Index Manifest",
-  "description": "Validates the TCK index.yaml manifest file structure.",
-  "type": "object",
-  "required": ["kind", "id", "metadata", "env", "tests"],
-  "properties": {
-    "kind": {
-      "type": "string",
-      "const": "tck"
-    },
-    "syntax": {
-      "type": "string"
-    },
-    "testlab": {
-      "type": "string"
-    },
-    "id": {
-      "type": "string",
-      "pattern": "^[a-z0-9]+([-.][a-z0-9]+)*$"
-    },
-    "metadata": {
-      "$ref": "#/$defs/metadata"
-    },
-    "env": {
-      "$ref": "#/$defs/env"
-    },
-    "tests": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "oneOf": [
-          { "type": "string" },
-          { "type": "object", "additionalProperties": true }
-        ]
-      }
-    }
-  },
-  "additionalProperties": true,
+  "$comment": "Generated from TckDefinition by `testlab schema`. Do not edit: the models in tractusx_testlab.models.authoring.definitions are the source of truth, and `testlab schema --check` fails the build if this file no longer matches them.",
   "$defs": {
-    "metadata": {
-      "type": "object",
-      "required": ["name", "version", "description", "authors", "license", "standards"],
+    "CapabilityRequirement": {
+      "description": "One capability requirement: an explicit ``required`` flag plus an optional standard.",
       "properties": {
-        "name": { "type": "string" },
-        "version": { "type": "string" },
-        "description": { "type": "string" },
-        "authors": { "type": "array" },
-        "license": { "type": "string" },
-        "standards": { "type": "array" },
-        "dataspace_version": { "type": "string" },
-        "copyright_holders": { "type": "array" },
-        "tags": { "type": "array" }
-      },
-      "additionalProperties": true
-    },
-    "env": {
-      "type": "object",
-      "properties": {
-        "variables": {
-          "oneOf": [
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "standard": {
+          "anyOf": [
             {
-              "type": "object",
-              "additionalProperties": {
-                "oneOf": [
-                  { "type": "string" },
-                  { "type": "number" },
-                  { "type": "boolean" },
-                  { "type": "object" }
-                ]
-              }
+              "$ref": "#/$defs/Standard"
             },
             {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": ["id", "uses"],
-                "additionalProperties": true
-              }
+              "type": "null"
             }
-          ]
-        },
-        "services": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/service"
-          }
-        },
-        "schemas": {
-          "oneOf": [
-            {
-              "type": "object",
-              "additionalProperties": {
-                "type": "object",
-                "required": ["file"],
-                "properties": {
-                  "file": { "type": "string" }
-                },
-                "additionalProperties": true
-              }
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": ["id", "source"],
-                "additionalProperties": true
-              }
-            }
-          ]
-        },
-        "testdata": {
-          "oneOf": [
-            {
-              "type": "object",
-              "additionalProperties": {
-                "type": "object",
-                "required": ["file"],
-                "properties": {
-                  "file": { "type": "string" }
-                },
-                "additionalProperties": true
-              }
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": ["id", "source"],
-                "additionalProperties": true
-              }
-            }
-          ]
+          ],
+          "default": null
         }
       },
-      "additionalProperties": true
+      "required": [
+        "required"
+      ],
+      "title": "CapabilityRequirement",
+      "type": "object"
     },
-    "service": {
-      "type": "object",
-      "required": ["name", "uses"],
+    "DataspaceContext": {
+      "description": "The ecosystem context a run targets \u2014 the single source of the version.",
       "properties": {
-        "name": { "type": "string" },
-        "uses": { "type": "string" },
-        "with": { "type": "object", "additionalProperties": true },
-        "returns": { "type": "object", "additionalProperties": true }
+        "ecosystem": {
+          "title": "Ecosystem",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
       },
-      "additionalProperties": true
+      "required": [
+        "ecosystem",
+        "version"
+      ],
+      "title": "DataspaceContext",
+      "type": "object"
+    },
+    "EnvDefinition": {
+      "additionalProperties": false,
+      "description": "Environment block in a TCK manifest \u2014 shared variables, services, and test data.",
+      "properties": {
+        "schemas": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/SchemaDefinition"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Schemas"
+        },
+        "services": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Services"
+        },
+        "testdata": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/TestDataDefinition"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Testdata"
+        },
+        "variables": {
+          "anyOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Variables"
+        }
+      },
+      "title": "EnvDefinition",
+      "type": "object"
+    },
+    "InfrastructureConfig": {
+      "additionalProperties": false,
+      "description": "The two bindable sides, each keyed by capability (ADR-0019 \u00a71).\n\nWhich capabilities a side accepts is not restated here: it is read from the\nbinding model, which is the registry. The sides are asymmetric by design,\nso each is checked against its own side's capabilities, and a TCK naming\none the engine cannot bind is refused while the manifest is parsed rather\nthan at the step that needed it.",
+      "properties": {
+        "engine": {
+          "additionalProperties": {
+            "$ref": "#/$defs/CapabilityRequirement"
+          },
+          "title": "Engine",
+          "type": "object"
+        },
+        "sut": {
+          "additionalProperties": {
+            "$ref": "#/$defs/CapabilityRequirement"
+          },
+          "title": "Sut",
+          "type": "object"
+        }
+      },
+      "title": "InfrastructureConfig",
+      "type": "object"
+    },
+    "SchemaDefinition": {
+      "additionalProperties": false,
+      "description": "A single schema entry in the TCK env block.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source"
+      ],
+      "title": "SchemaDefinition",
+      "type": "object"
+    },
+    "Standard": {
+      "description": "Optional standard constraint on a capability (ADR-0019 \u00a71).",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Standard",
+      "type": "object"
+    },
+    "TckMetadataDefinition": {
+      "additionalProperties": false,
+      "description": "Metadata block for TCK manifests \u2014 extends base with certification fields.",
+      "properties": {
+        "authors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Authors",
+          "type": "array"
+        },
+        "copyright_holders": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Copyright Holders",
+          "type": "array"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "license": {
+          "default": "Apache-2.0",
+          "title": "License",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "standards": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Standards",
+          "type": "array"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "version": {
+          "default": "1.0",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "TckMetadataDefinition",
+      "type": "object"
+    },
+    "TckTestEntry": {
+      "additionalProperties": false,
+      "description": "A single entry in the TCK ``tests:`` list.\n\n``id`` is the test filename, relative to the ``tests/`` sub-folder of the\nTCK package.  ``name`` is an optional human-readable label used in reports\nand log output.  ``skippable`` controls whether the operator may omit this\ntest at runtime via the ``skip_tests`` runtime variable.",
+      "properties": {
+        "id": {
+          "pattern": "^[a-zA-Z0-9_\\-\\.]+\\.yaml$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "skippable": {
+          "default": false,
+          "title": "Skippable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "TckTestEntry",
+      "type": "object"
+    },
+    "TestDataDefinition": {
+      "additionalProperties": false,
+      "description": "A single test data entry in the TCK env block.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "type": {
+          "default": "application/json",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source"
+      ],
+      "title": "TestDataDefinition",
+      "type": "object"
     }
-  }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Top-level TCK manifest definition.",
+  "properties": {
+    "dataspace": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DataspaceContext"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "env": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EnvDefinition"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_.-]{0,99}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "infrastructure": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InfrastructureConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "kind": {
+      "const": "tck",
+      "default": "tck",
+      "title": "Kind",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/TckMetadataDefinition"
+    },
+    "syntax": {
+      "const": "v1-alpha",
+      "title": "Syntax",
+      "type": "string"
+    },
+    "tests": {
+      "items": {
+        "$ref": "#/$defs/TckTestEntry"
+      },
+      "title": "Tests",
+      "type": "array"
+    }
+  },
+  "required": [
+    "syntax",
+    "id",
+    "metadata"
+  ],
+  "title": "TckDefinition",
+  "type": "object"
 }

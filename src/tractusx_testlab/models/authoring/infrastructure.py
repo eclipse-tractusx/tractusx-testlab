@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,7 +26,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -51,7 +51,7 @@ class Standard(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id: str
-    version: Optional[str] = None
+    version: str | None = None
 
     def effective_version(self, dataspace_version: str) -> str:
         """Resolve the constraint version, inheriting ``dataspace.version`` when omitted."""
@@ -64,7 +64,7 @@ class CapabilityRequirement(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     required: bool
-    standard: Optional[Standard] = None
+    standard: Standard | None = None
 
 
 class InfrastructureConfig(BaseModel):
@@ -90,7 +90,9 @@ class InfrastructureConfig(BaseModel):
         info: ValidationInfo,
     ) -> dict[str, CapabilityRequirement]:
         """Reject a capability the binding model has no field for on this side."""
-        side = info.field_name
+        # Set for every field validator; the annotation allows None because the
+        # same object is passed to model validators, which have no field.
+        side = info.field_name or ""
         accepted = capability_keys(side)
         unknown = [key for key in declared if key not in accepted]
         if unknown:

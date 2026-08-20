@@ -3,7 +3,7 @@ package:
   format: tck
   format_version: 1.0.0
   testlab: v1-alpha
-  checksum: blake2b:078c17dfaa40feae78655307c0da78cf2231d476054c12a1a02ab6180b7eac55
+  checksum: blake2b:9f5d2547ed683fa355278342e6aa425edbe9cf39533a2fbfec4e06b6d6291c84
 tck:
   id: certificate-management-tck-v0.0.1
   metadata:
@@ -27,22 +27,50 @@ tck:
       version: v3.1.0
     tags:
     - CCM
+  dataspace:
+    ecosystem: Catena-X
+    version: saturn
+  infrastructure:
+    engine:
+      connector:
+        required: true
+        standard:
+          id: CX-0018
+          version: v4.2.0
+    sut:
+      connector:
+        required: true
+        standard:
+          id: CX-0018
+          version: v4.2.0
 compilation:
-  compiled_at: '2026-08-05T12:32:39Z'
+  compiled_at: '2026-08-19T10:15:37Z'
   compiler_version: 0.5.0
   fingerprint:
-    nonce: blake2b:f03d34381c6cd8d6d644fcb6d492cb3c85c8db1949d50aefc8f51ad0afdf2742
+    nonce: blake2b:e13aad11d6e8b8d49cb5568c9bb319ef0c7ed57385f2bf4a7761d83c65090031
     public_key: ed25519:yORG/mdbiDnJ8PQ/aLohTGahgQQ6OmWLMd389EQ0QVk=
-    digest: blake2b:9ffbb982290434f94ab1429cd24e572862a853aec112637dd2acec8a16e6f61f
+    digest: blake2b:e930e387b9083d02f5e46a445c948921216a58b5c4f842aa940dbeb012de45eb
 tests:
 - id: catalog-policy-validation
-  source_hash: blake2b:52ea54438e882674438151a9868f12f1289ba0bef5992684db20690067386911
+  test_id: catalog_policy_validation.yaml
+  name: Validate CX-0135 catalog policy constraints
+  skippable: false
+  source_hash: blake2b:c210d631655fdaca19492405acdb70c62b74086968e4f4ea637103869c8767b5
 - id: request-certificate
-  source_hash: blake2b:b2cbf83d38e204ba11774894aa2e405c1b2776a4f8179a016b0e53fc1a00fa78
+  test_id: request_certificate.yaml
+  name: Request a certificate via CCMAPI
+  skippable: false
+  source_hash: blake2b:06c9cbf4baa0fce700e6c214a436d7ff4b725dd525ca709348c1253c2c81d0d4
 - id: send-feedback-notification
-  source_hash: blake2b:c80ccfe4a038e4b7da37a7eb5a2f756a431040f21f8721d3013537432e87fd4d
+  test_id: send_feedback_notification.yaml
+  name: Send a feedback notification and await acknowledgment
+  skippable: false
+  source_hash: blake2b:0f8d1762c4d08cffd33f181d63b96299dcea018b0af20cdc849ffda691e5a6c2
 - id: error-handling
-  source_hash: blake2b:2f7186369b07e2b33993b823a56af272c2f21b3ae45e0dfbdd47918707a63c1d
+  test_id: error_handling.yaml
+  name: Verify error handling for unknown certificate types
+  skippable: false
+  source_hash: blake2b:ac1e5a36b9c30c3afc8e8d7f5cb3ea1459118a14d0e55a584231a96321349754
 assets:
   schemas:
   - id: certificate_schema
@@ -56,21 +84,21 @@ assets:
   - id: request_certificate_body
     file: request_certificate_body.json
     path: assets/testdata/request_certificate_body.json
-    digest: blake2b:856bb2c0fe75c71bbe511a43e9a4b558128dcb11ddb6942e6cd9bfddaebb518e
-    size: 631
+    digest: blake2b:943ddd1a6ea169fe4a511a17d6344104953eafafff12eef9f82ed6fbb2adeb7d
+    size: 623
     mediaType: application/json
     location: filesystem
   - id: send_feedback_body
     file: send_feedback_body.json
     path: assets/testdata/send_feedback_body.json
-    digest: blake2b:92351acbcb65e2350f5bf14f3161958e7710bf4d3fbbea83314eb8c66be6ca61
-    size: 598
+    digest: blake2b:782c4a6b54cbc5fd62c7cacff41a67eecf73787e0cd3365b797d8bcd00941456
+    size: 587
     mediaType: application/json
     location: filesystem
   - id: error_unknown_cert_type_body
     file: error_unknown_cert_type_body.json
     path: assets/testdata/error_unknown_cert_type_body.json
-    digest: blake2b:05b888d95b361af21dc6add11a09d937e62f21bd45b029ff2b4cca75a36f032d
-    size: 645
+    digest: blake2b:f9377ce4c300e2a1ea0d814162325f817e53e1526c7ebe796d1878867dd6c716
+    size: 621
     mediaType: application/json
     location: filesystem

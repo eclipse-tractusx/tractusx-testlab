@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,12 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """FastAPI application factory for the Testlab server."""
@@ -27,10 +27,8 @@
 from __future__ import annotations
 
 import importlib.metadata
-from pathlib import Path
-from typing import Optional
-
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -40,15 +38,34 @@ from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.callbacks import CallbackManager
-from tractusx_testlab.server.mock_registry import get_callback_manager, resolve_mock, set_callback_manager
-from tractusx_testlab.server.storage import PackageStorage
-
+from tractusx_testlab.server.mock_registry import (
+    get_callback_manager,
+    query_of,
+    resolve_mock,
+    set_callback_manager,
+)
 from tractusx_testlab.server.routes import router
+from tractusx_testlab.server.storage import PackageStorage
 
 _logger = logging.getLogger(__name__)
 
 
-def create_app(config: Optional[TestlabConfig] = None) -> FastAPI:
+def _version() -> str:
+    """The installed package version — the one source of it.
+
+    Three numbers used to be in play: ``pyproject`` said one thing, this file
+    hardcoded ``0.7.1`` into the OpenAPI document, and ``/testlab/health``
+    reported a third from the package metadata. An IDE checking compatibility
+    against the health endpoint and a reader of the API docs saw different
+    versions of the same server.
+    """
+    try:
+        return importlib.metadata.version("tractusx-testlab")
+    except importlib.metadata.PackageNotFoundError:
+        return "unknown"
+
+
+def create_app(config: TestlabConfig | None = None) -> FastAPI:
     """Build and return a fully-wired FastAPI application.
 
     Args:
@@ -59,7 +76,7 @@ def create_app(config: Optional[TestlabConfig] = None) -> FastAPI:
 
     app = FastAPI(
         title="Tractus-X Testlab Player",
-        version="0.7.1",
+        version=_version(),
         description="Automated test execution for Tractus-X dataspace interoperability.",
     )
 
@@ -82,11 +99,7 @@ def create_app(config: Optional[TestlabConfig] = None) -> FastAPI:
     @app.get("/testlab/health", tags=["testlab"])
     async def health() -> JSONResponse:
         """Lightweight health check for IDE connectivity validation."""
-        try:
-            version = importlib.metadata.version("tractusx-testlab")
-        except importlib.metadata.PackageNotFoundError:
-            version = "unknown"
-        return JSONResponse(content={"status": "ok", "version": version})
+        return JSONResponse(content={"status": "ok", "version": _version()})
 
     # ── Catch-all for mock endpoints registered at arbitrary paths ─────
     # SUTs send callbacks to URLs like /companycertificate/status.
@@ -106,8 +119,14 @@ def create_app(config: Optional[TestlabConfig] = None) -> FastAPI:
 
         callbacks: CallbackManager = app.state.callbacks
         mock = resolve_mock(
-            full_path, method,
-            headers=headers, query_params=dict(request.query_params), body=body,
+            full_path,
+            method,
+            headers=headers,
+            # Every value, not the last one: `?assetIds=<a>&assetIds=<b>` is one
+            # request with two criteria, and `dict(...)` would hand the handler
+            # only `<b>` (mock_registry.query_of).
+            query_params=query_of(request.query_params.multi_items()),
+            body=body,
         )
 
         # A path no step opened is refused. `resolve` buffers a call nothing is
@@ -119,12 +138,12 @@ def create_app(config: Optional[TestlabConfig] = None) -> FastAPI:
             raise HTTPException(404, f"No mock or listener for {method} {full_path}")
 
         # Resolve the callback listener (so wait_for_call steps unblock)
-        matched = callbacks.resolve(
-            full_path, method, headers, body, dict(request.query_params)
-        )
+        matched = callbacks.resolve(full_path, method, headers, body, dict(request.query_params))
         if mock is not None:
             _safe_path = full_path[:80].replace("\n", "").replace("\r", "")
-            _logger.debug("Mock catch-all matched %s %s -> %d", method, _safe_path, mock.status_code)
+            _logger.debug(
+                "Mock catch-all matched %s %s -> %d", method, _safe_path, mock.status_code
+            )
             return JSONResponse(
                 content=mock.body, status_code=mock.status_code, headers=mock.headers or None
             )

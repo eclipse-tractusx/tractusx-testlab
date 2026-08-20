@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -36,7 +36,7 @@ def _policy_variable() -> dict:
         "uses": "config/connector/policy",
         "name": "Required CCMAPI Usage Policy",
         "with": {"value": {"permissions": [{"action": "use"}]}},
-        "returns": {"policy": {"type": "object", "class": "Policy"}},
+        "returns": {"value": {"type": "object", "class": "Policy"}},
     }
 
 
@@ -44,27 +44,48 @@ class TestVerbVariableSymbols:
     """build_global_symbols must register verb-form (list) env variables."""
 
     def test_list_form_variables_do_not_crash(self) -> None:
-        env = {"variables": [{"id": "provider_url", "uses": "variable/type/string",
-                              "with": {"source": "input"},
-                              "returns": {"value": {"type": "string"}}}]}
+        env = {
+            "variables": [
+                {
+                    "id": "provider_url",
+                    "uses": "variable/type/string",
+                    "with": {"source": "input"},
+                    "returns": {"value": {"type": "string"}},
+                }
+            ]
+        }
 
         symbols = build_global_symbols(env)
 
         assert "env.provider_url" in symbols
 
     def test_simple_variable_uses_declared_return_type(self) -> None:
-        env = {"variables": [{"id": "timeout", "uses": "variable/type/integer",
-                              "with": {"value": 300},
-                              "returns": {"value": {"type": "integer"}}}]}
+        env = {
+            "variables": [
+                {
+                    "id": "timeout",
+                    "uses": "variable/type/integer",
+                    "with": {"value": 300},
+                    "returns": {"value": {"type": "integer"}},
+                }
+            ]
+        }
 
         symbols = build_global_symbols(env)
 
         assert symbols["env.timeout"]["type"] == "integer"
 
     def test_simple_variable_value_return_is_not_a_subfield_symbol(self) -> None:
-        env = {"variables": [{"id": "name", "uses": "variable/type/string",
-                              "with": {"value": "x"},
-                              "returns": {"value": {"type": "string"}}}]}
+        env = {
+            "variables": [
+                {
+                    "id": "name",
+                    "uses": "variable/type/string",
+                    "with": {"value": "x"},
+                    "returns": {"value": {"type": "string"}},
+                }
+            ]
+        }
 
         symbols = build_global_symbols(env)
 
@@ -75,13 +96,21 @@ class TestVerbVariableSymbols:
 
         assert symbols["env.ccm_usage_policy"]["source"] == "env.variables"
 
-    def test_policy_capability_exposes_returns_subfield(self) -> None:
+    def test_policy_capability_carries_its_class_on_the_base_symbol(self) -> None:
+        """One variable, one symbol: the id is the reference, class and all."""
         symbols = build_global_symbols({"variables": [_policy_variable()]})
 
-        policy_symbol = symbols["env.ccm_usage_policy.policy"]
+        policy_symbol = symbols["env.ccm_usage_policy"]
 
         assert policy_symbol["type"] == "object"
         assert policy_symbol["class"] == "Policy"
+
+    def test_a_variable_publishes_no_artifact_subfield(self) -> None:
+        """`env.<id>.policy` was a second name for what `env.<id>` already is."""
+        symbols = build_global_symbols({"variables": [_policy_variable()]})
+
+        assert "env.ccm_usage_policy.policy" not in symbols
+        assert "env.ccm_usage_policy.value" not in symbols
 
     def test_legacy_mapping_form_still_supported(self) -> None:
         env = {"variables": {"region": "eu", "retries": 3}}

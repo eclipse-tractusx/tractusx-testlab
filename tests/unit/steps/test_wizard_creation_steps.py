@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -39,18 +39,22 @@ import pytest
 
 from tests.conftest import attach_endpoint_url_stubs
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.steps.connector.provision import (
+from tractusx_testlab.steps.connector.provision.asset import (
     CreateAssetStep,
-    CreatePolicyStep,
     WizardCreateAssetParams,
     WizardCreateAssetStep,
+)
+from tractusx_testlab.steps.connector.provision.policy import (
+    CreatePolicyStep,
     WizardCreatePolicyParams,
     WizardCreatePolicyStep,
 )
-from tractusx_testlab.steps.industry.dtr import (
+from tractusx_testlab.steps.digital_twin.provider.shell import (
     CreateShellDescriptorStep,
     WizardCreateShellDescriptorParams,
     WizardCreateShellDescriptorStep,
+)
+from tractusx_testlab.steps.digital_twin.provider.submodel_descriptor import (
     WizardCreateSubmodelDescriptorParams,
     WizardCreateSubmodelDescriptorStep,
 )
@@ -77,8 +81,8 @@ def provider() -> MagicMock:
 @pytest.fixture()
 def connector_context(provider: MagicMock) -> MagicMock:
     ctx = attach_endpoint_url_stubs(MagicMock())
-    ctx.get_provider_base_url.return_value = "https://provider.example.com"
-    ctx.get_provider_service.return_value = provider
+    ctx.dataspace.provider_base_url.return_value = "https://provider.example.com"
+    ctx.dataspace.provider.return_value = provider
     return ctx
 
 
@@ -193,7 +197,7 @@ def aas() -> MagicMock:
 @pytest.fixture()
 def dtr_context(aas: MagicMock) -> MagicMock:
     ctx = attach_endpoint_url_stubs(MagicMock())
-    ctx.get_aas_service.return_value = aas
+    ctx.dataspace.registry.return_value = aas
     return ctx
 
 
@@ -272,9 +276,7 @@ class TestWizardCreateSubmodelDescriptor:
         ).submodel_document()
         (endpoint,) = document["endpoints"]
         assert endpoint["interface"] == "SUBMODEL-3.0"
-        assert endpoint["protocolInformation"]["href"] == (
-            "https://dataplane.example.com/submodel"
-        )
+        assert endpoint["protocolInformation"]["href"] == ("https://dataplane.example.com/submodel")
 
     def test_the_asset_and_control_plane_become_the_subprotocol_body(self) -> None:
         document = WizardCreateSubmodelDescriptorParams(
@@ -358,9 +360,7 @@ class TestWizardCreateSubmodelDescriptor:
             dsp_endpoint="https://provider.example.com/api/v1/dsp",
         ).submodel_document()
         (endpoint,) = document["endpoints"]
-        assert endpoint["protocolInformation"]["href"] == (
-            "https://dataplane.example.com/submodel"
-        )
+        assert endpoint["protocolInformation"]["href"] == ("https://dataplane.example.com/submodel")
 
     @pytest.mark.asyncio
     async def test_the_suffix_is_on_the_href_the_registry_is_actually_sent(

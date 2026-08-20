@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -32,7 +32,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from tractusx_testlab.server.callbacks import CallbackManager
-from tractusx_testlab.server.mock_registry import resolve_mock
+from tractusx_testlab.server.mock_registry import query_of, resolve_mock
 
 callback_router = APIRouter(tags=["testlab"])
 
@@ -62,9 +62,16 @@ async def callback_webhook(
     if method in ("POST", "PUT"):
         body = await request.json()
 
+    # Two readings of one query string, for two audiences: a handler is a server
+    # and sees every value it was sent, a callback result is what a script reads
+    # and carries one value per name (mock_registry.MockRequest).
     query_params = dict(request.query_params)
     mock = resolve_mock(
-        full_path, method, headers=headers, query_params=query_params, body=body
+        full_path,
+        method,
+        headers=headers,
+        query_params=query_of(request.query_params.multi_items()),
+        body=body,
     )
 
     # A path no step opened is refused rather than buffered — see the

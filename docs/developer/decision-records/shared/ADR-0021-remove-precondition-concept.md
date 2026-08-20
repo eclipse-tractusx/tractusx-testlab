@@ -77,8 +77,8 @@ rather than translating it.
 | Was (precondition) | Now (variables) |
 |--------------------|-----------------|
 | `precondition/provide` inlining a policy | A complex variable in `index.yaml` `env.variables` with `uses: config/connector/policy` |
-| Reference to the provided policy | `${{ env.<id>.policy }}` |
-| Data pulled "from a precondition" | A `connector/pull_data_filtered` step consuming `with.policy: ${{ env.<id>.policy }}` |
+| Reference to the provided policy | `${{ env.<id> }}` |
+| Data pulled "from a precondition" | A `connector/pull_data_filtered` step consuming `with.policy: ${{ env.<id> }}` |
 
 A policy is declared once:
 
@@ -91,7 +91,7 @@ env:
       with:
         value: { permissions: [ ... ] }
       returns:
-        policy:
+        value:
           type: object
           class: Policy
 ```
@@ -102,7 +102,7 @@ and referenced wherever a step needs it:
 - id: pull_data_1
   uses: connector/pull_data_filtered
   with:
-    policy: ${{ env.ccm_usage_policy.policy }}
+    policy: ${{ env.ccm_usage_policy }}
     # ...
 ```
 

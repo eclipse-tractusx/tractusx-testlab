@@ -46,37 +46,41 @@ They run in two positions: as a standalone step in `execution:`, or inline in a 
 
 So "adding an assertion type" almost always means adding an **operator**, not a new step.
 
-## Step 1 — Add the operator
+## Step 1 — Declare it in the contract
 
-All operators live in one table: `_check()` in `src/tractusx_testlab/steps/utility/validate.py`, shared by `validate/assert` and `validate/field`. Add a branch:
-
-```python
-def _check(operator: str, actual: Any, expected: Any) -> tuple[bool, str]:
-    ...
-    if operator == "greater_than":
-        passed = actual is not None and float(actual) > float(expected)
-        return passed, f"Expected value > {expected!r}, got {actual!r}"
-```
-
-## Step 2 — Declare it in the contract
-
-Extend the `AssertOperator` literal at the top of the same file so the parameter models (and the generated step reference) know about it:
+Every operator lives in one module: `src/tractusx_testlab/steps/assertions/operators.py`, shared by `validate/assert`, `validate/field` and `flow/if`. Extend the `AssertOperator` literal so the parameter models (and the generated step reference) know about it:
 
 ```python
 AssertOperator = Literal[
     "not_null",
-    "null",
-    "not_empty",
-    "equals",
-    "not_equals",
-    "matches_regex",
-    "contains",
-    "not_contains",
+    "is_null",
+    ...
+    "between",
     "greater_than",  # ← add this
 ]
 ```
 
 Because `ValidateFieldParams` inherits from `ValidateAssertParams`, both steps pick the new operator up automatically.
+
+## Step 2 — Add the row to the operator table
+
+`_TABLE` in the same module is the dispatch: a name, the operands it reads, the comparison, and how a failure reads. Add a row — there is no branch to extend, and a name declared in Step 1 but missing here fails the module's import-time consistency check:
+
+```python
+Operator(
+    "greater_than", Arity.BINARY,
+    _numeric(lambda left, right: left > right),
+    "Expected {actual!r} to be greater than {expected!r}",
+),
+```
+
+Three things the table decides for you:
+
+- **`Arity`** — `UNARY` reads only the value under test, `BINARY` also reads `value`, `RANGE` reads the `min`/`max` pair instead. The assertion engine uses it to decide which params to resolve.
+- **The operand adapter** — `_numeric`, `_sized` and `_bounded` shape the operands and reject the pairs that cannot be compared at all, so the comparison itself is a one-line lambda over values of the right type.
+- **The message** — a format template naming `{actual}` and `{expected}`, rendered only when the check fails.
+
+When operands cannot be read at all (a missing bound, a word where a number belongs), raise `OperandError` with a message that says so; `apply_operator` turns it into a failure rather than letting it look like a passing check.
 
 ## Step 3 — Test it
 

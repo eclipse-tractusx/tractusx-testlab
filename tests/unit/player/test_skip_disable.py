@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -25,7 +25,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -38,18 +38,18 @@ from tractusx_testlab.player.execution._trace_formatter import (
     build_tck_result,
     make_intentionally_skipped_result,
 )
-from tractusx_testlab.scripting.script import TestScript, Tck
-
+from tractusx_testlab.scripting.script import Tck, TestScript
 
 # ---------------------------------------------------------------------------
 # Helpers / factories
 # ---------------------------------------------------------------------------
 
+
 def _make_script_def(script_id: str = "test-a") -> MagicMock:
     """Return a minimal ScriptDefinition mock sufficient for TestScript."""
     d = MagicMock()
     d.metadata.name = script_id.replace("-", " ").title()
-    d.dataspace_version = "saturn"
+    d.dataspace = None
     d.id = script_id
     return d
 
@@ -78,8 +78,7 @@ def _make_tck_with_scripts(
     tck_def.tests = []
     tck = Tck(tck_def)
     tck._scripts = [
-        _make_test_script(stem, skippable=skip, test_id=f"{stem}.yaml")
-        for stem, skip in scripts
+        _make_test_script(stem, skippable=skip, test_id=f"{stem}.yaml") for stem, skip in scripts
     ]
     return tck
 
@@ -87,10 +86,9 @@ def _make_tck_with_scripts(
 def _make_script_result(name: str, status: ScriptStatus) -> MagicMock:
     from tractusx_testlab.models.runtime.results import AssertionSummary, ScriptResult
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return ScriptResult(
         script_name=name,
-        dataspace_version="saturn",
         status=status,
         execution=[],
         started_at=now,
@@ -104,8 +102,8 @@ def _make_script_result(name: str, status: ScriptStatus) -> MagicMock:
 # TckTestEntry model
 # ---------------------------------------------------------------------------
 
-class TestTckTestEntry:
 
+class TestTckTestEntry:
     def test_skippable_defaults_false(self):
         entry = TckTestEntry(id="test-cert.yaml")
         assert entry.skippable is False
@@ -123,8 +121,8 @@ class TestTckTestEntry:
 # TestScript.skippable and .test_id properties
 # ---------------------------------------------------------------------------
 
-class TestTestScriptSkippable:
 
+class TestTestScriptSkippable:
     def test_default_skippable_is_false(self):
         script = _make_test_script()
         assert script.skippable is False
@@ -146,8 +144,8 @@ class TestTestScriptSkippable:
 # Tck.skippable_tests()
 # ---------------------------------------------------------------------------
 
-class TestTckSkippableTests:
 
+class TestTckSkippableTests:
     def test_no_skippable_tests_returns_empty(self):
         tck = _make_tck_with_scripts(("test-a", False), ("test-b", False))
         assert tck.skippable_tests() == []
@@ -165,8 +163,8 @@ class TestTckSkippableTests:
 # make_intentionally_skipped_result
 # ---------------------------------------------------------------------------
 
-class TestMakeIntentionallySkippedResult:
 
+class TestMakeIntentionallySkippedResult:
     def test_status_is_skipped(self):
         script = _make_test_script()
         result = make_intentionally_skipped_result(script)
@@ -187,10 +185,10 @@ class TestMakeIntentionallySkippedResult:
 # build_tck_result — SKIPPED treated as non-failing
 # ---------------------------------------------------------------------------
 
-class TestBuildTckResult:
 
+class TestBuildTckResult:
     def _now(self) -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
     def test_all_completed_gives_completed(self):
         results = [
@@ -234,10 +232,11 @@ class TestBuildTckResult:
 # TestlabPlayer._validate_and_resolve_skip_ids
 # ---------------------------------------------------------------------------
 
-class TestValidateAndResolveSkipIds:
 
+class TestValidateAndResolveSkipIds:
     def _resolve(self, tck, runtime_vars):
         from tractusx_testlab.player.execution._skip import resolve_skip_ids
+
         return resolve_skip_ids(tck, runtime_vars)
 
     def test_empty_runtime_vars_returns_empty_frozenset(self):
@@ -277,8 +276,8 @@ class TestValidateAndResolveSkipIds:
 # ScriptInspection.skippable
 # ---------------------------------------------------------------------------
 
-class TestScriptInspectionSkippable:
 
+class TestScriptInspectionSkippable:
     def test_skippable_false_by_default(self):
         insp = ScriptInspection(name="test", steps=())
         assert insp.skippable is False

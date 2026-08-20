@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -30,34 +30,36 @@ import hashlib
 import json
 import logging
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
-from pydantic import ValidationError
 
-from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.compiler._fingerprint import build_fingerprint
 from tractusx_testlab.compiler.ir._assets import build_asset_entries
-from tractusx_testlab.compiler.ir._compilation import build_compiled_tests
-from tractusx_testlab.compiler.ir._helpers import (
-    _infer_type, compute_source_hash,
+from tractusx_testlab.compiler.ir._compilation import build_compiled_tests, iter_test_entries
+from tractusx_testlab.compiler.ir._instructions import (
+    compute_source_hash,
+)
+from tractusx_testlab.compiler.ir._instructions import (
     infer_testdata_type as _infer_testdata_type,
 )
 from tractusx_testlab.compiler.ir._symbols import build_global_symbols
+from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.models.authoring.infrastructure import (
     DataspaceContext,
     InfrastructureConfig,
 )
-from tractusx_testlab.scripting._infrastructure import merge_requirements
+from tractusx_testlab.scripting._infrastructure import as_requirements, merge_requirements
 
 logger = logging.getLogger(__name__)
 
+
 def build_ir(
     manifest_path: Path,
-    output_path: Optional[Path] = None,
-    version: Optional[str] = None,
+    output_path: Path | None = None,
+    version: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build manifest and execution payload from a TCK manifest.
 
@@ -68,7 +70,7 @@ def build_ir(
     base_dir = manifest_path.parent
 
     compiler_version = version or "0.5.0"
-    compiled_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    compiled_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     testlab = manifest_data.get("testlab", "v1-alpha")
     tck_id = manifest_data.get("id", manifest_path.stem)
 
@@ -130,7 +132,9 @@ def build_ir(
 
     all_asset_entries = schema_assets + testdata_assets
     package_checksum = _compute_package_checksum(
-        manifest_dict, execution_json_bytes, all_asset_entries,
+        manifest_dict,
+        execution_json_bytes,
+        all_asset_entries,
     )
     manifest_dict["package"]["checksum"] = package_checksum
     logger.info("Package checksum: %s", package_checksum)
@@ -161,7 +165,9 @@ def _compute_package_checksum(
     """
     manifest_copy = {**manifest_dict, "package": {**manifest_dict["package"], "checksum": ""}}
     manifest_bytes = yaml.dump(
-        manifest_copy, default_flow_style=False, sort_keys=False,
+        manifest_copy,
+        default_flow_style=False,
+        sort_keys=False,
     ).encode("utf-8")
 
     asset_digest_bytes = "".join(
@@ -246,30 +252,39 @@ def _build_service_entry(svc: dict[str, Any]) -> dict[str, Any]:
 
 
 def _build_tests_list(
-    manifest_data: dict[str, Any], base_dir: Path,
+    manifest_data: dict[str, Any],
+    base_dir: Path,
 ) -> list[dict[str, Any]]:
-    """Build the tests reference list with source hashes."""
-    from tractusx_testlab.compiler.ir._helpers import (
-        compute_source_hash,
+    """Build the tests reference list — what the manifest says about each test.
+
+    Not only where the test is and what it hashes to: ``skippable`` is a
+    property of the *entry*, not of the test document, so the compiled package
+    is the only place a consumer can learn it without the sources. It used to
+    stop at the compiler — a package could not say which of its tests an
+    operator is allowed to omit, though the player enforces exactly that.
+    ``test_id`` is the file name, the same string ``skip_tests`` names.
+    """
+    from tractusx_testlab.compiler.ir._instructions import (
         load_test_file,
         resolve_test_path,
     )
 
-    tests_raw = manifest_data.get("tests", [])
     tests_list: list[dict[str, Any]] = []
 
-    for entry in tests_raw:
-        file_ref = entry if isinstance(entry, str) else entry.get(
-            "test", entry.get("file", entry.get("id", ""))
-        )
-        test_path = resolve_test_path(file_ref, base_dir)
+    for entry in iter_test_entries(manifest_data):
+        test_path = resolve_test_path(entry.id, base_dir)
         test_data = load_test_file(test_path)
         source_hash = compute_source_hash(test_path)
 
-        tests_list.append({
+        test_entry: dict[str, Any] = {
             "id": test_data.get("id", test_path.stem),
-            "source_hash": source_hash,
-        })
+            "test_id": entry.id,
+        }
+        if entry.name is not None:
+            test_entry["name"] = entry.name
+        test_entry["skippable"] = entry.skippable
+        test_entry["source_hash"] = source_hash
+        tests_list.append(test_entry)
 
     return tests_list
 
@@ -289,7 +304,8 @@ def _build_dataspace(manifest_data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _build_infrastructure(
-    manifest_data: dict[str, Any], base_dir: Path,
+    manifest_data: dict[str, Any],
+    base_dir: Path,
 ) -> dict[str, Any]:
     """What the package needs bound before it can run — resolved, not copied.
 
@@ -300,31 +316,25 @@ def _build_infrastructure(
     answer to "what must I bind to run this package" rather than a transcript
     of where the author happened to write it down.
     """
-    from tractusx_testlab.compiler.ir._helpers import load_test_file, resolve_test_path
+    from tractusx_testlab.compiler.ir._instructions import load_test_file, resolve_test_path
 
     declared = manifest_data.get("infrastructure")
     if isinstance(declared, dict):
-        requirements = _as_requirements(declared, "index.yaml")
+        requirements = as_requirements(declared, "index.yaml")
     else:
         per_test: list[InfrastructureConfig] = []
         for entry in manifest_data.get("tests", []):
-            file_ref = entry if isinstance(entry, str) else entry.get(
-                "test", entry.get("file", entry.get("id", ""))
+            file_ref = (
+                entry
+                if isinstance(entry, str)
+                else entry.get("test", entry.get("file", entry.get("id", "")))
             )
             test_path = resolve_test_path(file_ref, base_dir)
             test_declared = load_test_file(test_path).get("infrastructure")
             if isinstance(test_declared, dict):
-                per_test.append(_as_requirements(test_declared, f"tests/{test_path.name}"))
+                per_test.append(as_requirements(test_declared, f"tests/{test_path.name}"))
         requirements = merge_requirements(per_test)
 
     if not requirements.engine and not requirements.sut:
         return {}
     return requirements.model_dump(exclude_none=True)
-
-
-def _as_requirements(declared: dict[str, Any], source: str) -> InfrastructureConfig:
-    """Read one ``infrastructure`` block, naming the file when it does not hold up."""
-    try:
-        return InfrastructureConfig.model_validate(declared)
-    except ValidationError as exc:
-        raise ValueError(f"Invalid 'infrastructure' block in {source}:\n{exc}") from exc

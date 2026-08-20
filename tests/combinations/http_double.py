@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -39,7 +39,7 @@ import json
 import threading
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 
@@ -69,8 +69,8 @@ class HttpDouble:
     def __init__(self) -> None:
         self._routes: dict[tuple[str, str], list[Response]] = {}
         self.received: list[ReceivedRequest] = []
-        self._server: Optional[ThreadingHTTPServer] = None
-        self._thread: Optional[threading.Thread] = None
+        self._server: ThreadingHTTPServer | None = None
+        self._thread: threading.Thread | None = None
 
     # -- setup ------------------------------------------------------------
 
@@ -79,16 +79,14 @@ class HttpDouble:
         method: str,
         path: str,
         *responses: Response,
-    ) -> "HttpDouble":
+    ) -> HttpDouble:
         """Answer *method* *path* with *responses*, the last one repeating."""
         if not responses:
             raise ValueError("A route needs at least one response.")
         self._routes[(method.upper(), path)] = list(responses)
         return self
 
-    def json_route(
-        self, method: str, path: str, body: Any, status: int = 200
-    ) -> "HttpDouble":
+    def json_route(self, method: str, path: str, body: Any, status: int = 200) -> HttpDouble:
         """The common case — one JSON response, every time."""
         return self.route(method, path, Response(status=status, body=body))
 

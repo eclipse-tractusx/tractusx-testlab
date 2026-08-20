@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,12 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Discovers and merges configuration from YAML file, env vars, and CLI flags."""
@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -59,8 +58,8 @@ class ConfigLoader:
 
     @staticmethod
     def load(
-        config_path: Optional[Path] = None,
-        cli_overrides: Optional[dict] = None,
+        config_path: Path | None = None,
+        cli_overrides: dict | None = None,
     ) -> TestlabConfig:
         file_data = ConfigLoader._load_file(config_path)
         env_data = ConfigLoader._load_env()
@@ -96,43 +95,43 @@ class ConfigLoader:
         return merge(resolved, _as_infrastructure(cli_declared))
 
     @staticmethod
-    def _load_file(config_path: Optional[Path] = None) -> dict:
-        candidates = [config_path] if config_path else [
-            Path.cwd() / _CONFIG_FILENAME,
-            Path.home() / ".testlab" / _CONFIG_FILENAME,
-        ]
+    def _load_file(config_path: Path | None = None) -> dict:
+        candidates = (
+            [config_path]
+            if config_path
+            else [
+                Path.cwd() / _CONFIG_FILENAME,
+                Path.home() / ".testlab" / _CONFIG_FILENAME,
+            ]
+        )
         for path in candidates:
             if path and path.is_file():
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     data = yaml.safe_load(f)
                 return data if isinstance(data, dict) else {}
         return {}
 
     @staticmethod
     def _load_env() -> dict:
-        result = {}
-        mappings = {
-            "KEYS_DIR": "keys_dir",
-            "TRUST_STORE_DIR": "trust_store_dir",
-            "STORAGE_DIR": "storage_dir",
-            "SERVER_PORT": "server_port",
-            "MAX_UPLOAD_BYTES": "max_upload_bytes",
-            "DEFAULT_TIMEOUT_S": "default_timeout_s",
-            "LIBRARY_PATH": "library_path",
-        }
-        for env_suffix, field_name in mappings.items():
-            value = os.environ.get(f"{_ENV_PREFIX}{env_suffix}")
-            if value is not None:
-                result[field_name] = value
+        """No longer reads anything.
 
+        Every ``TESTLAB_*`` name is derived from :class:`TestlabConfig` by
+        pydantic-settings, so a hand-written mapping here could only ever fall
+        behind the model — which it had: seven names against eleven fields, with
+        ``logs_dir`` missing entirely.
+
+        The vault block is the one exception, kept because it arrives as a
+        nested object assembled from three separate variables.
+        """
         vault_url = os.environ.get(f"{_ENV_PREFIX}VAULT_URL")
-        if vault_url:
-            result["vault"] = {
+        if not vault_url:
+            return {}
+        return {
+            "vault": {
                 "vault_url": vault_url,
                 "vault_token": os.environ.get(f"{_ENV_PREFIX}VAULT_TOKEN", ""),
                 "vault_secret_path": os.environ.get(
                     f"{_ENV_PREFIX}VAULT_SECRET_PATH", "secret/data/testlab"
                 ),
             }
-
-        return result
+        }

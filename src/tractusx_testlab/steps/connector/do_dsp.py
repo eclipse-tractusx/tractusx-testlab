@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,18 +26,21 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import (
-    CounterPartyParams,
+from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.connector import policy_mismatch
+from tractusx_testlab.steps.connector.policies import ExpectedPoliciesParams
+from tractusx_testlab.steps.counter_party import CounterPartyParams
+from tractusx_testlab.steps.shared_models import (
     FilterExpressionParams,
     StepParams,
 )
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -53,10 +56,10 @@ class DspFlowOutput(StepPayload):
     that as a 500 rather than raising, so a script can assert on it.
     """
 
-    dataplane_url: Optional[str] = Field(
+    dataplane_url: str | None = Field(
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
-    edr_token: Optional[str] = Field(
+    edr_token: str | None = Field(
         default=None, description="Authorization token for that data-plane URL."
     )
 
@@ -66,12 +69,16 @@ class DspFlowOutput(StepPayload):
 # ---------------------------------------------------------------------------
 
 
-class DoDspParams(CounterPartyParams, FilterExpressionParams):
+class DoDspParams(CounterPartyParams, FilterExpressionParams, ExpectedPoliciesParams):
     """Input contract of ``connector/consumer/do_dsp``."""
 
     expected_policies: list[dict] = Field(
         default_factory=list,
-        description="ODRL policies the negotiation is allowed to accept.",
+        description=(
+            "ODRL policies the negotiation is allowed to accept, as the raw "
+            "policy document, the testlab simplified spelling, JSON text, or "
+            "the whole 'config/connector/policy' variable that holds one."
+        ),
     )
 
 
@@ -88,16 +95,22 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
     output_model = DspFlowOutput
 
     async def execute(
-        self, params: DoDspParams, context: "StepContext", definition: StepDefinition
+        self, params: DoDspParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
-        consumer = context.get_consumer_service()
-        endpoint, token = consumer.do_dsp(
-            counter_party_id=params.counter_party_id,
-            counter_party_address=params.counter_party_address,
-            filter_expression=params.sdk_filter_expression(),
-            policies=params.expected_policies,
-        )
-        return _build_output(context, params, endpoint, token)
+        consumer = context.dataspace.consumer()
+        party = params.counter_party(context)
+        # Every flow step turns down offers by policy, and the SDK reports only
+        # that it turned all of them down. The guard reports which offers those
+        # were and how they differed (steps.connector.policy_mismatch).
+        with policy_mismatch.explained(party.address):
+            endpoint, token = await sdk_call.run(
+                consumer.do_dsp,
+                counter_party_id=party.identity,
+                counter_party_address=party.address,
+                filter_expression=params.sdk_filter_expression(),
+                policies=params.expected_policies,
+            )
+        return _build_output(self.step_type, context, params, endpoint, token)
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +118,7 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
 # ---------------------------------------------------------------------------
 
 
-class DoDspWithBpnlParams(FilterExpressionParams):
+class DoDspWithBpnlParams(FilterExpressionParams, ExpectedPoliciesParams):
     """Input contract of ``connector/consumer/do_dsp_with_bpnl``.
 
     Unlike ``do_dsp``, the optional fields stay ``None`` rather than defaulting
@@ -114,13 +127,17 @@ class DoDspWithBpnlParams(FilterExpressionParams):
     """
 
     bpnl: str = Field(description="BPN used to discover the counter-party's connector.")
-    counter_party_address: Optional[str] = Field(
+    counter_party_address: str | None = Field(
         default=None,
         description="DSP endpoint; when omitted it is resolved from the BPN by discovery.",
     )
-    expected_policies: Optional[list[dict]] = Field(
+    expected_policies: list[dict] | None = Field(
         default=None,
-        description="ODRL policies the negotiation is allowed to accept.",
+        description=(
+            "ODRL policies the negotiation is allowed to accept, as the raw "
+            "policy document, the testlab simplified spelling, JSON text, or "
+            "the whole 'config/connector/policy' variable that holds one."
+        ),
     )
 
 
@@ -135,16 +152,18 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
     output_model = DspFlowOutput
 
     async def execute(
-        self, params: DoDspWithBpnlParams, context: "StepContext", definition: StepDefinition
+        self, params: DoDspWithBpnlParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
-        consumer = context.get_consumer_service()
-        endpoint, token = consumer.do_dsp_with_bpnl(
-            bpnl=params.bpnl,
-            counter_party_address=params.counter_party_address,
-            filter_expression=params.sdk_filter_expression() or None,
-            policies=params.expected_policies,
-        )
-        return _build_output(context, params, endpoint, token)
+        consumer = context.dataspace.consumer()
+        with policy_mismatch.explained(params.counter_party_address or params.bpnl):
+            endpoint, token = await sdk_call.run(
+                consumer.do_dsp_with_bpnl,
+                bpnl=params.bpnl,
+                counter_party_address=params.counter_party_address,
+                filter_expression=params.sdk_filter_expression() or None,
+                policies=params.expected_policies,
+            )
+        return _build_output(self.step_type, context, params, endpoint, token)
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +171,7 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
 # ---------------------------------------------------------------------------
 
 
-class DiscoverDtrAuthParams(CounterPartyParams):
+class DiscoverDtrAuthParams(CounterPartyParams, ExpectedPoliciesParams):
     """Input contract of ``connector/discover/digital-twin-registry/auth``.
 
     ``expected_policies`` stays ``None`` rather than defaulting to empty: the
@@ -163,9 +182,13 @@ class DiscoverDtrAuthParams(CounterPartyParams):
         default=DTR_DCT_TYPE,
         description="`dct:type` the registry asset is offered under in the catalog.",
     )
-    expected_policies: Optional[list[dict]] = Field(
+    expected_policies: list[dict] | None = Field(
         default=None,
-        description="ODRL policies the negotiation is allowed to accept.",
+        description=(
+            "ODRL policies the negotiation is allowed to accept, as the raw "
+            "policy document, the testlab simplified spelling, JSON text, or "
+            "the whole 'config/connector/policy' variable that holds one."
+        ),
     )
 
 
@@ -185,33 +208,48 @@ class DiscoverDtrAuthStep(BaseStep[DiscoverDtrAuthParams, DspFlowOutput]):
     async def execute(
         self,
         params: DiscoverDtrAuthParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DspFlowOutput]:
-        consumer = context.get_consumer_service()
-        endpoint, token = consumer.do_dsp_by_dct_type(
-            counter_party_id=params.counter_party_id,
-            counter_party_address=params.counter_party_address,
-            dct_type=params.dct_type,
-            policies=params.expected_policies,
-        )
-        return _build_output(context, params, endpoint, token)
+        consumer = context.dataspace.consumer()
+        party = params.counter_party(context)
+        with policy_mismatch.explained(party.address):
+            endpoint, token = await sdk_call.run(
+                consumer.do_dsp_by_dct_type,
+                counter_party_id=party.identity,
+                counter_party_address=party.address,
+                dct_type=params.dct_type,
+                policies=params.expected_policies,
+            )
+        return _build_output(self.step_type, context, params, endpoint, token)
 
 
 def _build_output(
-    context: "StepContext",
+    step_type: str,
+    context: StepContext,
     params: StepParams,
-    endpoint: Optional[str],
-    token: Optional[str],
+    endpoint: str | None,
+    token: str | None,
 ) -> StepOutput[DspFlowOutput]:
-    """Report the data-plane address every flow step ends at."""
+    """Report the data-plane address every flow step ends at.
+
+    A flow that produced no endpoint did not achieve what the step declares, so
+    it fails rather than reporting a 500 the counterpart never sent — the code
+    was invented, and nothing downstream read it.
+    """
+    if not endpoint:
+        raise StepExecutionError(
+            step_type,
+            "the DSP flow completed without a data-plane endpoint, so there is "
+            "nothing for a later step to pull data from.",
+        )
     value = DspFlowOutput(dataplane_url=endpoint, edr_token=token)
-    url = context.get_consumer_endpoint_url("edrs")
+    url = context.dataspace.consumer_endpoint_url("edrs")
     return StepOutput(
         value=value,
         request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
         response=HttpResponse(
-            status_code=200 if endpoint else 500,
+            status_code=200,
             body=value.model_dump(mode="json"),
         ),
     )

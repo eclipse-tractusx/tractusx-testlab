@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -27,19 +27,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, model_validator
-
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import (
-    DataAddressPayload,
-    StepParams,
-    data_address_token,
-)
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector._polling import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
@@ -48,6 +43,12 @@ from tractusx_testlab.steps.connector._polling import (
     read_entity,
 )
 from tractusx_testlab.steps.connector.dataplane import fetch_data_address
+from tractusx_testlab.steps.shared_models import (
+    DataAddressPayload,
+    StepParams,
+    data_address_token,
+)
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.syntax.context_vars import (
     AGREEMENT_ID,
     NEGOTIATION_ID,
@@ -83,27 +84,30 @@ class InitiateTransferParams(StepParams):
             "'-PUSH' type such as 'HttpData-PUSH' or 'AmazonS3-PUSH'."
         ),
     )
-    negotiation_id: Optional[str] = Field(
+    negotiation_id: str | None = Field(
         default=None,
         description=(
             "PULL only — negotiation to collect the EDR for; falls back to the "
             "'negotiation_id' context variable."
         ),
     )
-    agreement_id: Optional[str] = Field(
+    agreement_id: str | None = Field(
         default=None,
         description=(
             "PUSH only — contract agreement the transfer runs under; falls back "
             "to the 'agreement_id' context variable."
         ),
     )
-    data_destination: Optional[dict] = Field(
+    data_destination: dict | None = Field(
         default=None,
         description="PUSH only — the EDC data address the provider pushes to.",
     )
     counter_party_address: str = Field(
         default="",
-        description="PUSH only — DSP endpoint of the provider; falls back to 'provider_address'.",
+        description=(
+            "PUSH only — DSP endpoint of the provider; defaults to the bound SUT "
+            "connector's 'dsp_url'."
+        ),
     )
     max_wait: float = Field(
         default=DEFAULT_MAX_WAIT,
@@ -113,7 +117,7 @@ class InitiateTransferParams(StepParams):
         default=DEFAULT_POLL_INTERVAL,
         description="PUSH only — seconds between two transfer state reads.",
     )
-    verify: Optional[Any] = Field(
+    verify: Any | None = Field(
         default=None,
         description="TLS verification passed through to the SDK; None keeps its default.",
     )
@@ -124,7 +128,7 @@ class InitiateTransferParams(StepParams):
         return self.transfer_type.upper().endswith("-PUSH")
 
     @model_validator(mode="after")
-    def _push_needs_a_destination(self) -> "InitiateTransferParams":
+    def _push_needs_a_destination(self) -> InitiateTransferParams:
         """A PUSH with nowhere to push to would start and then fail at the provider."""
         if self.is_push and not self.data_destination:
             raise ValueError(
@@ -141,23 +145,21 @@ class InitiateTransferOutput(StepPayload):
     to the destination the request named, so there is no EDR to read back.
     """
 
-    transfer_id: Optional[str] = Field(
-        default=None, description="ID of the transfer process."
-    )
-    state: Optional[str] = Field(
+    transfer_id: str | None = Field(default=None, description="ID of the transfer process.")
+    state: str | None = Field(
         default=None,
         description="State the transfer settled at, e.g. 'STARTED' or 'COMPLETED'.",
     )
-    edr_entry: Optional[dict] = Field(
+    edr_entry: dict | None = Field(
         default=None, description="PULL only — the EDR entry the negotiation produced."
     )
-    dataplane_url: Optional[str] = Field(
+    dataplane_url: str | None = Field(
         default=None, description="PULL only — data-plane URL the data is fetched from."
     )
-    edr_token: Optional[str] = Field(
+    edr_token: str | None = Field(
         default=None, description="PULL only — authorization token for that data-plane URL."
     )
-    data_address: Optional[DataAddressPayload] = Field(
+    data_address: DataAddressPayload | None = Field(
         default=None,
         description="PULL only — the full data address document, for assertions on its other keys.",
     )
@@ -181,22 +183,24 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
     output_model = InitiateTransferOutput
 
     async def execute(
-        self, params: InitiateTransferParams, context: "StepContext", definition: StepDefinition
+        self, params: InitiateTransferParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[InitiateTransferOutput]:
         if params.is_push:
             return await self._push(params, context)
         return await self._pull(params, context)
 
     async def _pull(
-        self, params: InitiateTransferParams, context: "StepContext"
+        self, params: InitiateTransferParams, context: StepContext
     ) -> StepOutput[InitiateTransferOutput]:
         """Collect the EDR the negotiation produced and resolve its data address."""
-        consumer = context.get_consumer_service()
-        negotiation_id = params.negotiation_id or context.get_variable(NEGOTIATION_ID)
-        edr_entry = consumer.get_edr_entry(negotiation_id=negotiation_id, verify=params.verify)
+        consumer = context.dataspace.consumer()
+        negotiation_id = params.negotiation_id or context.get_str(NEGOTIATION_ID)
+        edr_entry = await sdk_call.run(
+            consumer.get_edr_entry, negotiation_id=negotiation_id, verify=params.verify
+        )
 
         transfer_id = _transfer_id(edr_entry)
-        data_address = fetch_data_address(consumer, transfer_id, params.verify)
+        data_address = await fetch_data_address(consumer, transfer_id, params.verify)
         endpoint = (data_address or {}).get("endpoint")
 
         # The negotiation already drove this transfer to its final state, so one
@@ -205,37 +209,42 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
             getattr(consumer, "transfer_processes", None), transfer_id or "", params.verify
         )
 
+        if not edr_entry:
+            raise StepExecutionError(
+                self.step_type,
+                "the negotiation produced no EDR, so this PULL transfer has no "
+                "data-plane address or token to hand on.",
+            )
+
         value = InitiateTransferOutput(
             transfer_id=transfer_id,
             state=(transfer or {}).get("state"),
             edr_entry=edr_entry,
             dataplane_url=endpoint,
             edr_token=data_address_token(data_address),
-            data_address=data_address,
+            data_address=DataAddressPayload.of(data_address),
         )
         return StepOutput(
             value=value,
             request=HttpRequest(
-                method="POST", url=context.get_consumer_endpoint_url("transfer_processes")
+                method="POST", url=context.dataspace.consumer_endpoint_url("transfer_processes")
             ),
-            response=HttpResponse(
-                status_code=200 if edr_entry else 500, body=value.model_dump(mode="json")
-            ),
+            response=HttpResponse(status_code=200, body=value.model_dump(mode="json")),
         )
 
     async def _push(
-        self, params: InitiateTransferParams, context: "StepContext"
+        self, params: InitiateTransferParams, context: StepContext
     ) -> StepOutput[InitiateTransferOutput]:
         """Ask the connector to deliver the data to the destination the script named."""
-        consumer = context.get_consumer_service()
-        url = context.get_consumer_endpoint_url("transfer_processes")
+        consumer = context.dataspace.consumer()
+        url = context.dataspace.consumer_endpoint_url("transfer_processes")
         request_model = ModelFactory.get_transfer_process_model(
             dataspace_version=consumer.dataspace_version,
             counter_party_address=(
-                params.counter_party_address or context.get_variable("provider_address", "")
+                params.counter_party_address or context.infrastructure.sut.connector.dsp_url
             ),
             transfer_type=params.transfer_type,
-            contract_id=params.agreement_id or context.get_variable(AGREEMENT_ID, ""),
+            contract_id=params.agreement_id or context.get_str(AGREEMENT_ID),
             data_destination=params.data_destination or {},
         )
         response = consumer.transfer_processes.create(request_model)
@@ -247,12 +256,11 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
             TRANSFER_TERMINAL,
             max_wait=params.max_wait,
             poll_interval=params.poll_interval,
+            what="connector/consumer/initiate_transfer",
             verify=params.verify,
         )
 
-        value = InitiateTransferOutput(
-            transfer_id=transfer_id, state=transfer.get("state")
-        )
+        value = InitiateTransferOutput(transfer_id=transfer_id, state=transfer.get("state"))
         return StepOutput(
             value=value,
             request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
@@ -263,14 +271,14 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
         )
 
 
-def _transfer_id(edr_entry: Optional[dict]) -> Optional[str]:
+def _transfer_id(edr_entry: dict | None) -> str | None:
     """Read the transfer process ID from an EDR entry under either of its spellings."""
     if not edr_entry:
         return None
     return edr_entry.get("transferProcessId") or edr_entry.get("@id")
 
 
-def _created_id(response: Any) -> Optional[str]:
+def _created_id(response: Any) -> str | None:
     """Read the ``@id`` the connector answers a create request with."""
     try:
         body = response.json()

@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -28,8 +28,7 @@ from __future__ import annotations
 
 import importlib
 import sys
-from pathlib import Path
-from typing import Generator
+from collections.abc import Generator
 from unittest.mock import MagicMock
 
 import pytest
@@ -108,7 +107,6 @@ syntax: v1-alpha
 kind: test
 id: smoke-check
 namespace: testlab.smoke
-dataspace_version: saturn
 metadata:
   name: smoke-check
   version: "1.0"
@@ -148,9 +146,9 @@ class TestCompileYamlEndpoint:
         # Assert
         body = response.json()
         assert body["status"] == "error", f"Expected status 'error', got {body['status']!r}"
-        assert any(
-            "empty" in err["message"].lower() for err in body["errors"]
-        ), f"Expected an error mentioning 'empty', got {body['errors']}"
+        assert any("empty" in err["message"].lower() for err in body["errors"]), (
+            f"Expected an error mentioning 'empty', got {body['errors']}"
+        )
 
     def test_compile_malformed_yaml_returns_error(self, client: TestClient) -> None:
         """Unparseable YAML produces a syntax error."""
@@ -167,6 +165,25 @@ class TestCompileYamlEndpoint:
             "yaml" in err["message"].lower() or "syntax" in err["message"].lower()
             for err in body["errors"]
         ), f"Expected YAML syntax error, got {body['errors']}"
+
+    def test_a_rejected_key_is_returned_in_the_authored_form(self, client: TestClient) -> None:
+        """The IDE shows this payload verbatim, so it has to read as advice."""
+        # Arrange — a step with a misspelled key, in a named step
+        yaml_body = _VALID_YAML.replace(
+            "execution: []",
+            "execution:\n  - id: log_it\n    uses: util/log\n    wth: {message: hi}\n",
+        ).encode()
+
+        # Act
+        response = client.post("/testlab/compile", content=yaml_body)
+
+        # Assert
+        body = response.json()
+        assert body["status"] == "error"
+        finding = next(err for err in body["errors"] if "wth" in err["message"])
+        assert "execution[0] 'log_it'" in finding["path"]
+        assert "did you mean 'with'?" in finding["message"]
+        assert "pydantic" not in finding["message"].lower()
 
     def test_compile_unknown_kind_returns_error(self, client: TestClient) -> None:
         """An unrecognised ``kind`` value produces a structured error."""
@@ -196,14 +213,10 @@ class TestCompileYamlEndpoint:
             pytest.param(b"kind: unknown_thing\n", id="unknown-kind"),
         ],
     )
-    def test_compile_always_returns_200(
-        self, client: TestClient, content: bytes
-    ) -> None:
+    def test_compile_always_returns_200(self, client: TestClient, content: bytes) -> None:
         """The compile endpoint always returns HTTP 200 — errors are application-level."""
         # Act
         response = client.post("/testlab/compile", content=content)
 
         # Assert
-        assert response.status_code == 200, (
-            f"Expected HTTP 200, got {response.status_code}"
-        )
+        assert response.status_code == 200, f"Expected HTTP 200, got {response.status_code}"

@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -50,7 +50,7 @@ from tractusx_testlab.models.primitives.enums import ServiceType
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
-    from tractusx_testlab.services.manager import ServiceManager
+    from tractusx_testlab.services.instances import ServiceManager
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,7 @@ _KNOWN_MANAGEMENT_SUFFIXES: tuple[str, ...] = ("/management", "/api/v1/managemen
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
 
 def _strip_management_suffix(url: str) -> tuple[str, str]:
     """Return ``(base_url, dma_path)`` by stripping a known management suffix.
@@ -138,8 +139,8 @@ def _dtr_definition(name: str, binding: DtrBinding) -> ServiceDefinition:
 
 
 def _register(
-    svc_mgr: "ServiceManager",
-    context: "StepContext",
+    svc_mgr: ServiceManager,
+    context: StepContext,
     definition: ServiceDefinition,
     capability_key: str,
 ) -> None:
@@ -148,7 +149,9 @@ def _register(
     context.set_variable(capability_key, definition.name)
     logger.info(
         "Seeded %s service '%s' from infrastructure bindings (base_url=%s)",
-        capability_key, definition.name, definition.base_url,
+        capability_key,
+        definition.name,
+        definition.base_url,
     )
 
 
@@ -156,8 +159,10 @@ def _register(
 # Public API
 # ------------------------------------------------------------------
 
+
 def seed_infrastructure_services(
-    svc_mgr: "ServiceManager", context: "StepContext",
+    svc_mgr: ServiceManager,
+    context: StepContext,
 ) -> None:
     """Register the SDK services the run's infrastructure bindings describe.
 
@@ -180,7 +185,9 @@ def seed_infrastructure_services(
             svc_mgr,
             context,
             _connector_definition(
-                _ENGINE_CONNECTOR_NAME, ServiceType.CONNECTOR_CONSUMER, engine_connector,
+                _ENGINE_CONNECTOR_NAME,
+                ServiceType.CONNECTOR_CONSUMER,
+                engine_connector,
             ),
             "infrastructure.engine.connector",
         )
@@ -199,13 +206,22 @@ def seed_infrastructure_services(
             )
 
     # sut.connector → CONNECTOR_PROVIDER (the component under test)
+    #
+    # Bound and operable are not the same thing on this side: the SUT is bound
+    # by its DSP endpoint, which is all a conformance run against someone
+    # else's connector ever has. A service is only registered when the operator
+    # also gave a management URL — an SDK client built on an empty address is
+    # not a connector anyone can talk to, and the run does not need one, since
+    # the engine reaches the SUT through its own connector.
     sut_connector = infrastructure.sut.connector
-    if sut_connector.is_bound() and _SUT_CONNECTOR_NAME not in already:
+    if sut_connector.management_url and _SUT_CONNECTOR_NAME not in already:
         _register(
             svc_mgr,
             context,
             _connector_definition(
-                _SUT_CONNECTOR_NAME, ServiceType.CONNECTOR_PROVIDER, sut_connector,
+                _SUT_CONNECTOR_NAME,
+                ServiceType.CONNECTOR_PROVIDER,
+                sut_connector,
             ),
             "infrastructure.sut.connector",
         )
@@ -214,7 +230,10 @@ def seed_infrastructure_services(
     sut_dtr = infrastructure.sut.dtr
     if sut_dtr.is_bound() and _SUT_DTR_NAME not in already:
         _register(
-            svc_mgr, context, _dtr_definition(_SUT_DTR_NAME, sut_dtr), "infrastructure.sut.dtr",
+            svc_mgr,
+            context,
+            _dtr_definition(_SUT_DTR_NAME, sut_dtr),
+            "infrastructure.sut.dtr",
         )
 
     # engine.dtr → DTR (the engine's own registry, registered last so a bare

@@ -57,7 +57,12 @@ def _reject_my_shape(test_data: dict[str, Any], source_label: str) -> list[str]:
     return errors
 ```
 
-Call it from `validate_tck_manifest()` next to the existing `_reject_*` calls.
+Add it to the `_TEST_FILE_RULES` table at the bottom of the module; every rule in it runs against every test file, so there is no call site to remember. A rule about the manifest itself instead takes the manifest data and is called from `validate_tck_manifest()` alongside `_validate_file_refs` and `_validate_variable_scopes`.
+
+Two rules are already tables rather than code, and a new entry belongs in the table rather than in a new function:
+
+- **A `uses:` prefix the dialect no longer takes** — add a `BannedStep(prefix, reason)` row. `reason` completes the sentence `'<uses>' …`, and `_reject_banned_steps` walks `setup`, `execution` and `teardown` for you.
+- **A new `env:` collection whose entries name a file on disk** — add a `FileCollection(key, noun)` row. Both spellings of an entry (a list of `{id, source}` and a mapping of `name: {file}`) are already handled.
 
 ## Try it
 

@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Optional
 
 import uvicorn
 
@@ -44,13 +43,13 @@ class _BackgroundMockServer:
     The server handles mock endpoint responses and callback listeners.
     """
 
-    __slots__ = ("_port", "_config", "_thread", "_server")
+    __slots__ = ("_config", "_port", "_server", "_thread")
 
     def __init__(self, port: int, config: TestlabConfig) -> None:
         self._port = port
         self._config = config
-        self._thread: Optional[threading.Thread] = None
-        self._server: Optional[uvicorn.Server] = None
+        self._thread: threading.Thread | None = None
+        self._server: uvicorn.Server | None = None
 
     def start(self) -> None:
         """Start the mock server on a background daemon thread."""

@@ -47,14 +47,15 @@ ambiguity to resolve.
 from __future__ import annotations
 
 import os
-from typing import Any, Iterator, Mapping, Optional
+from collections.abc import Iterator, Mapping
+from typing import Any
 
 from tractusx_testlab.models.domain.infrastructure import (
     CapabilityBinding,
     Infrastructure,
     capability_bindings,
 )
-from tractusx_testlab.models.primitives.exceptions import UnknownBindingKeyError
+from tractusx_testlab.models.primitives.binding_errors import UnknownBindingKeyError
 
 #: Prefix every infrastructure binding carries inside the variable namespace.
 CONTEXT_PREFIX = "infrastructure."
@@ -90,6 +91,32 @@ def known_keys() -> dict[str, tuple[str, str, str]]:
     }
 
 
+def required_keys(requirements: object | None) -> list[str]:
+    """Return the context keys *requirements* obliges the operator to supply.
+
+    A TCK requires some capabilities and not others, and within a capability
+    only some fields are the operator's to give — the rest are inherited from
+    the TCK or have a working default. This is that intersection: what a
+    particular run actually asks for, which is what an error message should
+    print instead of the whole model.
+
+    Answers an empty list when there are no requirements to narrow by, so a
+    caller with nothing to say prints nothing rather than everything.
+    """
+    if requirements is None:
+        return []
+    owed: list[str] = []
+    for side, capability, binding_type in capabilities():
+        declared = getattr(requirements, side, {}) or {}
+        requirement = declared.get(capability) if isinstance(declared, dict) else None
+        if requirement is None or not getattr(requirement, "required", False):
+            continue
+        owed.extend(
+            context_key(side, capability, field) for field in binding_type.operator_fields()
+        )
+    return owed
+
+
 def _iter_bound(infrastructure: Infrastructure) -> Iterator[tuple[str, str, CapabilityBinding]]:
     """Yield each capability of *infrastructure* that was actually bound."""
     for side, capability, _ in capabilities():
@@ -114,7 +141,10 @@ def flatten(infrastructure: Infrastructure) -> dict[str, str]:
     return projected
 
 
-def collect_overrides(variables: Mapping[str, Any]) -> dict[str, Any]:
+def collect_overrides(
+    variables: Mapping[str, Any],
+    requirements: object | None = None,
+) -> dict[str, Any]:
     """Return the binding overrides a variable store carries.
 
     An operator supplies bindings on the CLI (``--var
@@ -122,9 +152,12 @@ def collect_overrides(variables: Mapping[str, Any]) -> dict[str, Any]:
     ordinary variables and are picked back out here. Shorter keys are left
     alone: ``infrastructure.sut.connector`` is the seeded service name, not a
     field, and a key of the full shape naming no field is a typo the operator
-    is told about rather than one that is dropped.
+    is told about rather than one that is dropped. *requirements* is what the
+    TCK asked for, and narrows the message a typo earns to the keys that run
+    actually needs.
     """
     legal = known_keys()
+    needed = required_keys(requirements)
     overrides: dict[str, Any] = {}
     for key, value in variables.items():
         if not isinstance(key, str) or not key.startswith(CONTEXT_PREFIX):
@@ -132,12 +165,12 @@ def collect_overrides(variables: Mapping[str, Any]) -> dict[str, Any]:
         if len(key.split(".")) != _KEY_SEGMENTS:
             continue
         if key not in legal:
-            raise UnknownBindingKeyError(key, sorted(legal))
+            raise UnknownBindingKeyError(key, sorted(legal), needed)
         overrides[key] = value
     return overrides
 
 
-def overrides_from_env(environ: Optional[Mapping[str, str]] = None) -> dict[str, str]:
+def overrides_from_env(environ: Mapping[str, str] | None = None) -> dict[str, str]:
     """Return the binding overrides the environment carries, in context-key form."""
     source = os.environ if environ is None else environ
     overrides: dict[str, str] = {}

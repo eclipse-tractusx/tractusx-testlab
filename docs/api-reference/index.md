@@ -98,28 +98,32 @@ For detailed rationale: [ADR-0010: YAML Syntax v2](../developer/decision-records
 
 | Command | Description |
 |---------|-------------|
-| `testlab compile <source>` | Compile a TCK source directory into a `.tck` or `.stck` package |
-| `testlab run <package>` | Execute a compiled TCK package against a live dataspace |
+| `testlab compile <source>` | Compile a TCK source directory into a `.tck` package |
+| `testlab run <target>` | Execute a TCK against a live dataspace. A `.tck` package runs as given; a manifest is compiled into a throwaway package first, so nothing executes that has not compiled |
 | `testlab validate <package>` | Validate a compiled TCK package without executing steps |
-| `testlab inspect <package>` | Extract and display static metadata (name, steps, validations) without running the TCK |
+| `testlab inspect <package>` | Report what a package contains — tests, manifest, variables, infrastructure — without running it |
 
 ### `testlab inspect`
 
-Inspects a compiled `.tck` or `.stck` package and prints its static metadata without
+Inspects a compiled `.tck` package and prints its static metadata without
 executing any steps against a live environment.
 
 ```
-testlab inspect <package> [--player-keys <path>] [--compiler-pub <path>] [--variables] [--infrastructure] [--json]
+testlab inspect <package> [--player-keys <path>] [--compiler-pub <path>]
+                         [--variables] [--infrastructure] [--manifest]
+                         [--extract <dir>] [--json]
 ```
 
 | Option | Description |
 |--------|-------------|
-| `<package>` | Path to a `.tck` (plain) or `.stck` (encrypted) file |
-| `--player-keys` | Path to player RSA private key file — required for `.stck` packages |
-| `--compiler-pub` | Path to compiler RSA public key file — required for `.stck` packages |
+| `<package>` | Path to a `.tck` (plain or encrypted) file |
+| `--player-keys` | Directory holding the player identity — required if the package is encrypted |
+| `--compiler-pub` | The compiler's signing public key — required if the package is signed |
 | `--variables` | Also print the variable list (ID, source, scope, type) declared in the TCK |
 | `--infrastructure` | Also print the infrastructure requirements (capability, side, required, standard) declared in the TCK |
-| `--json` | Output a machine-readable JSON envelope instead of the human-readable table |
+| `--manifest` | Also print the manifest: identity, checksum, signer, authorized players |
+| `--extract <dir>` | Write the package's verified contents to a directory |
+| `--json` | Emit one JSON object keyed by section instead of the tables |
 
 **Default output** (human-readable table):
 

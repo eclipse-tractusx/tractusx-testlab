@@ -130,7 +130,7 @@ Variables propagate through three mechanisms:
 | `store_in_variable` parameter | Explicit capture into a named context variable (on util steps such as `util/json_path_extract`, `util/base64`, `util/parse_kv`) | `util/json_path_extract` stores `ccmapi_asset_id` |
 | Script output promotion | Across scripts | When a script completes, the player promotes its declared output variables into the shared run context for downstream scripts (`depends_on` ordering guarantees they exist) |
 
-Steps reference variables with `${{ }}` interpolation (e.g. `${{ env.sut_counter_party_address.value }}` or `${{ execution.pull_ccmapi_endpoint.edr_token }}`). The step runner resolves them from the execution context before calling the step executor.
+Steps reference variables with `${{ }}` interpolation (e.g. `${{ env.sut_counter_party_address }}` or `${{ execution.pull_ccmapi_endpoint.edr_token }}`). The step runner resolves them from the execution context before calling the step executor.
 
 ### Callback handling
 

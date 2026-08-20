@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -25,8 +25,6 @@
 """Evaluates a step's ``validate:`` block against the output the step produced."""
 
 from __future__ import annotations
-
-from typing import Optional
 
 from tractusx_testlab.models import (
     AssertionResult,
@@ -49,22 +47,12 @@ class AssertionEngine:
     """Evaluates a list of assertions against a step's output value."""
 
     @staticmethod
-    def evaluate(
-        assertions: list[Assertion],
-        output: object,
-        context_vars: Optional[dict[str, object]] = None,
-    ) -> list[AssertionResult]:
-        return [
-            AssertionEngine._evaluate_one(assertion, output, context_vars or {})
-            for assertion in assertions
-        ]
+    def evaluate(assertions: list[Assertion], output: object) -> list[AssertionResult]:
+        """Evaluate every ``validate:`` entry against the output the step produced."""
+        return [AssertionEngine._evaluate_one(assertion, output) for assertion in assertions]
 
     @staticmethod
-    def _evaluate_one(
-        assertion: Assertion,
-        output: object,
-        context_vars: dict[str, object],
-    ) -> AssertionResult:
+    def _evaluate_one(assertion: Assertion, output: object) -> AssertionResult:
         params = assertion.with_ or {}
         severity = AssertionSeverity(params.get("severity", "HARD"))
         resolved = resolve(assertion.uses, params)
@@ -74,12 +62,16 @@ class AssertionEngine:
         # ends up looking like a passing one.
         if isinstance(resolved, str):
             return AssertionResult(
-                assertion=assertion, passed=False, expected=None, actual=None,
-                message=resolved, severity=severity,
+                assertion=assertion,
+                passed=False,
+                expected=None,
+                actual=None,
+                message=resolved,
+                severity=severity,
             )
 
         actual = AssertionEngine._extract_subject(output, params, resolved)
-        expected = AssertionEngine._resolve_expected(params, resolved, context_vars)
+        expected = AssertionEngine._resolve_expected(params, resolved)
         passed, message = AssertionEngine._check(resolved, actual, expected)
 
         return AssertionResult(
@@ -92,9 +84,7 @@ class AssertionEngine:
         )
 
     @staticmethod
-    def _extract_subject(
-        output: object, params: dict, resolved: ResolvedAssertion
-    ) -> object:
+    def _extract_subject(output: object, params: dict, resolved: ResolvedAssertion) -> object:
         """Find the value the assertion is about.
 
         ``input`` names one of the step's declared returns; ``validate/field``
@@ -109,34 +99,24 @@ class AssertionEngine:
         return subject
 
     @staticmethod
-    def _resolve_expected(
-        params: dict,
-        resolved: ResolvedAssertion,
-        context_vars: dict[str, object],
-    ) -> object:
-        """Read what the assertion compares against, resolving variable references."""
+    def _resolve_expected(params: dict, resolved: ResolvedAssertion) -> object:
+        """Read what the assertion compares against.
+
+        No dereferencing happens here.  A ``validate:`` block's ``with:`` is
+        resolved by the same ``${{ ... }}`` pass every other step parameter goes
+        through, before the engine ever sees it — so by this point ``value`` is
+        already the value.  Two further spellings used to be honoured at this
+        point alone, ``@name`` and ``source: VARIABLE``, which meant an assertion
+        could name a variable three ways and the compiler validated one of them.
+        """
         if resolved.kind is AssertionKind.SCHEMA:
-            return AssertionEngine._deref(params.get("schema"), params, context_vars)
+            return params.get("schema")
         if resolved.operator in RANGE_OPERATORS:
-            return [
-                AssertionEngine._deref(params.get("min"), params, context_vars),
-                AssertionEngine._deref(params.get("max"), params, context_vars),
-            ]
-        return AssertionEngine._deref(params.get("value"), params, context_vars)
+            return [params.get("min"), params.get("max")]
+        return params.get("value")
 
     @staticmethod
-    def _deref(value: object, params: dict, context_vars: dict[str, object]) -> object:
-        """Resolve a context-variable reference, whether spelled ``@name`` or declared."""
-        if params.get("source") == "VARIABLE":
-            return context_vars.get(str(value), value)
-        if isinstance(value, str) and value.startswith("@"):
-            return context_vars.get(value[1:], value)
-        return value
-
-    @staticmethod
-    def _check(
-        resolved: ResolvedAssertion, actual: object, expected: object
-    ) -> tuple[bool, str]:
+    def _check(resolved: ResolvedAssertion, actual: object, expected: object) -> tuple[bool, str]:
         """Run the resolved check over the extracted value."""
         if resolved.kind is AssertionKind.SCHEMA:
             return check_schema_validation(actual, expected, None)
@@ -144,7 +124,7 @@ class AssertionEngine:
 
     @staticmethod
     def extract_path(
-        output: object, path: Optional[str], declared: Optional[frozenset[str]] = None
+        output: object, path: str | None, declared: frozenset[str] | None = None
     ) -> object:
         """Extract a value from a nested dict/list/object using dot-separated *path*.
 
@@ -156,13 +136,20 @@ class AssertionEngine:
     @staticmethod
     def has_hard_failure(results: list[AssertionResult]) -> bool:
         return any(
-            not result.passed and result.severity == AssertionSeverity.HARD
-            for result in results
+            not result.passed and result.severity == AssertionSeverity.HARD for result in results
         )
 
     @staticmethod
-    def build_summary(step_results: list[StepResult]) -> AssertionSummary:
-        """Aggregate assertion counts across step results."""
+    def build_summary(
+        step_results: list[StepResult], declared: int | None = None
+    ) -> AssertionSummary:
+        """Aggregate assertion counts across step results.
+
+        *declared* is how many checks the executed steps asked for. Passing it
+        lets the summary report the difference between "nothing was declared"
+        and "something was declared and did not run" — see
+        :attr:`AssertionSummary.unevaluated`.
+        """
         total = passed = failed_hard = failed_soft = 0
         for step_result in step_results:
             for assertion_result in step_result.assertions:
@@ -174,6 +161,9 @@ class AssertionEngine:
                 else:
                     failed_soft += 1
         return AssertionSummary(
-            total=total, passed=passed,
-            failed_hard=failed_hard, failed_soft=failed_soft,
+            declared=total if declared is None else declared,
+            total=total,
+            passed=passed,
+            failed_hard=failed_hard,
+            failed_soft=failed_soft,
         )

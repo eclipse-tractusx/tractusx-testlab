@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -39,7 +39,7 @@ on another thread.
 
 from __future__ import annotations
 
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 
@@ -129,9 +129,7 @@ class TestThePairWorks:
         """The failure this guards against is a 404 the script never sees."""
         opened = await sut_harness.run(_endpoint("/certificate/request"))
 
-        response = server.call(
-            opened.variables["full_mock_url"], json={"cert": "ISO9001"}
-        )
+        response = server.call(opened.variables["full_mock_url"], json={"cert": "ISO9001"})
 
         assert response.status_code == 202
 
@@ -245,9 +243,7 @@ class TestWhenNothingCalls:
         """A SUT calling the wrong address gets a 404, not a silent 200."""
         await sut_harness.run(_endpoint("/certificate/request"))
 
-        response = server.call(
-            f"http://127.0.0.1:{server.port}/certificate/typo", json={}
-        )
+        response = server.call(f"http://127.0.0.1:{server.port}/certificate/typo", json={})
 
         assert response.status_code == 404
 
@@ -320,7 +316,15 @@ class TestTheCallbackDrivesTheRestOfTheScript:
     async def test_the_canned_response_can_carry_a_value_from_the_run(
         self, sut_harness: Harness, server: MockServer
     ) -> None:
-        """``@name`` in a response body is resolved when the mock is registered."""
+        """A response body carries a value from the run, written the usual way.
+
+        It used to be spelled ``@agreed_id`` and resolved by a second pass
+        inside the mock step — the last surviving ``@name`` resolver, kept alive
+        by this test alone. It also treated any JSON-LD value beginning with
+        ``@`` as a variable reference on its way past. The body is a step
+        parameter, so ``${{ ... }}`` in it is already resolved before the step
+        runs, like every other parameter.
+        """
         sut_harness.seed(agreed_id="agr-77")
         opened = await sut_harness.run(
             {
@@ -328,7 +332,7 @@ class TestTheCallbackDrivesTheRestOfTheScript:
                 "uses": "mock/api",
                 "with": {
                     "path": "/certificate/request",
-                    "response_body": {"agreementId": "@agreed_id"},
+                    "response_body": {"agreementId": "${{ env.agreed_id }}"},
                 },
                 "returns": {"full_mock_url": {"type": "string"}},
             }
@@ -342,9 +346,7 @@ class TestTheCallbackDrivesTheRestOfTheScript:
 class TestWithoutTheServer:
     """Neither step is usable on its own, and the failure says which is missing."""
 
-    async def test_waiting_without_a_server_is_a_named_failure(
-        self, harness: Harness
-    ) -> None:
+    async def test_waiting_without_a_server_is_a_named_failure(self, harness: Harness) -> None:
         """The plain ``harness`` fixture has no server behind it.
 
         ``mock/api`` still registers — the registry is module state — so the

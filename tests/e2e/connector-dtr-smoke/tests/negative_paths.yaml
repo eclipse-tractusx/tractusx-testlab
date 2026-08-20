@@ -1,0 +1,92 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: negative-paths
+
+metadata:
+  name: "Negative paths"
+  version: "v1.0.0"
+  description: >
+    A conformance engine is only as trustworthy as its failures. Every step
+    here asks the live dataspace for something that is genuinely not there,
+    and asserts on the answer it actually gets — an empty catalog, a 404 from
+    the registry. A green run of this test means the engine reports absence as
+    absence; a step here that reports something present is the engine
+    inventing a result, which is the one defect a TCK cannot survive.
+
+execution:
+  - id: catalog_for_nothing
+    uses: connector/consumer/query_catalog_with_filters
+    name: Ask the SUT catalog for an asset that was never published
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
+          operator: "="
+          operand_right: "testlab-e2e-asset-that-does-not-exist"
+    returns:
+      datasets:
+        type: array
+    validate:
+      # A real catalog request that legitimately matched nothing. The engine
+      # must report the empty answer rather than an error, and must not
+      # report an offer.
+      - uses: validate/assert
+        with: { input: datasets, operator: length_equals, value: 0 }
+
+  - id: twin_that_is_not_there
+    uses: connector/dataplane/http_request
+    name: Read a shell descriptor id the registry has never held
+    with:
+      dataplane_url: "${{ infrastructure.sut.dtr.base_url }}"
+      path: "/api/v3.0/shell-descriptors/dXJuOnV1aWQ6dGVzdGxhYi1lMmUtYWJzZW50"
+      method: GET
+    validate:
+      # The registry's own 404, asserted as a 404. This is the shape of a
+      # negative conformance check: the SUT answered, and the answer was the
+      # expected refusal.
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 404 }
+
+  - id: unauthenticated_dataplane
+    uses: connector/dataplane/http_request
+    name: Call the SUT's registry API without an EDR token
+    with:
+      dataplane_url: "${{ infrastructure.sut.dtr.base_url }}"
+      path: "/api/v3.0/shell-descriptors"
+      edr_token: ""
+      method: GET
+    validate:
+      # Whatever the deployment's auth posture is, the call is made and the
+      # status is read off the wire. It is asserted as one of the codes a
+      # registry can legitimately answer with, so this fails if the engine
+      # fabricates a status rather than reporting one.
+      - uses: validate/assert
+        with: { input: status_code, operator: one_of, value: [200, 401, 403] }

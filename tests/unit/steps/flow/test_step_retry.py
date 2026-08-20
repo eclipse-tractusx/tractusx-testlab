@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -28,14 +28,22 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import tractusx_testlab.steps  # noqa: F401  (registers all built-in steps)
 from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.player.execution.step_runner import run_step
 from tractusx_testlab.steps.flow.retry import RetryStep
-from tractusx_testlab.steps.utility.log import LogStep
+from tractusx_testlab.steps.util.log import LogStep
 
 
 def _context() -> MagicMock:
-    return MagicMock()
+    """A context that can run a nested step, which is what retry does.
+
+    ``flow/retry`` takes the runner from the context rather than importing it
+    (contracts.StepInvoker), so a bare mock has nothing to run its nested steps
+    with.
+    """
+    ctx = MagicMock()
+    ctx.invoke_step = run_step
+    return ctx
 
 
 def _step_def(**kwargs) -> StepDefinition:

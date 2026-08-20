@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -27,27 +27,24 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 # Matches a path segment with a predicate filter: ``name[key=value]``
 _PREDICATE_RE = re.compile(r"^([^\[]+)\[([^=\]]+)=([^\]]*)\]$")
 _SENTINEL = object()
 
 
-def _snake_to_camel(name: str) -> str:
-    """Convert ``snake_case`` to ``camelCase``."""
-    parts = name.split("_")
-    return parts[0] + "".join(p.capitalize() for p in parts[1:])
-
-
 def _dict_get(d: dict, key: str) -> Any:
-    """Get value from dict, trying original key first, then camelCase fallback."""
-    if key in d:
-        return d[key]
-    camel = _snake_to_camel(key)
-    if camel != key and camel in d:
-        return d[camel]
-    return None
+    """Return ``d[key]``, or ``None`` when the key is not there.
+
+    Exactly the key that was written. A ``snake_case``→``camelCase`` fallback
+    used to run here, so ``header.message_id`` quietly found ``messageId`` — a
+    second spelling for one field, undocumented and unbounded, which made it
+    impossible to say from a script why a path resolved. Where a document really
+    does carry two spellings, the payload model declares the alias: that is what
+    ``authCode`` and ``@id`` already do, and it is visible.
+    """
+    return d.get(key)
 
 
 def _match_predicate_value(actual: Any, expected: str) -> bool:
@@ -177,11 +174,19 @@ def _resolve_path_segment(current: Any, part: str) -> Any:
 
 #: Names every step output carries whatever it declares — the ``StepOutput``
 #: slots and the response fields a script can always assert on.
-UNIVERSAL_RETURNS = frozenset({
-    "value", "request", "response",
-    "status_code", "headers", "body", "duration_ms",
-    "response_body", "response_headers",
-})
+UNIVERSAL_RETURNS = frozenset(
+    {
+        "value",
+        "request",
+        "response",
+        "status_code",
+        "headers",
+        "body",
+        "duration_ms",
+        "response_body",
+        "response_headers",
+    }
+)
 
 
 def declared_names(step_cls: Any) -> frozenset[str]:
@@ -202,9 +207,7 @@ def declared_names(step_cls: Any) -> frozenset[str]:
     return frozenset(names)
 
 
-def extract_path(
-    output: Any, path: Optional[str], declared: Optional[frozenset[str]] = None
-) -> Any:
+def extract_path(output: Any, path: str | None, declared: frozenset[str] | None = None) -> Any:
     """Extract a value from a nested dict/list/object using dot-separated *path*.
 
     Supports predicate-based array filtering: ``items[key='value']``
@@ -218,7 +221,8 @@ def extract_path(
     if path is None:
         return output
 
-    from tractusx_testlab.steps.base import StepOutput as _SO
+    from tractusx_testlab.steps.step_contract import StepOutput as _SO
+
     if isinstance(output, _SO):
         return _extract_from_step_output(output, path, declared)
 
@@ -228,7 +232,7 @@ def extract_path(
 
 
 def _extract_from_step_output(
-    output: Any, path: str, declared: Optional[frozenset[str]] = None
+    output: Any, path: str, declared: frozenset[str] | None = None
 ) -> Any:
     """Extract a value from a StepOutput by resolving the first segment then traversing."""
     segments = _split_path(path)
@@ -254,9 +258,9 @@ def _extract_from_step_output(
 def _resolve_first_segment(
     output: Any,
     first: str,
-    rest: Optional[str],
+    rest: str | None,
     full_path: str,
-    declared: Optional[frozenset[str]] = None,
+    declared: frozenset[str] | None = None,
 ) -> Any:
     """Resolve the first path segment against a StepOutput's various data sources."""
     # Map well-known aliases
@@ -288,9 +292,11 @@ def _resolve_response_body(output: Any) -> Any:
         return output.value
     return output.response.body if output.response else None
 
+
 def _resolve_response_headers(output: Any) -> Any:
     """Resolve the 'response_headers' alias to the response's headers dict."""
     return output.response.headers if output.response else None
+
 
 def _fallback_resolution(output: Any, first: str) -> Any:
     """Try response attrs, response body dict, and StepOutput slots in order."""
@@ -311,7 +317,7 @@ def _fallback_resolution(output: Any, first: str) -> Any:
     return None
 
 
-def _resolve_from_value_dict(output: Any, first: str, rest: Optional[str], full_path: str) -> Any:
+def _resolve_from_value_dict(output: Any, first: str, rest: str | None, full_path: str) -> Any:
     """Try to resolve the first segment from the StepOutput.value dict."""
     # _resolve_path_segment handles both plain keys and ``name[key=value]``
     # predicates, so a filtered first segment resolves here rather than

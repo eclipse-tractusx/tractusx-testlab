@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -35,7 +35,7 @@ from pydantic import ValidationError
 
 from tests.conftest import attach_endpoint_url_stubs
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.steps.connector.provision import (
+from tractusx_testlab.steps.connector.provision.contract_definition import (
     CreateContractDefinitionParams,
     CreateContractDefinitionStep,
 )
@@ -63,15 +63,13 @@ def provider() -> MagicMock:
 @pytest.fixture()
 def context(provider: MagicMock) -> MagicMock:
     ctx = attach_endpoint_url_stubs(MagicMock())
-    ctx.get_provider_base_url.return_value = "https://provider.example.com"
-    ctx.get_provider_service.return_value = provider
+    ctx.dataspace.provider_base_url.return_value = "https://provider.example.com"
+    ctx.dataspace.provider.return_value = provider
     return ctx
 
 
 def _definition() -> StepDefinition:
-    return StepDefinition(
-        id="cd", uses="connector/provider/create_contract_definition"
-    )
+    return StepDefinition(id="cd", uses="connector/provider/create_contract_definition")
 
 
 def _sent(provider: MagicMock) -> dict:
@@ -182,9 +180,7 @@ class TestAssetSelector:
             {
                 "access_policy_id": "ap-1",
                 "contract_policy_id": "cp-1",
-                "asset_selector": [
-                    {"operand_left": "version", "operand_right": "3.0"}
-                ],
+                "asset_selector": [{"operand_left": "version", "operand_right": "3.0"}],
             },
             context,
             _definition(),

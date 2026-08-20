@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,80 +26,158 @@
 
 from __future__ import annotations
 
-import asyncio
+import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 import typer
 
 from tractusx_testlab.cli import app
+from tractusx_testlab.cli._run_report import (
+    execute_with_progress,
+    print_run_header,
+    print_run_results,
+)
+from tractusx_testlab.logging import transcript
 
 
 @app.command()
 def run(
-    target: Path = typer.Argument(..., help="TCK manifest (.yaml), plain package (.tck), or encrypted package (.stck)."),
-    config_file: Optional[Path] = typer.Option(
-        None, "--config", "-c",
+    target: Path = typer.Argument(..., help="A TCK manifest (.yaml) or a compiled package (.tck)."),
+    config_file: Path | None = typer.Option(
+        None,
+        "--config",
+        "-c",
         help="YAML config file with variable overrides (e.g. saturn_tck_int.yaml).",
     ),
-    player_keys: Optional[Path] = typer.Option(
-        None, "--player-keys", "-k",
-        help="Directory with the player identity (required for .stck encrypted files).",
+    player_keys: Path | None = typer.Option(
+        None,
+        "--player-keys",
+        "-k",
+        help="Directory with the player identity (required for encrypted packages).",
     ),
-    compiler_pub: Optional[Path] = typer.Option(
-        None, "--compiler-pub",
-        help="Path to the compiler's signing.pub (required for .stck encrypted files).",
+    compiler_pub: Path | None = typer.Option(
+        None,
+        "--compiler-pub",
+        help="Path to the compiler's signing.pub (required for encrypted packages).",
     ),
-    var: Optional[list[str]] = typer.Option(
-        None, "--var",
+    var: list[str] | None = typer.Option(
+        None,
+        "--var",
         help="Runtime variable override as KEY=VALUE. Can be repeated.",
     ),
-    logs_dir: Optional[Path] = typer.Option(
-        None, "--logs-dir", "-l",
-        help="Directory for log output. Defaults to ./logs in the current directory.",
+    logs_dir: Path | None = typer.Option(
+        None,
+        "--logs-dir",
+        "-l",
+        help="Directory for the run's console transcript. Defaults to ./logs.",
+    ),
+    data_dir: Path | None = typer.Option(
+        None,
+        "--data-dir",
+        "-d",
+        help=(
+            "Directory for the CloudEvents execution trace — every step's "
+            "outputs, checks, and request/response. Defaults to ./data."
+        ),
     ),
 ) -> None:
     """Load and execute a TCK, printing results to stdout."""
+    # Register all local step executors (triggers @step() decorators)
     from tractusx_testlab.config.loader import ConfigLoader
-    from tractusx_testlab.models import ScriptStatus, StepStatus
     from tractusx_testlab.player.execution.player import TestlabPlayer
 
-    # Register all local step executors (triggers @step() decorators)
-    import tractusx_testlab.steps  # noqa: F401
-
-    _compile_target_for_run(target)
-
     runtime_vars = _build_runtime_vars(config_file, var)
-
-    if target.suffix == ".stck" and (player_keys is None or compiler_pub is None):
-        typer.echo(
-            "Error: --player-keys and --compiler-pub are required for encrypted .stck files.",
-            err=True,
-        )
-        raise typer.Exit(1)
 
     # Through the loader, so `testlab.config.yaml` and every TESTLAB_* variable
     # — the engine's infrastructure bindings among them — reach a CLI run the
     # same way they reach the server. The log directory stays a CLI decision.
     config = ConfigLoader.load(
-        cli_overrides={"logs_dir": logs_dir or Path.cwd() / "logs"},
+        cli_overrides={
+            "logs_dir": logs_dir or Path.cwd() / "logs",
+            "data_dir": data_dir or Path.cwd() / "data",
+        },
     )
     player = TestlabPlayer(config=config)
 
-    tck = _load_tck(target, player_keys, compiler_pub)
-    total_steps = tck.total_steps()
+    # Opened here, before anything is compiled, because the compiler's output is
+    # part of what a person reads the transcript for — as are the run header and
+    # the result banner, neither of which goes through a logger at all. The id
+    # is committed to now so the transcript, the execution trace and the job all
+    # name the same run.
+    run_id = transcript.new_run_id()
+    with transcript.recording(transcript.transcript_path(config.logs_dir, run_id)):
+        _run_compiled(
+            target,
+            config_file,
+            config,
+            player,
+            runtime_vars,
+            run_id,
+            player_keys=player_keys,
+            compiler_pub=compiler_pub,
+        )
 
-    _print_run_header(target, config_file, config, runtime_vars, total_steps)
 
-    result = _execute_with_progress(player, tck, runtime_vars, total_steps)
+def _run_compiled(
+    target: Path,
+    config_file: Path | None,
+    config: Any,
+    player: Any,
+    runtime_vars: dict[str, str],
+    run_id: str,
+    *,
+    player_keys: Path | None,
+    compiler_pub: Path | None,
+) -> None:
+    """Compile if needed, execute, and report — all of it inside the transcript."""
+    from tractusx_testlab.models import AuthoringError, ScriptStatus, StepStatus
 
-    _print_run_results(result, StepStatus, ScriptStatus)
+    # Nothing executes that has not been compiled. A YAML manifest is compiled
+    # into a throwaway package first, so every run — not only the ones that
+    # happen to be handed a `.tck` — passes the validator, carries a
+    # fingerprint, and is checked against its own package digest on load.
+    with tempfile.TemporaryDirectory(prefix="testlab-run-") as build:
+        package = _compile_target_for_run(target, Path(build))
+
+        try:
+            tck = _load_tck(package, player_keys, compiler_pub)
+        except ValueError as exc:
+            # A package that fails verification is a security outcome, not a
+            # stack trace: the operator needs to see which package was refused
+            # and why.
+            typer.echo(f"\nRefused to run {target.name}:\n  {exc}", err=True)
+            raise typer.Exit(1) from exc
+        total_steps = tck.total_steps()
+
+        # The banner names what the operator typed, not the temporary package
+        # that was built from it.
+        print_run_header(target, config_file, config, runtime_vars, total_steps)
+
+        try:
+            result = execute_with_progress(player, tck, runtime_vars, total_steps, run_id)
+        except AuthoringError as exc:
+            # A run that was never given what it needs — an unbound capability,
+            # an unsupplied input — is a configuration outcome, not a crash.
+            # The message already names every key the operator owes; a stack
+            # trace through asyncio on top of it only hides the list.
+            typer.echo(f"\nCannot run {target.name}:\n  {exc}", err=True)
+            raise typer.Exit(1) from exc
+
+    print_run_results(result, StepStatus, ScriptStatus)
 
 
-def _compile_target_for_run(target: Path) -> None:
-    """Compile YAML targets before execution; skip already-compiled packages."""
-    if target.suffix in (".tck", ".stck"):
-        return
+def _compile_target_for_run(target: Path, build_dir: Path) -> Path:
+    """Compile a YAML target into *build_dir* and return the package to run.
+
+    Built somewhere temporary rather than beside the manifest. ``run`` used to
+    leave a ``.tck`` in the user's source tree — and in CI, in the checkout — as
+    a side effect of a verb that only says it runs something.
+    """
+    if target.suffix == ".tck":
+        return target
+
+    _reject_bare_test_script(target)
 
     from tractusx_testlab.cli.compile import compile as compile_command
 
@@ -108,17 +186,53 @@ def _compile_target_for_run(target: Path) -> None:
         script=target,
         compiler_keys=None,
         player_pub=None,
-        output=None,
+        output=build_dir,
         version=None,
         plain=False,
-        encrypt=False,
     )
-    return
+    built = sorted(build_dir.glob("*.tck"))
+    if not built:
+        typer.echo(f"Error: compiling {target} produced no package.", err=True)
+        raise typer.Exit(1)
+    return built[0]
+
+
+def _reject_bare_test_script(target: Path) -> None:
+    """Refuse a lone test script, naming the manifest it needs.
+
+    The compiler's unit is a TCK: it validates the manifest's env, resolves the
+    services and assets the tests reference, and seals them into the package.
+    A single ``kind: test`` file carries none of that, so there is nothing to
+    compile and nothing to seal. ``run`` used to accept one anyway by handing it
+    straight to the loader — which is exactly the uncompiled path this call
+    site closes. The error says what to write instead of leaving the author
+    with the TckDefinition validation dump.
+    """
+    import yaml as _yaml
+
+    if not target.exists():
+        typer.echo(f"Error: target not found: {target}", err=True)
+        raise typer.Exit(1)
+
+    try:
+        data = _yaml.safe_load(target.read_text(encoding="utf-8"))
+    except _yaml.YAMLError as exc:
+        typer.echo(f"Error: {target} is not readable YAML:\n  {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if isinstance(data, dict) and "tests" not in data:
+        typer.echo(
+            f"Error: {target.name} is a single test script, not a TCK manifest.\n"
+            f"  'run' executes compiled packages, and the compiler's unit is a TCK.\n"
+            f"  List it in an index.yaml alongside a 'tests:' entry and run that.",
+            err=True,
+        )
+        raise typer.Exit(1)
 
 
 def _build_runtime_vars(
-    config_file: Optional[Path],
-    var_overrides: Optional[list[str]],
+    config_file: Path | None,
+    var_overrides: list[str] | None,
 ) -> dict[str, str]:
     """Merge variables from config file (lower priority) and --var flags (higher priority)."""
     runtime_vars: dict[str, str] = {}
@@ -140,7 +254,7 @@ def _load_config_variables(config_file: Path) -> dict[str, str]:
         typer.echo(f"Error: config file not found: {config_file}", err=True)
         raise typer.Exit(1)
 
-    with open(config_file, "r", encoding="utf-8") as config_handle:
+    with open(config_file, encoding="utf-8") as config_handle:
         config_data = _yaml.safe_load(config_handle) or {}
 
     result: dict[str, str] = {}
@@ -165,10 +279,10 @@ def _apply_var_overrides(runtime_vars: dict[str, str], var_overrides: list[str])
 
 def _load_tck(
     target: Path,
-    player_keys: Optional[Path],
-    compiler_pub: Optional[Path],
+    player_keys: Path | None,
+    compiler_pub: Path | None,
 ):
-    """Load a TCK from YAML, .tck (plain or encrypted), or .stck."""
+    """Load a TCK from a YAML manifest or a .tck package, plain or encrypted."""
     from tractusx_testlab.player.loading.loader import Loader
 
     loader = Loader()
@@ -176,122 +290,11 @@ def _load_tck(
     priv = pub = None
     if player_keys:
         from tractusx_testlab.security.crypto.keygen import load_private_key
+
         priv = load_private_key(player_keys / "encryption.pem")
     if compiler_pub:
         from tractusx_testlab.security.crypto.keygen import load_public_key
+
         pub = load_public_key(compiler_pub)
 
     return loader.load(target, player_private_key=priv, compiler_public_key=pub)
-
-
-def _print_run_header(
-    target: Path,
-    config_file: Optional[Path],
-    config,
-    runtime_vars: dict[str, str],
-    total_steps: int,
-) -> None:
-    """Print the banner with run configuration details."""
-    width = 76
-    typer.echo()
-    typer.echo("=" * width)
-    typer.echo(f"  Testlab Runner — {target.name}")
-    typer.echo("=" * width)
-    typer.echo(f"  Target:   {target}")
-    if config_file:
-        typer.echo(f"  Config:   {config_file}")
-    typer.echo(f"  Logs dir: {config.logs_dir}")
-    if runtime_vars:
-        typer.echo(f"  Vars:     {', '.join(runtime_vars.keys())}")
-    typer.echo(f"  Steps:    {total_steps}")
-    typer.echo()
-
-
-def _execute_with_progress(player, tck, runtime_vars: dict[str, str], total_steps: int):
-    """Run the TCK with a rich progress bar and return the result."""
-    from rich.progress import (
-        BarColumn,
-        Progress,
-        SpinnerColumn,
-        TaskProgressColumn,
-        TextColumn,
-        TimeElapsedColumn,
-    )
-
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TaskProgressColumn(),
-        TimeElapsedColumn(),
-    ) as progress:
-        task_id = progress.add_task("Starting...", total=total_steps)
-        player.monitor.add_callback(_make_progress_callback(progress, task_id))
-        return asyncio.run(
-            player.run_tck(tck, runtime_vars=runtime_vars or None)
-        )
-
-
-def _make_progress_callback(progress, task_id):
-    """Create a progress callback for the player monitor."""
-    def _on_progress(event: str, payload: dict) -> None:
-        if event == "step.started":
-            progress.update(task_id, description=f"  Running: {payload.get('step_type', '')}")
-        elif event == "step.completed":
-            status = payload.get("status", "")
-            name = payload.get("step_name", "")
-            icon = "[green]PASS" if status == "passed" else "[red]FAIL"
-            progress.update(task_id, advance=1, description=f"  {icon} {name}")
-        elif event == "script.started":
-            progress.update(task_id, description=f"  Script: {payload.get('script', '')}")
-    return _on_progress
-
-
-def _print_run_results(result, step_status_cls, script_status_cls) -> None:
-    """Print per-script step results and the final summary line."""
-    width = 76
-
-    for script in result.scripts:
-        _print_script_result(script, step_status_cls)
-
-    status_label = "PASS" if result.status == script_status_cls.COMPLETED else "FAIL"
-    typer.echo()
-    typer.echo("-" * width)
-    if result.duration_ms:
-        typer.echo(
-            f"  RESULT: {status_label}  |  "
-            f"{result.passed} passed  "
-            f"{result.total - result.passed} failed  |  "
-            f"Duration: {result.duration_ms:.0f}ms"
-        )
-    else:
-        typer.echo(f"  RESULT: {status_label}")
-    typer.echo("=" * width)
-    typer.echo()
-
-    raise typer.Exit(0 if result.status == script_status_cls.COMPLETED else 1)
-
-
-def _print_script_result(script, step_status_cls) -> None:
-    """Print results for a single script."""
-    typer.echo(f"  Script: {script.script_name}")
-    typer.echo(f"  Status: {script.status.value}")
-    if script.total_duration_s is not None:
-        typer.echo(f"  Duration: {script.total_duration_s:.1f}s")
-    typer.echo()
-
-    for step in script.execution:
-        icon = "PASS" if step.status == step_status_cls.PASSED else "FAIL"
-        duration = f"{step.duration_s:.2f}s" if step.duration_s else "---"
-        typer.echo(f"    [{icon}] {step.step_name:<50} {duration}")
-        if step.error:
-            typer.echo(f"           Error: {step.error}")
-
-    if script.assertion_summary:
-        s = script.assertion_summary
-        typer.echo(
-            f"\n    Assertions: {s.total} total, "
-            f"{s.passed} passed, "
-            f"{s.failed_hard} hard-failed, "
-            f"{s.failed_soft} soft-failed"
-        )

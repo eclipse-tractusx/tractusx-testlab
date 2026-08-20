@@ -28,7 +28,6 @@ from __future__ import annotations
 import pytest
 import yaml
 
-import tractusx_testlab.steps  # noqa: F401 — trigger @step registrations
 from tests.paths import CCM_RAW_DIR
 from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.models.authoring.definitions import Assertion, ServiceDefinition
@@ -36,6 +35,7 @@ from tractusx_testlab.models.authoring.infrastructure import DataspaceContext
 from tractusx_testlab.models.primitives.enums import ServiceType
 from tractusx_testlab.scripting import StepRegistry
 from tractusx_testlab.scripting.parser import YamlParser
+from tractusx_testlab.syntax import defaults
 
 CCM_TESTS_DIR = CCM_RAW_DIR / "tests"
 
@@ -46,15 +46,25 @@ CCM_TESTS_DIR = CCM_RAW_DIR / "tests"
 _CCM_TEST_FILES = sorted(path.name for path in CCM_TESTS_DIR.glob("*.yaml"))
 
 _CCM_STEP_TYPES = [
-    "connector/provider/create_asset", "connector/provider/create_contract_definition",
-    "connector/provider/create_policy", "connector/provider/delete_asset",
-    "connector/provider/delete_policy", "util/generate_uuid",
-    "connector/dataplane/http_request", "mock/api",
-    "connector/consumer/pull_data_filtered", "connector/consumer/query_catalog_with_filters",
+    "connector/provider/create_asset",
+    "connector/provider/create_contract_definition",
+    "connector/provider/create_policy",
+    "connector/provider/delete_asset",
+    "connector/provider/delete_policy",
+    "util/generate_uuid",
+    "connector/dataplane/http_request",
+    "mock/api",
+    "connector/consumer/pull_data_filtered",
+    "connector/consumer/query_catalog_with_filters",
     "mock/wait/http_request",
 ]
 
 _CCM_STEP_TYPES_UNREGISTERED: list[str] = []
+
+
+def _release(script) -> str:
+    """The release a parsed script targets, from its ``dataspace`` block."""
+    return script.dataspace.version if script.dataspace else defaults.DATASPACE_VERSION
 
 
 class TestCcmYamlParsing:
@@ -92,7 +102,7 @@ class TestCcmYamlParsing:
         unregistered = [
             step.uses
             for step in (*script.setup, *script.execution, *script.teardown)
-            if StepRegistry.get(step.uses, script.dataspace_version) is None
+            if StepRegistry.get(step.uses, _release(script)) is None
         ]
         assert unregistered == []
 
@@ -101,7 +111,7 @@ class TestCcmIndexParsing:
     def test_ccm_index_parses_as_tck(self) -> None:
 
         index_path = CCM_RAW_DIR / "index.yaml"
-        with open(index_path, "r", encoding="utf-8") as f:
+        with open(index_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["kind"] == "tck"
@@ -193,4 +203,6 @@ class TestCcmStepRegistry:
 
         step_cls = StepRegistry.get(step_type, "saturn")
 
-        assert step_cls is not None, f"Step type '{step_type}' is not registered for dataspace 'saturn'"
+        assert step_cls is not None, (
+            f"Step type '{step_type}' is not registered for dataspace 'saturn'"
+        )

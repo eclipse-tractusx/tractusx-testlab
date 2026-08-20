@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -32,16 +32,17 @@ published outputs its own way would pass while the player failed.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.models import Job, StepDefinition, StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
+from tractusx_testlab.player.execution._step_outputs import store_step_outputs
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.player.execution.phases._run_phase import _PHASE_TO_NAMESPACE
-from tractusx_testlab.player.execution.step_runner import run_step, store_step_outputs
+from tractusx_testlab.player.execution.phase import _PHASE_TO_NAMESPACE
+from tractusx_testlab.player.execution.step_runner import run_step
 from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.services.manager import ServiceManager
+from tractusx_testlab.services.instances import ServiceManager
 
 # Nested steps are looked up version-agnostically, and so is everything here:
 # these tests are about the wiring, not about version overrides.
@@ -76,7 +77,7 @@ class Outcome:
         """What the step with this ``id`` returned."""
         return self.result(step_id).output
 
-    def error(self, step_id: str) -> Optional[str]:
+    def error(self, step_id: str) -> str | None:
         """Why the step with this ``id`` failed, if it did."""
         return self.result(step_id).error
 
@@ -128,8 +129,8 @@ class Harness:
 
 
 def build_context(
-    services: Optional[ServiceManager] = None,
-    config: Optional[TestlabConfig] = None,
+    services: ServiceManager | None = None,
+    config: TestlabConfig | None = None,
 ) -> StepContext:
     """A real ``StepContext``, not a mock — variable resolution is under test."""
     return StepContext(

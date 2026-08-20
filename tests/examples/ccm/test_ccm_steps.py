@@ -31,11 +31,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.models import StepDefinition, StepExecutionError
 from tractusx_testlab.steps.connector.catalog_filter import QueryCatalogWithFiltersStep
-from tractusx_testlab.steps.industry.notification import SendNotificationStep
-from tractusx_testlab.steps.utility.json_extract import JsonPathExtractStep
-from tractusx_testlab.steps.utility.uuid_gen import GenerateUuidStep
+from tractusx_testlab.steps.notification.consumer import SendNotificationStep
+from tractusx_testlab.steps.util.json_extract import JsonPathExtractStep
+from tractusx_testlab.steps.util.uuid_gen import GenerateUuidStep
 
 
 @pytest.fixture()
@@ -72,7 +72,9 @@ class TestJsonPathExtractStep:
     """Tests for util/json_path_extract step."""
 
     @pytest.mark.asyncio
-    async def test_extracts_nested_value(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_extracts_nested_value(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
         mock_context.variables["catalog"] = {"dcat:dataset": [{"id": "ds-1"}]}
         step = JsonPathExtractStep()
         result = await step.invoke(
@@ -81,29 +83,38 @@ class TestJsonPathExtractStep:
         assert result.value == "ds-1"
 
     @pytest.mark.asyncio
-    async def test_stores_in_variable(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_stores_in_variable(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
         mock_context.variables["data"] = {"key": "val"}
         step = JsonPathExtractStep()
         await step.invoke(
             {"input": "data", "path": "key", "store_in_variable": "extracted"},
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert mock_context.variables["extracted"] == "val"
 
     @pytest.mark.asyncio
-    async def test_missing_input_raises_key_error(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_missing_input_raises_key_error(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
         step = JsonPathExtractStep()
-        with pytest.raises(ValueError, match="input: Field required"):
+        with pytest.raises(ValueError, match=r"input: required key 'input' is missing"):
             await step.invoke({"path": "x"}, mock_context, definition)
 
     @pytest.mark.asyncio
-    async def test_nonexistent_variable_raises(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_nonexistent_variable_raises(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
         step = JsonPathExtractStep()
         with pytest.raises(KeyError, match="not found"):
             await step.invoke({"input": "missing", "path": "a"}, mock_context, definition)
 
     @pytest.mark.asyncio
-    async def test_path_no_match_raises(self, mock_context: MagicMock, definition: StepDefinition) -> None:
+    async def test_path_no_match_raises(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
         mock_context.variables["obj"] = {"a": 1}
         step = JsonPathExtractStep()
         with pytest.raises(KeyError):
@@ -125,30 +136,65 @@ class TestQueryCatalogWithFiltersStep:
         catalog = {"dcat:dataset": [{"@id": "asset-1"}]}
         consumer = MagicMock()
         consumer.get_catalog_with_filter.return_value = catalog
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
 
         step = QueryCatalogWithFiltersStep()
         result = await step.invoke(
             {"counter_party_address": "http://provider:8080", "filters": []},
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert result.value["datasets"] == [{"@id": "asset-1"}]
         assert mock_context.variables["datasets"] == [{"@id": "asset-1"}]
 
     @pytest.mark.asyncio
-    async def test_catalog_error_returns_none_value(
+    async def test_a_catalog_error_fails_the_step(
         self, mock_context: MagicMock, definition: StepDefinition
     ) -> None:
         consumer = MagicMock()
         consumer.get_catalog_with_filter.return_value = None
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
 
-        step = QueryCatalogWithFiltersStep()
-        result = await step.invoke(
-            {"counter_party_address": "http://provider:8080"}, mock_context, definition,
+        with pytest.raises(StepExecutionError, match="no catalog"):
+            await QueryCatalogWithFiltersStep().invoke(
+                {"counter_party_address": "http://provider:8080"},
+                mock_context,
+                definition,
+            )
+
+    @pytest.mark.asyncio
+    async def test_the_protocol_is_left_to_the_release_unless_picked(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
+        consumer = MagicMock()
+        consumer.get_catalog_with_filter.return_value = {"dcat:dataset": []}
+        mock_context.dataspace.consumer.return_value = consumer
+
+        await QueryCatalogWithFiltersStep().invoke(
+            {"counter_party_address": "http://provider:8080"}, mock_context, definition
         )
-        assert result.value is None
-        assert result.response.status_code == 500
+        assert "protocol" not in consumer.get_catalog_with_filter.call_args.kwargs
+
+    @pytest.mark.asyncio
+    async def test_a_picked_protocol_reaches_the_sdk(
+        self, mock_context: MagicMock, definition: StepDefinition
+    ) -> None:
+        consumer = MagicMock()
+        consumer.get_catalog_with_filter.return_value = {"dcat:dataset": []}
+        mock_context.dataspace.consumer.return_value = consumer
+
+        await QueryCatalogWithFiltersStep().invoke(
+            {
+                "counter_party_address": "http://provider:8080",
+                "protocol": "dataspace-protocol-http:2025-1",
+            },
+            mock_context,
+            definition,
+        )
+        assert (
+            consumer.get_catalog_with_filter.call_args.kwargs["protocol"]
+            == "dataspace-protocol-http:2025-1"
+        )
 
     @pytest.mark.asyncio
     async def test_each_filter_is_translated_by_the_sdk(
@@ -156,17 +202,20 @@ class TestQueryCatalogWithFiltersStep:
     ) -> None:
         consumer = MagicMock()
         consumer.get_filter_expression.side_effect = lambda key, value, operator: {
-            "operandLeft": key, "operator": operator, "operandRight": value,
+            "operandLeft": key,
+            "operator": operator,
+            "operandRight": value,
         }
         consumer.get_catalog_with_filter.return_value = {"dcat:dataset": []}
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
 
         await QueryCatalogWithFiltersStep().invoke(
             {
                 "counter_party_address": "http://provider:8080",
                 "filters": [{"operand_left": "type", "operator": "=", "operand_right": "cert"}],
             },
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert consumer.get_catalog_with_filter.call_args.kwargs["filter_expression"] == [
             {"operandLeft": "type", "operator": "=", "operandRight": "cert"}
@@ -178,10 +227,12 @@ class TestQueryCatalogWithFiltersStep:
     ) -> None:
         consumer = MagicMock()
         consumer.get_catalog_with_filter.return_value = {"dcat:dataset": []}
-        mock_context.get_consumer_service.return_value = consumer
+        mock_context.dataspace.consumer.return_value = consumer
 
         await QueryCatalogWithFiltersStep().invoke(
-            {"counter_party_address": "http://provider:8080"}, mock_context, definition,
+            {"counter_party_address": "http://provider:8080"},
+            mock_context,
+            definition,
         )
         assert consumer.get_filter_expression.call_count == 0
         assert consumer.get_catalog_with_filter.call_args.kwargs["filter_expression"] == []
@@ -196,21 +247,19 @@ class TestSendNotificationStep:
     """Tests for notification/consumer/send step."""
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock)
     async def test_dataplane_direct_mode_posts(
-        self, mock_client_cls: MagicMock, mock_context: MagicMock, definition: StepDefinition
+        self, mock_request: AsyncMock, mock_context: MagicMock, definition: StepDefinition
     ) -> None:
+        # Stubbed at the canonical client rather than at ``httpx.AsyncClient``:
+        # that is the transport every step goes through, and the one that
+        # records the exchange the trace reports.
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.content = b'{"ok": true}'
         mock_resp.json.return_value = {"ok": True}
         mock_resp.headers = {"content-type": "application/json"}
-
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_resp
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client_cls.return_value = mock_client
+        mock_request.return_value = mock_resp
 
         step = SendNotificationStep()
         result = await step.invoke(
@@ -220,39 +269,36 @@ class TestSendNotificationStep:
                 "endpoint_path": "/notify",
                 "notification": {"msg": "hi"},
             },
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert result.value["status_code"] == 200
         assert result.value["response_body"] == {"ok": True}
         assert result.value["response_headers"] == {"content-type": "application/json"}
-        mock_client.post.assert_called_once()
-        assert mock_client.post.call_args.args[0] == "http://dp/notify"
-        assert mock_client.post.call_args.kwargs["json"] == {"msg": "hi"}
+        mock_request.assert_called_once()
+        assert mock_request.call_args.args == ("POST", "http://dp/notify")
+        assert mock_request.call_args.kwargs["json"] == {"msg": "hi"}
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock)
     async def test_direct_mode_still_accepts_content_as_the_body(
-        self, mock_client_cls: MagicMock, mock_context: MagicMock, definition: StepDefinition
+        self, mock_request: AsyncMock, mock_context: MagicMock, definition: StepDefinition
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.status_code = 201
         mock_resp.content = b"{}"
         mock_resp.json.return_value = {}
         mock_resp.headers = {}
-
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_resp
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client_cls.return_value = mock_client
+        mock_request.return_value = mock_resp
 
         step = SendNotificationStep()
         result = await step.invoke(
             {"dataplane_url": "http://dp/notify", "edr_token": "tok", "content": {"msg": "hi"}},
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert result.value["status_code"] == 201
-        assert mock_client.post.call_args.kwargs["json"] == {"msg": "hi"}
+        assert mock_request.call_args.kwargs["json"] == {"msg": "hi"}
 
     @pytest.mark.asyncio
     @patch("tractusx_sdk.industry.models.notifications.notification.Notification")
@@ -263,16 +309,20 @@ class TestSendNotificationStep:
         mock_notif_cls.return_value = mock_notif_instance
         mock_service = MagicMock()
         mock_service.send_notification.return_value = {"status": "sent"}
-        mock_context.get_notification_service = MagicMock(return_value=mock_service)
+        mock_context.dataspace.notifications = MagicMock(return_value=mock_service)
 
         step = SendNotificationStep()
         result = await step.invoke(
             {
-                "notification": {"header": {"context": "cx", "senderBpn": "B1", "receiverBpn": "B2"}, "content": {}},
+                "notification": {
+                    "header": {"context": "cx", "senderBpn": "B1", "receiverBpn": "B2"},
+                    "content": {},
+                },
                 "counter_party_id": "BPNL000000001",
                 "counter_party_address": "http://provider/dsp",
             },
-            mock_context, definition,
+            mock_context,
+            definition,
         )
         assert result.value["status"] == "sent"
         assert result.value["response_body"] == {"status": "sent"}
@@ -292,7 +342,7 @@ class TestSendNotificationStep:
         mock_notif_cls.return_value = MagicMock(to_data=MagicMock(return_value={}))
         mock_service = MagicMock()
         mock_service.send_notification.return_value = {"status": "sent"}
-        mock_context.get_notification_service = MagicMock(return_value=mock_service)
+        mock_context.dataspace.notifications = MagicMock(return_value=mock_service)
         document = {"header": {"context": "cx", "senderBpn": "B1", "receiverBpn": "B2"}}
 
         await SendNotificationStep().invoke(
@@ -301,7 +351,8 @@ class TestSendNotificationStep:
                 "counter_party_id": "BPNL000000001",
                 "counter_party_address": "http://provider/dsp",
             },
-            mock_context, definition,
+            mock_context,
+            definition,
         )
 
         mock_notif_cls.assert_called_once_with(**document)
@@ -315,7 +366,7 @@ class TestSendNotificationStep:
         mock_notif_cls.return_value = MagicMock(to_data=MagicMock(return_value={}))
         mock_service = MagicMock()
         mock_service.send_notification.return_value = {}
-        mock_context.get_notification_service = MagicMock(return_value=mock_service)
+        mock_context.dataspace.notifications = MagicMock(return_value=mock_service)
 
         await SendNotificationStep().invoke(
             {
@@ -325,7 +376,8 @@ class TestSendNotificationStep:
                 "endpoint_path": "/notify",
                 "timeout": 12,
             },
-            mock_context, definition,
+            mock_context,
+            definition,
         )
 
         kwargs = mock_service.send_notification.call_args.kwargs

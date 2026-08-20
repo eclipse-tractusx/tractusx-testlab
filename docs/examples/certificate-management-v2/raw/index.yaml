@@ -104,7 +104,7 @@ env:
                     operator: eq
                     right_operand: "DataExchangeGovernance:1.0"
       returns:
-        policy:
+        value:
           type: object
           class: Policy
 

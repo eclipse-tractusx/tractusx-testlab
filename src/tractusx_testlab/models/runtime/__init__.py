@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -24,20 +24,21 @@
 
 """Execution-time structures: results and jobs."""
 
-from tractusx_testlab.models.runtime.jobs import (
-    Job,
-    JobEvent,
-    JobMemory,
-)
 from tractusx_testlab.models.runtime.inspection import (
     ScriptInspection,
     StepMeta,
     TckInspectionResult,
 )
+from tractusx_testlab.models.runtime.jobs import (
+    Job,
+    JobEvent,
+    JobMemory,
+)
 from tractusx_testlab.models.runtime.results import (
     AssertionResult,
     AssertionSummary,
     CallbackResult,
+    HttpExchange,
     HttpRequest,
     HttpResponse,
     ScriptResult,
@@ -46,18 +47,19 @@ from tractusx_testlab.models.runtime.results import (
 )
 
 __all__ = [
+    "AssertionResult",
+    "AssertionSummary",
+    "CallbackResult",
+    "HttpExchange",
+    "HttpRequest",
+    "HttpResponse",
     "Job",
     "JobEvent",
     "JobMemory",
     "ScriptInspection",
-    "StepMeta",
-    "TckInspectionResult",
-    "AssertionResult",
-    "AssertionSummary",
-    "CallbackResult",
-    "HttpRequest",
-    "HttpResponse",
     "ScriptResult",
+    "StepMeta",
     "StepResult",
+    "TckInspectionResult",
     "TckResult",
 ]

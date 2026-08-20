@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -85,8 +85,7 @@ class TestTakingAnEndpointApart:
                 "with": {
                     "input": "${{ execution.fetch.response_body }}",
                     "path": (
-                        "submodelDescriptors.0.endpoints.0."
-                        "protocolInformation.subprotocolBody"
+                        "submodelDescriptors.0.endpoints.0.protocolInformation.subprotocolBody"
                     ),
                 },
                 "returns": {"value": {"type": "string"}},
@@ -110,9 +109,7 @@ class TestTakingAnEndpointApart:
         assert outcome.passed, [(r.step_name, r.error) for r in outcome.failures]
         assert http.calls_to("GET", "/asset/urn:uuid:asset-1")
 
-    async def test_a_key_that_is_not_there_fails_where_it_is_read(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_key_that_is_not_there_fails_where_it_is_read(self, harness: Harness) -> None:
         """Not three steps later, as an empty URL."""
         outcome = await harness.run(
             {
@@ -152,9 +149,7 @@ class TestTakingAnEndpointApart:
 class TestSelectingByPredicate:
     """A path may name an element by a property instead of an index."""
 
-    async def test_a_specific_asset_id_is_found_by_its_name(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_specific_asset_id_is_found_by_its_name(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "part",
@@ -167,9 +162,7 @@ class TestSelectingByPredicate:
         )
         assert outcome.output("part") == "PART-9"
 
-    async def test_a_submodel_is_found_by_its_interface(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_submodel_is_found_by_its_interface(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "endpoint",
@@ -249,9 +242,7 @@ class TestEncodingAndBack:
 class TestCheckingAPathExists:
     """``util/validate_path`` fails the step; an assertion reports on it."""
 
-    async def test_a_missing_path_fails_the_step_it_is_on(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_missing_path_fails_the_step_it_is_on(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "check",
@@ -261,9 +252,7 @@ class TestCheckingAPathExists:
         )
         assert not outcome.passed
 
-    async def test_a_present_path_publishes_the_value_it_found(
-        self, harness: Harness
-    ) -> None:
+    async def test_a_present_path_publishes_the_value_it_found(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "check",
@@ -285,9 +274,7 @@ class TestCheckingAPathExists:
 class TestStoringUnderAChosenName:
     """``store_in_variable`` puts the result somewhere a later step names."""
 
-    async def test_the_chosen_name_is_readable_downstream(
-        self, harness: Harness
-    ) -> None:
+    async def test_the_chosen_name_is_readable_downstream(self, harness: Harness) -> None:
         outcome = await harness.run(
             {
                 "id": "asset",

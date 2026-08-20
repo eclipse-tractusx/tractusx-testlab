@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -30,52 +30,46 @@ import asyncio
 import logging
 import uuid
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from tractusx_testlab.models import JobStatus
 from tractusx_testlab.player.execution.player import TestlabPlayer
-from tractusx_testlab.server.storage import PackageStorage
-
 from tractusx_testlab.server.routes.callbacks import callback_router
 from tractusx_testlab.server.routes.compile import compile_router
+from tractusx_testlab.server.storage import PackageStorage
 from tractusx_testlab.server.streaming import streaming_router
 
 _logger = logging.getLogger(__name__)
 
-# Background task references — prevents garbage collection and logs exceptions
-_background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+#: Strong references to in-flight background runs. ``asyncio`` holds only a weak
+#: reference to a task, so a run whose reference is dropped can be garbage
+#: collected mid-execution; holding it here until the done-callback discards it
+#: is what keeps that from happening.
+_background_tasks: set[asyncio.Task] = set()
 
 
-def _on_task_done(task: asyncio.Task) -> None:  # type: ignore[type-arg]
-    """Remove completed task from the tracking set and log any unhandled exceptions."""
-    _background_tasks.discard(task)
-    if task.cancelled():
-        return
-    exc = task.exception()
-    if exc is not None:
-        _logger.exception("Background task failed: %s", exc, exc_info=exc)
+def _on_task_done(task: asyncio.Task) -> None:
+    """Release a finished run and surface anything it raised.
 
-
-router = APIRouter(prefix="/testlab", tags=["testlab"])
-router.include_router(streaming_router)
-router.include_router(compile_router)
-router.include_router(callback_router)
-
-# Background task references — prevents garbage collection and logs exceptions
-_background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
-
-
-def _on_task_done(task: asyncio.Task) -> None:  # type: ignore[type-arg]
-    """Remove completed task from the tracking set and log any unhandled exceptions."""
+    A background task that dies with an unhandled exception is otherwise silent
+    until interpreter shutdown, which is far too late to associate it with the
+    job it belonged to.
+    """
     _background_tasks.discard(task)
     if task.cancelled():
         return
     exc = task.exception()
     if exc is not None:
         _logger.exception("Background execution task failed: %s", exc, exc_info=exc)
+
+
+router = APIRouter(prefix="/testlab", tags=["testlab"])
+router.include_router(streaming_router)
+router.include_router(compile_router)
+router.include_router(callback_router)
 
 
 def _get_player(request: Request) -> TestlabPlayer:
@@ -100,7 +94,7 @@ StorageDep = Annotated[PackageStorage, Depends(_get_storage)]
     "/packages",
     status_code=201,
     responses={
-        400: {"description": "File must be a .stck archive"},
+        400: {"description": "File must be a .tck archive"},
         413: {"description": "Package exceeds maximum upload size"},
     },
 )
@@ -109,9 +103,9 @@ async def upload_package(
     player: PlayerDep,
     storage: StorageDep,
 ) -> JSONResponse:
-    """Upload a .stck archive."""
-    if not file.filename or not file.filename.endswith(".stck"):
-        raise HTTPException(400, "File must be a .stck archive")
+    """Upload a .tck archive."""
+    if not file.filename or not file.filename.endswith(".tck"):
+        raise HTTPException(400, "File must be a .tck archive")
 
     data = await file.read()
     max_bytes = player._config.max_upload_bytes
@@ -155,7 +149,7 @@ async def delete_package(package_id: str, storage: StorageDep) -> None:
     "/run/package",
     status_code=202,
     responses={
-        400: {"description": "Missing 'package_id' or 'path' in request body"},
+        400: {"description": "Missing 'package_id'/'path', or 'path' is not a .tck"},
         404: {"description": "Package or file not found"},
     },
 )
@@ -164,10 +158,12 @@ async def run_test(
     player: PlayerDep,
     storage: StorageDep,
 ) -> JSONResponse:
-    """Execute a TCK from an uploaded package or a YAML path.
+    """Execute a TCK from an uploaded package or a path to one.
 
     Body: ``{"package_id": "...", "runtime_vars": {...}}``
     or    ``{"path": "...", "runtime_vars": {...}}``
+
+    Both name a compiled ``.tck``; ``path`` used to take an uncompiled manifest.
     """
     body = await request.json()
 
@@ -187,6 +183,14 @@ async def run_test(
         target = Path(path)
         if not target.exists():
             raise HTTPException(404, f"File not found: {path}")
+        # Caught here, not in the background task: the caller is told, rather
+        # than getting a 202 for a job that dies into a log line.
+        if target.suffix != ".tck":
+            raise HTTPException(
+                400,
+                f"'{target.name}' is not a compiled package — run "
+                f"`testlab compile` and submit the .tck.",
+            )
 
     job = player.jobs.create(target.stem)
     task = asyncio.create_task(_execute_in_background(player, target, runtime_vars))
@@ -213,15 +217,15 @@ async def _execute_in_background(player: TestlabPlayer, target: Path, runtime_va
 )
 async def list_jobs(
     player: PlayerDep,
-    status: Optional[str] = None,
+    status: str | None = None,
 ) -> JSONResponse:
     """List all executions, optionally filtered by status."""
     status_filter = None
     if status:
         try:
             status_filter = JobStatus(status.upper())
-        except ValueError:
-            raise HTTPException(400, f"Invalid status: {status}")
+        except ValueError as exc:
+            raise HTTPException(400, f"Invalid status: {status}") from exc
 
     jobs = player.jobs.list_jobs(status=status_filter)
     return JSONResponse(content=[job.model_dump(mode="json") for job in jobs])

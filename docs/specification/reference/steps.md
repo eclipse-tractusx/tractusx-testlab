@@ -4,9 +4,34 @@
 
 Every step declares its interface as Pydantic models, and this page is generated from them, so it cannot drift from the implementation.
 
-57 steps.
+55 steps.
 
 ## Steps
+
+### `connector/consumer/discover_connector`
+
+Discover a counter-party's DSP endpoint, ID and protocol from its BPN.
+
+**Saturn only.** The endpoint this calls is a Saturn addition and the SDK exposes it on the Saturn consumer service alone, so the step is registered for that release and a script on any other cannot resolve it.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `bpnl` | string | yes | — | — | BPN of the counter-party whose connector is discovered. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint to discover against; when omitted the connector resolves it from the BPN alone. |
+| `namespace` | string | no | `'https://w3id.org/edc/v0.0.1/ns/'` | — | Namespace the response keys are prefixed with; bare keys are read too. |
+
+**Output** — the value assertions and `returns:` read
+
+_Output contract of `connector/consumer/discover_connector`._
+
+| Field | Type | Description |
+|---|---|---|
+| `discovery` | any | The discovery response document, unchanged. |
+| `counter_party_address` | string | DSP endpoint the counter-party is addressed at. |
+| `counter_party_id` | string | ID the counter-party identifies itself as. |
+| `protocol` | string | DSP protocol version the endpoint speaks, e.g. 'dataspace-protocol-http:2025-1'. |
 
 ### `connector/consumer/do_dsp`
 
@@ -19,9 +44,9 @@ Returns the resulting data-plane address so `connector/dataplane/http_request` c
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
-| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
-| `expected_policies` | list of object | no | `[]` | — | ODRL policies the negotiation is allowed to accept. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
+| `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
+| `expected_policies` | list of object | no | `[]` | — | ODRL policies the negotiation is allowed to accept, as the raw policy document, the testlab simplified spelling, JSON text, or the whole 'config/connector/policy' variable that holds one. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -45,7 +70,7 @@ Returns the same data-plane address as `do_dsp`.
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
 | `bpnl` | string | yes | — | — | BPN used to discover the counter-party's connector. |
 | `counter_party_address` | string | no | `None` | — | DSP endpoint; when omitted it is resolved from the BPN by discovery. |
-| `expected_policies` | list of object | no | `None` | — | ODRL policies the negotiation is allowed to accept. |
+| `expected_policies` | list of object | no | `None` | — | ODRL policies the negotiation is allowed to accept, as the raw policy document, the testlab simplified spelling, JSON text, or the whole 'config/connector/policy' variable that holds one. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -114,7 +139,7 @@ A PULL transfer turns a finished negotiation into something `connector/dataplane
 | `negotiation_id` | string | no | `None` | — | PULL only — negotiation to collect the EDR for; falls back to the 'negotiation_id' context variable. |
 | `agreement_id` | string | no | `None` | — | PUSH only — contract agreement the transfer runs under; falls back to the 'agreement_id' context variable. |
 | `data_destination` | object | no | `None` | — | PUSH only — the EDC data address the provider pushes to. |
-| `counter_party_address` | string | no | `''` | — | PUSH only — DSP endpoint of the provider; falls back to 'provider_address'. |
+| `counter_party_address` | string | no | `''` | — | PUSH only — DSP endpoint of the provider; defaults to the bound SUT connector's 'dsp_url'. |
 | `max_wait` | number | no | `60.0` | — | PUSH only — seconds to wait for the transfer to reach a final state. |
 | `poll_interval` | number | no | `1.0` | — | PUSH only — seconds between two transfer state reads. |
 | `verify` | any | no | `None` | — | TLS verification passed through to the SDK; None keeps its default. |
@@ -142,10 +167,10 @@ The SDK starts the negotiation and answers with its ID straight away; this step 
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
+| `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `asset_id` | any | no | `None` | — | Asset ID to negotiate for; falls back to the 'catalog_asset_id' context variable. |
-| `policy` | any | no | `None` | — | ODRL policy to negotiate under; falls back to the 'catalog_policy' context variable. |
+| `policy` | any | no | `None` | — | ODRL policy to negotiate under, as the policy document itself, its JSON text, or the whole 'config/connector/policy' variable that holds it; falls back to the 'catalog_policy' context variable. |
 | `max_wait` | number | no | `60.0` | — | Seconds to wait for the negotiation to reach a final state. |
 | `poll_interval` | number | no | `1.0` | — | Seconds between two negotiation state reads. |
 
@@ -163,18 +188,18 @@ _Output contract of `connector/consumer/negotiate`._
 
 Run the full DSP flow in one step, optionally constrained to one policy.
 
-The `policy:` param accepts the testlab simplified format (`permissions`/`constraints`/snake_case keys) and is converted to ODRL camelCase, so the SDK's policy comparison can use it as an allow-list when filtering catalog assets. With no policy the SDK takes the first offer.
+`expected_policies` reaches the SDK as the raw ODRL policies its offer comparison takes, whichever way the script wrote them — see `tractusx_testlab.steps.connector.policies.as_policy_list`. With no policy the SDK takes the first offer.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
-| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
+| `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `max_wait` | number | no | `60.0` | — | Seconds to wait for the transfer to complete. |
 | `poll_interval` | number | no | `1.0` | — | Seconds between transfer-state polls. |
-| `expected_policies` | any | no | `None` | — | Policies the offer must satisfy, in ODRL or the testlab simplified form, as one document or a list; omitted means the SDK picks the first offer. |
+| `expected_policies` | list of object | no | `None` | — | Policies the offer must satisfy, as the raw policy document, the testlab simplified spelling, JSON text, or the whole 'config/connector/policy' variable that holds one; omitted means the SDK picks the first offer. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -196,18 +221,18 @@ _Everything the DSP flow produced, from the catalog through to the token._
 
 Run the full DSP flow, accepting an offer that matches any of several policies.
 
-Unlike `pull_data_filtered`, where `expected_policies` is optional and "no policies" means "take the first offer", this variant requires them. Simplified snake_case keys are still normalised to ODRL camelCase, so either format is accepted.
+Unlike `pull_data_filtered`, where `expected_policies` is optional and "no policies" means "take the first offer", this variant requires them. They are normalised the same way, so either spelling is accepted.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
-| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
+| `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `max_wait` | number | no | `60.0` | — | Seconds to wait for the transfer to complete. |
 | `poll_interval` | number | no | `1.0` | — | Seconds between transfer-state polls. |
-| `expected_policies` | list of object | yes | — | — | ODRL policies, any one of which the negotiated offer must satisfy. |
+| `expected_policies` | list of object | yes | — | — | Policies, any one of which the negotiated offer must satisfy, in any of the forms 'pull_data_filtered' accepts. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -229,14 +254,15 @@ _Everything the DSP flow produced, from the catalog through to the token._
 
 Query a provider's catalog via the SDK connector consumer service.
 
-Returns the catalog document and its offers side by side, so a `returns:` block reads `datasets` rather than the JSON-LD `dcat:dataset` key, and downstream steps read the same offers.
+Returns the catalog document and its offers side by side, so a `returns:` block reads `datasets` rather than the JSON-LD key the provider's DSP generation happens to spell them with, and downstream steps read the same offers.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `protocol` | string | no | `''` | — | DSP protocol version the request is made under, e.g. 'dataspace-protocol-http:2025-1'. Left empty, the connector's dataspace version decides it. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
+| `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
 
 **Output** — the value assertions and `returns:` read
@@ -252,16 +278,16 @@ _What every catalog query returns: the document, and its offers as a list._
 
 Query the catalog filtered by a specific asset ID.
 
-Returns the first offer matching `expected_policies` as `catalog_asset_id` / `catalog_policy` for the negotiation step that follows.
+Returns the catalog's first offer as `catalog_asset_id` / `catalog_policy` for the negotiation step that follows. Which policy that offer carries is reported, not judged: a step that asserts on the policy reads it from the output, and a step that must *only* accept certain policies is `pull_data_filtered_by_policy`.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `counter_party_id` | string | yes | — | — | BPN of the counter-party. |
-| `counter_party_address` | string | yes | — | — | DSP endpoint of the counter-party connector. |
+| `protocol` | string | no | `''` | — | DSP protocol version the request is made under, e.g. 'dataspace-protocol-http:2025-1'. Left empty, the connector's dataspace version decides it. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
+| `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `asset_id` | string | yes | — | — | Asset ID the catalog is filtered by. |
-| `expected_policies` | list of object | no | `[]` | — | Policies accepted for the returned offer; the first match is exported. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -271,12 +297,14 @@ _Output contract of `connector/consumer/query_catalog_by_asset_id`._
 |---|---|---|
 | `catalog` | [CatalogPayload](#catalogpayload) | The provider's catalog document, unchanged. |
 | `datasets` | list of object | Dataset offers from the catalog, always as a list. |
-| `catalog_asset_id` | any | Asset ID of the first offer whose policy is expected. |
-| `catalog_policy` | any | The accepted ODRL policy of that offer. |
+| `catalog_asset_id` | any | Asset ID of the first offer in the catalog. |
+| `catalog_policy` | any | The ODRL policy that offer is made under. |
 
 ### `connector/consumer/query_catalog_by_bpnl`
 
 Query the catalog using BPNL-based connector discovery.
+
+Alone among the catalog steps this takes no `protocol`: discovery is what answers with one, so a protocol given here would be an assumption competing with the connector's own answer. Pin it by discovering explicitly with `connector/consumer/discover_connector` and passing the endpoint it resolves to `query_catalog`.
 
 **Inputs**
 
@@ -305,9 +333,10 @@ Filter criteria are translated by the SDK's own `get_filter_expression`, so they
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
+| `protocol` | string | no | `''` | — | DSP protocol version the request is made under, e.g. 'dataspace-protocol-http:2025-1'. Left empty, the connector's dataspace version decides it. |
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
-| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
+| `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -352,10 +381,10 @@ Finds the registry asset in the counterparty's catalog by its standard `dct:type
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
+| `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `dct_type` | string | no | `'https://w3id.org/catenax/taxonomy#DigitalTwinRegistry'` | — | `dct:type` the registry asset is offered under in the catalog. |
-| `expected_policies` | list of object | no | `None` | — | ODRL policies the negotiation is allowed to accept. |
+| `expected_policies` | list of object | no | `None` | — | ODRL policies the negotiation is allowed to accept, as the raw policy document, the testlab simplified spelling, JSON text, or the whole 'config/connector/policy' variable that holds one. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -376,7 +405,7 @@ What the asset *is* is not written into the step: it is configured once in the m
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `asset` | object | no | `{}` | — | The whole asset definition, as declared by a 'config/connector/asset' manifest variable and referenced as '${{ env.<id>.asset }}'. Carries 'base_url', 'dct_type' or 'properties', 'version', 'semantic_id', 'proxy_params', 'headers', 'private_properties' and an optional '@context'. |
+| `asset` | object | no | `{}` | — | The whole asset definition, as declared by a 'config/connector/asset' manifest variable and referenced as '${{ env.<id> }}'. Carries 'base_url', 'dct_type' or 'properties', 'version', 'semantic_id', 'proxy_params', 'headers', 'private_properties' and an optional '@context'. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -420,7 +449,7 @@ The rules are not written into the step: the policy is configured once in the ma
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `policy` | object | no | `{}` | — | The whole ODRL policy, as declared by a 'config/connector/policy' manifest variable and referenced as '${{ env.<id>.policy }}'. Carries 'permissions', 'prohibitions', 'obligations', an optional '@context' and an optional 'policy_id'; a fresh UUID names the policy without one. |
+| `policy` | object | no | `{}` | — | The whole ODRL policy, as declared by a 'config/connector/policy' manifest variable and referenced as '${{ env.<id> }}'. Carries 'permissions', 'prohibitions', 'obligations', an optional '@context' and an optional 'policy_id'; a fresh UUID names the policy without one. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -961,7 +990,7 @@ Register a mock HTTP endpoint that returns a canned response.
 | `path` | string | yes | — | — | URL path to register, e.g. '/companycertificate/request'. |
 | `method` | string | no | `'POST'` | — | HTTP method the mock answers on. |
 | `response_status` | integer | no | `200` | — | Status code the mock returns. |
-| `response_body` | any | no | `{}` | — | JSON body the mock returns; '@name' strings resolve to context variables. |
+| `response_body` | any | no | `{}` | — | JSON body the mock returns. References are written the usual way, '${{ ... }}', and are resolved before the step runs. |
 | `response_headers` | object | no | `{}` | — | Headers the mock returns alongside the body. |
 
 **Output** — the value assertions and `returns:` read
@@ -997,7 +1026,7 @@ Type: NoneType
 
 Register a protocol-aware AAS Digital Twin Registry mock.
 
-Shells registered through the mock's own `POST /shell-descriptors` become retrievable the same way the pre-configured ones are, so a script can exercise the write path and the read path against one registry.
+Shells registered through the mock's own `POST /shell-descriptors` become retrievable the same way the pre-configured ones are, so a script can exercise the write path and the read path against one registry. It answers the AAS v3 API as a real registry does, which is what makes it worth testing against: `GET /lookup/shells` takes one `assetIds` value per criterion, each a base64url-encoded `SpecificAssetId` object, and a value holding the whole list is refused with a 400 that says so. The consumer-side steps already send it that way, so a script that uses them needs to know none of this.
 
 **Inputs**
 
@@ -1046,8 +1075,8 @@ Discover notification assets in a provider catalog.
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
+| `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `timeout` | number | no | `60` | — | Discovery timeout in seconds. |
 
 **Output** — the value assertions and `returns:` read
@@ -1066,8 +1095,8 @@ Supports two modes: - **Dataplane-direct mode**: `dataplane_url`, `edr_token`, `
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector. |
-| `counter_party_id` | string | no | `''` | — | BPN of the counter-party. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
+| `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `notification` | object | no | `None` | — | The notification document to send. |
 | `endpoint_path` | string | no | `''` | — | Notification API path appended to the endpoint. |
 | `dataplane_url` | string | no | `None` | — | Direct mode: data-plane URL to POST to; its presence selects that mode. |
@@ -1308,66 +1337,6 @@ _The value found at the path — whatever type the document holds there._
 
 Type: any
 
-### `validate/assert`
-
-Assert that a value satisfies an operator condition.
-
-Raises `ValueError` on failure so the runner marks the step as FAILED.
-
-**Inputs**
-
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `input` | any | no | `None` | — | The value to validate. |
-| `operator` | `not_null` \| `is_null` \| `not_empty` \| `equals` \| `not_equals` \| `contains` \| `not_contains` \| `matches_regex` \| `one_of` \| `none_of` \| `has_key` \| `not_has_key` \| `gt` \| `gte` \| `lt` \| `lte` \| `length_equals` \| `length_gt` \| `length_lt` \| `between` | no | `'not_null'` | — | Comparison applied to the value. |
-| `value` | any | no | `None` | — | Expected value; required for the operators that compare two operands. |
-
-**Output** — the value assertions and `returns:` read
-
-_The value that was asserted on, passed through unchanged._
-
-Type: any
-
-### `validate/field`
-
-Assert that a field at a dot-separated path satisfies an operator condition.
-
-Raises `ValueError` on failure so the runner marks the step as FAILED.
-
-**Inputs**
-
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `input` | any | no | `None` | — | The value to validate. |
-| `operator` | `not_null` \| `is_null` \| `not_empty` \| `equals` \| `not_equals` \| `contains` \| `not_contains` \| `matches_regex` \| `one_of` \| `none_of` \| `has_key` \| `not_has_key` \| `gt` \| `gte` \| `lt` \| `lte` \| `length_equals` \| `length_gt` \| `length_lt` \| `between` | no | `'not_null'` | — | Comparison applied to the value. |
-| `value` | any | no | `None` | — | Expected value; required for the operators that compare two operands. |
-| `path` | string | no | `''` | — | Dot-separated key path to the field, e.g. 'header.messageId'. Empty asserts on the whole object. |
-
-**Output** — the value assertions and `returns:` read
-
-_The value that was asserted on, passed through unchanged._
-
-Type: any
-
-### `validate/schema`
-
-Validate a JSON payload against a JSON Schema document.
-
-Raises `ValueError` on failure so the runner marks the step as FAILED.
-
-**Inputs**
-
-| Parameter | Type | Required | Default | Also accepts | Description |
-|---|---|---|---|---|---|
-| `input` | any | no | `None` | — | The payload to validate — an object, a list, or a JSON string. |
-| `schema` | any | yes | — | — | A JSON Schema document, typically '${{ env.schemas.<id> }}', which the player seeds from the TCK 'env.schemas' block. |
-
-**Output** — the value assertions and `returns:` read
-
-_The validated payload, parsed from JSON when it arrived as a string._
-
-Type: any
-
 ## Nested objects
 
 ### Assertion
@@ -1377,6 +1346,7 @@ Assertion using `uses` / `with` verb-form keys.
 | Field | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `uses` | string | yes | — | — |  |
+| `name` | string | no | `None` | — |  |
 | `with` | object | no | `None` | — |  |
 
 ### CatalogPayload
@@ -1388,7 +1358,6 @@ A provider's DCAT catalog.
 | `@context` | any | no | `None` | — | JSON-LD context. |
 | `@id` | string | no | `None` | — | Catalog ID. |
 | `@type` | any | no | `None` | — | JSON-LD type. |
-| `dcat:dataset` | any | no | `None` | — | Dataset offers — a list, or a bare object when there is exactly one. |
 
 Additional keys sent by the counterpart are passed through unchanged.
 
@@ -1469,5 +1438,6 @@ Step definition using `uses` and `with` verb-form keys.
 | `with` | object | no | `None` | — |  |
 | `returns` | object | no | `None` | — |  |
 | `validate` | list of [Assertion](#assertion) | no | `None` | — |  |
+| `expects` | `fail` | no | `None` | — |  |
 | `timeout_s` | number | no | `None` | — |  |
 | `if` | string | no | `None` | — |  |

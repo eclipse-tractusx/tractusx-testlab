@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -34,37 +34,9 @@ import yaml
 from tractusx_testlab.compiler.compiler import Compiler
 from tractusx_testlab.compiler.validation.validator import ValidationResult
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _write_yaml(tmp_path: Path, content: dict, name: str = "script.yaml") -> Path:
-    """Write a YAML dict to a temp file and return the path."""
-    p = tmp_path / name
-    p.write_text(yaml.dump(content, default_flow_style=False))
-    return p
-
-
-def _minimal_script() -> dict:
-    """Return a minimal valid script dict."""
-    return {
-        "syntax": "v1-alpha",
-        "kind": "test",
-        "id": "minimal-test",
-        "namespace": "testlab.test",
-        "metadata": {
-            "name": "Minimal Test",
-            "version": "1.0",
-            "description": "A minimal test script.",
-        },
-        "execution": [],
-    }
-
-
-def _write_script(tmp_path: Path, execution_steps: list | None = None) -> Path:
-    return _write_yaml(tmp_path, _minimal_script_dict(execution_steps))
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +63,8 @@ def _test_script(execution_steps: list | None = None) -> dict:
             "version": "1.0",
             "description": "A minimal test script.",
         },
-        "execution": execution_steps if execution_steps is not None
+        "execution": execution_steps
+        if execution_steps is not None
         else [{"id": "gen", "uses": "util/generate_uuid", "name": "gen"}],
     }
 
@@ -111,7 +84,7 @@ def _tck_manifest(test_filename: str = "minimal-test.yaml") -> dict:
             "copyright_holders": [],
             "license": "Apache-2.0",
         },
-        "env": {"variables": [], "schemas": [], "assets": []},
+        "env": {"variables": [], "schemas": []},
         "tests": [{"id": test_filename}],
     }
 
@@ -159,7 +132,9 @@ class TestCompilerValidation:
 
     def test_validate_rejects_unknown_step_type(self, tmp_path: Path) -> None:
         # Arrange
-        script_path = _write_tck(tmp_path, [{"id": "bad", "uses": "nonexistent_step_type_xyz", "name": "bad"}])
+        script_path = _write_tck(
+            tmp_path, [{"id": "bad", "uses": "nonexistent_step_type_xyz", "name": "bad"}]
+        )
         compiler = Compiler()
 
         # Act
@@ -188,11 +163,11 @@ class TestCompilerValidation:
 
     def test_compile_raises_on_invalid_script(self, tmp_path: Path) -> None:
         # Arrange
-        script_path = _write_tck(tmp_path, [{"id": "bogus", "uses": "totally_bogus_step", "name": "bogus"}])
+        script_path = _write_tck(
+            tmp_path, [{"id": "bogus", "uses": "totally_bogus_step", "name": "bogus"}]
+        )
         compiler = Compiler()
 
         # Act & Assert
-        from unittest.mock import MagicMock
-        identity = MagicMock()
         with pytest.raises(ValueError, match="[Vv]alidation failed"):
-            compiler.compile(script_path, identity, {})
+            compiler.compile_plain(script_path, output_path=tmp_path / "out")

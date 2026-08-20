@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,12 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Job models — execution-time structures for job tracking and memory."""
@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -41,7 +41,7 @@ class JobEvent(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     event_type: str = ""
     description: str = ""
-    data: Optional[dict] = None
+    data: dict | None = None
 
 
 class JobMemory(BaseModel):
@@ -72,16 +72,16 @@ class Job(BaseModel):
 
     job_id: str
     status: JobStatus = JobStatus.QUEUED
-    package_name: Optional[str] = None
-    tck_id: Optional[str] = None
+    package_name: str | None = None
+    tck_id: str | None = None
     runtime_vars: dict = Field(default_factory=dict)
     memory: JobMemory = Field(default_factory=JobMemory)
     created_at: datetime = Field(default_factory=datetime.now)
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    total_duration_s: Optional[float] = None
-    current_script: Optional[str] = None
-    current_step: Optional[str] = None
-    waiting_for: Optional[str] = None
-    result: Optional[TckResult] = None
-    error: Optional[str] = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    total_duration_s: float | None = None
+    current_script: str | None = None
+    current_step: str | None = None
+    waiting_for: str | None = None
+    result: TckResult | None = None
+    error: str | None = None

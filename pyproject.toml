@@ -25,20 +25,40 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "tractusx-testlab"
-version = "v1-alpha2"
+version = "1.0.0a2"  # PEP 440. "v1-alpha2" normalised to "1a2" in the wheel.
 description = "Library with tools for authoring TCKs for Dataspaces which use Eclipse Tractus-X technology"
 license = { text = "Apache-2.0" }
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
-    "tractusx-sdk (>=0.7.0)",
+    # 0.8.2-rc1 is where the SDK records the requests it sends and the responses
+    # it gets (`tractusx_sdk.dataspace.tools.Tracer` / `trace_call`), which is
+    # how a step's exchanges reach the execution trace (ADR-0016). Before it,
+    # the engine had to patch `requests` to see the SDK's traffic at all.
+    "tractusx-sdk (>=0.8.2rc1)",
     "pydantic (>=2.6.0,<3.0.0)",
+    # F-E02, second round. All three are imported by name in `src/` and were
+    # undeclared. `pydantic-core` and `starlette` were harmless in practice —
+    # pydantic and fastapi pin them — but `pydantic-settings` is nobody's
+    # dependency: it was present only as a leftover in developers' virtualenvs,
+    # so a clean `poetry install` produced a tree in which importing
+    # `tractusx_testlab` raised ModuleNotFoundError on the first line.
+    "pydantic-core (>=2.16.3,<3.0.0)",
+    "pydantic-settings (>=2.0.0,<3.0.0)",
+    "starlette (>=0.40.0,<1.0.0)",
     "httpx (>=0.26.0,<1.0.0)",
     "pyyaml (>=6.0.0,<7.0.0)",
     "typer (>=0.15.0,<1.0.0)",
     "fastapi (>=0.115.0,<1.0.0)",
     "uvicorn (>=0.30.0,<1.0.0)",
     "jsonschema (>=4.20.0,<5.0.0)",
+    # F-E02 — imported directly by src/ and previously undeclared, resolving
+    # only because a transitive dependency happened to supply them.
+    "cryptography (>=42.0.0)",
+    "rich (>=13.0.0)",
+    # Slated for removal in P4, which standardises every step on httpx; declared
+    # meanwhile so the dependency set describes the code as it actually is.
+    "requests (>=2.31.0,<3.0.0)",
 ]
 
 [project.scripts]
@@ -54,9 +74,27 @@ testlab = "tractusx_testlab.cli:main"
 [tool.poetry]
 requires-poetry = ">=2.0"
 
+# Where `tractusx-sdk` is fetched from, and only that — the version constraint
+# stays in `[project.dependencies]`, which is what the published wheel declares.
+# 0.8.2-rc1 is not on PyPI yet: the tracing API the engine imports
+# (`tractusx_sdk.dataspace.tools.Tracer` / `trace_call`) lives on the SDK's
+# `feat/request-tracing` branch, so a plain PyPI resolve cannot satisfy the
+# constraint and `poetry install` fails before a single test runs. Pointing
+# Poetry at the branch is what lets CI install the code the engine is written
+# against. Delete this entry once the SDK cuts 0.8.2 to PyPI; nothing else has
+# to change when it does.
+[tool.poetry.dependencies]
+tractusx-sdk = { git = "https://github.com/eclipse-tractusx/tractusx-sdk.git", branch = "feat/request-tracing" }
+
 [tool.poetry.group.dev.dependencies]
 build = "^1.2.2"
 setuptools = "^78.1.1"
+ruff = "^0.16.3"
+mypy = "^2.3.1"
+# Without the stubs mypy reports `import-untyped` for every `import yaml` —
+# nineteen files, all of them false. It passed on developer machines only
+# because the package happened to be sitting in their virtualenv already.
+types-PyYAML = "^6.0.12"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.1.1"
@@ -78,3 +116,138 @@ testpaths = ["tests"]
 # the repo root comes from the `tests` package itself, for `tests.paths`.
 pythonpath = ["tests"]
 asyncio_mode = "auto"
+# F-C04 — an xfail that starts passing is a fixed bug whose marker nobody
+# removed. Strict mode turns that into a build failure, which is what makes the
+# regression tests in tests/unit/test_no_false_positives.py a ratchet: the fix
+# cannot land without the marker coming off.
+xfail_strict = true
+
+# ---------------------------------------------------------------------------
+# Lint / format — F-G01
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = ["site", "stubs", ".venv"]
+
+[tool.ruff.format]
+# The formatter runs over `src` and `tests` in CI (`ruff format --check`), so
+# layout is decided once and never reviewed again. It went in as a single
+# commit, listed in `.git-blame-ignore-revs` so `git blame` still points at
+# whoever wrote a line rather than at the reformat.
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+    "F",    # pyflakes — undefined names, unused imports, redefinitions
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "I",    # import sorting
+    "UP",   # pyupgrade — PEP 604 unions and friends (F-F04)
+    "B",    # bugbear — real bug patterns
+    "SIM",  # simplifiable constructs
+    "ARG",  # unused arguments (F-C05)
+    "TID",  # tidy imports — no relative imports beyond the parent
+    "RUF",  # ruff's own rules
+]
+# Two kinds of entry live here and they are not the same thing.
+#
+#   PERMANENT — the rule is wrong for this codebase and always will be.
+#   RATCHET   — real debt, deliberately deferred to a named phase. Each carries
+#               the finding ID it belongs to. Deleting the line is how that
+#               phase proves it is finished, so nothing here expires silently.
+#
+# Phases are defined in docs/developer/architecture-cleanup/README.md.
+ignore = [
+    # -- PERMANENT ----------------------------------------------------------
+    "E501",    # line length — the formatter owns this; long docstrings abound
+    "B008",    # call in an argument default — Typer's entire calling convention
+    "RUF012",  # ClassVar on mutable class attrs — noisy against Pydantic models
+
+    # -- RATCHET: P5, StrEnum change (F-F04 remainder) ----------------------
+    "UP042",   # (str, Enum)      → StrEnum. Changes str() semantics; needs care.
+
+    # -- RATCHET: P4, import cycle (F-D02) ----------------------------------
+    "E402",    # imports not at top — the deferred imports that break the cycle
+
+    # -- RATCHET: P5, cosmetic sweep ----------------------------------------
+    "E701",    # multiple statements on one line
+    "SIM102",  # collapsible if
+    "B017",    # assert on blind Exception (2 tests)
+    "RUF043",  # unescaped metacharacters in pytest.raises(match=)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# PERMANENT. Barrels exist to re-export; that is not an unused import.
+"**/__init__.py" = ["F401"]
+# PERMANENT. `execute(self, params, context, definition)` is the BaseStep
+# contract every step implements. A step that needs none of `context` or
+# `definition` still has to accept them, so an unused one is the interface
+# working, not a defect.
+"src/tractusx_testlab/steps/**" = ["ARG002", "ARG005"]
+# PERMANENT. Tests legitimately assert on privates and shadow names in fixtures.
+"tests/**" = ["ARG001", "ARG002", "ARG005", "SIM117"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tractusx_testlab"]
+
+# ---------------------------------------------------------------------------
+# Types — F-G01. Deliberately non-strict at the start: the goal is a gate that
+# passes today and tightens per package, not a sweep that blocks the cleanup.
+# ---------------------------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "src"
+# On by default and worth keeping honest from day one.
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+no_implicit_optional = true
+# Off for now — turning these on per package is the ratchet. Track progress in
+# docs/developer/architecture-cleanup/README.md.
+disallow_untyped_defs = false
+disallow_any_generics = false
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# The SDK ships no type information; F-F02 replaces the `object`-typed seam with
+# Protocols in P4, which is what makes this override removable.
+module = ["tractusx_sdk.*", "jsonschema.*", "requests.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# No module is exempt. There was a ratchet here — fourteen modules carrying 72
+# known errors, annotated with the finding that would clear each one. F-F02
+# took the largest bite (the `object`-typed SDK seam became the Protocols in
+# `contracts/`, 59 errors), and the last 24 were cleared one at a time.
+#
+# Two of them were live defects the exemption was hiding: `step_docs` read a
+# leftover loop variable when deciding whether to print the extra-keys note,
+# and `_sized` handed `int()` an unnarrowed `object`. That is the argument for
+# not adding an entry back — an exemption is a place a defect can sit unseen.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Coverage — F-G02. The floor is the level measured when the gate went in; it
+# ratchets upward and never downward.
+# ---------------------------------------------------------------------------
+
+[tool.coverage.run]
+source = ["src/tractusx_testlab"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]

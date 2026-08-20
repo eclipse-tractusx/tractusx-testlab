@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,12 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """StepContext — the execution context passed to every step.
@@ -29,30 +29,43 @@ Provides access to services, variables, job memory, and configuration.
 
 from __future__ import annotations
 
+from typing import Any
+
 from tractusx_testlab.config.settings import TestlabConfig
-from tractusx_testlab.models import Job, ServiceDefinition, ServiceNotFoundError, ServiceType
+from tractusx_testlab.contracts import CallReporter, StepInvoker
+from tractusx_testlab.models import Job
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
-from tractusx_testlab.services.manager import ServiceManager
-from tractusx_testlab.syntax import defaults
+from tractusx_testlab.player.execution.dataspace_access import DataspaceAccess
+from tractusx_testlab.services.instances import ServiceManager
 
 
 class StepContext:
     """Mutable execution context shared across steps within a single script run."""
 
-    __slots__ = ("_services", "_variables", "_job", "_config", "_infrastructure")
+    __slots__ = (
+        "_config",
+        "_infrastructure",
+        "_invoker",
+        "_job",
+        "_reporter",
+        "_services",
+        "_variables",
+    )
 
     def __init__(
         self,
         services: ServiceManager,
         job: Job,
         config: TestlabConfig,
-        infrastructure: "Infrastructure | None" = None,
+        infrastructure: Infrastructure | None = None,
     ) -> None:
         self._services = services
         self._job = job
         self._config = config
         self._infrastructure = config.infrastructure if infrastructure is None else infrastructure
         self._variables: dict[str, object] = {}
+        self._invoker: StepInvoker | None = None
+        self._reporter: CallReporter | None = None
 
     # ------------------------------------------------------------------
     # Configuration
@@ -80,6 +93,64 @@ class StepContext:
     def services(self) -> ServiceManager:
         return self._services
 
+    @property
+    def dataspace(self) -> DataspaceAccess:
+        """The connector, registry and notification services this run reaches.
+
+        Held apart from the context rather than on it: a ``util/log`` step and a
+        DSP negotiation step get the same context, and only one of them has any
+        business knowing what a catalog is.
+        """
+        return DataspaceAccess(self._services)
+
+    # ------------------------------------------------------------------
+    # Running a nested step
+    # ------------------------------------------------------------------
+
+    def bind_invoker(self, invoker: StepInvoker) -> None:
+        """Give this context the means to run a step — called once, by the runner."""
+        self._invoker = invoker
+
+    @property
+    def invoke_step(self) -> StepInvoker:
+        """Run one step, for the flow steps that contain other steps.
+
+        Handed over by the runner rather than imported from it: the player
+        imports the steps package to register the steps, so a step importing the
+        player closes a cycle. ``flow/if`` and ``flow/retry`` used to reach for
+        ``run_step`` from inside their ``execute`` bodies, which hid the cycle
+        instead of removing it.
+        """
+        if self._invoker is None:
+            raise RuntimeError(
+                "This context cannot run nested steps — no invoker was bound. "
+                "A flow step reached one built outside the player."
+            )
+        return self._invoker
+
+    # ------------------------------------------------------------------
+    # Reporting a call while it is still happening
+    # ------------------------------------------------------------------
+
+    def bind_call_reporter(self, reporter: CallReporter | None) -> None:
+        """Give this context somewhere to publish a call — the phase runner does.
+
+        Bound on the context rather than passed to the runner so that a nested
+        step reports too: ``flow/retry`` runs its steps on this same context, and
+        a retried negotiation is exactly the traffic somebody is watching for.
+        """
+        self._reporter = reporter
+
+    def report_call(self, step_type: str, step_id: str | None, index: int, call: Any) -> None:
+        """Publish one finished call, if anything is listening.
+
+        A context built outside the player has no reporter, and a run that
+        nobody is watching still runs: reporting is an option the player takes,
+        not a dependency a step carries.
+        """
+        if self._reporter is not None:
+            self._reporter(step_type, step_id, index, call)
+
     # ------------------------------------------------------------------
     # Job / Memory
     # ------------------------------------------------------------------
@@ -98,125 +169,23 @@ class StepContext:
     def get_variable(self, name: str, default: object = None) -> object:
         return self._variables.get(name, default)
 
+    def get_str(self, name: str, default: str = "") -> str:
+        """Read a variable that a step is going to use as text.
+
+        Variables hold whatever a step published, so :meth:`get_variable`
+        returns ``object`` and every caller that wanted a URL or a token had to
+        narrow it — or, more often, not narrow it and pass ``object`` into
+        ``.rstrip()`` or an HTTP header. Narrowed once, here, with the
+        conversion made explicit rather than implied by use.
+        """
+        value = self._variables.get(name, default)
+        if value is None:
+            return default
+        return value if isinstance(value, str) else str(value)
+
     def has_variable(self, name: str) -> bool:
         return name in self._variables
 
     @property
     def variables(self) -> dict[str, object]:
         return dict(self._variables)
-
-    # ------------------------------------------------------------------
-    # Service accessors (delegates to ServiceManager)
-    # ------------------------------------------------------------------
-
-    def get_provider_service(self) -> object:
-        """Return the CONNECTOR_PROVIDER service the run was seeded with."""
-        return self._first_service_of_type(ServiceType.CONNECTOR_PROVIDER)
-
-    def get_consumer_service(self) -> object:
-        """Return the CONNECTOR_CONSUMER service the run was seeded with."""
-        return self._first_service_of_type(ServiceType.CONNECTOR_CONSUMER)
-
-    def get_aas_service(self) -> object:
-        """Return the DTR / AAS service the run was seeded with."""
-        return self._first_service_of_type(ServiceType.DTR)
-
-    def get_notification_service(self) -> object:
-        """Return the service notifications are sent through.
-
-        Notifications ride on the connector consumer, so there is no service of
-        their own to look up.
-        """
-        return self._first_service_of_type(ServiceType.CONNECTOR_CONSUMER)
-
-    def _first_service_of_type(self, stype: ServiceType) -> object:
-        """Return the first registered service matching *stype*."""
-        for svc_name in self._services.service_names:
-            try:
-                return self._services.get(svc_name, stype)
-            except (ServiceNotFoundError, ValueError):
-                continue
-        raise ServiceNotFoundError(f"No service of type {stype.value} is registered")
-
-    def _first_definition_of_type(self, stype: ServiceType) -> "ServiceDefinition | None":
-        """Return the first ``ServiceDefinition`` matching *stype*, or ``None``."""
-        for service_definition in self._services._definitions.values():
-            if service_definition.type == stype:
-                return service_definition
-        return None
-
-    def _get_base_url(self, stype: ServiceType) -> str:
-        """Return ``base_url + dma_path`` for the first service of *stype*.
-
-        Avoids doubling the management path if the base_url already ends with it.
-        """
-        service_definition = self._first_definition_of_type(stype)
-        if service_definition is None:
-            return ""
-        dma = (service_definition.params or {}).get("dma_path", defaults.DMA_PATH)
-        base = service_definition.base_url.rstrip("/")
-        if base.endswith(dma.rstrip("/")):
-            return base
-        return f"{base}{dma}"
-
-    def get_provider_base_url(self) -> str:
-        """Return ``base_url + dma_path`` for the first provider service."""
-        return self._get_base_url(ServiceType.CONNECTOR_PROVIDER)
-
-    def get_consumer_base_url(self) -> str:
-        """Return ``base_url + dma_path`` for the first consumer service."""
-        return self._get_base_url(ServiceType.CONNECTOR_CONSUMER)
-
-    # ------------------------------------------------------------------
-    # Management-API endpoint URLs (for step request reporting)
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _controller_url(service: object, fallback_base: str, controller: str, *segments: object) -> str:
-        """Join an SDK controller's endpoint path onto its connector base URL.
-
-        The versioned management path (``/v3/catalog`` and friends) differs per
-        dataspace version, so it is read off the controller the SDK built for
-        the configured version instead of being spelled out here. When the
-        service does not expose that controller — a stub, or a version that
-        dropped it — only the base URL and the extra segments are returned.
-        """
-        controller_obj = getattr(service, controller, None)
-        base = getattr(getattr(controller_obj, "adapter", None), "base_url", None)
-        if not isinstance(base, str) or not base:
-            base = fallback_base
-        if not base:
-            # No connector configured — a bare path would read as a real URL.
-            return ""
-        endpoint = getattr(controller_obj, "endpoint_url", None)
-
-        parts = [base.rstrip("/")]
-        if isinstance(endpoint, str):
-            parts.append(endpoint.strip("/"))
-        parts.extend(str(segment).strip("/") for segment in segments if segment is not None)
-        return "/".join(part for part in parts if part)
-
-    def get_consumer_endpoint_url(self, controller: str, *segments: object) -> str:
-        """Return the consumer management-API URL of an SDK *controller*.
-
-        ``controller`` is the SDK consumer-service attribute holding it, e.g.
-        ``"catalogs"``, ``"edrs"`` or ``"transfer_processes"``; *segments* are
-        appended as further path elements.
-        """
-        try:
-            consumer = self.get_consumer_service()
-        except ServiceNotFoundError:
-            consumer = None
-        return self._controller_url(consumer, self.get_consumer_base_url(), controller, *segments)
-
-    def get_provider_endpoint_url(self, controller: str, *segments: object) -> str:
-        """Return the provider management-API URL of an SDK *controller*.
-
-        ``controller`` is the SDK provider-service attribute holding it, e.g.
-        ``"assets"``, ``"policies"`` or ``"contract_definitions"``.
-        """
-        try:
-            provider = self.get_provider_service()
-        except ServiceNotFoundError:
-            provider = None
-        return self._controller_url(provider, self.get_provider_base_url(), controller, *segments)

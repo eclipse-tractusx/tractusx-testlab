@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,12 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Data-plane interaction steps — fetch data through EDR endpoint."""
@@ -27,21 +27,21 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
-import requests
 from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import (
+from tractusx_testlab.steps import http_client, sdk_call
+from tractusx_testlab.steps.shared_models import (
     DataAddressPayload,
     HttpBodyOutput,
     HttpCallParams,
     StepParams,
     data_address_token,
 )
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.syntax.context_vars import (
     DATAPLANE_URL,
     EDR_TOKEN,
@@ -76,7 +76,7 @@ class DataplaneCallParams(HttpCallParams):
         ),
     )
     path: str = Field(default="", description="Path appended to the data-plane URL.")
-    edr_token: Optional[str] = Field(
+    edr_token: str | None = Field(
         default=None,
         description="EDR authorization token; falls back to the 'edr_token' context variable.",
     )
@@ -104,26 +104,23 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
     output_model = HttpBodyOutput
 
     async def execute(
-        self, params: DataplaneCallParams, context: "StepContext", definition: StepDefinition
+        self, params: DataplaneCallParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
-        url = params.resolved_url(context.get_variable(DATAPLANE_URL))
-        token = params.edr_token or context.get_variable(EDR_TOKEN)
+        url = params.resolved_url(context.get_str(DATAPLANE_URL))
+        token = params.edr_token or context.get_str(EDR_TOKEN)
         headers = {"Authorization": token, **params.headers}
         timeout = params.timeout_or(context.config.default_timeout_s)
 
-        resp = requests.request(
+        resp = await http_client.request(
             params.method, url, headers=headers, json=params.body, timeout=timeout
         )
-        is_json = resp.headers.get("content-type", "").startswith("application/json")
 
         return StepOutput(
-            value=HttpBodyOutput(resp.json() if is_json else resp.text),
-            request=HttpRequest(
-                method=params.method, url=url, headers=headers, body=params.body
-            ),
+            value=HttpBodyOutput(http_client.body_of(resp)),
+            request=HttpRequest(method=params.method, url=url, headers=headers, body=params.body),
             response=HttpResponse(
                 status_code=resp.status_code,
-                headers=dict(resp.headers),
+                headers=http_client.headers_of(resp),
                 body=resp.text,
             ),
         )
@@ -137,20 +134,21 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
 class GetEdrParams(StepParams):
     """Input contract of ``connector/consumer/get_edr``."""
 
-    transfer_id: Optional[str] = Field(
+    transfer_id: str | None = Field(
         default=None,
         description=(
-            "Transfer process to read the EDR of; falls back to the "
-            "'transfer_id' context variable."
+            "Transfer process to read the EDR of; falls back to the 'transfer_id' context variable."
         ),
     )
-    verify: Optional[Any] = Field(
+    verify: Any | None = Field(
         default=None,
         description="TLS verification passed through to the SDK; None keeps its default.",
     )
 
 
-def fetch_data_address(consumer: Any, transfer_id: Optional[str], verify: Any = None) -> Optional[dict]:
+async def fetch_data_address(
+    consumer: Any, transfer_id: str | None, verify: Any = None
+) -> dict | None:
     """Fetch the EDR data address for a transfer, or ``None`` if it cannot be read.
 
     The one place that calls ``consumer.get_edr`` — ``connector/consumer/get_edr``
@@ -163,7 +161,7 @@ def fetch_data_address(consumer: Any, transfer_id: Optional[str], verify: Any = 
     if not transfer_id:
         return None
     try:
-        return consumer.get_edr(transfer_id=transfer_id, verify=verify)
+        return await sdk_call.run(consumer.get_edr, transfer_id=transfer_id, verify=verify)
     except ConnectionError:
         logger.warning("Failed to retrieve EDR data address for transfer %s", transfer_id)
         return None
@@ -177,13 +175,13 @@ class EdrOutput(StepPayload):
     document stays alongside for assertions on its other keys.
     """
 
-    dataplane_url: Optional[str] = Field(
+    dataplane_url: str | None = Field(
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
-    edr_token: Optional[str] = Field(
+    edr_token: str | None = Field(
         default=None, description="Authorization token for that data-plane URL."
     )
-    data_address: Optional[DataAddressPayload] = Field(
+    data_address: DataAddressPayload | None = Field(
         default=None, description="The full EDR data address document, unchanged."
     )
 
@@ -202,13 +200,13 @@ class GetEdrStep(BaseStep[GetEdrParams, EdrOutput]):
     output_model = EdrOutput
 
     async def execute(
-        self, params: GetEdrParams, context: "StepContext", definition: StepDefinition
+        self, params: GetEdrParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[EdrOutput]:
-        consumer = context.get_consumer_service()
-        transfer_id = params.transfer_id or context.get_variable(TRANSFER_ID)
-        url = context.get_consumer_endpoint_url("edrs", transfer_id, "dataaddress")
+        consumer = context.dataspace.consumer()
+        transfer_id = params.transfer_id or context.get_str(TRANSFER_ID)
+        url = context.dataspace.consumer_endpoint_url("edrs", transfer_id, "dataaddress")
 
-        edr = fetch_data_address(consumer, transfer_id, params.verify)
+        edr = await fetch_data_address(consumer, transfer_id, params.verify)
 
         value = None
         if edr is not None:
@@ -220,5 +218,5 @@ class GetEdrStep(BaseStep[GetEdrParams, EdrOutput]):
         return StepOutput(
             value=value,
             request=HttpRequest(method="GET", url=url),
-            response=HttpResponse(status_code=200 if edr else 404, body=edr),
+            response=HttpResponse(status_code=200, body=edr),
         )

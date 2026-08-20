@@ -43,7 +43,7 @@ setup:
     uses: connector/provider/create_policy
     name: Create the SUT catalog access policy
     with:
-      policy: "${{ env.access_policy.policy }}"
+      policy: "${{ env.access_policy }}"
     returns:
       policy_id:
         type: string
@@ -52,7 +52,7 @@ setup:
     uses: connector/provider/create_policy
     name: Create the SUT contract usage policy
     with:
-      policy: "${{ env.usage_policy.policy }}"
+      policy: "${{ env.usage_policy }}"
     returns:
       policy_id:
         type: string
@@ -61,7 +61,7 @@ setup:
     uses: connector/provider/create_asset
     name: Create the SUT HTTP test asset
     with:
-      asset: "${{ env.test_asset.asset }}"
+      asset: "${{ env.test_asset }}"
     returns:
       asset_id:
         type: string
@@ -89,7 +89,7 @@ execution:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
           operator: "="
           operand_right: "testlab-e2e-smoke-asset"
-      expected_policies: "${{ env.usage_policy.policy }}"
+      expected_policies: "${{ env.usage_policy }}"
     returns:
       asset_id:
         type: string
@@ -101,7 +101,7 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: asset_id, operator: equals, expected: "testlab-e2e-smoke-asset" }
+        with: { input: asset_id, operator: equals, value: "testlab-e2e-smoke-asset" }
       - uses: validate/assert
         with: { input: negotiation_id, operator: not_null }
       - uses: validate/assert

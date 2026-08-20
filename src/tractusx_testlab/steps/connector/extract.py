@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -27,33 +27,38 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import StepParams
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps.dsp_keys import (
+    ASSET_ID_KEYS,
+    ID_KEY,
+    POLICY_KEYS,
+    first_present,
+)
+from tractusx_testlab.steps.shared_models import StepParams
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 logger = logging.getLogger(__name__)
 
+#: ``dct:type`` keeps its prefix in both DSP generations — the SDK writes the
+#: ``dct`` mapping into the asset's own ``@context`` when it creates the asset,
+#: so the term is not the connector's to expand.
 _DCT_TYPE_KEY = "dct:type"
-_DCT_TYPE_ID_KEY = "@id"
-_ODRL_HAS_POLICY = "odrl:hasPolicy"
-_ASSET_ID_KEY = "edc:id"
 
 
 def _find_dataset_by_type(datasets: list[dict], dct_type: str) -> dict | None:
     """Return the first dataset matching the given dct:type @id."""
     for dataset in datasets:
         dataset_type = dataset.get(_DCT_TYPE_KEY, {})
-        is_match = (
-            (isinstance(dataset_type, dict) and dataset_type.get(_DCT_TYPE_ID_KEY) == dct_type)
-            or (isinstance(dataset_type, str) and dataset_type == dct_type)
+        is_match = (isinstance(dataset_type, dict) and dataset_type.get(ID_KEY) == dct_type) or (
+            isinstance(dataset_type, str) and dataset_type == dct_type
         )
         if is_match:
             return dataset
@@ -61,12 +66,12 @@ def _find_dataset_by_type(datasets: list[dict], dct_type: str) -> dict | None:
 
 
 def _extract_offer_id(dataset: dict) -> str | None:
-    """Extract the first offer/policy ID from a dataset."""
-    policy = dataset.get(_ODRL_HAS_POLICY)
+    """Extract the first offer/policy ID from a dataset, in either DSP generation."""
+    policy = first_present(dataset, POLICY_KEYS)
     if isinstance(policy, list) and policy:
-        return policy[0].get(_DCT_TYPE_ID_KEY)
+        return policy[0].get(ID_KEY)
     if isinstance(policy, dict):
-        return policy.get(_DCT_TYPE_ID_KEY)
+        return policy.get(ID_KEY)
     return None
 
 
@@ -87,13 +92,11 @@ class ExtractDatasetOutput(StepPayload):
     The dataset and identifiers describe the first matching offer.
     """
 
-    dataset: Optional[dict] = Field(
+    dataset: dict | None = Field(
         default=None, description="The first dataset whose 'dct:type' matched."
     )
-    offer_id: Optional[str] = Field(
-        default=None, description="Policy/offer ID of the first match."
-    )
-    asset_id: Optional[str] = Field(default=None, description="Asset ID of the first match.")
+    offer_id: str | None = Field(default=None, description="Policy/offer ID of the first match.")
+    asset_id: str | None = Field(default=None, description="Asset ID of the first match.")
 
 
 @step("connector/consumer/extract_dataset")
@@ -104,21 +107,19 @@ class ExtractDatasetStep(BaseStep[ExtractDatasetParams, ExtractDatasetOutput]):
     output_model = ExtractDatasetOutput
 
     async def execute(
-        self, params: ExtractDatasetParams, context: "StepContext", definition: StepDefinition
+        self, params: ExtractDatasetParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[ExtractDatasetOutput]:
         dataset = _find_dataset_by_type(params.datasets, params.dct_type)
         logger.debug(
             "Found dataset matching dct:type '%s': %s", params.dct_type, dataset is not None
         )
 
-        offer_id: Optional[str] = None
-        asset_id: Optional[str] = None
+        offer_id: str | None = None
+        asset_id: str | None = None
         if dataset is not None:
             offer_id = _extract_offer_id(dataset)
-            asset_id = dataset.get(_ASSET_ID_KEY) or dataset.get("@id")
+            asset_id = first_present(dataset, ASSET_ID_KEYS)
 
         return StepOutput(
-            value=ExtractDatasetOutput(
-                dataset=dataset, offer_id=offer_id, asset_id=asset_id
-            )
+            value=ExtractDatasetOutput(dataset=dataset, offer_id=offer_id, asset_id=asset_id)
         )

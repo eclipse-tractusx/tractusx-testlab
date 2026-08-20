@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -32,18 +32,19 @@ code paths never drift.
 
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any
 
 import tractusx_testlab.syntax.keys as keys
 from tractusx_testlab.models import VariableDefinition, VariableScope, VariableSource
+from tractusx_testlab.syntax.variables import verb_for
 
 # A raw variable spec is either a scalar literal (legacy flat form) or a mapping
 # (legacy ``{type, default}`` form or the new verb form).
-VariableSpec = Union[dict, str, int, float, bool, None]
+VariableSpec = dict | str | int | float | bool | None
 
 # A variables block is either a legacy name-keyed mapping or a list of
 # ``id``-keyed verb entries.
-VariablesBlock = Union[dict, list, None]
+VariablesBlock = dict | list | None
 
 _DEFAULT_TYPE = "str"
 
@@ -62,9 +63,7 @@ def _parse_variable_list(entries: list[Any]) -> dict[str, VariableDefinition]:
     result: dict[str, VariableDefinition] = {}
     for entry in entries:
         if not isinstance(entry, dict):
-            raise ValueError(
-                f"variable list entries must be mappings, got {type(entry).__name__}"
-            )
+            raise ValueError(f"variable list entries must be mappings, got {type(entry).__name__}")
         name = entry.get(keys.ID)
         if not name:
             raise ValueError("variable list entry is missing required 'id'")
@@ -90,10 +89,19 @@ def _build_verb_variable(name: str, spec: dict) -> VariableDefinition:
     segments = [segment for segment in uses.split("/") if segment]
     namespace = segments[0] if segments else ""
     source, generator, default, placeholder = _resolve_origin(namespace, segments, with_block)
-    declared_type = value_return.get(keys.TYPE) or _type_from_verb_path(namespace, segments)
+    # The verb decides the type; what the entry declares only restates it, and
+    # the compiler rejects a restatement that disagrees. The declared type is
+    # still read for the forms that have no verb — the legacy name-keyed
+    # mapping, and a namespace the catalog does not carry.
+    verb = verb_for(uses)
+    declared_type = (
+        verb.type
+        if verb
+        else value_return.get(keys.TYPE) or _type_from_verb_path(namespace, segments)
+    )
 
     raw_scope = with_block.get(keys.SCOPE)
-    scope: Optional[VariableScope] = VariableScope(raw_scope) if raw_scope else None
+    scope: VariableScope | None = VariableScope(raw_scope) if raw_scope else None
 
     return VariableDefinition(
         name=name,
@@ -109,7 +117,7 @@ def _build_verb_variable(name: str, spec: dict) -> VariableDefinition:
     )
 
 
-def _type_from_verb_path(namespace: str, segments: list[str]) -> Optional[str]:
+def _type_from_verb_path(namespace: str, segments: list[str]) -> str | None:
     """Return the type token of a ``variable/type/<type>`` verb path, if present."""
     if namespace == keys.VARIABLE and len(segments) >= 3 and segments[1] == keys.TYPE:
         return segments[2]
@@ -120,7 +128,7 @@ def _resolve_origin(
     namespace: str,
     segments: list[str],
     with_block: dict,
-) -> tuple[VariableSource, Optional[str], Optional[Any], Optional[str]]:
+) -> tuple[VariableSource, str | None, Any | None, str | None]:
     """Resolve (source, generator, default, placeholder) from the uses namespace.
 
     ``generate/<gen>`` yields a generated variable. The simple ``variable/type/<type>``

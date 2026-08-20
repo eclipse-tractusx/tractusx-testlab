@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,13 +26,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
+from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.logging.structured import StructuredLogger
+from tractusx_testlab.logging.trace import ExecutionTrace
 from tractusx_testlab.models import (
     AssertionSummary,
-    JobStatus,
     ScriptResult,
     ScriptStatus,
     TckResult,
@@ -41,39 +42,24 @@ from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.scripting.script import TestScript
 
-_NON_FAILING_STATUSES: frozenset[ScriptStatus] = frozenset({
-    ScriptStatus.COMPLETED,
-    ScriptStatus.SKIPPED,
-})
-
-
-def make_skipped_result(script: TestScript, unmet_deps: list[str]) -> ScriptResult:
-    """Build a FAILED result for a script whose dependencies were not met."""
-    now = datetime.now(timezone.utc)
-    return ScriptResult(
-        script_name=script.name,
-        dataspace_version=script.definition.dataspace_version,
-        status=ScriptStatus.FAILED,
-        execution=[],
-        started_at=now,
-        finished_at=now,
-        total_duration_s=0.0,
-        assertion_summary=AssertionSummary(total=0, passed=0, failed_hard=0, failed_soft=0),
-        error=f"Skipped — unmet dependencies: {', '.join(unmet_deps)}",
-    )
+_NON_FAILING_STATUSES: frozenset[ScriptStatus] = frozenset(
+    {
+        ScriptStatus.COMPLETED,
+        ScriptStatus.SKIPPED,
+    }
+)
 
 
 def make_intentionally_skipped_result(script: TestScript) -> ScriptResult:
     """Build a SKIPPED result for a test intentionally omitted by the operator.
 
-    Unlike ``make_skipped_result`` (which marks a dependency failure as FAILED),
     this result uses ``ScriptStatus.SKIPPED`` so the overall TCK result remains
     ``COMPLETED`` when all non-skipped tests pass.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return ScriptResult(
         script_name=script.name,
-        dataspace_version=script.definition.dataspace_version,
+        dataspace_version=script.dataspace_version,
         status=ScriptStatus.SKIPPED,
         execution=[],
         started_at=now,
@@ -105,20 +91,45 @@ def build_tck_result(
     )
 
 
+def open_run_records(
+    logger: StructuredLogger,
+    config: TestlabConfig,
+    tck_id: str,
+    job_id: str,
+) -> tuple[StructuredLogger, ExecutionTrace]:
+    """Open the two records a run leaves behind: the transcript and the trace.
+
+    They are opened together because they are closed together and because the
+    split between them — text for a person under ``logs_dir``, CloudEvents for a
+    tool under ``data_dir`` (ADR-0016) — is one decision, made here rather than
+    re-derived wherever a run happens to start.
+    """
+    job_logger = logger.for_job(job_id)
+    trace = ExecutionTrace.for_job(tck_id, job_id, config.data_dir)
+    if trace.path is not None:
+        job_logger.info("tck.trace.opened", trace=str(trace.path))
+    return job_logger, trace
+
+
 def finalize_job(
     jobs: JobManager,
     job: Any,
     result: TckResult,
     monitor: ExecutionMonitor,
     job_logger: StructuredLogger,
+    trace: ExecutionTrace | None = None,
 ) -> None:
-    """Update job status and close the logger after execution completes."""
+    """Update job status and close both records after execution completes."""
     job.result = result
-    if result.passed:
+    # `status`, not a step tally: the verdict is the aggregate the TCK reports.
+    if result.status in _NON_FAILING_STATUSES:
         jobs.complete(job.job_id)
         monitor.on_job_completed(job.job_id)
     else:
         reason = "One or more scripts failed"
         jobs.fail(job.job_id, reason)
         monitor.on_job_failed(job.job_id, error=reason)
+    # After the verdict is published: ``tck.end`` is a trace event too.
+    if trace is not None:
+        trace.close()
     job_logger.close()

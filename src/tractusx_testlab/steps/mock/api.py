@@ -1,0 +1,149 @@
+#################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4).
+## It was reviewed and tested by a human committer.
+
+"""mock_endpoint step — registers a canned HTTP response on the mock server."""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any
+
+from pydantic import Field, field_validator
+
+from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.server.mock_registry import (
+    MockResponse,
+    get_callback_manager,
+    register_mock,
+)
+from tractusx_testlab.steps.mock._models import MockIdParams, MockInstance
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
+
+if TYPE_CHECKING:
+    from tractusx_testlab.player.execution.context import StepContext
+
+logger = logging.getLogger(__name__)
+
+
+class MockEndpointParams(MockIdParams):
+    """Input contract of ``mock/api``."""
+
+    path: str = Field(description="URL path to register, e.g. '/companycertificate/request'.")
+    method: str = Field(default="POST", description="HTTP method the mock answers on.")
+    response_status: int = Field(default=200, description="Status code the mock returns.")
+    response_body: Any = Field(
+        default_factory=dict,
+        description=(
+            "JSON body the mock returns. References are written the usual way, "
+            "'${{ ... }}', and are resolved before the step runs."
+        ),
+    )
+    response_headers: dict[str, str] = Field(
+        default_factory=dict, description="Headers the mock returns alongside the body."
+    )
+
+    @field_validator("method")
+    @classmethod
+    def _uppercase_method(cls, value: str) -> str:
+        """Accept ``post`` as readily as ``POST``."""
+        return value.upper()
+
+    @field_validator("path")
+    @classmethod
+    def _absolute_path(cls, value: str) -> str:
+        """The path must match the URL the SUT will call, leading slash included."""
+        return value if value.startswith("/") else f"/{value}"
+
+
+class MockEndpointOutput(StepPayload):
+    """The mock that now exists, and the two URLs a script needs from it."""
+
+    mock: MockInstance = Field(
+        description="The registered mock, as 'mock/wait/http_request' takes it."
+    )
+    base_mock_url: str = Field(description="Root URL of the testlab mock server.")
+    full_mock_url: str = Field(
+        description="Address to hand the system under test — root plus the mock's path."
+    )
+
+
+@step("mock/api")
+class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
+    """Register a mock HTTP endpoint that returns a canned response.
+
+    ``full_mock_url`` is what a script hands to the system under test as its
+    callback address; ``mock`` is what it hands to
+    ``mock/wait/http_request``, which then blocks until the SUT calls it.
+    """
+
+    params_model = MockEndpointParams
+    output_model = MockEndpointOutput
+
+    async def execute(
+        self, params: MockEndpointParams, context: StepContext, definition: StepDefinition
+    ) -> StepOutput[MockEndpointOutput]:
+        # The body is a step parameter, so every ``${{ ... }}`` in it was
+        # already resolved before this step ran. A second pass used to run
+        # here for the legacy ``@name`` spelling, which is gone — and which
+        # mangled any JSON-LD value beginning with "@" on its way past.
+        resolved_body = params.response_body
+        register_mock(
+            params.path,
+            params.method,
+            MockResponse(
+                status_code=params.response_status,
+                body=resolved_body,
+                headers=params.response_headers,
+            ),
+        )
+
+        # Pre-register a callback listener so wait_for_call can block on it
+        callback_manager = get_callback_manager()
+        if callback_manager is not None:
+            callback_manager.register(params.path, params.method)
+
+        base_url = f"http://localhost:{context.config.server_port}"
+        full_url = f"{base_url}{params.path}"
+        params.publish_url(full_url, context)
+
+        logger.info(
+            "Registered mock endpoint %s %s -> %d",
+            params.method,
+            params.path,
+            params.response_status,
+        )
+        return StepOutput(
+            value=MockEndpointOutput(
+                mock=MockInstance(
+                    endpoint_id=params.id,
+                    path=params.path,
+                    method=params.method,
+                    base_mock_url=base_url,
+                    full_mock_url=full_url,
+                ),
+                base_mock_url=base_url,
+                full_mock_url=full_url,
+            )
+        )

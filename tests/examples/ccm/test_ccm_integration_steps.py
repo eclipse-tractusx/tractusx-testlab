@@ -33,14 +33,19 @@ import pytest
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.connector.extract import ExtractDatasetStep
-from tractusx_testlab.steps.utility.json_extract import JsonPathExtractStep
-from tractusx_testlab.steps.utility.uuid_gen import GenerateUuidStep
+from tractusx_testlab.steps.util.json_extract import JsonPathExtractStep
+from tractusx_testlab.steps.util.uuid_gen import GenerateUuidStep
 
 
 def _make_mock_context(**variables: Any) -> MagicMock:
     """Create a mock StepContext with preset variables."""
     ctx = MagicMock()
-    ctx.get_variable = MagicMock(side_effect=lambda name, default=None: variables.get(name, default))
+    ctx.get_variable = MagicMock(
+        side_effect=lambda name, default=None: variables.get(name, default)
+    )
+    ctx.get_str = MagicMock(
+        side_effect=lambda name, default="": str(variables.get(name, default) or default)
+    )
     return ctx
 
 
@@ -78,7 +83,9 @@ class TestJsonPathExtractStep:
         definition = _make_step_definition(type="util/json_path_extract")
 
         output = await step_instance.invoke(
-            {"input": "source_data", "path": "a.b.0.id"}, ctx, definition,
+            {"input": "source_data", "path": "a.b.0.id"},
+            ctx,
+            definition,
         )
 
         assert output.value == "found-it"
@@ -92,7 +99,9 @@ class TestJsonPathExtractStep:
 
         with pytest.raises(KeyError, match="not found"):
             await step_instance.invoke(
-                {"input": "nonexistent", "path": "any"}, ctx, definition,
+                {"input": "nonexistent", "path": "any"},
+                ctx,
+                definition,
             )
 
 
@@ -120,7 +129,8 @@ class TestExtractDatasetStep:
                 "datasets": datasets,
                 "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI",
             },
-            ctx, definition,
+            ctx,
+            definition,
         )
 
         result = output.value
@@ -135,7 +145,9 @@ class TestExtractDatasetStep:
         definition = _make_step_definition(type="connector/consumer/extract_dataset")
 
         output = await step_instance.invoke(
-            {"datasets": [], "dct_type": "https://nonexistent"}, ctx, definition,
+            {"datasets": [], "dct_type": "https://nonexistent"},
+            ctx,
+            definition,
         )
 
         assert output.value["dataset"] is None

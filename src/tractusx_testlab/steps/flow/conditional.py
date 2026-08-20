@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,7 +26,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -36,15 +36,10 @@ from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.scripting.registry import StepRegistry, step
 from tractusx_testlab.steps._checks.extraction import extract_path
 from tractusx_testlab.steps.assertions import AssertOperator, apply_operator
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepPayload
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepPayload
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
-
-# Version-specific step overrides are not resolvable from within a step body
-# (only the script's dataspace_version, held by the phase runner, knows that),
-# so nested steps are looked up in the global (version-agnostic) registry.
-_ANY_VERSION = ""
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +148,7 @@ class IfStep(BaseStep[IfParams, IfOutput]):
     output_model = IfOutput
 
     async def execute(
-        self, params: IfParams, context: "StepContext", definition: StepDefinition
+        self, params: IfParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[IfOutput]:
         outcomes = [condition.holds() for condition in params.conditions]
         condition_result = all(outcomes) if params.match == "all" else any(outcomes)
@@ -163,12 +158,10 @@ class IfStep(BaseStep[IfParams, IfOutput]):
             # ``outputs`` is set even though it is empty: "nothing ran" is a
             # result, and a script reading it should not find the key missing.
             return StepOutput(
-                value=IfOutput(
-                    condition_result=condition_result, branch_taken="none", outputs=[]
-                )
+                value=IfOutput(condition_result=condition_result, branch_taken="none", outputs=[])
             )
 
-        label = "then" if condition_result else "else"
+        label: Literal["then", "else"] = "then" if condition_result else "else"
         results = await _run_sequence(branch, label, context)
 
         failed = next((r for r in results if r.status == StepStatus.FAILED), None)
@@ -188,15 +181,16 @@ class IfStep(BaseStep[IfParams, IfOutput]):
 
 
 async def _run_sequence(
-    nested_defs: list[StepDefinition], label: str, context: "StepContext"
+    nested_defs: list[StepDefinition], label: str, context: StepContext
 ) -> list[StepResult]:
     """Run each nested step in order, stopping at the first failure."""
-    from tractusx_testlab.player.execution.step_runner import run_step
-
     results: list[StepResult] = []
     for idx, nested_def in enumerate(nested_defs):
         step_name = f"if.{label}[{idx}]:{nested_def.uses}"
-        step_cls = StepRegistry.get(nested_def.uses, _ANY_VERSION)
+        # A nested step is resolved by name alone: only the phase runner holds
+        # the script's dataspace_version, so a version-specific step is looked
+        # up by what it declares rather than skipped for want of a version.
+        step_cls = StepRegistry.get_any(nested_def.uses)
         if step_cls is None:
             results.append(
                 StepResult(
@@ -208,9 +202,7 @@ async def _run_sequence(
             )
             break
 
-        result: Optional[StepResult] = await run_step(
-            step_cls, nested_def, step_name, context
-        )
+        result = await context.invoke_step(step_cls, nested_def, step_name, context)
         results.append(result)
         if result.status == StepStatus.FAILED:
             break

@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,20 +26,22 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps._contracts import CounterPartyParams
-from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
+from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector._polling import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
     NEGOTIATION_TERMINAL,
     poll_until_terminal,
 )
+from tractusx_testlab.steps.connector.policies import as_raw_policy
+from tractusx_testlab.steps.counter_party import CounterPartyParams
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.syntax.context_vars import (
     CATALOG_ASSET_ID,
     CATALOG_POLICY,
@@ -61,18 +63,18 @@ class NegotiateParams(CounterPartyParams):
     script that ran ``query_catalog_by_asset_id`` first can leave them all out.
     """
 
-    asset_id: Optional[Any] = Field(
+    asset_id: Any | None = Field(
         default=None,
         description=(
-            "Asset ID to negotiate for; falls back to the 'catalog_asset_id' "
-            "context variable."
+            "Asset ID to negotiate for; falls back to the 'catalog_asset_id' context variable."
         ),
     )
-    policy: Optional[Any] = Field(
+    policy: Any | None = Field(
         default=None,
         description=(
-            "ODRL policy to negotiate under; falls back to the 'catalog_policy' "
-            "context variable."
+            "ODRL policy to negotiate under, as the policy document itself, its "
+            "JSON text, or the whole 'config/connector/policy' variable that "
+            "holds it; falls back to the 'catalog_policy' context variable."
         ),
     )
     max_wait: float = Field(
@@ -84,18 +86,22 @@ class NegotiateParams(CounterPartyParams):
         description="Seconds between two negotiation state reads.",
     )
 
+    @field_validator("policy", mode="before")
+    @classmethod
+    def _as_raw_policy(cls, value: Any) -> Any:
+        """The SDK negotiates with the policy definition, not with what carries it."""
+        return as_raw_policy(value)
+
 
 class NegotiationOutput(StepPayload):
     """Output contract of ``connector/consumer/negotiate``."""
 
-    negotiation_id: Optional[str] = Field(
-        default=None, description="ID of the started negotiation."
-    )
-    agreement_id: Optional[str] = Field(
+    negotiation_id: str | None = Field(default=None, description="ID of the started negotiation.")
+    agreement_id: str | None = Field(
         default=None,
         description="ID of the contract agreement, once the negotiation finalised.",
     )
-    state: Optional[str] = Field(
+    state: str | None = Field(
         default=None,
         description="State the negotiation settled at, e.g. 'FINALIZED' or 'TERMINATED'.",
     )
@@ -116,18 +122,18 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
     async def execute(
         self,
         params: NegotiateParams,
-        context: "StepContext",
+        context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[NegotiationOutput]:
-        consumer = context.get_consumer_service()
-        counter_party_address = params.counter_party_address or context.get_variable(
-            "provider_address", ""
-        )
-        counter_party_id = params.counter_party_id or context.get_variable("provider_bpnl", "")
+        consumer = context.dataspace.consumer()
+        party = params.counter_party(context)
 
-        negotiation_id = consumer.start_edr_negotiation(
-            counter_party_id=counter_party_id,
-            counter_party_address=counter_party_address,
+        negotiation_id = await sdk_call.run(
+            consumer.start_edr_negotiation,
+            counter_party_id=party.identity,
+            counter_party_address=party.address,
+            # `get_variable`, not `get_str`: the SDK is handed the absence as
+            # `None`, and an empty string would say a target was named.
             target=params.asset_id or context.get_variable(CATALOG_ASSET_ID),
             policy=params.policy or context.get_variable(CATALOG_POLICY),
         )
@@ -138,19 +144,27 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
             NEGOTIATION_TERMINAL,
             max_wait=params.max_wait,
             poll_interval=params.poll_interval,
+            what="connector/consumer/negotiate",
         )
         agreement_id = negotiation.get("contractAgreementId")
         state = negotiation.get("state")
 
+        if not negotiation_id:
+            raise StepExecutionError(
+                self.step_type,
+                "the connector accepted the request but returned no negotiation id, "
+                "so there is nothing to observe.",
+            )
+
         value = NegotiationOutput(
             negotiation_id=negotiation_id, agreement_id=agreement_id, state=state
         )
-        url = context.get_consumer_endpoint_url("edrs")
+        url = context.dataspace.consumer_endpoint_url("edrs")
         return StepOutput(
             value=value,
             request=HttpRequest(method="POST", url=url, body=params.model_dump(mode="json")),
             response=HttpResponse(
-                status_code=200 if negotiation_id else 500,
+                status_code=200,
                 body=value.model_dump(mode="json"),
             ),
         )
