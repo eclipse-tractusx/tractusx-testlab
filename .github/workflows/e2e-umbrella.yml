@@ -628,8 +628,16 @@ jobs:
               > /dev/null
             echo "${participant} management API: reachable"
           done
-          curl --fail-with-body --location --silent --show-error \
-            "${DTR_BASE_URL}/api/v3.0/shell-descriptors" > /dev/null
+          # `--fail-with-body` earns its keep only if the body survives. It was
+          # being redirected to /dev/null, which is why a 404 here said nothing
+          # about whether nginx had matched no ingress rule or the registry
+          # itself had answered — the two have very different causes.
+          if ! dtr_body="$(curl --fail-with-body --location --silent --show-error \
+            "${DTR_BASE_URL}/api/v3/shell-descriptors" 2>&1)"; then
+            echo "::error::DTR API not reachable at ${DTR_BASE_URL}/api/v3/shell-descriptors"
+            printf '%s\n' "${dtr_body}"
+            exit 1
+          fi
           echo "provider DTR API: reachable at ${DTR_BASE_URL}"
 
       # ------------------------------------------------------------------
