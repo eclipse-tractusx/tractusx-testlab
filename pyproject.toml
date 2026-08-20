@@ -37,6 +37,15 @@ dependencies = [
     # the engine had to patch `requests` to see the SDK's traffic at all.
     "tractusx-sdk (>=0.8.2rc1)",
     "pydantic (>=2.6.0,<3.0.0)",
+    # F-E02, second round. All three are imported by name in `src/` and were
+    # undeclared. `pydantic-core` and `starlette` were harmless in practice —
+    # pydantic and fastapi pin them — but `pydantic-settings` is nobody's
+    # dependency: it was present only as a leftover in developers' virtualenvs,
+    # so a clean `poetry install` produced a tree in which importing
+    # `tractusx_testlab` raised ModuleNotFoundError on the first line.
+    "pydantic-core (>=2.16.3,<3.0.0)",
+    "pydantic-settings (>=2.0.0,<3.0.0)",
+    "starlette (>=0.40.0,<1.0.0)",
     "httpx (>=0.26.0,<1.0.0)",
     "pyyaml (>=6.0.0,<7.0.0)",
     "typer (>=0.15.0,<1.0.0)",
@@ -65,11 +74,27 @@ testlab = "tractusx_testlab.cli:main"
 [tool.poetry]
 requires-poetry = ">=2.0"
 
+# Where `tractusx-sdk` is fetched from, and only that — the version constraint
+# stays in `[project.dependencies]`, which is what the published wheel declares.
+# 0.8.2-rc1 is not on PyPI yet: the tracing API the engine imports
+# (`tractusx_sdk.dataspace.tools.Tracer` / `trace_call`) lives on the SDK's
+# `feat/request-tracing` branch, so a plain PyPI resolve cannot satisfy the
+# constraint and `poetry install` fails before a single test runs. Pointing
+# Poetry at the branch is what lets CI install the code the engine is written
+# against. Delete this entry once the SDK cuts 0.8.2 to PyPI; nothing else has
+# to change when it does.
+[tool.poetry.dependencies]
+tractusx-sdk = { git = "https://github.com/eclipse-tractusx/tractusx-sdk.git", branch = "feat/request-tracing" }
+
 [tool.poetry.group.dev.dependencies]
 build = "^1.2.2"
 setuptools = "^78.1.1"
 ruff = "^0.16.3"
 mypy = "^2.3.1"
+# Without the stubs mypy reports `import-untyped` for every `import yaml` —
+# nineteen files, all of them false. It passed on developer machines only
+# because the package happened to be sitting in their virtualenv already.
+types-PyYAML = "^6.0.12"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.1.1"

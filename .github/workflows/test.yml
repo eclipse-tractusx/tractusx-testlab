@@ -131,6 +131,14 @@ jobs:
       - name: Install the wheel into a clean environment and import everything
         run: |
           python -m venv /tmp/smoke
+          # The wheel asks for `tractusx-sdk>=0.8.2rc1` and PyPI's newest is
+          # 0.8.0, so pip cannot resolve it on its own. Installing the SDK from
+          # its branch first satisfies that one requirement and leaves every
+          # other dependency to resolve from PyPI exactly as a user's would —
+          # which is the part of this job that catches an undeclared import.
+          # Drop this line when 0.8.2 reaches PyPI.
+          /tmp/smoke/bin/pip install --quiet \
+            "tractusx-sdk @ git+https://github.com/eclipse-tractusx/tractusx-sdk.git@feat/request-tracing"
           /tmp/smoke/bin/pip install --quiet dist/*.whl
           /tmp/smoke/bin/testlab --help
           /tmp/smoke/bin/python - <<'PY'
