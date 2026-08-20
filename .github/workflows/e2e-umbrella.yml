@@ -447,6 +447,39 @@ jobs:
             | sed -E 's/.*image:[[:space:]]*//; s/"//g' | sort -u)"
           echo "${images}"
           for image in ${images}; do
+            # A `tag@sha256:...` reference must never go through `kind load`.
+            # `kind load` is `docker save` piped into containerd's importer, and
+            # a save cannot carry the digest the reference names: containerd
+            # therefore files the layers under a placeholder
+            # (`docker.io/library/import-<date>@sha256:...`) whose digest is not
+            # the one the pod asks for. The result is worse than a miss — the
+            # kubelet pulls the real image fine, then CreateContainer resolves
+            # the placeholder and fails "failed to get image from containerd …
+            # not found", and re-pulling never repairs the record, so the pod is
+            # stuck in CreateContainerError for the life of the cluster. That is
+            # what held `umbrella-postgres-0` and
+            # `umbrella-issuerservice-postgresql-0` down for a whole run: both
+            # run `docker.io/postgres:18.0@sha256:…`, the release's only
+            # digest-pinned image, and the IssuerService then CrashLoopBackOff'd
+            # against the database that never came up.
+            #
+            # Pulling inside the node instead goes through the CRI, exactly as
+            # the kubelet would, so the image is stored under the reference the
+            # pod actually requests. The endpoint is passed explicitly because
+            # the kind base image ships `crictl` but no `/etc/crictl.yaml`, and
+            # a miss here is only a miss: the kubelet then pulls the image on
+            # demand, which is the behaviour every non-preloaded image already
+            # relies on.
+            case "${image}" in
+              *@sha256:*)
+                docker exec tck-e2e-control-plane \
+                  crictl --runtime-endpoint unix:///run/containerd/containerd.sock \
+                  pull "${image}" >/dev/null 2>&1 \
+                  && echo "loaded  ${image} (crictl — digest-pinned)" \
+                  || echo "SKIPPED ${image} (digest-pinned; the kubelet will pull it)"
+                continue
+                ;;
+            esac
             if docker pull --quiet "${image}" >/dev/null 2>&1; then
               ./kind load docker-image --name tck-e2e "${image}" >/dev/null 2>&1 \
                 && echo "loaded  ${image}" \
