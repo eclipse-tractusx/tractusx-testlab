@@ -42,6 +42,11 @@ variables:
   # prevents another component on consumer.local from handling the request.
   infrastructure.engine.connector.management_url: "http://consumer-management.local/management"
   infrastructure.engine.connector.api_key: "password"
+  # Operator-supplied, exactly like the SUT's: a connector the engine drives
+  # still has to say which participant it is, because that is the BPN the
+  # counter-party sees on a negotiation. `TRACTUSX_EDC_PARTICIPANT_BPN` on
+  # umbrella's consumer control-plane is where this value comes from.
+  infrastructure.engine.connector.participant_id: "BPNL000000000002"
 
   # sut = umbrella's "provider" participant — the connector + DTR under test.
   infrastructure.sut.connector.management_url: "http://provider-management.local/management"
