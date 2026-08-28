@@ -34,9 +34,11 @@
 # this gives:
 #   - two EDC connectors ("provider" / BPNL000000000001, "consumer" /
 #     BPNL000000000002), each fronted by its own Tractus-X IdentityHub for
-#     DID/VC-based IATP trust — the "in-memory identity hub" side of the ask
-#   - one Digital Twin Registry and one data backend per participant, enabled
-#     by the workflow's CI values so the test environment has two of each
+#     DID/VC-based IATP trust
+#   - one Digital Twin Registry, the provider's, shared by both participants:
+#     the TCK binds `infrastructure.sut.dtr` to it and never addresses a
+#     second, so ci/umbrella.values.yaml leaves the consumer's off along with
+#     both `simple-data-backend`s, which nothing in the suite pulls from
 #   - a BDRS directory service + an IssuerService
 #
 # testlab plays the "engine" role bound to the consumer connector; the
@@ -95,9 +97,11 @@ env:
   # 3.16+ for `--qps`: `--wait` polls every resource in the release, and with
   # ~125 of them the default client-side rate limit is what expires first.
   HELM_VERSION: "3.16.4"
-  # Every JVM in the release boots at once on a 4-vCPU runner. Measured cold
-  # starts land well inside this; the old 5m budget never stood a chance.
-  HELM_TIMEOUT: "25m"
+  # Every JVM in the release boots at once on a 4-vCPU runner. A healthy
+  # release settles in about three minutes, so this is a stall detector rather
+  # than a budget — kept well clear of the measured time, but low enough that a
+  # wedged deploy is reported in the same hour it started.
+  HELM_TIMEOUT: "15m"
   TCK_INDEX: tests/e2e/connector-dtr-smoke/index.yaml
   TCK_CONFIG: tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml
   UMBRELLA_CI_VALUES: tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml
@@ -112,20 +116,17 @@ env:
     provider-dsp.local
     provider-management.local
     provider-dtr.local
-    provider-submodelserver.local
     consumer.local
     consumer.intranet
     consumer-dsp.local
     consumer-management.local
-    consumer-dtr.local
-    consumer-submodelserver.local
     bdrs-server.tx.test
     issuerservice.local
 
 jobs:
   e2e-umbrella:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
 
     steps:
       # ------------------------------------------------------------------
@@ -139,6 +140,18 @@ jobs:
         with:
           python-version: "3.12"
 
+      # `pip install poetry` and `poetry install` download the same wheels on
+      # every run of an unchanged lockfile. Same shape as tests.yml, plus
+      # Poetry's own cache — that is the one `poetry install` reads.
+      - name: Cache pip and Poetry downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-e2e-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: ${{ runner.os }}-e2e-poetry-
+
       - name: Install Poetry
         run: pip install poetry
 
@@ -150,20 +163,25 @@ jobs:
       # ------------------------------------------------------------------
       - name: Reclaim runner disk space
         run: |
-          # The release pulls ~25 container images (4 EDC runtimes, 2 DTRs, 2
-          # IdentityHubs, 4 Postgres, 3 Vaults, …) into the kind node. The
+          # The release pulls ~15 container images into the kind node, and the
           # runner's preinstalled toolchains are worth more as free disk than
-          # they are to this job; without this, kubelet hits disk pressure and
+          # they are to this job: without this, kubelet hits disk pressure and
           # starts evicting pods mid-deploy.
+          #
+          # `rm -rf` over the Android SDK is minutes of small-file deletion,
+          # and nothing between here and `kind create cluster` needs the space
+          # — so it runs detached and is never waited on. The deploy is the
+          # first step that cares, and by then it has long finished. A
+          # `docker system prune` used to run here too; on a runner that has
+          # pulled nothing yet it freed nothing.
           df -h /
-          sudo rm -rf \
+          sudo nohup bash -c 'rm -rf \
             /usr/local/lib/android \
             /usr/share/dotnet \
             /opt/ghc \
             /usr/local/.ghcup \
-            /opt/hostedtoolcache/CodeQL || true
-          docker system prune --all --force >/dev/null 2>&1 || true
-          df -h /
+            /opt/hostedtoolcache/CodeQL' >/dev/null 2>&1 &
+          echo "Reclaim started in the background."
 
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
@@ -318,6 +336,20 @@ jobs:
           mkdir -p "${nested_provider}/charts"
           cp -R "${source_bundles}/." "${nested_provider}/charts/"
 
+          # The IdentityHub chart ships its own postgres dependency, gated on
+          # `install.postgresql`. That condition is unreachable from values
+          # here: umbrella includes decentralized-identity-connector twice
+          # under two aliases, and the path resolves against the *participant*
+          # level, where the profile sets `install.postgresql: true` for the
+          # connector's own database. So the IdentityHub's copy comes up no
+          # matter what a values file says — while every IdentityHub datasource
+          # is pointed at the participant postgres by
+          # `tractusx-identityhub.postgresql.jdbcUrl`, and nothing ever dials
+          # it. Deleting the subchart is what actually removes it. The
+          # datasource config is untouched: it reads `postgresql.auth.*`, which
+          # this does not gate.
+          rm -rf "${chart_dir}/charts/decentralized-identity-connector/charts/tractusx-identityhub/charts/postgres"
+
           profile_url="https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/${UMBRELLA_VALUES_REF}/charts/umbrella/values-adopter-decentralized-identityhub.yaml"
           rendered="${RUNNER_TEMP}/umbrella-rendered.yaml"
           helm template umbrella "${chart_dir}" \
@@ -333,7 +365,6 @@ jobs:
           import yaml
 
           expected_deployments = {
-              "consumer-dtr",
               "provider-dtr",
               "umbrella-consumer-connector-controlplane",
               "umbrella-consumer-connector-dataplane",
@@ -425,7 +456,7 @@ jobs:
           if prefixed_routes:
               raise SystemExit(f"Umbrella manifest still has /connector routes: {prefixed_routes}")
 
-          print("Umbrella manifest contains both connectors, both DTRs, the issuer,")
+          print("Umbrella manifest contains both connectors, the shared DTR, the issuer,")
           print("the vault-setup hooks, and isolated connector routes.")
           print("Ingress hosts:", ", ".join(sorted(h for h in ingress_routes if h)))
           PY
@@ -709,20 +740,15 @@ jobs:
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --logs-dir logs/e2e/full
 
-      # Combination 2 — only the tests that exercise the runtime's variable
-      # wiring, from the same package. Nothing recompiles; the selection is a
-      # run-time argument, and the engine refuses ids that are unknown or that
-      # the manifest did not mark skippable.
-      - name: testlab run — wiring combination
-        run: |
-          poetry run testlab run "${TCK_OUT}" \
-            --config "${TCK_CONFIG}" \
-            --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dtr_roundtrip.yaml" \
-            --logs-dir logs/e2e/wiring
-
-      # Combination 3 — the registry alone, proving a test that needs no
-      # connector journey runs without one having happened first.
+      # Combination 2 — the registry alone, from the same package. Nothing
+      # recompiles; the selection is a run-time argument, and the engine
+      # refuses ids that are unknown or that the manifest did not mark
+      # skippable. This is also the proof that a test needing no connector
+      # journey runs without one having happened first.
+      #
+      # One selection is enough to exercise that machinery, and this is the
+      # cheap one: every other subset re-runs a DSP negotiation and a transfer
+      # the full suite has already driven against the same live dataspace.
       - name: testlab run — registry combination
         run: |
           poetry run testlab run "${TCK_OUT}" \

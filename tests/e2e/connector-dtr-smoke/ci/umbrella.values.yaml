@@ -26,9 +26,14 @@
 #
 # Three things this file is responsible for:
 #
-#   1. Giving the *consumer* participant a Digital Twin Registry and a data
-#      backend (the upstream profile only gives them to the provider), so the
-#      test environment has two of each.
+#   1. Cutting the release down to what the TCK actually addresses. The
+#      dataspace needs two connectors, but only *one* Digital Twin Registry:
+#      the suite binds `infrastructure.sut.dtr` to the provider's, and never
+#      reaches for a second one — so the provider's registry is the shared
+#      registry for both participants. Neither `simple-data-backend` is
+#      addressed either: transfers pull from the workflow's own `tck-echo`
+#      pod, and dtr_roundtrip.yaml's submodel endpoint is a DSP href rather
+#      than a backend URL.
 #   2. Isolating each connector's DSP / management APIs onto their own ingress
 #      hostnames, so nothing else on `<participant>.local` can shadow them.
 #   3. Making the whole release survive on a 4-vCPU GitHub runner: every JVM in
@@ -56,6 +61,13 @@ edc-provider:
   tx-data-provider:
     controlplanePublicUrl: "http://provider-dsp.local"
     controlplaneManagementUrl: "http://provider-management.local"
+    # Nothing in the suite pulls from a `simple-data-backend`: transfers
+    # resolve to the workflow's own `tck-echo` pod, and dtr_roundtrip.yaml's
+    # submodel endpoint is a DSP href. The profile already switches this bundle
+    # off for the consumer and is silent about the provider, where it defaults
+    # on — so say so.
+    data-persistence-layer-bundle:
+      enabled: false
     dataspace-connector-bundle:
       vault:
         # The agent injector is not used here and costs a Deployment plus two
@@ -137,18 +149,6 @@ edc-provider:
                       pathType: ImplementationSpecific
       postgresql:
         fullnameOverride: provider-dtr-postgresql
-    data-persistence-layer-bundle:
-      enabled: true
-      simple-data-backend:
-        fullnameOverride: provider-submodelserver
-        livenessProbe:
-          initialDelaySeconds: 240
-        ingress:
-          hosts:
-            - host: provider-submodelserver.local
-              paths:
-                - path: /
-                  pathType: Prefix
 
 edc-consumer:
   tractusx-identityhub:
@@ -201,58 +201,6 @@ edc-consumer:
         dataplane:
           livenessProbe:
             initialDelaySeconds: 240
-    digital-twin-bundle:
-      enabled: true
-      digital-twin-registry:
-        fullnameOverride: consumer-dtr
-        keycloak:
-          fullnameOverride: consumer-registry-keycloak
-        registry:
-          host: consumer-dtr.local
-          livenessProbe:
-            initialDelaySeconds: 240
-          dataSource:
-            url: jdbc:postgresql://consumer-dtr-postgresql:5432/dtr
-          ingress:
-            # The registry is the only component in this release whose ingress
-            # carries a `tls:` section, pointing at a chart-generated self-signed
-            # certificate. ingress-nginx answers plain HTTP on a TLS-bearing host
-            # with a 308 to HTTPS, and that certificate then fails verification —
-            # `curl: (60) SSL certificate problem: self-signed certificate` in the
-            # preflight, and the same failure inside the four `testlab run`
-            # invocations, which all address the DTR over `http://`.
-            #
-            # Turning the redirect off is what makes the DTR behave like every
-            # other ingress here — plain HTTP, on hostnames that only resolve
-            # inside this job, in a cluster that lives for one run. The
-            # alternative, `registry.ingress.tls.enabled: false`, looks tidier
-            # and is a trap: in digital-twin-registry 0.11.0 that branch of
-            # registry-ingress.yaml emits a stray `[]` under `spec:`, which YAML
-            # folds into the line above it, and the ingress comes out with
-            # `ingressClassName: "nginx []"` — silently claimed by no controller
-            # at all.
-            annotations:
-              nginx.ingress.kubernetes.io/ssl-redirect: "false"
-            rules:
-              - host: consumer-dtr.local
-                http:
-                  paths:
-                    - path: "/semantics/registry(/|$)(.*)"
-                      pathType: ImplementationSpecific
-      postgresql:
-        fullnameOverride: consumer-dtr-postgresql
-    data-persistence-layer-bundle:
-      enabled: true
-      simple-data-backend:
-        fullnameOverride: consumer-submodelserver
-        livenessProbe:
-          initialDelaySeconds: 240
-        ingress:
-          hosts:
-            - host: consumer-submodelserver.local
-              paths:
-                - path: /
-                  pathType: Prefix
 
 # Both of these ask for 500m of CPU by default. On a 4-vCPU runner that is
 # ~a third of the schedulable capacity spent on two services that idle for

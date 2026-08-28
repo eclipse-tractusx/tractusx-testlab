@@ -1,0 +1,47 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+# Half two of the dataspace: the two EDC connectors, installed once the
+# platform release is up and both participant contexts exist on the shared
+# IdentityHub.
+#
+# Both are the same chart under two aliases. `tractusx-connector` splits into a
+# controlplane Deployment, a dataplane Deployment and a HashiCorp Vault;
+# `tractusx-connector-memory` is a single runtime pod whose vault is in-memory
+# and seeded from `vault.secrets` — a semicolon-separated `alias:value` list.
+# VaultSeedExtension splits on ";" and then on the *first* ":", so a value may
+# contain colons and newlines (a PEM private key does both); only ";" is
+# forbidden.
+apiVersion: v2
+name: testlab-e2e-dataspace-connectors
+description: The provider and consumer EDC connectors, in-memory runtimes.
+type: application
+version: 1.0.0
+
+dependencies:
+  - name: tractusx-connector-memory
+    alias: provider-connector
+    version: 0.12.2
+    repository: https://eclipse-tractusx.github.io/charts/dev
+  - name: tractusx-connector-memory
+    alias: consumer-connector
+    version: 0.12.2
+    repository: https://eclipse-tractusx.github.io/charts/dev
