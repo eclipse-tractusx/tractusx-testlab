@@ -318,6 +318,67 @@ jobs:
           helm repo add tractusx-dev https://eclipse-tractusx.github.io/charts/dev
           helm repo update
 
+      - name: Generate the connectors' in-memory vault secrets
+        run: |
+          set -euo pipefail
+          # `edc-runtime-memory` has no HashiCorp Vault client. Its vault is
+          # in-process and seeded once, from `tx.edc.vault.secrets` — a
+          # `alias:value;alias:value` string. Two things have to be in it:
+          #
+          #   * the EDR signing keypair. The data plane signs the token the
+          #     consumer presents at the public API and verifies it when the
+          #     token comes back, so both runtimes of one participant must
+          #     hold the same pair. Umbrella's `post-install-vault-setup` hook
+          #     still writes its own keypair into a HashiCorp vault nothing
+          #     reads any more; this generates a fresh pair per run rather
+          #     than committing a private key to this repository.
+          #   * the STS client secret, under the alias the connector is
+          #     configured with. Its value is the one the participant's
+          #     IdentityHub seeds its own context with, and both come from the
+          #     pinned profile rather than from anything generated here.
+          secrets="${RUNNER_TEMP}/umbrella-vault-secrets.values.yaml"
+          key="$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null)"
+          pub="$(printf '%s\n' "${key}" | openssl pkey -pubout)"
+          KEY="${key}" PUB="${pub}" poetry run python - "${secrets}" <<'PY'
+          import os
+          import sys
+
+          import yaml
+
+
+          def participant(alias: str, secret: str) -> dict:
+              """One participant's two runtimes, seeded identically."""
+              seed = ";".join(
+                  (
+                      f"tokenSignerPrivateKey:{os.environ['KEY']}",
+                      f"tokenSignerPublicKey:{os.environ['PUB']}",
+                      f"{alias}:{secret}",
+                  )
+              )
+              runtime = {"env": {"TX_EDC_VAULT_SECRETS": seed}}
+              return {
+                  "tx-data-provider": {
+                      "dataspace-connector-bundle": {
+                          "tractusx-connector": {
+                              "controlplane": dict(runtime),
+                              "dataplane": dict(runtime),
+                          }
+                      }
+                  }
+              }
+
+
+          with open(sys.argv[1], "w", encoding="utf-8") as handle:
+              yaml.safe_dump(
+                  {
+                      "edc-provider": participant("provider-secret", "provider"),
+                      "edc-consumer": participant("consumer-secret", "consumer"),
+                  },
+                  handle,
+              )
+          PY
+          echo "UMBRELLA_VAULT_SECRETS=${secrets}" >> "${GITHUB_ENV}"
+
       - name: Prepare and validate pinned Umbrella chart
         run: |
           set -euo pipefail
@@ -356,6 +417,7 @@ jobs:
             --namespace "${UMBRELLA_NAMESPACE}" \
             -f "${profile_url}" \
             -f "${UMBRELLA_CI_VALUES}" \
+            -f "${UMBRELLA_VAULT_SECRETS}" \
             > "${rendered}"
 
           poetry run python - "${rendered}" <<'PY'
@@ -379,11 +441,14 @@ jobs:
           # vault. They only render while the connector bundle owns the vault,
           # so a values change that moves the vault elsewhere silently leaves
           # every data-plane transfer unable to sign its EDR. Assert them.
+          # `umbrella-issuer-custom-attestation-claims-seeding` is deliberately
+          # not here: the in-memory IssuerService has no SQL store to seed, and
+          # ci/umbrella.values.yaml switches that hook off. Its claims are
+          # written onto the holder records by ci/issue_credentials.py instead.
           expected_hooks = {
               "umbrella-consumer-edc-post-install-vault-setup",
               "umbrella-provider-edc-post-install-vault-setup",
               "umbrella-post-install-bdrs-setup",
-              "umbrella-issuer-custom-attestation-claims-seeding",
           }
           with open(sys.argv[1], encoding="utf-8") as stream:
               documents = [document for document in yaml.safe_load_all(stream) if document]
@@ -576,6 +641,7 @@ jobs:
             --namespace "${UMBRELLA_NAMESPACE}" --create-namespace \
             -f "${UMBRELLA_PROFILE_URL}" \
             -f "${UMBRELLA_CI_VALUES}" \
+            -f "${UMBRELLA_VAULT_SECRETS}" \
             --burst-limit 400 --qps 200 \
             --timeout "${HELM_TIMEOUT}" --wait
           status=$?

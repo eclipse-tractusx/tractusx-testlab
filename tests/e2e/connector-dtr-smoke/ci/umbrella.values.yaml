@@ -50,8 +50,25 @@
 # The workflow's manifest validation asserts both hooks are present.
 
 edc-provider:
+  # No Postgres for this participant. Nothing reads it any more: the
+  # connector's stores are in the runtime's memory and the IdentityHub's
+  # are in its own. The datasource config both charts still render points
+  # at a Service that no longer exists, and neither image has the SQL
+  # extensions that would dial it.
+  install:
+    postgresql: false
   tractusx-identityhub:
     identityhub:
+      # In-memory IdentityHub. Same runtime, minus the SQL stores and the
+      # HashiCorp vault client: the participant context, its keypair and the
+      # credentials it is issued all live in the process. Nothing seeds it —
+      # the context is created at boot from
+      # `edc.tractusx.ih.participant.configurable.*`, which is where its STS
+      # client secret comes from too — so the swap is the image alone. The
+      # datasource config the chart still renders names stores this image does
+      # not have, and is ignored rather than refused.
+      image:
+        repository: tractusx/identityhub-memory
       livenessProbe:
         initialDelaySeconds: 240
       resources:
@@ -76,6 +93,26 @@ edc-provider:
           enabled: false
       tractusx-connector:
         controlplane:
+          # The connector runs the single in-memory runtime instead of the
+          # Postgres + HashiCorp-Vault control plane. `edc-runtime-memory`
+          # bundles the control plane *and* the data plane, so this pod also
+          # boots the data-plane half and wants the settings that half reads;
+          # the block below is the set the upstream `tractusx-connector-memory`
+          # chart renders and this one does not. The public endpoint it binds
+          # is deliberately unexposed — the data-plane pod below is still the
+          # one the ingress routes `/dataplane/api/public` to.
+          image:
+            repository: tractusx/edc-runtime-memory
+          env:
+            WEB_HTTP_PUBLIC_PORT: "8086"
+            WEB_HTTP_PUBLIC_PATH: "/api/public"
+            EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://provider.local/dataplane/api/public"
+            TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://provider.local/dataplane/api/public/token"
+            TX_EDC_DATAPLANE_TOKEN_EXPIRY: "300"
+            TX_EDC_DATAPLANE_TOKEN_EXPIRY_TOLERANCE: "10"
+            EDC_TRANSFER_PROXY_TOKEN_SIGNER_PRIVATEKEY_ALIAS: "tokenSignerPrivateKey"
+            EDC_TRANSFER_PROXY_TOKEN_VERIFIER_PUBLICKEY_ALIAS: "tokenSignerPublicKey"
+            TX_EDC_DPF_CONSUMER_PROXY_AUTH_APIKEY: "password"
           livenessProbe:
             initialDelaySeconds: 240
           endpoints:
@@ -107,6 +144,30 @@ edc-provider:
               tls:
                 enabled: false
         dataplane:
+          # The same runtime in its data-plane role. The control-plane half it
+          # also boots reads these; they are copied from the control-plane pod
+          # of this participant, minus everything that would bind a port —
+          # this pod's ports are the data plane's, and the management API it
+          # would otherwise open on 8081 is where its public API already is.
+          image:
+            repository: tractusx/edc-runtime-memory
+          env:
+            TRACTUSX_EDC_PARTICIPANT_BPN: "BPNL000000000001"
+            EDC_DSP_CALLBACK_ADDRESS: "http://provider-dsp.local/api/v1/dsp"
+            EDC_OAUTH_PROVIDER_AUDIENCE: "idsc:IDS_CONNECTORS_ALL"
+            EDC_OAUTH_ENDPOINT_AUDIENCE: "http://provider-dsp.local/api/v1/dsp"
+            EDC_IAM_TRUSTED-ISSUER_0-ISSUER_ID: "did:web:issuerservice.local:BPNL000000000003"
+            TX_EDC_IAM_IATP_BDRS_SERVER_URL: "http://bdrs-server.tx.test/api/directory"
+            TX_EDC_IAM_IATP_BDRS_CACHE_VALIDITY: "600"
+            TX_EDC_DCP_CACHE_ENABLED: "true"
+            TX_EDC_DCP_CACHE_VALIDITY_SECONDS: "86400"
+            EDC_POLICY_VALIDATION_ENABLED: "true"
+            # Neither half of this pod should act as a connector in its own
+            # right: no catalog crawling, and no DID registration racing the
+            # control plane's.
+            EDC_CATALOG_CACHE_EXECUTION_ENABLED: "false"
+            TX_EDC_DID_SERVICE_SELF_REGISTRATION_ENABLED: "false"
+            TX_EDC_DID_SERVICE_SELF_DEREGISTRATION_ENABLED: "false"
           livenessProbe:
             initialDelaySeconds: 240
     digital-twin-bundle:
@@ -151,8 +212,25 @@ edc-provider:
         fullnameOverride: provider-dtr-postgresql
 
 edc-consumer:
+  # No Postgres for this participant. Nothing reads it any more: the
+  # connector's stores are in the runtime's memory and the IdentityHub's
+  # are in its own. The datasource config both charts still render points
+  # at a Service that no longer exists, and neither image has the SQL
+  # extensions that would dial it.
+  install:
+    postgresql: false
   tractusx-identityhub:
     identityhub:
+      # In-memory IdentityHub. Same runtime, minus the SQL stores and the
+      # HashiCorp vault client: the participant context, its keypair and the
+      # credentials it is issued all live in the process. Nothing seeds it —
+      # the context is created at boot from
+      # `edc.tractusx.ih.participant.configurable.*`, which is where its STS
+      # client secret comes from too — so the swap is the image alone. The
+      # datasource config the chart still renders names stores this image does
+      # not have, and is ignored rather than refused.
+      image:
+        repository: tractusx/identityhub-memory
       livenessProbe:
         initialDelaySeconds: 240
       resources:
@@ -168,6 +246,26 @@ edc-consumer:
           enabled: false
       tractusx-connector:
         controlplane:
+          # The connector runs the single in-memory runtime instead of the
+          # Postgres + HashiCorp-Vault control plane. `edc-runtime-memory`
+          # bundles the control plane *and* the data plane, so this pod also
+          # boots the data-plane half and wants the settings that half reads;
+          # the block below is the set the upstream `tractusx-connector-memory`
+          # chart renders and this one does not. The public endpoint it binds
+          # is deliberately unexposed — the data-plane pod below is still the
+          # one the ingress routes `/dataplane/api/public` to.
+          image:
+            repository: tractusx/edc-runtime-memory
+          env:
+            WEB_HTTP_PUBLIC_PORT: "8086"
+            WEB_HTTP_PUBLIC_PATH: "/api/public"
+            EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://consumer.local/dataplane/api/public"
+            TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://consumer.local/dataplane/api/public/token"
+            TX_EDC_DATAPLANE_TOKEN_EXPIRY: "300"
+            TX_EDC_DATAPLANE_TOKEN_EXPIRY_TOLERANCE: "10"
+            EDC_TRANSFER_PROXY_TOKEN_SIGNER_PRIVATEKEY_ALIAS: "tokenSignerPrivateKey"
+            EDC_TRANSFER_PROXY_TOKEN_VERIFIER_PUBLICKEY_ALIAS: "tokenSignerPublicKey"
+            TX_EDC_DPF_CONSUMER_PROXY_AUTH_APIKEY: "password"
           livenessProbe:
             initialDelaySeconds: 240
           endpoints:
@@ -199,6 +297,30 @@ edc-consumer:
               tls:
                 enabled: false
         dataplane:
+          # The same runtime in its data-plane role. The control-plane half it
+          # also boots reads these; they are copied from the control-plane pod
+          # of this participant, minus everything that would bind a port —
+          # this pod's ports are the data plane's, and the management API it
+          # would otherwise open on 8081 is where its public API already is.
+          image:
+            repository: tractusx/edc-runtime-memory
+          env:
+            TRACTUSX_EDC_PARTICIPANT_BPN: "BPNL000000000002"
+            EDC_DSP_CALLBACK_ADDRESS: "http://consumer-dsp.local/api/v1/dsp"
+            EDC_OAUTH_PROVIDER_AUDIENCE: "idsc:IDS_CONNECTORS_ALL"
+            EDC_OAUTH_ENDPOINT_AUDIENCE: "http://consumer-dsp.local/api/v1/dsp"
+            EDC_IAM_TRUSTED-ISSUER_0-ISSUER_ID: "did:web:issuerservice.local:BPNL000000000003"
+            TX_EDC_IAM_IATP_BDRS_SERVER_URL: "http://bdrs-server.tx.test/api/directory"
+            TX_EDC_IAM_IATP_BDRS_CACHE_VALIDITY: "600"
+            TX_EDC_DCP_CACHE_ENABLED: "true"
+            TX_EDC_DCP_CACHE_VALIDITY_SECONDS: "86400"
+            EDC_POLICY_VALIDATION_ENABLED: "true"
+            # Neither half of this pod should act as a connector in its own
+            # right: no catalog crawling, and no DID registration racing the
+            # control plane's.
+            EDC_CATALOG_CACHE_EXECUTION_ENABLED: "false"
+            TX_EDC_DID_SERVICE_SELF_REGISTRATION_ENABLED: "false"
+            TX_EDC_DID_SERVICE_SELF_DEREGISTRATION_ENABLED: "false"
           livenessProbe:
             initialDelaySeconds: 240
 
@@ -215,7 +337,27 @@ bdrs-server-memory:
         memory: 128Mi
 
 tractusx-issuerservice:
+  # Same for the issuer's database: the in-memory image holds its holders,
+  # credential definitions and issuance processes in the process, and the one
+  # thing that did write SQL here — the claim-seeding hook below — is off.
+  install:
+    postgresql: false
+  # The claim rows this seeds go into a table only the SQL IssuerService
+  # creates, and `psql -v ON_ERROR_STOP=1` makes the missing table a failed
+  # post-install hook — which fails the whole `helm install --wait`. The
+  # in-memory image reads claims off the holder record instead, and
+  # ci/issue_credentials.py writes them there, so there is nothing left for
+  # this hook to seed.
+  attestationClaimSeeding:
+    enabled: false
   issuerservice:
+    # In-memory IssuerService. Its BOM is the base one, which ships the
+    # `holder` attestation source and *not* the `database` one — the SQL BOM is
+    # what carries that. ci/issue_credentials.py registers the holder
+    # attestation and puts the claims on each holder record, so nothing reads
+    # the `custom_attestation_claims` table Umbrella still seeds.
+    image:
+      repository: tractusx/issuerservice-memory
     livenessProbe:
       initialDelaySeconds: 240
     resources:
