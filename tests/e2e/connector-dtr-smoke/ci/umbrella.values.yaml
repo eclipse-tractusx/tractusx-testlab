@@ -50,25 +50,25 @@
 # The workflow's manifest validation asserts both hooks are present.
 
 edc-provider:
-  # No Postgres for this participant. Nothing reads it any more: the
-  # connector's stores are in the runtime's memory and the IdentityHub's
-  # are in its own. The datasource config both charts still render points
-  # at a Service that no longer exists, and neither image has the SQL
-  # extensions that would dial it.
+  # Postgres stays for this participant, for the IdentityHub alone — see the
+  # note under `tractusx-identityhub` below. The connector no longer uses it:
+  # the `edc` database it still renders a JDBC URL for goes unopened, because
+  # the in-memory runtime has no SQL extensions to dial it with.
   install:
-    postgresql: false
+    postgresql: true
   tractusx-identityhub:
     identityhub:
-      # In-memory IdentityHub. Same runtime, minus the SQL stores and the
-      # HashiCorp vault client: the participant context, its keypair and the
-      # credentials it is issued all live in the process. Nothing seeds it —
-      # the context is created at boot from
-      # `edc.tractusx.ih.participant.configurable.*`, which is where its STS
-      # client secret comes from too — so the swap is the image alone. The
-      # datasource config the chart still renders names stores this image does
-      # not have, and is ignored rather than refused.
-      image:
-        repository: tractusx/identityhub-memory
+      # This one stays on the SQL + HashiCorp-Vault image, and cannot go
+      # in-memory today. `identityhub-memory` gets EDC's `InMemoryVault`, which
+      # partitions secrets by participant context, while tx-identityhub's
+      # `InitialParticipantExtension` writes the participant's X-Api-Key and STS
+      # client secret with the *unscoped* `storeSecret` during boot — where no
+      # participant context is in scope, so they land in the `default`
+      # partition. Every later read is scoped to the participant and finds
+      # nothing: the Identity API answers 500 (an NPE on a null credential in
+      # ParticipantServicePrincipalResolver) and the run cannot request its
+      # credentials. Upstream `main` still writes unscoped, so no published tag
+      # fixes it.
       livenessProbe:
         initialDelaySeconds: 240
       resources:
@@ -212,25 +212,25 @@ edc-provider:
         fullnameOverride: provider-dtr-postgresql
 
 edc-consumer:
-  # No Postgres for this participant. Nothing reads it any more: the
-  # connector's stores are in the runtime's memory and the IdentityHub's
-  # are in its own. The datasource config both charts still render points
-  # at a Service that no longer exists, and neither image has the SQL
-  # extensions that would dial it.
+  # Postgres stays for this participant, for the IdentityHub alone — see the
+  # note under `tractusx-identityhub` below. The connector no longer uses it:
+  # the `edc` database it still renders a JDBC URL for goes unopened, because
+  # the in-memory runtime has no SQL extensions to dial it with.
   install:
-    postgresql: false
+    postgresql: true
   tractusx-identityhub:
     identityhub:
-      # In-memory IdentityHub. Same runtime, minus the SQL stores and the
-      # HashiCorp vault client: the participant context, its keypair and the
-      # credentials it is issued all live in the process. Nothing seeds it —
-      # the context is created at boot from
-      # `edc.tractusx.ih.participant.configurable.*`, which is where its STS
-      # client secret comes from too — so the swap is the image alone. The
-      # datasource config the chart still renders names stores this image does
-      # not have, and is ignored rather than refused.
-      image:
-        repository: tractusx/identityhub-memory
+      # This one stays on the SQL + HashiCorp-Vault image, and cannot go
+      # in-memory today. `identityhub-memory` gets EDC's `InMemoryVault`, which
+      # partitions secrets by participant context, while tx-identityhub's
+      # `InitialParticipantExtension` writes the participant's X-Api-Key and STS
+      # client secret with the *unscoped* `storeSecret` during boot — where no
+      # participant context is in scope, so they land in the `default`
+      # partition. Every later read is scoped to the participant and finds
+      # nothing: the Identity API answers 500 (an NPE on a null credential in
+      # ParticipantServicePrincipalResolver) and the run cannot request its
+      # credentials. Upstream `main` still writes unscoped, so no published tag
+      # fixes it.
       livenessProbe:
         initialDelaySeconds: 240
       resources:
