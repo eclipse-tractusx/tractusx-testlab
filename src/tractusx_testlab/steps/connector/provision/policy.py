@@ -35,6 +35,7 @@ from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.steps.connector.policies import as_odrl_policy
 from tractusx_testlab.steps.connector.provision._shared import (
     _config_object,
     _create_or_conflict,
@@ -65,7 +66,9 @@ class CreatePolicyParams(StepParams):
             "The whole ODRL policy, as declared by a 'config/connector/policy' "
             "manifest variable and referenced as '${{ env.<id> }}'. Carries "
             "'permissions', 'prohibitions', 'obligations', an optional '@context' "
-            "and an optional 'policy_id'; a fresh UUID names the policy without one."
+            "and an optional 'policy_id'; a fresh UUID names the policy without one. "
+            "The rules are read in the same two spellings the consumer steps read "
+            "them in — the testlab simplified one and ODRL's own."
         ),
     )
 
@@ -110,16 +113,25 @@ def _register_policy(
 
     The one place either policy step reaches the connector, so the raw step and
     its wizard sibling cannot drift apart in what they register.
+
+    The policy is rewritten into ODRL spelling first, exactly as the consumer
+    steps rewrite the one they match offers against. The connector reads a
+    policy as JSON-LD: a rule whose conditions sit under ``constraints`` rather
+    than ``constraint`` carries no constraint the connector can see, and it
+    answers "policy must contain at least one permission" about a policy the
+    script plainly wrote one into. One variable is registered here and matched
+    there, so both sides have to read the same two spellings.
     """
     provider = context.dataspace.provider()
     url = context.dataspace.provider_endpoint_url("policies")
     policy_id = policy_id or str(uuid.uuid4())
 
+    document = as_odrl_policy(policy)
     rules = {
-        "context": policy.get("@context", policy.get("context")),
-        "permissions": policy.get("permissions", []),
-        "prohibitions": policy.get("prohibitions", []),
-        "obligations": policy.get("obligations", []),
+        "context": document.get("@context", document.get("context")),
+        "permissions": document.get("permission", []),
+        "prohibitions": document.get("prohibition", []),
+        "obligations": document.get("obligation", []),
     }
 
     # Build the model to capture the serialized payload for debugging.

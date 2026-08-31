@@ -127,11 +127,15 @@ execution:
         type: string
       offer_id:
         type: string
+      catalog_policy:
+        type: object
     validate:
       - uses: validate/assert
         with: { input: asset_id, operator: equals, value: "${{ setup.asset.asset_id }}" }
       - uses: validate/assert
         with: { input: offer_id, operator: not_null }
+      - uses: validate/assert
+        with: { input: catalog_policy, operator: not_null }
 
   # 3. Negotiate for that offer. The policy comes from the catalog, not from
   #    the script — negotiating under a policy the provider did not offer is
@@ -143,7 +147,12 @@ execution:
       counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
       counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
       asset_id: "${{ execution.dataset.asset_id }}"
-      policy: "${{ env.usage_policy }}"
+      # The offer's own policy, carried over from the catalog. The provider
+      # accepts an offer under the policy it made it under — offer id and all —
+      # and `env.usage_policy` is the policy the offer was *built* from, which
+      # is a different document: it has no offer id, and the connector refuses
+      # a contract request without one.
+      policy: "${{ execution.dataset.catalog_policy }}"
       max_wait: 90
       poll_interval: 2
     returns:

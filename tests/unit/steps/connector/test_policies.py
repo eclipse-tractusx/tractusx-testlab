@@ -86,6 +86,10 @@ class TestAsPolicyList:
     def test_a_wrapped_simplified_policy_is_both_unwrapped_and_translated(self) -> None:
         assert as_policy_list({"policy": SIMPLIFIED}) == [RAW]
 
+    def test_the_name_the_manifest_gave_the_policy_is_left_behind(self) -> None:
+        """A catalog offer carries no ``policy_id``, and the SDK compares keys."""
+        assert as_policy_list({"policy_id": "usage-policy", **SIMPLIFIED}) == [RAW]
+
 
 class TestAsOdrlPolicy:
     def test_a_policy_already_in_odrl_is_unchanged(self) -> None:

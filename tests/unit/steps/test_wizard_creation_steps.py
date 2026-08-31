@@ -171,6 +171,42 @@ class TestWizardCreatePolicy:
         assert wizard_call == provider.create_policy.call_args.kwargs
 
     @pytest.mark.asyncio
+    async def test_the_simplified_spelling_reaches_the_connector_as_odrl(
+        self, connector_context: MagicMock, provider: MagicMock
+    ) -> None:
+        """The connector reads ODRL; a rule written the testlab way still counts."""
+        await CreatePolicyStep().invoke(
+            {
+                "policy": {
+                    "policy_id": "p-1",
+                    "permissions": [
+                        {
+                            "action": "use",
+                            "constraints": [
+                                {
+                                    "left_operand": "Membership",
+                                    "operator": "eq",
+                                    "right_operand": "active",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            },
+            connector_context,
+            _definition("connector/provider/create_policy"),
+        )
+
+        assert provider.create_policy.call_args.kwargs["permissions"] == [
+            {
+                "action": "use",
+                "constraint": [
+                    {"leftOperand": "Membership", "operator": "eq", "rightOperand": "active"}
+                ],
+            }
+        ]
+
+    @pytest.mark.asyncio
     async def test_a_policy_with_no_permissions_is_rejected(
         self, connector_context: MagicMock
     ) -> None:

@@ -52,7 +52,13 @@ variables:
   infrastructure.sut.connector.management_url: "http://provider-management.local/management"
   infrastructure.sut.connector.api_key: "password"
   infrastructure.sut.connector.participant_id: "BPNL000000000001"
-  infrastructure.sut.connector.dsp_url: "http://provider-dsp.local/api/v1/dsp"
+  # The DSP *version* path, not the protocol root. EDC sends a protocol
+  # message to the counter-party address exactly as given — nothing appends
+  # the negotiated version to it — and a Saturn connector speaks
+  # `dataspace-protocol-http:2025-1`, which is served under `/2025-1`. Pointing
+  # at the root delivers a 2025-1 message to the v0.8 handler, and the
+  # provider answers `dspace:CatalogError` "Bad request".
+  infrastructure.sut.connector.dsp_url: "http://provider-dsp.local/api/v1/dsp/2025-1"
 
   # infrastructure.sut.dtr.base_url — intentionally absent; supplied via
   # `--var infrastructure.sut.dtr.base_url=...` once the workflow has resolved

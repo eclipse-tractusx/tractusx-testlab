@@ -92,6 +92,15 @@ class TestExtractDatasetStep:
         assert output.value.asset_id == "asset-dtr"
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("dataset", [_LEGACY_DATASET, _DSP2025_DATASET])
+    async def test_the_offer_policy_is_published_for_the_negotiation_that_follows(
+        self, dataset: dict
+    ) -> None:
+        """``negotiate`` needs the offer's own policy, offer id included."""
+        output = await _extract([dataset])
+        assert output.value.catalog_policy == {"@id": "offer-1"}
+
+    @pytest.mark.asyncio
     async def test_no_dataset_of_that_type_yields_nothing_rather_than_a_wrong_one(
         self,
     ) -> None:
@@ -99,3 +108,4 @@ class TestExtractDatasetStep:
         assert output.value.dataset is None
         assert output.value.offer_id is None
         assert output.value.asset_id is None
+        assert output.value.catalog_policy is None
