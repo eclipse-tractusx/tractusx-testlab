@@ -98,6 +98,13 @@ env:
   # Every JVM in the release boots at once on a 4-vCPU runner. Measured cold
   # starts land well inside this; the old 5m budget never stood a chance.
   HELM_TIMEOUT: "25m"
+  # How many consecutive 30s polls a container may spend in CrashLoopBackOff (or
+  # any other reason the kubelet will not recover from on its own) before the
+  # deploy is abandoned. Services that depend on a slow Postgres do crash-loop
+  # briefly at startup, so this cannot be zero — but once a container is still
+  # stuck five minutes in, `helm --wait` is only going to sit there until
+  # HELM_TIMEOUT expires and report the same thing twenty minutes later.
+  STUCK_GRACE_POLLS: "10"
   TCK_INDEX: tests/e2e/connector-dtr-smoke/index.yaml
   TCK_CONFIG: tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml
   UMBRELLA_CI_VALUES: tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml
@@ -140,9 +147,11 @@ jobs:
           python-version: "3.12"
 
       - name: Install Poetry
+        timeout-minutes: 10
         run: pip install poetry
 
       - name: Install testlab
+        timeout-minutes: 15
         run: poetry install --no-interaction
 
       # ------------------------------------------------------------------
@@ -176,6 +185,7 @@ jobs:
           version: "${{ env.HELM_VERSION }}"
 
       - name: Create kind cluster
+        timeout-minutes: 10
         run: |
           curl -Lo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
           chmod +x ./kind
@@ -201,6 +211,7 @@ jobs:
           ./kind create cluster --name tck-e2e --config kind-config.yaml --wait 5m
 
       - name: Install ingress-nginx and make it the default IngressClass
+        timeout-minutes: 10
         run: |
           set -euo pipefail
           kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
@@ -225,6 +236,7 @@ jobs:
           printf '  %s\n' ${DATASPACE_HOSTS}
 
       - name: Point in-cluster DNS at the ingress controller
+        timeout-minutes: 5
         run: |
           set -euo pipefail
           # Pods resolve their peers through CoreDNS, which knows nothing about
@@ -296,11 +308,13 @@ jobs:
       # 3. Deploy the dataspace: two EDCs, two IdentityHubs, DTRs, issuer
       # ------------------------------------------------------------------
       - name: Add Tractus-X Helm repo
+        timeout-minutes: 5
         run: |
           helm repo add tractusx-dev https://eclipse-tractusx.github.io/charts/dev
           helm repo update
 
       - name: Prepare and validate pinned Umbrella chart
+        timeout-minutes: 10
         run: |
           set -euo pipefail
           chart_dir="${RUNNER_TEMP}/umbrella"
@@ -434,6 +448,7 @@ jobs:
           echo "UMBRELLA_RENDERED=${rendered}" >> "${GITHUB_ENV}"
 
       - name: Pre-load release images into the kind node
+        timeout-minutes: 25
         continue-on-error: true
         run: |
           set -uo pipefail
@@ -459,6 +474,10 @@ jobs:
           df -h /
 
       - name: Deploy Tractus-X Umbrella (decentralized IdentityHub profile)
+        # A ceiling above HELM_TIMEOUT, so an abort is normally the supervisor's
+        # decision (which explains itself and dumps the failing container's log)
+        # and only falls back to the runner killing the step.
+        timeout-minutes: 30
         run: |
           set -uo pipefail
           # `--wait` is load-bearing, not just convenience: Helm waits for
@@ -466,39 +485,123 @@ jobs:
           # the vaults and the issuer's claim table against services that must
           # already be up.
           #
-          # A bare 25-minute wait is opaque when it fails, so a watcher reports
-          # what is still outstanding while Helm blocks.
+          # But `--wait` cannot tell "still starting" from "will never start":
+          # a container in CrashLoopBackOff is waited on exactly as patiently as
+          # one that is halfway through booting, so a broken image used to cost
+          # the full HELM_TIMEOUT and report nothing more than a deadline. The
+          # loop below supervises rather than narrates — it reports what is
+          # outstanding, and abandons the deploy once something is provably
+          # stuck rather than merely slow.
+          cat <<'PY' > "${RUNNER_TEMP}/stuck_containers.py"
+          """Print the containers the kubelet is no longer making progress on.
+
+          One `<pod>/<container> <reason> restarts=<n>` line each; no output at
+          all means everything is either running or still legitimately starting.
+          """
+
+          import json
+          import subprocess
+          import sys
+
+          # Reasons the kubelet will keep retrying forever without the outcome
+          # ever changing on its own — a missing image, an unresolvable config
+          # reference, or a process that exits as fast as it is started.
+          FATAL_REASONS = {
+              "CrashLoopBackOff",
+              "ImagePullBackOff",
+              "ErrImagePull",
+              "InvalidImageName",
+              "CreateContainerConfigError",
+              "CreateContainerError",
+          }
+
+          pods = json.loads(
+              subprocess.run(
+                  ["kubectl", "get", "pods", "-n", sys.argv[1], "-o", "json"],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              ).stdout
+          )["items"]
+
+          for pod in pods:
+              status = pod.get("status", {})
+              containers = (status.get("initContainerStatuses") or []) + (
+                  status.get("containerStatuses") or []
+              )
+              for container in containers:
+                  waiting = container.get("state", {}).get("waiting") or {}
+                  if waiting.get("reason") in FATAL_REASONS:
+                      print(
+                          f"{pod['metadata']['name']}/{container['name']} "
+                          f"{waiting['reason']} restarts={container.get('restartCount', 0)}"
+                      )
+          PY
+
           columns='NAME:.metadata.name'
           columns="${columns},PHASE:.status.phase"
           columns="${columns},RESTARTS:.status.containerStatuses[*].restartCount"
           columns="${columns},STATE:.status.containerStatuses[*].state.*.reason"
           columns="${columns},READY:.status.containerStatuses[*].ready"
-          (
-            while true; do
-              sleep 30
-              echo "--- $(date -u +%H:%M:%S) waiting on the release ---"
-              # Print only the pods that are not yet fully ready (READY is the
-              # last column, one 'true'/'false' per container).
-              kubectl get pods -n "${UMBRELLA_NAMESPACE}" \
-                -o "custom-columns=${columns}" 2>/dev/null \
-                | awk 'NR == 1 || $NF !~ /^(true,)*true$/' || true
-            done
-          ) &
-          watcher=$!
-          trap 'kill "${watcher}" 2>/dev/null || true' EXIT
 
           helm install umbrella "${UMBRELLA_CHART_DIR}" \
             --namespace "${UMBRELLA_NAMESPACE}" --create-namespace \
             -f "${UMBRELLA_PROFILE_URL}" \
             -f "${UMBRELLA_CI_VALUES}" \
             --burst-limit 400 --qps 200 \
-            --timeout "${HELM_TIMEOUT}" --wait
-          status=$?
+            --timeout "${HELM_TIMEOUT}" --wait &
+          helm_pid=$!
+          trap 'kill "${helm_pid}" 2>/dev/null || true' EXIT
 
-          kill "${watcher}" 2>/dev/null || true
-          exit "${status}"
+          strikes=0
+          while kill -0 "${helm_pid}" 2>/dev/null; do
+            sleep 30
+            echo "--- $(date -u +%H:%M:%S) waiting on the release ---"
+            # Print only the pods that are not yet fully ready (READY is the
+            # last column, one 'true'/'false' per container).
+            kubectl get pods -n "${UMBRELLA_NAMESPACE}" \
+              -o "custom-columns=${columns}" 2>/dev/null \
+              | awk 'NR == 1 || $NF !~ /^(true,)*true$/' || true
+
+            stuck="$(python3 "${RUNNER_TEMP}/stuck_containers.py" \
+              "${UMBRELLA_NAMESPACE}" 2>/dev/null || true)"
+            if [ -z "${stuck}" ]; then
+              # One good poll clears the count: a container that recovered was
+              # slow, not stuck, and must not carry credit toward an abort.
+              strikes=0
+              continue
+            fi
+
+            strikes=$((strikes + 1))
+            echo "not recovering (${strikes}/${STUCK_GRACE_POLLS}):"
+            while IFS= read -r entry; do
+              echo "  ${entry}"
+            done <<< "${stuck}"
+            if [ "${strikes}" -lt "${STUCK_GRACE_POLLS}" ]; then
+              continue
+            fi
+
+            echo "::error::Containers have been stuck for $((strikes * 30))s and will not"
+            echo "::error::recover. Abandoning the deploy instead of waiting out ${HELM_TIMEOUT}."
+            for pod in $(echo "${stuck}" | cut -d/ -f1 | sort -u); do
+              echo "--- logs: ${pod} ---"
+              kubectl logs -n "${UMBRELLA_NAMESPACE}" "${pod}" \
+                --all-containers --tail=100 2>&1 || true
+              kubectl logs -n "${UMBRELLA_NAMESPACE}" "${pod}" \
+                --all-containers --previous --tail=100 2>&1 || true
+              echo "--- describe: ${pod} ---"
+              kubectl describe pod -n "${UMBRELLA_NAMESPACE}" "${pod}" 2>&1 || true
+            done
+            kill "${helm_pid}" 2>/dev/null || true
+            wait "${helm_pid}" 2>/dev/null || true
+            exit 1
+          done
+
+          wait "${helm_pid}"
+          exit $?
 
       - name: Deploy in-cluster echo backend
+        timeout-minutes: 5
         run: |
           # Minimal HTTP backend the SUT's data plane proxies pulls to. Kept
           # cluster-internal (no ingress) — the EDC data plane reaches it
@@ -522,6 +625,7 @@ jobs:
       # 4. Make the dataspace usable: issue the participants' credentials
       # ------------------------------------------------------------------
       - name: Issue Catena-X credentials to both participants
+        timeout-minutes: 10
         run: |
           set -euo pipefail
           # The IssuerService mints a one-time super-user API key at startup and
@@ -552,6 +656,7 @@ jobs:
       # 5. Discover what the chart didn't pin, then sanity-check reachability
       # ------------------------------------------------------------------
       - name: Discover DTR ingress host and base URL
+        timeout-minutes: 5
         run: |
           set -euo pipefail
           DTR_HOST="$(kubectl get ingress provider-dtr \
@@ -583,11 +688,24 @@ jobs:
             || echo "127.0.0.1 ${DTR_HOST}" | sudo tee -a /etc/hosts >/dev/null
 
       - name: Preflight — check connector and DTR reachability
+        timeout-minutes: 10
         run: |
           set -euo pipefail
           query='{"@context":{"edc":"https://w3id.org/edc/v0.0.1/ns/"},"@type":"QuerySpec","offset":0,"limit":1}'
-          for participant in provider consumer; do
+          # Every call here is bounded twice over. `--max-time` is the one that
+          # matters: these hostnames resolve to the runner itself, so a service
+          # that accepted the connection and then went quiet holds curl open
+          # indefinitely — the same failure the SDK timeouts exist for, one
+          # layer down. The retries absorb an ingress that is routing before its
+          # backend finished starting, which is ordinary, not a fault.
+          bounded_curl() {
             curl --fail-with-body --silent --show-error \
+              --connect-timeout 10 --max-time 30 \
+              --retry 4 --retry-delay 5 --retry-max-time 120 \
+              --retry-all-errors "$@"
+          }
+          for participant in provider consumer; do
+            bounded_curl \
               --header "X-Api-Key: password" \
               --header "Content-Type: application/json" \
               --request POST --data "${query}" \
@@ -595,7 +713,7 @@ jobs:
               > /dev/null
             echo "${participant} management API: reachable"
           done
-          curl --fail-with-body --location --silent --show-error \
+          bounded_curl --location \
             "${DTR_BASE_URL}/api/v3.0/shell-descriptors" > /dev/null
           echo "provider DTR API: reachable at ${DTR_BASE_URL}"
 
@@ -607,9 +725,11 @@ jobs:
       #    selection machinery works against a real SUT rather than a mock.
       # ------------------------------------------------------------------
       - name: testlab validate
+        timeout-minutes: 5
         run: poetry run testlab validate "${TCK_INDEX}"
 
       - name: testlab compile
+        timeout-minutes: 5
         run: |
           mkdir -p dist
           poetry run testlab compile "${TCK_INDEX}" --output "${TCK_OUT}"
@@ -618,6 +738,7 @@ jobs:
       # assertion that compilation kept the whole suite: a test dropped between
       # the manifest and the archive shows up here as a missing script.
       - name: testlab inspect — what the package says it will do
+        timeout-minutes: 5
         run: |
           mkdir -p logs
           poetry run testlab inspect "${TCK_OUT}" --variables --infrastructure
@@ -641,6 +762,7 @@ jobs:
 
       # Combination 1 — the whole suite.
       - name: testlab run — full suite
+        timeout-minutes: 25
         run: |
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
@@ -653,6 +775,7 @@ jobs:
       # run-time argument, and the engine refuses ids that are unknown or that
       # the manifest did not mark skippable.
       - name: testlab run — wiring combination
+        timeout-minutes: 15
         run: |
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
@@ -664,6 +787,7 @@ jobs:
       # Combination 3 — the registry alone, proving a test that needs no
       # connector journey runs without one having happened first.
       - name: testlab run — registry combination
+        timeout-minutes: 15
         run: |
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
@@ -675,6 +799,7 @@ jobs:
       # A selection the manifest does not permit must be refused, not silently
       # ignored — an operator who mistypes a test id has to find out.
       - name: testlab run — an unknown test id is refused
+        timeout-minutes: 10
         run: |
           if poetry run testlab run "${TCK_OUT}" \
                --config "${TCK_CONFIG}" \
@@ -691,6 +816,7 @@ jobs:
       # 7. Diagnostics + cleanup
       # ------------------------------------------------------------------
       - name: Collect cluster diagnostics on failure
+        timeout-minutes: 10
         if: failure()
         run: |
           mkdir -p ci-logs
@@ -721,6 +847,7 @@ jobs:
       # and the artifact would otherwise be downloaded, found to hold only the
       # transcript, and read as "nothing went wrong here".
       - name: Check the execution traces were written
+        timeout-minutes: 5
         if: always()
         run: |
           # No `pipefail` here on purpose: `find` exits non-zero when `data`
@@ -741,6 +868,7 @@ jobs:
       # happens on a runner that is deleted minutes later, so whatever is not
       # exported here cannot be looked at again.
       - name: Upload testlab logs and execution traces
+        timeout-minutes: 10
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -752,6 +880,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload cluster diagnostics
+        timeout-minutes: 10
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -760,5 +889,6 @@ jobs:
           retention-days: 14
 
       - name: Delete kind cluster
+        timeout-minutes: 5
         if: always()
         run: ./kind delete cluster --name tck-e2e || true

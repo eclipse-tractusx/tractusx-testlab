@@ -117,6 +117,23 @@ runner, all booting at once. The stock liveness delays (30s for the connectors,
 so `ci/umbrella.values.yaml` raises them to 240s and trims the over-provisioned
 CPU requests. If a chart bump adds another JVM, expect to do the same for it.
 
+**A stuck deploy gives up on itself.** `helm install --wait` cannot tell "still
+starting" from "will never start" — it waits on a container in
+`CrashLoopBackOff` exactly as patiently as on one that is halfway through
+booting, so a broken image used to cost the full 25m `HELM_TIMEOUT` and report
+nothing beyond a deadline. The deploy step supervises the install instead: every
+30s it lists what is still outstanding, and once a container has been in a
+reason the kubelet cannot recover from (`CrashLoopBackOff`, `ImagePullBackOff`,
+`CreateContainerConfigError`, …) for `STUCK_GRACE_POLLS` consecutive polls — 5
+minutes by default — it dumps that pod's logs and `describe`, kills Helm and
+fails. One healthy poll resets the count, because services waiting on a slow
+Postgres do crash-loop briefly and that is not a fault. Raise
+`STUCK_GRACE_POLLS` if a chart bump makes legitimate startup crash-looping
+longer than five minutes. Every step also carries its own `timeout-minutes`, so
+a hang is attributed to the step that caused it rather than silently consuming
+the job's 90-minute budget — which would take the diagnostics and artifact
+uploads down with it.
+
 **Chart drift.** If a chart upgrade breaks the DTR discovery, the vault-setup
 hook assertion, or the values keys that enable the consumer's DTR and data
 backend, `helm show values tractusx-dev/umbrella --version <new>` against the
