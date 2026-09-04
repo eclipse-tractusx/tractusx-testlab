@@ -645,7 +645,8 @@ jobs:
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
-            --logs-dir logs/e2e/full
+            --logs-dir logs/e2e/full \
+            --data-dir data/e2e/full
 
       # Combination 2 — only the tests that exercise the runtime's variable
       # wiring, from the same package. Nothing recompiles; the selection is a
@@ -657,7 +658,8 @@ jobs:
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "skip_tests=connector_negotiation.yaml,dtr_roundtrip.yaml" \
-            --logs-dir logs/e2e/wiring
+            --logs-dir logs/e2e/wiring \
+            --data-dir data/e2e/wiring
 
       # Combination 3 — the registry alone, proving a test that needs no
       # connector journey runs without one having happened first.
@@ -667,7 +669,8 @@ jobs:
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml" \
-            --logs-dir logs/e2e/registry
+            --logs-dir logs/e2e/registry \
+            --data-dir data/e2e/registry
 
       # A selection the manifest does not permit must be refused, not silently
       # ignored — an operator who mistypes a test id has to find out.
@@ -677,7 +680,8 @@ jobs:
                --config "${TCK_CONFIG}" \
                --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
                --var "skip_tests=no-such-test.yaml" \
-               --logs-dir logs/e2e/refused; then
+               --logs-dir logs/e2e/refused \
+               --data-dir data/e2e/refused; then
             echo "::error::skipping an unknown test id was accepted; it must be refused"
             exit 1
           fi
@@ -712,12 +716,38 @@ jobs:
               > "ci-logs/${pod_name}-previous.log" 2>&1 || true
           done < <(kubectl get pods -n "${UMBRELLA_NAMESPACE}" -o name 2>/dev/null || true)
 
+      # The trace is the evidence, so its absence is a finding in itself. A run
+      # that produced none means the engine never got as far as emitting one,
+      # and the artifact would otherwise be downloaded, found to hold only the
+      # transcript, and read as "nothing went wrong here".
+      - name: Check the execution traces were written
+        if: always()
+        run: |
+          # No `pipefail` here on purpose: `find` exits non-zero when `data`
+          # does not exist, and that is the very case this step reports on
+          # rather than dies from.
+          traces="$(find data -name '*.jsonl' 2>/dev/null | wc -l)"
+          if [ "${traces}" -eq 0 ]; then
+            echo "::warning::no execution trace was written under data/ — the run did not get far enough to emit one"
+          else
+            echo "collected ${traces} execution trace(s):"
+            find data -name '*.jsonl' -printf '%p\t%s bytes\n' | sort
+          fi
+
+      # `logs/` is the console transcript a person reads; `data/` is the
+      # CloudEvents execution trace (ADR-0016) — every step's inputs, outputs,
+      # checks, and the full request/response of every call it made, which is
+      # what a failure is actually diagnosed from. Both are uploaded: the run
+      # happens on a runner that is deleted minutes later, so whatever is not
+      # exported here cannot be looked at again.
       - name: Upload testlab logs and execution traces
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: testlab-e2e-run-${{ github.run_id }}
-          path: logs
+          path: |
+            logs
+            data
           retention-days: 14
           if-no-files-found: ignore
 

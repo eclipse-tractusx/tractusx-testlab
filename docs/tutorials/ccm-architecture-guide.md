@@ -287,7 +287,7 @@ Run the test suite headless via CLI:
 testlab run index.yaml --config run-config.yaml
 ```
 
-The command prints per-script and per-step results to stdout and exits non-zero on failure; detailed logs (including the execution trace) are written to the `--logs-dir` directory (default `./logs`). Use the exit code for pass/fail status in your CI pipeline.
+The command prints per-script and per-step results to stdout and exits non-zero on failure. It leaves two records behind: the console transcript in `--logs-dir` (default `./logs`) and the CloudEvents execution trace in `--data-dir` (default `./data`). A CI pipeline should archive **both** — the exit code says whether the run passed, but only the trace says why it did not. Use the exit code for pass/fail status.
 
 ## Design Decisions
 
