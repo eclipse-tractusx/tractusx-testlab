@@ -268,7 +268,10 @@ class DiscoverNotificationAssetsStep(
     ) -> StepOutput[NotificationAssetsOutput]:
         notif_service = context.dataspace.notifications()
         party = params.counter_party(context)
-        datasets = await sdk_call.run(
+        # The step's own `timeout` is what the author asked the SDK to wait, so
+        # the engine's default bound may not undercut it.
+        datasets = await sdk_call.run_within(
+            max(sdk_call.DEFAULT_SDK_TIMEOUT, params.timeout),
             notif_service.discover_notification_assets,
             provider_bpn=party.identity,
             provider_dsp_url=party.address,

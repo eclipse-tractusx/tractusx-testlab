@@ -30,8 +30,14 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
+from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models import (
+    HttpRequest,
+    HttpResponse,
+    StepDefinition,
+    StepExecutionError,
+)
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client, sdk_call
 from tractusx_testlab.steps.shared_models import (
@@ -52,6 +58,9 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 logger = logging.getLogger(__name__)
+
+#: The EDR-entry property naming the transfer process it belongs to.
+_TRANSFER_PROCESS_ID_KEY = "transferProcessId"
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +133,40 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
                 body=resp.text,
             ),
         )
+
+
+async def edr_entry_of(consumer: Any, transfer_id: str | None) -> dict:
+    """Read the EDR entry a transfer belongs to, for the identifiers it carries.
+
+    ``get_transfer_id`` hands back only the transfer, but the negotiation and
+    the agreement behind it are what a script asserts on and what the
+    ``agreement_id`` output is for. The entry is looked up the same way the SDK
+    looks one up by negotiation, filtered by transfer instead.
+    """
+    if not transfer_id:
+        return {}
+    try:
+        query = ModelFactory.get_queryspec_model(
+            dataspace_version=consumer.dataspace_version,
+            filter_expression=[
+                consumer.get_filter_expression(
+                    key=_TRANSFER_PROCESS_ID_KEY, operator="=", value=transfer_id
+                )
+            ],
+        )
+        response = await sdk_call.run(consumer.edrs.query, query)
+    except StepExecutionError:
+        raise
+    except Exception as exc:
+        logger.debug("Could not read the EDR entry for transfer %s: %s", transfer_id, exc)
+        return {}
+    if response is None or getattr(response, "status_code", 0) != 200:
+        return {}
+    try:
+        entries = response.json()
+    except ValueError:
+        return {}
+    return entries[-1] if isinstance(entries, list) and entries else {}
 
 
 # ---------------------------------------------------------------------------

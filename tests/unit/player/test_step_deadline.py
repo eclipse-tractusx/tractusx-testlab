@@ -34,7 +34,6 @@ engine fault, and that a step which declared none is left alone.
 from __future__ import annotations
 
 import asyncio
-
 from unittest.mock import MagicMock
 
 from tractusx_testlab.models.authoring.definitions import StepDefinition
@@ -90,9 +89,7 @@ class TestDeclaredTimeout:
     async def test_a_step_that_never_finishes_fails_at_its_deadline(
         self, mock_context: MagicMock
     ) -> None:
-        result = await run_step(
-            _NeverFinishingStep, _definition(0.05), "negotiate", mock_context
-        )
+        result = await run_step(_NeverFinishingStep, _definition(0.05), "negotiate", mock_context)
 
         assert result.status == StepStatus.FAILED
         assert result.error is not None
@@ -102,16 +99,12 @@ class TestDeclaredTimeout:
         self, mock_context: MagicMock
     ) -> None:
         """A step the SUT hung is a failure of the SUT, not a defect in testlab."""
-        result = await run_step(
-            _NeverFinishingStep, _definition(0.05), "negotiate", mock_context
-        )
+        result = await run_step(_NeverFinishingStep, _definition(0.05), "negotiate", mock_context)
 
         assert result.error is not None
         assert not result.error.startswith(ENGINE_FAULT_PREFIX)
 
-    async def test_a_step_that_answers_in_time_is_untouched(
-        self, mock_context: MagicMock
-    ) -> None:
+    async def test_a_step_that_answers_in_time_is_untouched(self, mock_context: MagicMock) -> None:
         result = await run_step(_ImmediateStep, _definition(30), "negotiate", mock_context)
 
         assert result.status == StepStatus.PASSED

@@ -42,6 +42,7 @@ from typing import Any
 # here, so the connector steps keep importing them from the module they poll
 # with and no two steps can drift into different waits.
 from tractusx_testlab.models import StepExecutionError
+from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.shared_models import DEFAULT_MAX_WAIT, DEFAULT_POLL_INTERVAL
 
 logger = logging.getLogger(__name__)
@@ -64,19 +65,28 @@ NEGOTIATION_TERMINAL = frozenset({"FINALIZED", "TERMINATED"})
 TRANSFER_TERMINAL = frozenset({"STARTED", "COMPLETED", "TERMINATED", "SUSPENDED"})
 
 
-def read_entity(controller: Any, oid: str, verify: Any = None) -> dict | None:
+async def read_entity(controller: Any, oid: str, verify: Any = None) -> dict | None:
     """Read one management-API entity by ID, or ``None`` when it cannot be read.
 
     An unreachable connector is reported as "no entity" rather than raised: the
     caller still has the ID it started from, and the step's own response status
     is how a script asserts on the failure.
+
+    The read goes through :mod:`~tractusx_testlab.steps.sdk_call` like every
+    other call into the SDK. It used to be made inline, which put a blocking
+    ``requests`` call with no timeout on the event loop: a connector that
+    accepted the connection and then answered nothing froze the loop, and with
+    it every timer the run relies on — including the deadline meant to stop
+    exactly that. The loop cannot enforce a bound it is not running.
     """
     if not oid:
         return None
     # Left out entirely when unset so the SDK adapter keeps its own default.
     options = {} if verify is None else {"verify": verify}
     try:
-        response = controller.get_by_id(oid=oid, **options)
+        response = await sdk_call.run(controller.get_by_id, oid=oid, **options)
+    except StepExecutionError:
+        raise
     except Exception as exc:
         logger.debug("Could not read entity %s: %s", oid, exc)
         return None
@@ -130,7 +140,7 @@ async def poll_until_terminal(
     deadline = time.monotonic() + max_wait
     entity: dict = {}
     while True:
-        current = read_entity(controller, oid, verify)
+        current = await read_entity(controller, oid, verify)
         if current is None and not entity:
             if allow_timeout:
                 return {}

@@ -205,7 +205,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
 
         # The negotiation already drove this transfer to its final state, so one
         # read is enough — there is nothing here to wait for.
-        transfer = read_entity(
+        transfer = await read_entity(
             getattr(consumer, "transfer_processes", None), transfer_id or "", params.verify
         )
 

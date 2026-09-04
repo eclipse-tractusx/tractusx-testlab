@@ -79,9 +79,14 @@ setup:
         type: string
 
 execution:
+  # `timeout_s` bounds the whole flow. The SDK waits `max_wait` for the
+  # negotiation and `max_wait` again for the EDR, but only while the connector
+  # keeps answering; this is the bound that applies when it stops, so a broken
+  # negotiation fails the test instead of consuming the CI job.
   - id: pull_data
     uses: connector/consumer/pull_data_filtered
     name: Run the full DSP flow against the SUT's pre-provisioned asset
+    timeout_s: 300
     with:
       counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
       counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"

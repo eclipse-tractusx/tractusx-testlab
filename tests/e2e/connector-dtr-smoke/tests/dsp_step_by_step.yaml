@@ -136,9 +136,14 @@ execution:
   # 3. Negotiate for that offer. The policy comes from the catalog, not from
   #    the script — negotiating under a policy the provider did not offer is
   #    the mistake this step exists to make impossible.
+  #    `timeout_s` is the outer bound: `max_wait` is how long the step polls a
+  #    negotiation that keeps answering, and this is how long the step may take
+  #    when it is not answering at all. Without it a hung connector spends the
+  #    whole CI job and the run reports nothing.
   - id: negotiation
     uses: connector/consumer/negotiate
     name: Negotiate a contract for the offered asset
+    timeout_s: 180
     with:
       counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
       counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
