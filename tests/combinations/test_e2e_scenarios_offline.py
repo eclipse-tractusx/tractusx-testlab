@@ -206,12 +206,12 @@ class TestNegativePaths:
         http = HttpDouble()
         http.route(
             "GET",
-            "/api/v3.0/shell-descriptors/dXJuOnV1aWQ6dGVzdGxhYi1lMmUtYWJzZW50",
+            "/api/v3/shell-descriptors/dXJuOnV1aWQ6dGVzdGxhYi1lMmUtYWJzZW50",
             Response(status=404, body={"messages": ["shell descriptor not found"]}),
         )
         http.route(
             "GET",
-            "/api/v3.0/shell-descriptors",
+            "/api/v3/shell-descriptors",
             Response(status=401, body={"error": "unauthorized"}),
         )
         yield http

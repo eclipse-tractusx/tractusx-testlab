@@ -38,4 +38,9 @@ VALUE_SOURCE = "INLINE"
 # -- Service defaults ---------------------------------------------------------
 SERVICE_TYPE = "CONNECTOR_CONSUMER"
 DMA_PATH = "/management"
-AAS_API_PATH = "/api/v3.0"
+# The AAS Part 2 registry API. `/api/v3.0` is the path the AAS specification
+# used before it renumbered the prefix, and the one this constant held; no
+# Tractus-X registry answers on it. The DTR's own OpenAPI document declares
+# `version_prefix` with default `v3` and an enum that admits nothing else, and
+# the registry chart's shipped test suite drives `/api/v3/shell-descriptors`.
+AAS_API_PATH = "/api/v3"

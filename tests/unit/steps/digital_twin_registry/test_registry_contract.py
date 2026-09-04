@@ -277,8 +277,8 @@ class TestShellLookup:
 # The same lookup, against the registry the run was seeded with
 # ---------------------------------------------------------------------------
 
-_REGISTRY_API = "https://registry.example.com/api/v3.0"
-_REGISTRY_LOOKUP = "https://registry-lookup.example.com/api/v3.0"
+_REGISTRY_API = "https://registry.example.com/api/v3"
+_REGISTRY_LOOKUP = "https://registry-lookup.example.com/api/v3"
 
 
 def _provider_definition() -> StepDefinition:

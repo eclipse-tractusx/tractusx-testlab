@@ -79,6 +79,15 @@ execution:
                   # to resolve for create/get/delete to round-trip correctly.
                   subprotocolBody: "id=testlab-e2e-smoke-asset;dspEndpoint=${{ infrastructure.sut.connector.dsp_url }}"
                   subprotocolBodyEncoding: "plain"
+                  # The AAS spec makes this optional; the Tractus-X registry
+                  # does not — it dereferences the set while storing the
+                  # endpoint and answers 500 when it is absent. Saying "no
+                  # security attributes" explicitly is what an omitted list
+                  # was meant to say.
+                  securityAttributes:
+                    - type: "NONE"
+                      key: "NONE"
+                      value: "NONE"
     returns:
       id:
         type: string
