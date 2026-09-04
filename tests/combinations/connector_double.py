@@ -43,7 +43,7 @@ from typing import Any
 class _Response:
     """The part of a ``requests.Response`` the SDK controllers hand back."""
 
-    def __init__(self, status_code: int = 200, body: dict | None = None) -> None:
+    def __init__(self, status_code: int = 200, body: dict | list | None = None) -> None:
         self.status_code = status_code
         self._body = body
 
@@ -70,6 +70,23 @@ class _Controller:
         return _Response(204, None)
 
 
+@dataclass
+class _EdrCatalogue(_Controller):
+    """The EDR entries a consumer holds, queried by ``QuerySpec``.
+
+    ``pull_data_filtered`` reads the negotiation and the agreement behind a
+    transfer out of this, so a double that cannot be queried leaves those two
+    outputs empty and the scenario's assertions fail for a reason the
+    dataspace never gave.
+    """
+
+    queries: list[Any] = field(default_factory=list)
+
+    def query(self, query_spec: Any, **_kwargs: Any) -> _Response:
+        self.queries.append(query_spec)
+        return _Response(200, [self.document])
+
+
 class ConsumerDouble:
     """The consumer side of a DSP flow, as the connector steps see it."""
 
@@ -83,6 +100,13 @@ class ConsumerDouble:
             {"state": "FINALIZED", "contractAgreementId": "agr-1"}
         )
         self.transfer_processes = _Controller({"state": "STARTED"})
+        self.edrs = _EdrCatalogue(
+            {
+                "transferProcessId": "tp-1",
+                "contractNegotiationId": "neg-1",
+                "agreementId": "agr-1",
+            }
+        )
         #: Every call the steps made, so a test can assert on what was asked.
         self.calls: list[tuple[str, dict]] = []
 
@@ -122,6 +146,15 @@ class ConsumerDouble:
     def get_edr(self, **kwargs: Any) -> dict:
         self._record("get_edr", **kwargs)
         return {"endpoint": self._dataplane_url, "authorization": self._token}
+
+    def get_transfer_id(self, **kwargs: Any) -> str:
+        """The whole DSP flow in one call, as ``pull_data_filtered`` makes it."""
+        self._record("get_transfer_id", **kwargs)
+        return "tp-1"
+
+    def get_endpoint_with_token(self, **kwargs: Any) -> tuple[str, str]:
+        self._record("get_endpoint_with_token", **kwargs)
+        return self._dataplane_url, self._token
 
 
 class ProviderDouble:

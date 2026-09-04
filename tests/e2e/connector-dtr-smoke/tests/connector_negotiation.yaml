@@ -112,9 +112,16 @@ execution:
   - id: fetch_data
     uses: connector/dataplane/http_request
     name: Fetch the actual payload through the negotiated data plane
+    # `input:` names one of the step's own outputs, never the step. Asserting
+    # on `fetch_data` asked this step for an output called after itself, got
+    # nothing back, and failed `not_null` on every run however well the fetch
+    # had gone. The data plane's answer is what the step publishes: the status
+    # it was given and the body it read.
     validate:
       - uses: validate/assert
-        with: { input: fetch_data, operator: not_null }
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/assert
+        with: { input: body, operator: not_null }
 
 teardown:
   - id: delete_contract
