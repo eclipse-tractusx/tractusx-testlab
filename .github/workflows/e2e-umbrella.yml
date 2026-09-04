@@ -101,7 +101,13 @@ env:
   # release settles in about three minutes, so this is a stall detector rather
   # than a budget — kept well clear of the measured time, but low enough that a
   # wedged deploy is reported in the same hour it started.
-  HELM_TIMEOUT: "15m"
+  #
+  # It has to stay clear of the *slowest* thing a healthy release can do, and
+  # that is now a slow starter being given its full liveness grace: 240s of
+  # delay plus 60 misses (see ci/umbrella.values.yaml). A release that spends
+  # that grace and then comes up is healthy, and a 15m budget used to call it a
+  # failure right as it was about to succeed.
+  HELM_TIMEOUT: "25m"
   TCK_INDEX: tests/e2e/connector-dtr-smoke/index.yaml
   TCK_CONFIG: tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml
   UMBRELLA_CI_VALUES: tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml
@@ -126,7 +132,7 @@ env:
 jobs:
   e2e-umbrella:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       # ------------------------------------------------------------------
@@ -542,50 +548,39 @@ jobs:
             "${UMBRELLA_RENDERED}" \
             | sed -E 's/.*image:[[:space:]]*//; s/"//g' | sort -u)"
           echo "${images}"
+          # Every image is pulled *inside* the node, through the CRI, exactly as
+          # the kubelet would. Two reasons, and neither is a preference:
+          #
+          #   * `kind load` is `docker save` piped into containerd's importer,
+          #     and a save cannot carry the digest a `tag@sha256:...` reference
+          #     names: containerd files the layers under a placeholder
+          #     (`docker.io/library/import-<date>@sha256:...`) whose digest is
+          #     not the one the pod asks for. That is worse than a miss — the
+          #     kubelet pulls the real image fine, then CreateContainer resolves
+          #     the placeholder and fails "failed to get image from containerd …
+          #     not found", and re-pulling never repairs the record, so the pod
+          #     is stuck in CreateContainerError for the life of the cluster.
+          #     That is what held `umbrella-postgres-0` and
+          #     `umbrella-issuerservice-postgresql-0` down for a whole run.
+          #   * `docker pull` + `kind load` stores every layer twice — once in
+          #     the runner's Docker, once in the node's containerd — on a disk
+          #     the kubelet is watching. Cross the eviction threshold and pods
+          #     stop being scheduled at all, which surfaces as pods that sit in
+          #     Pending until `helm install --wait` gives up. The node needs the
+          #     copy; the runner's Docker never did.
+          #
+          # The endpoint is passed explicitly because the kind base image ships
+          # `crictl` but no `/etc/crictl.yaml`, and a miss here is only a miss:
+          # the kubelet then pulls the image on demand.
           for image in ${images}; do
-            # A `tag@sha256:...` reference must never go through `kind load`.
-            # `kind load` is `docker save` piped into containerd's importer, and
-            # a save cannot carry the digest the reference names: containerd
-            # therefore files the layers under a placeholder
-            # (`docker.io/library/import-<date>@sha256:...`) whose digest is not
-            # the one the pod asks for. The result is worse than a miss — the
-            # kubelet pulls the real image fine, then CreateContainer resolves
-            # the placeholder and fails "failed to get image from containerd …
-            # not found", and re-pulling never repairs the record, so the pod is
-            # stuck in CreateContainerError for the life of the cluster. That is
-            # what held `umbrella-postgres-0` and
-            # `umbrella-issuerservice-postgresql-0` down for a whole run: both
-            # run `docker.io/postgres:18.0@sha256:…`, the release's only
-            # digest-pinned image, and the IssuerService then CrashLoopBackOff'd
-            # against the database that never came up.
-            #
-            # Pulling inside the node instead goes through the CRI, exactly as
-            # the kubelet would, so the image is stored under the reference the
-            # pod actually requests. The endpoint is passed explicitly because
-            # the kind base image ships `crictl` but no `/etc/crictl.yaml`, and
-            # a miss here is only a miss: the kubelet then pulls the image on
-            # demand, which is the behaviour every non-preloaded image already
-            # relies on.
-            case "${image}" in
-              *@sha256:*)
-                docker exec tck-e2e-control-plane \
-                  crictl --runtime-endpoint unix:///run/containerd/containerd.sock \
-                  pull "${image}" >/dev/null 2>&1 \
-                  && echo "loaded  ${image} (crictl — digest-pinned)" \
-                  || echo "SKIPPED ${image} (digest-pinned; the kubelet will pull it)"
-                continue
-                ;;
-            esac
-            if docker pull --quiet "${image}" >/dev/null 2>&1; then
-              ./kind load docker-image --name tck-e2e "${image}" >/dev/null 2>&1 \
-                && echo "loaded  ${image}" \
-                || echo "SKIPPED ${image} (kind load failed)"
-            else
-              echo "SKIPPED ${image} (pull failed)"
-            fi
+            docker exec tck-e2e-control-plane \
+              crictl --runtime-endpoint unix:///run/containerd/containerd.sock \
+              pull "${image}" >/dev/null 2>&1 \
+              && echo "loaded  ${image}" \
+              || echo "SKIPPED ${image} (the kubelet will pull it)"
           done
-          docker image prune --all --force >/dev/null 2>&1 || true
           df -h /
+          docker exec tck-e2e-control-plane df -h /
 
       - name: Deploy Tractus-X Umbrella (decentralized IdentityHub profile)
         run: |
@@ -869,6 +864,35 @@ jobs:
             kubectl logs -n "${UMBRELLA_NAMESPACE}" "${pod}" --all-containers --previous --tail=1000 \
               > "ci-logs/${pod_name}-previous.log" 2>&1 || true
           done < <(kubectl get pods -n "${UMBRELLA_NAMESPACE}" -o name 2>/dev/null || true)
+
+          # Everything above lands in an artifact, and an artifact is one more
+          # download between a red run and the reason for it. The three things
+          # that answer "why did the deploy not converge" — what is not ready,
+          # what the cluster warned about, and what those pods last said — are
+          # cheap enough to also put in the log.
+          echo "::group::Pods"
+          cat ci-logs/pods.txt || true
+          echo "::endgroup::"
+          echo "::group::Warning events"
+          kubectl get events -n "${UMBRELLA_NAMESPACE}" --field-selector type=Warning \
+            --sort-by=.metadata.creationTimestamp \
+            -o "custom-columns=OBJECT:.involvedObject.name,REASON:.reason,MESSAGE:.message" \
+            2>/dev/null | tail -40 || true
+          echo "::endgroup::"
+          echo "::group::Node conditions"
+          kubectl get nodes \
+            -o "custom-columns=NAME:.metadata.name,CONDITIONS:.status.conditions[?(@.status=='True')].type" \
+            2>/dev/null || true
+          echo "::endgroup::"
+          while IFS= read -r pod; do
+            pod_name="${pod#pod/}"
+            echo "::group::${pod_name} (last 40 lines)"
+            tail -40 "ci-logs/${pod_name}.log" 2>/dev/null || true
+            echo "::endgroup::"
+          done < <(kubectl get pods -n "${UMBRELLA_NAMESPACE}" \
+            -o "custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready" \
+            --no-headers 2>/dev/null \
+            | awk '$NF !~ /^(true,)*true$/ { print "pod/" $1 }' || true)
 
       - name: Upload testlab logs and execution traces
         if: always()

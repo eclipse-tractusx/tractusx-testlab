@@ -39,6 +39,15 @@
 #   3. Making the whole release survive on a 4-vCPU GitHub runner: every JVM in
 #      the release boots at the same time on a heavily contended CPU, so the
 #      stock 30s/100s liveness delays kill pods before they finish starting.
+#      The delay alone is not enough. A probe that starts late still gives up
+#      after `failureThreshold` misses — 30s at the stock six — and a JVM that
+#      is only slow is then restarted, which puts its boot back at the end of
+#      the queue on a node that is now busier than when it started. That loop
+#      never converges, and what `helm install --wait` reports 15 minutes later
+#      is a pod that never became ready. Every liveness probe this file already
+#      delays therefore also gets a threshold worth minutes rather than
+#      seconds: liveness is here to catch a runtime that has *hung*, and on
+#      this node nothing can tell "hung" from "slow" in half a minute.
 #
 # Note what this file deliberately does NOT touch: the profile's vault wiring.
 # `edc-provider.install.vault` stays `false` and the connector bundle's own
@@ -71,6 +80,7 @@ edc-provider:
       # fixes it.
       livenessProbe:
         initialDelaySeconds: 240
+        failureThreshold: 60
       resources:
         requests:
           cpu: 100m
@@ -115,6 +125,7 @@ edc-provider:
             TX_EDC_DPF_CONSUMER_PROXY_AUTH_APIKEY: "password"
           livenessProbe:
             initialDelaySeconds: 240
+            failureThreshold: 60
           endpoints:
             default:
               path: /api
@@ -170,6 +181,7 @@ edc-provider:
             TX_EDC_DID_SERVICE_SELF_DEREGISTRATION_ENABLED: "false"
           livenessProbe:
             initialDelaySeconds: 240
+            failureThreshold: 60
     digital-twin-bundle:
       enabled: true
       digital-twin-registry:
@@ -180,6 +192,7 @@ edc-provider:
           host: provider-dtr.local
           livenessProbe:
             initialDelaySeconds: 240
+            failureThreshold: 60
           dataSource:
             url: jdbc:postgresql://provider-dtr-postgresql:5432/dtr
           ingress:
@@ -233,6 +246,7 @@ edc-consumer:
       # fixes it.
       livenessProbe:
         initialDelaySeconds: 240
+        failureThreshold: 60
       resources:
         requests:
           cpu: 100m
@@ -268,6 +282,7 @@ edc-consumer:
             TX_EDC_DPF_CONSUMER_PROXY_AUTH_APIKEY: "password"
           livenessProbe:
             initialDelaySeconds: 240
+            failureThreshold: 60
           endpoints:
             default:
               path: /api
@@ -323,6 +338,7 @@ edc-consumer:
             TX_EDC_DID_SERVICE_SELF_DEREGISTRATION_ENABLED: "false"
           livenessProbe:
             initialDelaySeconds: 240
+            failureThreshold: 60
 
 # Both of these ask for 500m of CPU by default. On a 4-vCPU runner that is
 # ~a third of the schedulable capacity spent on two services that idle for
@@ -331,6 +347,7 @@ bdrs-server-memory:
   server:
     livenessProbe:
       initialDelaySeconds: 240
+      failureThreshold: 60
     resources:
       requests:
         cpu: 100m
@@ -360,6 +377,7 @@ tractusx-issuerservice:
       repository: tractusx/issuerservice-memory
     livenessProbe:
       initialDelaySeconds: 240
+      failureThreshold: 60
     resources:
       requests:
         cpu: 100m
