@@ -39,6 +39,7 @@ from tractusx_testlab.models.runtime.results import (
     ScriptResult,
     StepResult,
 )
+from tractusx_testlab.player.execution._deadline import invoke_within_deadline
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.execution.phase import (
@@ -148,7 +149,7 @@ async def _run_step_guarded(
         # debugged from the script, which only says which reference was written.
         inputs = dict(params)
 
-        output = await step_instance.invoke(params, context, step_def)
+        output = await invoke_within_deadline(step_instance, step_def, params, context)
 
         assertion_results: list[AssertionResult] = []
         if step_def.assertions:

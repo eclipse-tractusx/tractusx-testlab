@@ -26,7 +26,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -46,6 +45,7 @@ from tractusx_testlab.steps.shared_models import (
     DEFAULT_POLL_INTERVAL,
     FilterExpressionParams,
     as_dataset_list,
+    dsp_budget,
 )
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
@@ -128,9 +128,6 @@ async def _do_dsp_flow(
     party = params.counter_party(context)
     counter_party_id = party.identity
 
-    # Yield to event loop before blocking SDK call
-    await asyncio.sleep(0)
-
     # Pre-fetch catalog to extract dataset metadata that tests may assert on.
     catalog: dict = {}
     try:
@@ -163,7 +160,8 @@ async def _do_dsp_flow(
     # the SDK's one evidence-free verdict — no valid policy found — into the
     # comparison behind it (steps.connector.policy_mismatch).
     with policy_mismatch.explained(party.address):
-        transfer_id = await sdk_call.run(
+        transfer_id = await sdk_call.run_within(
+            dsp_budget(params.max_wait),
             consumer.get_transfer_id,
             counter_party_id=counter_party_id,
             counter_party_address=party.address,

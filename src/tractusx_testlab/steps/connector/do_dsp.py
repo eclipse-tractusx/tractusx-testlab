@@ -39,6 +39,7 @@ from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.shared_models import (
     FilterExpressionParams,
     StepParams,
+    dsp_budget,
 )
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
@@ -103,7 +104,8 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
         # that it turned all of them down. The guard reports which offers those
         # were and how they differed (steps.connector.policy_mismatch).
         with policy_mismatch.explained(party.address):
-            endpoint, token = await sdk_call.run(
+            endpoint, token = await sdk_call.run_within(
+                dsp_budget(),
                 consumer.do_dsp,
                 counter_party_id=party.identity,
                 counter_party_address=party.address,
@@ -156,7 +158,8 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.dataspace.consumer()
         with policy_mismatch.explained(params.counter_party_address or params.bpnl):
-            endpoint, token = await sdk_call.run(
+            endpoint, token = await sdk_call.run_within(
+                dsp_budget(),
                 consumer.do_dsp_with_bpnl,
                 bpnl=params.bpnl,
                 counter_party_address=params.counter_party_address,
@@ -214,7 +217,8 @@ class DiscoverDtrAuthStep(BaseStep[DiscoverDtrAuthParams, DspFlowOutput]):
         consumer = context.dataspace.consumer()
         party = params.counter_party(context)
         with policy_mismatch.explained(party.address):
-            endpoint, token = await sdk_call.run(
+            endpoint, token = await sdk_call.run_within(
+                dsp_budget(),
                 consumer.do_dsp_by_dct_type,
                 counter_party_id=party.identity,
                 counter_party_address=party.address,

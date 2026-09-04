@@ -43,6 +43,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.dsp_keys import DATASET_KEYS, first_present
 from tractusx_testlab.steps.step_contract import StepParams, StepPayload, StepValue
 
@@ -51,6 +52,19 @@ from tractusx_testlab.steps.step_contract import StepParams, StepPayload, StepVa
 #: learns the wait on one step has learned it on all of them.
 DEFAULT_MAX_WAIT = 60.0
 DEFAULT_POLL_INTERVAL = 1.0
+
+
+def dsp_budget(max_wait: float = DEFAULT_MAX_WAIT) -> float:
+    """Longest a whole SDK DSP flow may take before the step running it gives up.
+
+    The SDK spends up to *max_wait* waiting for the negotiation to finalise and
+    up to *max_wait* again waiting for the EDR entry that follows it, with a
+    catalog round trip in front of both. The budget is those three added up, so
+    a flow that is merely slow still finishes and one that is hanging on a
+    request nobody is going to answer stops at a bound of its own rather than at
+    the CI job's.
+    """
+    return 2 * max_wait + sdk_call.DEFAULT_SDK_TIMEOUT
 
 
 class NoOutput(StepValue[None]):
