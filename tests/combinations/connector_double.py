@@ -60,10 +60,21 @@ class _Controller:
     document: dict
     reads: list[str] = field(default_factory=list)
     deleted: list[str] = field(default_factory=list)
+    posted: list[Any] = field(default_factory=list)
 
     def get_by_id(self, oid: str, **_kwargs: Any) -> _Response:
         self.reads.append(oid)
         return _Response(200, {"@id": oid, **self.document})
+
+    def create(self, obj: Any, **_kwargs: Any) -> _Response:
+        """Post a built model, as ``create_contract_definition`` does.
+
+        The step reaches the contract-definition controller directly rather
+        than through a ``create_*`` helper, because the SDK's own only ever
+        offers a single asset.
+        """
+        self.posted.append(obj)
+        return _Response(200, {"@id": getattr(obj, "oid", None)})
 
     def delete(self, oid: str, **_kwargs: Any) -> _Response:
         self.deleted.append(oid)
@@ -167,10 +178,22 @@ class ProviderDouble:
         self.policies = _Controller({})
         self.contract_definitions = _Controller({})
         self.created: list[dict] = []
+        self.registered_policies: list[dict] = []
 
     def create_asset(self, **kwargs: Any) -> _Response:
         self.created.append(kwargs)
         return _Response(200, {"@id": kwargs.get("asset_id", "asset-1")})
+
+    def create_policy(self, **kwargs: Any) -> dict:
+        """Register a policy the way the SDK does — a plain document, not a response.
+
+        The keyword names are the SDK's own (``policy_id``, ``context``,
+        ``permissions``, ``prohibitions``, ``obligations``); recording them is
+        what lets a test assert that the rules the author wrote survived the
+        rewrite into ODRL.
+        """
+        self.registered_policies.append(kwargs)
+        return {"@id": kwargs.get("policy_id")}
 
 
 class ServicesDouble:
