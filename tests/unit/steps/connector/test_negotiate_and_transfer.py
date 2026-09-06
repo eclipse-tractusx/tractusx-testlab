@@ -383,3 +383,19 @@ class TestDataplaneCallParams:
     def test_the_path_is_appended_without_doubling_the_separator(self) -> None:
         params = DataplaneCallParams(dataplane_url=_ENDPOINT + "/", path="/items")
         assert params.resolved_url(None) == _ENDPOINT + "/items"
+
+    def test_an_omitted_token_falls_back_to_the_context_variable(self) -> None:
+        """Left out entirely, the token a prior transfer published is used."""
+        params = DataplaneCallParams(dataplane_url=_ENDPOINT)
+        assert params.resolved_token(_TOKEN) == _TOKEN
+
+    def test_an_explicit_empty_token_is_not_replaced_by_the_fallback(self) -> None:
+        """A negative-path script asks for no token by writing '', in writing.
+
+        Reading it with `params.edr_token or fallback` would treat '' the same
+        as "omitted" and silently send the fallback — the token a *previous*
+        script in the same run published under the same context variable name —
+        which turns a test of "no token" into a test of a stale one.
+        """
+        params = DataplaneCallParams(dataplane_url=_ENDPOINT, edr_token="")
+        assert params.resolved_token(_TOKEN) == ""
