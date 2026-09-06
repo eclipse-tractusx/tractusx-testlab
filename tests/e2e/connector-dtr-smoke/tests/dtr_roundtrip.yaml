@@ -72,6 +72,7 @@ execution:
                 protocolInformation:
                   href: "${{ infrastructure.sut.connector.dsp_url }}"
                   endpointProtocol: "HTTP"
+                  endpointProtocolVersion: ["1.1"]
                   subprotocol: "DSP"
                   # This script exercises the DTR API surface in isolation from
                   # connector_negotiation.yaml, so the referenced asset id is a
