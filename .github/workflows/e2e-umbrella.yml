@@ -87,6 +87,7 @@ on:
       - "src/tractusx_testlab/cli/**"
       - "tests/e2e/**"
       - ".github/workflows/e2e-umbrella.yml"
+      - ".github/workflows/build-kind-node-cache.yml"
 
 env:
   UMBRELLA_NAMESPACE: umbrella
@@ -97,6 +98,10 @@ env:
   # 3.16+ for `--qps`: `--wait` polls every resource in the release, and with
   # ~125 of them the default client-side rate limit is what expires first.
   HELM_VERSION: "3.16.4"
+  # This tag is a hash of the deployment values and cache-builder definition.
+  # It is immutable for a given source revision; a cold-cache fallback keeps
+  # first-time runs and fork pull requests functional.
+  KIND_NODE_CACHE_IMAGE: ghcr.io/${{ github.repository }}/e2e-kind-node:${{ hashFiles('tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml', '.github/workflows/build-kind-node-cache.yml') }}
   # Every JVM in the release boots at once on a 4-vCPU runner. A healthy
   # release settles in about three minutes, so this is a stall detector rather
   # than a budget — kept well clear of the measured time, but low enough that a
@@ -133,6 +138,9 @@ jobs:
   e2e-umbrella:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       # ------------------------------------------------------------------
@@ -199,6 +207,21 @@ jobs:
         with:
           version: "${{ env.HELM_VERSION }}"
 
+      - name: Pull cached Umbrella Kind node
+        id: kind-node-cache
+        run: |
+          echo "${GITHUB_TOKEN}" | docker login ghcr.io \
+            --username "${GITHUB_ACTOR}" --password-stdin || true
+          if docker pull "${KIND_NODE_CACHE_IMAGE}"; then
+            echo "image=${KIND_NODE_CACHE_IMAGE}" >> "${GITHUB_OUTPUT}"
+            echo "hit=true" >> "${GITHUB_OUTPUT}"
+            echo "Using cached Umbrella Kind node ${KIND_NODE_CACHE_IMAGE}"
+          else
+            echo "image=kindest/node:v1.31.0" >> "${GITHUB_OUTPUT}"
+            echo "hit=false" >> "${GITHUB_OUTPUT}"
+            echo "::warning::Umbrella Kind node cache is unavailable; using a cold node."
+          fi
+
       - name: Create kind cluster
         run: |
           curl -Lo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
@@ -222,7 +245,9 @@ jobs:
                   hostPort: 443
                   protocol: TCP
           EOF
-          ./kind create cluster --name tck-e2e --config kind-config.yaml --wait 5m
+          ./kind create cluster --name tck-e2e \
+            --image "${{ steps.kind-node-cache.outputs.image }}" \
+            --config kind-config.yaml --wait 5m
 
       - name: Install ingress-nginx and make it the default IngressClass
         run: |
@@ -536,6 +561,7 @@ jobs:
           echo "UMBRELLA_RENDERED=${rendered}" >> "${GITHUB_ENV}"
 
       - name: Pre-load release images into the kind node
+        if: steps.kind-node-cache.outputs.hit != 'true'
         continue-on-error: true
         run: |
           set -uo pipefail
@@ -795,11 +821,21 @@ jobs:
 
       # Combination 1 — the whole suite.
       - name: testlab run — full suite
+        if: github.event_name != 'pull_request'
         run: |
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --logs-dir logs/e2e/full
+
+      - name: testlab run — pull-request smoke suite
+        if: github.event_name == 'pull_request'
+        run: |
+          poetry run testlab run "${TCK_OUT}" \
+            --config "${TCK_CONFIG}" \
+            --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+            --var "skip_tests=dsp_step_by_step.yaml,negative_paths.yaml" \
+            --logs-dir logs/e2e/pr-smoke
 
       # Combination 2 — the registry alone, from the same package. Nothing
       # recompiles; the selection is a run-time argument, and the engine
@@ -811,6 +847,7 @@ jobs:
       # cheap one: every other subset re-runs a DSP negotiation and a transfer
       # the full suite has already driven against the same live dataspace.
       - name: testlab run — registry combination
+        if: github.event_name != 'pull_request'
         run: |
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
@@ -821,6 +858,7 @@ jobs:
       # A selection the manifest does not permit must be refused, not silently
       # ignored — an operator who mistypes a test id has to find out.
       - name: testlab run — an unknown test id is refused
+        if: github.event_name != 'pull_request'
         run: |
           if poetry run testlab run "${TCK_OUT}" \
                --config "${TCK_CONFIG}" \

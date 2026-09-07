@@ -1,0 +1,125 @@
+###############################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# SPDX-License-Identifier: Apache-2.0
+###############################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: GPT-5.6).
+## It was reviewed and tested by a human committer.
+
+name: Build E2E Kind node cache
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 1 * * *"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: e2e-kind-node-cache
+  cancel-in-progress: false
+
+env:
+  UMBRELLA_CHART_VERSION: "26.03.00"
+  UMBRELLA_VALUES_REF: "umbrella-26.03.00"
+  HELM_VERSION: "3.16.4"
+  KIND_NODE_IMAGE: kindest/node:v1.31.0
+  KIND_NODE_CACHE_IMAGE: ghcr.io/${{ github.repository }}/e2e-kind-node:${{ hashFiles('tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml', '.github/workflows/build-kind-node-cache.yml') }}
+  UMBRELLA_CI_VALUES: tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml
+
+jobs:
+  build:
+    if: github.repository == 'eclipse-tractusx/tractusx-testlab' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: "${{ env.HELM_VERSION }}"
+
+      - name: Render the pinned Umbrella release
+        run: |
+          set -euo pipefail
+          helm repo add tractusx-dev https://eclipse-tractusx.github.io/charts/dev
+          helm repo update
+          helm pull tractusx-dev/umbrella --version "${UMBRELLA_CHART_VERSION}" \
+            --untar --untardir "${RUNNER_TEMP}"
+          chart_dir="${RUNNER_TEMP}/umbrella"
+          source_bundles="${chart_dir}/charts/tx-data-provider/charts"
+          nested_provider="${chart_dir}/charts/decentralized-identity-connector/charts/tx-data-provider"
+          mkdir -p "${nested_provider}/charts"
+          cp -R "${source_bundles}/." "${nested_provider}/charts/"
+          rm -rf "${chart_dir}/charts/decentralized-identity-connector/charts/tractusx-identityhub/charts/postgres"
+          curl --fail --location --silent --show-error \
+            "https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/${UMBRELLA_VALUES_REF}/charts/umbrella/values-adopter-decentralized-identityhub.yaml" \
+            --output "${RUNNER_TEMP}/umbrella-profile.yaml"
+          helm template umbrella "${chart_dir}" \
+            -f "${RUNNER_TEMP}/umbrella-profile.yaml" \
+            -f "${UMBRELLA_CI_VALUES}" > "${RUNNER_TEMP}/umbrella-rendered.yaml"
+
+      - name: Extract release images
+        run: |
+          python3 - "${RUNNER_TEMP}/umbrella-rendered.yaml" "${RUNNER_TEMP}/images.txt" <<'PY'
+          import sys
+          import yaml
+
+          def find_images(value):
+              if isinstance(value, dict):
+                  for key, child in value.items():
+                      if key == "image" and isinstance(child, str):
+                          yield child
+                      yield from find_images(child)
+              elif isinstance(value, list):
+                  for child in value:
+                      yield from find_images(child)
+
+          with open(sys.argv[1], encoding="utf-8") as source:
+              images = sorted({image for item in yaml.safe_load_all(source) for image in find_images(item)})
+          if not images:
+              raise SystemExit("No workload images found in the rendered Umbrella release.")
+          with open(sys.argv[2], "w", encoding="utf-8") as output:
+              output.write("\n".join(images) + "\n")
+          print("\n".join(images))
+          PY
+
+      - name: Build Kind node with cached release images
+        run: |
+          set -euo pipefail
+          docker pull "${KIND_NODE_IMAGE}"
+          docker run --detach --privileged --name e2e-kind-node-cache "${KIND_NODE_IMAGE}" >/dev/null
+          for _ in $(seq 1 30); do
+            if docker exec e2e-kind-node-cache \
+              crictl --runtime-endpoint unix:///run/containerd/containerd.sock images >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          while IFS= read -r image; do
+            docker exec e2e-kind-node-cache \
+              crictl --runtime-endpoint unix:///run/containerd/containerd.sock pull "${image}"
+          done < "${RUNNER_TEMP}/images.txt"
+          docker stop e2e-kind-node-cache
+          docker commit \
+            --change "LABEL org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --change "LABEL org.eclipse.tractusx.umbrella.chart=${UMBRELLA_CHART_VERSION}" \
+            e2e-kind-node-cache "${KIND_NODE_CACHE_IMAGE}"
+
+      - name: Publish cached Kind node
+        run: |
+          echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          docker push "${KIND_NODE_CACHE_IMAGE}"
