@@ -214,7 +214,7 @@ jobs:
 
       - name: Resolve the cached Kind node tag
         env:
-          CACHE_TAG: ${{ hashFiles('tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml', '.github/workflows/build-kind-node-cache.yml') }}
+          CACHE_TAG: ${{ hashFiles('tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml', '.github/workflows/build-kind-node-cache.yml', '.github/workflows/e2e-umbrella.yml') }}
         run: echo "KIND_NODE_CACHE_IMAGE=${KIND_NODE_CACHE_REPO}:${CACHE_TAG}" >> "${GITHUB_ENV}"
 
       - name: Pull cached Umbrella Kind node
