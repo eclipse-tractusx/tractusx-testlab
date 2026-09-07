@@ -35,6 +35,7 @@ from tractusx_testlab.models import (
 from tractusx_testlab.models.authoring.definitions import Assertion
 from tractusx_testlab.steps._checks import check_schema_validation
 from tractusx_testlab.steps._checks.extraction import extract_path
+from tractusx_testlab.steps._checks.published_names import names_a_published_output
 from tractusx_testlab.steps.assertions.operators import RANGE_OPERATORS, apply_operator
 from tractusx_testlab.steps.assertions.vocabulary import (
     AssertionKind,
@@ -117,7 +118,7 @@ class AssertionEngine:
         subject = params.get("input")
         if declared is None or not isinstance(subject, str):
             return ""
-        if subject.split(".", 1)[0] in declared:
+        if names_a_published_output(subject, declared):
             return ""
         return (
             f"'input: {subject}' names nothing this step publishes. "

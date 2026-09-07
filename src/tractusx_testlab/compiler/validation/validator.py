@@ -34,7 +34,7 @@ from pydantic import ValidationError
 from tractusx_testlab.infrastructure.mapping import known_keys
 from tractusx_testlab.models import ScriptDefinition, StepDefinition, TckDefinition
 from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.steps._checks.extraction import declared_names
+from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
 from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
 from tractusx_testlab.syntax import defaults, diagnostics, patterns
@@ -264,12 +264,11 @@ class ScriptValidator:
         returns = step_def.returns or {}
         if not returns or step_cls is None:
             return
-        declared = declared_names(step_cls)
+        declared = publishes(step_cls)
+        if declared is None:
+            return
         for name in returns:
-            # A dotted name reaches inside a declared output; only the first
-            # segment has to be something the step publishes.
-            root = name.split(".", 1)[0]
-            if root in declared:
+            if names_a_published_output(name, declared):
                 continue
             result.add_error(
                 f"'returns' name '{name}' is not produced by step "
@@ -325,13 +324,12 @@ class ScriptValidator:
         ``with.input`` must be a plain string naming something the step
         publishes — what the *step* declares, not what the script wrote in
         ``returns:``, which is optional and left a step without one unchecked
-        entirely. Only the first segment of a dotted input has to be published.
-        The shipped e2e TCK asserted ``input: fetch_data`` on
+        entirely. The shipped e2e TCK asserted ``input: fetch_data`` on
         ``connector/dataplane/http_request``, a name nothing produces, and the
         engine compared ``None`` against ``not_null`` and failed a working SUT.
         """
-        publishes = declared_names(step_cls) if step_cls is not None else frozenset()
-        valid_keys = set(step_def.returns or {}) | publishes
+        declared = publishes(step_cls) if step_cls is not None else None
+        valid_keys = None if declared is None else set(step_def.returns or {}) | declared
         for assertion in step_def.assertions or []:
             params = assertion.with_ or {}
             resolved = resolve_assertion(assertion.uses, params)
@@ -363,10 +361,10 @@ class ScriptValidator:
                     phase=phase,
                 )
                 continue
-            if valid_keys and input_value.split(".", 1)[0] not in valid_keys:
+            if not names_a_published_output(input_value, valid_keys):
                 result.add_error(
                     f"'validate.with.input' value '{input_value}' is not produced by "
-                    f"step '{step_def.uses}'. It publishes: {', '.join(sorted(valid_keys))}.",
+                    f"step '{step_def.uses}'. It publishes: {', '.join(sorted(valid_keys or []))}.",
                     step_index=step_idx,
                     field="validate.with.input",
                     phase=phase,

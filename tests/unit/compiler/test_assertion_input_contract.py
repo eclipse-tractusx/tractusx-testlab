@@ -94,3 +94,23 @@ class TestAssertionInputsAreChecked:
         # The unknown-step error is the finding; guessing at its outputs is not.
         errors = _errors_for("no/such/step", "whatever")
         assert all("validate.with.input" not in message for message in errors)
+
+
+class TestPathsThatResolveAreNotRefused:
+    """The check must agree with what extraction will actually resolve."""
+
+    def test_a_predicate_on_the_first_segment_is_accepted(self) -> None:
+        # `datasets` is published; the predicate selects within it, and its
+        # value may contain the dots a naive split would shred.
+        assert (
+            _errors_for("connector/consumer/query_catalog", "datasets[assetId='urn:x.y'].id") == []
+        )
+
+    def test_a_step_publishing_an_open_document_accepts_any_name(self) -> None:
+        # `notification/consumer/send` spreads the receiver's answer at the top
+        # level, so its keys cannot be listed ahead of time.
+        assert _errors_for("notification/consumer/send", "notificationId") == []
+
+    def test_a_closed_output_model_is_still_checked(self) -> None:
+        errors = _errors_for("connector/consumer/query_catalog", "not_a_real_output")
+        assert len(errors) == 1

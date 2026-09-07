@@ -273,3 +273,22 @@ class TestUndeclaredInputs:
         # context by hand — get the old behaviour rather than a false failure.
         result = _run({"anything": 1}, "validate/assert", input="anything", operator="not_null")
         assert result.passed
+
+
+class TestDeclaredSetAgreesWithExtraction:
+    """Restricting to declared names must not refuse a path that resolves."""
+
+    def test_a_predicate_on_the_first_segment_still_evaluates(self) -> None:
+        result = AssertionEngine.evaluate(
+            [
+                _assert(
+                    "validate/assert",
+                    input="datasets[assetId='urn:x.y'].id",
+                    operator="equals",
+                    value="d1",
+                )
+            ],
+            {"datasets": [{"assetId": "urn:x.y", "id": "d1"}]},
+            frozenset({"datasets"}),
+        )[0]
+        assert result.passed, result.message
