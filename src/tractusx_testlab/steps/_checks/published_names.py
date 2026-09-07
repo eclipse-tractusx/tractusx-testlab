@@ -46,12 +46,18 @@ def publishes(step_cls: Any) -> frozenset[str] | None:
     keys it was given. Extraction reads those keys off the value before it
     consults any declared set, so listing them is impossible and restricting to
     the declared ones would refuse names that resolve perfectly well.
+
+    A ``RootModel`` output *is* the document, and its ``root`` field is
+    synthetic: it names the document rather than anything inside it, and
+    resolves to nothing at run time, so it is never a name a script may use.
+    The document's own keys are reached through ``value`` or ``body`` — the
+    same spelling ``returns:`` has always required of them.
     """
     model = getattr(step_cls, "output_model", None)
     config = getattr(model, "model_config", None) or {}
     if config.get("extra") == "allow":
         return None
-    return declared_names(step_cls)
+    return declared_names(step_cls) - {"root"}
 
 
 def names_a_published_output(path: str, published: frozenset[str] | set[str] | None) -> bool:
