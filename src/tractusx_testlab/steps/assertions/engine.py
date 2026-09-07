@@ -47,12 +47,25 @@ class AssertionEngine:
     """Evaluates a list of assertions against a step's output value."""
 
     @staticmethod
-    def evaluate(assertions: list[Assertion], output: object) -> list[AssertionResult]:
-        """Evaluate every ``validate:`` entry against the output the step produced."""
-        return [AssertionEngine._evaluate_one(assertion, output) for assertion in assertions]
+    def evaluate(
+        assertions: list[Assertion], output: object, declared: frozenset[str] | None = None
+    ) -> list[AssertionResult]:
+        """Evaluate every ``validate:`` entry against the output the step produced.
+
+        *declared* is every name the step publishes. Given it, an assertion that
+        names something else is reported as a broken assertion rather than
+        silently extracting ``None`` and comparing that — which reads as the SUT
+        failing the check, when what actually happened is that the check was
+        never pointed at anything.
+        """
+        return [
+            AssertionEngine._evaluate_one(assertion, output, declared) for assertion in assertions
+        ]
 
     @staticmethod
-    def _evaluate_one(assertion: Assertion, output: object) -> AssertionResult:
+    def _evaluate_one(
+        assertion: Assertion, output: object, declared: frozenset[str] | None = None
+    ) -> AssertionResult:
         params = assertion.with_ or {}
         severity = AssertionSeverity(params.get("severity", "HARD"))
         resolved = resolve(assertion.uses, params)
@@ -70,6 +83,17 @@ class AssertionEngine:
                 severity=severity,
             )
 
+        unknown_input = AssertionEngine._unknown_input(params, declared)
+        if unknown_input:
+            return AssertionResult(
+                assertion=assertion,
+                passed=False,
+                expected=None,
+                actual=None,
+                message=unknown_input,
+                severity=severity,
+            )
+
         actual = AssertionEngine._extract_subject(output, params, resolved)
         expected = AssertionEngine._resolve_expected(params, resolved)
         passed, message = AssertionEngine._check(resolved, actual, expected)
@@ -81,6 +105,23 @@ class AssertionEngine:
             actual=actual,
             message="" if passed else message,
             severity=severity,
+        )
+
+    @staticmethod
+    def _unknown_input(params: dict, declared: frozenset[str] | None) -> str:
+        """Say why an ``input`` cannot be resolved, or '' when it can.
+
+        A dotted input reaches inside a published output, so only its first
+        segment has to be a name the step promises.
+        """
+        subject = params.get("input")
+        if declared is None or not isinstance(subject, str):
+            return ""
+        if subject.split(".", 1)[0] in declared:
+            return ""
+        return (
+            f"'input: {subject}' names nothing this step publishes. "
+            f"It publishes: {', '.join(sorted(declared))}."
         )
 
     @staticmethod

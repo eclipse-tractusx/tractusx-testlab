@@ -242,7 +242,7 @@ class ScriptValidator:
         self._check_var_refs(step_def.with_ or {}, idx, declared, result)
 
         # Enforce plain-string validate inputs for inline validate assertions.
-        self._validate_inline_assert_inputs(step_def, idx, result, phase)
+        self._validate_inline_assert_inputs(step_def, step_cls, idx, result, phase)
 
         self._validate_returns(step_def, step_cls, idx, result, phase)
 
@@ -315,18 +315,23 @@ class ScriptValidator:
     def _validate_inline_assert_inputs(
         self,
         step_def: StepDefinition,
+        step_cls: type | None,
         step_idx: int,
         result: ValidationResult,
         phase: str,
     ) -> None:
-        """Check that every assertion names a real check and a declared input.
+        """Check that every assertion names a real check and a real input.
 
-        An assertion the engine cannot resolve is rejected here rather than at
-        run time, where it would surface as a failing check on a passing SUT.
-        ``with.input`` must be a plain string naming one of the step's
-        ``returns`` (e.g. ``"edr_token"``), not a ``${{ ... }}`` expression.
+        ``with.input`` must be a plain string naming something the step
+        publishes — what the *step* declares, not what the script wrote in
+        ``returns:``, which is optional and left a step without one unchecked
+        entirely. Only the first segment of a dotted input has to be published.
+        The shipped e2e TCK asserted ``input: fetch_data`` on
+        ``connector/dataplane/http_request``, a name nothing produces, and the
+        engine compared ``None`` against ``not_null`` and failed a working SUT.
         """
-        valid_keys = set(step_def.returns or {})
+        publishes = declared_names(step_cls) if step_cls is not None else frozenset()
+        valid_keys = set(step_def.returns or {}) | publishes
         for assertion in step_def.assertions or []:
             params = assertion.with_ or {}
             resolved = resolve_assertion(assertion.uses, params)
@@ -358,10 +363,10 @@ class ScriptValidator:
                     phase=phase,
                 )
                 continue
-            if valid_keys and input_value not in valid_keys:
+            if valid_keys and input_value.split(".", 1)[0] not in valid_keys:
                 result.add_error(
-                    f"'validate.with.input' value '{input_value}' is not declared in "
-                    f"'returns'. Valid keys: {sorted(valid_keys)}.",
+                    f"'validate.with.input' value '{input_value}' is not produced by "
+                    f"step '{step_def.uses}'. It publishes: {', '.join(sorted(valid_keys))}.",
                     step_index=step_idx,
                     field="validate.with.input",
                     phase=phase,
