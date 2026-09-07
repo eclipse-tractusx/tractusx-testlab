@@ -36,7 +36,8 @@ env:
   UMBRELLA_VALUES_REF: "umbrella-26.03.00"
   HELM_VERSION: "3.16.4"
   KIND_NODE_IMAGE: kindest/node:v1.31.0
-  KIND_NODE_CACHE_IMAGE: ghcr.io/${{ github.repository }}/e2e-kind-node:${{ hashFiles('tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml', '.github/workflows/build-kind-node-cache.yml') }}
+  # Resolved after the checkout: `hashFiles` sees no files before it.
+  KIND_NODE_CACHE_REPO: ghcr.io/${{ github.repository }}/e2e-kind-node
   UMBRELLA_CI_VALUES: tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml
 
 jobs:
@@ -47,6 +48,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve the cached Kind node tag
+        env:
+          CACHE_TAG: ${{ hashFiles('tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml', '.github/workflows/build-kind-node-cache.yml') }}
+        run: echo "KIND_NODE_CACHE_IMAGE=${KIND_NODE_CACHE_REPO}:${CACHE_TAG}" >> "${GITHUB_ENV}"
 
       - uses: azure/setup-helm@v4
         with:
@@ -120,6 +126,8 @@ jobs:
             e2e-kind-node-cache "${KIND_NODE_CACHE_IMAGE}"
 
       - name: Publish cached Kind node
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
           docker push "${KIND_NODE_CACHE_IMAGE}"

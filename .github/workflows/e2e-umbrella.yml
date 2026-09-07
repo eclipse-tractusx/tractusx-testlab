@@ -98,10 +98,11 @@ env:
   # 3.16+ for `--qps`: `--wait` polls every resource in the release, and with
   # ~125 of them the default client-side rate limit is what expires first.
   HELM_VERSION: "3.16.4"
-  # This tag is a hash of the deployment values and cache-builder definition.
-  # It is immutable for a given source revision; a cold-cache fallback keeps
-  # first-time runs and fork pull requests functional.
-  KIND_NODE_CACHE_IMAGE: ghcr.io/${{ github.repository }}/e2e-kind-node:${{ hashFiles('tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml', '.github/workflows/build-kind-node-cache.yml') }}
+  # The tag is a hash of the deployment values and the cache-builder
+  # definition, so it is immutable for a given source revision. It cannot be
+  # resolved here: `hashFiles` runs before the checkout and would see no files,
+  # so the step below computes it once the working tree exists.
+  KIND_NODE_CACHE_REPO: ghcr.io/${{ github.repository }}/e2e-kind-node
   # Every JVM in the release boots at once on a 4-vCPU runner. A healthy
   # release settles in about three minutes, so this is a stall detector rather
   # than a budget — kept well clear of the measured time, but low enough that a
@@ -133,6 +134,10 @@ env:
     consumer-management.local
     bdrs-server.tx.test
     issuerservice.local
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   e2e-umbrella:
@@ -207,8 +212,15 @@ jobs:
         with:
           version: "${{ env.HELM_VERSION }}"
 
+      - name: Resolve the cached Kind node tag
+        env:
+          CACHE_TAG: ${{ hashFiles('tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml', '.github/workflows/build-kind-node-cache.yml') }}
+        run: echo "KIND_NODE_CACHE_IMAGE=${KIND_NODE_CACHE_REPO}:${CACHE_TAG}" >> "${GITHUB_ENV}"
+
       - name: Pull cached Umbrella Kind node
         id: kind-node-cache
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "${GITHUB_TOKEN}" | docker login ghcr.io \
             --username "${GITHUB_ACTOR}" --password-stdin || true

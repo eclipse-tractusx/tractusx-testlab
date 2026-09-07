@@ -32,7 +32,11 @@ that would have worked.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Mapping
+from types import UnionType
+from typing import Any, Union, get_args, get_origin
+
+from pydantic import RootModel
 
 from tractusx_testlab.steps._checks.extraction import _split_path, declared_names
 
@@ -40,24 +44,48 @@ from tractusx_testlab.steps._checks.extraction import _split_path, declared_name
 def publishes(step_cls: Any) -> frozenset[str] | None:
     """Every name *step_cls* promises, or ``None`` when it promises an open document.
 
-    An output model declared ``extra="allow"`` publishes whatever the SUT sent
-    alongside its own fields — ``notification/consumer/send`` spreads the
-    receiver's answer at the top level, and a shell descriptor round-trips the
-    keys it was given. Extraction reads those keys off the value before it
-    consults any declared set, so listing them is impossible and restricting to
-    the declared ones would refuse names that resolve perfectly well.
+    Two output shapes describe a document the step cannot enumerate in advance,
+    and for both the honest answer is "anything":
 
-    A ``RootModel`` output *is* the document, and its ``root`` field is
-    synthetic: it names the document rather than anything inside it, and
-    resolves to nothing at run time, so it is never a name a script may use.
-    The document's own keys are reached through ``value`` or ``body`` — the
-    same spelling ``returns:`` has always required of them.
+    * a model declared ``extra="allow"`` publishes whatever the SUT sent
+      alongside its own fields — ``notification/consumer/send`` spreads the
+      receiver's answer at the top level, and a shell descriptor round-trips
+      the keys it was given;
+    * a ``RootModel`` over a mapping *is* that document — ``http/http_request``
+      returns the response body itself and ``util/parse_kv`` returns keys the
+      SUT chose. The runner publishes each of those keys as a context
+      variable, and extraction reads them straight off the value.
+
+    Anything else is a fixed set of fields, and a name outside it resolves to
+    nothing. The synthetic ``root`` is dropped either way: it names the
+    document rather than anything inside it, and never resolves.
     """
     model = getattr(step_cls, "output_model", None)
     config = getattr(model, "model_config", None) or {}
     if config.get("extra") == "allow":
         return None
+    if _may_carry_named_keys(_root_annotation(model)):
+        return None
     return declared_names(step_cls) - {"root"}
+
+
+def _root_annotation(model: Any) -> Any:
+    """The type a ``RootModel`` output wraps, or ``None`` for any other model."""
+    if not (isinstance(model, type) and issubclass(model, RootModel)):
+        return None
+    field = model.model_fields.get("root")
+    return None if field is None else field.annotation
+
+
+def _may_carry_named_keys(annotation: Any) -> bool:
+    """Whether a value of *annotation* can hold keys a script could name."""
+    if annotation is Any:
+        return True
+    origin = get_origin(annotation)
+    if origin in (Union, UnionType):
+        return any(_may_carry_named_keys(arg) for arg in get_args(annotation))
+    subject = origin or annotation
+    return isinstance(subject, type) and issubclass(subject, Mapping)
 
 
 def names_a_published_output(path: str, published: frozenset[str] | set[str] | None) -> bool:

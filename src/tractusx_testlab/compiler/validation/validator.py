@@ -34,6 +34,7 @@ from pydantic import ValidationError
 from tractusx_testlab.infrastructure.mapping import known_keys
 from tractusx_testlab.models import ScriptDefinition, StepDefinition, TckDefinition
 from tractusx_testlab.scripting.registry import StepRegistry
+from tractusx_testlab.steps._checks.extraction import declared_names
 from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
 from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
@@ -259,14 +260,15 @@ class ScriptValidator:
         A name the step never declares resolves to nothing at run time, so the
         variable reads as empty several steps later and the failure surfaces far
         from its cause. The step said what it produces; saying so here turns a
-        typo into a compile error instead of a mystery.
+        typo into a compile error instead of a mystery. A ``returns:`` name is
+        a variable the rest of the TCK will read, so it is held to the step's
+        *declared* fields — narrower than what an assertion may name, which is
+        only read out of this one output.
         """
         returns = step_def.returns or {}
         if not returns or step_cls is None:
             return
-        declared = publishes(step_cls)
-        if declared is None:
-            return
+        declared = declared_names(step_cls)
         for name in returns:
             if names_a_published_output(name, declared):
                 continue

@@ -25,10 +25,12 @@
 """A ``validate.with.input`` must name something the step actually publishes.
 
 The check used to key off the step's ``returns:`` block, which is optional — so
-a step without one was not checked at all. The shipped e2e TCK asserted
-``input: fetch_data`` on ``connector/dataplane/http_request``, a name nothing
-produces: the engine extracted ``None``, compared it against ``not_null``, and
-reported a working SUT as failing.
+a step without one was not checked at all, and an input naming nothing was
+extracted as ``None``, compared, and reported as the SUT failing.
+
+The bound is what extraction will resolve, not what looks tidy: a step whose
+output *is* the SUT's document publishes keys nobody can enumerate, and those
+stay nameable.
 """
 
 from __future__ import annotations
@@ -60,16 +62,16 @@ def _errors_for(uses: str, input_name: str, returns: dict | None = None) -> list
 
 class TestAssertionInputsAreChecked:
     def test_a_step_without_returns_still_has_its_input_checked(self) -> None:
-        errors = _errors_for("connector/dataplane/http_request", "fetch_data")
+        errors = _errors_for("connector/consumer/get_edr", "fetch_data")
         assert len(errors) == 1
         assert "fetch_data" in errors[0]
 
     def test_the_error_names_what_the_step_does_publish(self) -> None:
-        errors = _errors_for("connector/dataplane/http_request", "fetch_data")
-        assert "status_code" in errors[0]
+        errors = _errors_for("connector/consumer/get_edr", "fetch_data")
+        assert "edr_token" in errors[0]
 
     def test_a_universal_response_field_is_accepted_without_returns(self) -> None:
-        assert _errors_for("connector/dataplane/http_request", "status_code") == []
+        assert _errors_for("connector/consumer/get_edr", "status_code") == []
 
     def test_a_declared_output_is_accepted_without_returns(self) -> None:
         assert _errors_for("connector/consumer/get_edr", "edr_token") == []
@@ -115,12 +117,13 @@ class TestPathsThatResolveAreNotRefused:
         errors = _errors_for("connector/consumer/query_catalog", "not_a_real_output")
         assert len(errors) == 1
 
-    def test_the_synthetic_root_field_is_not_a_name_a_script_may_use(self) -> None:
+    def test_the_synthetic_root_field_is_never_offered_as_a_name(self) -> None:
         # A root model's `root` names the document rather than anything in it,
         # and resolves to nothing at run time — the very silence being fixed.
-        errors = _errors_for("connector/dataplane/http_request", "root")
-        assert len(errors) == 1
+        errors = _errors_for("connector/consumer/get_edr", "nope")
         assert "root" not in errors[0].split("It publishes:")[1]
 
-    def test_a_body_key_is_reached_through_the_document_it_belongs_to(self) -> None:
-        assert _errors_for("connector/dataplane/http_request", "value.items") == []
+    def test_a_step_returning_the_documents_own_keys_accepts_any_of_them(self) -> None:
+        # `connector/dataplane/http_request` returns the response body itself,
+        # and the runner publishes each of its keys as a context variable.
+        assert _errors_for("connector/dataplane/http_request", "anything_the_sut_sent") == []
