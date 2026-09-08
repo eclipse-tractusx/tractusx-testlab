@@ -101,6 +101,7 @@ _Output contract of `connector/consumer/extract_dataset`._
 | `dataset` | object | The first dataset whose 'dct:type' matched. |
 | `offer_id` | string | Policy/offer ID of the first match. |
 | `asset_id` | string | Asset ID of the first match. |
+| `catalog_policy` | object | The ODRL policy the matched offer is made under, as the provider wrote it. This is what 'negotiate' has to be given: an offer is accepted under the policy it was made under, and only the catalog knows that policy's offer id. |
 
 ### `connector/consumer/get_edr`
 
@@ -363,7 +364,7 @@ This is the far end of the DSP flow: `do_dsp` or `initiate_transfer` returns whe
 | `body` | any | no | `None` | — | Request body; dicts are sent as JSON. |
 | `dataplane_url` | any | no | `None` | — | Data-plane URL, or a data address object to read it from; falls back to the 'dataplane_url' context variable. |
 | `path` | string | no | `''` | — | Path appended to the data-plane URL. |
-| `edr_token` | string | no | `None` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
+| `edr_token` | string | no | `None` | — | EDR authorization token; falls back to the 'edr_token' context variable when omitted. An explicit '' asks for the call to be made with no token at all — e.g. a negative-path test proving the endpoint is protected — and is honoured as given rather than falling back. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -449,7 +450,7 @@ The rules are not written into the step: the policy is configured once in the ma
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `policy` | object | no | `{}` | — | The whole ODRL policy, as declared by a 'config/connector/policy' manifest variable and referenced as '${{ env.<id> }}'. Carries 'permissions', 'prohibitions', 'obligations', an optional '@context' and an optional 'policy_id'; a fresh UUID names the policy without one. |
+| `policy` | object | no | `{}` | — | The whole ODRL policy, as declared by a 'config/connector/policy' manifest variable and referenced as '${{ env.<id> }}'. Carries 'permissions', 'prohibitions', 'obligations', an optional '@context' and an optional 'policy_id'; a fresh UUID names the policy without one. The rules are read in the same two spellings the consumer steps read them in — the testlab simplified one and ODRL's own. |
 
 **Output** — the value assertions and `returns:` read
 

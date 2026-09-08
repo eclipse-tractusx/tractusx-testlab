@@ -100,18 +100,37 @@ def as_raw_policy(value: Any) -> Any:
     return value
 
 
+#: What a ``config/connector/policy`` variable carries for testlab's own sake
+#: and the dataspace never sees.  ``policy_id`` names the definition the
+#: provider steps register; a catalog offer has no such key and cannot grow
+#: one, so comparing an offer against a policy that carries it is comparing two
+#: documents that differ by a word neither connector ever said.
+_AUTHORING_KEYS: frozenset[str] = frozenset({"policy_id"})
+
+
+def _without_authoring_keys(policy: Any) -> Any:
+    """Drop the keys the manifest wrote for testlab rather than for the connector."""
+    if not isinstance(policy, dict):
+        return policy
+    return {key: val for key, val in policy.items() if key not in _AUTHORING_KEYS}
+
+
 def as_policy_list(value: Any) -> list[dict] | None:
     """Normalise a policy input into the ODRL policy list the SDK expects.
 
     Accepts one policy or several, wrapped or raw, in ODRL or simplified
     spelling; ``None`` stays ``None``, which the SDK reads as "no preference"
     rather than as "match nothing".
+
+    What comes back is the ODRL document alone: the SDK compares an offer
+    against it key by key, so the variable's own ``policy_id`` is left behind
+    here rather than counted as a rule the provider failed to offer.
     """
     if value is None:
         return None
     unwrapped = as_raw_policy(value)
     policies = unwrapped if isinstance(unwrapped, list) else [unwrapped]
-    return [as_odrl_policy(as_raw_policy(policy)) for policy in policies]
+    return [_without_authoring_keys(as_odrl_policy(as_raw_policy(policy))) for policy in policies]
 
 
 class ExpectedPoliciesParams(StepParams):

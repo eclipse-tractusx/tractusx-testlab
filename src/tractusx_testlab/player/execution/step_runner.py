@@ -49,6 +49,7 @@ from tractusx_testlab.player.execution.phase import (
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
 from tractusx_testlab.scripting.script import TestScript
+from tractusx_testlab.steps._checks.published_names import publishes
 from tractusx_testlab.steps.assertions import AssertionEngine
 
 logger = logging.getLogger(__name__)
@@ -157,6 +158,7 @@ async def _run_step_guarded(
                 for ar in AssertionEngine.evaluate(
                     _resolve_assertions(step_def.assertions, context),
                     output,
+                    publishes(type(step_instance)),
                 )
             ]
 

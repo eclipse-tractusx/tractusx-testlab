@@ -114,7 +114,9 @@ execution:
     name: Fetch the actual payload through the negotiated data plane
     validate:
       - uses: validate/assert
-        with: { input: fetch_data, operator: not_null }
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/assert
+        with: { input: body, operator: not_null }
 
 teardown:
   - id: delete_contract

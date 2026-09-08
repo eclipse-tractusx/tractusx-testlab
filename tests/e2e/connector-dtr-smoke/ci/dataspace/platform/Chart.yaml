@@ -1,0 +1,87 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+# Half one of the dataspace: everything the two connectors join, installed
+# before them.
+#
+# This replaces the Tractus-X Umbrella release the workflow used to deploy. Not
+# because Umbrella is wrong — it is the adopter *reference* deployment, and it
+# brings SQL persistence, a HashiCorp Vault per participant and a split
+# control-plane/data-plane per connector. A nightly smoke run on a 4-vCPU
+# GitHub runner pays for all of that and exercises none of it. Every component
+# below has an upstream `-memory` variant pinned to the same version as its
+# persistent sibling; these two charts are those variants, wired together.
+#
+# What does not change is the *shape* of the dataspace the TCK sees: two
+# participants with distinct BPNs and DIDs, decentralised identity over
+# IdentityHub + IATP, a real BDRS directory, an IssuerService minting real VCs
+# and a real Digital Twin Registry. Only the persistence is gone.
+#
+# Why this is a separate release from the connectors: the IdentityHub is
+# multi-tenant and holds *both* participant contexts, but its chart seeds only
+# one at boot. The second is created through the Identity API once the hub is
+# up, and the STS client secret for it is *generated* at that moment —
+# StsAccountProvisionerImpl calls generateClientSecret and hands it back in the
+# creation response; there is no field to supply one. The connectors' in-memory
+# vaults are seeded at `helm install` time from `vault.secrets`, so the
+# connectors can only be installed once that secret exists.
+apiVersion: v2
+name: testlab-e2e-dataspace-platform
+description: Shared IdentityHub, IssuerService, BDRS directory and Digital Twin Registry.
+type: application
+version: 1.0.0
+
+dependencies:
+  # One IdentityHub for both participants. Seeded at boot with the provider's
+  # context; ci/issue_credentials.py creates the consumer's.
+  - name: tractusx-identityhub-memory
+    alias: identityhub
+    version: v0.3.2
+    repository: https://eclipse-tractusx.github.io/charts/dev
+
+  # Off in slim.values.yaml, on in hub-per-participant.values.yaml. A condition
+  # on a direct dependency is honoured; the same trick one level deeper is not,
+  # which is what made Umbrella's IdentityHub postgres unremovable from values.
+  - name: tractusx-identityhub-memory
+    alias: consumer-identityhub
+    condition: consumer-identityhub.enabled
+    version: v0.3.2
+    repository: https://eclipse-tractusx.github.io/charts/dev
+
+  # In-memory because the attestation it evaluates need not be a SQL one — see
+  # the "holder" attestation in ci/issue_credentials.py.
+  - name: tractusx-issuerservice-memory
+    alias: issuerservice
+    version: v0.3.2
+    repository: https://eclipse-tractusx.github.io/charts/dev
+
+  - name: bdrs-server-memory
+    alias: bdrs-server
+    version: 0.6.0
+    repository: https://eclipse-tractusx.github.io/charts/dev
+
+  # The only component with no in-memory variant, and so the only Postgres in
+  # the dataspace: digital-twin-registry's `enablePostgres: false` branch points
+  # at an external database rather than an embedded one.
+  - name: digital-twin-registry
+    alias: dtr
+    version: 0.11.0
+    repository: https://eclipse-tractusx.github.io/charts/dev

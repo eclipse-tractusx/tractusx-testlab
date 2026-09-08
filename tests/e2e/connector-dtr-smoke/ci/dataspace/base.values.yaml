@@ -1,0 +1,206 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+# Everything both identity profiles agree on. Always passed first:
+#
+#   helm install ... -f base.values.yaml -f slim.values.yaml
+#   helm install ... -f base.values.yaml -f hub-per-participant.values.yaml
+#
+# The profile decides where each participant's DID lives and therefore which
+# IdentityHub answers for it; nothing below depends on that choice. One file is
+# used for both the `platform` and the `connectors` release — Helm ignores the
+# keys that do not belong to the chart it is installing.
+#
+# Ports are the chart defaults and are named, not repeated, wherever a URL can
+# be built from a service name instead.
+
+# ---------------------------------------------------------------------------
+# platform release
+# ---------------------------------------------------------------------------
+
+issuerservice:
+  fullnameOverride: issuerservice
+  issuerservice:
+    didweb:
+      https: false
+    # Every JVM here boots at once on a 4-vCPU runner. The stock 5s/5s probe
+    # kills a runtime that is still on its first GC pause.
+    livenessProbe:
+      initialDelaySeconds: 120
+    readinessProbe:
+      initialDelaySeconds: 120
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    ingresses:
+      - enabled: true
+        hostname: issuerservice.local
+        className: nginx
+        tls:
+          enabled: false
+        endpoints:
+          - did
+          - issuance
+          - sts
+          - statuslist
+          - issueradmin
+          - identity
+  statuslist:
+    signing_key:
+      alias: issuer-statuslist-key
+    callback:
+      address: "http://issuerservice.local/statuslist"
+
+bdrs-server:
+  fullnameOverride: bdrs-server
+  server:
+    trustedIssuers:
+      - "did:web:issuerservice.local:BPNL000000000003"
+    env:
+      EDC_IAM_DID_WEB_USE_HTTPS: false
+      EDC_IAM_CREDENTIAL_REVOCATION_MIMETYPE: application/json
+    endpoints:
+      management:
+        # ci/issue_credentials.py seeds the BPN -> DID directory over this API.
+        # Umbrella shipped a post-install hook for it; this chart has none, so
+        # the script does it as its first act.
+        authKey: TEST
+    livenessProbe:
+      initialDelaySeconds: 120
+    readinessProbe:
+      initialDelaySeconds: 120
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    ingresses:
+      - enabled: true
+        hostname: bdrs-server.tx.test
+        className: nginx
+        tls:
+          enabled: false
+        endpoints:
+          - directory
+          - management
+
+dtr:
+  # Without this the registry is named after the release it happens to be
+  # installed under, and the workflow discovers its ingress by name.
+  fullnameOverride: provider-dtr
+  enablePostgres: true
+  enableKeycloak: false
+  registry:
+    host: provider-dtr.local
+    livenessProbe:
+      initialDelaySeconds: 120
+    resources:
+      requests:
+        cpu: 150m
+        memory: 512Mi
+    dataSource:
+      url: jdbc:postgresql://dtr-postgresql:5432/dtr
+    ingress:
+      enabled: true
+      className: nginx
+      # The registry is the only component here whose ingress carries a `tls:`
+      # section, pointing at a chart-generated self-signed certificate.
+      # ingress-nginx answers plain HTTP on a TLS-bearing host with a 308 to
+      # HTTPS, and that certificate then fails verification — `curl: (60) SSL
+      # certificate problem: self-signed certificate` in the preflight, and the
+      # same failure inside every `testlab run`, which all address the DTR over
+      # `http://`.
+      #
+      # Turning the redirect off is what makes the DTR behave like every other
+      # ingress here. The tidier-looking alternative,
+      # `registry.ingress.tls.enabled: false`, is a trap: in
+      # digital-twin-registry 0.11.0 that branch of registry-ingress.yaml emits
+      # a stray `[]` under `spec:`, which YAML folds into the line above it, and
+      # the ingress comes out with `ingressClassName: "nginx []"` — claimed by
+      # no controller at all.
+      annotations:
+        nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      rules:
+        - host: provider-dtr.local
+          http:
+            paths:
+              - path: "/semantics/registry(/|$)(.*)"
+                pathType: ImplementationSpecific
+  postgresql:
+    fullnameOverride: dtr-postgresql
+
+# ---------------------------------------------------------------------------
+# connectors release
+# ---------------------------------------------------------------------------
+#
+# Everything identity-related lives in the profile. What is here is the wiring
+# that does not care which hub answers: the ingress layout, the endpoint paths
+# the TCK's URLs are built from, and the aliases naming the EDR signing keypair
+# the workflow generates and seeds into each in-memory vault.
+
+provider-connector: &connector
+  runtime:
+    endpoints:
+      default:
+        path: /api
+      management:
+        path: /management
+        authKey: password
+      control:
+        path: /control
+      protocol:
+        path: /api/v1/dsp
+      public:
+        path: /api/public
+      proxy:
+        path: /proxy
+        authKey: password
+      catalog:
+        path: /catalog
+        authKey: password
+    bdrs:
+      server:
+        # In-cluster: BDRS is in the platform release but the same namespace,
+        # and this needs no ingress hop.
+        url: "http://bdrs-server:8082/api/directory"
+      cache_validity_seconds: 600
+    policy:
+      validation:
+        enabled: true
+    token:
+      # Written into the in-memory vault by the workflow, which generates the
+      # keypair with openssl and passes it through `vault.secrets`. Umbrella got
+      # these from the connector bundle's `post-install-vault-setup` hook; with
+      # no HashiCorp Vault there is no hook to run one.
+      signer:
+        privatekey_alias: tokenSignerPrivateKey
+      verifier:
+        publickey_alias: tokenSignerPublicKey
+    livenessProbe:
+      initialDelaySeconds: 120
+    readinessProbe:
+      initialDelaySeconds: 120
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+
+consumer-connector: *connector

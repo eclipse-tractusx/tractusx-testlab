@@ -35,6 +35,7 @@ from tractusx_testlab.infrastructure.mapping import known_keys
 from tractusx_testlab.models import ScriptDefinition, StepDefinition, TckDefinition
 from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps._checks.extraction import declared_names
+from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
 from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
 from tractusx_testlab.syntax import defaults, diagnostics, patterns
@@ -242,7 +243,7 @@ class ScriptValidator:
         self._check_var_refs(step_def.with_ or {}, idx, declared, result)
 
         # Enforce plain-string validate inputs for inline validate assertions.
-        self._validate_inline_assert_inputs(step_def, idx, result, phase)
+        self._validate_inline_assert_inputs(step_def, step_cls, idx, result, phase)
 
         self._validate_returns(step_def, step_cls, idx, result, phase)
 
@@ -259,17 +260,17 @@ class ScriptValidator:
         A name the step never declares resolves to nothing at run time, so the
         variable reads as empty several steps later and the failure surfaces far
         from its cause. The step said what it produces; saying so here turns a
-        typo into a compile error instead of a mystery.
+        typo into a compile error instead of a mystery. A ``returns:`` name is
+        a variable the rest of the TCK will read, so it is held to the step's
+        *declared* fields — narrower than what an assertion may name, which is
+        only read out of this one output.
         """
         returns = step_def.returns or {}
         if not returns or step_cls is None:
             return
         declared = declared_names(step_cls)
         for name in returns:
-            # A dotted name reaches inside a declared output; only the first
-            # segment has to be something the step publishes.
-            root = name.split(".", 1)[0]
-            if root in declared:
+            if names_a_published_output(name, declared):
                 continue
             result.add_error(
                 f"'returns' name '{name}' is not produced by step "
@@ -315,18 +316,22 @@ class ScriptValidator:
     def _validate_inline_assert_inputs(
         self,
         step_def: StepDefinition,
+        step_cls: type | None,
         step_idx: int,
         result: ValidationResult,
         phase: str,
     ) -> None:
-        """Check that every assertion names a real check and a declared input.
+        """Check that every assertion names a real check and a real input.
 
-        An assertion the engine cannot resolve is rejected here rather than at
-        run time, where it would surface as a failing check on a passing SUT.
-        ``with.input`` must be a plain string naming one of the step's
-        ``returns`` (e.g. ``"edr_token"``), not a ``${{ ... }}`` expression.
+        ``with.input`` must be a plain string naming something the step
+        publishes — what the *step* declares, not what the script wrote in
+        ``returns:``, which is optional and left a step without one unchecked
+        entirely. The shipped e2e TCK asserted ``input: fetch_data`` on
+        ``connector/dataplane/http_request``, a name nothing produces, and the
+        engine compared ``None`` against ``not_null`` and failed a working SUT.
         """
-        valid_keys = set(step_def.returns or {})
+        declared = publishes(step_cls) if step_cls is not None else None
+        valid_keys = None if declared is None else set(step_def.returns or {}) | declared
         for assertion in step_def.assertions or []:
             params = assertion.with_ or {}
             resolved = resolve_assertion(assertion.uses, params)
@@ -358,10 +363,10 @@ class ScriptValidator:
                     phase=phase,
                 )
                 continue
-            if valid_keys and input_value not in valid_keys:
+            if not names_a_published_output(input_value, valid_keys):
                 result.add_error(
-                    f"'validate.with.input' value '{input_value}' is not declared in "
-                    f"'returns'. Valid keys: {sorted(valid_keys)}.",
+                    f"'validate.with.input' value '{input_value}' is not produced by "
+                    f"step '{step_def.uses}'. It publishes: {', '.join(sorted(valid_keys or []))}.",
                     step_index=step_idx,
                     field="validate.with.input",
                     phase=phase,

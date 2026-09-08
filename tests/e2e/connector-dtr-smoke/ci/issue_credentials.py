@@ -22,10 +22,13 @@
 """Issue the Catena-X verifiable credentials the e2e dataspace needs.
 
 ``helm install`` gives you two connectors, two IdentityHubs and an
-IssuerService, but it does **not** give the participants any credentials — the
-Umbrella chart only seeds the *claim rows* the IssuerService reads from
-(``custom_attestation_claims``, via ``attestationClaimSeeding``). Turning those
-rows into signed VCs held by each participant is an API-driven flow that the
+IssuerService, but it does **not** give the participants any credentials.
+Umbrella seeds *claim rows* for its own SQL IssuerService
+(``custom_attestation_claims``, via ``attestationClaimSeeding``); this
+deployment runs the in-memory image, whose BOM carries the ``holder``
+attestation source and not the ``database`` one, so the claims are written onto
+each holder record here instead and that table is left unread. Turning claims
+into signed VCs held by each participant is an API-driven flow that the
 Umbrella docs ship as a Bruno collection for humans to click through:
 
     tractus-x-umbrella/docs/common/api/bruno/
@@ -38,9 +41,9 @@ connectors come up healthy and the negotiation simply never reaches AGREED.
 This script is that Bruno collection, executed non-interactively:
 
   1. create the issuer's participant context (super-user credentials)
-  2. register the ``database`` attestation over ``custom_attestation_claims``
-  3. define the four credential types the profile's claim rows can satisfy
-  4. register both participants as holders
+  2. register the ``holder`` attestation, which reads a holder's own properties
+  3. define the four credential types those properties can satisfy
+  4. register both participants as holders, carrying those properties
   5. ask each participant's IdentityHub to request those credentials
   6. poll each IdentityHub until the credentials are actually held
 
@@ -70,11 +73,11 @@ ISSUER_CONTEXT_ID = "issuer"
 ISSUER_PRIVATE_KEY_ALIAS = "issuer-privatekey-alias"
 
 # The attestation the IssuerService evaluates when a holder asks for a
-# credential: a SQL table whose rows the chart seeded, read through the
-# `customattestations` datasource declared in the IssuerService config map.
+# credential. `holder` needs no configuration: its source hands the issuance
+# rules the holder record's own `properties` map, verbatim, as the claims. The
+# `database` attestation Umbrella uses instead reads a SQL table, and lives in
+# the SQL BOM that the in-memory image this deployment runs does not have.
 ATTESTATION_ID = "attestation-id"
-ATTESTATION_DATASOURCE = "customattestations"
-ATTESTATION_TABLE = "custom_attestation_claims"
 
 CREDENTIAL_FORMAT = "VC1_0_JWT"
 CREDENTIAL_VALIDITY = 10_000_000_000_000
@@ -87,12 +90,13 @@ _HOLDER_IDENTIFIER = {
 }
 
 
-def _mapping(input_column: str, output_claim: str) -> dict:
-    return {"input": input_column, "output": output_claim, "required": True}
+def _mapping(input_claim: str, output_claim: str) -> dict:
+    return {"input": input_claim, "output": output_claim, "required": True}
 
 
 # id -> (credentialType, extra claim mappings beyond holder id/identifier).
-# The mappings must line up with the columns `attestationClaimSeeding` inserts.
+# A mapping's `input` names a key of the claim map the attestation produced,
+# which for the `holder` attestation is a key of `Participant.claims` below.
 CREDENTIAL_DEFINITIONS: dict[str, tuple[str, list[dict]]] = {
     "membershipCredential-id": (
         "MembershipCredential",
@@ -115,6 +119,19 @@ CREDENTIAL_DEFINITIONS: dict[str, tuple[str, list[dict]]] = {
 }
 
 
+# The claims every participant is attested with, minus the two that are the
+# participant's own identity. Values are Umbrella's: they are the columns
+# `attestationClaimSeeding` writes into `custom_attestation_claims`, which is
+# what the profile's credential definitions were written against.
+COMMON_CLAIMS = {
+    "member_of": "Catena-X",
+    "group_name": "UseCaseFramework",
+    "use_case": "DataExchangeGovernance",
+    "contract_template": "https://example.org/temp-1",
+    "contract_version": "1.0",
+}
+
+
 @dataclass(frozen=True)
 class Participant:
     """A dataspace participant that must end up holding the credentials."""
@@ -125,11 +142,26 @@ class Participant:
     identity_api: str
     # `identityhub.iatp.sts.oauth.client.x_api_key` from the profile.
     api_key: str
+    bpn: str
 
     @property
     def context_id(self) -> str:
         """The participant context id as the IdentityHub URLs encode it."""
         return base64.b64encode(self.did.encode()).decode()
+
+    @property
+    def claims(self) -> dict:
+        """What the `holder` attestation will hand the issuance rules.
+
+        The holder record carries the claims itself, so what a credential
+        definition can map is exactly what is written here.
+        """
+        return {
+            "holder_id": self.did,
+            "holder_identifier": self.did,
+            "bpn": self.bpn,
+            **COMMON_CLAIMS,
+        }
 
 
 PARTICIPANTS = (
@@ -140,6 +172,7 @@ PARTICIPANTS = (
         api_key=(
             "ZGlkOndlYjpwcm92aWRlci5sb2NhbDppZGVudGl0eWh1YjpCUE5MMDAwMDAwMDAwMDAx.randomChars"
         ),
+        bpn="BPNL000000000001",
     ),
     Participant(
         name="consumer",
@@ -148,6 +181,7 @@ PARTICIPANTS = (
         api_key=(
             "ZGlkOndlYjpjb25zdW1lci5sb2NhbDppZGVudGl0eWh1YjpCUE5MMDAwMDAwMDAwMDAy.randomChars"
         ),
+        bpn="BPNL000000000002",
     ),
 )
 
@@ -249,11 +283,8 @@ def _seed_issuer(client: httpx.Client, issuer_url: str, issuer_key: str) -> None
         f"{admin}/attestations",
         api_key=issuer_key,
         payload={
-            "attestationType": "database",
-            "configuration": {
-                "dataSourceName": ATTESTATION_DATASOURCE,
-                "tableName": ATTESTATION_TABLE,
-            },
+            "attestationType": "holder",
+            "configuration": {},
             "id": ATTESTATION_ID,
         },
         description=f"attestation '{ATTESTATION_ID}'",
@@ -286,6 +317,8 @@ def _seed_issuer(client: httpx.Client, issuer_url: str, issuer_key: str) -> None
                 "did": participant.did,
                 "holderId": participant.did,
                 "name": participant.name,
+                # What the `holder` attestation will return as the claims.
+                "properties": participant.claims,
             },
             description=f"holder '{participant.name}'",
         )
@@ -358,8 +391,9 @@ def _await_credentials(client: httpx.Client, timeout: float, interval: float) ->
         raise IssuanceError(
             f"Credentials were not issued within {timeout:.0f}s — {detail}. "
             "Check the IssuerService and IdentityHub logs: the usual causes are a "
-            "missing claim row in custom_attestation_claims, or the IdentityHub "
-            "being unable to resolve the issuer's did:web document."
+            "claim a credential definition maps but the holder record does not "
+            "carry, or the IdentityHub being unable to resolve the issuer's "
+            "did:web document."
         )
 
 

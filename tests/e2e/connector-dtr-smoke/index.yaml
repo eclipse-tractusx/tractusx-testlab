@@ -93,6 +93,11 @@ env:
           type: object
           class: Asset
 
+    # `action: access`, not `use`: the connector reads the action to decide
+    # which half of the Catena-X policy profile a definition is held to. A
+    # policy whose permission says `use` is an offer's *usage* policy, and the
+    # profile then requires FrameworkAgreement and UsagePurpose on it — which
+    # is not what a catalog access rule says, and not what this one is for.
     - id: access_policy
       uses: config/connector/policy
       name: Membership access policy
@@ -101,11 +106,11 @@ env:
         value:
           policy_id: testlab-e2e-smoke-access-policy
           permissions:
-            - action: use
+            - action: access
               constraints:
-                left_operand: Membership
-                operator: eq
-                right_operand: active
+                - left_operand: Membership
+                  operator: eq
+                  right_operand: active
       returns:
         value:
           type: object
@@ -126,6 +131,10 @@ env:
           type: object
           class: Asset
 
+    # A usage policy the Catena-X 2025/9 profile accepts: its permission must
+    # carry at least FrameworkAgreement and UsagePurpose, or the connector
+    # refuses the definition outright. Membership rides along because a real
+    # offer carries it too.
     - id: usage_policy
       uses: config/connector/policy
       name: Framework-agreement usage policy
@@ -136,13 +145,17 @@ env:
           permissions:
             - action: use
               constraints:
-                and:
-                  - left_operand: Membership
-                    operator: eq
-                    right_operand: active
-                  - left_operand: FrameworkAgreement
-                    operator: eq
-                    right_operand: "DataExchangeGovernance:1.0"
+                - and:
+                    - left_operand: Membership
+                      operator: eq
+                      right_operand: active
+                    - left_operand: FrameworkAgreement
+                      operator: eq
+                      right_operand: "DataExchangeGovernance:1.0"
+                    - left_operand: UsagePurpose
+                      operator: isAnyOf
+                      right_operand:
+                        - "cx.core.digitalTwinRegistry:1"
       returns:
         value:
           type: object

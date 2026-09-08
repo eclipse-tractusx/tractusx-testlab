@@ -78,8 +78,24 @@ class DataplaneCallParams(HttpCallParams):
     path: str = Field(default="", description="Path appended to the data-plane URL.")
     edr_token: str | None = Field(
         default=None,
-        description="EDR authorization token; falls back to the 'edr_token' context variable.",
+        description=(
+            "EDR authorization token; falls back to the 'edr_token' context variable "
+            "when omitted. An explicit '' asks for the call to be made with no token "
+            "at all — e.g. a negative-path test proving the endpoint is protected — "
+            "and is honoured as given rather than falling back."
+        ),
     )
+
+    def resolved_token(self, fallback: str) -> str:
+        """The token to send, or '' if the script explicitly asked for none.
+
+        ``None`` means the script left the field out, so the context variable a
+        prior transfer published is used. An explicit ``''`` is a script asking
+        for the call to carry no token — the negative-path case a `falsy or
+        fallback` read would silently defeat by substituting a stale token from
+        an earlier step in the same run.
+        """
+        return fallback if self.edr_token is None else self.edr_token
 
     def resolved_url(self, fallback: Any) -> str:
         """The URL to call, resolved from whichever form the data address arrived in."""
@@ -107,7 +123,7 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
         self, params: DataplaneCallParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
         url = params.resolved_url(context.get_str(DATAPLANE_URL))
-        token = params.edr_token or context.get_str(EDR_TOKEN)
+        token = params.resolved_token(context.get_str(EDR_TOKEN))
         headers = {"Authorization": token, **params.headers}
         timeout = params.timeout_or(context.config.default_timeout_s)
 

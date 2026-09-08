@@ -1,0 +1,6 @@
+# `helm dependency build` vendors the pinned dependency archives here and
+# writes a lock beside them. Both are reproducible from Chart.yaml, which
+# pins every version exactly, so the workflow builds them rather than the
+# repository carrying ~15MB of binary chart archives.
+*/charts/
+*/Chart.lock

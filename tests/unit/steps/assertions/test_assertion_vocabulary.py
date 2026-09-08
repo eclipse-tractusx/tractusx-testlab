@@ -233,3 +233,62 @@ class TestResolution:
 
     def test_schema_takes_no_operator(self) -> None:
         assert resolve("validate/schema", {}).operator is None
+
+
+class TestUndeclaredInputs:
+    """An input naming nothing the step publishes is a broken check, not a verdict.
+
+    Extracting ``None`` and comparing it reads as the SUT failing, when what
+    actually happened is that the assertion was never pointed at anything.
+    """
+
+    def test_a_name_the_step_does_not_publish_is_reported(self) -> None:
+        result = AssertionEngine.evaluate(
+            [_assert("validate/assert", input="fetch_data", operator="not_null")],
+            {"status_code": 200},
+            frozenset({"status_code", "body"}),
+        )[0]
+        assert not result.passed
+        assert "fetch_data" in result.message
+        assert "status_code" in result.message
+
+    def test_a_published_name_is_evaluated_as_before(self) -> None:
+        result = AssertionEngine.evaluate(
+            [_assert("validate/assert", input="status_code", operator="equals", value=200)],
+            {"status_code": 200},
+            frozenset({"status_code"}),
+        )[0]
+        assert result.passed
+
+    def test_a_path_into_a_published_name_is_evaluated(self) -> None:
+        result = AssertionEngine.evaluate(
+            [_assert("validate/assert", input="body.id", operator="equals", value="x")],
+            {"body": {"id": "x"}},
+            frozenset({"body"}),
+        )[0]
+        assert result.passed
+
+    def test_without_a_declared_set_nothing_is_restricted(self) -> None:
+        # Callers that cannot say what the step publishes — a test building a
+        # context by hand — get the old behaviour rather than a false failure.
+        result = _run({"anything": 1}, "validate/assert", input="anything", operator="not_null")
+        assert result.passed
+
+
+class TestDeclaredSetAgreesWithExtraction:
+    """Restricting to declared names must not refuse a path that resolves."""
+
+    def test_a_predicate_on_the_first_segment_still_evaluates(self) -> None:
+        result = AssertionEngine.evaluate(
+            [
+                _assert(
+                    "validate/assert",
+                    input="datasets[assetId='urn:x.y'].id",
+                    operator="equals",
+                    value="d1",
+                )
+            ],
+            {"datasets": [{"assetId": "urn:x.y", "id": "d1"}]},
+            frozenset({"datasets"}),
+        )[0]
+        assert result.passed, result.message

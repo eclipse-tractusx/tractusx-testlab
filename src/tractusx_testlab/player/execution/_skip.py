@@ -62,7 +62,13 @@ def resolve_skip_ids(tck: Tck, runtime_vars: dict | None) -> frozenset[str]:
     if not raw:
         return frozenset()
 
-    skip_ids: list[str] = list(raw) if not isinstance(raw, str) else [raw]
+    # A string arrives from `--var skip_tests=a,b`, where the shell cannot
+    # express a list. A comma is not legal in a test id, so splitting on it is
+    # unambiguous — and without it the whole string reads as one unknown id.
+    if isinstance(raw, str):
+        skip_ids = [part.strip() for part in raw.split(",") if part.strip()]
+    else:
+        skip_ids = [str(entry) for entry in raw]
 
     all_test_ids = {s.test_id for s in tck.scripts}
     skippable_ids = {s.test_id for s in tck.scripts if s.skippable}

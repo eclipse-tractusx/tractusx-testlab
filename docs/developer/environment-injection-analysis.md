@@ -377,9 +377,9 @@ infrastructure.sut.connector.required: true
 | Side + capability | Required keys | Optional keys (with defaults) |
 |---|---|---|
 | `sut.connector` | `participant_id` (BPNL), `dsp_url` (DSP endpoint) | `management_url` — only when the operator runs the SUT too |
-| `sut.dtr` | `base_url` | `api_path` = `/api/v3.0`, `auth` = `{type: none}` |
+| `sut.dtr` | `base_url` | `api_path` = `/api/v3`, `auth` = `{type: none}` |
 | `engine.connector` | `base_url`, `participant_id` (BPNL), `auth` | `management_path` = `/management`, `dsp_path` = `/api/v1/dsp`, `version` ← `dataspace.version` |
-| `engine.dtr` | `base_url`, `auth` | `api_path` = `/api/v3.0` |
+| `engine.dtr` | `base_url`, `auth` | `api_path` = `/api/v3` |
 
 The asymmetry is deliberate and follows ADR-0019 §4. The **engine** side is infrastructure
 TestLab *operates*, so it needs management access and therefore credentials. The **SUT**

@@ -65,14 +65,12 @@ def _find_dataset_by_type(datasets: list[dict], dct_type: str) -> dict | None:
     return None
 
 
-def _extract_offer_id(dataset: dict) -> str | None:
-    """Extract the first offer/policy ID from a dataset, in either DSP generation."""
+def _first_offer_policy(dataset: dict) -> dict | None:
+    """Return the ODRL policy of the dataset's first offer, in either DSP generation."""
     policy = first_present(dataset, POLICY_KEYS)
     if isinstance(policy, list) and policy:
-        return policy[0].get(ID_KEY)
-    if isinstance(policy, dict):
-        return policy.get(ID_KEY)
-    return None
+        policy = policy[0]
+    return policy if isinstance(policy, dict) else None
 
 
 class ExtractDatasetParams(StepParams):
@@ -97,6 +95,15 @@ class ExtractDatasetOutput(StepPayload):
     )
     offer_id: str | None = Field(default=None, description="Policy/offer ID of the first match.")
     asset_id: str | None = Field(default=None, description="Asset ID of the first match.")
+    catalog_policy: dict | None = Field(
+        default=None,
+        description=(
+            "The ODRL policy the matched offer is made under, as the provider "
+            "wrote it. This is what 'negotiate' has to be given: an offer is "
+            "accepted under the policy it was made under, and only the catalog "
+            "knows that policy's offer id."
+        ),
+    )
 
 
 @step("connector/consumer/extract_dataset")
@@ -116,10 +123,17 @@ class ExtractDatasetStep(BaseStep[ExtractDatasetParams, ExtractDatasetOutput]):
 
         offer_id: str | None = None
         asset_id: str | None = None
+        policy: dict | None = None
         if dataset is not None:
-            offer_id = _extract_offer_id(dataset)
+            policy = _first_offer_policy(dataset)
+            offer_id = policy.get(ID_KEY) if policy else None
             asset_id = first_present(dataset, ASSET_ID_KEYS)
 
         return StepOutput(
-            value=ExtractDatasetOutput(dataset=dataset, offer_id=offer_id, asset_id=asset_id)
+            value=ExtractDatasetOutput(
+                dataset=dataset,
+                offer_id=offer_id,
+                asset_id=asset_id,
+                catalog_policy=policy,
+            )
         )

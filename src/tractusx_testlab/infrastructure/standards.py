@@ -58,7 +58,7 @@ CAPABILITY_STANDARDS: dict[str, str] = {
 }
 
 #: AAS API path a registry answers on, per ecosystem release. Both current
-#: releases serve v3.0; a release that moves the path adds a line here rather
+#: releases serve v3; a release that moves the path adds a line here rather
 #: than a branch in the seeder.
 _AAS_API_PATHS: dict[str, str] = {
     "saturn": defaults.AAS_API_PATH,
