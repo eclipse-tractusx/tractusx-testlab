@@ -33,6 +33,7 @@ submodel descriptors that hang off a shell are next door in
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from typing import TYPE_CHECKING, Any
@@ -63,6 +64,52 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 logger = logging.getLogger(__name__)
+
+
+def _result_status(result: Any) -> int:
+    """Best-effort status code the SDK surfaced for a not-2xx AAS answer."""
+    if result is None:
+        return 200
+    for message in getattr(result, "messages", None) or []:
+        code = str(getattr(message, "code", "") or "")
+        if code.isdigit():
+            return int(code)
+    return 200
+
+
+def _is_not_found(result: Any) -> bool:
+    """Whether the registry still has not indexed the shell for an immediate read."""
+    if result is None:
+        return False
+    for message in getattr(result, "messages", None) or []:
+        text = str(getattr(message, "text", "") or "")
+        code = str(getattr(message, "code", "") or "")
+        if code == "404" or "not found" in text.lower():
+            return True
+    return False
+
+
+async def _read_shell_descriptor(aas: Any, shell_id: str, bpn: str | None) -> Any:
+    """Retry a direct read when the registry is still catching up after creation."""
+    last_result: Any = None
+    for attempt in range(3):
+        last_result = await sdk_call.run(
+            aas.get_asset_administration_shell_descriptor_by_id,
+            shell_id,
+            bpn=bpn,
+        )
+        if not _is_not_found(last_result):
+            return last_result
+        if attempt < 2:
+            delay_s = 0.25 * (attempt + 1)
+            logger.warning(
+                "Shell %s not visible yet in the registry; retrying in %.2fs (%s/3)",
+                shell_id,
+                delay_s,
+                attempt + 1,
+            )
+            await asyncio.sleep(delay_s)
+    return last_result
 
 
 # ---------------------------------------------------------------------------
@@ -204,18 +251,14 @@ class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayloa
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         aas = context.dataspace.registry()
-        result = await sdk_call.run(
-            aas.get_asset_administration_shell_descriptor_by_id,
-            params.aas_identifier,
-            bpn=params.bpn,
-        )
+        result = await _read_shell_descriptor(aas, params.aas_identifier, params.bpn)
         url = f"{aas.aas_url}/shell-descriptors/{params.aas_identifier}"
 
         body = _as_document(result)
         return StepOutput(
             value=DescriptorPayload.of(body),
             request=HttpRequest(method="GET", url=url),
-            response=HttpResponse(status_code=200, body=body),
+            response=HttpResponse(status_code=_result_status(result), body=body),
         )
 
 
