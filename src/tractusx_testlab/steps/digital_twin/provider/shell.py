@@ -33,8 +33,6 @@ submodel descriptors that hang off a shell are next door in
 
 from __future__ import annotations
 
-import asyncio
-import logging
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -63,53 +61,23 @@ from tractusx_testlab.steps.step_contract import BaseStep, StepOutput
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
-logger = logging.getLogger(__name__)
 
+def _answered_status(result: Any, accepted: int, unreadable: int) -> int:
+    """The status the registry answered with, as far as the SDK reports it.
 
-def _result_status(result: Any) -> int:
-    """Best-effort status code the SDK surfaced for a not-2xx AAS answer."""
+    The SDK hands back the document on success and an AAS ``Result`` when the
+    registry refused, so a refusal's code has to be read out of the refusal:
+    AAS carries it in each message's ``code``.  A call the SDK collapsed to
+    ``None`` read as ``accepted``; one that names no code of its own reads as
+    ``unreadable``.
+    """
     if result is None:
-        return 200
+        return accepted
     for message in getattr(result, "messages", None) or []:
         code = str(getattr(message, "code", "") or "")
         if code.isdigit():
             return int(code)
-    return 200
-
-
-def _is_not_found(result: Any) -> bool:
-    """Whether the registry still has not indexed the shell for an immediate read."""
-    if result is None:
-        return False
-    for message in getattr(result, "messages", None) or []:
-        text = str(getattr(message, "text", "") or "")
-        code = str(getattr(message, "code", "") or "")
-        if code == "404" or "not found" in text.lower():
-            return True
-    return False
-
-
-async def _read_shell_descriptor(aas: Any, shell_id: str, bpn: str | None) -> Any:
-    """Retry a direct read when the registry is still catching up after creation."""
-    last_result: Any = None
-    for attempt in range(3):
-        last_result = await sdk_call.run(
-            aas.get_asset_administration_shell_descriptor_by_id,
-            shell_id,
-            bpn=bpn,
-        )
-        if not _is_not_found(last_result):
-            return last_result
-        if attempt < 2:
-            delay_s = 0.25 * (attempt + 1)
-            logger.warning(
-                "Shell %s not visible yet in the registry; retrying in %.2fs (%s/3)",
-                shell_id,
-                delay_s,
-                attempt + 1,
-            )
-            await asyncio.sleep(delay_s)
-    return last_result
+    return unreadable
 
 
 # ---------------------------------------------------------------------------
@@ -251,14 +219,21 @@ class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayloa
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         aas = context.dataspace.registry()
-        result = await _read_shell_descriptor(aas, params.aas_identifier, params.bpn)
+        result = await sdk_call.run(
+            aas.get_asset_administration_shell_descriptor_by_id,
+            params.aas_identifier,
+            bpn=params.bpn,
+        )
         url = f"{aas.aas_url}/shell-descriptors/{params.aas_identifier}"
 
         body = _as_document(result)
         return StepOutput(
             value=DescriptorPayload.of(body),
             request=HttpRequest(method="GET", url=url),
-            response=HttpResponse(status_code=_result_status(result), body=body),
+            response=HttpResponse(
+                status_code=_answered_status(result, accepted=200, unreadable=200),
+                body=body,
+            ),
         )
 
 
@@ -356,24 +331,6 @@ _DELETED = 204
 _DELETE_REFUSED = 400
 
 
-def _delete_status(result: Any) -> int:
-    """The status a registry answered a delete with, as far as the SDK reports it.
-
-    ``delete_asset_administration_shell_descriptor`` returns ``None`` when the
-    registry accepted the delete and an AAS ``Result`` when it refused, so the
-    code of a refusal has to be read out of the refusal document: AAS carries it
-    in each message's ``code``.  A registry that puts something else there, or
-    sends no message at all, reads as a plain refusal.
-    """
-    if result is None:
-        return _DELETED
-    for message in getattr(result, "messages", None) or []:
-        code = str(getattr(message, "code", "") or "")
-        if code.isdigit():
-            return int(code)
-    return _DELETE_REFUSED
-
-
 @step("digital-twin/provider/delete_shell_descriptor")
 class DeleteShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DeletionOutput]):
     """Delete an AAS shell descriptor.
@@ -397,7 +354,7 @@ class DeleteShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DeletionOutpu
             aas.delete_asset_administration_shell_descriptor, params.aas_identifier, bpn=params.bpn
         )
         url = f"{aas.aas_url}/shell-descriptors/{params.aas_identifier}"
-        status = _delete_status(result)
+        status = _answered_status(result, accepted=_DELETED, unreadable=_DELETE_REFUSED)
 
         return StepOutput(
             value=DeletionOutput(status_code=status),

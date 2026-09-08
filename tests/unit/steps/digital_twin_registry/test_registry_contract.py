@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import base64
 import json
-from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -118,40 +117,6 @@ class TestDescriptorSerialisation:
             StepOutput(value=DescriptorPayload.of(_DESCRIPTOR))
         )
         assert output.value["specificAssetIds"] == []
-
-    @pytest.mark.asyncio
-    async def test_retries_when_the_registry_has_not_indexed_the_shell_yet(
-        self, context: MagicMock
-    ) -> None:
-        context.dataspace.registry.return_value.aas_url = "https://registry.example.com"
-        not_found = SimpleNamespace(
-            messages=[
-                SimpleNamespace(
-                    code="404",
-                    text=f"Shell for identifier {_SHELL_ID} not found",
-                )
-            ]
-        )
-        found = {"id": _SHELL_ID, "idShort": "twin-a", "specificAssetIds": []}
-
-        with patch(
-            "tractusx_testlab.steps.digital_twin.provider.shell.sdk_call.run",
-            new_callable=AsyncMock,
-            side_effect=[not_found, found],
-        ) as run, patch(
-            "tractusx_testlab.steps.digital_twin.provider.shell.asyncio.sleep",
-            new_callable=AsyncMock,
-        ) as sleep:
-            output = await GetShellDescriptorStep().invoke(
-                {"aas_identifier": _SHELL_ID},
-                context,
-                StepDefinition(id="get_shell", uses="digital-twin/provider/get_shell_descriptor"),
-            )
-
-        assert output.value["id"] == _SHELL_ID
-        assert output.response.status_code == 200
-        assert run.await_count == 2
-        sleep.assert_awaited_once_with(0.25)
 
 
 # ---------------------------------------------------------------------------
