@@ -798,6 +798,11 @@ jobs:
       #    operator select a subset — and what this job uses to prove the
       #    selection machinery works against a real SUT rather than a mock.
       # ------------------------------------------------------------------
+      - name: Prepare execution trace directory
+        run: |
+          sudo mkdir -p /data
+          sudo chmod 0777 /data
+
       - name: testlab validate
         run: poetry run testlab validate "${TCK_INDEX}"
 
@@ -838,7 +843,8 @@ jobs:
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
-            --logs-dir logs/e2e/full
+            --logs-dir logs/e2e/full \
+            --data-dir /data
 
       - name: testlab run — pull-request smoke suite
         if: github.event_name == 'pull_request'
@@ -847,7 +853,8 @@ jobs:
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "skip_tests=dsp_step_by_step.yaml,negative_paths.yaml" \
-            --logs-dir logs/e2e/pr-smoke
+            --logs-dir logs/e2e/pr-smoke \
+            --data-dir /data
 
       # Combination 2 — the registry alone, from the same package. Nothing
       # recompiles; the selection is a run-time argument, and the engine
@@ -865,7 +872,8 @@ jobs:
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml" \
-            --logs-dir logs/e2e/registry
+            --logs-dir logs/e2e/registry \
+            --data-dir /data
 
       # A selection the manifest does not permit must be refused, not silently
       # ignored — an operator who mistypes a test id has to find out.
@@ -876,7 +884,8 @@ jobs:
                --config "${TCK_CONFIG}" \
                --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
                --var "skip_tests=no-such-test.yaml" \
-               --logs-dir logs/e2e/refused; then
+               --logs-dir logs/e2e/refused \
+               --data-dir /data; then
             echo "::error::skipping an unknown test id was accepted; it must be refused"
             exit 1
           fi
@@ -949,7 +958,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: testlab-e2e-run-${{ github.run_id }}
-          path: logs
+          path: |
+            logs
+            /data
           retention-days: 14
           if-no-files-found: ignore
 
