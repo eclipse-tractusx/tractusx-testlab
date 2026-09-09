@@ -555,6 +555,16 @@ jobs:
           }
           if wrong_routes:
               raise SystemExit(f"Umbrella manifest has incorrect connector routes: {wrong_routes}")
+          # Public EDR endpoint lives on <participant>.local via the control
+          # plane's metrics slot. DSP must NOT share that host — the chart
+          # still derives the callback from ingresses[0], but peers must only
+          # reach protocol on *-dsp.local.
+          for host in ("provider.local", "consumer.local"):
+              paths = ingress_routes.get(host, set())
+              if "/api/public" not in paths:
+                  raise SystemExit(f"{host} is missing the control-plane public path")
+              if "/api/v1/dsp" in paths:
+                  raise SystemExit(f"{host} must not expose DSP; keep it on *-dsp.local")
           prefixed_routes = sorted(
               (host, path)
               for host, paths in ingress_routes.items()
@@ -564,8 +574,39 @@ jobs:
           if prefixed_routes:
               raise SystemExit(f"Umbrella manifest still has /connector routes: {prefixed_routes}")
 
+          # The tractusx-connector chart derives EDC_DSP_CALLBACK_ADDRESS from
+          # controlplane.ingresses[0] unless the env is pinned. A wrong host
+          # (e.g. participant.local instead of participant-dsp.local) makes the
+          # provider's agreement POST 404 at nginx and leaves the consumer stuck
+          # in REQUESTED.
+          expected_callbacks = {
+              "umbrella-provider-connector-controlplane": "http://provider-dsp.local/api/v1/dsp",
+              "umbrella-consumer-connector-controlplane": "http://consumer-dsp.local/api/v1/dsp",
+          }
+          actual_callbacks = {}
+          for document in documents:
+              if document.get("kind") != "Deployment":
+                  continue
+              name = document.get("metadata", {}).get("name")
+              if name not in expected_callbacks:
+                  continue
+              for container in document.get("spec", {}).get("template", {}).get("spec", {}).get("containers", []):
+                  for env in container.get("env", []) or []:
+                      if env.get("name") == "EDC_DSP_CALLBACK_ADDRESS":
+                          actual_callbacks[name] = env.get("value")
+          wrong_callbacks = {
+              name: actual_callbacks.get(name)
+              for name, expected in expected_callbacks.items()
+              if actual_callbacks.get(name) != expected
+          }
+          if wrong_callbacks:
+              raise SystemExit(
+                  "Umbrella control planes advertise the wrong DSP callback "
+                  f"address: {wrong_callbacks}"
+              )
+
           print("Umbrella manifest contains both connectors, the shared DTR, the issuer,")
-          print("the vault-setup hooks, and isolated connector routes.")
+          print("the vault-setup hooks, isolated connector routes, and DSP callbacks.")
           print("Ingress hosts:", ", ".join(sorted(h for h in ingress_routes if h)))
           PY
           echo "UMBRELLA_CHART_DIR=${chart_dir}" >> "${GITHUB_ENV}"

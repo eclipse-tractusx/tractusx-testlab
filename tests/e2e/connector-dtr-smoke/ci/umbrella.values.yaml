@@ -127,6 +127,12 @@ edc-provider:
             WEB_HTTP_PUBLIC_PATH: "/api/public"
             EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://provider.local/api/public"
             TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://provider.local/api/public/token"
+            # Pin the DSP callback/audience. The chart otherwise derives them
+            # from `controlplane.ingresses[0].hostname`, and a metrics-first
+            # order would advertise `provider.local/api/v1/dsp` — a path that
+            # host does not serve — so the peer's agreement POST 404s at nginx.
+            EDC_DSP_CALLBACK_ADDRESS: "http://provider-dsp.local/api/v1/dsp"
+            EDC_OAUTH_ENDPOINT_AUDIENCE: "http://provider-dsp.local/api/v1/dsp"
             TX_EDC_DATAPLANE_TOKEN_EXPIRY: "300"
             TX_EDC_DATAPLANE_TOKEN_EXPIRY_TOLERANCE: "10"
             EDC_TRANSFER_PROXY_TOKEN_SIGNER_PRIVATEKEY_ALIAS: "tokenSignerPrivateKey"
@@ -155,14 +161,11 @@ edc-provider:
             metrics:
               port: 8086
               path: /api/public
+          # DSP MUST stay first: tractusx-connector builds
+          # `txdc.controlplane.url.protocol` from `ingresses[0]` unless
+          # `controlplane.url.protocol` is set, and that URL becomes
+          # EDC_DSP_CALLBACK_ADDRESS / EDC_OAUTH_ENDPOINT_AUDIENCE.
           ingresses:
-            - enabled: true
-              hostname: provider.local
-              endpoints:
-                - metrics
-              className: nginx
-              tls:
-                enabled: false
             - enabled: true
               hostname: provider-dsp.local
               endpoints:
@@ -176,6 +179,13 @@ edc-provider:
                 - management
                 - control
                 - catalog
+              className: nginx
+              tls:
+                enabled: false
+            - enabled: true
+              hostname: provider.local
+              endpoints:
+                - metrics
               className: nginx
               tls:
                 enabled: false
@@ -309,6 +319,12 @@ edc-consumer:
             WEB_HTTP_PUBLIC_PATH: "/api/public"
             EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://consumer.local/api/public"
             TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://consumer.local/api/public/token"
+            # Pin the DSP callback/audience. The chart otherwise derives them
+            # from `controlplane.ingresses[0].hostname`, and a metrics-first
+            # order would advertise `consumer.local/api/v1/dsp` — a path that
+            # host does not serve — so the peer's agreement POST 404s at nginx.
+            EDC_DSP_CALLBACK_ADDRESS: "http://consumer-dsp.local/api/v1/dsp"
+            EDC_OAUTH_ENDPOINT_AUDIENCE: "http://consumer-dsp.local/api/v1/dsp"
             TX_EDC_DATAPLANE_TOKEN_EXPIRY: "300"
             TX_EDC_DATAPLANE_TOKEN_EXPIRY_TOLERANCE: "10"
             EDC_TRANSFER_PROXY_TOKEN_SIGNER_PRIVATEKEY_ALIAS: "tokenSignerPrivateKey"
@@ -337,14 +353,11 @@ edc-consumer:
             metrics:
               port: 8086
               path: /api/public
+          # DSP MUST stay first: tractusx-connector builds
+          # `txdc.controlplane.url.protocol` from `ingresses[0]` unless
+          # `controlplane.url.protocol` is set, and that URL becomes
+          # EDC_DSP_CALLBACK_ADDRESS / EDC_OAUTH_ENDPOINT_AUDIENCE.
           ingresses:
-            - enabled: true
-              hostname: consumer.local
-              endpoints:
-                - metrics
-              className: nginx
-              tls:
-                enabled: false
             - enabled: true
               hostname: consumer-dsp.local
               endpoints:
@@ -358,6 +371,13 @@ edc-consumer:
                 - management
                 - control
                 - catalog
+              className: nginx
+              tls:
+                enabled: false
+            - enabled: true
+              hostname: consumer.local
+              endpoints:
+                - metrics
               className: nginx
               tls:
                 enabled: false
