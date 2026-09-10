@@ -35,7 +35,7 @@ dependencies = [
     # it gets (`tractusx_sdk.dataspace.tools.Tracer` / `trace_call`), which is
     # how a step's exchanges reach the execution trace (ADR-0016). Before it,
     # the engine had to patch `requests` to see the SDK's traffic at all.
-    "tractusx-sdk (>=0.8.2rc1)",
+    "tractusx-sdk (>=0.8.2)",
     "pydantic (>=2.6.0,<3.0.0)",
     # F-E02, second round. All three are imported by name in `src/` and were
     # undeclared. `pydantic-core` and `starlette` were harmless in practice —
