@@ -275,3 +275,72 @@ class TestHttpRequestQueryParams:
             )
 
         assert output.request.url == "https://api.example.com?a=1"
+
+
+# ---------------------------------------------------------------------------
+# The two moments of an inbound call are reported, with the address
+# ---------------------------------------------------------------------------
+
+
+class TestTheStepsSayWhereToCall:
+    """Where to call is told through the context, at the moment it matters."""
+
+    @pytest.mark.asyncio
+    async def test_registering_a_mock_reports_the_address_as_open(self, context: MagicMock) -> None:
+        set_callback_manager(CallbackManager())
+
+        await MockEndpointStep().invoke(
+            {"path": _PATH, "method": "post"},
+            context,
+            StepDefinition(id="open_ack", uses="mock/api"),
+        )
+
+        context.report_listening.assert_called_once()
+        step_type, step_id, listener = context.report_listening.call_args.args
+        assert (step_type, step_id) == ("mock/api", "open_ack")
+        assert listener.method == "POST"
+        assert listener.url == f"http://localhost:8080{_PATH}"
+        assert listener.path == _PATH
+
+    @pytest.mark.asyncio
+    async def test_waiting_is_reported_before_the_call_and_the_call_after(
+        self, context: MagicMock
+    ) -> None:
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        context.reset_mock()
+        manager.resolve(_PATH, "POST", {"x-trace": "1"}, {"status": "RECEIVED"})
+
+        output = await WaitForCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1},
+            context,
+            StepDefinition(id="await_ack", uses="mock/wait/http_request"),
+        )
+
+        step_type, step_id, listener, timeout = context.report_waiting.call_args.args
+        assert (step_type, step_id, timeout) == ("mock/wait/http_request", "await_ack", 1)
+        assert listener.url == f"http://localhost:8080{_PATH}"
+        step_type, step_id, listener, request, waited_ms = context.report_received.call_args.args
+        assert (step_type, step_id) == ("mock/wait/http_request", "await_ack")
+        assert request.payload == {"status": "RECEIVED"}
+        assert request.headers == {"x-trace": "1"}
+        assert waited_ms == output.value["elapsed_ms"]
+
+    @pytest.mark.asyncio
+    async def test_a_call_that_never_arrives_reports_no_arrival(self, context: MagicMock) -> None:
+        set_callback_manager(CallbackManager())
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+
+        with pytest.raises(RuntimeError, match="Timed out"):
+            await WaitForCallStep().invoke(
+                {"mock": registered.value["mock"], "timeout_s": 0.01},
+                context,
+                _definition("mock/wait/http_request"),
+            )
+
+        context.report_received.assert_not_called()

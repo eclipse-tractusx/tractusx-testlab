@@ -51,9 +51,7 @@ from typing import Any
 from tractusx_testlab.logging import wire
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.logging.trace import ExecutionTrace
-from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.events import (
-    AssertionResultEvent,
     ExecutionEvent,
     JobCancelledEvent,
     JobCompletedEvent,
@@ -63,22 +61,22 @@ from tractusx_testlab.models.runtime.events import (
     JobStartedEvent,
     ScriptCompletedEvent,
     ScriptStartedEvent,
-    StepCallEvent,
-    StepCompletedEvent,
-    StepFailedEvent,
-    StepSkippedEvent,
-    StepStartedEvent,
-    StepWaitingEvent,
 )
-from tractusx_testlab.models.runtime.results import HttpExchange, ScriptResult, StepResult
+from tractusx_testlab.models.runtime.results import ScriptResult
+from tractusx_testlab.player.execution._monitor_steps import StepEvents
 from tractusx_testlab.player.execution._trace_publisher import TracePublisher
 
 # Callback signature: (wire_event_name, payload_dict) -> None
 CallbackFn = Callable[[str, dict[str, Any]], Any]
 
 
-class ExecutionMonitor:
-    """Publishes typed execution events, logs them, traces them, fires callbacks."""
+class ExecutionMonitor(StepEvents):
+    """Publishes typed execution events, logs them, traces them, fires callbacks.
+
+    The step lifecycle — the events published while a step runs — is
+    :class:`StepEvents`, in its own module; the job and script lifecycle, the
+    package verification and the publishing itself are here.
+    """
 
     __slots__ = ("_background_tasks", "_callbacks", "_logger", "_trace")
 
@@ -147,120 +145,6 @@ class ExecutionMonitor:
         )
         event_id = self._trace.test_ended(result)
         self._publish(ScriptCompletedEvent(job_id=job_id, result=record), event_id)
-
-    # ------------------------------------------------------------------
-    # Step lifecycle
-    # ------------------------------------------------------------------
-
-    def on_step_started(
-        self,
-        job_id: str,
-        script: str,
-        step_id: str | None,
-        step_index: int,
-        step_type: str,
-        step_name: str,
-        phase: str = "main",
-        inputs: dict[str, Any] | None = None,
-    ) -> None:
-        """Publish a step_started event.
-
-        *inputs* is the step's ``with:`` block with its references resolved —
-        the values the step is about to be given, not the template naming them.
-        """
-        event_id = self._trace.step_started(script, step_id, step_index, step_type, phase, inputs)
-        self._publish(
-            StepStartedEvent(
-                job_id=job_id,
-                script=script,
-                step_id=step_id,
-                step_index=step_index,
-                step_type=step_type,
-                step_name=step_name,
-                phase=phase,
-                inputs=inputs,
-            ),
-            event_id,
-        )
-
-    def on_step_call(
-        self,
-        job_id: str,
-        script: str,
-        step_id: str | None,
-        step_type: str,
-        phase: str,
-        index: int,
-        call: HttpExchange,
-    ) -> None:
-        """Publish one call a step made, as soon as its answer came back.
-
-        While the step is still running, which is the point: a DSP pull polls a
-        negotiation for a minute, and the polls are what somebody watching needs
-        to see (:class:`~tractusx_testlab.models.runtime.events.StepCallEvent`).
-        """
-        event_id = self._trace.step_call(script, step_id, step_type, phase, index, call)
-        self._publish(
-            StepCallEvent(
-                job_id=job_id,
-                script=script,
-                step_id=step_id,
-                step_type=step_type,
-                index=index,
-                call=call,
-            ),
-            event_id,
-        )
-
-    def on_step_completed(
-        self,
-        job_id: str,
-        script: str,
-        step_id: str | None,
-        result: StepResult,
-    ) -> None:
-        """Publish one assertion_result event per assertion, then the step outcome.
-
-        The outcome kind (step_completed / step_failed / step_skipped) is
-        derived from ``result.status`` — the one place that status lives —
-        so a consumer never has to sniff ``step_type`` to know what happened.
-        """
-        # What is written down is not what the run keeps: the record carries the
-        # call the SDK really made, masked, while the result keeps the exchange
-        # the step named — which is what a ``returns:`` block reads (logging.wire).
-        record = wire.as_recorded(result)
-
-        # The assertion lines are given the step's id on purpose: they have no
-        # event of their own — ADR-0016 nests them in the terminal event, which
-        # is where a reader following the id finds them.
-        event_id = self._trace.step_ended(script, step_id, record)
-
-        for index, assertion_result in enumerate(result.assertions):
-            self._publish(
-                AssertionResultEvent(
-                    job_id=job_id,
-                    script=script,
-                    step_id=step_id,
-                    step_name=result.step_name,
-                    index=index,
-                    assertion=assertion_result,
-                ),
-                event_id,
-            )
-
-        outcome = {StepStatus.FAILED: StepFailedEvent, StepStatus.SKIPPED: StepSkippedEvent}.get(
-            result.status, StepCompletedEvent
-        )
-        self._publish(
-            outcome(job_id=job_id, script=script, step_id=step_id, result=record), event_id
-        )
-
-    def on_step_waiting(self, job_id: str, step_index: int, listener_url: str) -> None:
-        event_id = self._trace.step_waiting(step_index, listener_url)
-        self._publish(
-            StepWaitingEvent(job_id=job_id, step_index=step_index, listener_url=listener_url),
-            event_id,
-        )
 
     # ------------------------------------------------------------------
     # Package verification (pre-execution — no job exists yet)

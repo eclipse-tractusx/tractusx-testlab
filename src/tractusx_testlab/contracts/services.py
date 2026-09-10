@@ -149,6 +149,37 @@ class CallReporter(Protocol):
 
 
 @runtime_checkable
+class ListenerReporter(Protocol):
+    """Publishing the three moments of an inbound call: opened, blocked on, arrived.
+
+    Same arrangement as :class:`CallReporter` — handed to the context by the
+    phase runner, used by the mock steps — for the traffic that goes the other
+    way. A step that opens an address says so as soon as it is open, with the
+    method and the URL to call, and the step that waits on it says when the
+    call came and what it carried.
+    """
+
+    def listening(self, step_type: str, step_id: str | None, listener: Any) -> None: ...
+
+    def waiting(
+        self,
+        step_type: str,
+        step_id: str | None,
+        listener: Any,
+        timeout_s: float,
+    ) -> None: ...
+
+    def received(
+        self,
+        step_type: str,
+        step_id: str | None,
+        listener: Any,
+        request: Any,
+        waited_ms: int,
+    ) -> None: ...
+
+
+@runtime_checkable
 class StepInvoker(Protocol):
     """Running one step — the part of the runner a nested step needs.
 

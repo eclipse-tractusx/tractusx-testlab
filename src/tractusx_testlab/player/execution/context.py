@@ -32,7 +32,7 @@ from __future__ import annotations
 from typing import Any
 
 from tractusx_testlab.config.settings import TestlabConfig
-from tractusx_testlab.contracts import CallReporter, StepInvoker
+from tractusx_testlab.contracts import CallReporter, ListenerReporter, StepInvoker
 from tractusx_testlab.models import Job
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
 from tractusx_testlab.player.execution.dataspace_access import DataspaceAccess
@@ -47,6 +47,7 @@ class StepContext:
         "_infrastructure",
         "_invoker",
         "_job",
+        "_listener_reporter",
         "_reporter",
         "_services",
         "_variables",
@@ -66,6 +67,7 @@ class StepContext:
         self._variables: dict[str, object] = {}
         self._invoker: StepInvoker | None = None
         self._reporter: CallReporter | None = None
+        self._listener_reporter: ListenerReporter | None = None
 
     # ------------------------------------------------------------------
     # Configuration
@@ -150,6 +152,38 @@ class StepContext:
         """
         if self._reporter is not None:
             self._reporter(step_type, step_id, index, call)
+
+    # ------------------------------------------------------------------
+    # Reporting an inbound call: opened, blocked on, arrived
+    # ------------------------------------------------------------------
+
+    def bind_listener_reporter(self, reporter: ListenerReporter | None) -> None:
+        """Give this context somewhere to publish an inbound call's two moments."""
+        self._listener_reporter = reporter
+
+    def report_listening(self, step_type: str, step_id: str | None, listener: Any) -> None:
+        """Say that an address is open for the SUT to call — and which one."""
+        if self._listener_reporter is not None:
+            self._listener_reporter.listening(step_type, step_id, listener)
+
+    def report_waiting(
+        self, step_type: str, step_id: str | None, listener: Any, timeout_s: float
+    ) -> None:
+        """Say that the run is now blocked on that address, and for how long at most."""
+        if self._listener_reporter is not None:
+            self._listener_reporter.waiting(step_type, step_id, listener, timeout_s)
+
+    def report_received(
+        self,
+        step_type: str,
+        step_id: str | None,
+        listener: Any,
+        request: Any,
+        waited_ms: int,
+    ) -> None:
+        """Say that the call arrived, and what it carried."""
+        if self._listener_reporter is not None:
+            self._listener_reporter.received(step_type, step_id, listener, request, waited_ms)
 
     # ------------------------------------------------------------------
     # Job / Memory

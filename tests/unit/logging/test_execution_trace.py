@@ -342,3 +342,106 @@ class TestTheTranscriptMeetsTheTrace:
 
         assert "job.started" in stream.getvalue()
         assert " id=" not in stream.getvalue()
+
+
+class TestTheInboundCallIsInTheTrace:
+    """Both moments of an inbound flow are events, and both say where.
+
+    The outbound half of a run is every call a step made; this is the other
+    half. The address the SUT has to call is published when it opens and again
+    when the run is blocked on it, and the call itself is published when it
+    lands — headers and body — the same way ``step.call`` publishes what went
+    out.
+    """
+
+    @staticmethod
+    def _listener():
+        from tractusx_testlab.models import Listener
+
+        return Listener(
+            method="POST",
+            url="http://localhost:8100/testlab-e2e/callback",
+            path="/testlab-e2e/callback",
+        )
+
+    def _run(self, tmp_path) -> tuple[list[dict], str]:
+        from datetime import UTC, datetime
+
+        from tractusx_testlab.models.runtime.results import CallbackResult
+
+        stream = io.StringIO()
+        trace = ExecutionTrace.for_job("demo-tck", "job1", tmp_path)
+        monitor = ExecutionMonitor(
+            StructuredLogger("testlab.test.inbound_in_trace", stream=stream), trace
+        )
+        monitor.on_step_listening(
+            "job1", "external-callback", "open_callback", "mock/api", "setup", self._listener()
+        )
+        monitor.on_step_waiting(
+            "job1",
+            "external-callback",
+            "await_call",
+            "mock/wait/http_request",
+            "execution",
+            self._listener(),
+            30.0,
+        )
+        monitor.on_step_received(
+            "job1",
+            "external-callback",
+            "await_call",
+            "mock/wait/http_request",
+            "execution",
+            self._listener(),
+            CallbackResult(
+                listener_name="POST:/testlab-e2e/callback",
+                path="/testlab-e2e/callback",
+                method="POST",
+                headers={"content-type": "application/json"},
+                payload={"from": "stub-sut"},
+                received_at=datetime(2026, 9, 10, 12, 0, 3, tzinfo=UTC),
+            ),
+            3012,
+        )
+        trace.close()
+        return _read(trace.path), stream.getvalue()
+
+    def test_opening_and_waiting_are_their_own_events_and_carry_the_address(self, tmp_path) -> None:
+        events, _ = self._run(tmp_path)
+        opened, waiting = events[0], events[1]
+        assert opened["type"] == "tck.test.step.listening"
+        assert waiting["type"] == "tck.test.step.waiting"
+        assert "timeout_s" not in opened["data"]
+        assert waiting["data"]["timeout_s"] == 30.0
+        for event in (opened, waiting):
+            assert event["data"]["listener"] == {
+                "method": "POST",
+                "url": "http://localhost:8100/testlab-e2e/callback",
+                "path": "/testlab-e2e/callback",
+            }
+
+    def test_the_arrival_is_its_own_event_with_the_request_in_it(self, tmp_path) -> None:
+        events, _ = self._run(tmp_path)
+        received = events[2]
+        assert received["type"] == "tck.test.step.received"
+        assert received["data"]["request"]["body"] == {"from": "stub-sut"}
+        assert received["data"]["request"]["headers"] == {"content-type": "application/json"}
+        assert received["data"]["waited_ms"] == 3012
+        assert received["data"]["received_at"].startswith("2026-09-10T12:00:03")
+
+    def test_the_events_belong_to_the_step_that_published_them(self, tmp_path) -> None:
+        events, _ = self._run(tmp_path)
+        assert events[0]["source"] == "mock/api"
+        assert "/external-callback/setup/open_callback/" in events[0]["id"]
+        assert events[2]["source"] == "mock/wait/http_request"
+        assert "/external-callback/execution/await_call/" in events[2]["id"]
+
+    def test_the_transcript_says_where_to_call_and_what_arrived(self, tmp_path) -> None:
+        events, transcript = self._run(tmp_path)
+        lines = [line for line in transcript.splitlines() if "step." in line]
+        assert "step.listening" in lines[0]
+        assert "call POST http://localhost:8100/testlab-e2e/callback" in lines[0]
+        assert "step.waiting" in lines[1] and "(up to 30s)" in lines[1]
+        assert "step.received" in lines[2] and "after 3012ms" in lines[2]
+        for line, event in zip(lines, events, strict=True):
+            assert line.rsplit(" id=", 1)[1].strip() == event["id"]

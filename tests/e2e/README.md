@@ -38,6 +38,14 @@ own CI signal (not a published certification TCK):
   canned answer and the path the mock saw must be the one the script sent, so
   the call provably came from the provider's data plane pod and not from the
   script.
+- `external_callback.yaml` — the wait step, actually waiting. The call in
+  `inbound_call.yaml` is a consequence of the script's own pull and has
+  already arrived when the wait step runs. Here the script tells a stand-in
+  SUT in the cluster (`ci/stub_caller.py`, deployed by the workflow behind
+  `tck-stub.local`) to call the mock in three seconds, is acknowledged at
+  once, and blocks on `mock/wait/http_request`. The call arrives from the
+  stub's pod while the script is blocked, and `elapsed_ms` must show the wait
+  lasted the delay.
 
 They bind through the `infrastructure.engine.connector` / `sut.connector` /
 `sut.dtr` capabilities (ADR-0019); `ci/umbrella.vars.yaml` supplies the
@@ -46,7 +54,8 @@ the one input the manifest declares, `mock_server_external_url`: the root of
 testlab's mock server *as a pod can reach it*. `mock/api` reports the server at
 `localhost`, which is right for the engine and useless to a connector in a
 pod, so the workflow discovers the address from the kind node's gateway and
-passes it with `--var`.
+passes it with `--var`. `external_callback.yaml` needs `stub_caller_url` as
+well, the stub's ingress host, passed the same way.
 
 ## What `helm install` does not give you
 
@@ -119,7 +128,8 @@ gateway="$(docker inspect tck-e2e-control-plane \
 poetry run testlab run tests/e2e/connector-dtr-smoke/index.yaml \
   --config tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml \
   --var infrastructure.sut.dtr.base_url=http://provider-dtr.local/semantics/registry \
-  --var mock_server_external_url="http://${gateway}:8100"
+  --var mock_server_external_url="http://${gateway}:8100" \
+  --var stub_caller_url=http://tck-stub.local   # after deploying ci/stub_caller.py as in the workflow
 ```
 
 ## Known soft spots

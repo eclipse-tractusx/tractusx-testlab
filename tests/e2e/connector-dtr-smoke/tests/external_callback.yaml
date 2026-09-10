@@ -1,0 +1,114 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: external-callback
+
+metadata:
+  name: "External Callback"
+  version: "v1.0.0"
+  description: >
+    The wait step, waiting. inbound_call.yaml proves a real connector can
+    reach testlab's mock server, but there the call is a consequence of the
+    script's own pull and has already arrived when the wait step runs. Here
+    the caller is a stand-in system under test in the cluster
+    (ci/stub_caller.py): the script hands it the mock's address and a delay,
+    is acknowledged at once, and then blocks on `mock/wait/http_request`
+    with nothing else to do. The call arrives seconds later, from another
+    process, while the script is blocked — which is the situation the step
+    exists for, and the one no sequential script can produce on its own.
+
+setup:
+  - id: open_callback
+    uses: mock/api
+    name: Open the mock endpoint the stub will call back on
+    with:
+      method: POST
+      path: "/testlab-e2e/callback"
+      response_status: 202
+      response_body:
+        ack: true
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      full_mock_url:
+        type: string
+
+execution:
+  # The stub is told where to call, at the address it can reach the mock
+  # server on — the same operator input the inbound test's asset uses — and
+  # answers 202 before it has done anything.
+  - id: schedule_call
+    uses: http/http_request
+    name: Ask the stub to call the mock in three seconds
+    with:
+      method: POST
+      url: "${{ env.stub_caller_url }}/call"
+      body:
+        url: "${{ env.mock_server_external_url }}/testlab-e2e/callback"
+        method: POST
+        delay_s: 3
+        body:
+          from: stub-sut
+          message: called back while the script was waiting
+    returns:
+      status_code:
+        type: integer
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 202 }
+      - uses: validate/field
+        with: { input: value, path: scheduled, operator: equals, value: true }
+
+  # Blocks here. `elapsed_ms` is what separates this from a call that had
+  # already arrived: the stub was told to wait three seconds, so a wait that
+  # returned sooner did not wait for the stub.
+  - id: await_call
+    uses: mock/wait/http_request
+    name: Block until the stub calls back
+    with:
+      mock: "${{ setup.open_callback.mock }}"
+      timeout_s: 30
+    returns:
+      request_method:
+        type: string
+      request_path:
+        type: string
+      request_body:
+        type: object
+      elapsed_ms:
+        type: integer
+    validate:
+      - uses: validate/assert
+        with: { input: request_method, operator: equals, value: "POST" }
+      - uses: validate/assert
+        with: { input: request_path, operator: equals, value: "/testlab-e2e/callback" }
+      - uses: validate/field
+        with: { input: request_body, path: from, operator: equals, value: stub-sut }
+      - uses: validate/assert
+        with: { input: elapsed_ms, operator: gte, value: 2500 }

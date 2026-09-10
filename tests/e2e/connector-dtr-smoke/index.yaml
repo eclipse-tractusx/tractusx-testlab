@@ -97,6 +97,23 @@ env:
         value:
           type: string
 
+    # A stand-in system under test that calls back on request, after a delay
+    # (ci/stub_caller.py). external_callback.yaml hands it the mock's address
+    # and blocks; the workflow deploys it in the cluster behind an ingress.
+    - id: stub_caller_url
+      uses: variable/type/string
+      name: Stub caller root
+      description: >
+        Root URL of the stub caller (ci/stub_caller.py) as the engine reaches
+        it, e.g. http://tck-stub.local. Supplied by the workflow via
+        `--var stub_caller_url=...`.
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
     - id: test_asset
       uses: config/connector/asset
       name: E2E HTTP test asset
@@ -208,4 +225,7 @@ tests:
     skippable: true
   - id: inbound_call.yaml
     name: Put a mock behind a SUT asset, and read the call the SUT's data plane makes to it
+    skippable: true
+  - id: external_callback.yaml
+    name: Block on a mock until a stand-in SUT in the cluster calls it back
     skippable: true

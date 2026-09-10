@@ -63,7 +63,6 @@ OVERSIZED: dict[str, int] = {
     # One class doing one thing — publishing every transition to the log, the
     # stream and the trace. Splitting it by event family would scatter that
     # single job across three files to save three lines.
-    "player/execution/monitor.py": 302,
 }
 
 #: Words that name a layer rather than a thing. A module called `utils` tells a

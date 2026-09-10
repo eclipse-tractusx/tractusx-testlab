@@ -43,6 +43,7 @@ from tractusx_testlab.models import ScriptStatus, StepStatus
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.player.execution._not_run import missing_step_result, skipped_result
+from tractusx_testlab.player.execution._reporters import bind_reporters
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
@@ -101,12 +102,8 @@ async def run_phase(
     # A call is published while the step that made it is still running, and this
     # is the layer that knows which job and which script it belongs to. The step
     # runner adds the step, including for the steps nested inside a flow step,
-    # which run on this same context (contracts.CallReporter).
-    context.bind_call_reporter(
-        lambda step_type, step_id, index, call: monitor.on_step_call(
-            job_id, script.definition.id, step_id, step_type, config.phase_label, index, call
-        )
-    )
+    # which run on this same context (_reporters).
+    bind_reporters(context, monitor, job_id, script.definition.id, config.phase_label)
 
     for step_idx, step_def in enumerate(steps_source):
         await _handle_pause_gate(jobs, job_id, config)

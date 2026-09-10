@@ -363,3 +363,78 @@ class TestWithoutTheServer:
         assert opened.passed
         assert not outcome.passed
         assert "CallbackManager" in (outcome.error("await_call") or "")
+
+
+class TestWhatTheRunSaysWhileItWaits:
+    """The address is announced when it opens and when the run blocks on it,
+    and the arrival is announced with the request — in that order.
+
+    A person driving the SUT by hand reads these to know when and where to
+    call; the trace keeps them as the inbound half of the wire. The order is
+    the whole contract: an arrival reported before the address it arrived on
+    would be a line nobody could act on.
+    """
+
+    class _Reports:
+        def __init__(self) -> None:
+            self.events: list[tuple] = []
+
+        def listening(self, step_type, step_id, listener) -> None:
+            self.events.append(("listening", step_type, step_id, listener, None))
+
+        def waiting(self, step_type, step_id, listener, timeout_s) -> None:
+            self.events.append(("waiting", step_type, step_id, listener, timeout_s))
+
+        def received(self, step_type, step_id, listener, request, waited_ms) -> None:
+            self.events.append(("received", step_type, step_id, listener, request, waited_ms))
+
+    async def test_open_then_wait_then_receive(
+        self, sut_harness: Harness, server: MockServer
+    ) -> None:
+        reports = self._Reports()
+        sut_harness.context.bind_listener_reporter(reports)
+
+        opened = await sut_harness.run(_endpoint("/certificate/request"))
+        server.call_soon(opened.variables["full_mock_url"], json={"cert": "ISO9001"}, delay_s=0.3)
+        outcome = await sut_harness.run(_wait())
+
+        assert outcome.passed, [(r.step_name, r.error) for r in outcome.failures]
+        kinds = [(event[0], event[1], event[2]) for event in reports.events]
+        assert kinds == [
+            ("listening", "mock/api", "endpoint"),
+            ("waiting", "mock/wait/http_request", "await_call"),
+            ("received", "mock/wait/http_request", "await_call"),
+        ]
+
+    async def test_both_announcements_name_the_same_address_the_sut_called(
+        self, sut_harness: Harness, server: MockServer
+    ) -> None:
+        reports = self._Reports()
+        sut_harness.context.bind_listener_reporter(reports)
+
+        opened = await sut_harness.run(_endpoint("/certificate/request"))
+        server.call_soon(opened.variables["full_mock_url"], json={"cert": "ISO9001"}, delay_s=0.3)
+        await sut_harness.run(_wait())
+
+        listening, waiting, received = reports.events
+        assert listening[3] == waiting[3] == received[3]
+        assert listening[3].url == opened.variables["full_mock_url"]
+        assert listening[3].method == "POST"
+        assert waiting[4] == 5.0, "the wait step's own timeout, as the script wrote it"
+        assert received[4].payload == {"cert": "ISO9001"}
+        assert received[5] >= 200, "the wait was blocked for the delay before the call"
+
+    async def test_a_call_that_beat_the_script_is_reported_with_no_wait(
+        self, sut_harness: Harness, server: MockServer
+    ) -> None:
+        reports = self._Reports()
+        sut_harness.context.bind_listener_reporter(reports)
+
+        opened = await sut_harness.run(_endpoint("/certificate/request"))
+        server.call(opened.variables["full_mock_url"], json={"cert": "early"})
+        await sut_harness.run(_wait())
+
+        received = reports.events[-1]
+        assert received[0] == "received"
+        assert received[4].payload == {"cert": "early"}
+        assert received[5] < 200

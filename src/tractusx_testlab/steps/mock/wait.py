@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
-from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.models import Listener, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import get_callback_manager
 from tractusx_testlab.steps.mock._models import MockInstance
@@ -107,6 +107,11 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
             )
 
         manager.register(path, method)
+        listener = Listener(method=method, url=params.mock.full_mock_url, path=path)
+        # The run is now blocked on the SUT. Said out loud, with the address,
+        # because from here the only thing that moves the run forward is a
+        # call to it — and if the SUT will not make it, a person has to.
+        context.report_waiting(definition.uses, definition.id, listener, timeout)
         logger.info("Waiting up to %.0fs for %s %s", timeout, method, path)
 
         started = time.monotonic()
@@ -116,6 +121,7 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
         if result.timed_out:
             raise RuntimeError(f"Timed out after {timeout}s waiting for {method} {path}")
 
+        context.report_received(definition.uses, definition.id, listener, result, elapsed_ms)
         logger.info("Received callback on %s %s after %dms", method, path, elapsed_ms)
         return StepOutput(
             value=InboundCallOutput(

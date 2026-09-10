@@ -47,12 +47,13 @@
 # validates and runs, and tests/e2e/README.md for how to reproduce locally.
 #
 # The traffic runs both ways. Most of the suite has testlab call the
-# dataspace; inbound_call.yaml has the dataspace call testlab — the SUT's
-# data plane fetches from a `mock/api` endpoint testlab opened, and
-# `mock/wait/http_request` reads the request it made. That endpoint lives on
-# the runner, so the pods have to be able to reach the runner: the kind node's
-# gateway is that address, and it is discovered and checked below before the
-# suite runs.
+# dataspace; two tests have the cluster call testlab. inbound_call.yaml has
+# the SUT's data plane fetch from a `mock/api` endpoint testlab opened;
+# external_callback.yaml has a stand-in SUT (ci/stub_caller.py, deployed as
+# a pod below) call one back after a delay, while the script is blocked on
+# `mock/wait/http_request`. Those endpoints live on the runner, so the pods
+# have to be able to reach the runner: the kind node's gateway is that
+# address, and it is discovered and checked below before the suite runs.
 #
 # Three things the chart does NOT do for you, and that this workflow therefore
 # has to do itself — each one is fatal to the run if skipped:
@@ -130,6 +131,8 @@ env:
   TCK_CONFIG: tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml
   UMBRELLA_CI_VALUES: tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml
   ISSUANCE_SCRIPT: tests/e2e/connector-dtr-smoke/ci/issue_credentials.py
+  STUB_CALLER_SCRIPT: tests/e2e/connector-dtr-smoke/ci/stub_caller.py
+  STUB_CALLER_URL: http://tck-stub.local
   TCK_OUT: dist/testlab-e2e-connector-dtr-smoke.tck
   # Single source of truth for the dataspace hostnames, used for both the
   # runner's /etc/hosts and the cluster's CoreDNS. All of these are fixed by
@@ -146,6 +149,7 @@ env:
     consumer-management.local
     bdrs-server.tx.test
     issuerservice.local
+    tck-stub.local
 
 permissions:
   contents: read
@@ -747,6 +751,58 @@ jobs:
           kubectl wait --namespace "${UMBRELLA_NAMESPACE}" \
             --for=condition=ready pod/tck-echo --timeout=120s
 
+      - name: Deploy in-cluster stub caller
+        run: |
+          set -euo pipefail
+          # A stand-in system under test that calls back when told to, after
+          # a delay, from its own pod (see ci/stub_caller.py). Unlike the echo
+          # backend it needs an ingress: the *script* talks to it, and the
+          # script runs on the runner. The call it makes goes the other way,
+          # to the runner's mock server, over the gateway checked below.
+          kubectl create configmap tck-stub --namespace "${UMBRELLA_NAMESPACE}" \
+            --from-file=stub_caller.py="${STUB_CALLER_SCRIPT}"
+          kubectl apply --namespace "${UMBRELLA_NAMESPACE}" -f - <<'EOF'
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: tck-stub
+            labels: { app: tck-stub }
+          spec:
+            containers:
+              - name: stub
+                image: python:3.12-alpine
+                command: ["python", "/stub/stub_caller.py", "--port", "8080"]
+                ports: [{ containerPort: 8080 }]
+                volumeMounts: [{ name: stub, mountPath: /stub }]
+            volumes:
+              - name: stub
+                configMap: { name: tck-stub }
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: tck-stub
+          spec:
+            selector: { app: tck-stub }
+            ports: [{ port: 80, targetPort: 8080 }]
+          ---
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: tck-stub
+          spec:
+            rules:
+              - host: tck-stub.local
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service: { name: tck-stub, port: { number: 80 } }
+          EOF
+          kubectl wait --namespace "${UMBRELLA_NAMESPACE}" \
+            --for=condition=ready pod/tck-stub --timeout=180s
+
       - name: Show dataspace pods
         run: |
           # `helm install --wait` above is the real readiness gate (it tracks
@@ -862,6 +918,14 @@ jobs:
           fi
           echo "A pod reached the runner at ${MOCK_SERVER_EXTERNAL_URL}."
 
+      - name: Preflight — check the stub caller is reachable
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --retry 10 --retry-delay 3 \
+            --retry-all-errors "${STUB_CALLER_URL}/health"
+          echo
+          echo "stub caller: reachable at ${STUB_CALLER_URL}"
+
       - name: Preflight — check connector and DTR reachability
         run: |
           set -euo pipefail
@@ -923,6 +987,7 @@ jobs:
               "connector_negotiation.yaml",
               "dsp_step_by_step.yaml",
               "dtr_roundtrip.yaml",
+              "external_callback.yaml",
               "inbound_call.yaml",
               "negative_paths.yaml",
           }
@@ -941,6 +1006,7 @@ jobs:
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
+            --var "stub_caller_url=${STUB_CALLER_URL}" \
             --logs-dir logs/e2e/full \
             --data-dir /data
 
@@ -951,6 +1017,7 @@ jobs:
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
+            --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "skip_tests=dsp_step_by_step.yaml,negative_paths.yaml" \
             --logs-dir logs/e2e/pr-smoke \
             --data-dir /data
@@ -971,7 +1038,8 @@ jobs:
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml" \
+            --var "stub_caller_url=${STUB_CALLER_URL}" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml" \
             --logs-dir logs/e2e/registry \
             --data-dir /data
 
@@ -984,6 +1052,7 @@ jobs:
                --config "${TCK_CONFIG}" \
                --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
+            --var "stub_caller_url=${STUB_CALLER_URL}" \
                --var "skip_tests=no-such-test.yaml" \
                --logs-dir logs/e2e/refused \
                --data-dir /data; then

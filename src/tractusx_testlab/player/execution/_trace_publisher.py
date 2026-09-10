@@ -167,9 +167,66 @@ class TracePublisher:
             scope=(script, result.phase.value.lower(), step_id or result.step_name),
         )
 
-    def step_waiting(self, step_index: int, listener_url: str) -> str | None:
+    def step_listening(
+        self,
+        script: str,
+        step_id: str | None,
+        step_type: str,
+        phase: str,
+        listener: Any,
+    ) -> str | None:
+        """An address is open for the SUT to call — the method and URL are the data."""
         return self.emit(
-            "tck.test.step.update",
-            {"attempt": 1, "state": "waiting", "listener_url": listener_url},
-            scope=(str(step_index),),
+            "tck.test.step.listening",
+            {"attempt": 1, "listener": listener.model_dump(mode="json")},
+            source=step_type,
+            scope=(script, phase, step_id or step_type.rsplit("/", 1)[-1]),
+        )
+
+    def step_waiting(
+        self,
+        script: str,
+        step_id: str | None,
+        step_type: str,
+        phase: str,
+        listener: Any,
+        timeout_s: float,
+    ) -> str | None:
+        """The run is blocked on that address, for at most *timeout_s* seconds."""
+        return self.emit(
+            "tck.test.step.waiting",
+            {"attempt": 1, "listener": listener.model_dump(mode="json"), "timeout_s": timeout_s},
+            source=step_type,
+            scope=(script, phase, step_id or step_type.rsplit("/", 1)[-1]),
+        )
+
+    def step_received(
+        self,
+        script: str,
+        step_id: str | None,
+        step_type: str,
+        phase: str,
+        listener: Any,
+        request: Any,
+        waited_ms: int,
+    ) -> str | None:
+        """The call arrived: the inbound request, as evidence, while the step runs."""
+        data: dict[str, Any] = {
+            "attempt": 1,
+            "listener": listener.model_dump(mode="json"),
+            "request": {
+                "method": request.method,
+                "path": request.path,
+                "headers": request.headers,
+                "query_params": request.query_params,
+                "body": request.payload,
+            },
+            "received_at": request.received_at.isoformat() if request.received_at else None,
+            "waited_ms": waited_ms,
+        }
+        return self.emit(
+            "tck.test.step.received",
+            data,
+            source=step_type,
+            scope=(script, phase, step_id or step_type.rsplit("/", 1)[-1]),
         )

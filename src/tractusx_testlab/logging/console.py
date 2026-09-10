@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import json
 
+from tractusx_testlab.logging.inbound_lines import listening_line, received_line, waiting_line
 from tractusx_testlab.models.primitives.enums import EventKind
 
 #: The three ways a step can finish. All three render the same columns —
@@ -52,6 +53,13 @@ _STEP_OUTCOME_KINDS: frozenset[str] = frozenset(
         EventKind.STEP_SKIPPED.value,
     }
 )
+
+#: The three moments of an inbound call, each rendered by inbound_lines.
+_INBOUND_LINES = {
+    EventKind.STEP_LISTENING.value: listening_line,
+    EventKind.STEP_WAITING.value: waiting_line,
+    EventKind.STEP_RECEIVED.value: received_line,
+}
 
 #: Longest wire body echoed to the console. The JSONL keeps the whole thing;
 #: a console line that wraps four times is not a trace anyone reads.
@@ -227,6 +235,9 @@ def render(base_msg: str, extra_data: dict[str, object]) -> str:
 
     if kind == EventKind.STEP_CALL.value:
         return _traced(_step_call_line(base_msg, extra_data), extra_data)
+
+    if kind in _INBOUND_LINES:
+        return _traced(_INBOUND_LINES[kind](base_msg, extra_data), extra_data)
 
     if kind == EventKind.STEP_STARTED.value:
         return _traced(

@@ -74,6 +74,11 @@ variables:
   # server as a pod can reach it, which no chart value pins and no deployment
   # shares, so it is discovered per run rather than committed here.
 
+  # stub_caller_url — intentionally absent; supplied via
+  # `--var stub_caller_url=http://tck-stub.local` once the workflow has
+  # deployed ci/stub_caller.py behind that ingress host. It is not part of the
+  # umbrella release, so nothing here can vouch for it.
+
   # infrastructure.sut.dtr.base_url — intentionally absent; supplied via
   # `--var infrastructure.sut.dtr.base_url=...` once the workflow has resolved
   # the DTR's ingress host *and* its rewritten path prefix for this chart

@@ -184,5 +184,7 @@ class EventKind(str, enum.Enum):
     STEP_COMPLETED = "step_completed"
     STEP_FAILED = "step_failed"
     STEP_SKIPPED = "step_skipped"
+    STEP_LISTENING = "step_listening"
     STEP_WAITING = "step_waiting"
+    STEP_RECEIVED = "step_received"
     ASSERTION_RESULT = "assertion_result"

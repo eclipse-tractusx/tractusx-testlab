@@ -42,6 +42,7 @@ from pydantic import BaseModel
 from tractusx_testlab.models.primitives.enums import EventKind, JobStatus
 from tractusx_testlab.models.runtime.results import (
     AssertionResult,
+    CallbackResult,
     HttpExchange,
     ScriptResult,
     StepResult,
@@ -173,12 +174,66 @@ class StepSkippedEvent(_ExecutionEvent):
     result: StepResult
 
 
+class Listener(BaseModel):
+    """Where the system under test is expected to call.
+
+    Published so that whoever is watching a run — or driving the SUT by hand —
+    is told the one thing they need at that moment: which method, at which
+    address. ``url`` is the address as the engine knows it; ``path`` is the
+    part of it the mock server routes on.
+    """
+
+    method: str
+    url: str
+    path: str
+
+
+class StepListeningEvent(_ExecutionEvent):
+    """``mock/api`` has registered an endpoint: from now on the SUT may call it.
+
+    A call that arrives before the script reaches its wait step is held for
+    it, so this is the earliest moment the address is worth announcing — and
+    the one a person driving the SUT by hand acts on.
+    """
+
+    kind: Literal[EventKind.STEP_LISTENING] = EventKind.STEP_LISTENING
+    script: str
+    step_id: str | None = None
+    step_type: str
+    listener: Listener
+
+
 class StepWaitingEvent(_ExecutionEvent):
-    """A step is blocked waiting for an external callback to arrive."""
+    """``mock/wait/http_request`` is blocked on an endpoint, for at most ``timeout_s``.
+
+    The run has nothing left to do but wait: the only thing that moves it
+    forward is a call to ``listener``, and if the SUT will not make it, a person
+    has to.
+    """
 
     kind: Literal[EventKind.STEP_WAITING] = EventKind.STEP_WAITING
-    step_index: int
-    listener_url: str
+    script: str
+    step_id: str | None = None
+    step_type: str
+    listener: Listener
+    timeout_s: float
+
+
+class StepReceivedEvent(_ExecutionEvent):
+    """The call a step was waiting for has arrived.
+
+    ``request`` is the inbound request as the mock server took it, headers and
+    body included; ``waited_ms`` is how long the wait step was blocked, which
+    is zero when the SUT called before the script got there.
+    """
+
+    kind: Literal[EventKind.STEP_RECEIVED] = EventKind.STEP_RECEIVED
+    script: str
+    step_id: str | None = None
+    step_type: str
+    listener: Listener
+    request: CallbackResult
+    waited_ms: int
 
 
 class AssertionResultEvent(_ExecutionEvent):
@@ -217,6 +272,8 @@ ExecutionEvent = (
     | StepCompletedEvent
     | StepFailedEvent
     | StepSkippedEvent
+    | StepListeningEvent
     | StepWaitingEvent
+    | StepReceivedEvent
     | AssertionResultEvent
 )

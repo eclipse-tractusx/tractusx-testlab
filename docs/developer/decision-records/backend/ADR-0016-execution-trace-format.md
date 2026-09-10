@@ -258,6 +258,9 @@ Variables with no published config schema (plain primitives, infrastructure-deri
 | `tck.test.step.start` | `{attempt, index, phase, inputs?}` | Step execution begins; `inputs` is the `with:` block **resolved** |
 | `tck.test.step.call` | `{index, context, started_at, request, response?, errors?}` | One call the step made, published when its answer came back |
 | `tck.test.step.update` | `{attempt, state, ...context}` | Progress (long-running) |
+| `tck.test.step.listening` | `{attempt, listener}` | `mock/api` registered an endpoint; `listener: {method, url, path}` is where the SUT has to call |
+| `tck.test.step.waiting` | `{attempt, listener, timeout_s}` | `mock/wait/http_request` is blocked on that endpoint, for at most `timeout_s` |
+| `tck.test.step.received` | `{attempt, listener, request, received_at, waited_ms}` | The inbound call a step was waiting for has arrived; `request` is it, headers and body included |
 | `tck.test.step.passed` | `{attempt, duration_ms, inputs?, outputs, validations}` | Step succeeded (terminal) |
 | `tck.test.step.failed` | `{attempt, duration_ms, inputs?, outputs?, validations, errors}` | Step failed (terminal) |
 | `tck.test.step.skipped` | `{attempt, reason}` | Step skipped |

@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
-from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.models import Listener, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import (
     MockResponse,
@@ -127,6 +127,14 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
         base_url = f"http://localhost:{context.config.server_port}"
         full_url = f"{base_url}{params.path}"
         params.publish_url(full_url, context)
+
+        # From here on a call may arrive, so this is when whoever is watching
+        # — or driving the SUT by hand — is told where to call.
+        context.report_listening(
+            definition.uses,
+            definition.id,
+            Listener(method=params.method, url=full_url, path=params.path),
+        )
 
         logger.info(
             "Registered mock endpoint %s %s -> %d",

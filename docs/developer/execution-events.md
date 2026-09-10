@@ -315,6 +315,103 @@ the policy sets `POLICY_MISMATCH` and a context holding every offer it compared
 and how each differed, so a consumer renders the comparison instead of parsing
 it back out of `error`. Both are absent when the error has only its sentence.
 
+#### `step_listening`
+
+`mock/api` has registered an endpoint: from now on the system under test may
+call it. Everything else in a run is testlab calling out; this is the first of
+the three moments the run depends on a call coming *in*, so the event says where
+that call has to go. A call that arrives before the script reaches its wait step
+is held for it.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"step_listening"` | |
+| `job_id` | string | |
+| `script` | string | |
+| `step_id` | string \| null | |
+| `step_type` | string | `mock/api`. |
+| `listener` | `Listener` | `method`, `url` and `path` — where to call. `url` is the address as the engine knows it. |
+
+```json
+{
+  "kind": "step_listening",
+  "job_id": "3f1c…",
+  "script": "external-callback",
+  "step_id": "open_callback",
+  "step_type": "mock/api",
+  "listener": {"method": "POST", "url": "http://localhost:8100/testlab-e2e/callback", "path": "/testlab-e2e/callback"}
+}
+```
+
+On the console: `step.listening [external-callback] open_callback mock/api — call POST http://localhost:8100/testlab-e2e/callback`.
+In the trace it is a `tck.test.step.listening`.
+
+#### `step_waiting`
+
+`mock/wait/http_request` is now blocked on the endpoint, for at most
+`timeout_s`. The run has nothing left to do but wait: if the SUT will not make
+the call, a person has to, and this is the line that tells them what to type.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"step_waiting"` | |
+| `job_id` | string | |
+| `script` | string | |
+| `step_id` | string \| null | |
+| `step_type` | string | `mock/wait/http_request`. |
+| `listener` | `Listener` | The address the step is blocked on. |
+| `timeout_s` | number | How long the step waits before failing. |
+
+```json
+{
+  "kind": "step_waiting",
+  "job_id": "3f1c…",
+  "script": "external-callback",
+  "step_id": "await_call",
+  "step_type": "mock/wait/http_request",
+  "listener": {"method": "POST", "url": "http://localhost:8100/testlab-e2e/callback", "path": "/testlab-e2e/callback"},
+  "timeout_s": 30.0
+}
+```
+
+On the console: `step.waiting [external-callback] await_call mock/wait/http_request — call POST http://localhost:8100/testlab-e2e/callback (up to 30s)`.
+In the trace it is a `tck.test.step.waiting`.
+
+#### `step_received`
+
+The call arrived. Published by `mock/wait/http_request` the moment it has the
+request, before its assertions run, so a consumer sees the inbound traffic the
+same way `step_call` shows the outbound.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"step_received"` | |
+| `job_id` | string | |
+| `script` | string | |
+| `step_id` | string \| null | |
+| `step_type` | string | `mock/wait/http_request`. |
+| `listener` | `Listener` | The address that was called. |
+| `request` | `CallbackResult` | The inbound request: `method`, `path`, `headers`, `query_params`, `payload`, `received_at`. |
+| `waited_ms` | integer | How long the wait step was blocked. `0` when the call had arrived before the step got there. |
+
+```json
+{
+  "kind": "step_received",
+  "job_id": "3f1c…",
+  "script": "external-callback",
+  "step_id": "await_call",
+  "step_type": "mock/wait/http_request",
+  "listener": {"method": "POST", "url": "http://localhost:8100/testlab-e2e/callback", "path": "/testlab-e2e/callback"},
+  "request": {"listener_name": "POST:/testlab-e2e/callback", "path": "/testlab-e2e/callback", "method": "POST",
+              "headers": {"content-type": "application/json"}, "query_params": {},
+              "payload": {"from": "stub-sut"}, "received_at": "2026-09-10T12:00:03.412Z", "timed_out": false},
+  "waited_ms": 3012
+}
+```
+
+On the console: `step.received [external-callback] await_call mock/wait/http_request ← POST /testlab-e2e/callback after 3012ms body={"from": "stub-sut"}`.
+In the trace it is a `tck.test.step.received`.
+
 ### Assertions
 
 #### `assertion_result`
@@ -375,20 +472,14 @@ job_completed | job_failed | job_cancelled
 `job_paused` and `job_resumed` can appear between any two step events.
 `job_cancelled` can end the stream at any point.
 
-## Reserved
-
-`step_waiting` is declared in `EventKind` for a step blocked on an inbound
-callback, and **the engine does not currently emit it** — `mock/wait/http_request`
-blocks without reporting a job-level transition. Consumers should ignore it until
-this note says otherwise rather than building UI on an event that never arrives.
-
 ## Adding a kind
 
 1. Add the value to `EventKind`.
 2. Add its payload model to `models/runtime/events.py` and to the
    `ExecutionEvent` union.
 3. Add the `on_*` method to `ExecutionMonitor` — the publisher is the only place
-   that builds an event, so a new kind cannot be emitted from anywhere else.
+   that builds an event, so a new kind cannot be emitted from anywhere else. A
+   step-level kind goes on its `StepEvents` half (`_monitor_steps.py`).
 4. Document it here, with a field table and an example.
 
 Step 4 is not optional: this page is the contract, and a kind that is emitted but

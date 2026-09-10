@@ -273,3 +273,74 @@ class TestTheOtherLines:
         assert render("job.started", {"kind": "job_started", "tck_id": "probe"}) == (
             "job.started [probe]"
         )
+
+
+_STEP_WAITING = {
+    "kind": "step_waiting",
+    "script": "external-callback",
+    "step_id": "await_call",
+    "step_type": "mock/wait/http_request",
+    "listener": {
+        "method": "POST",
+        "url": "http://localhost:8100/testlab-e2e/callback",
+        "path": "/testlab-e2e/callback",
+    },
+    "timeout_s": 30.0,
+}
+
+_STEP_RECEIVED = {
+    "kind": "step_received",
+    "script": "external-callback",
+    "step_id": "await_call",
+    "step_type": "mock/wait/http_request",
+    "listener": _STEP_WAITING["listener"],
+    "request": {
+        "listener_name": "POST:/testlab-e2e/callback",
+        "method": "POST",
+        "path": "/testlab-e2e/callback",
+        "headers": {"content-type": "application/json"},
+        "query_params": {},
+        "payload": {"from": "stub-sut"},
+        "received_at": "2026-09-10T12:00:03.412000+00:00",
+        "timed_out": False,
+    },
+    "waited_ms": 3012,
+}
+
+
+class TestAWaitingLine:
+    """The line for the person standing in for the SUT: where to call."""
+
+    def test_it_leads_with_the_method_and_the_url_to_call(self) -> None:
+        line = render("step.waiting", _STEP_WAITING)
+        assert "call POST http://localhost:8100/testlab-e2e/callback" in line
+        assert "await_call" in line
+        assert "mock/wait/http_request" in line
+
+    def test_a_blocked_step_says_how_long_it_will_wait(self) -> None:
+        assert "(up to 30s)" in render("step.waiting", _STEP_WAITING)
+
+    def test_an_opened_endpoint_says_where_to_call_and_nothing_about_a_budget(self) -> None:
+        opened = {
+            "kind": "step_listening",
+            "script": "external-callback",
+            "step_id": "open_callback",
+            "step_type": "mock/api",
+            "listener": _STEP_WAITING["listener"],
+        }
+        line = render("step.listening", opened)
+        assert line.startswith("step.listening [external-callback] open_callback mock/api")
+        assert "call POST http://localhost:8100/testlab-e2e/callback" in line
+        assert "up to" not in line
+
+
+class TestAReceivedLine:
+    def test_it_says_what_came_in_and_how_long_the_step_waited(self) -> None:
+        line = render("step.received", _STEP_RECEIVED)
+        assert "← POST /testlab-e2e/callback" in line
+        assert "after 3012ms" in line
+        assert "stub-sut" in line
+
+    def test_a_call_without_a_body_prints_no_body(self) -> None:
+        bare = {**_STEP_RECEIVED, "request": {**_STEP_RECEIVED["request"], "payload": None}}
+        assert "body=" not in render("step.received", bare)
