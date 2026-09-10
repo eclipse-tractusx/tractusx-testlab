@@ -1028,9 +1028,9 @@ jobs:
       # skippable. This is also the proof that a test needing no connector
       # journey runs without one having happened first.
       #
-      # One selection is enough to exercise that machinery, and this is the
-      # cheap one: every other subset re-runs a DSP negotiation and a transfer
-      # the full suite has already driven against the same live dataspace.
+      # This is the cheap selection: every other subset re-runs a DSP
+      # negotiation and a transfer the full suite has already driven against
+      # the same live dataspace.
       - name: testlab run — registry combination
         if: github.event_name != 'pull_request'
         run: |
@@ -1042,6 +1042,72 @@ jobs:
             --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml" \
             --logs-dir logs/e2e/registry \
             --data-dir /data
+
+      # Combination 3 — the two tests where the dataspace calls testlab, on
+      # their own. The full suite already ran them, but there they sit behind
+      # four outbound tests and a PASS banner; here the run is only them, and
+      # the step goes further than the banner: it reads the trace back and
+      # checks that both inbound calls were *received*, and that the external
+      # one arrived while the wait step was blocked — the property the stub
+      # exists for. A green run whose wait had returned at once would be a
+      # buffered call passing for a blocking one.
+      - name: testlab run — inbound combination
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          mkdir -p /data/inbound
+          poetry run testlab run "${TCK_OUT}" \
+            --config "${TCK_CONFIG}" \
+            --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+            --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
+            --var "stub_caller_url=${STUB_CALLER_URL}" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml" \
+            --logs-dir logs/e2e/inbound \
+            --data-dir /data/inbound
+
+          poetry run python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          traces = sorted(pathlib.Path("/data/inbound").rglob("*.jsonl"))
+          if not traces:
+              sys.exit("the inbound run wrote no execution trace under /data/inbound")
+          events = [
+              json.loads(line)
+              for trace in traces
+              for line in trace.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          received = {
+              event["id"].split("/")[1]: event["data"]
+              for event in events
+              if event["type"] == "tck.test.step.received"
+          }
+          expected = {"inbound-call", "external-callback"}
+          if set(received) != expected:
+              sys.exit(f"received events for {sorted(received)}, expected {sorted(expected)}")
+
+          # The provider's data plane called during the pull, before the wait
+          # step ran: the call was held for it, so the wait did not block.
+          inbound = received["inbound-call"]
+          if inbound["request"]["method"] != "GET":
+              sys.exit(f"inbound-call: expected the data plane's GET, got {inbound['request']}")
+
+          # The stub was told to wait three seconds; the wait step must have
+          # blocked for about that long, or the call did not arrive during it.
+          external = received["external-callback"]
+          if external["waited_ms"] < 2500:
+              sys.exit(
+                  f"external-callback: the wait returned after {external['waited_ms']}ms, "
+                  "so the call had already arrived — it was meant to land while blocked"
+              )
+          if external["request"]["body"].get("from") != "stub-sut":
+              sys.exit(f"external-callback: unexpected body {external['request']['body']}")
+
+          print("inbound-call: received GET from the SUT's data plane, held for the wait step")
+          print(f"external-callback: received POST from the stub after {external['waited_ms']}ms of waiting")
+          PY
 
       # A selection the manifest does not permit must be refused, not silently
       # ignored — an operator who mistypes a test id has to find out.

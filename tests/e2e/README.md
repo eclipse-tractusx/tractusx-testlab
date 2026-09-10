@@ -47,6 +47,12 @@ own CI signal (not a published certification TCK):
   stub's pod while the script is blocked, and `elapsed_ms` must show the wait
   lasted the delay.
 
+The workflow runs the package several ways from one compile: the full suite,
+the registry alone, the two inbound tests alone, and a selection the manifest
+does not permit, which must be refused. The inbound combination also reads the
+run's trace back and fails unless both `tck.test.step.received` events are
+there and the external one shows the wait step blocked for the stub's delay.
+
 They bind through the `infrastructure.engine.connector` / `sut.connector` /
 `sut.dtr` capabilities (ADR-0019); `ci/umbrella.vars.yaml` supplies the
 concrete endpoints via `testlab run --config`. `inbound_call.yaml` also needs
