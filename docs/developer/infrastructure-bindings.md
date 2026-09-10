@@ -128,14 +128,14 @@ states nothing about a field leaves it alone:
        connector:
          management_url: https://engine.example.com/management
          api_key: engine-key
-         participant_id: BPNL000000000TLB
+         participant_id: did:web:engine.example.com:BPNL000000000TLB
        dtr:
          base_url: https://engine.example.com/semantics/registry
          submodel_base_url: https://backend.example.com
      sut:
        connector:
-         participant_id: BPNL000000000001
-         dsp_url: https://sut.example.com/api/v1/dsp
+         participant_id: did:web:sut.example.com:BPNL000000000001
+         dsp_url: https://sut.example.com/api/v1/dsp/2025-1
          # version / standard / standard_version are normally left out —
          # they come from the TCK. State one only to override it.
    ```
@@ -171,7 +171,7 @@ integration = Infrastructure(
         connector=ConnectorBinding(
             management_url="https://engine.example.com/management",
             api_key="engine-key",
-            participant_id="BPNL000000000TLB",
+            participant_id="did:web:engine.example.com:BPNL000000000TLB",
         ),
         dtr=EngineDtrBinding(
             base_url="https://engine.example.com/semantics/registry",
@@ -180,7 +180,7 @@ integration = Infrastructure(
     ),
     sut=SutBindings(
         connector=SutConnectorBinding(
-            participant_id="BPNL000000000001",
+            participant_id="did:web:sut.example.com:BPNL000000000001",
             dsp_url="https://sut.example.com/api/v1/dsp",
         ),
         dtr=DtrBinding(base_url="https://sut.example.com/semantics/registry"),

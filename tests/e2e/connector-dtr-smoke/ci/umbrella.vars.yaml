@@ -43,15 +43,23 @@ variables:
   infrastructure.engine.connector.management_url: "http://consumer-management.local/management"
   infrastructure.engine.connector.api_key: "password"
   # Operator-supplied, exactly like the SUT's: a connector the engine drives
-  # still has to say which participant it is, because that is the BPN the
-  # counter-party sees on a negotiation. `TRACTUSX_EDC_PARTICIPANT_BPN` on
-  # umbrella's consumer control-plane is where this value comes from.
-  infrastructure.engine.connector.participant_id: "BPNL000000000002"
+  # still has to say which participant it is, because that is the identity the
+  # counter-party sees on a negotiation. A Saturn connector speaking DSP 2025-1
+  # identifies itself by its DID — the chart wires `iatp.id` into
+  # `EDC_PARTICIPANT_ID`, and the BPN lives in a separate
+  # `TRACTUSX_EDC_PARTICIPANT_BPN` that only the v0.8 protocol still answers
+  # with. The BPN-addressed steps (`query_catalog_by_bpnl`, `do_dsp_with_bpnl`)
+  # are the ones that take a BPN, and they resolve it to this DID themselves.
+  infrastructure.engine.connector.participant_id: "did:web:consumer.local:identityhub:BPNL000000000002"
 
   # sut = umbrella's "provider" participant — the connector + DTR under test.
   infrastructure.sut.connector.management_url: "http://provider-management.local/management"
   infrastructure.sut.connector.api_key: "password"
-  infrastructure.sut.connector.participant_id: "BPNL000000000001"
+  # The DID, for the same reason as the engine's: it is what the provider puts
+  # in the catalog's `participantId` and in the agreement's `assigner`, so a
+  # negotiation addressed to the BPN stores an identity the provider never
+  # presents, and the consumer then rejects the provider's own agreement.
+  infrastructure.sut.connector.participant_id: "did:web:provider.local:identityhub:BPNL000000000001"
   # The DSP *version* path, not the protocol root. EDC sends a protocol
   # message to the counter-party address exactly as given — nothing appends
   # the negotiated version to it — and a Saturn connector speaks

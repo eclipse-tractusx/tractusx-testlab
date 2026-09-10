@@ -152,7 +152,11 @@ class ConnectorBinding(CapabilityBinding):
     )
     participant_id: str = Field(
         default="",
-        description="BPN-L the connector presents as its dataspace identity.",
+        description=(
+            "Dataspace identity the connector presents on DSP: its DID for a "
+            "Saturn connector (DSP 2025-1), its BPN-L for a Jupiter one (DSP v0.8). "
+            "Steps that take a BPN say so in their name ('…_by_bpnl')."
+        ),
         json_schema_extra=OPERATOR_SUPPLIED,
     )
     dsp_url: str = Field(

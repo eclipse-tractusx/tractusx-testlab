@@ -46,7 +46,7 @@ engine hopes to find in its variables::
             connector=ConnectorBinding(
                 management_url="https://engine.example.com/management",
                 api_key="…",
-                participant_id="BPNL000000000TLB",
+                participant_id="did:web:engine.example.com:BPNL000000000TLB",
             ),
             dtr=EngineDtrBinding(
                 base_url="https://engine.example.com/semantics/registry",
@@ -55,7 +55,7 @@ engine hopes to find in its variables::
         ),
         sut=SutBindings(
             connector=SutConnectorBinding(
-                participant_id="BPNL000000000001",
+                participant_id="did:web:sut.example.com:BPNL000000000001",
                 dsp_url="https://sut.example.com/api/v1/dsp",
             ),
             dtr=DtrBinding(base_url="https://sut.example.com/semantics/registry"),
