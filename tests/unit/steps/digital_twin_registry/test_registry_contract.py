@@ -101,6 +101,10 @@ class TestDescriptorSerialisation:
     def test_the_aas_camel_case_is_accepted_on_the_way_in(self) -> None:
         assert DescriptorPayload.of(_DESCRIPTOR).id_short == "twin-a"
 
+    def test_the_canonical_snake_case_is_accepted_on_the_way_in(self) -> None:
+        payload = DescriptorPayload.of({**_DESCRIPTOR, "id_short": "twin-a"})
+        assert payload.id_short == "twin-a"
+
     def test_only_the_snake_case_spelling_is_written_on_the_way_out(self) -> None:
         output = GetShellDescriptorStep.bind_output(
             StepOutput(value=DescriptorPayload.of(_DESCRIPTOR))

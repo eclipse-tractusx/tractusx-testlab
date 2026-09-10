@@ -40,7 +40,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from tractusx_sdk.dataspace.tools import encode_as_base64_url_safe
 
 from tractusx_testlab.steps.shared_models import StepParams
@@ -67,15 +67,16 @@ class DescriptorPayload(StepPayload):
     document round-trips untouched.
     """
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
 
     id: str | None = Field(default=None, description="Identifier of the descriptor.")
-    # The AAS API spells it ``idShort``; scripts read ``id_short`` and nothing
-    # else, so the camelCase form is accepted on the way in and never written
-    # on the way out.
+    # The AAS API spells it ``idShort`` and our scripts read ``id_short``. Some
+    # registry responses come back in the canonical snake_case form instead, so
+    # both spellings are accepted and the field remains populated whichever one it
+    # arrived as.
     id_short: str | None = Field(
         default=None,
-        validation_alias="idShort",
+        validation_alias=AliasChoices("idShort", "id_short"),
         description="Short, human-readable name.",
     )
 

@@ -101,6 +101,12 @@ execution:
     name: Read the shell descriptor back from the SUT's DTR
     with:
       aas_identifier: "urn:uuid:${{ execution.new_twin_id.value }}"
+      # A read is filtered by the requester the `Edc-Bpn` header names: the
+      # registry only returns a shell the caller owns or is named in through a
+      # specific asset ID's `externalSubjectId`, and answers 404 otherwise.
+      # Create and delete are checked against the caller's role alone, which is
+      # why they round-trip without it.
+      bpn: "${{ infrastructure.sut.connector.participant_id }}"
     returns:
       id:
         type: string
