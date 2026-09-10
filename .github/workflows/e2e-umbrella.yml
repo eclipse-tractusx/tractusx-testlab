@@ -46,6 +46,14 @@
 # tests/e2e/connector-dtr-smoke/ for the TCK this workflow compiles,
 # validates and runs, and tests/e2e/README.md for how to reproduce locally.
 #
+# The traffic runs both ways. Most of the suite has testlab call the
+# dataspace; inbound_call.yaml has the dataspace call testlab — the SUT's
+# data plane fetches from a `mock/api` endpoint testlab opened, and
+# `mock/wait/http_request` reads the request it made. That endpoint lives on
+# the runner, so the pods have to be able to reach the runner: the kind node's
+# gateway is that address, and it is discovered and checked below before the
+# suite runs.
+#
 # Three things the chart does NOT do for you, and that this workflow therefore
 # has to do itself — each one is fatal to the run if skipped:
 #
@@ -83,6 +91,8 @@ on:
     paths:
       - "src/tractusx_testlab/steps/connector/**"
       - "src/tractusx_testlab/steps/industry/**"
+      - "src/tractusx_testlab/steps/mock/**"
+      - "src/tractusx_testlab/server/**"
       - "src/tractusx_testlab/services/**"
       - "src/tractusx_testlab/player/**"
       - "src/tractusx_testlab/compiler/**"
@@ -809,6 +819,49 @@ jobs:
           grep -qE "[[:space:]]${DTR_HOST}\$" /etc/hosts \
             || echo "127.0.0.1 ${DTR_HOST}" | sudo tee -a /etc/hosts >/dev/null
 
+      - name: Discover the address pods use to reach the runner
+        run: |
+          set -euo pipefail
+          # testlab's mock server binds 0.0.0.0:8100 on the runner. The SUT's
+          # data plane runs in a pod and fetches inbound_call.yaml's asset from
+          # that server, so it needs an address for the runner — and neither
+          # `localhost` (the pod's own loopback) nor the ingress (which routes
+          # only what the chart declared) is one. Pod egress leaves through
+          # the kind node, whose default gateway is the Docker bridge the node
+          # sits on; the host side of that bridge is the runner itself.
+          gateway="$(docker inspect tck-e2e-control-plane \
+            -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}')"
+          if [ -z "${gateway}" ]; then
+            echo "::error::Could not read the kind node's network gateway."
+            docker inspect tck-e2e-control-plane -f '{{json .NetworkSettings.Networks}}' || true
+            exit 1
+          fi
+          echo "Pods reach the runner at ${gateway}."
+          echo "MOCK_SERVER_EXTERNAL_URL=http://${gateway}:8100" >> "$GITHUB_ENV"
+
+      - name: Preflight — check pods can reach the runner
+        run: |
+          set -euo pipefail
+          # A stand-in on the mock server's port, dialled from inside the
+          # cluster. Without this, a wrong gateway or a port nothing listens
+          # on surfaces twenty steps later as the SUT's data plane answering
+          # 502 — which reads as a connector fault, and is not one.
+          python3 -m http.server 8100 --bind 0.0.0.0 --directory "${RUNNER_TEMP}" \
+            >/dev/null 2>&1 &
+          standin=$!
+          trap 'kill "${standin}" 2>/dev/null || true' EXIT
+          sleep 1
+          status="$(kubectl run tck-reach --namespace "${UMBRELLA_NAMESPACE}" \
+            --rm -i --restart=Never --quiet --pod-running-timeout=3m \
+            --image=curlimages/curl:8.10.1 -- \
+            curl --silent --output /dev/null --write-out '%{http_code}' \
+              --max-time 10 "${MOCK_SERVER_EXTERNAL_URL}/" || true)"
+          if [ "${status}" != "200" ]; then
+            echo "::error::A pod could not reach the runner at ${MOCK_SERVER_EXTERNAL_URL} (got '${status}')."
+            exit 1
+          fi
+          echo "A pod reached the runner at ${MOCK_SERVER_EXTERNAL_URL}."
+
       - name: Preflight — check connector and DTR reachability
         run: |
           set -euo pipefail
@@ -870,6 +923,7 @@ jobs:
               "connector_negotiation.yaml",
               "dsp_step_by_step.yaml",
               "dtr_roundtrip.yaml",
+              "inbound_call.yaml",
               "negative_paths.yaml",
           }
           found = {script["test_id"] for script in report["scripts"]}
@@ -886,6 +940,7 @@ jobs:
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+            --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
             --logs-dir logs/e2e/full \
             --data-dir /data
 
@@ -895,6 +950,7 @@ jobs:
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+            --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
             --var "skip_tests=dsp_step_by_step.yaml,negative_paths.yaml" \
             --logs-dir logs/e2e/pr-smoke \
             --data-dir /data
@@ -914,7 +970,8 @@ jobs:
           poetry run testlab run "${TCK_OUT}" \
             --config "${TCK_CONFIG}" \
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml" \
+            --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml" \
             --logs-dir logs/e2e/registry \
             --data-dir /data
 
@@ -926,6 +983,7 @@ jobs:
           if poetry run testlab run "${TCK_OUT}" \
                --config "${TCK_CONFIG}" \
                --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+            --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
                --var "skip_tests=no-such-test.yaml" \
                --logs-dir logs/e2e/refused \
                --data-dir /data; then

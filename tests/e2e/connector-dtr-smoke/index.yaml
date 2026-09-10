@@ -78,6 +78,25 @@ infrastructure:
 
 env:
   variables:
+    # The root of testlab's mock server as the SUT can reach it. `mock/api`
+    # reports the server at `localhost`, which is true for the engine and
+    # useless to a connector in a pod, so the address the SUT dials is the
+    # operator's to give — the workflow discovers it from the kind node's
+    # gateway. inbound_call.yaml registers an asset on the SUT with it.
+    - id: mock_server_external_url
+      uses: variable/type/string
+      name: Mock server root, as reachable from the SUT
+      description: >
+        Root URL of testlab's mock server as the SUT's data plane can reach
+        it, e.g. http://172.18.0.1:8100. Supplied by the workflow via
+        `--var mock_server_external_url=...`.
+      with:
+        source: input
+        scope: engine
+      returns:
+        value:
+          type: string
+
     - id: test_asset
       uses: config/connector/asset
       name: E2E HTTP test asset
@@ -161,6 +180,13 @@ env:
           type: object
           class: Policy
 
+  # The one JSON Schema the suite validates a live answer against. It is what
+  # makes `validate/schema` part of the smoke: a schema that is never applied
+  # to a real response is a step the engine could break without CI noticing.
+  schemas:
+    - id: shell_descriptor
+      source: shell_descriptor.json
+
 # Every entry is `skippable: true`. This is testlab's own CI signal rather than
 # a certification TCK, so the operator is allowed to run any subset — which is
 # also what lets the workflow execute several *combinations* of one compiled
@@ -179,4 +205,7 @@ tests:
     skippable: true
   - id: negative_paths.yaml
     name: Ask for things that are not there, and check the answers say so
+    skippable: true
+  - id: inbound_call.yaml
+    name: Put a mock behind a SUT asset, and read the call the SUT's data plane makes to it
     skippable: true

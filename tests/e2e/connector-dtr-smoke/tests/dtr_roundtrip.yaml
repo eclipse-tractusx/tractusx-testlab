@@ -35,6 +35,9 @@ metadata:
     Writes a shell descriptor with one submodel descriptor to the SUT's real
     Digital Twin Registry, reads it back, and confirms both documents match —
     proving testlab's DTR steps work end-to-end against a live registry.
+    Both answers are also held to a JSON Schema, and the read-back to a field
+    check inside the document, so all three validation kinds the engine ships
+    are exercised against a real response here.
 
 execution:
   - id: new_twin_id
@@ -95,6 +98,11 @@ execution:
     validate:
       - uses: validate/assert
         with: { input: id, operator: equals, value: "urn:uuid:${{ execution.new_twin_id.value }}" }
+      # `body` is the document as the registry answered it, in the AAS
+      # spelling (`idShort`, `specificAssetIds`); `response_body` would be the
+      # step's typed payload, which is not what the schema describes.
+      - uses: validate/schema
+        with: { input: body, schema: "${{ env.schemas.shell_descriptor }}" }
 
   - id: read_back_shell
     uses: digital-twin/provider/get_shell_descriptor
@@ -117,6 +125,23 @@ execution:
         with: { input: id, operator: equals, value: "urn:uuid:${{ execution.new_twin_id.value }}" }
       - uses: validate/assert
         with: { input: id_short, operator: equals, value: "testlabE2eSmokeTwin" }
+      - uses: validate/schema
+        with: { input: body, schema: "${{ env.schemas.shell_descriptor }}" }
+      # The registry stored what was sent, not merely something schema-shaped:
+      # the specific asset id is looked up by name inside the document, and the
+      # submodel endpoint still points at the asset it was registered with.
+      - uses: validate/field
+        with:
+          input: body
+          path: "specificAssetIds[name='manufacturerPartId'].value"
+          operator: equals
+          value: "testlab-e2e-smoke-part"
+      - uses: validate/field
+        with:
+          input: body
+          path: "submodelDescriptors[idShort='smokeSubmodel'].endpoints[interface='SUBMODEL-3.0'].protocolInformation.subprotocolBody"
+          operator: contains
+          value: "id=testlab-e2e-smoke-asset"
 
 teardown:
   - id: delete_shell

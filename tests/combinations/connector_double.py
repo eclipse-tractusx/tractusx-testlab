@@ -123,6 +123,16 @@ class ConsumerDouble:
         self._record("get_edr", **kwargs)
         return {"endpoint": self._dataplane_url, "authorization": self._token}
 
+    # The one-shot flow (`pull_data*`) runs the whole journey inside the SDK
+    # and comes back with a transfer id, then asks for that transfer's EDR.
+    def get_transfer_id(self, **kwargs: Any) -> str:
+        self._record("get_transfer_id", **kwargs)
+        return "tp-1"
+
+    def get_endpoint_with_token(self, **kwargs: Any) -> tuple[str, str]:
+        self._record("get_endpoint_with_token", **kwargs)
+        return self._dataplane_url, self._token
+
 
 class ProviderDouble:
     """The provider side — enough of it for a setup and a teardown."""

@@ -30,10 +30,23 @@ own CI signal (not a published certification TCK):
   a real DSP catalog query, contract negotiation, transfer and data pull.
 - `dtr_roundtrip.yaml` — writes a shell + submodel descriptor to the SUT's
   Digital Twin Registry and reads it back.
+- `inbound_call.yaml` — the one test where the dataspace calls testlab. It
+  opens a `mock/api` endpoint, registers an asset on the SUT whose backend is
+  the mock server's root (with `proxyPath` on), pulls the mock's path through
+  the SUT's data plane, and then reads the data plane's request back with
+  `mock/wait/http_request`. The body the consumer receives must be the mock's
+  canned answer and the path the mock saw must be the one the script sent, so
+  the call provably came from the provider's data plane pod and not from the
+  script.
 
-Both bind through the `infrastructure.engine.connector` / `sut.connector` /
+They bind through the `infrastructure.engine.connector` / `sut.connector` /
 `sut.dtr` capabilities (ADR-0019); `ci/umbrella.vars.yaml` supplies the
-concrete endpoints via `testlab run --config`.
+concrete endpoints via `testlab run --config`. `inbound_call.yaml` also needs
+the one input the manifest declares, `mock_server_external_url`: the root of
+testlab's mock server *as a pod can reach it*. `mock/api` reports the server at
+`localhost`, which is right for the engine and useless to a connector in a
+pod, so the workflow discovers the address from the kind node's gateway and
+passes it with `--var`.
 
 ## What `helm install` does not give you
 
@@ -97,9 +110,16 @@ poetry run python tests/e2e/connector-dtr-smoke/ci/issue_credentials.py \
   --super-user-key "$(kubectl logs -n umbrella deployment/umbrella-issuerservice \
       | sed -n 's/.*Please take note of the API Key: *\([^ ]*\).*/\1/p' | tail -n 1)"
 
+# The address pods use to reach your machine, for inbound_call.yaml. On Linux
+# this is the kind node's gateway (the Docker bridge); on Docker Desktop use
+# host.docker.internal instead. Port 8100 is testlab's mock server.
+gateway="$(docker inspect tck-e2e-control-plane \
+  -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}')"
+
 poetry run testlab run tests/e2e/connector-dtr-smoke/index.yaml \
   --config tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml \
-  --var infrastructure.sut.dtr.base_url=http://provider-dtr.local/semantics/registry
+  --var infrastructure.sut.dtr.base_url=http://provider-dtr.local/semantics/registry \
+  --var mock_server_external_url="http://${gateway}:8100"
 ```
 
 ## Known soft spots
@@ -110,6 +130,15 @@ that prefix — the bare host answers 404. That prefix is a subchart default, no
 something the profile pins, so the workflow reads both the host and the path off
 the live `provider-dtr` Ingress and derives the base URL from them, rather than
 hardcoding either. See the "Discover DTR ingress host and base URL" step.
+
+**Pods reaching the runner.** `inbound_call.yaml` has the provider's data
+plane fetch from testlab's mock server, which binds `0.0.0.0:8100` on the
+runner. Pod egress leaves through the kind node, whose default gateway is the
+Docker bridge the node sits on — its host side is the runner — so that gateway
+is the address the SUT is given. The workflow reads it off the node container
+and, before the suite runs, dials it from a throwaway pod against a stand-in on
+the same port; a wrong address or a blocked port fails there with its own
+message instead of surfacing as the data plane answering 502 mid-suite.
 
 **Runner capacity.** The release is ~125 resources and a dozen JVMs on a 4-vCPU
 runner, all booting at once. The stock liveness delays (30s for the connectors,

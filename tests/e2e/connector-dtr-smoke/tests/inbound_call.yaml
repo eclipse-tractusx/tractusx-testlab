@@ -1,0 +1,220 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: inbound-call
+
+metadata:
+  name: "Inbound Call"
+  version: "v1.0.0"
+  description: >
+    Every other test in this suite has testlab make a call and read the
+    answer. This one turns the direction around: testlab opens a mock
+    endpoint, registers an asset on the SUT connector whose backend is the
+    mock server, and then pulls the mock's path through the SUT's data
+    plane — so the inbound request `mock/wait/http_request` hands back was
+    made by a real connector, from a pod, across the cluster boundary, not
+    by the script itself. What the consumer pulls through the data plane
+    must be the mock's canned answer, and what the wait step reports must
+    be the request the data plane made, on the path the script asked for.
+
+setup:
+  - id: open_backend
+    uses: mock/api
+    name: Open the mock endpoint the SUT's data plane will fetch from
+    with:
+      method: GET
+      path: "/testlab-e2e/backend"
+      response_status: 200
+      response_body:
+        served_by: testlab-mock
+        answer: 42
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      full_mock_url:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: full_mock_url, operator: not_null }
+
+  - id: create_access_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT catalog access policy
+    with:
+      policy: "${{ env.access_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_usage_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT contract usage policy
+    with:
+      policy: "${{ env.usage_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  # The asset's backend is the mock server itself, not one endpoint on it:
+  # the base URL is the server's root as the SUT can reach it, and the path
+  # travels with each call (`proxyPath`), so the script decides what it asks
+  # for. `full_mock_url` is not that root: the mock server binds on the
+  # engine host, and the SUT's data plane runs in a pod, so the address it
+  # dials is an operator input (`env.mock_server_external_url`).
+  - id: create_asset
+    uses: connector/provider/create_asset
+    name: Create an asset on the SUT whose backend is the mock server
+    with:
+      asset:
+        asset_id: testlab-e2e-inbound-asset
+        base_url: "${{ env.mock_server_external_url }}"
+        dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+        version: "1.0"
+        # Without this the data plane fetches the bare base URL whatever the
+        # consumer asked for, and the mock's path never reaches the server.
+        proxy_params:
+          proxyPath: "true"
+    returns:
+      asset_id:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: asset_id, operator: equals, value: testlab-e2e-inbound-asset }
+
+  - id: create_contract
+    uses: connector/provider/create_contract_definition
+    name: Publish the mock-backed asset
+    with:
+      contract_definition_id: testlab-e2e-inbound-contract
+      access_policy_id: "${{ setup.create_access_policy.policy_id }}"
+      contract_policy_id: "${{ setup.create_usage_policy.policy_id }}"
+      asset_id: "${{ setup.create_asset.asset_id }}"
+    returns:
+      contract_definition_id:
+        type: string
+
+execution:
+  - id: pull_data
+    uses: connector/consumer/pull_data_filtered
+    name: Negotiate and open a transfer for the mock-backed asset
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
+          operator: "="
+          operand_right: "testlab-e2e-inbound-asset"
+      expected_policies: "${{ env.usage_policy }}"
+    returns:
+      asset_id:
+        type: string
+      dataplane_url:
+        type: string
+      edr_token:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: asset_id, operator: equals, value: "testlab-e2e-inbound-asset" }
+      - uses: validate/assert
+        with: { input: dataplane_url, operator: not_null }
+      - uses: validate/assert
+        with: { input: edr_token, operator: not_null }
+
+  # The SUT's data plane proxies this pull to the asset's backend, appending
+  # the path the script asks for. The body coming back through the data plane
+  # is therefore the mock's canned answer, and no other component in the
+  # dataspace could have produced it.
+  - id: fetch_through_sut
+    uses: connector/dataplane/http_request
+    name: Pull the mock's path through the SUT's data plane
+    with:
+      method: GET
+      path: "/testlab-e2e/backend"
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      # `value` is the body as JSON; `body` is the text the wire carried.
+      - uses: validate/field
+        with: { input: value, path: served_by, operator: equals, value: testlab-mock }
+      - uses: validate/field
+        with: { input: value, path: answer, operator: equals, value: 42 }
+
+  # By now the data plane has already called the mock: `mock/api` opened the
+  # listener in setup, and the call was held for this step. That is the order
+  # a real SUT forces on every script — the SUT does not wait for the script
+  # to reach its wait step — and it is the order this test pins down. The
+  # path is asserted literally: it is what the script sent, carried by the
+  # consumer, the provider's data plane and the proxy setting in between.
+  - id: await_call
+    uses: mock/wait/http_request
+    name: Read the request the SUT's data plane made to the mock
+    with:
+      mock: "${{ setup.open_backend.mock }}"
+      timeout_s: 30
+    returns:
+      request_method:
+        type: string
+      request_path:
+        type: string
+      request_headers:
+        type: object
+      elapsed_ms:
+        type: integer
+    validate:
+      - uses: validate/assert
+        with: { input: request_method, operator: equals, value: "GET" }
+      - uses: validate/assert
+        with: { input: request_path, operator: equals, value: "/testlab-e2e/backend" }
+      - uses: validate/assert
+        with: { input: request_headers, operator: not_null }
+
+teardown:
+  - id: delete_contract
+    uses: connector/provider/delete_contract_definition
+    name: Remove the mock-backed contract
+    with:
+      contract_definition_id: "${{ setup.create_contract.contract_definition_id }}"
+
+  - id: delete_asset
+    uses: connector/provider/delete_asset
+    name: Remove the mock-backed asset
+    with:
+      asset_id: "${{ setup.create_asset.asset_id }}"
+
+  - id: delete_usage_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT usage policy
+    with:
+      policy_id: "${{ setup.create_usage_policy.policy_id }}"
+
+  - id: delete_access_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT access policy
+    with:
+      policy_id: "${{ setup.create_access_policy.policy_id }}"

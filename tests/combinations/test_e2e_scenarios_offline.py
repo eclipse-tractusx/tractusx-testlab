@@ -44,6 +44,8 @@ scenario edited in `tests/e2e/` is the scenario this runs.
 
 from __future__ import annotations
 
+import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -267,3 +269,103 @@ class TestTheScenariosAreShipped:
         being covered, because `_phase` would read an empty document."""
         for scenario in ("dsp_step_by_step.yaml", "negative_paths.yaml"):
             assert _phase(scenario, "execution"), scenario
+
+
+class TestDtrRoundTripSchema:
+    """The schema the round-trip holds the registry to, held to the round-trip.
+
+    dtr_roundtrip.yaml needs a live registry, which no double here stands in
+    for. What can be settled offline is the contract between the scenario's
+    two halves: the descriptor the script registers, once the SDK has rendered
+    it the way the registry answers (``_as_document``), must satisfy the schema
+    the same script then validates the answer against — and the field paths
+    the script reads inside that answer must land on the values it registered.
+    A schema that rejects the script's own document would fail every CI run;
+    one that accepts a gutted document would never fail any.
+    """
+
+    _MANIFEST = Path("tests/e2e/connector-dtr-smoke/index.yaml")
+    _SCHEMA_DIR = Path("tests/e2e/connector-dtr-smoke/schemas")
+    _REFERENCES = {
+        "execution.new_twin_id.value": "2f1e7f0a-4a56-4b3c-9d3e-7c1b0a2f5e11",
+        "infrastructure.sut.connector.participant_id": "BPNL000000000001",
+        "infrastructure.sut.connector.dsp_url": "http://provider.local/api/v1/dsp",
+    }
+
+    @pytest.fixture
+    def schema(self) -> dict:
+        manifest = yaml.safe_load(self._MANIFEST.read_text(encoding="utf-8"))
+        entry = next(s for s in manifest["env"]["schemas"] if s["id"] == "shell_descriptor")
+        return json.loads((self._SCHEMA_DIR / entry["source"]).read_text(encoding="utf-8"))
+
+    @pytest.fixture
+    def answered(self) -> dict:
+        """The registered descriptor, as the registry hands it back."""
+        from tractusx_sdk.industry.models.aas.v3.base import ShellDescriptor
+
+        step = next(
+            s for s in _phase("dtr_roundtrip.yaml", "execution") if s["id"] == "create_shell"
+        )
+        sent = json.loads(
+            re.sub(
+                r"\$\{\{\s*([^}]+?)\s*\}\}",
+                lambda m: self._REFERENCES[m.group(1)],
+                json.dumps(step["with"]["shell_descriptor"]),
+            )
+        )
+        return ShellDescriptor(**sent).to_dict()
+
+    def _schema_checks(self, step_id: str) -> list[dict]:
+        step = next(s for s in _phase("dtr_roundtrip.yaml", "execution") if s["id"] == step_id)
+        return [v["with"] for v in step["validate"] if v["uses"] == "validate/schema"]
+
+    async def test_both_halves_of_the_round_trip_validate_against_the_declared_schema(self) -> None:
+        for step_id in ("create_shell", "read_back_shell"):
+            checks = self._schema_checks(step_id)
+            assert checks, f"{step_id} carries no validate/schema"
+            for check in checks:
+                assert check["schema"] == "${{ env.schemas.shell_descriptor }}"
+                # The registry's own document, not the step's typed payload.
+                assert check["input"] == "body"
+
+    async def test_the_schema_accepts_the_document_the_script_registers(
+        self, schema, answered
+    ) -> None:
+        from tractusx_testlab.steps._checks import check_schema_validation
+
+        passed, message = check_schema_validation(answered, schema)
+        assert passed, message
+
+    @pytest.mark.parametrize(
+        "damage",
+        [
+            lambda d: d.pop("submodelDescriptors"),
+            lambda d: d.pop("specificAssetIds"),
+            lambda d: d.update(id="not-a-urn"),
+            lambda d: d["submodelDescriptors"][0].pop("endpoints"),
+            lambda d: d["submodelDescriptors"][0]["endpoints"][0]["protocolInformation"].pop(
+                "href"
+            ),
+        ],
+    )
+    async def test_the_schema_rejects_a_gutted_document(self, schema, answered, damage) -> None:
+        from tractusx_testlab.steps._checks import check_schema_validation
+
+        damage(answered)
+        passed, _ = check_schema_validation(answered, schema)
+        assert not passed
+
+    async def test_the_field_checks_land_on_what_was_registered(self, answered) -> None:
+        from tractusx_testlab.steps._checks.extraction import extract_path
+        from tractusx_testlab.steps.assertions.operators import apply_operator
+
+        step = next(
+            s for s in _phase("dtr_roundtrip.yaml", "execution") if s["id"] == "read_back_shell"
+        )
+        fields = [v["with"] for v in step["validate"] if v["uses"] == "validate/field"]
+        assert fields, "read_back_shell carries no validate/field"
+        for check in fields:
+            assert check["input"] == "body"
+            got = extract_path(answered, check["path"])
+            passed, message = apply_operator(check["operator"], got, check["value"])
+            assert passed, f"{check['path']}: {message}"
