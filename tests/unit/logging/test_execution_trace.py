@@ -203,6 +203,32 @@ class TestStepData:
         assert step_data(engine)["errors"][0]["message"] == "connector client blew up"
         assert step_data(sut)["errors"][0]["origin"] == "sut"
 
+    def test_an_exchange_that_did_not_go_through_belongs_to_neither(self) -> None:
+        """A catalog the provider never published is not a bug in TestLab."""
+        connector = StepResult(
+            step_name="s",
+            step_type="x",
+            status=StepStatus.FAILED,
+            error="[Connector Service]: no asset was found in the catalog",
+            error_code="CONNECTOR_ERROR",
+            error_origin="connector",
+        )
+        error = step_data(connector)["errors"][0]
+        assert error["origin"] == "connector"
+        assert error["code"] == "CONNECTOR_ERROR"
+
+    def test_a_service_that_would_not_answer_is_the_infrastructure(self) -> None:
+        """The general case of the same thing: the deployment, not the verdict."""
+        service = StepResult(
+            step_name="s",
+            step_type="x",
+            status=StepStatus.FAILED,
+            error="[DTR Service]: the registry answered 503",
+            error_code="INFRASTRUCTURE_ERROR",
+            error_origin="infrastructure",
+        )
+        assert step_data(service)["errors"][0]["origin"] == "infrastructure"
+
     def test_a_bare_output_is_published_under_the_name_it_is_read_by(self) -> None:
         """``util/base64`` publishes one value; the trace says which output it is."""
         result = StepResult(

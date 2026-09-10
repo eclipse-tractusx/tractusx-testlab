@@ -117,6 +117,12 @@ def _errors_of(result: StepResult) -> list[dict[str, Any]]:
     a reader triaging a red run needs to know whether to fix the SUT or file a
     bug against TestLab, and one ``FAILED`` cannot say which.
 
+    ``origin`` is read off the result, which the runner classified against the
+    exception it caught — including the third answer neither the prefix nor a
+    boolean can spell, ``connector``: an exchange that did not go through and
+    names no single side. The prefix is still honoured for a result written
+    before that field existed.
+
     A failure that named itself keeps its own name — ``POLICY_MISMATCH`` rather
     than a second ``STEP_FAILED`` — and its ``context`` carries the evidence the
     message describes, so the IDE renders the comparison instead of parsing a
@@ -129,7 +135,7 @@ def _errors_of(result: StepResult) -> list[dict[str, Any]]:
             "code": result.error_code or ("ENGINE_FAULT" if engine_fault else "STEP_FAILED"),
             "message": result.error.removeprefix(ENGINE_FAULT_PREFIX),
             "retryable": False,
-            "origin": "engine" if engine_fault else "sut",
+            "origin": result.error_origin or ("engine" if engine_fault else "sut"),
         }
         if result.error_context:
             error["context"] = result.error_context

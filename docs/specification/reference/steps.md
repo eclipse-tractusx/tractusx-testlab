@@ -141,8 +141,8 @@ A PULL transfer turns a finished negotiation into something `connector/dataplane
 | `agreement_id` | string | no | `None` | — | PUSH only — contract agreement the transfer runs under; falls back to the 'agreement_id' context variable. |
 | `data_destination` | object | no | `None` | — | PUSH only — the EDC data address the provider pushes to. |
 | `counter_party_address` | string | no | `''` | — | PUSH only — DSP endpoint of the provider; defaults to the bound SUT connector's 'dsp_url'. |
-| `max_wait` | number | no | `60.0` | — | PUSH only — seconds to wait for the transfer to reach a final state. |
-| `poll_interval` | number | no | `1.0` | — | PUSH only — seconds between two transfer state reads. |
+| `max_wait` | number | no | `60.0` | — | Seconds to wait for the transfer to settle: for a PULL, until the EDR the negotiation started is written; for a PUSH, until the transfer reaches a final state. |
+| `poll_interval` | number | no | `1.0` | — | Seconds between two reads while waiting. |
 | `verify` | any | no | `None` | — | TLS verification passed through to the SDK; None keeps its default. |
 
 **Output** — the value assertions and `returns:` read

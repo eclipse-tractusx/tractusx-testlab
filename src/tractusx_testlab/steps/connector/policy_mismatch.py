@@ -28,8 +28,7 @@ The SDK decides whether an offer's policy is acceptable, and when none is it
 says so with a verdict: *no valid policy was found for any item in the list*.
 That sentence is true and unusable — it names neither the offers the provider
 made nor the condition that separated them from the policy the script asked for,
-leaving the reader to diff two JSON-LD trees by eye, in a document they first
-have to go and fetch.
+leaving the reader to diff two JSON-LD trees by eye, in a document they must fetch.
 
 The comparison is **not** repeated here. The SDK matches; this module explains a
 match that already failed, from the catalog the SDK compared, which it now hands
@@ -41,10 +40,10 @@ carry, and what the expected policy requires that the offer does not.
 That difference is what the flat message hid. An offer is accepted only when its
 policy matches an expected one in full, so a condition the provider *adds*
 rejects it exactly as one it omits does — and a provider offering
-``FrameworkAgreement`` **and** ``Membership`` **and** ``UsagePurpose`` to a
-script expecting the first and the third is the common case. It now reads as one
-line naming ``Membership``, in the console and, structurally, under the step
-error's ``context`` (ADR-0016) for the IDE to render.
+``FrameworkAgreement`` **and** ``Membership`` **and** ``UsagePurpose`` to a script
+expecting the first and the third is the common case. It now reads as one line
+naming ``Membership``, in the console and under the step error's ``context``
+(ADR-0016) for the IDE to render.
 """
 
 from __future__ import annotations
@@ -54,7 +53,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 
 from tractusx_sdk.dataspace.tools import PolicyMismatchError as SdkPolicyMismatchError
 
-from tractusx_testlab.models import ExecutionError
+from tractusx_testlab.models import BoundServiceError, ExecutionError
 from tractusx_testlab.steps.connector.policy_reading import (
     Constraint,
     constraints_of,
@@ -129,14 +128,15 @@ class PolicyMismatchError(ExecutionError):
 def explained(counter_party_address: str) -> Iterator[None]:
     """Run a DSP flow, and replace its policy verdict with the comparison behind it.
 
-    Only that one failure is touched. Anything else the flow raises — a refused
-    connection, a negotiation that never finalised, a transfer that timed out —
-    passes through unchanged, because none of them is about the policy and
-    dressing them in a policy explanation would be worse than the flat message.
+    The flow's failures arrive named as the connector's by ``sdk_call.run``, and
+    one of them is a verdict about the provider instead: a catalog whose offers
+    were all refused, re-raised as ``POLICY_MISMATCH`` with the comparison. All
+    else — a refused connection, a negotiation that never finalised — passes
+    through, because dressing it in a policy explanation would be worse.
     """
     try:
         yield
-    except RuntimeError as exc:
+    except BoundServiceError as exc:
         mismatch = _explain(exc, counter_party_address)
         if mismatch is None:
             raise
@@ -191,16 +191,18 @@ def _ordered(
     return tuple(item for item in items if item not in unwanted)
 
 
-def _explain(exc: RuntimeError, counter_party_address: str) -> PolicyMismatchError | None:
+def _explain(exc: BoundServiceError, counter_party_address: str) -> PolicyMismatchError | None:
     """The comparison behind a flow failure, or ``None`` when it was not about policy.
 
-    The evidence is read off the cause the SDK chains to its own message: the
-    catalog it compared and the allow-list it compared it against. Nothing is
-    fetched and nothing is guessed — a failure carrying no such cause is a
-    different failure, and is left to speak for itself.
+    The evidence is the cause the SDK chains to its own message, behind the name
+    ``sdk_call.run`` gave it: the catalog compared and the allow-list it was held
+    to. Nothing is fetched or guessed — a failure carrying no such cause is a
+    different one, left to speak for itself.
     """
     cause = exc.__cause__
-    if not isinstance(cause, SdkPolicyMismatchError):
+    while cause is not None and not isinstance(cause, SdkPolicyMismatchError):
+        cause = cause.__cause__
+    if cause is None:
         return None
     expected = cause.allowed_policies
     if expected is None:
@@ -295,6 +297,4 @@ def _listed(constraints: tuple[Constraint, ...]) -> str:
 
 def _short(value: str) -> str:
     """An identifier at a length that leaves the line readable."""
-    if len(value) <= _ID_CHARS:
-        return f"'{value}'"
-    return f"'{value[:_ID_CHARS]}…'"
+    return f"'{value}'" if len(value) <= _ID_CHARS else f"'{value[:_ID_CHARS]}…'"

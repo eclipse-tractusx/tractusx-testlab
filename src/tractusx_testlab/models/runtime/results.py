@@ -139,6 +139,13 @@ class StepResult(BaseModel):
     #: publishes it as ``errors[].code`` (ADR-0016). ``None`` leaves the code to
     #: be classified by origin alone: a verdict about the SUT, or an engine bug.
     error_code: str | None = None
+    #: Who the failure belongs to, as the trace publishes it under
+    #: ``errors[].origin`` (ADR-0016): ``sut`` for a verdict about the tested
+    #: system, ``connector`` for a dataspace exchange that did not go through and
+    #: names no single side, ``engine`` for TestLab giving up. ``None`` leaves it
+    #: to be read back off :data:`ENGINE_FAULT_PREFIX`, which is all a result
+    #: written before this field carried.
+    error_origin: str | None = None
     #: The evidence behind the message: the offers a policy was compared
     #: against, the states a poll loop saw. Published as ``errors[].context``,
     #: so the IDE renders the comparison instead of parsing it back out of a
