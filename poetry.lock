@@ -2747,13 +2747,15 @@ files = [
 
 [[package]]
 name = "tractusx-sdk"
-version = "0.8.2-rc1"
+version = "0.8.2"
 description = "Eclipse Tractus-X Software Development KIT - The Dataspace & Industry Foundation Middleware"
 optional = false
-python-versions = ">=3.12,<4.0"
+python-versions = "<4.0,>=3.12"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "tractusx_sdk-0.8.2-py3-none-any.whl", hash = "sha256:8d62b60f82eb81866fafb18ba51c29ea5c967a1112ce4e3840269dd0a8e7904f"},
+    {file = "tractusx_sdk-0.8.2.tar.gz", hash = "sha256:939ed7bf24feca9fddeab5fff08bf058c8dc649392d040b6b664699f285eaad1"},
+]
 
 [package.dependencies]
 annotated-types = ">=0.7.0,<0.8.0"
@@ -2785,12 +2787,6 @@ winloop = {version = ">=0.1.8,<0.2.0", markers = "sys_platform == \"win32\""}
 
 [package.extras]
 s3 = ["boto3 (>=1.43.0,<2.0.0)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/eclipse-tractusx/tractusx-sdk.git"
-reference = "feat/request-tracing"
-resolved_reference = "2d4d919c7c264d3cda84828312c4cce7d4c89873"
 
 [[package]]
 name = "typer"
@@ -3046,4 +3042,4 @@ test = ["aiohttp (>=3.10.5)", "flake8 (>=5.0,<6.0)", "mypy (>=0.800)", "psutil",
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "cbcd4e56fc6397092ba88fbc69a192952a1948361d8aa5886421fde37f903787"
+content-hash = "ba926670fc712ed05960a783ac5ac1252457499a9fc4b271baccae2cf19b2aa9"

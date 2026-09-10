@@ -25,16 +25,12 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "tractusx-testlab"
-version = "1.0.0a2"  # PEP 440. "v1-alpha2" normalised to "1a2" in the wheel.
+version = "1.0.0a"  # PEP 440. "v1-alpha2" normalised to "1a2" in the wheel.
 description = "Library with tools for authoring TCKs for Dataspaces which use Eclipse Tractus-X technology"
 license = { text = "Apache-2.0" }
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
-    # 0.8.2-rc1 is where the SDK records the requests it sends and the responses
-    # it gets (`tractusx_sdk.dataspace.tools.Tracer` / `trace_call`), which is
-    # how a step's exchanges reach the execution trace (ADR-0016). Before it,
-    # the engine had to patch `requests` to see the SDK's traffic at all.
     "tractusx-sdk (>=0.8.2)",
     "pydantic (>=2.6.0,<3.0.0)",
     # F-E02, second round. All three are imported by name in `src/` and were
@@ -73,18 +69,6 @@ testlab = "tractusx_testlab.cli:main"
 
 [tool.poetry]
 requires-poetry = ">=2.0"
-
-# Where `tractusx-sdk` is fetched from, and only that — the version constraint
-# stays in `[project.dependencies]`, which is what the published wheel declares.
-# 0.8.2-rc1 is not on PyPI yet: the tracing API the engine imports
-# (`tractusx_sdk.dataspace.tools.Tracer` / `trace_call`) lives on the SDK's
-# `feat/request-tracing` branch, so a plain PyPI resolve cannot satisfy the
-# constraint and `poetry install` fails before a single test runs. Pointing
-# Poetry at the branch is what lets CI install the code the engine is written
-# against. Delete this entry once the SDK cuts 0.8.2 to PyPI; nothing else has
-# to change when it does.
-[tool.poetry.dependencies]
-tractusx-sdk = { git = "https://github.com/eclipse-tractusx/tractusx-sdk.git", branch = "feat/request-tracing" }
 
 [tool.poetry.group.dev.dependencies]
 build = "^1.2.2"
