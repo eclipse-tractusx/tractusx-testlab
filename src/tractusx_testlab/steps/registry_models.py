@@ -65,6 +65,11 @@ class DescriptorPayload(StepPayload):
     The shape is defined by the AAS specification rather than by testlab, so
     the two keys every descriptor carries are named and the rest of the
     document round-trips untouched.
+
+    ``idShort`` is the AAS spelling and ``id_short`` is the script spelling, so
+    both must populate the same field.  A workflow validating a shell lookup can
+    hand the serializer a snake_case dict after a previous step already rewrote it,
+    and the value still needs to resolve as the same descriptor.
     """
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
