@@ -121,7 +121,11 @@ class _FetchingDataplane:
                         headers={"Content-Type": self.headers.get("Content-Type", "")},
                         timeout=5,
                     )
-                    status, payload = upstream.status_code, upstream.content
+                    # The public API answers a successful backend call with its
+                    # own 200 and relays only the body — the backend's 202 is
+                    # not something the consumer ever sees. CI found that out.
+                    status = 200 if upstream.ok else upstream.status_code
+                    payload = upstream.content
                 except requests.RequestException as exc:
                     status = 502
                     payload = json.dumps({"error": f"backend unreachable: {exc}"}).encode()

@@ -52,7 +52,7 @@ setup:
     with:
       method: GET
       path: "/testlab-e2e/backend"
-      response_status: 200
+      response_status: 202
       response_body:
         served_by: testlab-mock
         answer: 42
@@ -182,7 +182,7 @@ execution:
       path: "/testlab-e2e/backend"
     validate:
       - uses: validate/assert
-        with: { input: status_code, operator: equals, value: 200 }
+        with: { input: status_code, operator: equals, value: 202 }
       # `value` is the body as JSON; `body` is the text the wire carried.
       - uses: validate/field
         with: { input: value, path: served_by, operator: equals, value: testlab-mock }
@@ -240,8 +240,12 @@ execution:
             - "part-1"
             - "part-2"
     validate:
+      # 200, not the mock's 202: the data plane's public API answers a
+      # successful backend call with its own status and relays only the
+      # body. The mock's status is not observable from the consumer's side;
+      # its body is, and that is what says the mock answered.
       - uses: validate/assert
-        with: { input: status_code, operator: equals, value: 202 }
+        with: { input: status_code, operator: equals, value: 200 }
       - uses: validate/field
         with: { input: value, path: accepted, operator: equals, value: true }
 
