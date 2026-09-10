@@ -214,10 +214,12 @@ helm install umbrella tractusx-dev/umbrella --version 26.03.00 \
 # its "Prepare and validate pinned Umbrella chart" step if the install renders
 # without the connectors.
 
-# Issue the credentials, using the super-user key the IssuerService logs once:
+# Issue the credentials, using the super-user key the IssuerService logs once.
+# The log line is coloured, so capture only the key's alphabet — a trailing
+# ANSI reset in the header is a 400 from the IssuerService.
 poetry run python tests/e2e/connector-dtr-smoke/ci/issue_credentials.py \
   --super-user-key "$(kubectl logs -n umbrella deployment/umbrella-issuerservice \
-      | sed -n 's/.*Please take note of the API Key: *\([^ ]*\).*/\1/p' | tail -n 1)"
+      | sed -n 's/.*Please take note of the API Key: *\([A-Za-z0-9+\/=.]*\).*/\1/p' | tail -n 1)"
 
 # The address pods use to reach your machine, for inbound_call.yaml. On Linux
 # this is the kind node's gateway (the Docker bridge); on Docker Desktop use

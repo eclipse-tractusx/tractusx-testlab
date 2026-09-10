@@ -931,12 +931,16 @@ jobs:
         run: |
           set -euo pipefail
           # The IssuerService mints a one-time super-user API key at startup and
-          # only ever prints it to its own log.
+          # only ever prints it to its own log. The 0.4.0 image colours that
+          # log line, so the key is followed by an ANSI reset (`ESC[0m`) with
+          # no space in between; the capture is limited to the key's own
+          # alphabet so the escape stays out of the `x-api-key` header, where
+          # Jetty rejects it with `400 Illegal character CNTL=0x1b`.
           super_user_key=""
           for _ in $(seq 1 30); do
             super_user_key="$(kubectl logs -n "${UMBRELLA_NAMESPACE}" \
               deployment/umbrella-issuerservice --tail=-1 2>/dev/null \
-              | sed -n 's/.*Please take note of the API Key: *\([^ ]*\).*/\1/p' \
+              | sed -n 's/.*Please take note of the API Key: *\([A-Za-z0-9+\/=.]*\).*/\1/p' \
               | tail -n 1)"
             if [ -n "${super_user_key}" ]; then
               break
