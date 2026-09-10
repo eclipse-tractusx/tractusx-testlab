@@ -73,6 +73,8 @@
 name: E2E - Umbrella Dataspace
 
 on:
+  push:
+    branches: ["main"]
   workflow_dispatch:
   schedule:
     - cron: "0 3 * * *" # nightly — this job is heavy (kind + a full Helm deploy)
