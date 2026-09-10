@@ -29,6 +29,10 @@ connector's management API: the request that starts one answers immediately with
 an ID, and the state that matters — agreed, started, terminated — arrives later.
 Both step families therefore do the same thing, and they do it through the one
 loop here rather than each writing its own.
+
+The EDR a PULL transfer produces is the same kind of wait one step removed:
+the negotiation's own transfer writes it, so :func:`await_edr_entry` polls for
+the entry and reads that transfer for the reason while it is missing.
 """
 
 from __future__ import annotations
@@ -42,6 +46,7 @@ from typing import Any
 # here, so the connector steps keep importing them from the module they poll
 # with and no two steps can drift into different waits.
 from tractusx_testlab.models import StepExecutionError
+from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.shared_models import DEFAULT_MAX_WAIT, DEFAULT_POLL_INTERVAL
 
 logger = logging.getLogger(__name__)
@@ -51,6 +56,7 @@ __all__ = [
     "DEFAULT_POLL_INTERVAL",
     "NEGOTIATION_TERMINAL",
     "TRANSFER_TERMINAL",
+    "await_edr_entry",
     "poll_until_terminal",
     "read_entity",
 ]
@@ -154,3 +160,82 @@ async def poll_until_terminal(
                 f"{', '.join(sorted(terminal_states))}",
             )
         await asyncio.sleep(poll_interval)
+
+
+async def await_edr_entry(
+    consumer: Any,
+    negotiation_id: str,
+    *,
+    max_wait: float = DEFAULT_MAX_WAIT,
+    poll_interval: float = DEFAULT_POLL_INTERVAL,
+    verify: Any = None,
+    what: str = "connector/poll",
+) -> dict:
+    """Wait for the EDR the negotiation's transfer writes, and return it.
+
+    A FINALIZED negotiation is not yet an EDR. The EDR API starts a transfer
+    process the moment the negotiation finalises, and the EDR is written only
+    when that transfer reaches STARTED — a second or so later on a healthy
+    connector. The step that waited for the negotiation therefore hands over
+    an id whose EDR does not exist yet, and a single query here answered an
+    empty list.
+
+    While the EDR is missing the transfer process is what says why: it exists
+    before the EDR does, and it carries the ``errorDetail`` when the provider
+    turned the transfer down. It is read by the agreement id the negotiation
+    settled on, so a terminated transfer fails the step at once instead of at
+    the end of *max_wait*.
+
+    Raises:
+        StepExecutionError: if the transfer terminated, or the EDR never appeared.
+    """
+    deadline = time.monotonic() + max_wait
+    agreement_id: str | None = None
+    transfer: dict = {}
+    while True:
+        edr_entry = await sdk_call.run(
+            consumer.get_edr_entry, negotiation_id=negotiation_id, verify=verify
+        )
+        if edr_entry:
+            return edr_entry
+
+        agreement_id = agreement_id or _agreement_id_of(consumer, negotiation_id, verify)
+        if agreement_id:
+            transfer = await _transfer_for(consumer, agreement_id, verify) or transfer
+        state = str(transfer.get("state", ""))
+        if state == "TERMINATED":
+            raise StepExecutionError(
+                what,
+                f"the transfer the negotiation {negotiation_id} started was terminated "
+                f"before it produced an EDR: {transfer.get('errorDetail') or 'no detail given'}",
+            )
+
+        if time.monotonic() + poll_interval > deadline:
+            seen = f"transfer last seen {state!r}" if state else "no transfer process observed"
+            raise StepExecutionError(
+                what,
+                f"the negotiation {negotiation_id} produced no EDR within "
+                f"{max_wait}s ({seen}), so this PULL transfer has no "
+                "data-plane address or token to hand on.",
+            )
+        await asyncio.sleep(poll_interval)
+
+
+def _agreement_id_of(consumer: Any, negotiation_id: str, verify: Any) -> str | None:
+    """The agreement id a finalised negotiation carries, or ``None`` if unreadable."""
+    negotiation = read_entity(
+        getattr(consumer, "contract_negotiations", None), negotiation_id, verify
+    )
+    return (negotiation or {}).get("contractAgreementId") or None
+
+
+async def _transfer_for(consumer: Any, agreement_id: str, verify: Any) -> dict | None:
+    """The transfer process running under *agreement_id*, or ``None`` if none yet."""
+    try:
+        transfer = await sdk_call.run(
+            consumer.get_transfer_process, agreement_id=agreement_id, verify=verify
+        )
+    except Exception as exc:  # The EDR query decides; this read only explains.
+        logger.debug("Could not read the transfer for agreement %s: %s", agreement_id, exc)
+        return None
+    return transfer if isinstance(transfer, dict) else None

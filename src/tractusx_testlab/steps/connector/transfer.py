@@ -26,21 +26,19 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import time
 from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, model_validator
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector._polling import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
     TRANSFER_TERMINAL,
+    await_edr_entry,
     poll_until_terminal,
     read_entity,
 )
@@ -201,7 +199,14 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
         """Collect the EDR the negotiation produced and resolve its data address."""
         consumer = context.dataspace.consumer()
         negotiation_id = params.negotiation_id or context.get_str(NEGOTIATION_ID)
-        edr_entry = await _await_edr_entry(consumer, negotiation_id, params, what=self.step_type)
+        edr_entry = await await_edr_entry(
+            consumer,
+            negotiation_id,
+            max_wait=params.max_wait,
+            poll_interval=params.poll_interval,
+            verify=params.verify,
+            what=self.step_type,
+        )
 
         transfer_id = _transfer_id(edr_entry)
         data_address = await fetch_data_address(consumer, transfer_id, params.verify)
@@ -266,79 +271,6 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
                 body=value.model_dump(mode="json"),
             ),
         )
-
-
-async def _await_edr_entry(
-    consumer: Any, negotiation_id: str, params: InitiateTransferParams, *, what: str
-) -> dict:
-    """Wait for the EDR the negotiation's transfer writes, and return it.
-
-    A FINALIZED negotiation is not yet an EDR. The EDR API starts a transfer
-    process the moment the negotiation finalises, and the EDR is written only
-    when that transfer reaches STARTED — a second or so later on a healthy
-    connector. The step that waited for the negotiation therefore hands over
-    an id whose EDR does not exist yet, and a single query here answered an
-    empty list.
-
-    While the EDR is missing the transfer process is what says why: it exists
-    before the EDR does, and it carries the ``errorDetail`` when the provider
-    turned the transfer down. It is read by the agreement id the negotiation
-    settled on, so a terminated transfer fails the step at once instead of at
-    the end of *max_wait*.
-
-    Raises:
-        StepExecutionError: if the transfer terminated, or the EDR never appeared.
-    """
-    deadline = time.monotonic() + params.max_wait
-    agreement_id: str | None = None
-    transfer: dict = {}
-    while True:
-        edr_entry = await sdk_call.run(
-            consumer.get_edr_entry, negotiation_id=negotiation_id, verify=params.verify
-        )
-        if edr_entry:
-            return edr_entry
-
-        agreement_id = agreement_id or _agreement_id_of(consumer, negotiation_id, params.verify)
-        if agreement_id:
-            transfer = await _transfer_for(consumer, agreement_id, params.verify) or transfer
-        state = str(transfer.get("state", ""))
-        if state == "TERMINATED":
-            raise StepExecutionError(
-                what,
-                f"the transfer the negotiation {negotiation_id} started was terminated "
-                f"before it produced an EDR: {transfer.get('errorDetail') or 'no detail given'}",
-            )
-
-        if time.monotonic() + params.poll_interval > deadline:
-            seen = f"transfer last seen {state!r}" if state else "no transfer process observed"
-            raise StepExecutionError(
-                what,
-                f"the negotiation {negotiation_id} produced no EDR within "
-                f"{params.max_wait}s ({seen}), so this PULL transfer has no "
-                "data-plane address or token to hand on.",
-            )
-        await asyncio.sleep(params.poll_interval)
-
-
-def _agreement_id_of(consumer: Any, negotiation_id: str, verify: Any) -> str | None:
-    """The agreement id a finalised negotiation carries, or ``None`` if unreadable."""
-    negotiation = read_entity(
-        getattr(consumer, "contract_negotiations", None), negotiation_id, verify
-    )
-    return (negotiation or {}).get("contractAgreementId") or None
-
-
-async def _transfer_for(consumer: Any, agreement_id: str, verify: Any) -> dict | None:
-    """The transfer process running under *agreement_id*, or ``None`` if none yet."""
-    try:
-        transfer = await sdk_call.run(
-            consumer.get_transfer_process, agreement_id=agreement_id, verify=verify
-        )
-    except Exception as exc:  # The EDR query decides; this read only explains.
-        logger.debug("Could not read the transfer for agreement %s: %s", agreement_id, exc)
-        return None
-    return transfer if isinstance(transfer, dict) else None
 
 
 def _transfer_id(edr_entry: dict | None) -> str | None:

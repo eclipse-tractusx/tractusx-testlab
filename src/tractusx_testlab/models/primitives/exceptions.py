@@ -60,8 +60,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from tractusx_testlab.models.primitives.enums import ServiceState, ServiceType
-
 
 class TestLabError(Exception):
     """Base class for every error TestLab raises deliberately.
@@ -139,27 +137,6 @@ class EngineError(TestLabError):
     origin = "engine"
 
 
-class ServiceNotFoundError(EngineError):
-    def __init__(self, name: str):
-        self.name = name
-        super().__init__(f"Service not found: {name}")
-
-
-class ServiceNotReadyError(EngineError):
-    def __init__(self, name: str, state: ServiceState):
-        self.name = name
-        self.state = state
-        super().__init__(f"Service '{name}' is in state {state.value}, not READY")
-
-
-class ServiceTypeMismatchError(EngineError):
-    def __init__(self, step_type: str, expected: ServiceType, actual: ServiceType):
-        self.step_type = step_type
-        self.expected = expected
-        self.actual = actual
-        super().__init__(f"Step '{step_type}' expects {expected.value} but got {actual.value}")
-
-
 class StepConfigError(AuthoringError):
     def __init__(self, step_type: str, message: str):
         self.step_type = step_type
@@ -180,19 +157,6 @@ class SkipNotAllowedError(AuthoringError):
             f"Cannot skip test(s) {ids_str}: {reason}. "
             f"Set skippable: true on the test entry in the TCK manifest to allow skipping."
         )
-
-
-class DuplicateServiceError(EngineError):
-    def __init__(self, name: str):
-        self.name = name
-        super().__init__(f"Duplicate service name: {name}")
-
-
-class ServiceInitError(EngineError):
-    def __init__(self, name: str, cause: Exception):
-        self.name = name
-        self.cause = cause
-        super().__init__(f"Failed to initialize service '{name}': {cause}")
 
 
 class UnresolvedReferenceError(AuthoringError):

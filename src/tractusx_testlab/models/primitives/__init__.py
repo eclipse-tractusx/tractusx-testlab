@@ -38,12 +38,14 @@ from tractusx_testlab.models.primitives.enums import (
     ValueSource,
 )
 from tractusx_testlab.models.primitives.exceptions import (
+    StepConfigError,
+)
+from tractusx_testlab.models.primitives.service_errors import (
     DuplicateServiceError,
     ServiceInitError,
     ServiceNotFoundError,
     ServiceNotReadyError,
     ServiceTypeMismatchError,
-    StepConfigError,
 )
 
 __all__ = [
