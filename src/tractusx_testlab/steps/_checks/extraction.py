@@ -226,7 +226,7 @@ def extract_path(output: Any, path: str | None, declared: frozenset[str] | None 
     if isinstance(output, _SO):
         return _extract_from_step_output(output, path, declared)
 
-    if isinstance(output, dict):
+    if isinstance(output, (dict, list)):
         return _traverse_dict(output, path)
     return getattr(output, path, None)
 

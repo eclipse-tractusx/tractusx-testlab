@@ -70,6 +70,32 @@ class _Controller:
         return _Response(204, None)
 
 
+#: The keys a catalog dataset may name its asset under, plus the taxonomy term
+#: it is offered as. A catalog filter names one of them, and which one is the
+#: script's business rather than the double's.
+_DATASET_IDENTIFIERS: tuple[str, ...] = ("@id", "edc:id", "id")
+
+
+def _dataset_answers_to(dataset: dict, wanted: set[Any]) -> bool:
+    """Whether *dataset* is one of the things a filter asked for."""
+    said: set[Any] = {dataset.get(key) for key in _DATASET_IDENTIFIERS}
+    dct_type = dataset.get("dct:type")
+    said.add(dct_type.get("@id") if isinstance(dct_type, dict) else dct_type)
+    return bool(said & wanted)
+
+
+class _QueryingController:
+    """A management-API controller that answers a query with fixed entries."""
+
+    def __init__(self, entries: list[dict]) -> None:
+        self.entries = entries
+        self.queries: list[Any] = []
+
+    def query(self, query: Any = None, **_kwargs: Any) -> _Response:
+        self.queries.append(query)
+        return _Response(200, self.entries)
+
+
 class ConsumerDouble:
     """The consumer side of a DSP flow, as the connector steps see it."""
 
@@ -83,6 +109,18 @@ class ConsumerDouble:
             {"state": "FINALIZED", "contractAgreementId": "agr-1"}
         )
         self.transfer_processes = _Controller({"state": "STARTED"})
+        #: The EDR entries a transfer belongs to. ``pull_data_*`` reads the
+        #: negotiation and the agreement out of this and publishes them, so a
+        #: consumer without it reports a pull that produced no agreement.
+        self.edrs = _QueryingController(
+            [
+                {
+                    "transferProcessId": "tp-1",
+                    "contractNegotiationId": "neg-1",
+                    "agreementId": "agr-1",
+                }
+            ]
+        )
         #: Every call the steps made, so a test can assert on what was asked.
         self.calls: list[tuple[str, dict]] = []
 
@@ -105,11 +143,39 @@ class ConsumerDouble:
 
     def get_catalog_with_filter(self, **kwargs: Any) -> dict:
         self._record("get_catalog_with_filter", **kwargs)
-        return self._catalog
+        wanted = {
+            entry.get("operandRight")
+            for entry in kwargs.get("filter_expression") or []
+            if isinstance(entry, dict)
+        }
+        return self._answer(wanted)
 
     def get_catalog_by_asset_id(self, **kwargs: Any) -> dict:
         self._record("get_catalog_by_asset_id", **kwargs)
-        return self._catalog
+        return self._answer({kwargs.get("asset_id")})
+
+    def _answer(self, wanted: set[Any]) -> dict:
+        """The catalog, narrowed to the offers a filter asked for.
+
+        A provider answers a filtered catalog request with the offers that
+        match it and no others, so a double that handed back everything it
+        holds would make ``catalog_asset_id`` and ``asset_id`` say the right
+        thing for the wrong reason — they read the first offer, and with an
+        unfiltered answer that is whichever offer happens to come first.
+        A request with no criteria is not narrowed, and neither is a catalog
+        that carries no offers to narrow.
+        """
+        datasets = self._catalog.get("dcat:dataset")
+        if not wanted or not isinstance(datasets, list):
+            return self._catalog
+        return {
+            **self._catalog,
+            "dcat:dataset": [
+                dataset
+                for dataset in datasets
+                if isinstance(dataset, dict) and _dataset_answers_to(dataset, wanted)
+            ],
+        }
 
     def start_edr_negotiation(self, **kwargs: Any) -> str:
         self._record("start_edr_negotiation", **kwargs)
@@ -131,6 +197,22 @@ class ConsumerDouble:
 
     def get_endpoint_with_token(self, **kwargs: Any) -> tuple[str, str]:
         self._record("get_endpoint_with_token", **kwargs)
+        return self._dataplane_url, self._token
+
+    # `do_dsp` runs catalog, negotiation and transfer inside the SDK and reports
+    # only where the data is — no transfer id, no agreement. That reticence is
+    # the whole difference between it and `pull_data_filtered`, so the double
+    # keeps it rather than answering with more than the real call does.
+    def do_dsp(self, **kwargs: Any) -> tuple[str, str]:
+        self._record("do_dsp", **kwargs)
+        return self._dataplane_url, self._token
+
+    def do_dsp_with_bpnl(self, **kwargs: Any) -> tuple[str, str]:
+        self._record("do_dsp_with_bpnl", **kwargs)
+        return self._dataplane_url, self._token
+
+    def do_dsp_by_dct_type(self, **kwargs: Any) -> tuple[str, str]:
+        self._record("do_dsp_by_dct_type", **kwargs)
         return self._dataplane_url, self._token
 
 
