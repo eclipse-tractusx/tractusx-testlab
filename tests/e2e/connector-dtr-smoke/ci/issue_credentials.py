@@ -58,7 +58,6 @@ passed in with ``--super-user-key``.
 from __future__ import annotations
 
 import argparse
-import base64
 import sys
 import time
 from dataclasses import dataclass
@@ -67,7 +66,10 @@ import httpx
 
 # The IssuerService's own participant context. `did` must match the
 # `trustedIssuers` entry both connectors are configured with; `context_id` is
-# an opaque local handle, base64-encoded into the admin API's URLs.
+# an opaque local handle that goes into the admin API's URLs as-is. (EDC
+# IdentityHub 0.17.0, which the 0.4.0 images are built on, dropped the base64
+# encoding every participant-scoped URL used to carry; an encoded id is looked
+# up verbatim and comes back as a 404.)
 ISSUER_DID = "did:web:issuerservice.local:BPNL000000000003"
 ISSUER_CONTEXT_ID = "issuer"
 ISSUER_PRIVATE_KEY_ALIAS = "issuer-privatekey-alias"
@@ -146,8 +148,11 @@ class Participant:
 
     @property
     def context_id(self) -> str:
-        """The participant context id as the IdentityHub URLs encode it."""
-        return base64.b64encode(self.did.encode()).decode()
+        """The participant context id as the IdentityHub URLs carry it.
+
+        Umbrella makes it the participant's DID, and the URLs take it verbatim.
+        """
+        return self.did
 
     @property
     def claims(self) -> dict:
@@ -242,8 +247,7 @@ def _create_issuer_context(client: httpx.Client, issuer_url: str, super_user_key
                 "id": "issuerservice.local#credential-service",
                 "type": "IssuerService",
                 "serviceEndpoint": (
-                    f"{issuer_url}/api/issuance/v1alpha/participants/"
-                    f"{base64.b64encode(ISSUER_CONTEXT_ID.encode()).decode()}"
+                    f"{issuer_url}/api/issuance/v1alpha/participants/{ISSUER_CONTEXT_ID}"
                 ),
             }
         ],
@@ -273,10 +277,7 @@ def _create_issuer_context(client: httpx.Client, issuer_url: str, super_user_key
 
 def _seed_issuer(client: httpx.Client, issuer_url: str, issuer_key: str) -> None:
     """Register the attestation, credential definitions and holders."""
-    admin = (
-        f"{issuer_url}/api/admin/v1alpha/participants/"
-        + base64.b64encode(ISSUER_CONTEXT_ID.encode()).decode()
-    )
+    admin = f"{issuer_url}/api/admin/v1alpha/participants/{ISSUER_CONTEXT_ID}"
 
     _post(
         client,

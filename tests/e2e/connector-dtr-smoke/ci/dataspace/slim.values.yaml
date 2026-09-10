@@ -48,9 +48,9 @@ _ids:
   issuer_did: &issuer_did "did:web:issuerservice.local:BPNL000000000003"
   trusted_issuers: &trusted_issuers
     - "did:web:issuerservice.local:BPNL000000000003"
-  # base64 of the DID above. The IdentityHub's participant-scoped identity API
-  # takes the context id in that form, and the x-api-key it accepts is prefixed
-  # with it.
+  # base64 of the DID above: the prefix of the x-api-key the IdentityHub's
+  # identity API accepts. Its URLs take the context id verbatim, not in this
+  # form, since EDC IdentityHub 0.17.0 (Tractus-X 0.4.0).
   provider_context: &provider_context "ZGlkOndlYjppZGVudGl0eWh1Yi5sb2NhbDpCUE5MMDAwMDAwMDAwMDAx"
   sts_token_url: &sts_token_url "http://identityhub.local/api/sts/token"
 
