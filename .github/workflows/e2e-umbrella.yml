@@ -106,6 +106,8 @@ env:
   UMBRELLA_NAMESPACE: umbrella
   UMBRELLA_CHART_VERSION: "26.03.00"
   UMBRELLA_VALUES_REF: "umbrella-26.03.00"
+  # The IdentityHub repository releases each chart under its own tag.
+  IDENTITYHUB_CHART_VERSION: "v0.4.0"
   KIND_VERSION: "v0.24.0"
   KUBECTL_VERSION: "v1.29.0"
   # 3.16+ for `--qps`: `--wait` polls every resource in the release, and with
@@ -133,6 +135,8 @@ env:
   ISSUANCE_SCRIPT: tests/e2e/connector-dtr-smoke/ci/issue_credentials.py
   STUB_CALLER_SCRIPT: tests/e2e/connector-dtr-smoke/ci/stub_caller.py
   STUB_CALLER_URL: http://tck-stub.local
+  SUBMODEL_SERVER_SCRIPT: tests/e2e/connector-dtr-smoke/ci/submodel_server.py
+  SUBMODEL_SERVER_URL: http://tck-submodel.local
   TCK_OUT: dist/testlab-e2e-connector-dtr-smoke.tck
   # Single source of truth for the dataspace hostnames, used for both the
   # runner's /etc/hosts and the cluster's CoreDNS. All of these are fixed by
@@ -150,6 +154,7 @@ env:
     bdrs-server.tx.test
     issuerservice.local
     tck-stub.local
+    tck-submodel.local
 
 permissions:
   contents: read
@@ -158,7 +163,7 @@ permissions:
 jobs:
   e2e-umbrella:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     permissions:
       contents: read
       packages: read
@@ -404,7 +409,6 @@ jobs:
 
           import yaml
 
-
           def participant(alias: str, secret: str) -> dict:
               """One participant's two runtimes, seeded identically."""
               seed = ";".join(
@@ -425,7 +429,6 @@ jobs:
                       }
                   }
               }
-
 
           with open(sys.argv[1], "w", encoding="utf-8") as handle:
               yaml.safe_dump(
@@ -456,19 +459,70 @@ jobs:
           mkdir -p "${nested_provider}/charts"
           cp -R "${source_bundles}/." "${nested_provider}/charts/"
 
-          # The IdentityHub chart ships its own postgres dependency, gated on
-          # `install.postgresql`. That condition is unreachable from values
-          # here: umbrella includes decentralized-identity-connector twice
-          # under two aliases, and the path resolves against the *participant*
-          # level, where the profile sets `install.postgresql: true` for the
-          # connector's own database. So the IdentityHub's copy comes up no
-          # matter what a values file says — while every IdentityHub datasource
-          # is pointed at the participant postgres by
-          # `tractusx-identityhub.postgresql.jdbcUrl`, and nothing ever dials
-          # it. Deleting the subchart is what actually removes it. The
-          # datasource config is untouched: it reads `postgresql.auth.*`, which
-          # this does not gate.
-          rm -rf "${chart_dir}/charts/decentralized-identity-connector/charts/tractusx-identityhub/charts/postgres"
+          # IdentityHub and IssuerService 0.4.0 — the EDC 0.16.0 -> 0.17.0
+          # upgrade. Umbrella 26.03.00 pins both at chart v0.3.2 and a values
+          # file cannot move a subchart version, so the released charts are
+          # unpacked over the pinned ones and the dependency declarations that
+          # name them are bumped to match. That bump is not cosmetic: helm
+          # resolves an aliased dependency by name *and* version, and left at
+          # v0.3.2 the second alias of decentralized-identity-connector
+          # (edc-provider) renders no IdentityHub at all — no error, just a
+          # missing participant.
+          ih_release="https://github.com/eclipse-tractusx/tractusx-identityhub/releases/download"
+          ih_charts="${RUNNER_TEMP}/identityhub-charts"
+          mkdir -p "${ih_charts}"
+          for chart in tractusx-identityhub-memory tractusx-issuerservice; do
+            curl --fail --location --silent --show-error \
+              "${ih_release}/${chart}-${IDENTITYHUB_CHART_VERSION}/${chart}-${IDENTITYHUB_CHART_VERSION}.tgz" \
+              --output "${ih_charts}/${chart}.tgz"
+            tar -xzf "${ih_charts}/${chart}.tgz" -C "${ih_charts}"
+          done
+
+          # The IdentityHub slot takes the *memory* chart, renamed to the
+          # dependency's own name so umbrella's `tractusx-identityhub` values
+          # keep addressing it. The rename is the whole substitution: the
+          # memory chart's values are a strict subset of the SQL chart's --
+          # the same `identityhub` block, minus `postgresql`, `vault` and
+          # `waitForDependencies` -- so the profile still applies and the keys
+          # it drops are exactly the ones an in-memory runtime has no use for.
+          # It also brings no subcharts, so the participant Postgres the SQL
+          # chart used to pull in is gone with it.
+          identityhub_slot="${chart_dir}/charts/decentralized-identity-connector/charts/tractusx-identityhub"
+          rm -rf "${identityhub_slot}" "${chart_dir}/charts/tractusx-issuerservice"
+          cp -R "${ih_charts}/tractusx-identityhub-memory" "${identityhub_slot}"
+          cp -R "${ih_charts}/tractusx-issuerservice" "${chart_dir}/charts/"
+          python3 - "${chart_dir}" "${IDENTITYHUB_CHART_VERSION}" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          chart_dir, version = pathlib.Path(sys.argv[1]), sys.argv[2]
+          slot = chart_dir / "charts/decentralized-identity-connector/charts/tractusx-identityhub"
+
+          def substitute(path, pattern, replacement):
+              text = path.read_text()
+              patched, count = re.subn(pattern, replacement, text)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match for {pattern!r}, found {count}")
+              path.write_text(patched)
+
+          # The memory chart answers to the dependency's name from here on.
+          substitute(
+              slot / "Chart.yaml",
+              r"(?m)^name: tractusx-identityhub-memory$",
+              "name: tractusx-identityhub",
+          )
+          declarations = {
+              chart_dir / "charts/decentralized-identity-connector/Chart.yaml": "tractusx-identityhub",
+              chart_dir / "Chart.yaml": "tractusx-issuerservice",
+          }
+          for path, name in declarations.items():
+              substitute(
+                  path,
+                  rf"(name: {name}\n  repository: [^\n]+\n  version: )\S+",
+                  rf"\g<1>{version}",
+              )
+          PY
 
           profile_url="https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/${UMBRELLA_VALUES_REF}/charts/umbrella/values-adopter-decentralized-identityhub.yaml"
           rendered="${RUNNER_TEMP}/umbrella-rendered.yaml"
@@ -803,6 +857,65 @@ jobs:
           kubectl wait --namespace "${UMBRELLA_NAMESPACE}" \
             --for=condition=ready pod/tck-stub --timeout=180s
 
+      - name: Deploy in-cluster submodel server
+        run: |
+          set -euo pipefail
+          # The payload store behind the engine's registry entries (see
+          # ci/submodel_server.py). The Umbrella profile switches off both
+          # `simple-data-backend` bundles, so nothing in the release serves a
+          # submodel, and `digital-twin/submodel/*` plus the whole Industry
+          # Core journey would have no backend to address.
+          #
+          # It is the one component both sides dial: the engine uploads to it
+          # over the ingress, and the provider's data plane fetches from it as
+          # the backend of an EDC asset. One hostname serves both, because
+          # `tck-submodel.local` is in DATASPACE_HOSTS and therefore resolves
+          # on the runner *and* in CoreDNS — so the address the upload step
+          # publishes is an address a pod can use unchanged.
+          kubectl create configmap tck-submodel --namespace "${UMBRELLA_NAMESPACE}" \
+            --from-file=submodel_server.py="${SUBMODEL_SERVER_SCRIPT}"
+          kubectl apply --namespace "${UMBRELLA_NAMESPACE}" -f - <<'EOF'
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: tck-submodel
+            labels: { app: tck-submodel }
+          spec:
+            containers:
+              - name: submodel
+                image: python:3.12-alpine
+                command: ["python", "/submodel/submodel_server.py", "--port", "8080"]
+                ports: [{ containerPort: 8080 }]
+                volumeMounts: [{ name: submodel, mountPath: /submodel }]
+            volumes:
+              - name: submodel
+                configMap: { name: tck-submodel }
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: tck-submodel
+          spec:
+            selector: { app: tck-submodel }
+            ports: [{ port: 80, targetPort: 8080 }]
+          ---
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: tck-submodel
+          spec:
+            rules:
+              - host: tck-submodel.local
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service: { name: tck-submodel, port: { number: 80 } }
+          EOF
+          kubectl wait --namespace "${UMBRELLA_NAMESPACE}" \
+            --for=condition=ready pod/tck-submodel --timeout=180s
+
       - name: Show dataspace pods
         run: |
           # `helm install --wait` above is the real readiness gate (it tracks
@@ -867,8 +980,26 @@ jobs:
           DTR_BASE_URL="http://${DTR_HOST}${DTR_PREFIX}"
           echo "Discovered DTR ingress: host=${DTR_HOST} path=${DTR_PATH}"
           echo "DTR base URL: ${DTR_BASE_URL}"
+          # The same registry, addressed from inside the cluster. The ingress
+          # prefix above is a rewrite, so a pod talking to the Service reaches
+          # the application at its own root and the AAS API sits under
+          # `/api/v3`. dtr_consumer_dataplane.yaml registers an EDC asset with
+          # this address, because the address an EDC data plane dials is not
+          # the one the runner uses — and the port is a subchart default rather
+          # than something this profile pins, so it is read off the Service.
+          DTR_SERVICE_PORT="$(kubectl get svc provider-dtr \
+            -n "${UMBRELLA_NAMESPACE}" \
+            -o jsonpath='{.spec.ports[0].port}')"
+          if [ -z "${DTR_SERVICE_PORT}" ]; then
+            echo "::error::Could not read the provider-dtr Service port in namespace ${UMBRELLA_NAMESPACE}."
+            kubectl get svc -n "${UMBRELLA_NAMESPACE}"
+            exit 1
+          fi
+          DTR_INTERNAL_URL="http://provider-dtr.${UMBRELLA_NAMESPACE}.svc.cluster.local:${DTR_SERVICE_PORT}/api/v3"
+          echo "DTR in-cluster API: ${DTR_INTERNAL_URL}"
           echo "DTR_HOST=${DTR_HOST}" >> "$GITHUB_ENV"
           echo "DTR_BASE_URL=${DTR_BASE_URL}" >> "$GITHUB_ENV"
+          echo "DTR_INTERNAL_URL=${DTR_INTERNAL_URL}" >> "$GITHUB_ENV"
 
           # ci/umbrella.values.yaml pins this host, so it is already in
           # /etc/hosts — but add it if a chart bump ever changes it.
@@ -926,6 +1057,30 @@ jobs:
           echo
           echo "stub caller: reachable at ${STUB_CALLER_URL}"
 
+      - name: Preflight — check the submodel server is reachable both ways
+        run: |
+          set -euo pipefail
+          # From the runner, over the ingress: this is the address the engine
+          # uploads to.
+          curl --fail-with-body --silent --show-error --retry 10 --retry-delay 3 \
+            --retry-all-errors "${SUBMODEL_SERVER_URL}/health"
+          echo
+          # And from inside the cluster, on the *same* hostname: this is the
+          # address the provider's data plane fetches the payload from, and it
+          # only works because CoreDNS resolves the dataspace hostnames. A
+          # failure here surfaces later as an EDC transfer that negotiates
+          # cleanly and then answers 502 from the data plane.
+          status="$(kubectl run tck-submodel-reach --namespace "${UMBRELLA_NAMESPACE}" \
+            --rm -i --restart=Never --quiet --pod-running-timeout=3m \
+            --image=curlimages/curl:8.10.1 -- \
+            curl --silent --output /dev/null --write-out '%{http_code}' \
+              --max-time 10 "${SUBMODEL_SERVER_URL}/health" || true)"
+          if [ "${status}" != "200" ]; then
+            echo "::error::A pod could not reach the submodel server at ${SUBMODEL_SERVER_URL} (got '${status}')."
+            exit 1
+          fi
+          echo "submodel server: reachable at ${SUBMODEL_SERVER_URL}, from the runner and from a pod"
+
       - name: Preflight — check connector and DTR reachability
         run: |
           set -euo pipefail
@@ -950,6 +1105,19 @@ jobs:
             exit 1
           fi
           echo "provider DTR API: reachable at ${DTR_BASE_URL}"
+          # The same registry from inside the cluster, which is how the
+          # provider's data plane reaches it once dtr_consumer_dataplane.yaml
+          # has published it as an asset.
+          status="$(kubectl run tck-dtr-reach --namespace "${UMBRELLA_NAMESPACE}" \
+            --rm -i --restart=Never --quiet --pod-running-timeout=3m \
+            --image=curlimages/curl:8.10.1 -- \
+            curl --silent --output /dev/null --write-out '%{http_code}' \
+              --max-time 10 "${DTR_INTERNAL_URL}/shell-descriptors" || true)"
+          if [ "${status}" != "200" ]; then
+            echo "::error::A pod could not reach the DTR API at ${DTR_INTERNAL_URL} (got '${status}')."
+            exit 1
+          fi
+          echo "provider DTR API: reachable in-cluster at ${DTR_INTERNAL_URL}"
 
       # ------------------------------------------------------------------
       # 6. testlab: validate -> compile -> inspect -> run, against the live
@@ -984,12 +1152,19 @@ jobs:
 
           report = json.loads(pathlib.Path("logs/inspect.json").read_text())["inspection"]
           expected = {
+              "bpn_discovery.yaml",
+              "catalog_variants.yaml",
               "connector_negotiation.yaml",
               "dsp_step_by_step.yaml",
+              "dtr_consumer_dataplane.yaml",
               "dtr_roundtrip.yaml",
+              "engine_toolbox.yaml",
               "external_callback.yaml",
               "inbound_call.yaml",
+              "industry_core_journey.yaml",
               "negative_paths.yaml",
+              "notification_roundtrip.yaml",
+              "push_transfer.yaml",
           }
           found = {script["test_id"] for script in report["scripts"]}
           if found != expected:
@@ -1007,6 +1182,8 @@ jobs:
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
             --var "stub_caller_url=${STUB_CALLER_URL}" \
+            --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
+            --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
             --logs-dir logs/e2e/full \
             --data-dir /data
 
@@ -1018,7 +1195,9 @@ jobs:
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
             --var "stub_caller_url=${STUB_CALLER_URL}" \
-            --var "skip_tests=dsp_step_by_step.yaml,negative_paths.yaml" \
+            --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
+            --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
+            --var "skip_tests=dsp_step_by_step.yaml,negative_paths.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml" \
             --logs-dir logs/e2e/pr-smoke \
             --data-dir /data
 
@@ -1039,15 +1218,17 @@ jobs:
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
             --var "stub_caller_url=${STUB_CALLER_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml" \
+            --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
+            --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml" \
             --logs-dir logs/e2e/registry \
             --data-dir /data
 
-      # Combination 3 — the two tests where the dataspace calls testlab, on
+      # Combination 3 — the three tests where the dataspace calls testlab, on
       # their own. The full suite already ran them, but there they sit behind
-      # four outbound tests and a PASS banner; here the run is only them, and
+      # the outbound tests and a PASS banner; here the run is only them, and
       # the step goes further than the banner: it reads the trace back and
-      # checks that both inbound calls were *received*, and that the external
+      # checks that every inbound call was *received*, and that the external
       # one arrived while the wait step was blocked — the property the stub
       # exists for. A green run whose wait had returned at once would be a
       # buffered call passing for a blocking one.
@@ -1061,7 +1242,9 @@ jobs:
             --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
             --var "stub_caller_url=${STUB_CALLER_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml" \
+            --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
+            --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,industry_core_journey.yaml,engine_toolbox.yaml" \
             --logs-dir logs/e2e/inbound \
             --data-dir /data/inbound
 
@@ -1089,6 +1272,8 @@ jobs:
               ("inbound-call", "await_call"),
               ("inbound-call", "await_notification"),
               ("external-callback", "await_call"),
+              ("notification-roundtrip", "await_notification"),
+              ("notification-roundtrip", "await_direct_notification"),
           }
           if set(received) != expected:
               sys.exit(f"received events for {sorted(received)}, expected {sorted(expected)}")
@@ -1116,10 +1301,46 @@ jobs:
           if external["request"]["body"].get("from") != "stub-sut":
               sys.exit(f"external-callback: unexpected body {external['request']['body']}")
 
+          # The Catena-X notification, checked where it landed rather than
+          # where it was sent. Both sends carry the same message id — one
+          # serialised by the notification model on its way through a full DSP
+          # flow, one posted straight at an EDR the script already held — so a
+          # mode that quietly dropped the header would show up here.
+          for step in ("await_notification", "await_direct_notification"):
+              arrived = received[("notification-roundtrip", step)]
+              header = (arrived["request"]["body"] or {}).get("header") or {}
+              if not header.get("messageId"):
+                  sys.exit(f"notification-roundtrip/{step}: no message id on the delivered notification: {arrived['request']}")
+              if header.get("senderBpn") == header.get("receiverBpn"):
+                  sys.exit(f"notification-roundtrip/{step}: sender and receiver are the same partner: {header}")
+
           print("inbound-call: received GET from the SUT's data plane, held for the wait step")
           print("inbound-call: received the POSTed payload intact through both data planes")
           print(f"external-callback: received POST from the stub after {external['waited_ms']}ms of waiting")
+          print("notification-roundtrip: both notifications arrived with their headers intact")
           PY
+
+      # Combination 4 — the one test that addresses nothing in the dataspace.
+      # It runs the engine's own toolbox — the flow steps, the utility steps,
+      # the OAuth2 steps and the two protocol-aware mocks — against the mock
+      # server the run starts, and it is here rather than only in the offline
+      # suite for one reason: it is executed by the same player, against the
+      # same compiled package, with a whole dataspace bound and unused. A step
+      # that had quietly grown a dependency on a seeded service would pass
+      # offline and fail here.
+      - name: testlab run — engine-only combination
+        if: github.event_name != 'pull_request'
+        run: |
+          poetry run testlab run "${TCK_OUT}" \
+            --config "${TCK_CONFIG}" \
+            --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+            --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
+            --var "stub_caller_url=${STUB_CALLER_URL}" \
+            --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
+            --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml" \
+            --logs-dir logs/e2e/engine-only \
+            --data-dir /data
 
       # A selection the manifest does not permit must be refused, not silently
       # ignored — an operator who mistypes a test id has to find out.
@@ -1131,6 +1352,8 @@ jobs:
                --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
             --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
             --var "stub_caller_url=${STUB_CALLER_URL}" \
+            --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
+            --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
                --var "skip_tests=no-such-test.yaml" \
                --logs-dir logs/e2e/refused \
                --data-dir /data; then

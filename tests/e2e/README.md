@@ -7,7 +7,9 @@ pipeline against a real, ephemeral dataspace instead of mocks:
   `BPNL000000000002`), Saturn protocol.
 - **Two Tractus-X IdentityHub instances** — one per participant — handling
   DID/VC-based IATP trust between the connectors.
-- **Two Digital Twin Registries** — one per participant.
+- **One Digital Twin Registry**, the provider's, shared by both
+  participants: the TCK binds `infrastructure.sut.dtr` to it and never
+  addresses a second, so `ci/umbrella.values.yaml` leaves the consumer's off.
 - A BDRS directory service and an IssuerService, which the workflow drives
   through the credential-issuance flow so both participants end up holding the
   Catena-X `Membership` and `DataExchangeGovernance:1.0` VCs the TCK's ODRL
@@ -23,13 +25,24 @@ cluster is created and destroyed within the job.
 ## What runs
 
 `tests/e2e/connector-dtr-smoke/` is a small TCK, purpose-built as testlab's
-own CI signal (not a published certification TCK):
+own CI signal (not a published certification TCK). Between them its thirteen
+scripts use every one of the 55 steps in the engine's catalogue
+(`docs/specification/reference/steps.md`) and all three validation kinds —
+`validate/assert`, `validate/field` and `validate/schema` — so no step ships
+without having been run once against something real.
 
 - `connector_negotiation.yaml` — provisions an asset + policies on the SUT
   (provider) connector, then drives the engine (consumer) connector through
   a real DSP catalog query, contract negotiation, transfer and data pull.
+- `dsp_step_by_step.yaml` — the same journey as six separate steps instead of
+  one. It is the test that fails if the runtime stops carrying a real value
+  across a phase boundary — an offer into a negotiation, an EDR into a fetch —
+  and it attributes the break to the step that caused it.
 - `dtr_roundtrip.yaml` — writes a shell + submodel descriptor to the SUT's
   Digital Twin Registry and reads it back.
+- `negative_paths.yaml` — asks the live dataspace for things that are not
+  there and asserts on the answers. It is what says the engine reports absence
+  as absence rather than inventing a result.
 - `inbound_call.yaml` — the one test where the dataspace calls testlab. It
   opens a `mock/api` endpoint, registers an asset on the SUT whose backend is
   the mock server's root (with `proxyPath` on), pulls the mock's path through
@@ -48,22 +61,101 @@ own CI signal (not a published certification TCK):
   once, and blocks on `mock/wait/http_request`. The call arrives from the
   stub's pod while the script is blocked, and `elapsed_ms` must show the wait
   lasted the delay.
+- `catalog_variants.yaml` — the consumer catalogue the two DSP tests leave
+  untouched: the unfiltered query, the query filtered by asset id, the
+  one-shot `do_dsp`, and the pull that only accepts an offer made under a
+  named policy. It also provisions the provider twice over, from a whole
+  document and field by field, because only a live connector can say the two
+  forms register the same thing.
+- `bpn_discovery.yaml` — addresses the SUT by business partner number rather
+  than by DSP URL, which is what a Catena-X consumer actually holds. It needs
+  a directory service that really carries the mapping, so it is only provable
+  against a deployment that runs one and has seeded both participants.
+- `push_transfer.yaml` — the other branch of `initiate_transfer`, where the
+  provider delivers to a destination the consumer nominates and there is no
+  EDR at the end. The destination is testlab's own mock server, so what the
+  transfer's state claims and what actually arrived are checked separately.
+- `dtr_consumer_dataplane.yaml` — reads the registry the way Catena-X reads
+  somebody else's twins: the registry is published as an asset, negotiated
+  for, and every call travels through the provider's data plane with an EDR
+  on it. Because the calls arrive that way, the registry answers as the
+  consumer's partner and its visibility rules decide what comes back.
+- `notification_roundtrip.yaml` — a Catena-X notification found in a catalog,
+  negotiated for and posted, twice: once doing the whole journey itself, once
+  spending an EDR a separate pull already negotiated. Both documents are read
+  back where they landed, so what is asserted is the payload that survived two
+  data planes rather than the status code the sender was handed.
+- `industry_core_journey.yaml` — the whole Industry Core story in the order a
+  provider and a consumer perform it: upload a submodel payload, front it with
+  an EDC asset, register a twin whose descriptor names that asset, then work
+  the chain backwards and pull the payload. The last step fails if any earlier
+  link was decorative, because nothing else in the deployment could produce
+  that document.
+- `engine_toolbox.yaml` — everything that needs no dataspace at all: the flow
+  steps, the utility steps, the OAuth2 steps and the two protocol-aware mocks,
+  driven against the mock server the run starts rather than left uncovered. It
+  takes no connector, no registry and no operator input, so it runs unchanged
+  in any deployment.
 
-The workflow runs the package several ways from one compile: the full suite,
-the registry alone, the two inbound tests alone, and a selection the manifest
-does not permit, which must be refused. The inbound combination also reads the
-run's trace back and fails unless both `tck.test.step.received` events are
-there and the external one shows the wait step blocked for the stub's delay.
+The workflow runs the package five ways from one compile, plus a selection the
+manifest does not permit, which must be refused. Pull requests get a reduced
+suite (`connector_negotiation`, `dtr_roundtrip`, `inbound_call`,
+`external_callback`, `engine_toolbox`); everything else runs on pushes: the
+full suite, the registry alone, the three tests where the dataspace calls
+testlab (`inbound_call`, `external_callback`, `notification_roundtrip`), and
+`engine_toolbox.yaml` on its own. The inbound combination also reads the run's
+trace back and fails unless every `tck.test.step.received` event is there, the
+external one shows the wait step blocked for the stub's delay, and both
+notifications arrived with their headers intact and with different sender and
+receiver partners. The engine-only combination is worth its minute because it
+runs against a fully deployed dataspace it never addresses: a step that had
+quietly grown a dependency on a seeded service would pass in the offline suite
+and fail there.
 
 They bind through the `infrastructure.engine.connector` / `sut.connector` /
-`sut.dtr` capabilities (ADR-0019); `ci/umbrella.vars.yaml` supplies the
-concrete endpoints via `testlab run --config`. `inbound_call.yaml` also needs
-the one input the manifest declares, `mock_server_external_url`: the root of
-testlab's mock server *as a pod can reach it*. `mock/api` reports the server at
-`localhost`, which is right for the engine and useless to a connector in a
-pod, so the workflow discovers the address from the kind node's gateway and
-passes it with `--var`. `external_callback.yaml` needs `stub_caller_url` as
-well, the stub's ingress host, passed the same way.
+`sut.dtr` / `engine.dtr` capabilities (ADR-0019); `ci/umbrella.vars.yaml`
+supplies the concrete endpoints via `testlab run --config`, and the workflow
+passes with `--var` whatever the chart does not pin. The manifest's inputs are:
+
+- `mock_server_external_url` — the root of testlab's mock server *as a pod can
+  reach it*, needed by `inbound_call.yaml`. `mock/api` reports the server at
+  `localhost`, which is right for the engine and useless to a connector in a
+  pod, so the workflow discovers the address from the kind node's gateway.
+- `stub_caller_url` — the stub caller's ingress host, for
+  `external_callback.yaml`.
+- `sut_bpnl` / `engine_bpnl` — the two participants' business partner numbers.
+  They are inputs rather than bindings because a Saturn connector identifies
+  itself by DID, which is what the `participant_id` bindings carry, while the
+  BPN is what a *caller* holds: the receiver of a Catena-X notification, and
+  the input BPN-addressed discovery resolves through the dataspace's BPN-DID
+  directory. Both are fixed by the profile, so `ci/umbrella.vars.yaml` pins
+  them.
+- `dtr_internal_url` — the registry's API root as the *provider's data plane*
+  can reach it, which is a cluster Service address rather than the ingress the
+  engine uses. `dtr_consumer_dataplane.yaml` registers an EDC asset with it.
+  The Service port is a subchart default this profile does not pin, so the
+  workflow reads it off the live Service and passes the address with `--var`.
+- `infrastructure.engine.dtr.base_url` and
+  `infrastructure.engine.dtr.submodel_base_url` — the engine's own registry and
+  the payload store its entries point at. Both sides share one registry in this
+  deployment, so the first is the provider's, discovered per run like the SUT's
+  and passed with `--var`; binding the engine to it changes nothing at runtime,
+  because a bare registry lookup resolves to the system under test's binding
+  first. The submodel server's address is pinned, since the workflow chooses
+  the hostname it deploys behind.
+
+The submodel server is `ci/submodel_server.py`, a standard-library payload
+store the workflow deploys as a pod behind `tck-submodel.local`. It exists
+because the Umbrella profile switches off both `simple-data-backend` bundles:
+nothing in the release serves a submodel payload, and
+`digital-twin/submodel/upload` / `delete` plus the whole Industry Core journey
+would have no backend to address. A shell descriptor is only a pointer, and
+something has to serve what it points at. The property that makes one server
+serve both roles is its hostname: `tck-submodel.local` is in the workflow's
+`DATASPACE_HOSTS`, so it resolves on the runner — where the engine uploads over
+the ingress — *and* inside the cluster, where the provider's data plane fetches
+the same payload as an EDC asset backend. The address the upload publishes is
+therefore an address a pod can use unchanged.
 
 ## What `helm install` does not give you
 
@@ -133,11 +225,22 @@ poetry run python tests/e2e/connector-dtr-smoke/ci/issue_credentials.py \
 gateway="$(docker inspect tck-e2e-control-plane \
   -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}')"
 
+# The registry as the provider's own data plane reaches it: the Service, not
+# the ingress. The port is a subchart default, so read it rather than assume.
+port="$(kubectl get svc provider-dtr -n umbrella -o jsonpath='{.spec.ports[0].port}')"
+
 poetry run testlab run tests/e2e/connector-dtr-smoke/index.yaml \
   --config tests/e2e/connector-dtr-smoke/ci/umbrella.vars.yaml \
   --var infrastructure.sut.dtr.base_url=http://provider-dtr.local/semantics/registry \
+  --var infrastructure.engine.dtr.base_url=http://provider-dtr.local/semantics/registry \
+  --var "dtr_internal_url=http://provider-dtr.umbrella.svc.cluster.local:${port}/api/v3" \
   --var mock_server_external_url="http://${gateway}:8100" \
   --var stub_caller_url=http://tck-stub.local   # after deploying ci/stub_caller.py as in the workflow
+# The Industry Core journey and the submodel steps also need ci/submodel_server.py
+# deployed as a pod, Service and ingress behind tck-submodel.local — the same
+# shape as the stub caller, from the workflow's "Deploy in-cluster submodel
+# server" step. Its hostname must be in the coredns `hosts` block as well as
+# your /etc/hosts, because both the engine and the provider's data plane dial it.
 ```
 
 ## Known soft spots
@@ -165,6 +268,22 @@ so `ci/umbrella.values.yaml` raises them to 240s and trims the over-provisioned
 CPU requests. If a chart bump adds another JVM, expect to do the same for it.
 
 **Chart drift.** If a chart upgrade breaks the DTR discovery, the vault-setup
-hook assertion, or the values keys that enable the consumer's DTR and data
-backend, `helm show values tractusx-dev/umbrella --version <new>` against the
+hook assertion, or the values keys that switch off the consumer's DTR and
+both `simple-data-backend`s, `helm show values tractusx-dev/umbrella --version <new>` against the
 new version is the fastest way to find the renamed keys.
+
+**Suite length.** The job's timeout is 75 minutes, raised from 60 when the
+suite grew past twice its former length. A chart bump that slows the install,
+or another test of the same size, will want that number looked at again before
+it starts failing as a timeout rather than as whatever actually broke.
+
+**Registry visibility rules.** `dtr_consumer_dataplane.yaml` depends on how the
+Tractus-X registry decides who may see a twin: a twin is shown only to a
+partner named in one of its specific asset IDs, and the `Edc-Bpn` header the
+registry reads that name against is set by the provider's data plane from the
+token, never by the script. Which spelling of the consumer's identity ends up
+on that header depends on the deployment, so the twin names the consumer under
+both its DID and its BPN and also carries the `PUBLIC_READABLE` wildcard. If
+that test starts coming back with an empty lookup rather than an error, those
+rules — or the identifier types the registry honours the wildcard for — are the
+first place to look.

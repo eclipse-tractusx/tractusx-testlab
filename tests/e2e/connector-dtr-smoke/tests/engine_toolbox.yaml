@@ -1,0 +1,649 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: engine-toolbox
+
+metadata:
+  name: "Engine Toolbox"
+  version: "v1.0.0"
+  description: >
+    Everything in the engine's catalogue that needs no dataspace at all — the
+    flow steps, the utility steps, the OAuth2 steps and the two protocol-aware
+    mocks — driven here against real endpoints rather than left uncovered. The
+    server the OAuth2 steps post their form to is the mock server this run
+    starts, so a token is fetched over HTTP and parsed off a real response;
+    the registry mock answers a real AAS lookup over the same server. This is
+    the test that fails when the engine's own toolbox regresses, and it
+    deliberately needs no connector, no registry and no operator input, so it
+    runs unchanged in any deployment.
+
+setup:
+  # The three OAuth2 steps are worth testing precisely because they are HTTP
+  # clients: they build an urlencoded form, post it, and read the token out of
+  # the answer. A unit test with a patched client proves none of that, so the
+  # token endpoint here is a real listener and `full_mock_url` is the address
+  # the steps below actually dial.
+  - id: token_endpoint
+    uses: mock/api
+    name: Open a token endpoint that answers an RFC 6749 token response
+    with:
+      method: POST
+      path: "/testlab-e2e/oauth/token"
+      response_status: 200
+      response_body:
+        access_token: "testlab-e2e-access-token"
+        token_type: "Bearer"
+        expires_in: 3600
+        scope: "catenax:read"
+        refresh_token: "testlab-e2e-refresh-token"
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      full_mock_url:
+        type: string
+
+  # `mock/discovery` and `mock/dtr` publish nothing at all: they attach their
+  # routes to the mock server root and hand back no outputs. A script that
+  # needs that root — and both the discovery probe and the registry steps
+  # below do — therefore has to learn it from a `mock/api` step, which is the
+  # only one that reports `base_mock_url`. This endpoint exists for that, and
+  # doubles as the read the retry step repeats.
+  - id: mock_root
+    uses: mock/api
+    name: Open a plain echo endpoint the other steps can learn the mock root from
+    with:
+      method: GET
+      path: "/testlab-e2e/toolbox/root"
+      response_status: 200
+      response_body:
+        ok: true
+        served_by: testlab-mock
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      base_mock_url:
+        type: string
+      full_mock_url:
+        type: string
+
+  - id: discovery_mock
+    uses: mock/discovery
+    name: Stand up a connector discovery service for two participants
+    with:
+      id: testlab-e2e-toolbox-discovery
+      mappings:
+        BPNL000000000001: "http://provider-dsp.local/api/v1/dsp/2025-1"
+        BPNL000000000002: "http://consumer-dsp.local/api/v1/dsp/2025-1"
+
+  # Two shells, not one. A lookup that returned everything it holds and a
+  # lookup that actually filtered are indistinguishable against a registry
+  # with a single twin, so the second shell carries a different part id and a
+  # different twin type purely so the assertions below can tell them apart.
+  - id: registry_mock
+    uses: mock/dtr
+    name: Stand up a digital twin registry holding two shell descriptors
+    with:
+      id: testlab-e2e-toolbox-dtr
+      shells:
+        - id: "urn:uuid:11111111-1111-4111-8111-111111111111"
+          idShort: "toolboxTwinOne"
+          specificAssetIds:
+            - name: manufacturerPartId
+              value: testlab-e2e-toolbox-part
+            - name: digitalTwinType
+              value: PartType
+        - id: "urn:uuid:22222222-2222-4222-8222-222222222222"
+          idShort: "toolboxTwinTwo"
+          specificAssetIds:
+            - name: manufacturerPartId
+              value: testlab-e2e-other-part
+            - name: digitalTwinType
+              value: PartInstance
+
+execution:
+  # A. The OAuth2 steps.
+
+  - id: oauth_client_credentials
+    uses: security/oauth2/client_credentials
+    name: Fetch a token with the client credentials grant
+    with:
+      token_url: "${{ setup.token_endpoint.full_mock_url }}"
+      client_id: testlab-e2e-toolbox-client
+      client_secret: testlab-e2e-toolbox-secret
+      scope: "catenax:read"
+    returns:
+      access_token:
+        type: string
+      token_type:
+        type: string
+      expires_in:
+        type: integer
+      scope:
+        type: string
+      refresh_token:
+        type: string
+      status_code:
+        type: integer
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/assert
+        with: { input: access_token, operator: equals, value: "testlab-e2e-access-token" }
+      - uses: validate/assert
+        with: { input: token_type, operator: equals, value: "Bearer" }
+      - uses: validate/assert
+        with: { input: expires_in, operator: equals, value: 3600 }
+      - uses: validate/assert
+        with: { input: refresh_token, operator: not_empty }
+
+  # `client_auth: basic` moves the credentials out of the form and into an
+  # Authorization header. The mock answers the same token either way, so what
+  # this pins down is that the step accepts and applies the setting — not that
+  # any server enforced it. It is on exactly one of the three so the other two
+  # still cover the default form-post path.
+  - id: oauth_password
+    uses: security/oauth2/password
+    name: Fetch a token with the resource owner password grant
+    with:
+      token_url: "${{ setup.token_endpoint.full_mock_url }}"
+      client_id: testlab-e2e-toolbox-client
+      client_secret: testlab-e2e-toolbox-secret
+      client_auth: basic
+      username: testlab-e2e-user
+      password: testlab-e2e-password
+      scope: "catenax:read"
+    returns:
+      access_token:
+        type: string
+      token_type:
+        type: string
+      expires_in:
+        type: integer
+    validate:
+      - uses: validate/assert
+        with: { input: access_token, operator: equals, value: "testlab-e2e-access-token" }
+      - uses: validate/assert
+        with: { input: token_type, operator: equals, value: "Bearer" }
+      - uses: validate/assert
+        with: { input: expires_in, operator: equals, value: 3600 }
+
+  # The refresh token is not a literal here on purpose: it is the one the
+  # client credentials call above produced. That wiring is the point of the
+  # step — a refresh grant spends a token an earlier call earned, and a run in
+  # which the first step's output never reached the third one would still hand
+  # this step a plausible-looking string if the script had typed one in.
+  - id: oauth_refresh
+    uses: security/oauth2/refresh_token
+    name: Exchange the refresh token the first grant returned
+    with:
+      token_url: "${{ setup.token_endpoint.full_mock_url }}"
+      client_id: testlab-e2e-toolbox-client
+      client_secret: testlab-e2e-toolbox-secret
+      refresh_token: "${{ execution.oauth_client_credentials.refresh_token }}"
+      scope: "catenax:read"
+    returns:
+      access_token:
+        type: string
+      token_type:
+        type: string
+      expires_in:
+        type: integer
+    validate:
+      - uses: validate/assert
+        with: { input: access_token, operator: equals, value: "testlab-e2e-access-token" }
+      - uses: validate/assert
+        with: { input: token_type, operator: equals, value: "Bearer" }
+      - uses: validate/assert
+        with: { input: expires_in, operator: equals, value: 3600 }
+
+  # B. The discovery mock.
+
+  # Nothing in testlab consumes a discovery finder: a connector resolves a BPN
+  # to a DSP address by itself, and no step here ever asks it to. What a
+  # script that stands this mock up depends on is the answer shape — a bare
+  # JSON array, each entry carrying `bpn` and a list-valued
+  # `connectorEndpoint` — so that shape is what is asserted, read off the wire
+  # with a plain HTTP request rather than through a step that would hide it.
+  - id: discovery_probe
+    uses: http/http_request
+    name: Ask the discovery mock to resolve one BPN
+    with:
+      url: "${{ setup.mock_root.base_mock_url }}/api/administration/connectors/discovery"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+      body:
+        - "BPNL000000000001"
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/field
+        with: { input: value, path: "0.bpn", operator: equals, value: "BPNL000000000001" }
+      - uses: validate/field
+        with:
+          input: value
+          path: "0.connectorEndpoint.0"
+          operator: equals
+          value: "http://provider-dsp.local/api/v1/dsp/2025-1"
+
+  # C. The registry mock, read with the consumer-side registry steps.
+
+  # The registry steps normally spend an EDR against a provider's data plane.
+  # Here the data plane is the mock server root and the token is empty, which
+  # is the whole reason these steps take `dataplane_url` and `edr_token` as
+  # parameters rather than only reading the context: the same code path is
+  # exercised without a connector in front of it.
+  #
+  # The two lookup endpoints exist for different reasons. `/lookup/shells`
+  # carries its criteria in the query string, which has a length limit no
+  # standard fixes, and `/lookup/shellsByAssetLink` carries the same criteria
+  # in a request body, which has none. A script picks between them, so both
+  # are asserted here.
+  - id: lookup_by_asset_ids
+    uses: digital-twin-registry/consumer/dataplane/lookup_shell
+    name: Look up shells by a single specific asset id
+    with:
+      dataplane_url: "${{ setup.mock_root.base_mock_url }}"
+      edr_token: ""
+      specific_asset_ids:
+        - name: manufacturerPartId
+          value: testlab-e2e-toolbox-part
+    returns:
+      shell_ids:
+        type: array
+      shell_descriptors:
+        type: array
+    validate:
+      # One hit, and specifically not the other shell: an unfiltered answer
+      # would satisfy `contains` alone, which is why `not_contains` is here.
+      - uses: validate/assert
+        with: { input: shell_ids, operator: length_equals, value: 1 }
+      - uses: validate/assert
+        with:
+          input: shell_ids
+          operator: contains
+          value: "urn:uuid:11111111-1111-4111-8111-111111111111"
+      - uses: validate/assert
+        with:
+          input: shell_ids
+          operator: not_contains
+          value: "urn:uuid:22222222-2222-4222-8222-222222222222"
+      - uses: validate/assert
+        with: { input: shell_descriptors, operator: not_empty }
+
+  # Two criteria, both of which the first shell carries and the second does
+  # not. The mock matches on exact (name, value) pairs and requires all of
+  # them, so narrowing the query must not widen the answer.
+  - id: lookup_by_asset_link
+    uses: digital-twin-registry/consumer/dataplane/lookup_shells_by_asset_link
+    name: Look up shells by two specific asset ids through the body endpoint
+    with:
+      dataplane_url: "${{ setup.mock_root.base_mock_url }}"
+      edr_token: ""
+      specific_asset_ids:
+        - name: manufacturerPartId
+          value: testlab-e2e-toolbox-part
+        - name: digitalTwinType
+          value: PartType
+      limit: 50
+    returns:
+      shell_ids:
+        type: array
+      shell_descriptors:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: shell_ids, operator: length_equals, value: 1 }
+      - uses: validate/assert
+        with:
+          input: shell_ids
+          operator: contains
+          value: "urn:uuid:11111111-1111-4111-8111-111111111111"
+      - uses: validate/assert
+        with:
+          input: shell_ids
+          operator: not_contains
+          value: "urn:uuid:22222222-2222-4222-8222-222222222222"
+      - uses: validate/assert
+        with: { input: shell_descriptors, operator: not_empty }
+
+  # The identifier is not written out again: it is the one the lookup found,
+  # so this step also says the lookup's ids are addressable identifiers rather
+  # than strings that merely look like them. The step base64url-encodes it on
+  # the way in, which is the part of the AAS API a hand-written URL gets wrong.
+  - id: shell_descriptor
+    uses: digital-twin-registry/consumer/dataplane/get_shell_descriptor
+    name: Read the descriptor of the shell the lookup found
+    with:
+      dataplane_url: "${{ setup.mock_root.base_mock_url }}"
+      edr_token: ""
+      aas_identifier: "urn:uuid:11111111-1111-4111-8111-111111111111"
+    returns:
+      id:
+        type: string
+      # The registry answers in the AAS spelling, `idShort`; the step publishes
+      # it under the name the engine gives every output, so this is the one
+      # place where the two vocabularies visibly differ.
+      id_short:
+        type: string
+    validate:
+      - uses: validate/assert
+        with:
+          input: id
+          operator: equals
+          value: "urn:uuid:11111111-1111-4111-8111-111111111111"
+      - uses: validate/assert
+        with: { input: id_short, operator: equals, value: "toolboxTwinOne" }
+
+  # D. The utility steps, chained so each one reads the one before it.
+
+  - id: new_uuid
+    uses: util/generate_uuid
+    name: Generate a correlation identifier
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with:
+          input: value
+          operator: matches_regex
+          value: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+
+  # URL-safe with the padding stripped, because that is the form these strings
+  # take when they travel in a path segment or a query parameter — a `=` there
+  # has to be percent-encoded by whoever handles it next, and the AAS lookup
+  # API is the standing example of a place it is not.
+  - id: uuid_encoded
+    uses: util/base64
+    name: Encode the identifier for use in a URL
+    with:
+      input: "${{ execution.new_uuid.value }}"
+      mode: encode
+      url_safe: true
+      strip_padding: true
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_empty }
+      - uses: validate/assert
+        with: { input: value, operator: not_contains, value: "=" }
+
+  # The round trip is the assertion: an encoder that dropped or mangled bytes
+  # still produces a plausible string, and only decoding back to the exact
+  # value the generator produced rules that out.
+  - id: uuid_decoded
+    uses: util/base64
+    name: Decode the identifier back and compare it with the original
+    with:
+      input: "${{ execution.uuid_encoded.value }}"
+      mode: decode
+      url_safe: true
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with:
+          input: value
+          operator: equals
+          value: "${{ execution.new_uuid.value }}"
+
+  # A real EDC `subprotocolBody`, and the case the first-separator rule exists
+  # for. The value of `dspEndpoint` is a URL, and a URL carries a `=` as soon
+  # as it has a query string; a parser that split every pair on every `=`
+  # would hand back a truncated address that still looks like one.
+  - id: subprotocol_body
+    uses: util/parse_kv
+    name: Pull the DSP endpoint out of a subprotocol body
+    with:
+      input: "id=testlab-e2e-toolbox-asset;dspEndpoint=http://provider-dsp.local/api/v1/dsp/2025-1"
+      pair_separator: ";"
+      kv_separator: "="
+      select: dspEndpoint
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with:
+          input: value
+          operator: equals
+          value: "http://provider-dsp.local/api/v1/dsp/2025-1"
+
+  - id: descriptor_by_index
+    uses: util/json_path_extract
+    name: Read the first descriptor's idShort by position
+    with:
+      input: "${{ execution.lookup_by_asset_link.shell_descriptors }}"
+      path: "0.idShort"
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: equals, value: "toolboxTwinOne" }
+
+  # The predicate form selects a list element by a field of its own rather
+  # than by position, which is what a script wants whenever the registry's
+  # ordering is not part of the contract — and it is never part of the
+  # contract. It needs a key to reach the list through, so the descriptors are
+  # carried into one here; `util/log` returns its value unchanged, which makes
+  # it the step that does that without altering anything.
+  - id: descriptor_envelope
+    uses: util/log
+    name: Wrap the descriptor list so it can be addressed by key
+    with:
+      message: "Descriptors returned by the asset link lookup"
+      value:
+        result: "${{ execution.lookup_by_asset_link.shell_descriptors }}"
+    returns:
+      value:
+        type: object
+
+  - id: descriptor_by_predicate
+    uses: util/validate_path
+    name: Select the descriptor by its idShort rather than its position
+    with:
+      input: "${{ execution.descriptor_envelope.value }}"
+      path: "result[idShort=toolboxTwinOne].id"
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with:
+          input: value
+          operator: equals
+          value: "urn:uuid:11111111-1111-4111-8111-111111111111"
+
+  - id: log_summary
+    uses: util/log
+    name: Record the identifiers this run produced
+    with:
+      message: "Toolbox run: correlation id, encoded form and the shell it resolved"
+      value:
+        correlation_id: "${{ execution.new_uuid.value }}"
+        correlation_id_encoded: "${{ execution.uuid_encoded.value }}"
+        resolved_shell_id: "${{ execution.descriptor_by_predicate.value }}"
+        dsp_endpoint: "${{ execution.subprotocol_body.value }}"
+    returns:
+      value:
+        type: object
+    validate:
+      - uses: validate/field
+        with:
+          input: value
+          path: resolved_shell_id
+          operator: equals
+          value: "urn:uuid:11111111-1111-4111-8111-111111111111"
+
+  # E. The delay.
+
+  # Nothing is asserted here, and nothing can be: a delay that quietly slept
+  # for no time at all would satisfy every assertion a script is able to write
+  # about it. It is in the file to be executed — a step that raises, or that
+  # the runtime no longer knows how to schedule, fails the run on its own.
+  - id: short_delay
+    uses: flow/delay
+    name: Pause briefly
+    with:
+      seconds: 0.2
+
+  # F. The branch, taken both ways.
+
+  # The condition reads a status code an earlier call actually returned rather
+  # than a literal, so the branch is decided by something this run produced.
+  # A `flow/if` whose conditions are constants proves only that the engine can
+  # compare two values it was handed.
+  - id: branch_on_token
+    uses: flow/if
+    name: Branch on the status the token endpoint answered with
+    with:
+      match: all
+      conditions:
+        - input: "${{ execution.oauth_client_credentials.status_code }}"
+          operator: equals
+          value: 200
+        - input: "${{ execution.oauth_client_credentials.access_token }}"
+          operator: not_empty
+      then:
+        - id: token_branch_note
+          uses: util/log
+          name: Record that the token grant succeeded
+          with:
+            message: "Token endpoint answered 200 with a usable access token"
+            value:
+              token_type: "${{ execution.oauth_client_credentials.token_type }}"
+      else:
+        - id: token_branch_fallback
+          uses: util/log
+          name: Record that the token grant did not succeed
+          with:
+            message: "Token endpoint did not answer with a usable access token"
+    returns:
+      condition_result:
+        type: boolean
+      branch_taken:
+        type: string
+      outputs:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: condition_result, operator: equals, value: true }
+      - uses: validate/assert
+        with: { input: branch_taken, operator: equals, value: "then" }
+      - uses: validate/assert
+        with: { input: outputs, operator: not_empty }
+
+  # A nested step's id is not a name in the phase: `execution.token_branch_note`
+  # does not resolve, because the branch may never have run and the engine
+  # will not publish a name that might not exist. What the wrapper publishes
+  # instead is an ordered list of whatever its branch produced, and reaching
+  # into that list is the only way back to a nested result.
+  - id: branch_output
+    uses: util/json_path_extract
+    name: Read the nested step's output back through the wrapper
+    with:
+      input: "${{ execution.branch_on_token.outputs }}"
+      path: "0"
+    returns:
+      value:
+        type: object
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_null }
+
+  # The same wiring with a condition the run cannot satisfy: the registry mock
+  # holds two shells and the filtered lookup returned one, so asking for more
+  # than five sends this down the `else` branch. The else path is worth its own
+  # step because a `flow/if` that always took `then` would look identical in a
+  # green run whether or not the engine ever evaluated the condition.
+  - id: branch_on_shell_count
+    uses: flow/if
+    name: Branch on how many shells the lookup returned
+    with:
+      conditions:
+        - input: "${{ execution.lookup_by_asset_ids.shell_ids }}"
+          operator: length_gt
+          value: 5
+      then:
+        - id: many_shells_note
+          uses: util/log
+          name: Record an unexpectedly large result set
+          with:
+            message: "The lookup returned more shells than the mock was seeded with"
+      else:
+        - id: few_shells_note
+          uses: util/log
+          name: Record the filtered result set
+          with:
+            message: "The lookup returned the single shell the criteria selected"
+    returns:
+      condition_result:
+        type: boolean
+      branch_taken:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: condition_result, operator: equals, value: false }
+      - uses: validate/assert
+        with: { input: branch_taken, operator: equals, value: "else" }
+
+  # G. The retry.
+
+  # On any nested failure the whole sequence runs again from the top, so
+  # everything inside a retry has to be safe to repeat. That is why the nested
+  # step is a read of a canned endpoint and not a write: a step that created
+  # something would create it once per attempt, and the second attempt would
+  # fail on the first one's leftovers rather than on whatever it was retrying.
+  - id: retry_echo
+    uses: flow/retry
+    name: Re-read the mock endpoint until it answers
+    with:
+      max_attempts: 3
+      delay_s: 0
+      steps:
+        - id: echo_read
+          uses: http/http_request
+          name: Read the mock echo endpoint
+          with:
+            url: "${{ setup.mock_root.full_mock_url }}"
+            method: GET
+          validate:
+            - uses: validate/assert
+              with: { input: status_code, operator: equals, value: 200 }
+            - uses: validate/field
+              with: { input: value, path: ok, operator: equals, value: true }
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_empty }

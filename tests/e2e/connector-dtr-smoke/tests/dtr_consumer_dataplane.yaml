@@ -1,0 +1,396 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: dtr-consumer-dataplane
+
+metadata:
+  name: "Registry, read as a counterparty"
+  version: "v1.0.0"
+  description: >
+    dtr_roundtrip.yaml writes to a registry the engine was handed the address
+    of. That is the provider's view, and it is not how a consumer in Catena-X
+    ever reads somebody else's twins: the registry is offered as an asset in
+    the provider's catalog, the consumer negotiates for it like any other
+    asset, and every registry call then travels through the provider's data
+    plane with an EDR token on it. This test builds exactly that arrangement —
+    setup publishes the SUT's own registry as a DigitalTwinRegistry asset and
+    registers a twin in it — and then reads the twin back through all four
+    consumer-side registry steps. Because the calls arrive through the data
+    plane, the registry sees the consumer's business partner number rather
+    than the engine's, and answers with what that partner is allowed to see;
+    the twin is therefore registered with the visibility rules that make it
+    readable, and a run where those rules stopped being honoured comes back
+    with an empty lookup rather than an error.
+
+setup:
+  - id: create_access_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT catalog access policy
+    with:
+      policy: "${{ env.access_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_usage_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT contract usage policy
+    with:
+      policy: "${{ env.usage_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  # The asset that makes the registry reachable through the dataspace. Its
+  # backend is the registry's API root as the provider's data plane can reach
+  # it — a cluster address, not the ingress the engine uses — and `proxyPath`
+  # is what lets `/lookup/shells` and `/shell-descriptors/{id}` travel with
+  # each call instead of being dropped at the data plane. The `dct:type` is
+  # the standard one: it is how a consumer finds a registry in a catalog it
+  # has never seen, and `connector/discover/digital-twin-registry/auth`
+  # filters on exactly that term.
+  - id: create_dtr_asset
+    uses: connector/provider/create_asset
+    name: Publish the SUT's registry as a catalog asset
+    with:
+      asset:
+        asset_id: testlab-e2e-dtr-asset
+        base_url: "${{ env.dtr_internal_url }}"
+        dct_type: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
+        version: "3.0"
+        proxy_params:
+          proxyPath: "true"
+          proxyMethod: "true"
+          proxyBody: "true"
+          proxyQueryParams: "true"
+    returns:
+      asset_id:
+        type: string
+
+  - id: create_contract
+    uses: connector/provider/create_contract_definition
+    name: Offer the registry asset under both policies
+    with:
+      contract_definition_id: testlab-e2e-dtr-contract
+      access_policy_id: "${{ setup.create_access_policy.policy_id }}"
+      contract_policy_id: "${{ setup.create_usage_policy.policy_id }}"
+      asset_id: "${{ setup.create_dtr_asset.asset_id }}"
+    returns:
+      contract_definition_id:
+        type: string
+
+  # The twin, written field by field. The document form is covered by
+  # dtr_roundtrip.yaml; what is covered here is that the guided form builds
+  # the same descriptor, which only a registry that accepts it can say.
+  #
+  # The visibility rules are the substance of this block, not decoration. A
+  # Tractus-X registry answers a request as the partner the `Edc-Bpn` header
+  # names — set by the provider's data plane from the token, never by the
+  # script — and it shows a twin only to a partner named in one of the twin's
+  # specific asset IDs. `PUBLIC_READABLE` is the registry's wildcard, honoured
+  # for the identifier types its configuration allows (manufacturerPartId and
+  # digitalTwinType by default), which is what makes the twin findable at all.
+  # The customer part ID then names the consumer outright, under both spellings
+  # of its identity: the connector's participant ID is a DID here, its BPN is
+  # what the data plane may put on the header instead, and a twin that named
+  # only one of the two would be readable or not depending on which the
+  # deployment chose.
+  - id: create_shell
+    uses: digital-twin/provider/wizard/create_shell_descriptor
+    name: Register a twin the consumer is allowed to see
+    with:
+      id_short: testlabE2eConsumerTwin
+      global_asset_id: "urn:uuid:6d1c4f70-0000-4000-8000-000000000001"
+      specific_asset_ids:
+        - name: manufacturerPartId
+          value: testlab-e2e-consumer-part
+          externalSubjectId:
+            type: ExternalReference
+            keys:
+              - type: GlobalReference
+                value: PUBLIC_READABLE
+        - name: digitalTwinType
+          value: PartType
+          externalSubjectId:
+            type: ExternalReference
+            keys:
+              - type: GlobalReference
+                value: PUBLIC_READABLE
+        - name: customerPartId
+          value: testlab-e2e-consumer-customer-part
+          externalSubjectId:
+            type: ExternalReference
+            keys:
+              - type: GlobalReference
+                value: "${{ infrastructure.engine.connector.participant_id }}"
+              - type: GlobalReference
+                value: "${{ env.engine_bpnl }}"
+    returns:
+      id:
+        type: string
+
+  # Attached after the fact rather than inside the shell, because that is the
+  # other way a descriptor reaches a registry and nothing else in the suite
+  # takes it. `securityAttributes` is not optional in practice: the Tractus-X
+  # registry dereferences the set while storing the endpoint and answers 500
+  # when it is absent, whatever the AAS specification says.
+  - id: create_submodel
+    uses: digital-twin/provider/create_submodel_descriptor
+    name: Attach a submodel descriptor to the twin
+    with:
+      aas_identifier: "${{ setup.create_shell.id }}"
+      submodel_descriptor:
+        id: "urn:uuid:6d1c4f70-0000-4000-8000-000000000002"
+        idShort: consumerSmokeSubmodel
+        semanticId:
+          type: ExternalReference
+          keys:
+            - type: GlobalReference
+              value: "urn:samm:io.testlab:1.0.0#SmokeSubmodel"
+        endpoints:
+          - interface: "SUBMODEL-3.0"
+            protocolInformation:
+              href: "${{ infrastructure.sut.connector.dsp_url }}"
+              endpointProtocol: "HTTP"
+              endpointProtocolVersion: ["1.1"]
+              subprotocol: "DSP"
+              subprotocolBody: "id=testlab-e2e-dtr-asset;dspEndpoint=${{ infrastructure.sut.connector.dsp_url }}"
+              subprotocolBodyEncoding: "plain"
+              securityAttributes:
+                - type: "NONE"
+                  key: "NONE"
+                  value: "NONE"
+    returns:
+      id:
+        type: string
+
+execution:
+  # Catalog, negotiation and transfer, aimed at the one asset a consumer can
+  # identify without being told anything about the provider. Everything below
+  # spends the token this produced, so a failure here is a failure to reach
+  # the registry at all rather than a failure to read it.
+  - id: registry_auth
+    uses: connector/discover/digital-twin-registry/auth
+    name: Negotiate access to the SUT's registry
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      expected_policies: "${{ env.usage_policy }}"
+    returns:
+      dataplane_url:
+        type: string
+      edr_token:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: dataplane_url, operator: not_null }
+      - uses: validate/assert
+        with: { input: edr_token, operator: not_null }
+
+  # The unfiltered read: every twin this consumer is allowed to see, one page
+  # at a time. It is the only registry step that takes a page size, and the
+  # cursor it returns is the only way a script reads the page after it.
+  - id: list_shells
+    uses: digital-twin-registry/consumer/dataplane/get_shell_descriptors
+    name: List the twins the consumer may see
+    with:
+      dataplane_url: "${{ execution.registry_auth.dataplane_url }}"
+      edr_token: "${{ execution.registry_auth.edr_token }}"
+      limit: 100
+    returns:
+      shell_ids:
+        type: array
+      shell_descriptors:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: shell_ids, operator: not_empty }
+      - uses: validate/assert
+        with: { input: shell_ids, operator: contains, value: "${{ setup.create_shell.id }}" }
+
+  # The search a consumer actually performs: it does not know the twin's id,
+  # it knows a part number. The criteria go out base64url-encoded, one query
+  # value each, which is the encoding the registry demands and the step is
+  # what saves a script from having to know that.
+  - id: lookup_by_part
+    uses: digital-twin-registry/consumer/dataplane/lookup_shell
+    name: Find the twin by its manufacturer part ID
+    with:
+      dataplane_url: "${{ execution.registry_auth.dataplane_url }}"
+      edr_token: "${{ execution.registry_auth.edr_token }}"
+      specific_asset_ids:
+        - name: manufacturerPartId
+          value: testlab-e2e-consumer-part
+    returns:
+      shell_ids:
+        type: array
+      shell_descriptors:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: shell_ids, operator: contains, value: "${{ setup.create_shell.id }}" }
+      # The lookup answers with identifiers; the step reads each one back as a
+      # document, and a registry that returned an id it then refused to serve
+      # would show up as an empty list here rather than as a wrong one.
+      - uses: validate/assert
+        with: { input: shell_descriptors, operator: not_empty }
+
+  # The same search through the endpoint that carries its criteria in a body.
+  # It exists because a query string has a length limit and a body does not,
+  # so a lookup with many criteria — or with long identity scopes on them —
+  # is the case the first endpoint cannot serve. Two criteria are given here
+  # so the answer also says the registry required both rather than either.
+  - id: lookup_by_asset_link
+    uses: digital-twin-registry/consumer/dataplane/lookup_shells_by_asset_link
+    name: Find the same twin through the body-carried lookup
+    with:
+      dataplane_url: "${{ execution.registry_auth.dataplane_url }}"
+      edr_token: "${{ execution.registry_auth.edr_token }}"
+      specific_asset_ids:
+        - name: manufacturerPartId
+          value: testlab-e2e-consumer-part
+        - name: digitalTwinType
+          value: PartType
+      limit: 50
+    returns:
+      shell_ids:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: shell_ids, operator: contains, value: "${{ setup.create_shell.id }}" }
+
+  - id: read_twin
+    uses: digital-twin-registry/consumer/dataplane/get_shell_descriptor
+    name: Read the twin's descriptor as the counterparty
+    with:
+      dataplane_url: "${{ execution.registry_auth.dataplane_url }}"
+      edr_token: "${{ execution.registry_auth.edr_token }}"
+      aas_identifier: "${{ setup.create_shell.id }}"
+    returns:
+      id:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: id, operator: equals, value: "${{ setup.create_shell.id }}" }
+      # The submodel descriptor setup attached separately. A registry that
+      # stored the shell and dropped the submodel would satisfy every check
+      # above and fail this one.
+      - uses: validate/field
+        with:
+          input: body
+          path: "submodelDescriptors[idShort='consumerSmokeSubmodel'].endpoints[interface='SUBMODEL-3.0'].protocolInformation.subprotocolBody"
+          operator: contains
+          value: "id=testlab-e2e-dtr-asset"
+
+  # The same lookup, made against the registry the engine was seeded with
+  # rather than through a data plane. A setup phase has no EDR token and no
+  # reason to obtain one to search a registry it operates, which is the whole
+  # difference between this step and the one three above it. The wildcard is
+  # what makes the criterion answerable for a partner that owns nothing here.
+  - id: provider_lookup
+    uses: digital-twin/provider/lookup_shells
+    name: Search the same registry directly, without a data plane
+    with:
+      bpn: "${{ infrastructure.sut.connector.participant_id }}"
+      specific_asset_ids:
+        - name: manufacturerPartId
+          value: testlab-e2e-consumer-part
+    returns:
+      shell_ids:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: shell_ids, operator: contains, value: "${{ setup.create_shell.id }}" }
+
+  # An AAS identifier goes into a request path base64url-encoded, and this is
+  # the step that does that encoding when a script builds the call itself
+  # rather than letting a registry step build it. Asserting the padding is
+  # gone is not cosmetic: an unencoded '=' in a path is a different address.
+  - id: encode_twin_id
+    uses: util/base64
+    name: Encode the twin's identifier for a hand-built registry path
+    with:
+      input: "${{ setup.create_shell.id }}"
+      url_safe: true
+      strip_padding: true
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_null }
+      - uses: validate/assert
+        with: { input: value, operator: not_contains, value: "=" }
+
+  # The registry read once more, this time as a plain data-plane call. It is
+  # the same document the typed step returned, reached without the typed step,
+  # so a difference between the two is a difference the typed step introduced.
+  - id: read_twin_raw
+    uses: connector/dataplane/http_request
+    name: Read the twin over the data plane without a registry step
+    with:
+      dataplane_url: "${{ execution.registry_auth.dataplane_url }}"
+      edr_token: "${{ execution.registry_auth.edr_token }}"
+      method: GET
+      path: "/shell-descriptors/${{ execution.encode_twin_id.value }}"
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/field
+        with: { input: value, path: id, operator: equals, value: "${{ setup.create_shell.id }}" }
+
+teardown:
+  - id: delete_shell
+    uses: digital-twin/provider/delete_shell_descriptor
+    name: Remove the twin
+    with:
+      aas_identifier: "${{ setup.create_shell.id }}"
+
+  - id: delete_contract
+    uses: connector/provider/delete_contract_definition
+    name: Withdraw the registry offer
+    with:
+      contract_definition_id: "${{ setup.create_contract.contract_definition_id }}"
+
+  - id: delete_dtr_asset
+    uses: connector/provider/delete_asset
+    name: Remove the registry asset
+    with:
+      asset_id: "${{ setup.create_dtr_asset.asset_id }}"
+
+  - id: delete_usage_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT usage policy
+    with:
+      policy_id: "${{ setup.create_usage_policy.policy_id }}"
+
+  - id: delete_access_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT access policy
+    with:
+      policy_id: "${{ setup.create_access_policy.policy_id }}"

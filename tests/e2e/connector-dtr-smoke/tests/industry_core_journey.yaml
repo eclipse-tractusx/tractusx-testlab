@@ -1,0 +1,428 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: industry-core-journey
+
+metadata:
+  name: "Industry Core, end to end"
+  version: "v1.0.0"
+  description: >
+    The other tests each take one part of the Industry Core story. This one
+    takes the whole of it, in the order a data provider and a data consumer
+    actually perform it: a submodel payload is uploaded to the provider's own
+    backend, an EDC asset is created that fronts that backend, a twin is
+    registered whose submodel descriptor points at the payload and names the
+    asset it is negotiated through, and then the consumer works the chain
+    backwards — read the descriptor, take the asset id out of its subprotocol
+    body, negotiate for that asset, and pull the payload. The last step is the
+    only one that can fail if any earlier link is decorative: what comes back
+    through the data plane has to be the document uploaded in setup, byte for
+    byte, and no other component in the deployment could produce it.
+
+setup:
+  # The payload, on the server the engine was bound to. Nothing about the
+  # address is the script's to choose: `engine.dtr.submodel_base_url` is where
+  # it goes, and the step publishes the address in pieces because the pieces
+  # are needed apart — the root becomes an EDC asset's backend, the path
+  # becomes what a data plane appends to it.
+  #
+  # No aspect is given, deliberately. With one, the payload is stored under a
+  # percent-encoded URN — and a URN carries a '#', which two EDC data planes
+  # then have to relay without either of them deciding it starts a fragment.
+  # That is a property of the connectors rather than of testlab, and betting
+  # the whole journey on it would make this test report a data-plane quirk as
+  # an Industry Core failure. The aspect-addressed layout is exercised on its
+  # own below, against the same server, without a data plane in between.
+  - id: upload_submodel
+    uses: digital-twin/submodel/upload
+    name: Upload the submodel payload to the engine's backend
+    with:
+      data:
+        catenaXId: "urn:uuid:9f1a4c20-0000-4000-8000-000000000001"
+        localIdentifiers:
+          - key: partInstanceId
+            value: testlab-e2e-serial-0001
+        manufacturingInformation:
+          date: "2026-01-15T00:00:00.000Z"
+          country: DEU
+        partTypeInformation:
+          manufacturerPartId: testlab-e2e-ic-part
+          nameAtManufacturer: TestLab E2E Serial Part
+    returns:
+      backend_url:
+        type: string
+      source_url:
+        type: string
+      path:
+        type: string
+      submodel_id:
+        type: string
+
+  # The same server, addressed the way the Industry Core layout actually
+  # groups payloads: by the aspect they follow and then by their own id. The
+  # aspect is a URN, so the segment is percent-encoded, which is the only
+  # reason this step's addressing is worth a test of its own — an encoder that
+  # dropped the escaping would write to a path nothing could read back, and a
+  # server that resolved the two spellings differently would store one
+  # resource under two names.
+  - id: upload_aspect_scoped
+    uses: digital-twin/submodel/upload
+    name: Upload a second payload under its aspect URN
+    with:
+      semantic_id: "urn:samm:io.catenax.serial_part:3.0.0#SerialPart"
+      data:
+        catenaXId: "urn:uuid:9f1a4c20-0000-4000-8000-000000000002"
+        partTypeInformation:
+          manufacturerPartId: testlab-e2e-ic-part
+          nameAtManufacturer: TestLab E2E aspect-scoped payload
+    returns:
+      backend_url:
+        type: string
+      path:
+        type: string
+      submodel_id:
+        type: string
+      semantic_id:
+        type: string
+
+  - id: create_access_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT catalog access policy
+    with:
+      policy: "${{ env.access_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_usage_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT contract usage policy
+    with:
+      policy: "${{ env.usage_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  # The asset fronts the submodel server, not one submodel on it: the backend
+  # is the server's root and the path travels with each call, which is what
+  # lets one asset serve every submodel a provider stores and what makes the
+  # descriptor's href meaningful.
+  - id: create_asset
+    uses: connector/provider/create_asset
+    name: Create the EDC asset that fronts the submodel backend
+    with:
+      asset:
+        asset_id: testlab-e2e-ic-asset
+        base_url: "${{ setup.upload_submodel.source_url }}"
+        dct_type: "https://w3id.org/catenax/taxonomy#Submodel"
+        version: "3.0"
+        semantic_id: "urn:samm:io.catenax.serial_part:3.0.0#SerialPart"
+        proxy_params:
+          proxyPath: "true"
+          proxyMethod: "true"
+          proxyBody: "true"
+    returns:
+      asset_id:
+        type: string
+
+  - id: create_contract
+    uses: connector/provider/create_contract_definition
+    name: Publish the submodel asset
+    with:
+      contract_definition_id: testlab-e2e-ic-contract
+      access_policy_id: "${{ setup.create_access_policy.policy_id }}"
+      contract_policy_id: "${{ setup.create_usage_policy.policy_id }}"
+      asset_id: "${{ setup.create_asset.asset_id }}"
+    returns:
+      contract_definition_id:
+        type: string
+
+  - id: create_shell
+    uses: digital-twin/provider/wizard/create_shell_descriptor
+    name: Register the twin for the serialised part
+    with:
+      id_short: testlabE2eSerialPart
+      global_asset_id: "urn:uuid:9f1a4c20-0000-4000-8000-000000000001"
+      specific_asset_ids:
+        - name: manufacturerPartId
+          value: testlab-e2e-ic-part
+          externalSubjectId:
+            type: ExternalReference
+            keys:
+              - type: GlobalReference
+                value: PUBLIC_READABLE
+        - name: partInstanceId
+          value: testlab-e2e-serial-0001
+          externalSubjectId:
+            type: ExternalReference
+            keys:
+              - type: GlobalReference
+                value: "${{ infrastructure.engine.connector.participant_id }}"
+              - type: GlobalReference
+                value: "${{ env.engine_bpnl }}"
+    returns:
+      id:
+        type: string
+
+  # The descriptor written field by field rather than as a document, which is
+  # the form worth using here: the CX-0002 boilerplate a submodel endpoint has
+  # to carry — the protocol, the version, the subprotocol and the shape of its
+  # body — is the step's to write, so what the script states is only what is
+  # specific to this twin. Every one of those fields is read back below.
+  - id: create_submodel_descriptor
+    uses: digital-twin/provider/wizard/create_submodel_descriptor
+    name: Point the twin at the payload and at the asset that serves it
+    with:
+      aas_identifier: "${{ setup.create_shell.id }}"
+      id_short: serialPartSubmodel
+      semantic_id: "${{ setup.upload_aspect_scoped.semantic_id }}"
+      href: "${{ setup.upload_submodel.backend_url }}"
+      asset_id: "${{ setup.create_asset.asset_id }}"
+      dsp_endpoint: "${{ infrastructure.sut.connector.dsp_url }}"
+      interface: "SUBMODEL-3.0"
+    returns:
+      id:
+        type: string
+
+execution:
+  # The consumer's starting point. Everything it needs to reach the payload is
+  # in this one document, and the steps below take it apart rather than
+  # reading values the script already knows — a chain wired from the setup ids
+  # would pass even if the registry stored something else entirely.
+  - id: read_twin
+    uses: digital-twin/provider/get_shell_descriptor
+    name: Read the twin back from the registry
+    with:
+      aas_identifier: "${{ setup.create_shell.id }}"
+      bpn: "${{ infrastructure.sut.connector.participant_id }}"
+    returns:
+      id:
+        type: string
+      # The whole document, not just the identifier: the steps below take the
+      # descriptor apart, and a name that is not declared here is a name a
+      # reference cannot resolve however readable the value is on this step.
+      body:
+        type: object
+    validate:
+      - uses: validate/assert
+        with: { input: id, operator: equals, value: "${{ setup.create_shell.id }}" }
+      - uses: validate/field
+        with:
+          input: body
+          path: "submodelDescriptors[idShort='serialPartSubmodel'].semanticId.keys.0.value"
+          operator: equals
+          value: "urn:samm:io.catenax.serial_part:3.0.0#SerialPart"
+      # The boilerplate the wizard step wrote. A descriptor missing it is one
+      # no Industry Core consumer would follow, however well-formed it looks.
+      - uses: validate/field
+        with:
+          input: body
+          path: "submodelDescriptors[idShort='serialPartSubmodel'].endpoints[interface='SUBMODEL-3.0'].protocolInformation.subprotocol"
+          operator: equals
+          value: DSP
+
+  # The aspect-addressed payload, read straight off the submodel server. It
+  # deliberately does not go through a data plane: what is being settled is
+  # that the address the upload step composed is an address the server serves,
+  # and putting two connectors in the middle would leave a failure ambiguous
+  # between the encoding and the relaying of it.
+  - id: fetch_aspect_scoped
+    uses: http/http_request
+    name: Read the aspect-addressed payload back from the submodel server
+    with:
+      url: "${{ setup.upload_aspect_scoped.backend_url }}"
+      method: GET
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/field
+        with:
+          input: value
+          path: catenaXId
+          operator: equals
+          value: "urn:uuid:9f1a4c20-0000-4000-8000-000000000002"
+
+  - id: subprotocol_body
+    uses: util/json_path_extract
+    name: Take the endpoint's subprotocol body out of the descriptor
+    with:
+      input: "${{ execution.read_twin.body }}"
+      path: "submodelDescriptors[idShort='serialPartSubmodel'].endpoints[interface='SUBMODEL-3.0'].protocolInformation.subprotocolBody"
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: contains, value: "dspEndpoint=" }
+
+  # `id=<asset>;dspEndpoint=<url>` — two pairs, and the second one's value is
+  # a URL. Pairs split on the separator between them and each pair on its
+  # *first* '=' only, which is exactly what keeps a URL carrying a query
+  # string from being truncated at its first parameter.
+  - id: negotiated_asset_id
+    uses: util/parse_kv
+    name: Read the asset id the submodel is negotiated through
+    with:
+      input: "${{ execution.subprotocol_body.value }}"
+      select: id
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: equals, value: testlab-e2e-ic-asset }
+
+  - id: negotiated_dsp_endpoint
+    uses: util/parse_kv
+    name: Read the DSP endpoint the submodel is negotiated at
+    with:
+      input: "${{ execution.subprotocol_body.value }}"
+      select: dspEndpoint
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with:
+          input: value
+          operator: equals
+          value: "${{ infrastructure.sut.connector.dsp_url }}"
+
+  # Addressed at what the descriptor said, not at what the manifest binds: the
+  # endpoint and the asset id both come out of the document read above, which
+  # is the way a consumer that had never seen this provider would reach it.
+  - id: pull_submodel_asset
+    uses: connector/consumer/pull_data_filtered
+    name: Negotiate the asset the descriptor named
+    with:
+      counter_party_address: "${{ execution.negotiated_dsp_endpoint.value }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
+          operator: "="
+          operand_right: "${{ execution.negotiated_asset_id.value }}"
+      expected_policies: "${{ env.usage_policy }}"
+    returns:
+      asset_id:
+        type: string
+      dataplane_url:
+        type: string
+      edr_token:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: asset_id, operator: equals, value: testlab-e2e-ic-asset }
+      - uses: validate/assert
+        with: { input: edr_token, operator: not_null }
+
+  # The end of the chain. The path is the one the upload published, appended
+  # to the asset's backend by the provider's data plane, so the document that
+  # comes back is the document setup uploaded — and every field asserted below
+  # travelled from the engine's backend, through two data planes, into this
+  # answer.
+  - id: fetch_submodel
+    uses: connector/dataplane/http_request
+    name: Pull the submodel payload through the data plane
+    with:
+      dataplane_url: "${{ execution.pull_submodel_asset.dataplane_url }}"
+      edr_token: "${{ execution.pull_submodel_asset.edr_token }}"
+      method: GET
+      path: "/${{ setup.upload_submodel.path }}"
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/field
+        with:
+          input: value
+          path: catenaXId
+          operator: equals
+          value: "urn:uuid:9f1a4c20-0000-4000-8000-000000000001"
+      - uses: validate/field
+        with:
+          input: value
+          path: partTypeInformation.manufacturerPartId
+          operator: equals
+          value: testlab-e2e-ic-part
+      - uses: validate/field
+        with:
+          input: value
+          path: localIdentifiers.0.value
+          operator: equals
+          value: testlab-e2e-serial-0001
+
+teardown:
+  - id: delete_shell
+    uses: digital-twin/provider/delete_shell_descriptor
+    name: Remove the twin
+    with:
+      aas_identifier: "${{ setup.create_shell.id }}"
+
+  - id: delete_contract
+    uses: connector/provider/delete_contract_definition
+    name: Withdraw the submodel asset's offer
+    with:
+      contract_definition_id: "${{ setup.create_contract.contract_definition_id }}"
+
+  - id: delete_asset
+    uses: connector/provider/delete_asset
+    name: Remove the submodel asset
+    with:
+      asset_id: "${{ setup.create_asset.asset_id }}"
+
+  - id: delete_usage_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT usage policy
+    with:
+      policy_id: "${{ setup.create_usage_policy.policy_id }}"
+
+  - id: delete_access_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT access policy
+    with:
+      policy_id: "${{ setup.create_access_policy.policy_id }}"
+
+  # The payload itself, removed from the engine's backend. It is the last
+  # thing to go because the asset in front of it has to be withdrawn first —
+  # an offer that resolves to nothing is worse than no offer.
+  - id: delete_submodel
+    uses: digital-twin/submodel/delete
+    name: Remove the uploaded payload
+    with:
+      path: "${{ setup.upload_submodel.path }}"
+
+  # The aspect-addressed one, removed by the same percent-encoded path it was
+  # written under. A delete that answered 404 here would mean the upload and
+  # the delete composed the address differently, which nothing else would say.
+  - id: delete_aspect_scoped
+    uses: digital-twin/submodel/delete
+    name: Remove the aspect-addressed payload
+    with:
+      path: "${{ setup.upload_aspect_scoped.path }}"
+    returns:
+      status_code:
+        type: integer

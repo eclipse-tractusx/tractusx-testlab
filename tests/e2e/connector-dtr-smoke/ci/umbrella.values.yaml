@@ -59,25 +59,32 @@
 # The workflow's manifest validation asserts both hooks are present.
 
 edc-provider:
-  # Postgres stays for this participant, for the IdentityHub alone — see the
-  # note under `tractusx-identityhub` below. The connector no longer uses it:
-  # the `edc` database it still renders a JDBC URL for goes unopened, because
-  # the in-memory runtime has no SQL extensions to dial it with.
+  # No Postgres for this participant. The IdentityHub was the last thing on
+  # it and is in-memory now (see below); the connector never used it — the
+  # `edc` database it still renders a JDBC URL for goes unopened, because the
+  # in-memory runtime has no SQL extensions to dial it with. The DTR keeps its
+  # own database, inside the digital-twin bundle.
   install:
-    postgresql: true
+    postgresql: false
   tractusx-identityhub:
     identityhub:
-      # This one stays on the SQL + HashiCorp-Vault image, and cannot go
-      # in-memory today. `identityhub-memory` gets EDC's `InMemoryVault`, which
-      # partitions secrets by participant context, while tx-identityhub's
-      # `InitialParticipantExtension` writes the participant's X-Api-Key and STS
-      # client secret with the *unscoped* `storeSecret` during boot — where no
-      # participant context is in scope, so they land in the `default`
-      # partition. Every later read is scoped to the participant and finds
-      # nothing: the Identity API answers 500 (an NPE on a null credential in
-      # ParticipantServicePrincipalResolver) and the run cannot request its
-      # credentials. Upstream `main` still writes unscoped, so no published tag
-      # fixes it.
+      # In-memory IdentityHub. The chart standing in this slot is
+      # `tractusx-identityhub-memory`, renamed to the dependency's name by the
+      # workflow's chart surgery, so this block still addresses it — and its
+      # image is the memory one by the chart's own default.
+      #
+      # Known risk, and the reason this participant ran on SQL until now:
+      # tx-identityhub's `InitialParticipantExtension` writes the X-Api-Key
+      # and the STS client secret with the *unscoped* `vault.storeSecret`
+      # during boot, where no participant context is in scope, so EDC's
+      # `InMemoryVault` — still partitioned by participant context in EDC
+      # 0.17.0 — files them under `default`. Every later read is scoped to the
+      # participant and finds nothing: the Identity API answers 500 (an NPE on
+      # a null credential in ParticipantServicePrincipalResolver) and the run
+      # cannot request its credentials. That is what this image did in CI on
+      # 2026-08-31, and 0.4.0 still calls the unscoped overload. The fix is
+      # one line upstream: hand `storeSecret` the participant id as its
+      # partition.
       livenessProbe:
         initialDelaySeconds: 240
         failureThreshold: 60
@@ -260,25 +267,32 @@ edc-provider:
         fullnameOverride: provider-dtr-postgresql
 
 edc-consumer:
-  # Postgres stays for this participant, for the IdentityHub alone — see the
-  # note under `tractusx-identityhub` below. The connector no longer uses it:
-  # the `edc` database it still renders a JDBC URL for goes unopened, because
-  # the in-memory runtime has no SQL extensions to dial it with.
+  # No Postgres for this participant. The IdentityHub was the last thing on
+  # it and is in-memory now (see below); the connector never used it — the
+  # `edc` database it still renders a JDBC URL for goes unopened, because the
+  # in-memory runtime has no SQL extensions to dial it with. The DTR keeps its
+  # own database, inside the digital-twin bundle.
   install:
-    postgresql: true
+    postgresql: false
   tractusx-identityhub:
     identityhub:
-      # This one stays on the SQL + HashiCorp-Vault image, and cannot go
-      # in-memory today. `identityhub-memory` gets EDC's `InMemoryVault`, which
-      # partitions secrets by participant context, while tx-identityhub's
-      # `InitialParticipantExtension` writes the participant's X-Api-Key and STS
-      # client secret with the *unscoped* `storeSecret` during boot — where no
-      # participant context is in scope, so they land in the `default`
-      # partition. Every later read is scoped to the participant and finds
-      # nothing: the Identity API answers 500 (an NPE on a null credential in
-      # ParticipantServicePrincipalResolver) and the run cannot request its
-      # credentials. Upstream `main` still writes unscoped, so no published tag
-      # fixes it.
+      # In-memory IdentityHub. The chart standing in this slot is
+      # `tractusx-identityhub-memory`, renamed to the dependency's name by the
+      # workflow's chart surgery, so this block still addresses it — and its
+      # image is the memory one by the chart's own default.
+      #
+      # Known risk, and the reason this participant ran on SQL until now:
+      # tx-identityhub's `InitialParticipantExtension` writes the X-Api-Key
+      # and the STS client secret with the *unscoped* `vault.storeSecret`
+      # during boot, where no participant context is in scope, so EDC's
+      # `InMemoryVault` — still partitioned by participant context in EDC
+      # 0.17.0 — files them under `default`. Every later read is scoped to the
+      # participant and finds nothing: the Identity API answers 500 (an NPE on
+      # a null credential in ParticipantServicePrincipalResolver) and the run
+      # cannot request its credentials. That is what this image did in CI on
+      # 2026-08-31, and 0.4.0 still calls the unscoped overload. The fix is
+      # one line upstream: hand `storeSecret` the participant id as its
+      # partition.
       livenessProbe:
         initialDelaySeconds: 240
         failureThreshold: 60
@@ -445,6 +459,15 @@ tractusx-issuerservice:
     # the `custom_attestation_claims` table Umbrella still seeds.
     image:
       repository: tractusx/issuerservice-memory
+    # The v0.4.0 chart waits for its bundled subcharts on a TCP probe before
+    # the runtime starts — against the *default* subchart names, `<release>-
+    # vault:8200`. Umbrella names this one `umbrella-issuerservice-vault`, so
+    # the probe never connects: 60 attempts, five minutes, then a failed init
+    # and a failed `helm install --wait`. The chart's own note says to switch
+    # it off when a subchart is renamed, which is exactly this case. Nothing
+    # is lost — the vault is a `--wait`-ed dependency of the release already.
+    waitForDependencies:
+      enabled: false
     livenessProbe:
       initialDelaySeconds: 240
       failureThreshold: 60

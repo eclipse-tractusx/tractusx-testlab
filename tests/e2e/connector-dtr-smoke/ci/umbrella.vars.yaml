@@ -68,6 +68,25 @@ variables:
   # provider answers `dspace:CatalogError` "Bad request".
   infrastructure.sut.connector.dsp_url: "http://provider-dsp.local/api/v1/dsp/2025-1"
 
+  # The engine's own registry and the payload store behind it. The registry is
+  # the provider's: this release deploys one Digital Twin Registry and both
+  # participants share it, and binding the engine to it changes nothing at
+  # runtime because a bare registry lookup resolves to the SUT's binding first.
+  # Its address is discovered per run like the SUT's, so only the submodel
+  # server is pinned here — it is deployed by the workflow, at a hostname the
+  # workflow chooses, and industry_core_journey.yaml uploads its payload there.
+  infrastructure.engine.dtr.submodel_base_url: "http://tck-submodel.local"
+
+  # The two participants' business partner numbers. They are not bindings and
+  # cannot be: a Saturn connector identifies itself by DID, which is what the
+  # `participant_id` keys above carry, while the BPN is what a *caller* holds —
+  # the receiver field of a Catena-X notification, and the input BPN-addressed
+  # discovery resolves against the dataspace's BPN-DID directory. Both are
+  # fixed by values-adopter-decentralized-identityhub.yaml and by the BDRS
+  # seeding in it, so unlike the addresses they can be committed.
+  sut_bpnl: "BPNL000000000001"
+  engine_bpnl: "BPNL000000000002"
+
   # mock_server_external_url — intentionally absent; supplied via
   # `--var mock_server_external_url=http://<gateway>:8100` once the workflow
   # has read the kind node's gateway. It is the root of testlab's own mock
@@ -78,6 +97,13 @@ variables:
   # `--var stub_caller_url=http://tck-stub.local` once the workflow has
   # deployed ci/stub_caller.py behind that ingress host. It is not part of the
   # umbrella release, so nothing here can vouch for it.
+
+  # dtr_internal_url and infrastructure.engine.dtr.base_url — intentionally
+  # absent; supplied via `--var` once the workflow has resolved the registry.
+  # The first is the registry's API root as the *provider's data plane* can
+  # reach it, which is a cluster Service address on a port this profile does
+  # not pin, and the second is the same registry over its ingress. Both are
+  # derived from the live deployment for the same reason the SUT's is.
 
   # infrastructure.sut.dtr.base_url — intentionally absent; supplied via
   # `--var infrastructure.sut.dtr.base_url=...` once the workflow has resolved

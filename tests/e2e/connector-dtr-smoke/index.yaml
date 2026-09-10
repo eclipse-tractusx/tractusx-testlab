@@ -70,6 +70,14 @@ infrastructure:
   engine:
     connector:
       required: true
+    # The engine's own registry and, as a field of it, the submodel server its
+    # entries point at. industry_core_journey.yaml uploads a payload there and
+    # then reaches it back through the dataspace; nothing else addresses it.
+    # Both sides share one registry in this deployment, so the engine's
+    # `base_url` is the provider's — which changes nothing, because a bare
+    # registry lookup resolves to the system under test's binding first.
+    dtr:
+      required: true
   sut:
     connector:
       required: true
@@ -107,6 +115,64 @@ env:
         Root URL of the stub caller (ci/stub_caller.py) as the engine reaches
         it, e.g. http://tck-stub.local. Supplied by the workflow via
         `--var stub_caller_url=...`.
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    # The two participants' business partner numbers. Neither is a binding: a
+    # binding names a connector by the identity it presents on the wire, and a
+    # Saturn connector presents a DID. The BPN is what a Catena-X *caller*
+    # holds — it is what a notification header carries and what BPN-addressed
+    # discovery resolves — so it is asked for separately, of whoever operates
+    # each side.
+    - id: sut_bpnl
+      uses: variable/type/string
+      name: BPN of the system under test
+      description: >
+        Business partner number of the SUT participant, e.g. BPNL000000000001.
+        Resolved to the SUT connector's DID by the dataspace's BPN-DID
+        directory in bpn_discovery.yaml, and written into the receiver field of
+        the notifications notification_roundtrip.yaml sends.
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    - id: engine_bpnl
+      uses: variable/type/string
+      name: BPN of the engine
+      description: >
+        Business partner number of the participant testlab drives, e.g.
+        BPNL000000000002. It is the sender of every notification this suite
+        sends and one of the two spellings of the consumer's identity that
+        dtr_consumer_dataplane.yaml grants a twin's visibility to.
+      with:
+        source: input
+        scope: engine
+
+      returns:
+        value:
+          type: string
+
+    # The registry's API root as the *provider's data plane* can reach it —
+    # a cluster address, where `infrastructure.sut.dtr.base_url` is the ingress
+    # one the engine uses. dtr_consumer_dataplane.yaml registers an EDC asset
+    # with it, so that a consumer can negotiate for the registry the way
+    # Catena-X actually reads somebody else's twins. Which address that is
+    # depends on how the registry was deployed, so the operator gives it.
+    - id: dtr_internal_url
+      uses: variable/type/string
+      name: Registry API root, as reachable from the SUT's data plane
+      description: >
+        Base URL of the SUT's Digital Twin Registry API as the SUT's own data
+        plane can reach it, e.g.
+        http://provider-dtr.umbrella.svc.cluster.local:8080/api/v3. Supplied by
+        the workflow via `--var dtr_internal_url=...`.
       with:
         source: input
         scope: sut
@@ -213,19 +279,40 @@ env:
 tests:
   - id: connector_negotiation.yaml
     name: Negotiate and pull data across the two live EDC connectors
-    skippable: true
+    skippable: false
   - id: dsp_step_by_step.yaml
     name: Drive the same DSP journey as six wired steps
-    skippable: true
+    skippable: false
   - id: dtr_roundtrip.yaml
     name: Write and read back a shell descriptor on the SUT's Digital Twin Registry
-    skippable: true
+    skippable: false
   - id: negative_paths.yaml
     name: Ask for things that are not there, and check the answers say so
-    skippable: true
+    skippable: false
   - id: inbound_call.yaml
     name: Put a mock behind a SUT asset, and read the call the SUT's data plane makes to it
-    skippable: true
+    skippable: false
   - id: external_callback.yaml
     name: Block on a mock until a stand-in SUT in the cluster calls it back
-    skippable: true
+    skippable: false
+  - id: catalog_variants.yaml
+    name: Query the catalog four ways, and provision the provider two ways
+    skippable: false
+  - id: bpn_discovery.yaml
+    name: Address the SUT by business partner number instead of by DSP URL
+    skippable: false
+  - id: push_transfer.yaml
+    name: Have the provider deliver the data instead of fetching it
+    skippable: false
+  - id: dtr_consumer_dataplane.yaml
+    name: Read the SUT's registry as a counterparty, over a negotiated data plane
+    skippable: false
+  - id: notification_roundtrip.yaml
+    name: Send notifications through the dataspace and read them where they land
+    skippable: false
+  - id: industry_core_journey.yaml
+    name: Upload a submodel, register its twin, and pull it back as a consumer
+    skippable: false
+  - id: engine_toolbox.yaml
+    name: Run the flow, utility, OAuth2 and protocol-mock steps against real endpoints
+    skippable: false

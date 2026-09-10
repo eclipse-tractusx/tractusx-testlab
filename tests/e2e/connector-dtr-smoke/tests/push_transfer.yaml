@@ -1,0 +1,229 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: push-transfer
+
+metadata:
+  name: "Transfer, pushed"
+  version: "v1.0.0"
+  description: >
+    Every transfer in this suite is a pull: the consumer negotiates, gets a
+    token, and fetches. DSP has a second shape, where the consumer asks the
+    provider to deliver the data to somewhere the consumer nominates and then
+    hears nothing more until the transfer settles. It is a different branch of
+    `connector/consumer/initiate_transfer` — a different request body, a
+    different set of terminal states, and no EDR at the end of it — and it was
+    the branch nothing ran. The destination here is testlab's own mock server,
+    so the delivery is observable: the transfer's state says the provider
+    thinks it sent the data, and the mock says what actually arrived, which
+    are two claims worth checking separately.
+
+setup:
+  - id: open_push_sink
+    uses: mock/api
+    name: Open the endpoint the provider will deliver to
+    with:
+      method: POST
+      path: "/testlab-e2e/push-sink"
+      response_status: 200
+      response_body:
+        stored: true
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      full_mock_url:
+        type: string
+
+  - id: create_access_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT catalog access policy
+    with:
+      policy: "${{ env.access_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_usage_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT contract usage policy
+    with:
+      policy: "${{ env.usage_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_asset
+    uses: connector/provider/create_asset
+    name: Create the asset the provider will push
+    with:
+      asset:
+        asset_id: testlab-e2e-push-asset
+        base_url: "http://tck-echo.umbrella.svc.cluster.local"
+        dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+        version: "1.0"
+    returns:
+      asset_id:
+        type: string
+
+  - id: create_contract
+    uses: connector/provider/create_contract_definition
+    name: Publish the asset that will be pushed
+    with:
+      contract_definition_id: testlab-e2e-push-contract
+      access_policy_id: "${{ setup.create_access_policy.policy_id }}"
+      contract_policy_id: "${{ setup.create_usage_policy.policy_id }}"
+      asset_id: "${{ setup.create_asset.asset_id }}"
+    returns:
+      contract_definition_id:
+        type: string
+
+execution:
+  - id: offer
+    uses: connector/consumer/query_catalog_by_asset_id
+    name: Take the offer for the asset out of the catalog
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      asset_id: "${{ setup.create_asset.asset_id }}"
+    returns:
+      catalog_asset_id:
+        type: string
+      catalog_policy:
+        type: object
+    validate:
+      - uses: validate/assert
+        with: { input: catalog_asset_id, operator: equals, value: testlab-e2e-push-asset }
+      - uses: validate/assert
+        with: { input: catalog_policy, operator: not_null }
+
+  # A push transfer runs under an agreement, not under a negotiation: there is
+  # no EDR to collect, so the identifier the transfer needs is the one the
+  # negotiation settled on rather than the negotiation itself. That is the
+  # difference this step exists to surface.
+  - id: negotiation
+    uses: connector/consumer/negotiate
+    name: Negotiate the contract the push will run under
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      asset_id: "${{ execution.offer.catalog_asset_id }}"
+      policy: "${{ execution.offer.catalog_policy }}"
+      max_wait: 90
+      poll_interval: 2
+    returns:
+      agreement_id:
+        type: string
+      state:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: state, operator: equals, value: FINALIZED }
+      - uses: validate/assert
+        with: { input: agreement_id, operator: not_null }
+
+  # The destination is written as an EDC data address because that is what the
+  # provider is being handed — it is the provider's data plane that dials it,
+  # not the script's, so the address has to be one a pod can reach. The step
+  # then waits for the transfer to settle rather than reporting that the
+  # request was accepted, which for a push is the only interesting outcome.
+  - id: push
+    uses: connector/consumer/initiate_transfer
+    name: Ask the provider to deliver the data to the mock
+    with:
+      transfer_type: HttpData-PUSH
+      agreement_id: "${{ execution.negotiation.agreement_id }}"
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      data_destination:
+        "@type": DataAddress
+        type: HttpData
+        baseUrl: "${{ env.mock_server_external_url }}/testlab-e2e/push-sink"
+        method: POST
+      max_wait: 90
+      poll_interval: 2
+    returns:
+      transfer_id:
+        type: string
+      state:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: transfer_id, operator: not_null }
+      # STARTED and COMPLETED are both terminal for a push, and which one a
+      # connector settles on is its own business; TERMINATED is the answer
+      # this assertion exists to catch.
+      - uses: validate/assert
+        with: { input: state, operator: one_of, value: [STARTED, COMPLETED] }
+
+  # The transfer's own state says the provider believes it delivered. This is
+  # the delivery.
+  - id: await_push
+    uses: mock/wait/http_request
+    name: Read the delivery the provider's data plane made
+    with:
+      mock: "${{ setup.open_push_sink.mock }}"
+      timeout_s: 90
+    returns:
+      request_method:
+        type: string
+      request_path:
+        type: string
+      request_headers:
+        type: object
+    validate:
+      - uses: validate/assert
+        with: { input: request_method, operator: equals, value: "POST" }
+      - uses: validate/assert
+        with: { input: request_path, operator: equals, value: "/testlab-e2e/push-sink" }
+      - uses: validate/assert
+        with: { input: request_headers, operator: not_null }
+
+teardown:
+  - id: delete_contract
+    uses: connector/provider/delete_contract_definition
+    name: Withdraw the pushed asset's offer
+    with:
+      contract_definition_id: "${{ setup.create_contract.contract_definition_id }}"
+
+  - id: delete_asset
+    uses: connector/provider/delete_asset
+    name: Remove the pushed asset
+    with:
+      asset_id: "${{ setup.create_asset.asset_id }}"
+
+  - id: delete_usage_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT usage policy
+    with:
+      policy_id: "${{ setup.create_usage_policy.policy_id }}"
+
+  - id: delete_access_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT access policy
+    with:
+      policy_id: "${{ setup.create_access_policy.policy_id }}"

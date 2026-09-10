@@ -34,6 +34,8 @@ concurrency:
 env:
   UMBRELLA_CHART_VERSION: "26.03.00"
   UMBRELLA_VALUES_REF: "umbrella-26.03.00"
+  # The IdentityHub repository releases each chart under its own tag.
+  IDENTITYHUB_CHART_VERSION: "v0.4.0"
   HELM_VERSION: "3.16.4"
   KIND_NODE_IMAGE: kindest/node:v1.31.0
   # Resolved after the checkout: `hashFiles` sees no files before it.
@@ -70,7 +72,72 @@ jobs:
           nested_provider="${chart_dir}/charts/decentralized-identity-connector/charts/tx-data-provider"
           mkdir -p "${nested_provider}/charts"
           cp -R "${source_bundles}/." "${nested_provider}/charts/"
-          rm -rf "${chart_dir}/charts/decentralized-identity-connector/charts/tractusx-identityhub/charts/postgres"
+
+          # IdentityHub and IssuerService 0.4.0 — the EDC 0.16.0 -> 0.17.0
+          # upgrade. Umbrella 26.03.00 pins both at chart v0.3.2 and a values
+          # file cannot move a subchart version, so the released charts are
+          # unpacked over the pinned ones and the dependency declarations that
+          # name them are bumped to match. That bump is not cosmetic: helm
+          # resolves an aliased dependency by name *and* version, and left at
+          # v0.3.2 the second alias of decentralized-identity-connector
+          # (edc-provider) renders no IdentityHub at all — no error, just a
+          # missing participant.
+          ih_release="https://github.com/eclipse-tractusx/tractusx-identityhub/releases/download"
+          ih_charts="${RUNNER_TEMP}/identityhub-charts"
+          mkdir -p "${ih_charts}"
+          for chart in tractusx-identityhub-memory tractusx-issuerservice; do
+            curl --fail --location --silent --show-error \
+              "${ih_release}/${chart}-${IDENTITYHUB_CHART_VERSION}/${chart}-${IDENTITYHUB_CHART_VERSION}.tgz" \
+              --output "${ih_charts}/${chart}.tgz"
+            tar -xzf "${ih_charts}/${chart}.tgz" -C "${ih_charts}"
+          done
+
+          # The IdentityHub slot takes the *memory* chart, renamed to the
+          # dependency's own name so umbrella's `tractusx-identityhub` values
+          # keep addressing it. The rename is the whole substitution: the
+          # memory chart's values are a strict subset of the SQL chart's --
+          # the same `identityhub` block, minus `postgresql`, `vault` and
+          # `waitForDependencies` -- so the profile still applies and the keys
+          # it drops are exactly the ones an in-memory runtime has no use for.
+          # It also brings no subcharts, so the participant Postgres the SQL
+          # chart used to pull in is gone with it.
+          identityhub_slot="${chart_dir}/charts/decentralized-identity-connector/charts/tractusx-identityhub"
+          rm -rf "${identityhub_slot}" "${chart_dir}/charts/tractusx-issuerservice"
+          cp -R "${ih_charts}/tractusx-identityhub-memory" "${identityhub_slot}"
+          cp -R "${ih_charts}/tractusx-issuerservice" "${chart_dir}/charts/"
+          python3 - "${chart_dir}" "${IDENTITYHUB_CHART_VERSION}" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          chart_dir, version = pathlib.Path(sys.argv[1]), sys.argv[2]
+          slot = chart_dir / "charts/decentralized-identity-connector/charts/tractusx-identityhub"
+
+          def substitute(path, pattern, replacement):
+              text = path.read_text()
+              patched, count = re.subn(pattern, replacement, text)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match for {pattern!r}, found {count}")
+              path.write_text(patched)
+
+          # The memory chart answers to the dependency's name from here on.
+          substitute(
+              slot / "Chart.yaml",
+              r"(?m)^name: tractusx-identityhub-memory$",
+              "name: tractusx-identityhub",
+          )
+          declarations = {
+              chart_dir / "charts/decentralized-identity-connector/Chart.yaml": "tractusx-identityhub",
+              chart_dir / "Chart.yaml": "tractusx-issuerservice",
+          }
+          for path, name in declarations.items():
+              substitute(
+                  path,
+                  rf"(name: {name}\n  repository: [^\n]+\n  version: )\S+",
+                  rf"\g<1>{version}",
+              )
+          PY
+
           curl --fail --location --silent --show-error \
             "https://raw.githubusercontent.com/eclipse-tractusx/tractus-x-umbrella/${UMBRELLA_VALUES_REF}/charts/umbrella/values-adopter-decentralized-identityhub.yaml" \
             --output "${RUNNER_TEMP}/umbrella-profile.yaml"

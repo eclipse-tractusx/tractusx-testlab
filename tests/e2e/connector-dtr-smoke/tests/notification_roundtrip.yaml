@@ -1,0 +1,378 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: notification-roundtrip
+
+metadata:
+  name: "Notifications, both ways round"
+  version: "v1.0.0"
+  description: >
+    A Catena-X notification is not an HTTP call with a nicer name: the sender
+    has to find the receiver's notification API in a catalog, negotiate for
+    it, and then post a document whose header the receiver is entitled to
+    reject on. testlab has three steps for that and none of them were
+    exercised against a real dataspace. This test gives the SUT a notification
+    API to offer — testlab's own mock server, registered as a
+    DigitalTwinEventAPI asset — and then sends to it twice. The first send
+    does the whole journey itself, catalog through transfer, and the second
+    spends an EDR a separate pull already negotiated, because those are two
+    different code paths through one step and a script chooses between them.
+    Both times the document is read back on the receiving side field by
+    field, so what is asserted is the payload that arrived after two data
+    planes rather than the status code the sender was handed.
+
+setup:
+  # The receiver's notification API. It answers what a Catena-X receiver
+  # answers — an acknowledgement, not the notification back — because the
+  # sender's step reports the receiver's status and body, and a mock that
+  # echoed the request would make a lost payload indistinguishable from a
+  # delivered one.
+  - id: open_notification_api
+    uses: mock/api
+    name: Open the notification API the SUT will offer
+    with:
+      method: POST
+      path: "/testlab-e2e/notification/receive"
+      response_status: 200
+      response_body:
+        accepted: true
+        status: RECEIVED
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      full_mock_url:
+        type: string
+
+  - id: open_direct_api
+    uses: mock/api
+    name: Open a second endpoint for the direct send
+    with:
+      method: POST
+      path: "/testlab-e2e/notification/direct"
+      response_status: 200
+      response_body:
+        accepted: true
+        status: ACCEPTED
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+
+  - id: create_access_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT catalog access policy
+    with:
+      policy: "${{ env.access_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_usage_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT contract usage policy
+    with:
+      policy: "${{ env.usage_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  # `DigitalTwinEventAPI` is not decoration: it is the term the discovery step
+  # and the SDK's send both filter the catalog on, so an asset offered under
+  # any other type is invisible to both however reachable it is. The backend
+  # is the mock server's root as a pod can reach it, with the proxy settings
+  # that let the notification's path, method and body survive the data plane.
+  - id: create_notification_asset
+    uses: connector/provider/create_asset
+    name: Offer the mock server as the SUT's notification API
+    with:
+      asset:
+        asset_id: testlab-e2e-notification-asset
+        base_url: "${{ env.mock_server_external_url }}"
+        dct_type: "https://w3id.org/catenax/taxonomy#DigitalTwinEventAPI"
+        version: "3.0"
+        proxy_params:
+          proxyPath: "true"
+          proxyMethod: "true"
+          proxyBody: "true"
+    returns:
+      asset_id:
+        type: string
+
+  - id: create_contract
+    uses: connector/provider/create_contract_definition
+    name: Publish the notification API
+    with:
+      contract_definition_id: testlab-e2e-notification-contract
+      access_policy_id: "${{ setup.create_access_policy.policy_id }}"
+      contract_policy_id: "${{ setup.create_usage_policy.policy_id }}"
+      asset_id: "${{ setup.create_notification_asset.asset_id }}"
+    returns:
+      contract_definition_id:
+        type: string
+
+execution:
+  # The message id has to be a UUID the receiver has never seen — a
+  # notification is deduplicated on it — so it is minted per run rather than
+  # written into the file, and the assertion on the receiving side compares
+  # against this value rather than against a pattern.
+  - id: message_id
+    uses: util/generate_uuid
+    name: Mint the message id this run will send
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_null }
+
+  # What a sender does before it can send anything: ask the counterparty's
+  # catalog which notification APIs it offers. Nothing is negotiated here, so
+  # a non-empty answer says the asset is discoverable under the standard type,
+  # which is the precondition the send step depends on and cannot report on.
+  - id: discover_notification_api
+    uses: notification/consumer/discover_assets
+    name: Find the SUT's notification API in its catalog
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+    returns:
+      value:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_empty }
+
+  # The whole journey in one step: the sender discovers, negotiates,
+  # transfers and posts. Sender and receiver must differ — the SDK refuses a
+  # notification addressed to its own sender — so the two business partner
+  # numbers come from opposite ends of the deployment.
+  - id: send_via_dsp
+    uses: notification/consumer/send
+    name: Send a notification the whole way through the dataspace
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      endpoint_path: "/testlab-e2e/notification/receive"
+      notification:
+        header:
+          messageId: "${{ execution.message_id.value }}"
+          context: "IndustryCore-DigitalTwinEventAPI-ConnectToParent:3.0.0"
+          senderBpn: "${{ env.engine_bpnl }}"
+          receiverBpn: "${{ env.sut_bpnl }}"
+          version: "3.0.0"
+        content:
+          information: Sent by the testlab e2e smoke suite
+          listOfAffectedItems:
+            - testlab-e2e-part-1
+            - testlab-e2e-part-2
+    returns:
+      status_code:
+        type: integer
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+
+  # The document, checked where it landed. Every field below was written by
+  # the step above and has since been serialised by the SDK, carried by the
+  # consumer's data plane, proxied by the provider's, and parsed by the mock
+  # server — which is four chances for it to arrive as something else.
+  - id: await_notification
+    uses: mock/wait/http_request
+    name: Read the notification the SUT's data plane delivered
+    with:
+      mock: "${{ setup.open_notification_api.mock }}"
+      timeout_s: 60
+    returns:
+      request_method:
+        type: string
+      request_path:
+        type: string
+      request_body:
+        type: object
+    validate:
+      - uses: validate/assert
+        with: { input: request_method, operator: equals, value: "POST" }
+      - uses: validate/assert
+        with:
+          input: request_path
+          operator: equals
+          value: "/testlab-e2e/notification/receive"
+      - uses: validate/field
+        with:
+          input: request_body
+          path: header.messageId
+          operator: equals
+          value: "${{ execution.message_id.value }}"
+      - uses: validate/field
+        with:
+          input: request_body
+          path: header.senderBpn
+          operator: equals
+          value: "${{ env.engine_bpnl }}"
+      - uses: validate/field
+        with:
+          input: request_body
+          path: header.receiverBpn
+          operator: equals
+          value: "${{ env.sut_bpnl }}"
+      # Written by the SDK rather than by the script: the header carries a
+      # send timestamp the sender is required to stamp, and its absence would
+      # mean the document went out as the script wrote it instead of as the
+      # notification model serialises it.
+      - uses: validate/field
+        with: { input: request_body, path: header.sentDateTime, operator: not_null }
+      - uses: validate/field
+        with:
+          input: request_body
+          path: content.information
+          operator: equals
+          value: Sent by the testlab e2e smoke suite
+      - uses: validate/field
+        with:
+          input: request_body
+          path: content.listOfAffectedItems.1
+          operator: equals
+          value: testlab-e2e-part-2
+
+  # The other way the same step is used. A script that has already negotiated
+  # — for a catalogue of endpoints, say — has an EDR in hand and no reason to
+  # negotiate again, so it hands the step a data plane and a token instead of
+  # a counterparty. Giving `dataplane_url` is what selects that mode.
+  - id: pull_notification_api
+    uses: connector/consumer/pull_data_filtered
+    name: Negotiate the notification API separately
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
+          operator: "="
+          operand_right: "${{ setup.create_notification_asset.asset_id }}"
+      expected_policies: "${{ env.usage_policy }}"
+    returns:
+      dataplane_url:
+        type: string
+      edr_token:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: dataplane_url, operator: not_null }
+      - uses: validate/assert
+        with: { input: edr_token, operator: not_null }
+
+  - id: send_direct
+    uses: notification/consumer/send
+    name: Send a second notification over the EDR already in hand
+    with:
+      dataplane_url: "${{ execution.pull_notification_api.dataplane_url }}"
+      edr_token: "${{ execution.pull_notification_api.edr_token }}"
+      endpoint_path: "/testlab-e2e/notification/direct"
+      notification:
+        header:
+          messageId: "${{ execution.message_id.value }}"
+          context: "IndustryCore-DigitalTwinEventAPI-ConnectToParent:3.0.0"
+          senderBpn: "${{ env.engine_bpnl }}"
+          receiverBpn: "${{ env.sut_bpnl }}"
+          version: "3.0.0"
+        content:
+          information: Sent over an EDR the script already held
+          listOfAffectedItems:
+            - testlab-e2e-part-3
+    returns:
+      status_code:
+        type: integer
+      response_body:
+        type: object
+    validate:
+      # The data plane's own status, not the mock's: a successful backend call
+      # is relayed with the public API's status and the backend's body.
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/field
+        with: { input: response_body, path: accepted, operator: equals, value: true }
+      - uses: validate/field
+        with: { input: response_body, path: status, operator: equals, value: ACCEPTED }
+
+  - id: await_direct_notification
+    uses: mock/wait/http_request
+    name: Read the directly-sent notification on the receiving side
+    with:
+      mock: "${{ setup.open_direct_api.mock }}"
+      timeout_s: 60
+    returns:
+      request_path:
+        type: string
+      request_body:
+        type: object
+    validate:
+      - uses: validate/assert
+        with:
+          input: request_path
+          operator: equals
+          value: "/testlab-e2e/notification/direct"
+      # The direct mode posts the document as the script wrote it rather than
+      # through the notification model, so this is where the two modes are
+      # actually distinguishable on the wire.
+      - uses: validate/field
+        with:
+          input: request_body
+          path: content.information
+          operator: equals
+          value: Sent over an EDR the script already held
+      - uses: validate/field
+        with:
+          input: request_body
+          path: content.listOfAffectedItems.0
+          operator: equals
+          value: testlab-e2e-part-3
+
+teardown:
+  - id: delete_contract
+    uses: connector/provider/delete_contract_definition
+    name: Withdraw the notification API offer
+    with:
+      contract_definition_id: "${{ setup.create_contract.contract_definition_id }}"
+
+  - id: delete_asset
+    uses: connector/provider/delete_asset
+    name: Remove the notification asset
+    with:
+      asset_id: "${{ setup.create_notification_asset.asset_id }}"
+
+  - id: delete_usage_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT usage policy
+    with:
+      policy_id: "${{ setup.create_usage_policy.policy_id }}"
+
+  - id: delete_access_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT access policy
+    with:
+      policy_id: "${{ setup.create_access_policy.policy_id }}"
