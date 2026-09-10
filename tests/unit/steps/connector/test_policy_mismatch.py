@@ -30,6 +30,8 @@ import pytest
 from tractusx_sdk.dataspace.tools import DspTools
 from tractusx_sdk.dataspace.tools import PolicyMismatchError as SdkPolicyMismatchError
 
+from tractusx_testlab.models import BoundServiceError
+from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector import policy_mismatch
 from tractusx_testlab.steps.connector.policy_mismatch import PolicyMismatchError
 
@@ -112,6 +114,16 @@ def _sdk_failure(catalog: dict | None, allowed: list | None) -> RuntimeError:
     )
     wrapped.__cause__ = cause
     return wrapped
+
+
+async def _flow_raising(failure: Exception, counter_party_address: str) -> None:
+    """A DSP flow as a step runs one: the SDK call named by ``sdk_call.run``, guarded."""
+
+    def sdk_operation() -> None:
+        raise failure
+
+    with policy_mismatch.explained(counter_party_address):
+        await sdk_call.run(sdk_operation)
 
 
 class TestReadingAPolicy:
@@ -231,15 +243,17 @@ class TestComparingOffers:
 
 
 class TestExplainingTheFailure:
-    def test_the_verdict_is_replaced_by_the_comparison_behind_it(self) -> None:
+    async def test_the_verdict_is_replaced_by_the_comparison_behind_it(self) -> None:
         with pytest.raises(PolicyMismatchError) as raised:
-            with policy_mismatch.explained("https://provider.example/dsp"):
-                raise _sdk_failure(CATALOG, [EXPECTED_POLICY])
+            await _flow_raising(
+                _sdk_failure(CATALOG, [EXPECTED_POLICY]), "https://provider.example/dsp"
+            )
 
         error = raised.value
         assert "Membership eq active" in str(error)
         assert "https://provider.example/dsp" in str(error)
         assert error.code == "POLICY_MISMATCH"
+        assert error.origin == "sut"
         assert error.diagnostics["offers_compared"] == 1
         assert error.diagnostics["offers"][0]["offered_not_expected"] == ["Membership eq active"]
         assert error.diagnostics["expected_policies"] == [
@@ -249,34 +263,37 @@ class TestExplainingTheFailure:
             ]
         ]
 
-    def test_the_sdk_message_is_kept_as_the_cause(self) -> None:
+    async def test_the_sdk_message_is_kept_as_the_cause(self) -> None:
         with pytest.raises(PolicyMismatchError) as raised:
-            with policy_mismatch.explained("https://provider.example/dsp"):
-                raise _sdk_failure(CATALOG, [EXPECTED_POLICY])
+            await _flow_raising(
+                _sdk_failure(CATALOG, [EXPECTED_POLICY]), "https://provider.example/dsp"
+            )
 
         assert "It was not possible to find a valid policy" in str(raised.value.__cause__)
 
-    def test_an_empty_allow_list_is_named_as_the_cause(self) -> None:
+    async def test_an_empty_allow_list_is_named_as_the_cause(self) -> None:
         """``expected_policies: []`` rejects every offer before comparing anything."""
         with pytest.raises(PolicyMismatchError) as raised:
-            with policy_mismatch.explained("https://provider.example/dsp"):
-                raise _sdk_failure(CATALOG, [])
+            await _flow_raising(_sdk_failure(CATALOG, []), "https://provider.example/dsp")
 
         assert "empty list" in str(raised.value)
 
-    def test_another_failure_of_the_flow_is_left_alone(self) -> None:
-        """A negotiation that never finalised is not about the policy."""
-        with pytest.raises(RuntimeError, match="did not reach FINALIZED") as raised:
-            with policy_mismatch.explained("https://provider.example/dsp"):
-                raise RuntimeError("[Connector Service]: The EDR did not reach FINALIZED state")
+    async def test_another_failure_of_the_flow_is_left_alone(self) -> None:
+        """A negotiation that never finalised is not about the policy: it stays the service's."""
+        with pytest.raises(BoundServiceError, match="did not reach FINALIZED") as raised:
+            await _flow_raising(
+                RuntimeError("[Connector Service]: The EDR did not reach FINALIZED state"),
+                "https://provider.example/dsp",
+            )
 
         assert not isinstance(raised.value, PolicyMismatchError)
 
-    def test_a_catalog_with_nothing_to_compare_keeps_the_sdk_message(self) -> None:
+    async def test_a_catalog_with_nothing_to_compare_keeps_the_sdk_message(self) -> None:
         """No offer was read: the provider published nothing, which it already says."""
-        with pytest.raises(RuntimeError) as raised:
-            with policy_mismatch.explained("https://provider.example/dsp"):
-                raise _sdk_failure({"dataset": []}, [EXPECTED_POLICY])
+        with pytest.raises(BoundServiceError) as raised:
+            await _flow_raising(
+                _sdk_failure({"dataset": []}, [EXPECTED_POLICY]), "https://provider.example/dsp"
+            )
 
         assert not isinstance(raised.value, PolicyMismatchError)
 

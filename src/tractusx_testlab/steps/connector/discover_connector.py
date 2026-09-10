@@ -51,7 +51,7 @@ from tractusx_testlab.models import (
     StepExecutionError,
 )
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.connector import _faults
+from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.shared_models import StepParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
@@ -148,7 +148,7 @@ class DiscoverConnectorStep(BaseStep[DiscoverConnectorParams, DiscoverConnectorO
         # One round trip, not two: `get_discovery_info` would resolve the three
         # values but drop the document the test asserts on, and calling both
         # would discover twice.
-        document = await _faults.call(
+        document = await sdk_call.run(
             discover,
             bpnl=params.bpnl,
             counter_party_address=params.counter_party_address or None,

@@ -104,8 +104,10 @@ class BoundServiceError(TestLabError):
     Neither a verdict nor an engine bug. The SDK reports a service that would
     not answer through ``RuntimeError``, and the runner classifies an exception
     it does not recognise as an engine fault — which sends the reader to file a
-    bug against TestLab for a registry that was down. Raised instead, so the
-    trace says ``origin: "infrastructure"`` and triage starts there.
+    bug against TestLab for a registry that was down. Raised instead by
+    :func:`~tractusx_testlab.steps.sdk_call.run`, the one place every SDK call
+    crosses, so the trace says ``origin: "infrastructure"`` and triage starts
+    there.
 
     The binding-time counterpart is
     :class:`~tractusx_testlab.models.primitives.binding_errors.InfrastructureError`,

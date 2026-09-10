@@ -37,7 +37,7 @@ from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
-from tractusx_testlab.steps.connector import _faults
+from tractusx_testlab.steps.connector import policy_mismatch
 from tractusx_testlab.steps.connector.policies import ExpectedPoliciesParams
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.dsp_keys import ID_KEY
@@ -135,7 +135,7 @@ async def _do_dsp_flow(
     catalog: dict = {}
     try:
         catalog = (
-            await _faults.call(
+            await sdk_call.run(
                 consumer.get_catalog_with_filter,
                 counter_party_id=counter_party_id,
                 counter_party_address=party.address,
@@ -159,10 +159,10 @@ async def _do_dsp_flow(
 
     # Full DSP flow: use get_transfer_id + get_endpoint_with_token so the
     # transfer id is a return value of its own, and so the SDK's connection
-    # cache still spares a re-negotiation for a repeated pull. The guard turns the
-    # SDK's evidence-free verdict into the comparison behind it, and the rest of
-    # that channel into the connector's fault rather than the engine's (_faults).
-    with _faults.connector_exchange(party.address):
+    # cache still spares a re-negotiation for a repeated pull. The guard turns
+    # the SDK's one evidence-free verdict — no valid policy found — into the
+    # comparison behind it (steps.connector.policy_mismatch).
+    with policy_mismatch.explained(party.address):
         transfer_id = await sdk_call.run(
             consumer.get_transfer_id,
             counter_party_id=counter_party_id,
@@ -172,7 +172,7 @@ async def _do_dsp_flow(
             max_wait=params.max_wait,
             poll_interval=params.poll_interval,
         )
-    endpoint, token = await _faults.call(consumer.get_endpoint_with_token, transfer_id=transfer_id)
+    endpoint, token = await sdk_call.run(consumer.get_endpoint_with_token, transfer_id=transfer_id)
     edr_entry = _edr_entry_of(consumer, transfer_id)
 
     value = PullDataOutput(

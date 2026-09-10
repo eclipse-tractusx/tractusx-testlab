@@ -273,7 +273,62 @@ class TestInitiateTransferPull:
         mock_context.dataspace.consumer.return_value = consumer
 
         with pytest.raises(StepExecutionError, match="no EDR"):
-            await InitiateTransferStep().invoke({}, mock_context, definition)
+            await InitiateTransferStep().invoke(
+                {"max_wait": 0.0, "poll_interval": 0.0}, mock_context, definition
+            )
+
+    @pytest.mark.asyncio
+    async def test_waits_for_the_edr_the_negotiation_is_still_writing(
+        self, mock_context: MagicMock, definition: MagicMock
+    ) -> None:
+        """A FINALIZED negotiation is not yet an EDR.
+
+        The EDR API starts the transfer when the negotiation finalises, and the
+        EDR is written only once that transfer is STARTED. The step used to
+        query once, straight after the negotiate step returned, and fail on
+        the empty list the connector answered in that window.
+        """
+        consumer = _pull_consumer()
+        consumer.get_edr_entry.side_effect = [
+            None,
+            None,
+            {"@id": _TRANSFER_ID, "transferProcessId": _TRANSFER_ID},
+        ]
+        mock_context.dataspace.consumer.return_value = consumer
+        mock_context.set_variable(NEGOTIATION_ID, _NEGOTIATION_ID)
+
+        output = await InitiateTransferStep().invoke(
+            {"max_wait": 5.0, "poll_interval": 0.0}, mock_context, definition
+        )
+
+        assert output.value["transfer_id"] == _TRANSFER_ID
+        assert consumer.get_edr_entry.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_a_terminated_transfer_fails_at_once_with_the_providers_reason(
+        self, mock_context: MagicMock, definition: MagicMock
+    ) -> None:
+        """The transfer process says why there is no EDR; waiting would not."""
+        consumer = _consumer(
+            contract_negotiations=_StatefulController(
+                {"state": "FINALIZED", "contractAgreementId": _AGREEMENT_ID}
+            )
+        )
+        consumer.get_edr_entry.return_value = None
+        consumer.get_transfer_process.return_value = {
+            "@id": _TRANSFER_ID,
+            "state": "TERMINATED",
+            "errorDetail": "No data plane found for transfer type HttpData-PULL",
+        }
+        mock_context.dataspace.consumer.return_value = consumer
+        mock_context.set_variable(NEGOTIATION_ID, _NEGOTIATION_ID)
+
+        with pytest.raises(StepExecutionError, match="terminated.*No data plane found"):
+            await InitiateTransferStep().invoke(
+                {"max_wait": 60.0, "poll_interval": 0.0}, mock_context, definition
+            )
+
+        assert consumer.get_edr_entry.call_count == 1
 
 
 # ---------------------------------------------------------------------------
