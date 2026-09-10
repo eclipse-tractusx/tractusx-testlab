@@ -41,6 +41,9 @@ metadata:
     by the script itself. What the consumer pulls through the data plane
     must be the mock's canned answer, and what the wait step reports must
     be the request the data plane made, on the path the script asked for.
+    A second mock takes a POST: the body the script sends travels through
+    the consumer's and the provider's data planes, and the wait step checks
+    the payload the mock received field by field.
 
 setup:
   - id: open_backend
@@ -62,6 +65,24 @@ setup:
     validate:
       - uses: validate/assert
         with: { input: full_mock_url, operator: not_null }
+
+  # The second mock answers a POST. What it returns matters less than what
+  # it receives: the payload is asserted on the receiving side, below.
+  - id: open_notification
+    uses: mock/api
+    name: Open the mock endpoint the SUT's data plane will post to
+    with:
+      method: POST
+      path: "/testlab-e2e/notification"
+      response_status: 202
+      response_body:
+        accepted: true
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      full_mock_url:
+        type: string
 
   - id: create_access_policy
     uses: connector/provider/create_policy
@@ -96,10 +117,13 @@ setup:
         base_url: "${{ env.mock_server_external_url }}"
         dct_type: "https://w3id.org/catenax/taxonomy#TestData"
         version: "1.0"
-        # Without this the data plane fetches the bare base URL whatever the
-        # consumer asked for, and the mock's path never reaches the server.
+        # Without these the data plane GETs the bare base URL whatever the
+        # consumer asked for: the path, the method and the body would all be
+        # dropped before they reached the mock.
         proxy_params:
           proxyPath: "true"
+          proxyMethod: "true"
+          proxyBody: "true"
     returns:
       asset_id:
         type: string
@@ -193,6 +217,69 @@ execution:
         with: { input: request_path, operator: equals, value: "/testlab-e2e/backend" }
       - uses: validate/assert
         with: { input: request_headers, operator: not_null }
+
+  # The same transfer, used the other way: a POST with a body. The provider's
+  # data plane forwards the method and the body (`proxyMethod`, `proxyBody`),
+  # so what the mock receives is what the script sent — two connectors later.
+  - id: notify_through_sut
+    uses: connector/dataplane/http_request
+    name: Post a notification through the SUT's data plane to the mock
+    with:
+      method: POST
+      path: "/testlab-e2e/notification"
+      headers:
+        Content-Type: "application/json"
+      body:
+        header:
+          messageId: "urn:uuid:testlab-e2e-inbound-notification"
+          context: "TestLab-Inbound:1.0.0"
+          senderBpn: "BPNL000000000002"
+        content:
+          status: "RECEIVED"
+          items:
+            - "part-1"
+            - "part-2"
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 202 }
+      - uses: validate/field
+        with: { input: value, path: accepted, operator: equals, value: true }
+
+  # The payload, checked where it arrived. Every field below was written by
+  # the script two steps up and has since been carried by the consumer's data
+  # plane, the provider's data plane and the mock server's request parser.
+  - id: await_notification
+    uses: mock/wait/http_request
+    name: Read the notification the SUT's data plane posted to the mock
+    with:
+      mock: "${{ setup.open_notification.mock }}"
+      timeout_s: 30
+    returns:
+      request_method:
+        type: string
+      request_path:
+        type: string
+      request_body:
+        type: object
+    validate:
+      - uses: validate/assert
+        with: { input: request_method, operator: equals, value: "POST" }
+      - uses: validate/assert
+        with: { input: request_path, operator: equals, value: "/testlab-e2e/notification" }
+      - uses: validate/field
+        with:
+          input: request_body
+          path: header.messageId
+          operator: equals
+          value: "urn:uuid:testlab-e2e-inbound-notification"
+      - uses: validate/field
+        with: { input: request_body, path: header.context, operator: equals, value: "TestLab-Inbound:1.0.0" }
+      - uses: validate/field
+        with: { input: request_body, path: header.senderBpn, operator: equals, value: "BPNL000000000002" }
+      - uses: validate/field
+        with: { input: request_body, path: content.status, operator: equals, value: "RECEIVED" }
+      - uses: validate/field
+        with: { input: request_body, path: content.items.1, operator: equals, value: "part-2" }
 
 teardown:
   - id: delete_contract

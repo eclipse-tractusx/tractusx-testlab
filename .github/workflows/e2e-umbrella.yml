@@ -1079,24 +1079,35 @@ jobs:
               for line in trace.read_text(encoding="utf-8").splitlines()
               if line.strip()
           ]
+          # Keyed by test and step: inbound-call waits twice, once per mock.
           received = {
-              event["id"].split("/")[1]: event["data"]
+              tuple(event["id"].split("/")[1:4:2]): event["data"]
               for event in events
               if event["type"] == "tck.test.step.received"
           }
-          expected = {"inbound-call", "external-callback"}
+          expected = {
+              ("inbound-call", "await_call"),
+              ("inbound-call", "await_notification"),
+              ("external-callback", "await_call"),
+          }
           if set(received) != expected:
               sys.exit(f"received events for {sorted(received)}, expected {sorted(expected)}")
 
           # The provider's data plane called during the pull, before the wait
           # step ran: the call was held for it, so the wait did not block.
-          inbound = received["inbound-call"]
+          inbound = received[("inbound-call", "await_call")]
           if inbound["request"]["method"] != "GET":
               sys.exit(f"inbound-call: expected the data plane's GET, got {inbound['request']}")
 
+          # The POST's payload, as the mock received it after both data planes.
+          notification = received[("inbound-call", "await_notification")]
+          header = (notification["request"]["body"] or {}).get("header") or {}
+          if header.get("messageId") != "urn:uuid:testlab-e2e-inbound-notification":
+              sys.exit(f"inbound-call: the posted payload did not arrive intact: {notification['request']}")
+
           # The stub was told to wait three seconds; the wait step must have
           # blocked for about that long, or the call did not arrive during it.
-          external = received["external-callback"]
+          external = received[("external-callback", "await_call")]
           if external["waited_ms"] < 2500:
               sys.exit(
                   f"external-callback: the wait returned after {external['waited_ms']}ms, "
@@ -1106,6 +1117,7 @@ jobs:
               sys.exit(f"external-callback: unexpected body {external['request']['body']}")
 
           print("inbound-call: received GET from the SUT's data plane, held for the wait step")
+          print("inbound-call: received the POSTed payload intact through both data planes")
           print(f"external-callback: received POST from the stub after {external['waited_ms']}ms of waiting")
           PY
 

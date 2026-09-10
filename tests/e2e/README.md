@@ -37,7 +37,9 @@ own CI signal (not a published certification TCK):
   `mock/wait/http_request`. The body the consumer receives must be the mock's
   canned answer and the path the mock saw must be the one the script sent, so
   the call provably came from the provider's data plane pod and not from the
-  script.
+  script. A second mock takes a POST: the script's JSON body goes through both
+  data planes (`proxyMethod`, `proxyBody`) and the wait step checks the payload
+  the mock received field by field.
 - `external_callback.yaml` — the wait step, actually waiting. The call in
   `inbound_call.yaml` is a consequence of the script's own pull and has
   already arrived when the wait step runs. Here the script tells a stand-in

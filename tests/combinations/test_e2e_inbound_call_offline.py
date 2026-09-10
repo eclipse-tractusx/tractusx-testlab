@@ -67,6 +67,7 @@ pytestmark = pytest.mark.asyncio
 _SCENARIO = Path("tests/e2e/connector-dtr-smoke/tests/inbound_call.yaml")
 _ASSET_ID = "testlab-e2e-inbound-asset"
 _BACKEND_PATH = "/testlab-e2e/backend"
+_NOTIFICATION_PATH = "/testlab-e2e/notification"
 
 
 def _phase(phase: str) -> list[dict]:
@@ -83,17 +84,17 @@ def _steps(phase: str, *ids: str) -> list[dict]:
 class _FetchingDataplane:
     """A provider data plane that fetches from the asset's backend and relays.
 
-    Every GET it receives is answered by fetching the ``base_url`` of the
-    asset the provider double registered last, with the request's own path
-    appended, exactly as the EDC's ``HttpData`` source does when the asset
-    proxies the path. It is a separate server on its own thread, so
+    Every request it receives is answered by forwarding it — method, path and
+    body — to the ``base_url`` of the asset the provider double registered
+    last, exactly as the EDC's ``HttpData`` source does when the asset proxies
+    all three. It is a separate server on its own thread, so
     the call the mock receives arrives from outside the awaiting coroutine —
     the arrangement the wait step exists for.
     """
 
     def __init__(self, provider: ProviderDouble) -> None:
         self._provider = provider
-        self.fetched: list[str] = []
+        self.fetched: list[tuple[str, str]] = []
         self._server: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
 
@@ -106,12 +107,20 @@ class _FetchingDataplane:
             def log_message(self, *_args: object) -> None:
                 """Keep the pytest output about the tests."""
 
-            def do_GET(self) -> None:
+            def _proxy(self) -> None:
                 asset = dataplane._provider.created[-1]
                 backend = str(asset["base_url"]).rstrip("/") + self.path
-                dataplane.fetched.append(backend)
+                dataplane.fetched.append((self.command, backend))
+                length = int(self.headers.get("Content-Length") or 0)
+                body = self.rfile.read(length) if length else None
                 try:
-                    upstream = requests.get(backend, timeout=5)
+                    upstream = requests.request(
+                        self.command,
+                        backend,
+                        data=body,
+                        headers={"Content-Type": self.headers.get("Content-Type", "")},
+                        timeout=5,
+                    )
                     status, payload = upstream.status_code, upstream.content
                 except requests.RequestException as exc:
                     status = 502
@@ -121,6 +130,9 @@ class _FetchingDataplane:
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)
+
+            do_GET = _proxy
+            do_POST = _proxy
 
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
         self._thread = threading.Thread(
@@ -199,7 +211,9 @@ def harness(server: MockServer, provider: ProviderDouble, dataplane: _FetchingDa
 @pytest.fixture()
 async def outcome(harness: Harness):
     """Setup as far as the doubles go, then the whole execution phase."""
-    opened = await harness.run(*_steps("setup", "open_backend", "create_asset"), phase="setup")
+    opened = await harness.run(
+        *_steps("setup", "open_backend", "open_notification", "create_asset"), phase="setup"
+    )
     assert opened.passed, [(r.step_name, r.error) for r in opened.failures]
     return await harness.run(*_phase("execution"))
 
@@ -224,16 +238,26 @@ class TestTheBackendIsTheMock:
         which endpoint is asked for is the pull's business, not the asset's."""
         assert provider.created[-1]["base_url"] == f"http://127.0.0.1:{server.port}"
 
-    async def test_the_asset_lets_the_path_through(self, outcome, provider: ProviderDouble) -> None:
+    async def test_the_asset_lets_the_path_the_method_and_the_body_through(
+        self, outcome, provider: ProviderDouble
+    ) -> None:
         """The step passes `proxy_params` through as given, and the SDK's
         default is not applied to an explicit None — so a scenario that forgot
         this would register an asset the data plane fetches at its root."""
-        assert provider.created[-1]["proxy_params"] == {"proxyPath": "true"}
+        assert provider.created[-1]["proxy_params"] == {
+            "proxyPath": "true",
+            "proxyMethod": "true",
+            "proxyBody": "true",
+        }
 
-    async def test_the_data_plane_fetched_the_mocks_path_on_that_root(
+    async def test_the_data_plane_forwarded_both_calls_to_that_root(
         self, outcome, dataplane: _FetchingDataplane, server: MockServer
     ) -> None:
-        assert dataplane.fetched == [f"http://127.0.0.1:{server.port}{_BACKEND_PATH}"]
+        root = f"http://127.0.0.1:{server.port}"
+        assert dataplane.fetched == [
+            ("GET", f"{root}{_BACKEND_PATH}"),
+            ("POST", f"{root}{_NOTIFICATION_PATH}"),
+        ]
 
     async def test_what_came_through_the_data_plane_is_the_mocks_answer(self, outcome) -> None:
         assert outcome.output("fetch_through_sut") == {"served_by": "testlab-mock", "answer": 42}
@@ -241,8 +265,17 @@ class TestTheBackendIsTheMock:
 
 class TestTheWaitReadsTheDataPlanesRequest:
     async def test_the_request_read_back_is_the_one_the_data_plane_made(self, outcome) -> None:
-        assert outcome.variables["request_method"] == "GET"
-        assert outcome.variables["request_path"] == _BACKEND_PATH
+        read = outcome.output("await_call")
+        assert read["request_method"] == "GET"
+        assert read["request_path"] == _BACKEND_PATH
+
+    async def test_the_posted_payload_is_what_the_mock_received(self, outcome) -> None:
+        """Field for field: what the script sent is what arrived, two hops later."""
+        sent = next(s for s in _phase("execution") if s["id"] == "notify_through_sut")["with"][
+            "body"
+        ]
+        assert outcome.output("await_notification")["request_body"] == sent
+        assert outcome.output("await_notification")["request_method"] == "POST"
 
     async def test_the_call_that_arrived_before_the_wait_was_held_for_it(self, outcome) -> None:
         """The data plane called during `fetch_through_sut`; the wait came after.
