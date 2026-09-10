@@ -35,7 +35,7 @@ from pydantic import ConfigDict, Field, model_validator
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps import http_client, sdk_call
+from tractusx_testlab.steps import faults, http_client
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload, StepValue
 
@@ -268,7 +268,7 @@ class DiscoverNotificationAssetsStep(
     ) -> StepOutput[NotificationAssetsOutput]:
         notif_service = context.dataspace.notifications()
         party = params.counter_party(context)
-        datasets = await sdk_call.run(
+        datasets = await faults.call(
             notif_service.discover_notification_assets,
             provider_bpn=party.identity,
             provider_dsp_url=party.address,

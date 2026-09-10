@@ -34,7 +34,7 @@ from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.connector import _faults
 from tractusx_testlab.steps.connector._polling import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
@@ -195,7 +195,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
         """Collect the EDR the negotiation produced and resolve its data address."""
         consumer = context.dataspace.consumer()
         negotiation_id = params.negotiation_id or context.get_str(NEGOTIATION_ID)
-        edr_entry = await sdk_call.run(
+        edr_entry = await _faults.call(
             consumer.get_edr_entry, negotiation_id=negotiation_id, verify=params.verify
         )
 

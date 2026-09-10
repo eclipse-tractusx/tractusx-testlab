@@ -33,7 +33,8 @@ from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps import http_client, sdk_call
+from tractusx_testlab.steps import http_client
+from tractusx_testlab.steps.connector import _faults
 from tractusx_testlab.steps.shared_models import (
     DataAddressPayload,
     HttpBodyOutput,
@@ -161,7 +162,7 @@ async def fetch_data_address(
     if not transfer_id:
         return None
     try:
-        return await sdk_call.run(consumer.get_edr, transfer_id=transfer_id, verify=verify)
+        return await _faults.call(consumer.get_edr, transfer_id=transfer_id, verify=verify)
     except ConnectionError:
         logger.warning("Failed to retrieve EDR data address for transfer %s", transfer_id)
         return None

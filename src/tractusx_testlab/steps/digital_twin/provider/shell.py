@@ -41,7 +41,7 @@ from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps import http_client, sdk_call
+from tractusx_testlab.steps import faults, http_client
 from tractusx_testlab.steps.registry_models import (
     DescriptorPayload,
     DtrParams,
@@ -101,7 +101,7 @@ async def _register_shell(
     from tractusx_sdk.industry.models.aas.v3.base import ShellDescriptor
 
     aas = context.dataspace.registry()
-    result = await sdk_call.run(
+    result = await faults.call(
         aas.create_asset_administration_shell_descriptor,
         ShellDescriptor(**shell_descriptor),
         bpn=bpn,
@@ -204,7 +204,7 @@ class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayloa
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         aas = context.dataspace.registry()
-        result = await sdk_call.run(
+        result = await faults.call(
             aas.get_asset_administration_shell_descriptor_by_id,
             params.aas_identifier,
             bpn=params.bpn,
@@ -350,7 +350,7 @@ class DeleteShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DeletionOutpu
         definition: StepDefinition,
     ) -> StepOutput[DeletionOutput]:
         aas = context.dataspace.registry()
-        result = await sdk_call.run(
+        result = await faults.call(
             aas.delete_asset_administration_shell_descriptor, params.aas_identifier, bpn=params.bpn
         )
         url = f"{aas.aas_url}/shell-descriptors/{params.aas_identifier}"

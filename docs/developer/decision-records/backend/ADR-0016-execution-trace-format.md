@@ -394,16 +394,35 @@ Each error object:
 | `code` | Where | `origin` | `context` |
 |--------|-------|----------|-----------|
 | `STEP_FAILED` | `data.errors[]` | `sut` | — |
+| `INFRASTRUCTURE_ERROR` | `data.errors[]` | `infrastructure` | — |
+| `CONNECTOR_ERROR` | `data.errors[]` | `connector` | — |
 | `ENGINE_FAULT` | `data.errors[]` | `engine` | — |
 | `POLICY_MISMATCH` | `data.errors[]` | `sut` | the offer comparison (below) |
 | `ASSERTION_FAILED` | `data.validations[].errors[]` | — | — |
 | `TRANSPORT_FAILED` | `tck.test.step.call` `errors[]` | — | — |
 
-`STEP_FAILED` and `ENGINE_FAULT` are the classification every failure gets. A
-failure that can say more names itself and carries the evidence under `context`,
-which is what separates *a verdict* from *a verdict a reader can act on*: an
-error the engine can only classify says who to go to, and one that named itself
-says what to change.
+These four are the classification every failure gets. A failure that can say
+more names itself and carries the evidence under `context`, which is what
+separates *a verdict* from *a verdict a reader can act on*: an error the engine
+can only classify says who to go to, and one that named itself says what to
+change.
+
+`INFRASTRUCTURE_ERROR` and `CONNECTOR_ERROR` are the two that were missing, and
+`sut` and `engine` were both a lie without them. The SDK reports a bound service
+that would not do its part as a `RuntimeError` — a registry that did not answer,
+a catalog that carried no matching asset, a negotiation that never finalised —
+and the runner, classifying an exception it did not raise, called anything it
+did not recognise an engine fault. *The provider did not share any matching
+asset* then read as **TestLab reported this as its own fault**, sending the
+reader to file a bug about a catalog the SUT never published.
+
+They are not verdicts either. `infrastructure` says a service the run stands on
+did not hold up its end, and the deployment may be either party's;
+`connector` is the case of it with two ends, because TestLab drives one
+connector and talks to another and the SDK reports the failure of the pair — so
+the fault may be the SUT's connector, the one TestLab drives, or the network
+between them. Neither names a side, which is the point: they say where to start
+looking rather than who to blame.
 
 `POLICY_MISMATCH` is the first of them. The SDK reports a catalog whose offers
 were all refused as "no valid policy was found", which names neither the offers
@@ -602,20 +621,23 @@ published while the step was still running:
  "data":{"attempt":1,"duration_ms":60501.176,"validations":[],
   "inputs":{"filters":[{"operand_left":"https://w3id.org/edc/v0.0.1/ns/type","operator":"=",
                         "operand_right":"https://w3id.org/catenax/taxonomy#CCMAPI"}]},
-  "errors":[{"code":"ENGINE_FAULT","origin":"engine","retryable":false,
+  "errors":[{"code":"CONNECTOR_ERROR","origin":"connector","retryable":false,
    "message":"[Connector Service]: The EDR Negotiation [495c78f6-...] did not reach FINALIZED state after 60.0s (last state: None)!"}]}}
 ```
 
 The calls say what one error message could not: the catalog came back, the
 negotiation was accepted, and the SUT then answered `404` to every poll of the
 negotiation it had just handed out. `context` names which SDK method was holding
-the phone each time, `origin: "engine"` says the engine gave up rather than the
-SUT failing a check, and the sequence numbers say the polls were readable as they
-happened rather than a minute later.
+the phone each time, `origin: "connector"` says the exchange between the two
+connectors never completed rather than the SUT failing a check or TestLab having
+a bug, and the sequence numbers say the polls were readable as they happened
+rather than a minute later.
 
-The `errors[].origin` field separates an engine fault from a SUT verdict: a
-reader triaging a red run needs to know whether to fix the SUT or file a bug
-against TestLab, and one `FAILED` cannot say which.
+The `errors[].origin` field separates a SUT verdict (`sut`) from a service that
+did not do its part (`infrastructure`, and `connector` for the dataspace
+exchange) from an engine fault (`engine`): a reader triaging a red run needs to
+know whether to fix the SUT, look at the deployment, or file a bug against
+TestLab, and one `FAILED` cannot say which.
 
 ## Implementation Status
 

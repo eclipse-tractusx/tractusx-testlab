@@ -93,6 +93,8 @@ from tractusx_testlab.models.primitives.enums import (
 )
 from tractusx_testlab.models.primitives.exceptions import (
     AuthoringError,
+    BoundServiceError,
+    ConnectorError,
     DuplicateServiceError,
     EngineError,
     ExecutionError,
@@ -162,12 +164,14 @@ __all__ = [
     "AuthoringError",
     # security
     "Base64Bytes",
+    "BoundServiceError",
     "CallbackResult",
     # infrastructure bindings (operated)
     "CapabilityBinding",
     # infrastructure requirements (authored)
     "CapabilityRequirement",
     "ConnectorBinding",
+    "ConnectorError",
     "DataspaceContext",
     "DtrBinding",
     "DuplicateServiceError",

@@ -200,6 +200,11 @@ async def _run_step_guarded(
             # (ADR-0016). Read off the exception rather than declared per raise
             # site, so an error that has nothing extra to say costs nothing.
             error_code=getattr(exc, "code", None),
+            # Same reading, and the reason there are three answers and not a
+            # boolean: a DSP exchange that did not go through belongs to a
+            # connector, and calling it an engine fault sends the reader to file
+            # a bug about a catalog the provider never published.
+            error_origin=getattr(exc, "origin", None) or ("engine" if engine_fault else "sut"),
             error_context=getattr(exc, "diagnostics", None),
         )
 

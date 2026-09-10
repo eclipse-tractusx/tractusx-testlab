@@ -22,9 +22,9 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Everything TestLab raises, and the three questions the hierarchy answers.
+"""Everything TestLab raises, and the four questions the hierarchy answers.
 
-A conformance engine has to distinguish three outcomes that look alike from the
+A conformance engine has to distinguish four outcomes that look alike from the
 outside, because only one of them is a verdict about the system under test:
 
 ``AuthoringError``
@@ -35,13 +35,24 @@ outside, because only one of them is a verdict about the system under test:
     A step ran and did not achieve what it declared. **This is a test result** —
     the SUT did not do what the TCK requires of it.
 
+``BoundServiceError``
+    A service the run stands on did not do its part, and no one side owns it.
+    The registry did not answer, the discovery finder returned nothing, the
+    submodel server refused. Neither a verdict about the SUT nor a defect in
+    TestLab: the infrastructure is what is wrong, and it may be either party's.
+    ``ConnectorError`` is the one of these with its own name, because the
+    dataspace exchange has two ends — the SUT's connector, the one TestLab
+    drives, and the network between them — and the SDK reports the failure of
+    the pair.
+
 ``EngineError``
     TestLab itself malfunctioned. Never a verdict: a run containing one of these
     certifies nothing, whatever its other steps reported.
 
-Collapsing the last two is how an engine defect gets recorded as a SUT failure,
-and how a SUT failure gets excused as an engine defect. They are separated here
-so the runner can classify without guessing, and so an embedder can write
+Collapsing them is how an engine defect gets recorded as a SUT failure, how a
+SUT failure gets excused as an engine defect, and how a provider that published
+no asset gets reported as a bug in TestLab. They are separated here so the
+runner can classify without guessing, and so an embedder can write
 ``except TestLabError`` and mean it.
 """
 
@@ -68,6 +79,12 @@ class TestLabError(Exception):
     #: origin alone (``STEP_FAILED`` for a verdict, ``ENGINE_FAULT`` for a bug).
     code: str | None = None
 
+    #: Who this failure belongs to, published as ``errors[].origin`` (ADR-0016).
+    #: Declared by the class rather than by each raise site, for the same reason
+    #: ``code`` is: an error that has nothing special to say costs nothing, and
+    #: the runner classifies what it caught without having to know about it.
+    origin: str = "sut"
+
     #: Structured evidence for the message, published under the error's
     #: ``context``. JSON-serialisable, because that is where it ends up.
     diagnostics: dict[str, Any] | None = None
@@ -81,8 +98,43 @@ class ExecutionError(TestLabError):
     """A step ran and did not achieve what it declared — a result about the SUT."""
 
 
+class BoundServiceError(TestLabError):
+    """A service the run is bound to did not do its part; the deployment is open.
+
+    Neither a verdict nor an engine bug. The SDK reports a service that would
+    not answer through ``RuntimeError``, and the runner classifies an exception
+    it does not recognise as an engine fault — which sends the reader to file a
+    bug against TestLab for a registry that was down. Raised instead, so the
+    trace says ``origin: "infrastructure"`` and triage starts there.
+
+    The binding-time counterpart is
+    :class:`~tractusx_testlab.models.primitives.binding_errors.InfrastructureError`,
+    which reports the same infrastructure before a step ever runs.
+    """
+
+    code = "INFRASTRUCTURE_ERROR"
+    origin = "infrastructure"
+
+
+class ConnectorError(BoundServiceError):
+    """A dataspace exchange did not go through; which connector is open.
+
+    The infrastructure failure with two ends. A catalog carrying no matching
+    asset, a negotiation that never finalised: the SDK reports the failure of
+    the *pair* of connectors, so the fault may be the SUT's connector, the one
+    TestLab drives, or the network between them — and naming any one of the
+    three would be a guess. ``origin: "connector"`` says where to start looking
+    instead of who to blame.
+    """
+
+    code = "CONNECTOR_ERROR"
+    origin = "connector"
+
+
 class EngineError(TestLabError):
     """TestLab malfunctioned. A run containing one of these proves nothing."""
+
+    origin = "engine"
 
 
 class ServiceNotFoundError(EngineError):

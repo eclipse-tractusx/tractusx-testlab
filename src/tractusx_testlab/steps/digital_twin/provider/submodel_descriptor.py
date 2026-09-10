@@ -41,7 +41,7 @@ from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps import faults
 from tractusx_testlab.steps.registry_models import (
     DescriptorPayload,
     _as_document,
@@ -97,7 +97,7 @@ async def _register_submodel(
     from tractusx_sdk.industry.models.aas.v3.base import SubModelDescriptor
 
     aas = context.dataspace.registry()
-    result = await sdk_call.run(
+    result = await faults.call(
         aas.create_submodel_descriptor,
         aas_identifier,
         SubModelDescriptor(**submodel_descriptor),

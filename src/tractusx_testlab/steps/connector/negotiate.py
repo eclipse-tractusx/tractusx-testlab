@@ -32,7 +32,7 @@ from pydantic import Field, field_validator
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.connector import _faults
 from tractusx_testlab.steps.connector._polling import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
@@ -128,7 +128,7 @@ class NegotiateStep(BaseStep[NegotiateParams, NegotiationOutput]):
         consumer = context.dataspace.consumer()
         party = params.counter_party(context)
 
-        negotiation_id = await sdk_call.run(
+        negotiation_id = await _faults.call(
             consumer.start_edr_negotiation,
             counter_party_id=party.identity,
             counter_party_address=party.address,

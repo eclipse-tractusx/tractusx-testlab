@@ -33,7 +33,7 @@ from pydantic import Field
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
-from tractusx_testlab.steps.connector import policy_mismatch
+from tractusx_testlab.steps.connector import _faults
 from tractusx_testlab.steps.connector.policies import ExpectedPoliciesParams
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.shared_models import (
@@ -101,8 +101,9 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
         party = params.counter_party(context)
         # Every flow step turns down offers by policy, and the SDK reports only
         # that it turned all of them down. The guard reports which offers those
-        # were and how they differed (steps.connector.policy_mismatch).
-        with policy_mismatch.explained(party.address):
+        # were and how they differed, and names anything else the exchange came
+        # back with as the connector's (steps.connector._faults).
+        with _faults.connector_exchange(party.address):
             endpoint, token = await sdk_call.run(
                 consumer.do_dsp,
                 counter_party_id=party.identity,
@@ -155,7 +156,7 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
         self, params: DoDspWithBpnlParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.dataspace.consumer()
-        with policy_mismatch.explained(params.counter_party_address or params.bpnl):
+        with _faults.connector_exchange(params.counter_party_address or params.bpnl):
             endpoint, token = await sdk_call.run(
                 consumer.do_dsp_with_bpnl,
                 bpnl=params.bpnl,
@@ -213,7 +214,7 @@ class DiscoverDtrAuthStep(BaseStep[DiscoverDtrAuthParams, DspFlowOutput]):
     ) -> StepOutput[DspFlowOutput]:
         consumer = context.dataspace.consumer()
         party = params.counter_party(context)
-        with policy_mismatch.explained(party.address):
+        with _faults.connector_exchange(party.address):
             endpoint, token = await sdk_call.run(
                 consumer.do_dsp_by_dct_type,
                 counter_party_id=party.identity,

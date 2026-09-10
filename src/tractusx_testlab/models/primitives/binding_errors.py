@@ -69,7 +69,16 @@ def _owed_block(keys: list[str], heading: str) -> str:
 
 
 class InfrastructureError(AuthoringError):
-    """Base for problems with the infrastructure bindings an engine was given."""
+    """Base for problems with the infrastructure bindings an engine was given.
+
+    The binding-time half of ``origin: "infrastructure"``: the deployment does
+    not add up, said before a step runs rather than by a service refusing
+    mid-run (:class:`~tractusx_testlab.models.BoundServiceError`). Reported as
+    infrastructure and not as a verdict, because nothing about the SUT was
+    proved either way.
+    """
+
+    origin = "infrastructure"
 
 
 class UnknownBindingKeyError(InfrastructureError):

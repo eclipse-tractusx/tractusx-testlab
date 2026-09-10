@@ -39,7 +39,7 @@ from tractusx_testlab.models import (
     StepExecutionError,
 )
 from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.connector import _faults
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.dsp_protocol import DspProtocolParams
 from tractusx_testlab.steps.shared_models import (
@@ -106,7 +106,7 @@ class QueryCatalogStep(BaseStep[QueryCatalogParams, CatalogOutput]):
     ) -> StepOutput[CatalogOutput]:
         consumer = context.dataspace.consumer()
         party = params.counter_party(context)
-        catalog = await sdk_call.run(
+        catalog = await _faults.call(
             consumer.get_catalog_with_filter,
             counter_party_id=party.identity,
             counter_party_address=party.address,
@@ -189,7 +189,7 @@ class QueryCatalogByAssetIdStep(BaseStep[QueryCatalogByAssetIdParams, CatalogOff
     ) -> StepOutput[CatalogOfferOutput]:
         consumer = context.dataspace.consumer()
         party = params.counter_party(context)
-        result = await sdk_call.run(
+        result = await _faults.call(
             consumer.get_catalog_by_asset_id,
             counter_party_id=party.identity,
             counter_party_address=party.address,
@@ -270,7 +270,7 @@ class QueryCatalogByBpnlStep(BaseStep[QueryCatalogByBpnlParams, CatalogOutput]):
         definition: StepDefinition,
     ) -> StepOutput[CatalogOutput]:
         consumer = context.dataspace.consumer()
-        result = await sdk_call.run(
+        result = await _faults.call(
             consumer.get_catalog_with_bpnl,
             bpnl=params.bpnl,
             counter_party_address=params.counter_party_address,
