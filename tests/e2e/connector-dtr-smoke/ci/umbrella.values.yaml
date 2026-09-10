@@ -108,16 +108,31 @@ edc-provider:
           # bundles the control plane *and* the data plane, so this pod also
           # boots the data-plane half and wants the settings that half reads;
           # the block below is the set the upstream `tractusx-connector-memory`
-          # chart renders and this one does not. The public endpoint it binds
-          # is deliberately unexposed — the data-plane pod below is still the
-          # one the ingress routes `/dataplane/api/public` to.
+          # chart renders and this one does not.
+          #
+          # That embedded data plane is not idle: it self-registers with the
+          # control plane it shares a JVM with, and it is the *only* instance
+          # that ever reaches the control plane's selector — the data-plane pod
+          # below registers into its own in-memory store, because the runtime it
+          # runs bundles a selector of its own. So every transfer is started
+          # here, and the EDR token is minted into this pod's in-memory
+          # `AccessTokenData` store. The public base URL therefore has to
+          # address *this* pod: pointed at the data-plane pod, as it was, the
+          # consumer takes a valid token to a runtime that has never seen it and
+          # the pull fails with `AccessTokenData with ID '…' does not exist`.
           image:
             repository: tractusx/edc-runtime-memory
           env:
             WEB_HTTP_PUBLIC_PORT: "8086"
             WEB_HTTP_PUBLIC_PATH: "/api/public"
-            EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://provider.local/dataplane/api/public"
-            TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://provider.local/dataplane/api/public/token"
+            EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://provider.local/api/public"
+            TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://provider.local/api/public/token"
+            # Pin the DSP callback/audience. The chart otherwise derives them
+            # from `controlplane.ingresses[0].hostname`, and a metrics-first
+            # order would advertise `provider.local/api/v1/dsp` — a path that
+            # host does not serve — so the peer's agreement POST 404s at nginx.
+            EDC_DSP_CALLBACK_ADDRESS: "http://provider-dsp.local/api/v1/dsp"
+            EDC_OAUTH_ENDPOINT_AUDIENCE: "http://provider-dsp.local/api/v1/dsp"
             TX_EDC_DATAPLANE_TOKEN_EXPIRY: "300"
             TX_EDC_DATAPLANE_TOKEN_EXPIRY_TOLERANCE: "10"
             EDC_TRANSFER_PROXY_TOKEN_SIGNER_PRIVATEKEY_ALIAS: "tokenSignerPrivateKey"
@@ -137,6 +152,19 @@ edc-provider:
               path: /api/v1/dsp
             catalog:
               path: /catalog
+            # `endpoints` only carries the names the chart's Service hard-codes,
+            # and `public` is not one of them, so the public API this pod binds
+            # on 8086 is exposed through the otherwise unused `metrics` slot:
+            # the Deployment takes its container ports and the Ingress its paths
+            # straight from this map, and the chart renders no
+            # `WEB_HTTP_METRICS_*` settings, so nothing else reads it.
+            metrics:
+              port: 8086
+              path: /api/public
+          # DSP MUST stay first: tractusx-connector builds
+          # `txdc.controlplane.url.protocol` from `ingresses[0]` unless
+          # `controlplane.url.protocol` is set, and that URL becomes
+          # EDC_DSP_CALLBACK_ADDRESS / EDC_OAUTH_ENDPOINT_AUDIENCE.
           ingresses:
             - enabled: true
               hostname: provider-dsp.local
@@ -151,6 +179,13 @@ edc-provider:
                 - management
                 - control
                 - catalog
+              className: nginx
+              tls:
+                enabled: false
+            - enabled: true
+              hostname: provider.local
+              endpoints:
+                - metrics
               className: nginx
               tls:
                 enabled: false
@@ -265,16 +300,31 @@ edc-consumer:
           # bundles the control plane *and* the data plane, so this pod also
           # boots the data-plane half and wants the settings that half reads;
           # the block below is the set the upstream `tractusx-connector-memory`
-          # chart renders and this one does not. The public endpoint it binds
-          # is deliberately unexposed — the data-plane pod below is still the
-          # one the ingress routes `/dataplane/api/public` to.
+          # chart renders and this one does not.
+          #
+          # That embedded data plane is not idle: it self-registers with the
+          # control plane it shares a JVM with, and it is the *only* instance
+          # that ever reaches the control plane's selector — the data-plane pod
+          # below registers into its own in-memory store, because the runtime it
+          # runs bundles a selector of its own. So every transfer is started
+          # here, and the EDR token is minted into this pod's in-memory
+          # `AccessTokenData` store. The public base URL therefore has to
+          # address *this* pod: pointed at the data-plane pod, as it was, the
+          # consumer takes a valid token to a runtime that has never seen it and
+          # the pull fails with `AccessTokenData with ID '…' does not exist`.
           image:
             repository: tractusx/edc-runtime-memory
           env:
             WEB_HTTP_PUBLIC_PORT: "8086"
             WEB_HTTP_PUBLIC_PATH: "/api/public"
-            EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://consumer.local/dataplane/api/public"
-            TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://consumer.local/dataplane/api/public/token"
+            EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://consumer.local/api/public"
+            TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://consumer.local/api/public/token"
+            # Pin the DSP callback/audience. The chart otherwise derives them
+            # from `controlplane.ingresses[0].hostname`, and a metrics-first
+            # order would advertise `consumer.local/api/v1/dsp` — a path that
+            # host does not serve — so the peer's agreement POST 404s at nginx.
+            EDC_DSP_CALLBACK_ADDRESS: "http://consumer-dsp.local/api/v1/dsp"
+            EDC_OAUTH_ENDPOINT_AUDIENCE: "http://consumer-dsp.local/api/v1/dsp"
             TX_EDC_DATAPLANE_TOKEN_EXPIRY: "300"
             TX_EDC_DATAPLANE_TOKEN_EXPIRY_TOLERANCE: "10"
             EDC_TRANSFER_PROXY_TOKEN_SIGNER_PRIVATEKEY_ALIAS: "tokenSignerPrivateKey"
@@ -294,6 +344,19 @@ edc-consumer:
               path: /api/v1/dsp
             catalog:
               path: /catalog
+            # `endpoints` only carries the names the chart's Service hard-codes,
+            # and `public` is not one of them, so the public API this pod binds
+            # on 8086 is exposed through the otherwise unused `metrics` slot:
+            # the Deployment takes its container ports and the Ingress its paths
+            # straight from this map, and the chart renders no
+            # `WEB_HTTP_METRICS_*` settings, so nothing else reads it.
+            metrics:
+              port: 8086
+              path: /api/public
+          # DSP MUST stay first: tractusx-connector builds
+          # `txdc.controlplane.url.protocol` from `ingresses[0]` unless
+          # `controlplane.url.protocol` is set, and that URL becomes
+          # EDC_DSP_CALLBACK_ADDRESS / EDC_OAUTH_ENDPOINT_AUDIENCE.
           ingresses:
             - enabled: true
               hostname: consumer-dsp.local
@@ -308,6 +371,13 @@ edc-consumer:
                 - management
                 - control
                 - catalog
+              className: nginx
+              tls:
+                enabled: false
+            - enabled: true
+              hostname: consumer.local
+              endpoints:
+                - metrics
               className: nginx
               tls:
                 enabled: false
