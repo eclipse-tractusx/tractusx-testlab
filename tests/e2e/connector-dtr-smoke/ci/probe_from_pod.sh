@@ -48,11 +48,12 @@ for _ in $(seq 1 90); do
     -o jsonpath='{.status.phase}' 2>/dev/null || true)"
   case "${phase}" in
     Succeeded|Failed) break ;;
+    *) ;;
   esac
   sleep 2
 done
 
-if [ "${phase}" = "Succeeded" ] || [ "${phase}" = "Failed" ]; then
+if [[ "${phase}" == "Succeeded" || "${phase}" == "Failed" ]]; then
   kubectl logs "${name}" --namespace "${namespace}" 2>/dev/null || true
 else
   kubectl describe pod "${name}" --namespace "${namespace}" >&2 || true

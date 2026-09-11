@@ -497,12 +497,11 @@ class TestARefusalFailsTheStep:
         aas.create_asset_administration_shell_descriptor.return_value = _refused(
             ("400", "specificAssetIds must not be empty")
         )
+        step = WizardCreateShellDescriptorStep()
+        fields = {"id_short": "twin", "global_asset_id": "urn:uuid:1"}
+        definition = _definition("digital-twin/provider/wizard/create_shell_descriptor")
         with pytest.raises(StepExecutionError, match="refused the shell descriptor.*400.*empty"):
-            await WizardCreateShellDescriptorStep().invoke(
-                {"id_short": "twin", "global_asset_id": "urn:uuid:1"},
-                dtr_context,
-                _definition("digital-twin/provider/wizard/create_shell_descriptor"),
-            )
+            await step.invoke(fields, dtr_context, definition)
 
     @pytest.mark.asyncio
     async def test_a_refused_submodel_fails_the_raw_and_the_wizard_step_alike(
@@ -516,19 +515,20 @@ class TestARefusalFailsTheStep:
             "asset_id": "urn:uuid:asset",
             "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
         }
+        wizard = WizardCreateSubmodelDescriptorStep()
+        wizard_definition = _definition("digital-twin/provider/wizard/create_submodel_descriptor")
         with pytest.raises(StepExecutionError, match="refused the submodel descriptor.*409"):
-            await WizardCreateSubmodelDescriptorStep().invoke(
-                fields,
-                dtr_context,
-                _definition("digital-twin/provider/wizard/create_submodel_descriptor"),
-            )
-        document = WizardCreateSubmodelDescriptorParams(**fields).submodel_document()
+            await wizard.invoke(fields, dtr_context, wizard_definition)
+        raw = CreateSubmodelDescriptorStep()
+        raw_fields = {
+            "aas_identifier": "urn:uuid:shell",
+            "submodel_descriptor": WizardCreateSubmodelDescriptorParams(
+                **fields
+            ).submodel_document(),
+        }
+        raw_definition = _definition("digital-twin/provider/create_submodel_descriptor")
         with pytest.raises(StepExecutionError, match="refused the submodel descriptor.*409"):
-            await CreateSubmodelDescriptorStep().invoke(
-                {"aas_identifier": "urn:uuid:shell", "submodel_descriptor": document},
-                dtr_context,
-                _definition("digital-twin/provider/create_submodel_descriptor"),
-            )
+            await raw.invoke(raw_fields, dtr_context, raw_definition)
 
     @pytest.mark.asyncio
     async def test_a_refusal_without_aas_messages_is_still_a_refusal(
@@ -540,18 +540,17 @@ class TestARefusalFailsTheStep:
         aas.create_submodel_descriptor.return_value = Result(
             **{"timestamp": "t", "status": 500, "error": "Internal Server Error", "path": "/x"}
         )
+        step = WizardCreateSubmodelDescriptorStep()
+        fields = {
+            "aas_identifier": "urn:uuid:shell",
+            "semantic_id": "urn:samm:x#Y",
+            "href": "https://dataplane.example.com/api/public",
+            "asset_id": "urn:uuid:asset",
+            "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
+        }
+        definition = _definition("digital-twin/provider/wizard/create_submodel_descriptor")
         with pytest.raises(StepExecutionError, match="no AAS messages"):
-            await WizardCreateSubmodelDescriptorStep().invoke(
-                {
-                    "aas_identifier": "urn:uuid:shell",
-                    "semantic_id": "urn:samm:x#Y",
-                    "href": "https://dataplane.example.com/api/public",
-                    "asset_id": "urn:uuid:asset",
-                    "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
-                },
-                dtr_context,
-                _definition("digital-twin/provider/wizard/create_submodel_descriptor"),
-            )
+            await step.invoke(fields, dtr_context, definition)
 
 
 class TestSecurityAttributes:
