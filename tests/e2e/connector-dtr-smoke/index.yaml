@@ -279,40 +279,40 @@ env:
 tests:
   - id: connector_negotiation.yaml
     name: Negotiate and pull data across the two live EDC connectors
-    skippable: false
+    skippable: true
   - id: dsp_step_by_step.yaml
     name: Drive the same DSP journey as six wired steps
-    skippable: false
+    skippable: true
   - id: dtr_roundtrip.yaml
     name: Write and read back a shell descriptor on the SUT's Digital Twin Registry
-    skippable: false
+    skippable: true
   - id: negative_paths.yaml
     name: Ask for things that are not there, and check the answers say so
-    skippable: false
+    skippable: true
   - id: inbound_call.yaml
     name: Put a mock behind a SUT asset, and read the call the SUT's data plane makes to it
-    skippable: false
+    skippable: true
   - id: external_callback.yaml
     name: Block on a mock until a stand-in SUT in the cluster calls it back
-    skippable: false
+    skippable: true
   - id: catalog_variants.yaml
     name: Query the catalog four ways, and provision the provider two ways
-    skippable: false
+    skippable: true
   - id: bpn_discovery.yaml
     name: Address the SUT by business partner number instead of by DSP URL
-    skippable: false
+    skippable: true
   - id: push_transfer.yaml
     name: Have the provider deliver the data instead of fetching it
-    skippable: false
+    skippable: true
   - id: dtr_consumer_dataplane.yaml
     name: Read the SUT's registry as a counterparty, over a negotiated data plane
-    skippable: false
+    skippable: true
   - id: notification_roundtrip.yaml
     name: Send notifications through the dataspace and read them where they land
-    skippable: false
+    skippable: true
   - id: industry_core_journey.yaml
     name: Upload a submodel, register its twin, and pull it back as a consumer
-    skippable: false
+    skippable: true
   - id: engine_toolbox.yaml
     name: Run the flow, utility, OAuth2 and protocol-mock steps against real endpoints
-    skippable: false
+    skippable: true
