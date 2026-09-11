@@ -40,6 +40,7 @@ from tractusx_testlab.models import (
 )
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.connector.discover_connector import discovery_address
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.dsp_protocol import DspProtocolParams
 from tractusx_testlab.steps.shared_models import (
@@ -241,7 +242,12 @@ class QueryCatalogByBpnlParams(StepParams):
     bpnl: str = Field(description="BPN used to discover the counter-party's connector.")
     counter_party_address: str | None = Field(
         default=None,
-        description="DSP endpoint; when omitted it is resolved from the BPN by discovery.",
+        description=(
+            "DSP endpoint to discover against, as its root or as the versioned "
+            "endpoint the SUT binding carries — a trailing version path is dropped, "
+            "since discovery is what appends it. When omitted it is resolved from "
+            "the BPN alone."
+        ),
     )
     filters: list[FilterExpression] = Field(
         default_factory=list,
@@ -273,7 +279,7 @@ class QueryCatalogByBpnlStep(BaseStep[QueryCatalogByBpnlParams, CatalogOutput]):
         result = await sdk_call.run(
             consumer.get_catalog_with_bpnl,
             bpnl=params.bpnl,
-            counter_party_address=params.counter_party_address,
+            counter_party_address=discovery_address(params.counter_party_address),
             filter_expression=[entry.to_sdk() for entry in params.filters] or None,
         )
         url = context.dataspace.consumer_endpoint_url("catalogs", "request")

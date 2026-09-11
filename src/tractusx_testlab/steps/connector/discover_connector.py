@@ -40,6 +40,7 @@ to answer.
 from __future__ import annotations
 
 import logging
+import re
 from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
@@ -65,7 +66,32 @@ __all__ = [
     "DiscoverConnectorOutput",
     "DiscoverConnectorParams",
     "DiscoverConnectorStep",
+    "discovery_address",
 ]
+
+#: A trailing DSP version segment, as the well-known document names it:
+#: ``/2025-1`` for ``dataspace-protocol-http:2025-1``. v0.8 lives at the root.
+_DSP_VERSION_SEGMENT = re.compile(r"/\d{4}-\d+/?$")
+
+
+def discovery_address(address: str | None) -> str | None:
+    """The address discovery is pointed at, from the one a script holds.
+
+    Discovery takes the *root* of a connector's DSP endpoints and appends
+    ``/.well-known/dspace-version`` to it; what it answers with is that root
+    plus the version path the counter-party speaks, and that — the versioned
+    endpoint — is what every other DSP step, and the SUT binding, carries. A
+    script that hands the binding straight to discovery therefore asks for
+    ``…/2025-1/.well-known/dspace-version``, which no connector serves (E2E run
+    34633071862, 2026-09-11). The version segment is dropped here, since it is
+    exactly what the connector puts back; a root, or a full well-known URL,
+    passes through unchanged. An empty address stays ``None``: the connector
+    then resolves it from the BPN alone.
+    """
+    if not address:
+        return None
+    return _DSP_VERSION_SEGMENT.sub("", address.rstrip("/")) or address
+
 
 #: Namespace the connector prefixes its discovery response keys with.  The same
 #: default the SDK uses, spelled out here because it is a step parameter.
@@ -84,8 +110,10 @@ class DiscoverConnectorParams(StepParams):
     counter_party_address: str = Field(
         default="",
         description=(
-            "DSP endpoint to discover against; when omitted the connector resolves it "
-            "from the BPN alone."
+            "DSP endpoint to discover against, as its root or as the versioned "
+            "endpoint the SUT binding carries — a trailing version path is dropped, "
+            "since discovery is what appends it. When omitted the connector "
+            "resolves the address from the BPN alone."
         ),
     )
     namespace: str = Field(
@@ -151,7 +179,7 @@ class DiscoverConnectorStep(BaseStep[DiscoverConnectorParams, DiscoverConnectorO
         document = await sdk_call.run(
             discover,
             bpnl=params.bpnl,
-            counter_party_address=params.counter_party_address or None,
+            counter_party_address=discovery_address(params.counter_party_address),
         )
         if not isinstance(document, dict):
             raise StepExecutionError(

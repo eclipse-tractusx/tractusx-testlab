@@ -34,6 +34,7 @@ from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, S
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector import policy_mismatch
+from tractusx_testlab.steps.connector.discover_connector import discovery_address
 from tractusx_testlab.steps.connector.policies import ExpectedPoliciesParams
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.shared_models import (
@@ -129,7 +130,12 @@ class DoDspWithBpnlParams(FilterExpressionParams, ExpectedPoliciesParams):
     bpnl: str = Field(description="BPN used to discover the counter-party's connector.")
     counter_party_address: str | None = Field(
         default=None,
-        description="DSP endpoint; when omitted it is resolved from the BPN by discovery.",
+        description=(
+            "DSP endpoint to discover against, as its root or as the versioned "
+            "endpoint the SUT binding carries — a trailing version path is dropped, "
+            "since discovery is what appends it. When omitted it is resolved from "
+            "the BPN alone."
+        ),
     )
     expected_policies: list[dict] | None = Field(
         default=None,
@@ -159,7 +165,7 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
             endpoint, token = await sdk_call.run(
                 consumer.do_dsp_with_bpnl,
                 bpnl=params.bpnl,
-                counter_party_address=params.counter_party_address,
+                counter_party_address=discovery_address(params.counter_party_address),
                 filter_expression=params.sdk_filter_expression() or None,
                 policies=params.expected_policies,
             )

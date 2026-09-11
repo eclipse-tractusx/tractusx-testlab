@@ -52,10 +52,11 @@ from tractusx_testlab.syntax import defaults
 class DataspaceAccess:
     """The seeded connector, registry and notification services, and their URLs."""
 
-    __slots__ = ("_services",)
+    __slots__ = ("_notifications", "_services")
 
     def __init__(self, services: ServiceManager) -> None:
         self._services = services
+        self._notifications: NotificationService | None = None
 
     # ------------------------------------------------------------------
     # The services themselves
@@ -77,9 +78,25 @@ class DataspaceAccess:
         """The service notifications are sent through.
 
         Notifications ride on the connector consumer, so there is no service of
-        their own to look up.
+        their own to look up — but the consumer is not the service. The SDK's
+        ``NotificationConsumerService`` is what knows how to find a
+        DigitalTwinEventAPI asset in a catalog and push a notification through
+        the negotiated data plane; it takes the consumer it drives at
+        construction. Returning the bare consumer here, as this once did, made
+        every notification step die on ``discover_notification_assets`` not
+        existing (E2E run 34633071862, 2026-09-11). Built once per run: the
+        consumer is one object, so the wrapper is too.
         """
-        return self._first_of(ServiceType.CONNECTOR_CONSUMER)
+        if self._notifications is None:
+            from tractusx_sdk.industry.services.notifications import (
+                NotificationConsumerService,
+            )
+
+            self._notifications = NotificationConsumerService(
+                connector_consumer=self._first_of(ServiceType.CONNECTOR_CONSUMER),
+                verbose=False,
+            )
+        return self._notifications
 
     def _first_of(self, stype: ServiceType) -> Any:
         for name in self._services.service_names:

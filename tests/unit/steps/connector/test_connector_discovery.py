@@ -35,6 +35,7 @@ from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps.connector.discover_connector import (
     EDC_NAMESPACE,
     DiscoverConnectorStep,
+    discovery_address,
 )
 
 _STEP = "connector/consumer/discover_connector"
@@ -221,3 +222,53 @@ class TestDiscoverConnectorStep:
             await DiscoverConnectorStep().invoke(
                 {"bpnl": _BPNL}, _with_consumer(mock_context, consumer), _definition()
             )
+
+
+# ---------------------------------------------------------------------------
+# The address discovery is pointed at
+# ---------------------------------------------------------------------------
+
+
+class TestDiscoveryAddress:
+    """Discovery appends the version path itself, so it must not be handed one.
+
+    The SUT binding carries the versioned endpoint, because that is what every
+    other DSP step sends its messages to; given straight to discovery it asked
+    for ``…/2025-1/.well-known/dspace-version`` and the provider answered 404.
+    """
+
+    def test_the_versioned_binding_becomes_the_root(self) -> None:
+        assert (
+            discovery_address("http://provider-dsp.local/api/v1/dsp/2025-1")
+            == "http://provider-dsp.local/api/v1/dsp"
+        )
+
+    def test_a_trailing_slash_is_no_different(self) -> None:
+        assert (
+            discovery_address("http://provider-dsp.local/api/v1/dsp/2025-1/")
+            == "http://provider-dsp.local/api/v1/dsp"
+        )
+
+    def test_a_root_passes_through(self) -> None:
+        assert discovery_address("http://provider/api/v1/dsp") == "http://provider/api/v1/dsp"
+
+    def test_the_well_known_url_itself_passes_through(self) -> None:
+        """The connector accepts the full version endpoint too; nothing to trim."""
+        url = "http://provider/api/v1/dsp/.well-known/dspace-version"
+        assert discovery_address(url) == url
+
+    def test_nothing_stays_none(self) -> None:
+        """``None`` is what the SDK reads as "resolve it from the BPN"; ``""`` is not."""
+        assert discovery_address("") is None
+        assert discovery_address(None) is None
+
+    @pytest.mark.asyncio
+    async def test_the_step_hands_the_sdk_the_root(self, mock_context: MagicMock) -> None:
+        consumer = _consumer(_NAMESPACED)
+        await DiscoverConnectorStep().invoke(
+            {"bpnl": _BPNL, "counter_party_address": "http://provider/api/v1/dsp/2025-1"},
+            _with_consumer(mock_context, consumer),
+            _definition(),
+        )
+        kwargs = consumer.discover_connector_protocol.call_args.kwargs
+        assert kwargs["counter_party_address"] == "http://provider/api/v1/dsp"
