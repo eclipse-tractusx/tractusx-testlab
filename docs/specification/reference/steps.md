@@ -19,7 +19,7 @@ Discover a counter-party's DSP endpoint, ID and protocol from its BPN.
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `bpnl` | string | yes | — | — | BPN of the counter-party whose connector is discovered. |
-| `counter_party_address` | string | no | `''` | — | DSP endpoint to discover against; when omitted the connector resolves it from the BPN alone. |
+| `counter_party_address` | string | no | `''` | — | DSP endpoint to discover against, as its root or as the versioned endpoint the SUT binding carries — a trailing version path is dropped, since discovery is what appends it. When omitted the connector resolves the address from the BPN alone. |
 | `namespace` | string | no | `'https://w3id.org/edc/v0.0.1/ns/'` | — | Namespace the response keys are prefixed with; bare keys are read too. |
 
 **Output** — the value assertions and `returns:` read
@@ -69,7 +69,7 @@ Returns the same data-plane address as `do_dsp`.
 |---|---|---|---|---|---|
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
 | `bpnl` | string | yes | — | — | BPN used to discover the counter-party's connector. |
-| `counter_party_address` | string | no | `None` | — | DSP endpoint; when omitted it is resolved from the BPN by discovery. |
+| `counter_party_address` | string | no | `None` | — | DSP endpoint to discover against, as its root or as the versioned endpoint the SUT binding carries — a trailing version path is dropped, since discovery is what appends it. When omitted it is resolved from the BPN alone. |
 | `expected_policies` | list of object | no | `None` | — | ODRL policies the negotiation is allowed to accept, as the raw policy document, the testlab simplified spelling, JSON text, or the whole 'config/connector/policy' variable that holds one. |
 
 **Output** — the value assertions and `returns:` read
@@ -312,7 +312,7 @@ Alone among the catalog steps this takes no `protocol`: discovery is what answer
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `bpnl` | string | yes | — | — | BPN used to discover the counter-party's connector. |
-| `counter_party_address` | string | no | `None` | — | DSP endpoint; when omitted it is resolved from the BPN by discovery. |
+| `counter_party_address` | string | no | `None` | — | DSP endpoint to discover against, as its root or as the versioned endpoint the SUT binding carries — a trailing version path is dropped, since discovery is what appends it. When omitted it is resolved from the BPN alone. |
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
 
 **Output** — the value assertions and `returns:` read

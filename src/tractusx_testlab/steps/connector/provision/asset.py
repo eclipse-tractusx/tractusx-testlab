@@ -44,6 +44,18 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
+#: The JSON-LD context the SDK gives an asset when the script declares none,
+#: repeated here because adding a prefix to it means sending the whole of it.
+_DEFAULT_ASSET_CONTEXT: dict[str, str] = {
+    "edc": "https://w3id.org/edc/v0.0.1/ns/",
+    "cx-common": "https://w3id.org/catenax/ontology/common#",
+    "cx-taxo": "https://w3id.org/catenax/taxonomy#",
+    "dct": "http://purl.org/dc/terms/",
+}
+#: The prefix a semantic id is written under in an asset's properties.
+_AAS_SEMANTICS = "https://admin-shell.io/aas/3/0/HasSemantics/"
+
+
 # ---------------------------------------------------------------------------
 # connector/provider/create_asset
 # ---------------------------------------------------------------------------
@@ -87,17 +99,36 @@ class CreateAssetParams(StepParams):
         )
 
     def definition(self) -> dict[str, Any]:
-        """The SDK's ``create_asset`` arguments, read out of the asset config."""
+        """The SDK's ``create_asset`` arguments, read out of the asset config.
+
+        The semantic id is not handed over as the SDK's ``semantic_id``
+        argument but as the property and the context entry it stands for.
+        tractusx-sdk 0.8.2's ``build_properties`` writes the ``aas-semantics``
+        prefix into a ``context`` it no longer has in scope, so every asset
+        with a semantic id died there with ``NameError`` (E2E run
+        34633071862, 2026-09-11). Spelling the two out here is what the SDK
+        would have produced, and needs nothing from it.
+        """
         properties = self.asset.get("properties") or {}
+        context = self.asset.get("@context", self.asset.get("context"))
+        semantic_properties: dict[str, Any] | None = None
+        semantic_id = self.asset.get("semantic_id")
+        if semantic_id:
+            semantic_properties = {"aas-semantics:semanticId": {"@id": str(semantic_id)}}
+            context = {
+                **_DEFAULT_ASSET_CONTEXT,
+                **(context if isinstance(context, dict) else {}),
+                "aas-semantics": _AAS_SEMANTICS,
+            }
         return {
             "base_url": self.asset.get("base_url", ""),
             "dct_type": _iri(self.asset.get("dct_type")) or _iri(properties.get("dct:type")),
             "version": self.asset.get("version") or properties.get("cx-common:version") or "3.0",
-            "semantic_id": self.asset.get("semantic_id"),
+            "properties": semantic_properties,
             "proxy_params": self.asset.get("proxy_params"),
             "headers": self.asset.get("headers"),
             "private_properties": self.asset.get("private_properties"),
-            "context": self.asset.get("@context", self.asset.get("context")),
+            "context": context,
         }
 
 
