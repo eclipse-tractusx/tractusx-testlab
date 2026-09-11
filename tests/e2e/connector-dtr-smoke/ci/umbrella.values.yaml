@@ -70,21 +70,24 @@ edc-provider:
     identityhub:
       # In-memory IdentityHub. The chart standing in this slot is
       # `tractusx-identityhub-memory`, renamed to the dependency's name by the
-      # workflow's chart surgery, so this block still addresses it — and its
-      # image is the memory one by the chart's own default.
+      # workflow's chart surgery, so this block still addresses it.
       #
-      # Known risk, and the reason this participant ran on SQL until now:
-      # tx-identityhub's `InitialParticipantExtension` writes the X-Api-Key
-      # and the STS client secret with the *unscoped* `vault.storeSecret`
-      # during boot, where no participant context is in scope, so EDC's
-      # `InMemoryVault` — still partitioned by participant context in EDC
-      # 0.17.0 — files them under `default`. Every later read is scoped to the
-      # participant and finds nothing: the Identity API answers 500 (an NPE on
-      # a null credential in ParticipantServicePrincipalResolver) and the run
-      # cannot request its credentials. That is what this image did in CI on
-      # 2026-08-31, and 0.4.0 still calls the unscoped overload. The fix is
-      # one line upstream: hand `storeSecret` the participant id as its
-      # partition.
+      # The image is the `main`-branch build, not the 0.4.0 release the chart
+      # defaults to. The release cannot run in-memory: tx-identityhub's
+      # `InitialParticipantExtension` wrote the X-Api-Key and the STS client
+      # secret with the *unscoped* `vault.storeSecret` during boot, so EDC's
+      # `InMemoryVault` — partitioned by participant context — filed them
+      # under `default`, every scoped read missed, the Identity API answered
+      # 500 and the run could never request its credentials (CI, 2026-08-31
+      # and 2026-09-10). tractusx-identityhub#347 scopes the writes to the
+      # participant; it is on `main` since 2026-09-11 and in no release yet.
+      # `main` publishes as `<version>-SNAPSHOT`, a moving tag, so the pull
+      # policy has to be `Always`: the kind node cache bakes images in, and
+      # `IfNotPresent` would keep serving whichever snapshot it was built
+      # from. Move back to the chart default at the first release past 0.4.0.
+      image:
+        tag: 0.4.0-SNAPSHOT
+        pullPolicy: Always
       livenessProbe:
         initialDelaySeconds: 240
         failureThreshold: 60
@@ -134,6 +137,17 @@ edc-provider:
             WEB_HTTP_PUBLIC_PATH: "/api/public"
             EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://provider.local/api/public"
             TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://provider.local/api/public/token"
+            # The connector's *own* credential service, spelled with the raw DID.
+            # Umbrella's profile writes this URL with the base64-encoded participant
+            # id, which EDC IdentityHub 0.16 decoded and 0.17 (Tractus-X 0.4.0) looks
+            # up verbatim, answering 404. Negotiation never notices: a counterparty
+            # finds this endpoint through the DID document, which is right. The BDRS
+            # client does, because it fetches this connector's own MembershipCredential
+            # from *this* setting to read the BPN directory, and the provider's
+            # transfer provisioning resolves the consumer's BPN through it — so every
+            # transfer sat in REQUESTED until the run's 60s gave out (run
+            # 34627069005, 2026-09-11) while the catalog and negotiation passed.
+            TX_EDC_IAM_IATP_CREDENTIALSERVICE_URL: "http://provider.local/identityhub/api/credentials/v1/participants/did:web:provider.local:identityhub:BPNL000000000001"
             # Pin the DSP callback/audience. The chart otherwise derives them
             # from `controlplane.ingresses[0].hostname`, and a metrics-first
             # order would advertise `provider.local/api/v1/dsp` — a path that
@@ -207,6 +221,8 @@ edc-provider:
           env:
             TRACTUSX_EDC_PARTICIPANT_BPN: "BPNL000000000001"
             EDC_DSP_CALLBACK_ADDRESS: "http://provider-dsp.local/api/v1/dsp"
+            # Same reason as on the control plane: this pod boots that half too.
+            TX_EDC_IAM_IATP_CREDENTIALSERVICE_URL: "http://provider.local/identityhub/api/credentials/v1/participants/did:web:provider.local:identityhub:BPNL000000000001"
             EDC_OAUTH_PROVIDER_AUDIENCE: "idsc:IDS_CONNECTORS_ALL"
             EDC_OAUTH_ENDPOINT_AUDIENCE: "http://provider-dsp.local/api/v1/dsp"
             EDC_IAM_TRUSTED-ISSUER_0-ISSUER_ID: "did:web:issuerservice.local:BPNL000000000003"
@@ -278,21 +294,24 @@ edc-consumer:
     identityhub:
       # In-memory IdentityHub. The chart standing in this slot is
       # `tractusx-identityhub-memory`, renamed to the dependency's name by the
-      # workflow's chart surgery, so this block still addresses it — and its
-      # image is the memory one by the chart's own default.
+      # workflow's chart surgery, so this block still addresses it.
       #
-      # Known risk, and the reason this participant ran on SQL until now:
-      # tx-identityhub's `InitialParticipantExtension` writes the X-Api-Key
-      # and the STS client secret with the *unscoped* `vault.storeSecret`
-      # during boot, where no participant context is in scope, so EDC's
-      # `InMemoryVault` — still partitioned by participant context in EDC
-      # 0.17.0 — files them under `default`. Every later read is scoped to the
-      # participant and finds nothing: the Identity API answers 500 (an NPE on
-      # a null credential in ParticipantServicePrincipalResolver) and the run
-      # cannot request its credentials. That is what this image did in CI on
-      # 2026-08-31, and 0.4.0 still calls the unscoped overload. The fix is
-      # one line upstream: hand `storeSecret` the participant id as its
-      # partition.
+      # The image is the `main`-branch build, not the 0.4.0 release the chart
+      # defaults to. The release cannot run in-memory: tx-identityhub's
+      # `InitialParticipantExtension` wrote the X-Api-Key and the STS client
+      # secret with the *unscoped* `vault.storeSecret` during boot, so EDC's
+      # `InMemoryVault` — partitioned by participant context — filed them
+      # under `default`, every scoped read missed, the Identity API answered
+      # 500 and the run could never request its credentials (CI, 2026-08-31
+      # and 2026-09-10). tractusx-identityhub#347 scopes the writes to the
+      # participant; it is on `main` since 2026-09-11 and in no release yet.
+      # `main` publishes as `<version>-SNAPSHOT`, a moving tag, so the pull
+      # policy has to be `Always`: the kind node cache bakes images in, and
+      # `IfNotPresent` would keep serving whichever snapshot it was built
+      # from. Move back to the chart default at the first release past 0.4.0.
+      image:
+        tag: 0.4.0-SNAPSHOT
+        pullPolicy: Always
       livenessProbe:
         initialDelaySeconds: 240
         failureThreshold: 60
@@ -333,6 +352,17 @@ edc-consumer:
             WEB_HTTP_PUBLIC_PATH: "/api/public"
             EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://consumer.local/api/public"
             TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://consumer.local/api/public/token"
+            # The connector's *own* credential service, spelled with the raw DID.
+            # Umbrella's profile writes this URL with the base64-encoded participant
+            # id, which EDC IdentityHub 0.16 decoded and 0.17 (Tractus-X 0.4.0) looks
+            # up verbatim, answering 404. Negotiation never notices: a counterparty
+            # finds this endpoint through the DID document, which is right. The BDRS
+            # client does, because it fetches this connector's own MembershipCredential
+            # from *this* setting to read the BPN directory, and the provider's
+            # transfer provisioning resolves the consumer's BPN through it — so every
+            # transfer sat in REQUESTED until the run's 60s gave out (run
+            # 34627069005, 2026-09-11) while the catalog and negotiation passed.
+            TX_EDC_IAM_IATP_CREDENTIALSERVICE_URL: "http://consumer.local/identityhub/api/credentials/v1/participants/did:web:consumer.local:identityhub:BPNL000000000002"
             # Pin the DSP callback/audience. The chart otherwise derives them
             # from `controlplane.ingresses[0].hostname`, and a metrics-first
             # order would advertise `consumer.local/api/v1/dsp` — a path that
@@ -406,6 +436,8 @@ edc-consumer:
           env:
             TRACTUSX_EDC_PARTICIPANT_BPN: "BPNL000000000002"
             EDC_DSP_CALLBACK_ADDRESS: "http://consumer-dsp.local/api/v1/dsp"
+            # Same reason as on the control plane: this pod boots that half too.
+            TX_EDC_IAM_IATP_CREDENTIALSERVICE_URL: "http://consumer.local/identityhub/api/credentials/v1/participants/did:web:consumer.local:identityhub:BPNL000000000002"
             EDC_OAUTH_PROVIDER_AUDIENCE: "idsc:IDS_CONNECTORS_ALL"
             EDC_OAUTH_ENDPOINT_AUDIENCE: "http://consumer-dsp.local/api/v1/dsp"
             EDC_IAM_TRUSTED-ISSUER_0-ISSUER_ID: "did:web:issuerservice.local:BPNL000000000003"
@@ -457,8 +489,15 @@ tractusx-issuerservice:
     # what carries that. ci/issue_credentials.py registers the holder
     # attestation and puts the claims on each holder record, so nothing reads
     # the `custom_attestation_claims` table Umbrella still seeds.
+    #
+    # Same `main`-branch build as the IdentityHubs above: this runtime bundles
+    # the `super-user` seed extension that tractusx-identityhub#347 also
+    # fixed, and the two runtimes are kept on one commit. Moving tag, so the
+    # pull policy is `Always` for the same reason.
     image:
       repository: tractusx/issuerservice-memory
+      tag: 0.4.0-SNAPSHOT
+      pullPolicy: Always
     # The v0.4.0 chart waits for its bundled subcharts on a TCP probe before
     # the runtime starts — against the *default* subchart names, `<release>-
     # vault:8200`. Umbrella names this one `umbrella-issuerservice-vault`, so
