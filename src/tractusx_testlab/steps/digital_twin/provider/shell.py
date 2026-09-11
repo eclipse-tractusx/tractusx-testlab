@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client, sdk_call
 from tractusx_testlab.steps.registry_models import (
@@ -48,6 +48,7 @@ from tractusx_testlab.steps.registry_models import (
     SpecificAssetId,
     _as_document,
     _asset_ids_query,
+    _refusal,
 )
 from tractusx_testlab.steps.registry_reading import (
     _shell_descriptor,
@@ -102,16 +103,18 @@ class CreateShellDescriptorStep(BaseStep[CreateShellDescriptorParams, Descriptor
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
-        return await _register_shell(context, params.shell_descriptor, params.bpn)
+        return await _register_shell(self.step_type, context, params.shell_descriptor, params.bpn)
 
 
 async def _register_shell(
-    context: StepContext, shell_descriptor: dict, bpn: str | None
+    step_type: str, context: StepContext, shell_descriptor: dict, bpn: str | None
 ) -> StepOutput[DescriptorPayload]:
     """Register a shell descriptor, whether it was written out or assembled.
 
     The one place either shell-creation step reaches the registry, so the two
-    cannot drift apart in what they register.
+    cannot drift apart in what they register — or in what a refusal does: the
+    SDK hands one back as a document rather than raising, and here it fails
+    the step.
     """
     from tractusx_sdk.industry.models.aas.v3.base import ShellDescriptor
 
@@ -123,6 +126,11 @@ async def _register_shell(
     )
     url = f"{aas.aas_url}/shell-descriptors"
 
+    refusal = _refusal(result)
+    if refusal is not None:
+        raise StepExecutionError(
+            step_type, f"the registry refused the shell descriptor at {url}: {refusal}"
+        )
     body = _as_document(result)
     return StepOutput(
         value=DescriptorPayload.of(body),
@@ -191,7 +199,7 @@ class WizardCreateShellDescriptorStep(
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
-        return await _register_shell(context, params.shell_document(), params.bpn)
+        return await _register_shell(self.step_type, context, params.shell_document(), params.bpn)
 
 
 # ---------------------------------------------------------------------------
