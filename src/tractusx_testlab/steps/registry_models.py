@@ -43,6 +43,7 @@ from typing import Any
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from tractusx_sdk.dataspace.tools import encode_as_base64_url_safe
 
+from tractusx_testlab.models import StepExecutionError
 from tractusx_testlab.steps.shared_models import StepParams
 from tractusx_testlab.steps.step_contract import StepPayload
 
@@ -91,22 +92,22 @@ def _as_document(result: Any) -> Any:
     return result.to_dict() if hasattr(result, "to_dict") else result
 
 
-def _refusal(result: Any) -> str | None:
-    """What the registry said when it refused a write, or ``None`` when it did not.
+def _registered(step_type: str, result: Any, what: str, url: str) -> Any:
+    """The document the registry answered a write with, or the step's failure.
 
     The SDK's registry calls answer with the descriptor on 2XX and with an AAS
     ``Result`` on anything else, and raise on neither. A step that takes what
     comes back as the document therefore reports a refused registration as a
     success — which is how a submodel descriptor the registry answered 500 to
     read as PASSED, and the twin was then read back without it (E2E run
-    34646520272, 2026-09-11). The refusal is rendered from the AAS messages
-    when the registry sent any; a body that is not AAS at all, such as a
-    Spring error page, parses to a ``Result`` with none, and is named as such.
+    34646520272, 2026-09-11). A refusal is rendered from the AAS messages when
+    the registry sent any; a body that is not AAS at all, such as a Spring
+    error page, parses to a ``Result`` with none, and is named as such.
     """
     from tractusx_sdk.industry.models.aas.v3.base_dto import Result
 
     if not isinstance(result, Result):
-        return None
+        return _as_document(result)
     messages = [
         " ".join(
             part
@@ -119,9 +120,10 @@ def _refusal(result: Any) -> str | None:
         )
         for message in result.messages or []
     ]
-    if messages:
-        return "; ".join(messages)
-    return "an answer that carried no AAS messages — the registry's own log has the cause"
+    refusal = "; ".join(messages) or (
+        "an answer that carried no AAS messages — the registry's own log has the cause"
+    )
+    raise StepExecutionError(step_type, f"the registry refused the {what} at {url}: {refusal}")
 
 
 class SpecificAssetId(BaseModel):

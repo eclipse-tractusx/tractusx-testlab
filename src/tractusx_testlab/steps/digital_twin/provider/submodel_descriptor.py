@@ -39,13 +39,12 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.registry_models import (
     DescriptorPayload,
-    _as_document,
-    _refusal,
+    _registered,
 )
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput
 
@@ -110,12 +109,7 @@ async def _register_submodel(
         bpn=bpn,
     )
     url = f"{aas.aas_url}/shell-descriptors/{aas_identifier}/submodel-descriptors"
-    refusal = _refusal(result)
-    if refusal is not None:
-        raise StepExecutionError(
-            step_type, f"the registry refused the submodel descriptor at {url}: {refusal}"
-        )
-    body = _as_document(result)
+    body = _registered(step_type, result, "submodel descriptor", url)
     return StepOutput(
         value=DescriptorPayload.of(body),
         request=HttpRequest(method="POST", url=url, body=submodel_descriptor),
