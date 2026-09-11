@@ -39,12 +39,13 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.registry_models import (
     DescriptorPayload,
     _as_document,
+    _refusal,
 )
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput
 
@@ -83,17 +84,22 @@ class CreateSubmodelDescriptorStep(BaseStep[CreateSubmodelDescriptorParams, Desc
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         return await _register_submodel(
-            context, params.aas_identifier, params.submodel_descriptor, params.bpn
+            self.step_type, context, params.aas_identifier, params.submodel_descriptor, params.bpn
         )
 
 
 async def _register_submodel(
+    step_type: str,
     context: StepContext,
     aas_identifier: str,
     submodel_descriptor: dict,
     bpn: str | None,
 ) -> StepOutput[DescriptorPayload]:
-    """Attach a submodel descriptor, whether it was written out or assembled."""
+    """Attach a submodel descriptor, whether it was written out or assembled.
+
+    A refusal comes back from the SDK as a document rather than an exception,
+    and fails the step here.
+    """
     from tractusx_sdk.industry.models.aas.v3.base import SubModelDescriptor
 
     aas = context.dataspace.registry()
@@ -104,7 +110,11 @@ async def _register_submodel(
         bpn=bpn,
     )
     url = f"{aas.aas_url}/shell-descriptors/{aas_identifier}/submodel-descriptors"
-
+    refusal = _refusal(result)
+    if refusal is not None:
+        raise StepExecutionError(
+            step_type, f"the registry refused the submodel descriptor at {url}: {refusal}"
+        )
     body = _as_document(result)
     return StepOutput(
         value=DescriptorPayload.of(body),
@@ -123,6 +133,11 @@ _ENDPOINT_PROTOCOL = "HTTP"
 _ENDPOINT_PROTOCOL_VERSION = "1.1"
 _SUBMODEL_SUBPROTOCOL = "DSP"
 _SUBPROTOCOL_BODY_ENCODING = "plain"
+#: The endpoint is protected by the dataspace, not by the transport, and that
+#: is what CX-0002 has the descriptor say. Not optional in practice either: the
+#: Digital Twin Registry (0.11.0) dies with a NullPointerException on a
+#: descriptor that leaves it out (E2E run 34646520272, 2026-09-11).
+_SECURITY_ATTRIBUTES = [{"type": "NONE", "key": "NONE", "value": "NONE"}]
 
 
 class WizardCreateSubmodelDescriptorParams(ShellDescriptorRefParams):
@@ -208,6 +223,7 @@ class WizardCreateSubmodelDescriptorParams(ShellDescriptorRefParams):
                         "subprotocol": _SUBMODEL_SUBPROTOCOL,
                         "subprotocolBody": (f"id={self.asset_id};dspEndpoint={self.dsp_endpoint}"),
                         "subprotocolBodyEncoding": _SUBPROTOCOL_BODY_ENCODING,
+                        "securityAttributes": [dict(entry) for entry in _SECURITY_ATTRIBUTES],
                     },
                 }
             ],
@@ -237,5 +253,5 @@ class WizardCreateSubmodelDescriptorStep(
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
         return await _register_submodel(
-            context, params.aas_identifier, params.submodel_document(), params.bpn
+            self.step_type, context, params.aas_identifier, params.submodel_document(), params.bpn
         )

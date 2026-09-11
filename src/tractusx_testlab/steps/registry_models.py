@@ -91,6 +91,39 @@ def _as_document(result: Any) -> Any:
     return result.to_dict() if hasattr(result, "to_dict") else result
 
 
+def _refusal(result: Any) -> str | None:
+    """What the registry said when it refused a write, or ``None`` when it did not.
+
+    The SDK's registry calls answer with the descriptor on 2XX and with an AAS
+    ``Result`` on anything else, and raise on neither. A step that takes what
+    comes back as the document therefore reports a refused registration as a
+    success — which is how a submodel descriptor the registry answered 500 to
+    read as PASSED, and the twin was then read back without it (E2E run
+    34646520272, 2026-09-11). The refusal is rendered from the AAS messages
+    when the registry sent any; a body that is not AAS at all, such as a
+    Spring error page, parses to a ``Result`` with none, and is named as such.
+    """
+    from tractusx_sdk.industry.models.aas.v3.base_dto import Result
+
+    if not isinstance(result, Result):
+        return None
+    messages = [
+        " ".join(
+            part
+            for part in (
+                str(getattr(message, "messageType", "") or "").replace("MessageTypeEnum.", ""),
+                str(getattr(message, "code", "") or ""),
+                str(getattr(message, "text", "") or ""),
+            )
+            if part
+        )
+        for message in result.messages or []
+    ]
+    if messages:
+        return "; ".join(messages)
+    return "an answer that carried no AAS messages — the registry's own log has the cause"
+
+
 class SpecificAssetId(BaseModel):
     """One ``specificAssetIds`` criterion a shell is searched by.
 
