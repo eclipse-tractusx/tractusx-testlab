@@ -48,6 +48,7 @@ from tractusx_testlab.steps.registry_models import (
     SpecificAssetId,
     _as_document,
     _asset_ids_query,
+    _registered,
 )
 from tractusx_testlab.steps.registry_reading import (
     _shell_descriptor,
@@ -66,10 +67,9 @@ def _answered_status(result: Any, accepted: int, unreadable: int) -> int:
     """The status the registry answered with, as far as the SDK reports it.
 
     The SDK hands back the document on success and an AAS ``Result`` when the
-    registry refused, so a refusal's code has to be read out of the refusal:
-    AAS carries it in each message's ``code``.  A call the SDK collapsed to
-    ``None`` read as ``accepted``; one that names no code of its own reads as
-    ``unreadable``.
+    registry refused, so a refusal's code is read out of the refusal, where AAS
+    carries it in each message's ``code``. A call the SDK collapsed to ``None``
+    reads as ``accepted``; one that names no code of its own, as ``unreadable``.
     """
     if result is None:
         return accepted
@@ -102,16 +102,16 @@ class CreateShellDescriptorStep(BaseStep[CreateShellDescriptorParams, Descriptor
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
-        return await _register_shell(context, params.shell_descriptor, params.bpn)
+        return await _register_shell(self.step_type, context, params.shell_descriptor, params.bpn)
 
 
 async def _register_shell(
-    context: StepContext, shell_descriptor: dict, bpn: str | None
+    step_type: str, context: StepContext, shell_descriptor: dict, bpn: str | None
 ) -> StepOutput[DescriptorPayload]:
     """Register a shell descriptor, whether it was written out or assembled.
 
     The one place either shell-creation step reaches the registry, so the two
-    cannot drift apart in what they register.
+    cannot drift apart in what they register, or in what a refusal does.
     """
     from tractusx_sdk.industry.models.aas.v3.base import ShellDescriptor
 
@@ -123,7 +123,7 @@ async def _register_shell(
     )
     url = f"{aas.aas_url}/shell-descriptors"
 
-    body = _as_document(result)
+    body = _registered(step_type, result, "shell descriptor", url)
     return StepOutput(
         value=DescriptorPayload.of(body),
         request=HttpRequest(method="POST", url=url, body=shell_descriptor),
@@ -191,7 +191,7 @@ class WizardCreateShellDescriptorStep(
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[DescriptorPayload]:
-        return await _register_shell(context, params.shell_document(), params.bpn)
+        return await _register_shell(self.step_type, context, params.shell_document(), params.bpn)
 
 
 # ---------------------------------------------------------------------------

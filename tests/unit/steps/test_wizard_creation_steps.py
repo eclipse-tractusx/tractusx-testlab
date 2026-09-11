@@ -38,7 +38,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from tests.conftest import attach_endpoint_url_stubs
-from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.models import StepDefinition, StepExecutionError
 from tractusx_testlab.steps.connector.provision.asset import (
     CreateAssetStep,
     WizardCreateAssetParams,
@@ -55,6 +55,7 @@ from tractusx_testlab.steps.digital_twin.provider.shell import (
     WizardCreateShellDescriptorStep,
 )
 from tractusx_testlab.steps.digital_twin.provider.submodel_descriptor import (
+    CreateSubmodelDescriptorStep,
     WizardCreateSubmodelDescriptorParams,
     WizardCreateSubmodelDescriptorStep,
 )
@@ -466,3 +467,101 @@ class TestWizardCreateSubmodelDescriptor:
             _definition("digital-twin/provider/wizard/create_submodel_descriptor"),
         )
         assert aas.create_submodel_descriptor.call_args.args[0] == "urn:uuid:shell"
+
+
+# ---------------------------------------------------------------------------
+# What the registry answers is read, not assumed
+# ---------------------------------------------------------------------------
+
+
+def _refused(*messages: tuple[str, str]) -> Any:
+    from tractusx_sdk.industry.models.aas.v3.base_dto import Message, Result
+
+    return Result(
+        messages=[Message(code=code, text=text, messageType="Error") for code, text in messages]
+    )
+
+
+class TestARefusalFailsTheStep:
+    """The SDK answers a non-2XX with an AAS ``Result`` and never raises.
+
+    Taken as the document, a refusal reads as a registration: a submodel
+    descriptor the registry answered 500 to passed, and the twin was read back
+    without it (E2E run 34646520272).
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_refused_shell_names_the_registry_message(
+        self, dtr_context: MagicMock, aas: MagicMock
+    ) -> None:
+        aas.create_asset_administration_shell_descriptor.return_value = _refused(
+            ("400", "specificAssetIds must not be empty")
+        )
+        step = WizardCreateShellDescriptorStep()
+        fields = {"id_short": "twin", "global_asset_id": "urn:uuid:1"}
+        definition = _definition("digital-twin/provider/wizard/create_shell_descriptor")
+        with pytest.raises(StepExecutionError, match="refused the shell descriptor.*400.*empty"):
+            await step.invoke(fields, dtr_context, definition)
+
+    @pytest.mark.asyncio
+    async def test_a_refused_submodel_fails_the_raw_and_the_wizard_step_alike(
+        self, dtr_context: MagicMock, aas: MagicMock
+    ) -> None:
+        aas.create_submodel_descriptor.return_value = _refused(("409", "already there"))
+        fields = {
+            "aas_identifier": "urn:uuid:shell",
+            "semantic_id": "urn:samm:x#Y",
+            "href": "https://dataplane.example.com/api/public",
+            "asset_id": "urn:uuid:asset",
+            "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
+        }
+        wizard = WizardCreateSubmodelDescriptorStep()
+        wizard_definition = _definition("digital-twin/provider/wizard/create_submodel_descriptor")
+        with pytest.raises(StepExecutionError, match="refused the submodel descriptor.*409"):
+            await wizard.invoke(fields, dtr_context, wizard_definition)
+        raw = CreateSubmodelDescriptorStep()
+        raw_fields = {
+            "aas_identifier": "urn:uuid:shell",
+            "submodel_descriptor": WizardCreateSubmodelDescriptorParams(
+                **fields
+            ).submodel_document(),
+        }
+        raw_definition = _definition("digital-twin/provider/create_submodel_descriptor")
+        with pytest.raises(StepExecutionError, match="refused the submodel descriptor.*409"):
+            await raw.invoke(raw_fields, dtr_context, raw_definition)
+
+    @pytest.mark.asyncio
+    async def test_a_refusal_without_aas_messages_is_still_a_refusal(
+        self, dtr_context: MagicMock, aas: MagicMock
+    ) -> None:
+        """A Spring error page parses to a ``Result`` with nothing in it."""
+        from tractusx_sdk.industry.models.aas.v3.base_dto import Result
+
+        aas.create_submodel_descriptor.return_value = Result(
+            **{"timestamp": "t", "status": 500, "error": "Internal Server Error", "path": "/x"}
+        )
+        step = WizardCreateSubmodelDescriptorStep()
+        fields = {
+            "aas_identifier": "urn:uuid:shell",
+            "semantic_id": "urn:samm:x#Y",
+            "href": "https://dataplane.example.com/api/public",
+            "asset_id": "urn:uuid:asset",
+            "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
+        }
+        definition = _definition("digital-twin/provider/wizard/create_submodel_descriptor")
+        with pytest.raises(StepExecutionError, match="no AAS messages"):
+            await step.invoke(fields, dtr_context, definition)
+
+
+class TestSecurityAttributes:
+    def test_the_dsp_endpoint_declares_its_security_as_none(self) -> None:
+        """CX-0002 fixes the value; the registry (0.11.0) crashes without one."""
+        document = WizardCreateSubmodelDescriptorParams(
+            aas_identifier="urn:uuid:shell",
+            semantic_id="urn:samm:x#Y",
+            href="https://dataplane.example.com/submodel",
+            asset_id="urn:uuid:asset",
+            dsp_endpoint="https://provider.example.com/api/v1/dsp",
+        ).submodel_document()
+        protocol = document["endpoints"][0]["protocolInformation"]
+        assert protocol["securityAttributes"] == [{"type": "NONE", "key": "NONE", "value": "NONE"}]
