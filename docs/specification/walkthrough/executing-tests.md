@@ -361,11 +361,13 @@ ConnectionError: [Connector Service]: It was not possible to get the catalog…
 ║  --------------------------------------------------------------------------  ║
 ║  ✗ dtr-filterability                             FAIL      0.5s              ║
 ╠==============================================================================╣
-║  RESULT: FAIL  |  1 passed  1 failed  0 skipped  |  Total: 1.2s              ║
+║  RESULT: FAIL  |  0 passed  1 failed  0 skipped  |  Total: 1.2s              ║
 ╚==============================================================================╝
 ```
 
-On a terminal the icons and the RESULT column are coloured — green for a pass, red for a failure, yellow for a skip — and the transcript keeps the words without the colour. The tables are the ones the Tractus-X SDK's TCK runners draw, so a report from either tool reads the same.
+Each footer tallies the rows above it: steps under a test, tests under the run summary, so a test the operator skipped counts as one skipped test there. The boxes are 80 columns wide unless a step's name needs more, in which case every box in the report widens to show it in full.
+
+On a terminal the icons and the RESULT column are coloured — green for a pass, red for a failure, yellow for a skip — and the transcript keeps the words without the colour. Off a terminal the colour is dropped, unless `FORCE_COLOR` is set: a CI log viewer such as GitHub Actions renders the codes, and the e2e workflow sets it. `NO_COLOR` turns colour off anywhere. The tables are the ones the Tractus-X SDK's TCK runners draw, so a report from either tool reads the same.
 
 #### The execution trace
 

@@ -140,8 +140,18 @@ class TestLayout:
         assert "1 passed  1 failed  1 skipped" in test_footer
         assert "Total: 2.2s" in test_footer
         run_footer = [line for line in plain if "RESULT: FAIL" in line][-1]
-        assert "3 passed  1 failed  1 skipped" in run_footer
+        assert "1 passed  1 failed  0 skipped" in run_footer
         assert "Total: 3.2s" in run_footer
+
+    def test_the_run_footer_counts_tests_not_steps(self) -> None:
+        """A test the operator skipped ran no steps; it is still one skipped test."""
+        result = _result()
+        result.tests.append(
+            TestResult(test_id="later", test_name="later", status=TestStatus.SKIPPED)
+        )
+        plain = _plain(render_run_results(result))
+        run_footer = [line for line in plain if "RESULT: FAIL" in line][-1]
+        assert "1 passed  1 failed  1 skipped" in run_footer
 
     def test_the_run_summary_lists_tests(self) -> None:
         plain = _plain(render_run_results(_result()))
@@ -161,12 +171,16 @@ class TestLayout:
         error = next(i for i, line in enumerate(plain) if "Error: catalog" in line)
         assert error > footer
 
-    def test_a_long_step_name_is_cut_not_wrapped(self) -> None:
+    def test_a_long_step_name_widens_every_box_rather_than_being_cut(self) -> None:
+        """The engine names a step ``test[phase:id]:uses``; the whole of it must show."""
+        name = "inbound-call[teardown:delete_access_policy]:connector/provider/delete_policy"
         result = _result()
-        result.tests[0].execution[0].step_name = "x" * 70
-        rows = [line for line in _plain(render_run_results(result)) if "xxxx" in line]
-        assert len(rows[0]) == 80
-        assert "…" in rows[0]
+        result.tests[0].execution[0].step_name = name
+        plain = _plain(render_run_results(result))
+        assert any(f"✓ {name} " in line for line in plain)
+        assert not any("…" in line for line in plain)
+        widths = {len(line) for line in plain if line.startswith(("║", "╔", "╠", "╚"))}
+        assert widths == {len(name) + 21 + 2}
 
     def test_assertion_notes_follow_each_test(self) -> None:
         text = "\n".join(_plain(render_run_results(_result())))
@@ -206,7 +220,29 @@ class TestPrinting:
         assert exit_info.value.exit_code == 1
         out = capsys.readouterr().out
         assert "\x1b" not in out
-        assert "RESULT: FAIL  |  3 passed  1 failed  1 skipped" in out
+        assert "RESULT: FAIL  |  1 passed  1 failed  0 skipped" in out
+
+    def test_force_color_keeps_the_colour_off_a_terminal(self, capsys, monkeypatch) -> None:
+        """A CI runner has no terminal, but its log viewer renders the codes."""
+        monkeypatch.setenv("FORCE_COLOR", "1")
+        monkeypatch.delenv("NO_COLOR", raising=False)
+        with pytest.raises(typer.Exit):
+            print_run_results(_result())
+        assert RED in capsys.readouterr().out
+
+    def test_no_color_wins_over_force_color(self, capsys, monkeypatch) -> None:
+        monkeypatch.setenv("FORCE_COLOR", "1")
+        monkeypatch.setenv("NO_COLOR", "1")
+        with pytest.raises(typer.Exit):
+            print_run_results(_result())
+        assert "\x1b" not in capsys.readouterr().out
+
+    def test_force_color_zero_means_off(self, capsys, monkeypatch) -> None:
+        monkeypatch.setenv("FORCE_COLOR", "0")
+        monkeypatch.delenv("NO_COLOR", raising=False)
+        with pytest.raises(typer.Exit):
+            print_run_results(_result())
+        assert "\x1b" not in capsys.readouterr().out
 
     def test_a_clean_run_exits_zero(self, capsys) -> None:
         result = _result()
