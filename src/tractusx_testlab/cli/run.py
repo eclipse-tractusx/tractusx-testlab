@@ -33,11 +33,8 @@ from typing import Any
 import typer
 
 from tractusx_testlab.cli import app
-from tractusx_testlab.cli._run_report import (
-    execute_with_progress,
-    print_run_header,
-    print_run_results,
-)
+from tractusx_testlab.cli._run_report import execute_with_progress, print_run_header
+from tractusx_testlab.cli._run_summary import print_run_results
 from tractusx_testlab.logging import transcript
 
 
@@ -131,7 +128,7 @@ def _run_compiled(
     compiler_pub: Path | None,
 ) -> None:
     """Compile if needed, execute, and report — all of it inside the transcript."""
-    from tractusx_testlab.models import AuthoringError, ScriptStatus, StepStatus
+    from tractusx_testlab.models import AuthoringError
 
     # Nothing executes that has not been compiled. A YAML manifest is compiled
     # into a throwaway package first, so every run — not only the ones that
@@ -164,7 +161,7 @@ def _run_compiled(
             typer.echo(f"\nCannot run {target.name}:\n  {exc}", err=True)
             raise typer.Exit(1) from exc
 
-    print_run_results(result, StepStatus, ScriptStatus)
+    print_run_results(result)
 
 
 def _compile_target_for_run(target: Path, build_dir: Path) -> Path:

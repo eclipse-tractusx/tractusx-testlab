@@ -280,7 +280,7 @@ class TestErrorRendering:
     """A failure that took several lines to explain still reads as one failure."""
 
     def test_the_explanation_stays_under_the_error_label(self, capsys) -> None:
-        from tractusx_testlab.cli._run_report import _print_error
+        from tractusx_testlab.cli._run_summary import _print_error
 
         _print_error(
             "no offer is made under a policy this step accepts\n"

@@ -26,8 +26,8 @@
 
 Split from :mod:`tractusx_testlab.cli.run` on the same seam as
 ``_inspect_report``: that module decides what to run, this one decides what the
-terminal shows while it does — the header, the live progress bar, and the
-per-script result tables.
+terminal shows while it does — the header and the live progress bar. What
+it shows once the run is over, the result tables, is :mod:`_run_summary`.
 """
 
 from __future__ import annotations
@@ -107,92 +107,3 @@ def _make_progress_callback(progress, task_id):
             progress.update(task_id, description=f"  Script: {payload.get('script', '')}")
 
     return _on_progress
-
-
-def print_run_results(result, step_status_cls, script_status_cls) -> None:
-    """Print per-script step results and the final summary line."""
-    width = 76
-
-    for script in result.scripts:
-        _print_script_result(script, step_status_cls)
-
-    status_label = "PASS" if result.status == script_status_cls.COMPLETED else "FAIL"
-    typer.echo()
-    typer.echo("-" * width)
-    if result.duration_ms:
-        typer.echo(
-            f"  RESULT: {status_label}  |  "
-            f"{result.steps_passed} passed  "
-            f"{result.steps_total - result.steps_passed} failed  |  "
-            f"Duration: {result.duration_ms:.0f}ms"
-        )
-    else:
-        typer.echo(f"  RESULT: {status_label}")
-    typer.echo("=" * width)
-    typer.echo()
-
-    raise typer.Exit(0 if result.status == script_status_cls.COMPLETED else 1)
-
-
-def _print_script_result(script, step_status_cls) -> None:
-    """Print results for a single script."""
-    typer.echo(f"  Script: {script.script_name}")
-    typer.echo(f"  Status: {script.status.value}")
-    if script.total_duration_s is not None:
-        typer.echo(f"  Duration: {script.total_duration_s:.1f}s")
-    typer.echo()
-
-    for step in script.execution:
-        icon = "PASS" if step.status == step_status_cls.PASSED else "FAIL"
-        duration = f"{step.duration_s:.2f}s" if step.duration_s else "---"
-        typer.echo(f"    [{icon}] {step.step_name:<50} {duration}")
-        if step.error:
-            _print_error(step.error)
-        for check in step.assertions:
-            if not check.passed:
-                typer.echo(f"           Failed: {_check_label(check)} — {check.message}")
-
-    if script.assertion_summary:
-        s = script.assertion_summary
-        typer.echo(
-            f"\n    Assertions: {s.total} total, "
-            f"{s.passed} passed, "
-            f"{s.failed_hard} hard-failed, "
-            f"{s.failed_soft} soft-failed"
-        )
-        if s.unevaluated:
-            typer.echo(
-                f"    WARNING: {s.unevaluated} declared assertion(s) were never "
-                f"evaluated — this result describes less than the script asked for."
-            )
-        elif s.verified_nothing:
-            typer.echo(
-                "    NOTE: this script evaluated no assertions. It exercised the "
-                "steps but verified nothing about the system under test."
-            )
-
-
-def _print_error(error: str) -> None:
-    """Print a step's failure, keeping an explanation that runs to several lines.
-
-    A message is not always a sentence. A failure that compared two documents —
-    the offers a provider made against the policy a script expects — says which
-    offers and which constraints, one per line, and printing that after a
-    ``Error:`` label left every line but the first hanging at column zero,
-    reading as unrelated output. The continuation is indented under the label
-    instead, so the whole explanation is visibly one failure.
-    """
-    first, *rest = error.splitlines()
-    typer.echo(f"           Error: {first}")
-    for line in rest:
-        typer.echo(f"                  {line}")
-
-
-def _check_label(check) -> str:
-    """What to call a failed check: what the author named it, else what it is.
-
-    A step with four ``validate/assert`` entries reported four identical labels,
-    so a reader could not tell which requirement had failed. Naming an assertion
-    is optional, and this is where writing one pays off.
-    """
-    return check.assertion.name or check.assertion.uses

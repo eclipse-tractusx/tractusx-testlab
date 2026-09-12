@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `testlab run` ends with one result table per script and a run summary table,
+  drawn in the same 80-column box the Tractus-X SDK's TCK runners print
+  (`✓`/`✗`/`-` icons, RESULT and TIME columns, the verdict and step tally in
+  the footer), with PASS, FAIL and SKIP coloured green, red and yellow on a
+  terminal. The tally counts skipped steps as skipped; the old summary line
+  counted them as failed
 - `between`, `one_of`, `none_of`, `has_key`, `not_has_key`, `length_equals`,
   `length_gt` and `length_lt` are part of the ratified assertion operator set —
   the same twenty operators the IDE offers, resolved through one table shared by
