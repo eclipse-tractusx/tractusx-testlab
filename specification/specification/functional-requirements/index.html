@@ -1,0 +1,4666 @@
+<!--
+  Eclipse Tractus-X - Tractus-X TestLab
+
+  Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+  See the NOTICE file(s) distributed with this work for additional
+  information regarding copyright ownership.
+
+  This program and the accompanying materials are made available under the
+  terms of the Apache License, Version 2.0 which is available at
+  https://www.apache.org/licenses/LICENSE-2.0.
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+  either express or implied. See the
+  License for the specific language govern in permissions and limitations
+  under the License.
+
+  SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- It was reviewed and tested by a human committer. -->
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Visual test authoring tool for Eclipse Tractus-X dataspaces">
+      
+      
+      
+      
+        <link rel="prev" href="../concepts/">
+      
+      
+        <link rel="next" href="../data-models/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/logo_tractus-x-min.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Functional Requirements - Tractus-X TestLab Documentation</title>
+      
+    
+    
+  
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../../assets/stylesheets/orange-black-theme.css">
+  <style>
+    .md-header__inner {
+      display: flex !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      height: 3rem !important;
+      padding: 0 0.1rem !important;
+      gap: 0 !important;
+      position: relative !important;
+    }
+
+    .md-header__button.md-logo {
+      order: 1 !important;
+      flex: 0 0 auto !important;
+      margin: 0 !important;
+      padding: 0.2rem 0.1rem !important;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+
+    .md-header__button[for="__drawer"] {
+      order: 2 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0.2rem !important;
+      display: none !important;
+    }
+
+    @media screen and (max-width: 1220px) {
+      .md-header__button[for="__drawer"] {
+        display: inline-flex !important;
+      }
+    }
+
+    .md-header__title {
+      order: 3 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0 0 0.15rem !important;
+      overflow: visible !important;
+      font-family: 'Manrope', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 1.2rem !important;
+      letter-spacing: -0.02em !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      line-height: 3rem !important;
+      height: 3rem !important;
+    }
+
+    .md-header__title .md-header__ellipsis {
+      font-size: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      display: none !important;
+    }
+
+    .md-header__title::before {
+      content: "Tractus-X TestLab" !important;
+      color: #ffffff !important;
+      font-size: 1.2rem !important;
+      font-weight: 700 !important;
+      white-space: nowrap !important;
+    }
+
+    .md-header__title::after {
+      content: "docs" !important;
+      color: rgba(255, 215, 0, 0.7) !important;
+      font-size: 0.5rem !important;
+      font-weight: 500 !important;
+      background: none !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.12em !important;
+      white-space: nowrap !important;
+      align-self: flex-start !important;
+      margin-top: 0.55rem !important;
+      margin-left: -0.2rem !important;
+    }
+
+    .md-search {
+      order: 5 !important;
+      flex: 1 1 auto !important;
+      max-width: none !important;
+      width: auto !important;
+      margin: 0 0 0 0.75rem !important;
+    }
+
+    label[for="__search"] {
+      order: 4 !important;
+      flex: 0 0 auto !important;
+    }
+
+    .md-header .md-version {
+      order: 6 !important;
+      flex: 0 0 auto !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      margin: 0 0.4rem !important;
+    }
+  </style>
+
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/orange-black-theme.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#functional-requirements" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Tractus-X TestLab Documentation" class="md-header__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tractus-X TestLab Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Functional Requirements
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../tutorials/" class="md-tabs__link">
+          
+  
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../developer/" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../contributing/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Tractus-X TestLab Documentation" class="md-nav__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    Tractus-X TestLab Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Welcome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Terminology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functional Requirements
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functional Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#test-authoring-fr-auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Authoring (FR-AUTH)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-results-assertions-fr-assert" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Results / Assertions (FR-ASSERT)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compilation-fr-comp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compilation (FR-COMP)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#packaging-fr-pkg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Packaging (FR-PKG)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#player-execution-fr-play" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Player / Execution (FR-PLAY)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#job-lifecycle-fr-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job Lifecycle (FR-JOB)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-fr-mon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring (FR-MON)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logging-fr-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging (FR-LOG)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-registry-fr-reg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step Registry (FR-REG)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#predefined-steps-fr-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Predefined Steps (FR-STEP)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Predefined Steps (FR-STEP)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#connector-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connector Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dataplane-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dataplane Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consumption-validation-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consumption &amp; Validation Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typed-step-execution-fr-sdk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typed Step Execution (FR-SDK)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managed-service-lifecycle-fr-svc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managed Service Lifecycle (FR-SVC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#async-callbacks-webhook-endpoints-fr-cb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Async Callbacks / Webhook Endpoints (FR-CB)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#player-deployment-server-fr-srv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Player Deployment / Server (FR-SRV)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#package-security-fr-sec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package Security (FR-SEC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NOTICE
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../constraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Constraints & Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Walkthrough
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../walkthrough/writing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../walkthrough/compiling-packages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiling Packages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../walkthrough/executing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Executing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/syntax/cheat-sheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax Cheat Sheet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../syntax/tck-syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TCK Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/create-step-executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create a Step Executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/add-service-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Service Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/add-assertion-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add an Assertion Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/add-validation-rule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Validation Rule
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/development-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-conformity-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CCM Conformity Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Certificate Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Certificate Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/certificate-management-ide-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-business-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Business Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-architecture-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/product-scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Scope
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/ai-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI-Assisted Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Contracts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Step Contracts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/step-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single Source of Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/ide-engine-contract-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IDE-Engine Contract Parity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/contract-conflict-decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Conflict Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/contract-migration-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Migration Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/block-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/creating-a-step/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating a Step
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/execution-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/infrastructure-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/environment-injection-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Injection Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/step-reference-drift-report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13" id="__nav_5_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decision Records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/ADR-0000-template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0000 Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_3" id="__nav_5_13_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Backend
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/backend/ADR-0005-filesystem-participant-manager-with-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0005 Participant Manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/backend/ADR-0012-compilation-and-packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0012 Compilation and Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/backend/ADR-0014-flat-compilation-intermediate-representation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0014 Flat Compilation IR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/backend/ADR-0015-package-asset-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0015 Package Asset Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/backend/ADR-0016-execution-trace-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0016 Execution Trace Format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/backend/ADR-0017-input-callback-endpoint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0017 Input Callback Endpoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/backend/ADR-0019-service-requirements-and-engine-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0019 Service Requirements and Engine Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/backend/ADR-0022-tck-static-inspection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0022 TCK Static Inspection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/backend/ADR-0023-variable-scope-annotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0023 Variable Scope Annotation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/backend/ADR-0024-test-skip-configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0024 Test-Level Skip Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_4" id="__nav_5_13_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Shared
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/shared/ADR-0003-sse-for-live-ide-execution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0003 SSE for Live Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/shared/ADR-0008-test-case-to-tck-rename/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0008 TCK Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/shared/ADR-0009-typed-variable-class-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0009 Typed Variable Class System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/shared/ADR-0010-yaml-syntax-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0010 YAML Syntax v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/shared/ADR-0011-environment-and-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0011 Environment and Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/shared/ADR-0018-unified-variables-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0018 Unified Variables Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/shared/ADR-0021-remove-precondition-concept/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0021 Remove Precondition Concept
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/decision-records/shared/ADR-0025-assertions-read-declared-returns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0025 Assertions Read Declared Returns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#test-authoring-fr-auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Authoring (FR-AUTH)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-results-assertions-fr-assert" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Results / Assertions (FR-ASSERT)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compilation-fr-comp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compilation (FR-COMP)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#packaging-fr-pkg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Packaging (FR-PKG)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#player-execution-fr-play" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Player / Execution (FR-PLAY)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#job-lifecycle-fr-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job Lifecycle (FR-JOB)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-fr-mon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring (FR-MON)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logging-fr-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging (FR-LOG)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-registry-fr-reg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step Registry (FR-REG)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#predefined-steps-fr-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Predefined Steps (FR-STEP)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Predefined Steps (FR-STEP)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#connector-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connector Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dataplane-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dataplane Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consumption-validation-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consumption &amp; Validation Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typed-step-execution-fr-sdk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typed Step Execution (FR-SDK)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managed-service-lifecycle-fr-svc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managed Service Lifecycle (FR-SVC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#async-callbacks-webhook-endpoints-fr-cb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Async Callbacks / Webhook Endpoints (FR-CB)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#player-deployment-server-fr-srv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Player Deployment / Server (FR-SRV)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#package-security-fr-sec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package Security (FR-SEC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NOTICE
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/eclipse-tractusx/tractusx-testlab/edit/main/docs/specification/specification/functional-requirements.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<!--
+
+Eclipse Tractus-X - Software Development KIT
+
+Copyright (c) 2026 Catena-X Automotive Network e.V.
+Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+See the NOTICE file(s) distributed with this work for additional
+information regarding copyright ownership.
+
+This work is made available under the terms of the
+Creative Commons Attribution 4.0 International (CC-BY-4.0) license,
+which is available at
+https://creativecommons.org/licenses/by/4.0/legalcode.
+
+SPDX-License-Identifier: CC-BY-4.0
+
+-->
+
+<h1 id="functional-requirements">Functional Requirements</h1>
+<h2 id="test-authoring-fr-auth">Test Authoring (FR-AUTH)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-AUTH-01</td>
+<td>Tests SHALL be authored in YAML format.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-AUTH-02</td>
+<td>Each test SHALL declare a <code>dataspace_version</code> field specifying the target connector protocol version (e.g., <code>"saturn"</code>, <code>"jupiter"</code>). If omitted, it defaults to <code>"saturn"</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-AUTH-03</td>
+<td>Tests SHALL declare variables in a <code>variables</code> block. Each variable SHALL specify a <code>type</code> and optionally a <code>default</code> value, a <code>runtime: true</code> flag, and a <code>description</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-AUTH-04</td>
+<td>Step parameters SHALL support <code>${variable_name}</code> template syntax. These references are resolved at execution time from the <code>StepContext</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-AUTH-05</td>
+<td>Variables marked <code>runtime: true</code> SHALL NOT require a default value. Their values MUST be provided at execution time via <code>runtime_vars</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-AUTH-06</td>
+<td>Steps SHALL declare a <code>uses:</code> field naming a registered step id in the Step Registry (e.g., <code>connector/provider/create_asset</code>). Parameters are passed via <code>with:</code> and declared outputs via <code>returns:</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-AUTH-07</td>
+<td>Steps SHALL NOT declare per-step failure handling. A failing step fails the test: execution stops and cleanup runs. Failed validations (hard assertions) fail their step.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-AUTH-08</td>
+<td>Each step MAY specify a <code>timeout_s</code> value. If the step exceeds this timeout, it SHALL be treated as a failure.</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>FR-AUTH-09</td>
+<td>Tests SHALL define an optional <code>cleanup</code> block — a list of steps that always execute regardless of prior step failures.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-AUTH-10</td>
+<td>Test cases SHALL be authored as YAML files (<code>tck.yaml</code>) containing an ordered <code>tests</code> list and optionally <code>shared_variables</code> available to all tests. Test cases SHALL support importing predefined tests via <code>import:</code> with optional <code>override:</code> blocks.</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h2 id="expected-results-assertions-fr-assert">Expected Results / Assertions (FR-ASSERT)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-ASSERT-01</td>
+<td>Each step MAY declare an <code>validate</code> block containing a list of assertions to evaluate against the step's output.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-ASSERT-02</td>
+<td>Assertions SHALL support the following types: <code>exact</code> (deep equality), <code>schema</code> (JSON Schema validation), <code>contains</code> (subset match), <code>regex</code> (pattern match), <code>status_code</code> (HTTP status comparison).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-ASSERT-03</td>
+<td>Each assertion SHALL declare a <code>severity</code>: <code>hard</code> (assertion failure = step failure) or <code>soft</code> (assertion failure = warning, step still passes).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-ASSERT-04</td>
+<td>Expected values SHALL be sourceable from three origins via the <code>source</code> field: <code>inline</code> (value embedded directly in YAML), <code>file</code> (loaded from a file path, resolved relative to <code>.tck</code> assets or local filesystem), <code>variable</code> (value is a <code>${var}</code> reference resolved from context). Default: <code>inline</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-ASSERT-05</td>
+<td>Inline values SHALL accept both native YAML structures and raw JSON strings. When a string value is valid JSON, the assertion engine SHALL auto-parse it before comparison.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-ASSERT-06</td>
+<td>Each assertion MAY specify a <code>field</code> property (dot-notation path with bracket indexing, e.g., <code>response.submodels[0].payload.catenaXId</code>) to target a specific field in the step output. When omitted, the assertion evaluates against the entire output.</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>FR-ASSERT-07</td>
+<td>Assertion results SHALL be recorded per step in <code>StepResult.assertions</code> and summarized per test in <code>TestResult.assertion_summary</code> (total, passed, failed_hard, failed_soft).</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h2 id="compilation-fr-comp">Compilation (FR-COMP)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-COMP-01</td>
+<td>The Compiler SHALL accept YAML source as a file path, string, or dict (for programmatic/API input).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-COMP-02</td>
+<td>Compilation SHALL validate all <code>${var}</code> references in step parameters. Every reference MUST match a declared variable or a <code>shared_variable</code> (in TCKs). Unresolved references that are not declared <code>runtime: true</code> SHALL cause compilation failure.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-COMP-03</td>
+<td>Compilation SHALL validate every step's <code>uses:</code> id exists in the Step Registry for the test's declared <code>dataspace_version</code>. Unknown step ids SHALL cause compilation failure.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-COMP-04</td>
+<td>Compilation SHALL stamp metadata: SDK version, compilation timestamp, SHA-256 checksum.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-COMP-05</td>
+<td>Compilation failures SHALL produce a <code>ValidationResult</code> containing a list of errors and warnings with clear, actionable messages.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-COMP-06</td>
+<td>For TCKs, the Compiler SHALL perform cross-test validation: shared variables must be consistent, and all tests must be individually valid. The Compiler SHALL resolve <code>import:</code> references from the library path and merge <code>override:</code> blocks.</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h2 id="packaging-fr-pkg">Packaging (FR-PKG)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-PKG-01</td>
+<td>The Packager SHALL produce a <code>.tck</code> file — a ZIP archive containing: <code>manifest.yaml</code>, <code>tests/</code> directory with compiled test YAML files, and an optional <code>assets/</code> directory with bundled files (schemas, sample data).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PKG-02</td>
+<td>The <code>manifest.yaml</code> SHALL contain: package name, version, SDK version, compilation timestamp, list of dataspace versions used across tests, list of test names, and SHA-256 checksum.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PKG-03</td>
+<td>The Packager SHALL support unpacking: <code>unpack(path) -&gt; CompiledTck</code>. On unpack, the SHA-256 checksum SHALL be verified. Tampered packages SHALL be rejected.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PKG-04</td>
+<td>A single <code>.tck</code> SHALL support bundling multiple tests (a TCK).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PKG-05</td>
+<td>File-sourced assertion values (schemas, expected payloads) SHALL be bundled in the <code>assets/</code> directory of the <code>.tck</code> and resolved at execution time via <code>StepContext.resolve_asset_path()</code>.</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h2 id="player-execution-fr-play">Player / Execution (FR-PLAY)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-PLAY-01</td>
+<td>The Player SHALL be a singleton instance (module-level), accessible as <code>testlab.player</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PLAY-02</td>
+<td>The Player SHALL load TCK packages from: <code>.tck</code> file path, raw YAML file/string (compile-on-load), or pre-compiled dict.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PLAY-03</td>
+<td>On loading a <code>.tck</code>, the Player SHALL verify the SHA-256 checksum and emit a warning if the SDK version in the manifest differs from the running SDK version. It SHALL NOT hard-fail on SDK version mismatch.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PLAY-04</td>
+<td>The Player SHALL execute tests asynchronously using <code>asyncio</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PLAY-05</td>
+<td>For each test, the Player SHALL create an isolated <code>StepContext</code> initialized with the test's <code>dataspace_version</code>, declared variable defaults, and any provided <code>runtime_vars</code>. The context SHALL also hold a reference to the parent <code>Job</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PLAY-06</td>
+<td>Steps SHALL be executed sequentially in declared order. For each step, the Player SHALL: (1) resolve <code>${var}</code> references from the context, (2) look up the step implementation from the registry by <code>(uses id, dataspace_version)</code>, (3) execute with <code>asyncio.wait_for(timeout)</code>, (4) evaluate assertions from the <code>validate</code> block, (5) record the <code>StepResult</code> in the Monitor.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PLAY-07</td>
+<td>Step implementations SHALL publish all of their return outputs into the <code>StepContext</code> after execution: every top-level field of the declared output becomes a context variable of the same name, and a <code>None</code> value leaves the variable unset. These variables become available to subsequent steps via variable references; explicit capture into a named variable uses <code>store_in_variable</code> on the utility steps that offer it. Steps MAY also write to job memory via <code>context.job.memory.set(key, value)</code> for cross-test persistence.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PLAY-08</td>
+<td>On step failure, the Player SHALL stop execution immediately, mark the remaining steps as skipped, run cleanup, and fail the test. Cleanup steps SHALL keep executing even when one of them fails.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PLAY-09</td>
+<td>Cleanup steps SHALL always execute regardless of prior step outcomes.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-PLAY-10</td>
+<td>The Player SHALL support running multiple jobs concurrently (each in a separate <code>asyncio.Task</code> with an isolated <code>StepContext</code> and independent <code>Job</code> instance).</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>FR-PLAY-11</td>
+<td>The Player SHALL support cancellation by <code>job_id</code>. Cancellation SHALL transition the job to <code>CANCELLED</code>, stop execution after the current step completes, and run cleanup steps.</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>FR-PLAY-12</td>
+<td>For TCKs, tests SHALL execute sequentially. Shared variables SHALL be propagated to each test's context. Each test SHALL have an isolated context (no variable leakage between tests beyond shared variables). Job memory SHALL be shared across all tests within the same job.</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h2 id="job-lifecycle-fr-job">Job Lifecycle (FR-JOB)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-JOB-01</td>
+<td>Every TCK execution (CLI, API, or Python) SHALL create a <code>Job</code> entity with a unique <code>job_id</code>, status <code>QUEUED</code>, an empty <code>JobMemory</code>, and a creation timestamp.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-JOB-02</td>
+<td>The Job SHALL transition through defined lifecycle states: <code>QUEUED</code> → <code>RUNNING</code> → (<code>WAITING</code> ↔ <code>RUNNING</code>)* → <code>COMPLETED</code> / <code>FAILED</code> / <code>CANCELLED</code> / <code>TIMED_OUT</code>. Invalid transitions SHALL be rejected.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-JOB-03</td>
+<td>When a step enters a wait state (e.g., <code>mock/wait/http_request</code>, polling for a state transition), the Job SHALL transition to <code>WAITING</code>. The <code>waiting_for</code> field SHALL describe the pending condition (e.g., <code>"callback: /callbacks/notif-ack"</code>, <code>"poll: transfer state=COMPLETED"</code>).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-JOB-04</td>
+<td>When the awaited condition is met (callback received, poll condition satisfied), the Job SHALL automatically transition back to <code>RUNNING</code> and resume execution from the waiting step.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-JOB-05</td>
+<td>The <code>JobMemory</code> SHALL provide a persistent key-value store (<code>set</code>, <code>get</code>, <code>has</code>) and an event log (<code>log_event</code>). Memory SHALL persist across all steps, tests, wait/resume cycles, and cleanup phases within the same job.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-JOB-06</td>
+<td>Steps SHALL publish every top-level field of their declared output as a context variable after execution; utility steps that offer <code>store_in_variable</code> SHALL store their result under the given variable name. Step implementations MAY additionally write to job memory programmatically via <code>context.job.memory.set(key, value)</code>. Published variables SHALL be accessible in subsequent steps via variable references.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-JOB-07</td>
+<td>The Player SHALL record <code>JobEvent</code> entries for significant lifecycle transitions: job created, test started/completed, step started/completed/failed, job entered/exited waiting state, job completed/failed/cancelled.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-JOB-08</td>
+<td>If a job remains in <code>WAITING</code> state beyond the step's configured <code>timeout_s</code>, the job SHALL transition to <code>TIMED_OUT</code> with an error message identifying the unmet wait condition. Cleanup steps SHALL still execute.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-JOB-09</td>
+<td>The <code>Job</code> entity SHALL be queryable at any time: <code>get_job(job_id) -&gt; Job</code>, <code>list_jobs(status?) -&gt; list[Job]</code>. The query SHALL return current status, memory contents, event log, and result (if completed).</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h2 id="monitoring-fr-mon">Monitoring (FR-MON)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-MON-01</td>
+<td>The Monitor SHALL maintain in-memory state for all active and completed jobs, tests, and TCK runs.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-MON-02</td>
+<td>The Monitor SHALL be queryable at any time: <code>get_job(job_id) -&gt; Job</code>, <code>get_status(test_id) -&gt; TestResult</code>, <code>get_current_step(test_id) -&gt; StepResult</code>, <code>get_tck_status(tck_id) -&gt; TckResult</code>, <code>list_jobs(status?) -&gt; list[Job]</code>, <code>list_runs() -&gt; list</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-MON-03</td>
+<td>The Monitor SHALL support event callbacks: <code>on_step_start</code>, <code>on_step_complete</code>, <code>on_test_complete</code>, <code>on_tck_complete</code>, <code>on_failure</code>, <code>on_job_waiting</code>, <code>on_job_resumed</code>. Users SHALL be able to register async callbacks.</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>FR-MON-04</td>
+<td>The Monitor SHALL be thread-safe (protected by <code>asyncio.Lock</code>).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-MON-05</td>
+<td>The Monitor SHALL expose a <code>SyncBackend</code> protocol interface for future persistence backends (e.g., PostgreSQL) to persist job state and memory across restarts.</td>
+<td>Should</td>
+</tr>
+</tbody>
+</table>
+<h2 id="logging-fr-log">Logging (FR-LOG)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-LOG-01</td>
+<td>The logging system SHALL produce structured JSON-lines (<code>.jsonl</code>) log files.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-LOG-02</td>
+<td>Each log entry SHALL contain: <code>timestamp</code>, <code>level</code>, <code>tck_id</code>, <code>test_id</code>, <code>test_name</code>, <code>dataspace_version</code>, <code>step_name</code>, <code>step_type</code>, <code>status</code>, <code>duration_ms</code>, <code>request</code>, <code>response</code>, <code>assertions</code>, <code>error</code>, <code>message</code>, <code>data</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-LOG-03</td>
+<td>Log files SHALL be organized as: <code>logs/testlab/{tck_name}/{YYYY-MM-DD}/{HH-MM-SS}_{tck_id}.jsonl</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-LOG-04</td>
+<td>On completion, the log file SHALL be renamed with a <code>_PASS</code> or <code>_FAIL</code> suffix.</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>FR-LOG-05</td>
+<td>Console output SHALL provide a human-readable summary table (formatted like the existing TCK <code>print_summary</code> output).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-LOG-06</td>
+<td>Assertion results (including soft failures) SHALL be logged with their expected vs. actual values.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-LOG-07</td>
+<td>For HTTP-based steps, each log entry SHALL include the full request (<code>method</code>, <code>url</code>, <code>headers</code>, <code>body</code>) and full response (<code>status_code</code>, <code>headers</code>, <code>body</code>, <code>duration_ms</code>) as structured sub-objects. Non-HTTP steps SHALL set these fields to <code>null</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-LOG-08</td>
+<td>For failed or stopped steps, the log entry SHALL include an <code>error</code> object containing <code>type</code>, <code>message</code>, and <code>traceback</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-LOG-09</td>
+<td>Sensitive headers (e.g., <code>Authorization</code>) SHALL be automatically redacted in log output and API responses. Additional headers MAY be configured for redaction via <code>--redact-headers</code>.</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h2 id="step-registry-fr-reg">Step Registry (FR-REG)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-REG-01</td>
+<td>The registry SHALL map <code>(step_id, dataspace_version)</code> tuples to <code>BaseStep</code> implementations, where the step id is the <code>uses:</code> value (e.g., <code>connector/consumer/negotiate</code>).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-REG-02</td>
+<td>Step implementations SHALL declare which dataspace versions they support via <code>supported_versions: list[str]</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-REG-03</td>
+<td>The registry SHALL auto-discover and register steps from the <code>steps/connector/</code> and <code>steps/industry/</code> packages at import time via the <code>@step</code> decorator.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-REG-04</td>
+<td>Users SHALL be able to register custom step implementations at runtime: <code>registry.register("my_step", MyStepClass, versions=["saturn"])</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-REG-05</td>
+<td>The registry SHALL provide <code>list_available(version=None) -&gt; list[str]</code> to enumerate available step types, optionally filtered by dataspace version.</td>
+<td>Should</td>
+</tr>
+</tbody>
+</table>
+<h2 id="predefined-steps-fr-step">Predefined Steps (FR-STEP)</h2>
+<h3 id="connector-steps">Connector Steps</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Step Id</th>
+<th>Description</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-STEP-01</td>
+<td><code>connector/provider/create_asset</code></td>
+<td>Create a single asset on a provider connector. Output: <code>asset_id</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-02</td>
+<td><code>connector/provider/create_policy</code></td>
+<td>Create a single policy (access or contract/usage) on a provider connector. Output: <code>policy_id</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-03</td>
+<td><code>connector/provider/create_contract_definition</code></td>
+<td>Bind an asset to an access and a contract policy, making it appear in the provider's catalog. Output: <code>contract_definition_id</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-04</td>
+<td><code>connector/consumer/query_catalog</code></td>
+<td>Query a provider's catalog from a consumer connector. Outputs: <code>catalog</code>, <code>datasets</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-05</td>
+<td><code>connector/consumer/negotiate</code></td>
+<td>Initiate and poll contract negotiation until it settles. Outputs: <code>negotiation_id</code>, <code>agreement_id</code>, <code>state</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-06</td>
+<td><code>connector/consumer/initiate_transfer</code></td>
+<td>Initiate a data transfer for a negotiated contract and wait for it to settle. Outputs: <code>transfer_id</code>, <code>state</code>, and for PULL transfers <code>dataplane_url</code>, <code>edr_token</code>, and the full <code>data_address</code> document.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-07</td>
+<td><code>connector/consumer/get_edr</code></td>
+<td>Retrieve the EDR (Endpoint Data Reference) for a completed transfer. Outputs: <code>endpoint</code>, <code>authorization</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-08</td>
+<td><code>connector/provider/delete_contract_definition</code></td>
+<td>Delete a contract definition during teardown.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-09</td>
+<td><code>connector/provider/delete_asset</code></td>
+<td>Delete an asset during teardown.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-10</td>
+<td><code>connector/provider/delete_policy</code></td>
+<td>Delete a policy during teardown.</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dataplane-steps">Dataplane Steps</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Step Id</th>
+<th>Description</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-STEP-11</td>
+<td><code>connector/dataplane/http_request</code></td>
+<td>Perform an HTTP call to a dataplane endpoint using an EDR token. Supports configurable HTTP method (GET/POST/PUT/DELETE), path, custom headers, and request body. The <code>dataplane_url</code> and <code>edr_token</code> parameters fall back to the context variables of the same names published by prior steps, so the EDR authorization is injected automatically. Output: the response body (parsed JSON when the server sent JSON, otherwise raw text).</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h3 id="consumption-validation-steps">Consumption &amp; Validation Steps</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Step Id</th>
+<th>Description</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-STEP-12</td>
+<td><code>connector/consumer/pull_data_filtered</code></td>
+<td>Run the full DSP consumption flow in one step (catalog → negotiate → transfer → EDR), optionally constrained to one policy. Outputs include <code>dataplane_url</code>, <code>edr_token</code>, <code>asset_id</code>, <code>negotiation_id</code>, <code>agreement_id</code>, <code>transfer_id</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-13</td>
+<td><code>validate/schema</code></td>
+<td>Validate a payload against a JSON Schema document (e.g., an aspect model schema declared in <code>env.schemas</code>).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-STEP-14</td>
+<td><code>validate/field</code></td>
+<td>Assert that a field at a dot-separated path of a payload satisfies an operator condition.</td>
+<td>Should</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="typed-step-execution-fr-sdk">Typed Step Execution (FR-SDK)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-SDK-01</td>
+<td>Every step SHALL be a typed executor registered in the Step Registry under its <code>uses:</code> id, with a declared input contract (its <code>with:</code> parameters) and output contract (what <code>returns:</code> and assertions read). YAML SHALL NOT be able to invoke arbitrary SDK functions — SDK access happens only inside step implementations.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SDK-02</td>
+<td>Step parameters SHALL be validated against the step's declared input contract at compile time. Unknown step ids and malformed parameters SHALL be rejected with a clear error message.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SDK-03</td>
+<td>Steps SHALL publish exactly the fields of their declared output contract; <code>returns:</code> names and assertions SHALL be resolvable against that same contract.</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h2 id="managed-service-lifecycle-fr-svc">Managed Service Lifecycle (FR-SVC)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-SVC-01</td>
+<td>Tests MAY declare a <code>services</code> block listing SDK services to be initialized before step execution begins. Each service declaration SHALL specify: a <code>name</code> (unique identifier for <code>context.get_service()</code>), a <code>type</code> (one of <code>connector_consumer</code>, <code>connector_provider</code>, <code>dtr</code>), and connection parameters (<code>base_url</code>, <code>auth</code>).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SVC-02</td>
+<td>The Service Manager SHALL initialize all declared services before the first step executes. Initialization includes creating the SDK service instance via <code>ServiceFactory</code> (for connector services) or direct instantiation (for DTR/AAS), and performing authentication (e.g., OAuth2 token acquisition).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SVC-03</td>
+<td>Initialized services SHALL be accessible from steps via <code>context.get_service("service_name")</code>. The returned instance SHALL be the same (cached) object for the lifetime of the test, avoiding repeated initialization.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SVC-04</td>
+<td>All managed services SHALL be torn down (connections closed, resources released) after test execution completes, regardless of success or failure. Teardown SHALL occur after cleanup steps.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SVC-05</td>
+<td>The <code>init_service</code> step type SHALL allow initializing a new service or replacing an existing service during step execution. The <code>stop_service</code> step type SHALL allow explicitly tearing down a service before test completion.</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>FR-SVC-06</td>
+<td>Steps SHALL NOT name their service in their parameters. Connector services are seeded into the run at startup from the declared <code>services</code> block; each step resolves the service for its role (provider, consumer, DTR) from the <code>StepContext</code> (e.g., <code>context.get_provider_service()</code>).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SVC-07</td>
+<td>Each predefined step SHALL resolve the service type its role requires (e.g., <code>connector_provider</code>, <code>connector_consumer</code>, <code>dtr</code>). When no seeded service satisfies the step's role, execution SHALL fail with a clear error identifying the step and the missing service type.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SVC-08</td>
+<td>Service resolution SHALL come exclusively from the services seeded into the run context — steps SHALL NOT construct one-off services from inline connection parameters.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SVC-09</td>
+<td>The <code>StepContext</code> SHALL expose service access methods: <code>get_service(name) -&gt; Any</code> (raises <code>ServiceNotFoundError</code> or <code>ServiceNotReadyError</code>), <code>has_service(name) -&gt; bool</code>, <code>get_service_type(name) -&gt; ServiceType</code>, and <code>list_services() -&gt; dict[str, ServiceType]</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SVC-10</td>
+<td>The <code>ServiceManager</code> SHALL support: <code>initialize_all(services, dataspace_version)</code>, <code>get(name) -&gt; (instance, type)</code>, <code>replace(name, definition, version)</code>, <code>stop(name)</code>, and <code>teardown_all()</code>. Duplicate service names during <code>initialize_all</code> SHALL raise <code>DuplicateServiceError</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SVC-11</td>
+<td>Services in a non-READY state (failed initialization, explicitly stopped) SHALL NOT be returned by <code>ServiceManager.get()</code>. Accessing a non-ready service SHALL raise <code>ServiceNotReadyError</code>.</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h2 id="async-callbacks-webhook-endpoints-fr-cb">Async Callbacks / Webhook Endpoints (FR-CB)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-CB-01</td>
+<td>Tests MAY register a callback endpoint on the TestLab mock server via the <code>mock/api</code> step, declaring a <code>path</code> (e.g., <code>/callbacks/notification-ack</code>), an HTTP <code>method</code> (default: <code>POST</code>), and the canned response (<code>response_status</code>, <code>response_body</code>, <code>response_headers</code>). The step SHALL output the registered <code>mock</code> and its <code>full_mock_url</code> — the address a test hands to the system under test.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-CB-02</td>
+<td>Registering a mock endpoint SHALL also register a callback listener for that <code>(path, method)</code> pair, so a later wait step can block on inbound requests to it. Inbound requests SHALL be answered with the canned response and signalled to the waiting step via an <code>asyncio.Event</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-CB-03</td>
+<td>The <code>mock/wait/http_request</code> step SHALL transition the parent Job to <code>WAITING</code> state, then block until an inbound request arrives on the referenced <code>mock</code>, up to <code>timeout_s</code>. On receipt, the request (<code>request_method</code>, <code>request_path</code>, <code>request_headers</code>, <code>request_query_params</code>, <code>request_body</code>) SHALL be exposed as the step's output for <code>returns:</code> and assertions. On timeout, the Job SHALL transition to <code>TIMED_OUT</code> and the step SHALL fail, failing the test.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-CB-04</td>
+<td>Mock endpoint registrations SHALL live for the duration of the run; the mock server (and all registrations with it) SHALL be torn down when the run finishes. No mock state SHALL persist between runs.</td>
+<td>Must</td>
+</tr>
+</tbody>
+</table>
+<h2 id="player-deployment-server-fr-srv">Player Deployment / Server (FR-SRV)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-SRV-01</td>
+<td>The Player SHALL support <strong>standalone mode</strong> via a CLI command <code>testlab serve</code> that starts a FastAPI server on a configurable port (default: <code>8100</code>). The server SHALL expose job management endpoints (<code>/jobs</code>, <code>/jobs/{job_id}</code>, <code>/jobs/{job_id}/cancel</code>, <code>/jobs/{job_id}/memory</code>, <code>/jobs/{job_id}/events</code>), execution endpoints (<code>/run</code>), package management endpoints (<code>/packages</code>), and callback routes.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SRV-02</td>
+<td>The Player SHALL support <strong>embedded mode</strong> via <code>TestlabPlayer.from_app(fastapi_app)</code>, which mounts the testlab routes as a sub-application on an existing FastAPI instance. The Player SHALL share the host application's lifecycle (startup/shutdown).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SRV-03</td>
+<td>Dynamic API routes declared in YAML <code>listen</code> blocks SHALL be mountable and unmountable at runtime without restarting the server. In embedded mode, routes SHALL be mounted on the host application's router.</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>FR-SRV-04</td>
+<td>The server SHALL expose a <code>POST /api/v1/packages</code> endpoint that accepts <code>.tck</code> files via multipart form upload. Both encrypted and plain packages SHALL be accepted. The server SHALL validate the package structure (manifest presence, checksum if plain) and store it in a configurable storage directory (default: <code>~/.testlab/packages/</code>). On success, the response SHALL return the <code>package_id</code> (derived from <code>name-version</code>), name, version, format (<code>PLAIN</code> or <code>ENCRYPTED</code>), size, upload timestamp, and checksum.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SRV-05</td>
+<td>The server SHALL expose <code>GET /api/v1/packages</code> (list all uploaded packages), <code>GET /api/v1/packages/{package_id}</code> (get metadata), and <code>DELETE /api/v1/packages/{package_id}</code> (remove a package). The <code>/run</code> endpoint SHALL accept a <code>package</code> field referencing either an uploaded <code>package_id</code> or a filesystem path.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SRV-06</td>
+<td>Package storage SHALL be scoped per server instance. The storage directory SHALL be configurable via <code>--storage-dir &lt;path&gt;</code> CLI flag or <code>TESTLAB_STORAGE_DIR</code> environment variable. The server SHALL reject uploads that exceed a configurable maximum size (default: 50 MB, configurable via <code>--max-upload-size</code>).</td>
+<td>Should</td>
+</tr>
+</tbody>
+</table>
+<h2 id="package-security-fr-sec">Package Security (FR-SEC)</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-SEC-01</td>
+<td>The Compiler SHALL encrypt the <code>.tck</code> payload <strong>by default</strong> using AES-256-GCM with a randomly generated 256-bit key. An explicit <code>--plain</code> flag SHALL disable encryption for local development use only. When <code>--plain</code> is used, the Compiler SHALL emit a warning that the package contains unprotected secrets.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SEC-02</td>
+<td>The Compiler SHALL accept one or more <code>--authorize-player &lt;public_key_file&gt;</code> arguments. Each Player's RSA public key (2048-bit minimum) SHALL be used to wrap the AES content-encryption key via RSA-OAEP with SHA-256 padding. The resulting key blocks SHALL be stored in <code>manifest.yaml</code> under <code>security.authorized_players</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SEC-03</td>
+<td>The Compiler SHALL sign the package (manifest + encrypted payload) using Ed25519 with a <code>--signing-key &lt;compiler_pem&gt;</code> argument. The signature SHALL be stored in the archive as <code>signature.sig</code>. The Compiler's public key fingerprint SHALL be recorded in <code>security.compiler_id</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SEC-04</td>
+<td>The Player SHALL, on loading an encrypted <code>.tck</code>, locate its own <code>player_id</code> (public key fingerprint) in <code>security.authorized_players</code>. If not found, the Player SHALL abort with a clear <code>PackageAuthorizationError</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SEC-05</td>
+<td>The Player SHALL decrypt the AES content-encryption key using its RSA private key (RSA-OAEP-SHA256), then decrypt <code>payload.enc</code> using AES-256-GCM. Decryption failures SHALL raise <code>PackageDecryptionError</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SEC-06</td>
+<td>The Player SHALL verify the Ed25519 signature against compiler public keys stored in the trust store (<code>~/.testlab/trusted_compilers/</code>). If no matching trusted compiler key is found, or if the signature is invalid, the Player SHALL abort with <code>PackageSignatureError</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SEC-07</td>
+<td>The CLI SHALL provide key management commands: <code>testlab keygen</code> (generate Player RSA key pair to <code>~/.testlab/keys/</code>), <code>testlab keygen --compiler</code> (generate Compiler Ed25519 + RSA key pair), and <code>testlab export-key --player</code> (export Player public key for sharing).</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SEC-08</td>
+<td>Player identity SHALL be derived from the SHA-256 fingerprint of the DER-encoded RSA public key, formatted as <code>player:sha256:&lt;hex_digest&gt;</code>. Compiler identity SHALL use the same scheme with a <code>compiler:sha256:</code> prefix.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SEC-09</td>
+<td>Packages compiled with <code>--plain</code> SHALL remain fully functional (backward compatibility). The absence of a <code>security</code> block in <code>manifest.yaml</code> SHALL indicate an unencrypted (plain) package. When compiling without <code>--plain</code> and without <code>--authorize-player</code> or <code>--signing-key</code>, the Compiler SHALL raise <code>MissingEncryptionArgsError</code> with guidance to provide keys or use <code>--plain</code>.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SEC-10</td>
+<td>The <code>manifest.yaml</code> in an encrypted package SHALL remain unencrypted and human-readable, containing metadata, security block (algorithm, authorized players, compiler ID), but no secret material. Only the <code>payload.enc</code> blob SHALL be encrypted.</td>
+<td>Must</td>
+</tr>
+<tr>
+<td>FR-SEC-11</td>
+<td>The security module SHALL support an optional <strong>HashiCorp Vault</strong> backend for storing and retrieving signing keys (Compiler Ed25519 keys and Player RSA keys). When <code>vault_url</code>, <code>vault_token</code>, and <code>vault_secret_path</code> are configured, the <code>keygen</code>, <code>compile</code>, and <code>run</code> commands SHALL read/write keys from Vault instead of the local filesystem.</td>
+<td>Should</td>
+</tr>
+<tr>
+<td>FR-SEC-12</td>
+<td>Vault integration SHALL be configurable via a <code>testlab.config.yaml</code> configuration file, environment variables (<code>TESTLAB_VAULT_URL</code>, <code>TESTLAB_VAULT_TOKEN</code>, <code>TESTLAB_VAULT_SECRET_PATH</code>), or CLI flags (<code>--vault-url</code>, <code>--vault-token</code>, <code>--vault-secret-path</code>). The precedence order SHALL be: CLI flags &gt; environment variables &gt; configuration file &gt; filesystem defaults.</td>
+<td>Should</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="notice">NOTICE</h2>
+<p>This work is licensed under the <a href="https://creativecommons.org/licenses/by/4.0/legalcode">CC-BY-4.0</a>.</p>
+<ul>
+<li>SPDX-License-Identifier: CC-BY-4.0</li>
+<li>SPDX-FileCopyrightText: 2025, 2026 Contributors to the Eclipse Foundation</li>
+<li>SPDX-FileCopyrightText: 2025, 2026 Catena-X Automotive Network e.V.</li>
+<li>Source URL: <a href="https://github.com/eclipse-tractusx/tractusx-sdk">https://github.com/eclipse-tractusx/tractusx-sdk</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Eclipse Tractus-X Contributors
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "navigation.instant", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../assets/javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

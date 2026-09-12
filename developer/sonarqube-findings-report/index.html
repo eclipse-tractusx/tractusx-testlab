@@ -1,0 +1,6073 @@
+<!--
+  Eclipse Tractus-X - Tractus-X TestLab
+
+  Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+  See the NOTICE file(s) distributed with this work for additional
+  information regarding copyright ownership.
+
+  This program and the accompanying materials are made available under the
+  terms of the Apache License, Version 2.0 which is available at
+  https://www.apache.org/licenses/LICENSE-2.0.
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+  either express or implied. See the
+  License for the specific language govern in permissions and limitations
+  under the License.
+
+  SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- It was reviewed and tested by a human committer. -->
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Visual test authoring tool for Eclipse Tractus-X dataspaces">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/logo_tractus-x-min.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>SonarQube Findings Report — PR #16 - Tractus-X TestLab Documentation</title>
+      
+    
+    
+  
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/stylesheets/orange-black-theme.css">
+  <style>
+    .md-header__inner {
+      display: flex !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      height: 3rem !important;
+      padding: 0 0.1rem !important;
+      gap: 0 !important;
+      position: relative !important;
+    }
+
+    .md-header__button.md-logo {
+      order: 1 !important;
+      flex: 0 0 auto !important;
+      margin: 0 !important;
+      padding: 0.2rem 0.1rem !important;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+
+    .md-header__button[for="__drawer"] {
+      order: 2 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0.2rem !important;
+      display: none !important;
+    }
+
+    @media screen and (max-width: 1220px) {
+      .md-header__button[for="__drawer"] {
+        display: inline-flex !important;
+      }
+    }
+
+    .md-header__title {
+      order: 3 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0 0 0.15rem !important;
+      overflow: visible !important;
+      font-family: 'Manrope', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 1.2rem !important;
+      letter-spacing: -0.02em !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      line-height: 3rem !important;
+      height: 3rem !important;
+    }
+
+    .md-header__title .md-header__ellipsis {
+      font-size: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      display: none !important;
+    }
+
+    .md-header__title::before {
+      content: "Tractus-X TestLab" !important;
+      color: #ffffff !important;
+      font-size: 1.2rem !important;
+      font-weight: 700 !important;
+      white-space: nowrap !important;
+    }
+
+    .md-header__title::after {
+      content: "docs" !important;
+      color: rgba(255, 215, 0, 0.7) !important;
+      font-size: 0.5rem !important;
+      font-weight: 500 !important;
+      background: none !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.12em !important;
+      white-space: nowrap !important;
+      align-self: flex-start !important;
+      margin-top: 0.55rem !important;
+      margin-left: -0.2rem !important;
+    }
+
+    .md-search {
+      order: 5 !important;
+      flex: 1 1 auto !important;
+      max-width: none !important;
+      width: auto !important;
+      margin: 0 0 0 0.75rem !important;
+    }
+
+    label[for="__search"] {
+      order: 4 !important;
+      flex: 0 0 auto !important;
+    }
+
+    .md-header .md-version {
+      order: 6 !important;
+      flex: 0 0 auto !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      margin: 0 0.4rem !important;
+    }
+  </style>
+
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/orange-black-theme.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sonarqube-findings-report-pr-16" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Tractus-X TestLab Documentation" class="md-header__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tractus-X TestLab Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              SonarQube Findings Report — PR #16
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../specification/" class="md-tabs__link">
+          
+  
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
+          
+  
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Tractus-X TestLab Documentation" class="md-nav__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    Tractus-X TestLab Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Welcome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../home/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Terminology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/functional-requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functional Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/constraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Constraints & Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Walkthrough
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/writing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/compiling-packages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiling Packages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/executing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Executing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/reference/syntax/cheat-sheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax Cheat Sheet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/syntax/tck-syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TCK Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/create-step-executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create a Step Executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-service-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Service Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-assertion-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add an Assertion Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-validation-rule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Validation Rule
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/development-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-conformity-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CCM Conformity Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Certificate Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Certificate Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/certificate-management-ide-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-business-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Business Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-architecture-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../product-scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Scope
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI-Assisted Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Contracts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Step Contracts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../step-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single Source of Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ide-engine-contract-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IDE-Engine Contract Parity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-conflict-decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Conflict Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-migration-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Migration Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../block-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../creating-a-step/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating a Step
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../execution-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infrastructure-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment-injection-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Injection Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../step-reference-drift-report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13" id="__nav_5_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decision Records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/ADR-0000-template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0000 Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_3" id="__nav_5_13_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Backend
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0005-filesystem-participant-manager-with-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0005 Participant Manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0012-compilation-and-packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0012 Compilation and Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0014-flat-compilation-intermediate-representation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0014 Flat Compilation IR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0015-package-asset-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0015 Package Asset Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0016-execution-trace-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0016 Execution Trace Format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0017-input-callback-endpoint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0017 Input Callback Endpoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0019-service-requirements-and-engine-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0019 Service Requirements and Engine Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0022-tck-static-inspection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0022 TCK Static Inspection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0023-variable-scope-annotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0023 Variable Scope Annotation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0024-test-skip-configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0024 Test-Level Skip Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_4" id="__nav_5_13_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Shared
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0003-sse-for-live-ide-execution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0003 SSE for Live Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0008-test-case-to-tck-rename/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0008 TCK Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0009-typed-variable-class-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0009 Typed Variable Class System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0010-yaml-syntax-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0010 YAML Syntax v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0011-environment-and-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0011 Environment and Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0018-unified-variables-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0018 Unified Variables Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0021-remove-precondition-concept/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0021 Remove Precondition Concept
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0025-assertions-read-declared-returns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0025 Assertions Read Declared Returns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resolution-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolution Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resolution Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#priority-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority Order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#top-rules-by-frequency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top Rules by Frequency
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Checklist
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File Checklist">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stubs-1-files-3-issues-3-blockercritical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stubs (1 files, 3 issues, 3 blocker+critical)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-backend-5-files-7-issues-2-blockercritical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Backend (5 files, 7 issues, 2 blocker+critical)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-files-10-files-20-issues-5-blockercritical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Files (10 files, 20 issues, 5 blocker+critical)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ide-typescriptreact-140-files-571-issues-37-blockercritical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IDE TypeScript/React (140 files, 571 issues, 37 blocker+critical)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stylesheets-scss-30-files-84-issues-0-blockercritical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stylesheets (SCSS) (30 files, 84 issues, 0 blocker+critical)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mockups-html-6-files-143-issues-2-blockercritical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mockups (HTML) (6 files, 143 issues, 2 blocker+critical)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#detailed-findings-blocker-critical-files-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed Findings (BLOCKER + CRITICAL files only)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/eclipse-tractusx/tractusx-testlab/edit/main/docs/developer/sonarqube-findings-report.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="sonarqube-findings-report-pr-16">SonarQube Findings Report — PR #16</h1>
+<blockquote>
+<p>Generated: 2026-05-31 | Branch: feat/refactor/ide_backend
+Project: eclipse-tractusx_tractusx-testlab</p>
+</blockquote>
+<h2 id="summary">Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Total Issues</strong></td>
+<td>829</td>
+</tr>
+<tr>
+<td><strong>Files Affected</strong></td>
+<td>193</td>
+</tr>
+<tr>
+<td>BLOCKER</td>
+<td>3</td>
+</tr>
+<tr>
+<td>CRITICAL</td>
+<td>46</td>
+</tr>
+<tr>
+<td>MAJOR</td>
+<td>291</td>
+</tr>
+<tr>
+<td>MINOR</td>
+<td>489</td>
+</tr>
+</tbody>
+</table>
+<h2 id="resolution-strategy">Resolution Strategy</h2>
+<h3 id="priority-order">Priority Order</h3>
+<ol>
+<li><strong>BLOCKER</strong> — Security/reliability risks. Must fix before merge.</li>
+<li><strong>CRITICAL</strong> — Bugs and vulnerabilities. Must fix before merge.</li>
+<li><strong>MAJOR</strong> — Code smells with significant impact. Should fix.</li>
+<li><strong>MINOR</strong> — Low-impact code smells. Fix opportunistically.</li>
+</ol>
+<h3 id="batch-strategy">Batch Strategy</h3>
+<ol>
+<li><strong>Group by rule</strong> — Many issues share the same rule (e.g., CSS specificity, unused imports). Fixing by rule type is fastest.</li>
+<li><strong>Group by directory</strong> — Fix all SCSS files together, all test files together, etc.</li>
+<li><strong>Skip mockups</strong> — HTML mockups are prototypes, not production code. Lowest priority.</li>
+<li><strong>After each batch</strong> — Re-scan fixed files with <code>mcp_sonarqube_analyze_file_list</code> to confirm.</li>
+<li><strong>Track progress</strong> — Check off files in the table below as they are cleaned.</li>
+</ol>
+<hr />
+<h2 id="top-rules-by-frequency">Top Rules by Frequency</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Rule</th>
+<th>Severity</th>
+<th>Count</th>
+<th>Fix Strategy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>css:S7924</code></td>
+<td>MAJOR</td>
+<td>94</td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>typescript:S6551</code></td>
+<td>MINOR</td>
+<td>82</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>typescript:S6759</code></td>
+<td>MINOR</td>
+<td>62</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>typescript:S4325</code></td>
+<td>MINOR</td>
+<td>54</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>Web:MouseEventWithoutKeyboardEquivalentCheck</code></td>
+<td>MINOR</td>
+<td>52</td>
+<td></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>typescript:S3863</code></td>
+<td>MINOR</td>
+<td>51</td>
+<td></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>typescript:S7735</code></td>
+<td>MINOR</td>
+<td>47</td>
+<td></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>Web:S6848</code></td>
+<td>MAJOR</td>
+<td>47</td>
+<td></td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>typescript:S6848</code></td>
+<td>MAJOR</td>
+<td>38</td>
+<td></td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>typescript:S3776</code></td>
+<td>CRITICAL</td>
+<td>34</td>
+<td></td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>typescript:S1082</code></td>
+<td>MINOR</td>
+<td>33</td>
+<td></td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>typescript:S3358</code></td>
+<td>MAJOR</td>
+<td>24</td>
+<td></td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>typescript:S7778</code></td>
+<td>MINOR</td>
+<td>18</td>
+<td></td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>typescript:S6853</code></td>
+<td>MAJOR</td>
+<td>17</td>
+<td></td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>typescript:S7763</code></td>
+<td>MINOR</td>
+<td>14</td>
+<td></td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>typescript:S1128</code></td>
+<td>MINOR</td>
+<td>12</td>
+<td></td>
+</tr>
+<tr>
+<td>17</td>
+<td><code>typescript:S6353</code></td>
+<td>MINOR</td>
+<td>10</td>
+<td></td>
+</tr>
+<tr>
+<td>18</td>
+<td><code>typescript:S7764</code></td>
+<td>MINOR</td>
+<td>10</td>
+<td></td>
+</tr>
+<tr>
+<td>19</td>
+<td><code>javascript:S7781</code></td>
+<td>MINOR</td>
+<td>9</td>
+<td></td>
+</tr>
+<tr>
+<td>20</td>
+<td><code>typescript:S7744</code></td>
+<td>MINOR</td>
+<td>8</td>
+<td></td>
+</tr>
+<tr>
+<td>21</td>
+<td><code>typescript:S6819</code></td>
+<td>MAJOR</td>
+<td>7</td>
+<td></td>
+</tr>
+<tr>
+<td>22</td>
+<td><code>typescript:S6479</code></td>
+<td>MAJOR</td>
+<td>6</td>
+<td></td>
+</tr>
+<tr>
+<td>23</td>
+<td><code>typescript:S6847</code></td>
+<td>MAJOR</td>
+<td>6</td>
+<td></td>
+</tr>
+<tr>
+<td>24</td>
+<td><code>css:S4648</code></td>
+<td>MAJOR</td>
+<td>5</td>
+<td></td>
+</tr>
+<tr>
+<td>25</td>
+<td><code>python:S125</code></td>
+<td>MAJOR</td>
+<td>5</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="file-checklist">File Checklist</h2>
+<h3 id="stubs-1-files-3-issues-3-blockercritical">Stubs (1 files, 3 issues, 3 blocker+critical)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Done</th>
+<th>File</th>
+<th style="text-align: center;">Total</th>
+<th style="text-align: center;">B</th>
+<th style="text-align: center;">C</th>
+<th style="text-align: center;">Ma</th>
+<th style="text-align: center;">Mi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">[x]</td>
+<td><code>stubs/ccm-sut/management.py</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+</tr>
+</tbody>
+</table>
+<h3 id="python-backend-5-files-7-issues-2-blockercritical">Python Backend (5 files, 7 issues, 2 blocker+critical)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Done</th>
+<th>File</th>
+<th style="text-align: center;">Total</th>
+<th style="text-align: center;">B</th>
+<th style="text-align: center;">C</th>
+<th style="text-align: center;">Ma</th>
+<th style="text-align: center;">Mi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">[x]</td>
+<td><code>src/tractusx_testlab/compiler/_ir_helpers.py</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>src/tractusx_testlab/compiler/_ir_compilation.py</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>src/tractusx_testlab/compiler/_expressions.py</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>src/tractusx_testlab/server/streaming.py</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>src/tractusx_testlab/steps/pull_data/_executor.py</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="test-files-10-files-20-issues-5-blockercritical">Test Files (10 files, 20 issues, 5 blocker+critical)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Done</th>
+<th>File</th>
+<th style="text-align: center;">Total</th>
+<th style="text-align: center;">B</th>
+<th style="text-align: center;">C</th>
+<th style="text-align: center;">Ma</th>
+<th style="text-align: center;">Mi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">[x]</td>
+<td><code>tests/test_test_runner.py</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[x]</td>
+<td><code>tests/test_mock_server_integration.py</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>tests/test_mocks.py</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>tests/test_pause_endpoint.py</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>tests/test_pause_resume_events.py</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>tests/test_resume.py</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>tests/test_resume_endpoint.py</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>tests/test_models.py</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>tests/test_pause.py</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>tests/test_precondition_execution.py</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ide-typescriptreact-140-files-571-issues-37-blockercritical">IDE TypeScript/React (140 files, 571 issues, 37 blocker+critical)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Done</th>
+<th>File</th>
+<th style="text-align: center;">Total</th>
+<th style="text-align: center;">B</th>
+<th style="text-align: center;">C</th>
+<th style="text-align: center;">Ma</th>
+<th style="text-align: center;">Mi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">[x]</td>
+<td><code>ide/src/services/yaml/yamlToModel.ts</code></td>
+<td style="text-align: center;">21</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">21</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/common/catalog/catalogLoader.ts</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/json/modal/jsonVarRefs.ts</code></td>
+<td style="text-align: center;">11</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">8</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/steps/catalogBlocks.ts</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/populate/assertions/assertionPopulators.ts</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[x]</td>
+<td><code>ide/src/services/project/projectImportExport.ts</code></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/sync/phaseEnforcement.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/panels/EditorPanels.tsx</code></td>
+<td style="text-align: center;">19</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">15</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/preconditions/list/PreconditionEditor.tsx</code></td>
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/fields/wrappedText/FieldWrappedText.ts</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/fields/wrappedText/bubblePatch.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[x]</td>
+<td><code>ide/src/services/sequence/modelToSequence.ts</code></td>
+<td style="text-align: center;">10</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">10</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/populate/populateTest.ts</code></td>
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">6</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/VariableEditorDialog/TestOverridesPanel.tsx</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/common/fields/dropdownProviders.ts</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/dataflow/builder/dataFlowBuilder.ts</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[x]</td>
+<td><code>ide/src/services/graph/modelToGraph.ts</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+</tr>
+<tr>
+<td style="text-align: center;">[x]</td>
+<td><code>ide/src/services/yaml/yamlLineMap.ts</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/services/project/projectDocumentParser.ts</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/environment-editor/services/InternalServiceCard.tsx</code></td>
+<td style="text-align: center;">12</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">10</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/values/pathValueBlocks.ts</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/toolbox/toolboxBuilder.ts</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/yaml-editor/editors/TestdataEditor.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/path/core/pathBuilder.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[x]</td>
+<td><code>ide/src/services/validation/validator.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/common/contextMenu/spawnOutputsMenu.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/toolbox/connectorCategory.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/api-path/modal/ApiPathBuilderModal.tsx</code></td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/environment-editor/services/ExternalServiceCard.tsx</code></td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/preconditions/modal/AddPreconditionModal.tsx</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/export/ExportDialog.tsx</code></td>
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">4</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/forms/ChipFields.tsx</code></td>
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">4</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/project-explorer/contextMenu/ExplorerContextMenuParts.tsx</code></td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/export/ExportDialogParts.tsx</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/execution/ExecutionPanel.tsx</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/topbar/controls/CompileButton.tsx</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/topbar/controls/BackendSettings.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/ui/ValidationPanel.tsx</code></td>
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">6</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/forms/FormFields.tsx</code></td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">4</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/ServiceDialog/ServiceDialog.tsx</code></td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">4</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/ConfirmDialog/ConfirmDialog.tsx</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/PreconditionsDialog/PreconditionsDialog.tsx</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/SchemaDownloadDialog/SchemaDownloadDialog.tsx</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/VariableEditorDialog/VariableEditorDialog.tsx</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/app/App.tsx</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/App.tsx</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/environment-editor/services/FieldWithToggle.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/environment-editor/variables/VariableRow.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/environment-editor/variables/VariablesSection.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/path/modal/PathBuilderModal.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/AppErrorBoundary/AppErrorBoundary.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/BlockEditorErrorBoundary.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/yaml-editor/VariablePicker/VariablePicker.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/environment-editor/services/ServiceCard.tsx</code></td>
+<td style="text-align: center;">9</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">8</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/panels/PanelControls.tsx</code></td>
+<td style="text-align: center;">9</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">8</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/store/project/useProjectStore.ts</code></td>
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">7</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/assertions/assertionBlocks.ts</code></td>
+<td style="text-align: center;">14</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">14</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/ServiceDialog/ServiceListPanel.tsx</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">4</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/pipeline/TestPipelineTable.tsx</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/status/NotificationBar.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/preconditions/list/PreconditionsList.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/project-explorer/contextMenu/ExplorerContextMenu.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/dataflow/panels/StageListSidebar.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/common/outputDispenser.ts</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/json/modal/JsonEditorModal.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/panels/EditableFileName.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/environment-editor/services/ServicesSection.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/project-explorer/tree/TreeRow.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/dataflow/panels/AnnotationsBar.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/dataflow/panels/NodeDetailPanel.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/fields/templateString/FieldTemplateString.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/dataflow/PipelineGraphView.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/services/project/projectFilePersistence.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/preconditions/rules/ConstraintRow.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/dataflow/panels/MetadataEditor.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/services/project/projectImportTransforms.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/BlocklyWorkspace.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/json/modal/useJsonEditor.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/path/schema/SchemaTree.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/assertions/assertionBlockResolvers.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/config/blockDefinitions.ts</code></td>
+<td style="text-align: center;">10</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">10</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/fields/templateString/templateStringParser.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/populate/modelToWorkspace.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/sequence-view/SequenceDiagram.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/environment-editor/preview/yamlPreview.ts</code></td>
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">8</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/steps/registerParamField.ts</code></td>
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">7</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/serialize/validation/validateBlockFlattener.ts</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/topbar/TopBar.tsx</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/utility/utilityBlocks.ts</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/topbar/TopBarExampleMenu.tsx</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/VariableEditorDialog/TckVariableTable.tsx</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/project-explorer/actions/ExplorerActions.tsx</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/__tests__/store/notificationStore.test.ts</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/project-explorer/ProjectExplorer.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/dataflow/panels/VariablesOverview.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/structure/rootBlocks.ts</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/serialize/writer/policySerializers.ts</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/ServiceDialog/ServiceForm.tsx</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/environment-editor/EnvironmentEditor.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/yaml-editor/VariablePicker/useVariableScopes.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/status/StatusBar.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/populate/assertions/assertionGrouping.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/populate/assertions/assertionNormalization.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/dataflow/graph/PipelineEdge.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/dataflow/graph/PipelineGraphCanvas.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/services/project/exampleProjectLoader.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/__tests__/store/projectStore.test.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/policy/policyBlocks.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/structure/authBlocks.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/structure/filterExpressionBlock.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/structure/preconditionBlocks.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/structure/structuralBlocks.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/registration/values/literalValueBlocks.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/hooks/useModelSync.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/serializationParts/structuralBlockBuilders.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/serializationParts/workspaceBlockFactory.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/serialize/validation/validationBlockReaders.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/serialize/writer/preconditionSerializers.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/ui/WarningTooltip.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/WelcomeScreen/WelcomeCards.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/status/useSaveIndicator.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/topbar/ContextBarIcons.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/topbar/TopBarButtons.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/VariableEditorDialog/VariableRow.tsx</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/models/environment.ts</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/hooks/useWorkspaceInit.helpers.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/hooks/useBlocklyInit.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/tck-dashboard/dataflow/panels/MetadataSummary.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/yaml-editor/editors/MonacoEditor.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/json/modal/HighlightedEditor.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/blocks/path/schema/schemaResolver.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/hooks/useWorkspaceInit.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/serializationParts/valueBlockBuilders.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/serialization/unsupportedStepPayload.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/block-editor/sync/workspaceListeners.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/features/execution/StepCard.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/layout/topbar/TopBarHamburgerMenu.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/PreconditionsDialog/ConstraintRow.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/shared/ui/PreconditionsDialog/PolicySection.tsx</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/store/project/projectAssetActions.ts</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="stylesheets-scss-30-files-84-issues-0-blockercritical">Stylesheets (SCSS) (30 files, 84 issues, 0 blocker+critical)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Done</th>
+<th>File</th>
+<th style="text-align: center;">Total</th>
+<th style="text-align: center;">B</th>
+<th style="text-align: center;">C</th>
+<th style="text-align: center;">Ma</th>
+<th style="text-align: center;">Mi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_pipeline-detail-panel.scss</code></td>
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/components/_tck-variable-table.scss</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_execution-panel.scss</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_json-editor-modal.scss</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_metadata-editor.scss</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_path-builder-modal.scss</code></td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_graph-info-panel.scss</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_metadata-summary.scss</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_preconditions-panel.scss</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/layout/_notification-bar.scss</code></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_environment-editor.scss</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_schema-tree.scss</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_tck-dashboard.scss</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_validation-panel.scss</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_variable-picker.scss</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/layout/_app-shell.scss</code></td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/base/_global.scss</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_environment-variables-table.scss</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/layout/_bottom-panel.scss</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/layout/_network-tab.scss</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/components/_app-error-boundary.scss</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/components/_preconditions-dialog.scss</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_api-path-builder-modal.scss</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_chip-fields.scss</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_environment-service-card.scss</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_graph-node-types.scss</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/features/_step-card.scss</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/layout/_execution-controls.scss</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/layout/_network-detail-overlay.scss</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/src/assets/styles/layout/_topbar.scss</code></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mockups-html-6-files-143-issues-2-blockercritical">Mockups (HTML) (6 files, 143 issues, 2 blocker+critical)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Done</th>
+<th>File</th>
+<th style="text-align: center;">Total</th>
+<th style="text-align: center;">B</th>
+<th style="text-align: center;">C</th>
+<th style="text-align: center;">Ma</th>
+<th style="text-align: center;">Mi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/mockups/edc-shortcut-blocks-mockup.html</code></td>
+<td style="text-align: center;">44</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">22</td>
+<td style="text-align: center;">22</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/mockups/bottom-panel.html</code></td>
+<td style="text-align: center;">31</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">11</td>
+<td style="text-align: center;">19</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/mockups/variable-output-discovery-mockup.html</code></td>
+<td style="text-align: center;">28</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">18</td>
+<td style="text-align: center;">10</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/mockups/variables-editor-mockup.html</code></td>
+<td style="text-align: center;">26</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">16</td>
+<td style="text-align: center;">10</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/mockups/preconditions-panel-mockup.html</code></td>
+<td style="text-align: center;">12</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">7</td>
+</tr>
+<tr>
+<td style="text-align: center;">[ ]</td>
+<td><code>ide/mockups/yaml-syntax-comparison.html</code></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="detailed-findings-blocker-critical-files-only">Detailed Findings (BLOCKER + CRITICAL files only)</h2>
+<details>
+<summary><b>ide/src/features/block-editor/blocks/common/catalog/catalogLoader.ts</b> — 4 issues (4 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S2004` | Refactor this code to not nest functions more than 4 levels deep. |
+| ? | CRITICAL | `typescript:S2004` | Refactor this code to not nest functions more than 4 levels deep. |
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed. |
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed. |
+
+</details>
+
+<details>
+<summary><b>tests/test_test_runner.py</b> — 4 issues (4 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `python:S5443` | Make sure publicly writable directories are used safely here. |
+| ? | CRITICAL | `python:S5443` | Make sure publicly writable directories are used safely here. |
+| ? | CRITICAL | `python:S5443` | Make sure publicly writable directories are used safely here. |
+| ? | CRITICAL | `python:S5443` | Make sure publicly writable directories are used safely here. |
+
+</details>
+
+<details>
+<summary><b>ide/src/services/yaml/yamlToModel.ts</b> — 88 issues (3 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed. |
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 35 to the 15 allowed. |
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 31 to the 15 allowed. |
+| ? | MAJOR | `typescript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MAJOR | `typescript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MAJOR | `typescript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MAJOR | `typescript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MAJOR | `typescript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MAJOR | `typescript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MAJOR | `typescript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MAJOR | `typescript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MINOR | `typescript:S1128` | Remove this unused import of 'VariableDefinition'. |
+| ? | MINOR | `typescript:S6551` | 'metadata.name' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'raw.id ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'raw.name' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.id' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.namespace' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.testlab' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.name' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.description' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.dataspace_version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.dataspace_version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.description' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.description' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'metadata.name' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'raw.name' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'raw.id ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'obj.description' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'obj.description' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.id' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.namespace' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.testlab' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.name' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.description' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.license' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.dataspace_version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.dataspace_version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.dataspace_version' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'metadata.description' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'raw.description' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since the receiver accepts the original type of the expression. |
+| ? | MINOR | `typescript:S6551` | 'obj.id ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'obj.uses ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'obj.name' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'obj.if' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'obj.id ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'obj.uses ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'obj.name' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'obj.uses ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'obj.id ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'obj.version' will use Object's default stringification format ('[object Object]') when stringified. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/blocks/json/modal/jsonVarRefs.ts</b> — 11 issues (3 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed. |
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed. |
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed. |
+| ? | MINOR | `typescript:S6353` | Use concise character class syntax '\w' instead of '[a-zA-Z0-9_]'. |
+| ? | MINOR | `typescript:S6353` | Use concise character class syntax '\w' instead of '[a-zA-Z0-9_]'. |
+| ? | MINOR | `typescript:S6353` | Use concise character class syntax '\w' instead of '[a-zA-Z0-9_]'. |
+| ? | MINOR | `typescript:S6353` | Use concise character class syntax '\w' instead of '[a-zA-Z0-9_]'. |
+| ? | MINOR | `typescript:S6353` | Use concise character class syntax '\w' instead of '[a-zA-Z0-9_]'. |
+| ? | MINOR | `typescript:S6353` | Use concise character class syntax '\w' instead of '[a-zA-Z0-9_]'. |
+| ? | MINOR | `typescript:S6353` | Use concise character class syntax '\w' instead of '[a-zA-Z0-9_]'. |
+| ? | MINOR | `typescript:S6353` | Use concise character class syntax '\w' instead of '[a-zA-Z0-9_]'. |
+
+</details>
+
+<details>
+<summary><b>stubs/ccm-sut/management.py</b> — 3 issues (3 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | BLOCKER | `python:S8411` | Add path parameter "asset_id" to the function signature. |
+| ? | BLOCKER | `python:S8411` | Add path parameter "policy_id" to the function signature. |
+| ? | BLOCKER | `python:S8411` | Add path parameter "contract_id" to the function signature. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/serialization/populate/assertions/assertionPopulators.ts</b> — 5 issues (2 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed. |
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 31 to the 15 allowed. |
+| ? | MINOR | `typescript:S6551` | 'normalized.output ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'normalized.type ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'r.output ?? "?"' will use Object's default stringification format ('[object Object]') when stringified. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/blocks/registration/steps/catalogBlocks.ts</b> — 5 issues (2 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed. |
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed. |
+| ? | MAJOR | `typescript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MINOR | `typescript:S3863` | 'blockly' imported multiple times. |
+| ? | MINOR | `typescript:S3863` | 'blockly' imported multiple times. |
+
+</details>
+
+<details>
+<summary><b>ide/src/services/project/projectImportExport.ts</b> — 2 issues (2 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed. |
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed. |
+
+</details>
+
+<details>
+<summary><b>src/tractusx_testlab/compiler/_ir_helpers.py</b> — 2 issues (2 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `python:S3776` | Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed. |
+| ? | CRITICAL | `python:S3776` | Refactor this function to reduce its Cognitive Complexity from 34 to the 15 allowed. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/sync/phaseEnforcement.ts</b> — 2 issues (2 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed. |
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed. |
+
+</details>
+
+<details>
+<summary><b>ide/mockups/bottom-panel.html</b> — 31 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `javascript:S3776` | Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed. |
+| ? | MAJOR | `css:S7924` | Text does not meet the minimal contrast requirement with its background. |
+| ? | MAJOR | `css:S7924` | Text does not meet the minimal contrast requirement with its background. |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <div> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <div> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <div> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <div> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <div> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <tr> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <tr> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <tr> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <tr> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <tr> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <div> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <span> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <span> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <span> tag. |
+| ? | MINOR | `javascript:S1313` | Make sure using a hardcoded IP address 10.0.2.15 is safe here. |
+| ? | MINOR | `javascript:S7773` | Prefer `Number.parseInt` over `parseInt`. |
+| ? | MINOR | `javascript:S2486` | Handle this exception or don't catch it at all. |
+| ? | MINOR | `javascript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `javascript:S7773` | Prefer `Number.isNaN` over `isNaN`. |
+
+</details>
+
+<details>
+<summary><b>ide/src/layout/panels/EditorPanels.tsx</b> — 19 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed. |
+| ? | MAJOR | `typescript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MAJOR | `typescript:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `typescript:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MINOR | `typescript:S3863` | '@/features/block-editor' imported multiple times. |
+| ? | MINOR | `typescript:S3863` | '@/features/yaml-editor' imported multiple times. |
+| ? | MINOR | `typescript:S3863` | '@/store' imported multiple times. |
+| ? | MINOR | `typescript:S3863` | '@/features/block-editor' imported multiple times. |
+| ? | MINOR | `typescript:S3863` | '@/store' imported multiple times. |
+| ? | MINOR | `typescript:S3863` | '@/store' imported multiple times. |
+| ? | MINOR | `typescript:S3863` | '@/features/yaml-editor' imported multiple times. |
+| ? | MINOR | `typescript:S6759` | Mark the props of the component as read-only. |
+| ? | MINOR | `typescript:S7764` | Prefer `globalThis` over `window`. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since it does not change the type of the expression. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since it does not change the type of the expression. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since it does not change the type of the expression. |
+| ? | MINOR | `typescript:S1082` | Visible, non-interactive elements with click handlers must have at least one keyboard listener. |
+| ? | MINOR | `typescript:S1082` | Visible, non-interactive elements with click handlers must have at least one keyboard listener. |
+
+</details>
+
+<details>
+<summary><b>ide/mockups/preconditions-panel-mockup.html</b> — 12 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `javascript:S3776` | Refactor this function to reduce its Cognitive Complexity from 28 to the 15 allowed. |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `Web:S6848` | Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tab |
+| ? | MAJOR | `javascript:S3358` | Extract this nested ternary operation into an independent statement. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <div> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <div> tag. |
+| ? | MINOR | `Web:MouseEventWithoutKeyboardEquivalentCheck` | Add a 'onKeyPress/onKeyDown/onKeyUp' attribute to this <div> tag. |
+| ? | MINOR | `javascript:S7781` | Prefer `String#replaceAll()` over `String#replace()`. |
+| ? | MINOR | `javascript:S7781` | Prefer `String#replaceAll()` over `String#replace()`. |
+| ? | MINOR | `javascript:S7781` | Prefer `String#replaceAll()` over `String#replace()`. |
+| ? | MINOR | `javascript:S6644` | Unnecessary use of conditional expression for default assignment. |
+
+</details>
+
+<details>
+<summary><b>ide/src/services/sequence/modelToSequence.ts</b> — 11 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed. |
+| ? | MINOR | `typescript:S6594` | Use the "RegExp.exec()" method instead. |
+| ? | MINOR | `typescript:S6353` | Use concise character class syntax '\W' instead of '[^a-zA-Z0-9_]'. |
+| ? | MINOR | `typescript:S7778` | Do not call `Array#push()` multiple times. |
+| ? | MINOR | `typescript:S7778` | Do not call `Array#push()` multiple times. |
+| ? | MINOR | `typescript:S7778` | Do not call `Array#push()` multiple times. |
+| ? | MINOR | `typescript:S7778` | Do not call `Array#push()` multiple times. |
+| ? | MINOR | `typescript:S7778` | Do not call `Array#push()` multiple times. |
+| ? | MINOR | `typescript:S7778` | Do not call `Array#push()` multiple times. |
+| ? | MINOR | `typescript:S7778` | Do not call `Array#push()` multiple times. |
+| ? | MINOR | `typescript:S7778` | Do not call `Array#push()` multiple times. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/preconditions/list/PreconditionEditor.tsx</b> — 8 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 33 to the 15 allowed. |
+| ? | MAJOR | `typescript:S6853` | A form label must be associated with a control. |
+| ? | MAJOR | `typescript:S6853` | A form label must be associated with a control. |
+| ? | MAJOR | `typescript:S4624` | Refactor this code to not use nested template literals. |
+| ? | MAJOR | `typescript:S6819` | Use <input type="button">, <input type="image">, <input type="reset">, <input type="submit">, or <button> instead of the |
+| ? | MINOR | `typescript:S6551` | 'v' may use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'wv' may use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'val ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/serialization/populate/populateTest.ts</b> — 7 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 62 to the 15 allowed. |
+| ? | MINOR | `typescript:S6551` | 'step.with.file' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'exportVar' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'varName' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'step.with.name' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'step.with.path' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S6551` | 'step.with.name // "schema_var"' will use Object's default stringification format ('[object Object]') when stringified. |
+
+</details>
+
+<details>
+<summary><b>ide/src/shared/ui/VariableEditorDialog/TestOverridesPanel.tsx</b> — 5 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S2871` | Provide a compare function that depends on "String.localeCompare", to reliably sort elements alphabetically. |
+| ? | MINOR | `typescript:S7744` | The empty object is useless. |
+| ? | MINOR | `typescript:S6759` | Mark the props of the component as read-only. |
+| ? | MINOR | `typescript:S7735` | Unexpected negated condition. |
+| ? | MINOR | `typescript:S6551` | 'currentWith[varName] ?? ""' will use Object's default stringification format ('[object Object]') when stringified. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/blocks/common/fields/dropdownProviders.ts</b> — 4 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed. |
+| ? | MINOR | `typescript:S1128` | Remove this unused import of 'useServiceStore'. |
+| ? | MINOR | `typescript:S3863` | '@/store' imported multiple times. |
+| ? | MINOR | `typescript:S3863` | '@/store' imported multiple times. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/tck-dashboard/dataflow/builder/dataFlowBuilder.ts</b> — 4 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 69 to the 15 allowed. |
+| ? | MINOR | `typescript:S6551` | 'step.with.name' will use Object's default stringification format ('[object Object]') when stringified. |
+| ? | MINOR | `typescript:S4158` | Review this usage of "sourceEdges" as it can only be empty here. |
+| ? | MINOR | `typescript:S6353` | Use concise character class syntax '\w' instead of '[a-zA-Z0-9_]'. |
+
+</details>
+
+<details>
+<summary><b>ide/src/services/graph/modelToGraph.ts</b> — 4 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 70 to the 15 allowed. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since it does not change the type of the expression. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since it does not change the type of the expression. |
+| ? | MINOR | `typescript:S7754` | Prefer `.some(���)` over `.find(���)`. |
+
+</details>
+
+<details>
+<summary><b>ide/src/services/yaml/yamlLineMap.ts</b> — 4 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 34 to the 15 allowed. |
+| ? | MINOR | `typescript:S6594` | Use the "RegExp.exec()" method instead. |
+| ? | MINOR | `typescript:S6594` | Use the "RegExp.exec()" method instead. |
+| ? | MINOR | `typescript:S6594` | Use the "RegExp.exec()" method instead. |
+
+</details>
+
+<details>
+<summary><b>ide/src/services/project/projectDocumentParser.ts</b> — 3 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since it does not change the type of the expression. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since it does not change the type of the expression. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/fields/wrappedText/FieldWrappedText.ts</b> — 3 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed. |
+| ? | MAJOR | `typescript:S7762` | Prefer `childNode.remove()` over `parentNode.removeChild(childNode)`. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since it does not change the type of the expression. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/blocks/registration/values/pathValueBlocks.ts</b> — 3 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed. |
+| ? | MINOR | `typescript:S3863` | 'blockly' imported multiple times. |
+| ? | MINOR | `typescript:S3863` | 'blockly' imported multiple times. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/toolbox/toolboxBuilder.ts</b> — 3 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed. |
+| ? | MINOR | `typescript:S3863` | '../blocks' imported multiple times. |
+| ? | MINOR | `typescript:S3863` | '../blocks' imported multiple times. |
+
+</details>
+
+<details>
+<summary><b>tests/test_mock_server_integration.py</b> — 3 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `python:S5443` | Make sure publicly writable directories are used safely here. |
+| ? | MINOR | `python:S7504` | Remove this unnecessary `list()` call on an already iterable object. |
+| ? | MINOR | `python:S7504` | Remove this unnecessary `list()` call on an already iterable object. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/fields/wrappedText/bubblePatch.ts</b> — 2 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed. |
+| ? | MAJOR | `typescript:S7761` | Prefer `.dataset` over `getAttribute(���)`. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/yaml-editor/editors/TestdataEditor.tsx</b> — 2 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since it does not change the type of the expression. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/blocks/path/core/pathBuilder.ts</b> — 2 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 47 to the 15 allowed. |
+| ? | MINOR | `typescript:S7780` | `String.raw` should be used to avoid escaping `\`. |
+
+</details>
+
+<details>
+<summary><b>ide/src/services/validation/validator.ts</b> — 2 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed. |
+| ? | MINOR | `typescript:S4325` | This assertion is unnecessary since it does not change the type of the expression. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/blocks/common/contextMenu/spawnOutputsMenu.ts</b> — 1 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed. |
+
+</details>
+
+<details>
+<summary><b>ide/src/features/block-editor/toolbox/connectorCategory.ts</b> — 1 issues (1 blocker/critical)</summary>
+
+| Line | Severity | Rule | Message |
+|------|----------|------|---------|
+| ? | CRITICAL | `typescript:S3776` | Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed. |
+
+</details>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Eclipse Tractus-X Contributors
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "navigation.instant", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../assets/javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,5308 @@
+<!--
+  Eclipse Tractus-X - Tractus-X TestLab
+
+  Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+  See the NOTICE file(s) distributed with this work for additional
+  information regarding copyright ownership.
+
+  This program and the accompanying materials are made available under the
+  terms of the Apache License, Version 2.0 which is available at
+  https://www.apache.org/licenses/LICENSE-2.0.
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+  either express or implied. See the
+  License for the specific language govern in permissions and limitations
+  under the License.
+
+  SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- It was reviewed and tested by a human committer. -->
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Visual test authoring tool for Eclipse Tractus-X dataspaces">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/logo_tractus-x-min.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Ide refactor plan - Tractus-X TestLab Documentation</title>
+      
+    
+    
+  
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../../assets/stylesheets/orange-black-theme.css">
+  <style>
+    .md-header__inner {
+      display: flex !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      height: 3rem !important;
+      padding: 0 0.1rem !important;
+      gap: 0 !important;
+      position: relative !important;
+    }
+
+    .md-header__button.md-logo {
+      order: 1 !important;
+      flex: 0 0 auto !important;
+      margin: 0 !important;
+      padding: 0.2rem 0.1rem !important;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+
+    .md-header__button[for="__drawer"] {
+      order: 2 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0.2rem !important;
+      display: none !important;
+    }
+
+    @media screen and (max-width: 1220px) {
+      .md-header__button[for="__drawer"] {
+        display: inline-flex !important;
+      }
+    }
+
+    .md-header__title {
+      order: 3 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0 0 0.15rem !important;
+      overflow: visible !important;
+      font-family: 'Manrope', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 1.2rem !important;
+      letter-spacing: -0.02em !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      line-height: 3rem !important;
+      height: 3rem !important;
+    }
+
+    .md-header__title .md-header__ellipsis {
+      font-size: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      display: none !important;
+    }
+
+    .md-header__title::before {
+      content: "Tractus-X TestLab" !important;
+      color: #ffffff !important;
+      font-size: 1.2rem !important;
+      font-weight: 700 !important;
+      white-space: nowrap !important;
+    }
+
+    .md-header__title::after {
+      content: "docs" !important;
+      color: rgba(255, 215, 0, 0.7) !important;
+      font-size: 0.5rem !important;
+      font-weight: 500 !important;
+      background: none !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.12em !important;
+      white-space: nowrap !important;
+      align-self: flex-start !important;
+      margin-top: 0.55rem !important;
+      margin-left: -0.2rem !important;
+    }
+
+    .md-search {
+      order: 5 !important;
+      flex: 1 1 auto !important;
+      max-width: none !important;
+      width: auto !important;
+      margin: 0 0 0 0.75rem !important;
+    }
+
+    label[for="__search"] {
+      order: 4 !important;
+      flex: 0 0 auto !important;
+    }
+
+    .md-header .md-version {
+      order: 6 !important;
+      flex: 0 0 auto !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      margin: 0 0.4rem !important;
+    }
+  </style>
+
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/orange-black-theme.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ide-refactor-plan-idesrc" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Tractus-X TestLab Documentation" class="md-header__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tractus-X TestLab Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Ide refactor plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../specification/" class="md-tabs__link">
+          
+  
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../tutorials/" class="md-tabs__link">
+          
+  
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../contributing/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Tractus-X TestLab Documentation" class="md-nav__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    Tractus-X TestLab Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Welcome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/specification/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Terminology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/specification/functional-requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functional Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/specification/data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/specification/constraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Constraints & Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/specification/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Walkthrough
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/walkthrough/writing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/walkthrough/compiling-packages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiling Packages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/walkthrough/executing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Executing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/reference/syntax/cheat-sheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax Cheat Sheet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/syntax/tck-syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TCK Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/create-step-executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create a Step Executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/add-service-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Service Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/add-assertion-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add an Assertion Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/add-validation-rule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Validation Rule
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/development-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-conformity-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CCM Conformity Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Certificate Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Certificate Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/certificate-management-ide-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-business-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Business Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-architecture-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../product-scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Scope
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI-Assisted Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Contracts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Step Contracts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../step-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single Source of Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ide-engine-contract-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IDE-Engine Contract Parity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contract-conflict-decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Conflict Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contract-migration-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Migration Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../block-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../creating-a-step/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating a Step
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../execution-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../environment-injection-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Injection Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../step-reference-drift-report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13" id="__nav_5_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decision Records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/ADR-0000-template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0000 Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_3" id="__nav_5_13_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Backend
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0005-filesystem-participant-manager-with-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0005 Participant Manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0012-compilation-and-packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0012 Compilation and Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0014-flat-compilation-intermediate-representation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0014 Flat Compilation IR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0015-package-asset-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0015 Package Asset Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0016-execution-trace-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0016 Execution Trace Format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0017-input-callback-endpoint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0017 Input Callback Endpoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0019-service-requirements-and-engine-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0019 Service Requirements and Engine Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0022-tck-static-inspection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0022 TCK Static Inspection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0023-variable-scope-annotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0023 Variable Scope Annotation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0024-test-skip-configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0024 Test-Level Skip Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_4" id="__nav_5_13_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Shared
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0003-sse-for-live-ide-execution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0003 SSE for Live Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0008-test-case-to-tck-rename/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0008 TCK Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0009-typed-variable-class-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0009 Typed Variable Class System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0010-yaml-syntax-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0010 YAML Syntax v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0011-environment-and-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0011 Environment and Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0018-unified-variables-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0018 Unified Variables Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0021-remove-precondition-concept/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0021 Remove Precondition Concept
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0025-assertions-read-declared-returns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0025 Assertions Read Declared Returns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-objective-a-deeply-modular-frontend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Objective — a deeply modular frontend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0. Objective — a deeply modular frontend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#guardrail-no-over-engineering-non-negotiable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrail — no over-engineering (non-negotiable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doctrine-behavior-appearance-unchanged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Doctrine — behavior + appearance unchanged
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-current-state-pain-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Current-State Pain Points
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Current-State Pain Points">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1a-dead-duplicate-tree-componentsblockeditor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1a. Dead duplicate tree — components/BlockEditor/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1b-over-limit-live-files-300-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1b. Over-limit live files (&gt; 300 lines)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1c-kitchen-sink-tangled-modules-under-300-but-mixed-responsibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1c. Kitchen-sink / tangled modules (under 300 but mixed responsibility)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1d-store-mixing-state-with-pure-io-storeproject" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1d. Store mixing state with pure I/O — store/project/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1e-barrel-bypass-deep-store-imports-from-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1e. Barrel-bypass: deep store imports from features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1f-modelyaml-field-mapping-duplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1f. Model↔YAML field-mapping duplication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1g-scattered-styling-66-per-component-css-files-no-scss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1g. Scattered styling — 66 per-component .css files, no SCSS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1h-flat-feature-folders-bundling-multiple-sections-under-300-still-un-modular" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1h. Flat feature folders bundling multiple sections (under 300, still un-modular)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1i-dead-root-level-block-duplicates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1i. Dead root-level block duplicates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-target-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Target Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Target Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#20-file-naming-convention-self-documenting-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.0. File Naming Convention (self-documenting names)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#201-split-outputs-become-nested-modules-no-flat-dumps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.0.1. Split outputs become nested modules (no flat dumps)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2a-top-level-layers-idesrc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2a. Top-level layers (ide/src/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2b-app-composition-root" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2b. app/ — composition root
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2c-layout-application-chrome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2c. layout/ — application chrome
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2d-features-domain-features-each-a-self-contained-folder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2d. features/ — domain features (each a self-contained folder)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2e-store-zustand-state-slices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2e. store/ — Zustand state slices
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2f-services-pure-framework-free-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2f. services/ — pure, framework-free logic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2g-models-shared-__tests__-leaf-cross-cutting-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2g. models/, shared/, __tests__/ — leaf + cross-cutting layers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#21-assetsstyles-the-single-scss-source-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1. assets/styles/ — the single SCSS source tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-module-responsibility-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Module / Responsibility Map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-migration-phases-ordered-leaf-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Migration Phases (ordered, leaf-first)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Migration Phases (ordered, leaf-first)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-0-delete-dead-componentsblockeditor-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 0 — Delete dead components/BlockEditor/ tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-split-serializeworkspacetomodelts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1 — Split serialize/workspaceToModel.ts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-split-hooksuseblocklyworkspacets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2 — Split hooks/useBlocklyWorkspace.ts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-dissolve-flat-serializationhelpersts-into-serializationparts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3 — Dissolve flat serialization/helpers.ts into serializationParts/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-decompose-populatepopulatetestts-switch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4 — Decompose populate/populateTest.ts switch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-5-modularize-serializationpopulate-into-nested-sub-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 5 — Modularize serialization/populate/ into nested sub-modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-6-modularize-block-editorfields-into-per-field-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 6 — Modularize block-editor/fields/ into per-field modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-7-split-blockscommoncatalog-by-responsibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 7 — Split blocks/common/catalog/ by responsibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-8-remove-dead-root-level-block-duplicates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 8 — Remove dead root-level block duplicates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-9-modularize-featuresenvironment-editor-by-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 9 — Modularize features/environment-editor/ by section
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-10-modularize-featurestck-dashboarddataflow-by-concern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 10 — Modularize features/tck-dashboard/dataflow/ by concern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-11-modularize-featurespreconditions-by-concern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 11 — Modularize features/preconditions/ by concern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-12-modularize-featuresproject-explorer-by-concern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 12 — Modularize features/project-explorer/ by concern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-13-modularize-featuresyaml-editor-by-editor-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 13 — Modularize features/yaml-editor/ by editor surface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-14-decompose-modelsschemats-into-a-schema-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 14 — Decompose models/schema.ts into a schema/ module
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-15-modularize-storeselectors-and-tidy-slice-internals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 15 — Modularize store/selectors/ and tidy slice internals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-16-move-pure-io-to-servicesproject" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 16 — Move pure I/O to services/project/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-17-centralize-modelyaml-field-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 17 — Centralize model↔YAML field mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-18-descriptive-name-sweep-remaining-generic-file-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 18 — Descriptive-name sweep (remaining generic file names)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-19-consolidate-all-styling-into-scss-under-assetsstyles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 19 — Consolidate all styling into SCSS under assets/styles/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-20-enforce-barrels-featurestore-mediation-naming-styles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 20 — Enforce barrels, feature→store mediation, naming + styles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Risks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-acceptance-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Acceptance Criteria
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/eclipse-tractusx/tractusx-testlab/edit/main/docs/developer/refactor-plan/ide-refactor-plan.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<!--
+ Eclipse Tractus-X - Tractus-X TestLab
+
+ Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+ See the NOTICE file(s) distributed with this work for additional
+ information regarding copyright ownership.
+
+ This program and the accompanying materials are made available under the
+ terms of the Apache License, Version 2.0 which is available at
+ https://www.apache.org/licenses/LICENSE-2.0.
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations
+ under the License.
+
+ SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8). -->
+<!-- It was reviewed and tested by a human committer. -->
+
+<h1 id="ide-refactor-plan-idesrc">IDE Refactor Plan (<code>ide/src/</code>)</h1>
+<blockquote>
+<p>All phases obey the <strong>Refactor Charter</strong> in <a href="../">README.md</a> — structural-only, look/behave identical, legacy removal allowed.</p>
+<p><strong>Scope:</strong> structural-only. No behavior, no contract, no generated-output
+changes. Every phase ends green on <code>tsc --noEmit</code>, <code>vite build</code>, and the test
+suite. See <a href="../">README.md</a> for shared contracts and the lockstep rule.</p>
+</blockquote>
+<p>The IDE has <strong>already migrated</strong> to the feature-based architecture documented in
+<code>ide/src/ARCHITECTURE.md</code> (<code>app/ · features/ · layout/ · shared/ · store/ ·
+models/ · services/</code>). The import rules and feature→store mediation are documented
+and — verified during this audit — already honored: there are <strong>zero
+feature→feature imports</strong>. This plan now drives that architecture all the way down:
+<strong>every concern becomes a module in its own right, nested as deep as real
+responsibility seams require.</strong></p>
+<hr />
+<h2 id="0-objective-a-deeply-modular-frontend">0. Objective — a deeply modular frontend</h2>
+<p><strong>The goal is a deeply modular frontend, not merely "split files over 300 lines."</strong></p>
+<p>Every concern — hooks, helpers, stores, sync, serialization, block definitions,
+catalog loading, field classes, transforms, and views — becomes a <strong>module in its
+own right</strong>: a folder with a single nameable responsibility, its own barrel
+(<code>index.ts</code>) as public surface, and freedom to nest into <strong>sub-modules within
+sub-modules</strong> wherever a real seam exists. Modularity is the objective; file size
+is only one of several triggers that reveal where modularity is missing.</p>
+<p><strong>Triggers that signal a module is needed</strong> (any one is sufficient):</p>
+<ol>
+<li><strong>A file bundles more than one nameable responsibility</strong> — even well under 300
+   lines. A 120-line file that does loading <em>and</em> transforming <em>and</em> validating is
+   three modules wearing one filename.</li>
+<li><strong>A folder is a flat dump of siblings</strong> that obviously cluster by concern (e.g.
+   18 components in one <code>dataflow/</code> folder that are really <em>graph rendering</em> +
+   <em>detail panels</em> + <em>data builders</em>).</li>
+<li><strong>A file exceeds 300 lines</strong> — the loudest trigger, but the <em>last</em> one to rely
+   on. By the time a file is oversized, the missing seams are already obvious.</li>
+<li><strong>The same logic appears twice</strong> — extract it into one importable module instead
+   of duplicating it.</li>
+</ol>
+<p><strong>This plan therefore covers the whole frontend</strong>, not only today's oversized
+files. Sub-300 files and flat feature folders that bundle responsibilities are
+modularized too.</p>
+<h3 id="guardrail-no-over-engineering-non-negotiable">Guardrail — no over-engineering (non-negotiable)</h3>
+<p>Nest <strong>only</strong> where a real, nameable responsibility seam exists. Each module must
+have a single nameable purpose and a minimal public surface. <strong>Do not</strong> create a
+single-function "module" just to add depth, do not split a cohesive unit, and do
+not invent a folder that holds one stray file with no sibling concern (unless the
+§2 tree defines that seam, e.g. a one-directional <code>reader/</code>). The boring, readable
+structure a human can navigate always wins over artificial depth.</p>
+<h3 id="doctrine-behavior-appearance-unchanged">Doctrine — behavior + appearance unchanged</h3>
+<p>Modularization is <strong>purely structural</strong>. No phase changes behavior, generated
+output, styling, or any observable contract. Every phase ships green on
+<code>tsc --noEmit</code>, <code>vite build</code>, and the test suite, and (per the README Execution
+Discipline) is proven pixel-identical in the live browser before it is "done." The
+300-line acceptance check in §6 remains, but it is a <strong>floor</strong>, not the target —
+passing it does not mean a folder is modular.</p>
+<hr />
+<h2 id="1-current-state-pain-points">1. Current-State Pain Points</h2>
+<p>All line counts below were measured during this audit (May 2026), not estimated.</p>
+<h3 id="1a-dead-duplicate-tree-componentsblockeditor">1a. Dead duplicate tree — <code>components/BlockEditor/</code></h3>
+<p>A legacy <code>src/components/BlockEditor/</code> tree co-exists with the live
+<code>src/features/block-editor/</code>. <strong>It is imported nowhere outside itself</strong> (verified:
+no external references to <code>components/BlockEditor</code>). It contains the two <em>largest</em>
+files in the repo, which is why the oversized scan looks worse than reality:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th style="text-align: right;">Lines</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>components/BlockEditor/serialization/helpers.ts</code></td>
+<td style="text-align: right;">340</td>
+<td>dead duplicate of feature helpers</td>
+</tr>
+<tr>
+<td><code>components/BlockEditor/blocks/registration/values/valueBlocks.ts</code></td>
+<td style="text-align: right;">320</td>
+<td>dead duplicate</td>
+</tr>
+<tr>
+<td><code>components/BlockEditor/blocks/catalogBlocks.ts</code></td>
+<td style="text-align: right;">—</td>
+<td>dead</td>
+</tr>
+<tr>
+<td><code>components/BlockEditor/blocks/valueBlocks.ts</code></td>
+<td style="text-align: right;">—</td>
+<td>dead</td>
+</tr>
+<tr>
+<td><code>components/BlockEditor/config/blockColors.ts</code></td>
+<td style="text-align: right;">—</td>
+<td>dead</td>
+</tr>
+<tr>
+<td><code>components/BlockEditor/toolbox/{phaseConfig,toolboxBuilder}.ts</code></td>
+<td style="text-align: right;">—</td>
+<td>dead</td>
+</tr>
+</tbody>
+</table>
+<p><code>src/components/</code> also holds a <code>YamlEditor/</code> sibling — confirm before deletion
+whether it is live or also superseded by <code>features/yaml-editor/</code>.</p>
+<h3 id="1b-over-limit-live-files-300-lines">1b. Over-limit live files (&gt; 300 lines)</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th style="text-align: right;">Lines</th>
+<th>Problem</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>features/block-editor/serialization/serialize/workspaceToModel.ts</code></td>
+<td style="text-align: right;">303</td>
+<td>Mixes chain reading, validate-flattening, and block→step conversion in one module (<code>workspaceToModel</code>, <code>readStepChain</code>, <code>flattenValidateToSteps</code>, <code>blockToStep</code>).</td>
+</tr>
+<tr>
+<td><code>features/block-editor/hooks/useBlocklyWorkspace.ts</code></td>
+<td style="text-align: right;">301</td>
+<td>One hook owning three concerns across three <code>useEffect</code>s: init/catalog load, store↔workspace sync (debounced), and resize/toolbox refresh.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="1c-kitchen-sink-tangled-modules-under-300-but-mixed-responsibility">1c. Kitchen-sink / tangled modules (under 300 but mixed responsibility)</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th style="text-align: right;">Lines</th>
+<th>Problem</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>serialization/helpers.ts</code></td>
+<td style="text-align: right;">259</td>
+<td>Co-exists with a <code>serialization/helpers/</code> folder (<code>assertions.ts</code>, <code>blockUtils.ts</code>, <code>structuralBlocks.ts</code>, <code>valueBlocks.ts</code>). A leftover flat file holding grab-bag helpers that should live inside the folder. Splits the public surface in two places.</td>
+</tr>
+<tr>
+<td><code>serialization/populate/populateTest.ts</code></td>
+<td style="text-align: right;">288</td>
+<td>A single <code>switch (p.type)</code> over 13 param types (<code>dropdown</code>, <code>variable</code>, <code>text</code>, <code>number</code>, <code>json</code>, <code>array</code>, <code>steps</code>, <code>filter_expression_list</code>, <code>json_path</code>, <code>api_path</code>, …). Adding a param type means editing this giant switch. Stringly-dispatched, not data-driven.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="1d-store-mixing-state-with-pure-io-storeproject">1d. Store mixing state with pure I/O — <code>store/project/</code></h3>
+<p><code>store/project/</code> (1,537 lines across 10 files) blends Zustand state with <strong>pure,
+side-effecting I/O</strong> that has no business in a store:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th style="text-align: right;">Lines</th>
+<th>Nature</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>persistence.ts</code></td>
+<td style="text-align: right;">267</td>
+<td>pure localStorage I/O + serialization</td>
+</tr>
+<tr>
+<td><code>projectIO.ts</code></td>
+<td style="text-align: right;">207</td>
+<td>pure import/export I/O</td>
+</tr>
+<tr>
+<td><code>importExample.ts</code></td>
+<td style="text-align: right;">176</td>
+<td>pure example loading/fetch</td>
+</tr>
+<tr>
+<td><code>importHelpers.ts</code></td>
+<td style="text-align: right;">170</td>
+<td>pure transform</td>
+</tr>
+<tr>
+<td><code>projectIOHelpers.ts</code></td>
+<td style="text-align: right;">131</td>
+<td>pure transform</td>
+</tr>
+<tr>
+<td><code>documentLoader.ts</code></td>
+<td style="text-align: right;">122</td>
+<td>pure document parsing/loading</td>
+</tr>
+<tr>
+<td><code>useProjectStore.ts</code></td>
+<td style="text-align: right;">160</td>
+<td>the actual store (state + actions)</td>
+</tr>
+<tr>
+<td><code>projectAssetActions.ts</code> / <code>projectTestActions.ts</code></td>
+<td style="text-align: right;">130 / 130</td>
+<td>store action slices</td>
+</tr>
+</tbody>
+</table>
+<p>Per <code>ARCHITECTURE.md</code>, <code>store/</code> may import <code>services/</code>. Pure I/O belongs in
+<code>services/project/</code>, leaving <code>store/project/</code> holding only state and thin actions
+that delegate to the service.</p>
+<h3 id="1e-barrel-bypass-deep-store-imports-from-features">1e. Barrel-bypass: deep store imports from features</h3>
+<p>Features deep-import store internals instead of the <code>@/store</code> barrel:</p>
+<table>
+<thead>
+<tr>
+<th>Imported path</th>
+<th style="text-align: right;">Occurrences</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@/store/project/useProjectStore</code></td>
+<td style="text-align: right;">26</td>
+</tr>
+<tr>
+<td><code>@/store/editor/useEditorStore</code></td>
+<td style="text-align: right;">10</td>
+</tr>
+<tr>
+<td><code>@/store/environment/useServiceStore</code></td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr>
+<td>other deep <code>@/store/*</code></td>
+<td style="text-align: right;">3</td>
+</tr>
+</tbody>
+</table>
+<p>This is consistent and not a layering <em>violation</em> (still feature→store), but it
+couples features to the store's internal file layout, defeating the barrel. Note:
+this is low-priority hygiene, <strong>not</strong> a correctness bug.</p>
+<h3 id="1f-modelyaml-field-mapping-duplication">1f. Model↔YAML field-mapping duplication</h3>
+<p><code>services/yaml/modelToYaml.ts</code> (119) and <code>services/yaml/yamlToModel.ts</code> (246)
+encode the <em>same field mapping</em> twice — once forward, once reverse. A field added
+to one side can silently drift from the other. This is the <strong>frozen YAML v2
+contract</strong> (see README lockstep rule): the mapping logic may be centralized, but
+the emitted YAML must stay byte-identical.</p>
+<h3 id="1g-scattered-styling-66-per-component-css-files-no-scss">1g. Scattered styling — 66 per-component <code>.css</code> files, no SCSS</h3>
+<p>Styling is <strong>66 plain <code>.css</code> files co-located next to components</strong> (verified by
+inventory, May 2026) with <strong>no SCSS, no <code>assets/</code> tree, and no shared token
+source</strong>. Colors, spacing, radii, panel surfaces, and scrollbar rules are
+copy-pasted across files, so a token change means editing dozens of files and look
+drifts between components. There is no single place to find or change a style.</p>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Count / detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Per-component <code>.css</code> files under <code>src/</code></td>
+<td>66 (layout, features, shared/ui, app)</td>
+</tr>
+<tr>
+<td>SCSS files</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Shared token / mixin source</td>
+<td>none — values duplicated inline</td>
+</tr>
+<tr>
+<td><code>assets/</code> directory</td>
+<td>does not exist</td>
+</tr>
+</tbody>
+</table>
+<p>This is the largest source of duplication in the IDE and the reason Directive 2
+mandates a single SCSS source tree (see §2.1 and Phase 19).</p>
+<h3 id="1h-flat-feature-folders-bundling-multiple-sections-under-300-still-un-modular">1h. Flat feature folders bundling multiple sections (under 300, still un-modular)</h3>
+<p>Several feature folders are <strong>flat dumps of siblings that obviously cluster by
+concern</strong> — no file is oversized, yet the folder is not modular. These are prime
+deep-modularization targets driven by trigger §0.2, not by line count:</p>
+<table>
+<thead>
+<tr>
+<th>Folder</th>
+<th style="text-align: right;">Files (flat)</th>
+<th>Distinct concerns bundled</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>features/tck-dashboard/dataflow/</code></td>
+<td style="text-align: right;">18</td>
+<td>graph rendering (canvas/nodes/edges) + detail panels + data builders + layout</td>
+</tr>
+<tr>
+<td><code>features/environment-editor/</code></td>
+<td style="text-align: right;">11</td>
+<td>services section + variables section + YAML preview + shared field</td>
+</tr>
+<tr>
+<td><code>features/project-explorer/</code></td>
+<td style="text-align: right;">9</td>
+<td>tree rendering + context menu (3 files) + actions + drag hook</td>
+</tr>
+<tr>
+<td><code>features/preconditions/</code></td>
+<td style="text-align: right;">8</td>
+<td>modal + list + rule sections + editor + template policies</td>
+</tr>
+<tr>
+<td><code>features/yaml-editor/</code></td>
+<td style="text-align: right;">9</td>
+<td>three distinct editors (Monaco/Schema/Testdata) + variable picker + setup</td>
+</tr>
+<tr>
+<td><code>block-editor/serialization/populate/</code></td>
+<td style="text-align: right;">8</td>
+<td>model→workspace orchestration + assertions + filter expressions + tracking</td>
+</tr>
+<tr>
+<td><code>block-editor/blocks/common/catalog/</code></td>
+<td style="text-align: right;">3</td>
+<td>catalog loading vs. variable collection (two responsibilities)</td>
+</tr>
+<tr>
+<td><code>block-editor/fields/</code></td>
+<td style="text-align: right;">7</td>
+<td>wrapped-text field + template-string field + dialog/patch helpers</td>
+</tr>
+</tbody>
+</table>
+<p>Each becomes a set of nested per-responsibility modules (§2d, §2g) with their own
+barrels — exactly the layout already proven in <code>serialization/serialize/</code>.</p>
+<h3 id="1i-dead-root-level-block-duplicates">1i. Dead root-level block duplicates</h3>
+<p><code>blocks/catalogBlocks.ts</code> (246) and <code>blocks/valueBlocks.ts</code> (277) sit at the
+<code>blocks/</code> root alongside the live <code>blocks/registration/steps/catalogBlocks.ts</code> and
+<code>blocks/registration/values/valueBlocks.ts</code>. They appear to be superseded
+duplicates from the registration migration. <strong>Verify zero importers, then delete</strong>
+(legacy removal is permitted by the Charter).</p>
+<hr />
+<h2 id="2-target-architecture">2. Target Architecture</h2>
+<p>Concern-based folders, each with a barrel, following the reference patterns already
+in this codebase: <code>features/block-editor/serialization/</code> (nested modules <code>helpers/</code>,
+<code>populate/</code>, <code>serialize/</code>, each with its own <code>index.ts</code> barrel) and the feature-folder model in
+<code>ARCHITECTURE.md</code>. No new top-level layers are introduced — the existing
+<code>app/features/layout/shared/store/models/services</code> taxonomy is the target; this
+plan only <em>completes</em> it.</p>
+<p>This section is the <strong>END STATE</strong> the migration phases (Section 4) converge to.
+Every folder — at every depth — is listed with a one-line responsibility (what
+lives there and, where useful, what does NOT). Items marked <code>← NEW</code>, <code>← SPLIT</code>,
+<code>← DELETE</code>, <code>← MOVE</code>, or <code>← RENAME</code> are the deltas this plan introduces; everything
+else already exists and is shown so the tree is complete and unambiguous.</p>
+<h3 id="20-file-naming-convention-self-documenting-names">2.0. File Naming Convention (self-documenting names)</h3>
+<p>Every file name must answer <strong>what it contains, why it exists, and what it holds</strong>
+on sight — no decoding required. Generic dumping-ground names are banned because
+they hide responsibility and invite grab-bag growth.</p>
+<p><strong>Banned names</strong> (anywhere in <code>ide/src/</code>): <code>helpers.ts</code>, <code>utils.ts</code>, <code>misc.ts</code>,
+<code>common.ts</code>, <code>index2.ts</code>/<code>*2.ts</code>, bare generic <code>types.ts</code>/<code>constants.ts</code> at a depth
+where they hold more than one feature's concern, and any <code>*Helpers.ts</code>/<code>*Utils.ts</code>
+suffix that does not name the domain it serves.</p>
+<p><strong>Naming rules:</strong></p>
+<ol>
+<li><strong>Domain noun + role suffix.</strong> Name by <em>what it operates on</em> plus <em>what role it
+   plays</em>: <code>blockToStepSerializer.ts</code>, <code>paramPopulatorRegistry.ts</code>,
+   <code>blocklyWorkspaceInit.ts</code>, <code>projectFilePersistence.ts</code>,
+   <code>validateBlockFlattener.ts</code>. The reader knows the subject and the verb.</li>
+<li><strong>Role suffixes</strong> (pick the one that matches the file's job):
+   <code>*Serializer</code> / <code>*Parser</code> (encode/decode), <code>*Builder</code> / <code>*Factory</code> (construct
+   objects), <code>*Registry</code> (data-driven dispatch table), <code>*Accessors</code> (low-level
+   read/write of a structure), <code>*Init</code> / <code>*Bootstrap</code> (setup effects),
+   <code>*Persistence</code> / <code>*Loader</code> (I/O), <code>*Normalizers</code> (shape transforms),
+   <code>*Resolver</code> (lookup/resolution).</li>
+<li><strong>Barrels stay <code>index.ts</code>.</strong> Only barrels re-exporting a folder's public surface
+   use <code>index.ts</code>. They contain re-exports only — never logic.</li>
+<li><strong>Co-located types → <code>&lt;feature&gt;.types.ts</code>.</strong> Type-only modules name their owner:
+   <code>blocklyWorkspace.types.ts</code>, <code>bottomPanel.types.ts</code>, <code>explorerContextMenu.types.ts</code>.</li>
+<li><strong>Co-located styles → <code>&lt;Component&gt;.module.scss</code></strong> (see §2.1 SCSS architecture).</li>
+<li><strong>Hooks</strong> keep the <code>useXxx</code> React convention but name the concern precisely:
+   <code>useBlocklyInit.ts</code>, not <code>useBlockly2.ts</code>.</li>
+<li><strong>One file = one nameable responsibility.</strong> If you cannot name a file without
+   "and" or "helpers", the file is doing too much — split it first.</li>
+</ol>
+<p>This plan's NEW/SPLIT/MOVE files (Sections 2d–2f) already follow these rules; any
+pre-existing file whose name violates them is shown with <code>← RENAME</code> and a
+descriptive target.</p>
+<h3 id="201-split-outputs-become-nested-modules-no-flat-dumps">2.0.1. Split outputs become nested modules (no flat dumps)</h3>
+<p>Every folder is a <strong>module in its own right</strong> — it has its own barrel (<code>index.ts</code>),
+its own public surface, and a single responsibility. Nesting therefore means
+<strong>modules within modules (sub-modules)</strong>, never "subfolders".</p>
+<p>When a file is split, its outputs <strong>must be organized into nested per-responsibility
+modules matching the §2 end-state tree</strong> — one module per responsibility, each a
+folder with its own barrel and public surface — <strong>never dropped as a flat dump of
+sibling files in one folder</strong>. A split that leaves five new modules side-by-side in
+the parent folder is incomplete: finish it by placing each module under the
+responsibility module the §2 tree defines.</p>
+<p><strong>Rules:</strong></p>
+<ol>
+<li><strong>One module per responsibility.</strong> Each output lands in the module that names its
+   job — e.g. for the <code>serialize/</code> module: <code>reader/</code> (read a chain into steps),
+   <code>writer/</code> (write blocks → steps/policies), <code>validation/</code> (flatten validate
+   blocks + guards). The §2 tree is authoritative for which modules exist.</li>
+<li><strong>Each nested module owns a barrel <code>index.ts</code>.</strong> The parent module's barrel
+   re-exports through the nested-module barrels (<code>export … from "./reader"</code>), so
+   external consumers import the parent barrel only — never a deep path.</li>
+<li><strong>Cross-module references inside the same area</strong> use direct relative file paths
+   (e.g. <code>../writer/blockToStepSerializer</code>), not the sibling barrel, to keep
+   mutually-recursive modules free of barrel-evaluation cycles.</li>
+<li><strong>No over-engineering.</strong> One module per <em>real</em> responsibility that the §2 tree
+   defines. Do <strong>not</strong> create a single-file module with no siblings unless §2
+   defines that seam (a genuine one-direction seam such as <code>reader/</code> is allowed even
+   with one file; an arbitrary <code>foo/</code> holding one stray module is not).</li>
+</ol>
+<p>This rule applies <strong>retroactively</strong> (already-split outputs are reorganized into the
+nested-module layout) and <strong>going forward</strong> (every future split lands nested from
+the start).</p>
+<h3 id="2a-top-level-layers-idesrc">2a. Top-level layers (<code>ide/src/</code>)</h3>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ide/src/
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  app/         # composition root: bootstrap + top-level &lt;App&gt; only — NO feature logic
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  layout/      # app chrome (topbar, panels, status, bottom-panel, welcome) — NO domain logic
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  features/    # self-contained domain features; each owns its UI/hooks/local logic
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  store/       # Zustand state slices; the ONLY mutable app state. May import services/, models/
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  services/    # pure, framework-free logic (transforms, I/O, validation) — NO React, NO store
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  models/      # TypeScript schema types + factories — leaf layer, imports nothing internal
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  shared/      # cross-cutting reusable UI, hooks, theme, ambient types — NO domain knowledge
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  assets/      # ← NEW: static assets + the SINGLE SCSS source tree (assets/styles/, see §2.1)
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>  __tests__/   # cross-cutting unit tests (models, store, utils) co-located by target layer
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  # components/ ← DELETE (dead duplicate tree, see Phase 0)
+</span></code></pre></div>
+<p>Barrel + import rules between layers:
+- Each top-level layer exposes a barrel <code>index.ts</code> (<code>@/store</code>, <code>@/services</code>,
+  <code>@/models</code>, <code>@/shared</code>, plus each feature's <code>@/features/&lt;name&gt;</code>).
+- <strong>Allowed import direction:</strong> <code>app → layout/features → store → services → models</code>,
+  and any layer → <code>shared</code>/<code>models</code>. Arrows never reverse.
+- <strong>Forbidden:</strong> <code>feature → feature</code> (mediate through <code>store</code>), <code>services → store</code>,
+  <code>services → React</code>, <code>models → anything internal</code>, and reaching past a barrel
+  into another layer's internal files.</p>
+<h3 id="2b-app-composition-root">2b. <code>app/</code> — composition root</h3>
+<p><div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>app/
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  main.tsx     # Vite entry: mounts React root, providers, error boundary
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  App.tsx      # top-level layout composition — delegates everything to layout/ + features/
+</span></code></pre></div>
+Responsibility: wire the tree together. Holds no domain logic and no state.</p>
+<h3 id="2c-layout-application-chrome">2c. <code>layout/</code> — application chrome</h3>
+<p><div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>layout/
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  index.ts                 # barrel
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  topbar/                  # the top action bar; orchestration buttons live in controls/
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    TopBar.tsx ContextBar.tsx ContextBarIcons.tsx TopBarButtons.tsx
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    TopBarExampleMenu.tsx TopBarHamburgerMenu.tsx
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    controls/              # action buttons that trigger store/services (compile, execute, settings)
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>      CompileButton.tsx ExecuteButton.tsx BackendSettings.tsx
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  panels/                  # the editor panel grid + file-name editing — layout only, no editor logic
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    EditorPanels.tsx PanelControls.tsx EditableFileName.tsx
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>  bottom-panel/            # collapsible bottom dock shell
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    BottomPanel.tsx NetworkDetailOverlay.tsx
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    bottomPanel.types.ts     # ← RENAME (was types.ts): dock tab + panel-state types
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    tabs/                  # one component per dock tab (console, network, performance)
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>      ConsoleTab.tsx NetworkTab.tsx PerformanceTab.tsx
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>  status/                  # status bar + transient notifications + save indicator hook
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    StatusBar.tsx NotificationBar.tsx useSaveIndicator.ts
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>  WelcomeScreen/           # first-run / empty-state screen
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    WelcomeScreen.tsx WelcomeCards.tsx
+</span></code></pre></div>
+Responsibility: visual frame around the features. Reads store, renders chrome;
+contains no serialization, no block, and no YAML logic.</p>
+<h3 id="2d-features-domain-features-each-a-self-contained-folder">2d. <code>features/</code> — domain features (each a self-contained folder)</h3>
+<p><div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>features/
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  block-editor/            # the Blockly authoring surface — the largest feature
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    index.ts               # feature barrel — the ONLY entry external code may import
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    BlocklyWorkspace.tsx BlockEditorErrorBoundary.tsx
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    blocklyWorkspace.types.ts   # ← RENAME (was workspaceTypes.ts): workspace prop/state types
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    config/                # static workspace + catalog config (colors, defs, workspace opts)
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>      blockColors.ts blockDefinitions.ts workspaceConfig.ts
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    blocks/                # everything that DEFINES/REGISTERS blocks — split by concern below
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>      index.ts
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>      common/              # shared block primitives reused by all block kinds
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        catalog/           # ← SPLIT (Phase 7): two responsibilities become two modules
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>          loader/          #   catalog fetch/parse (was catalogLoader.ts)
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>          variables/       #   variable collection (was variableCollection + typedVariableCollection)
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>        contextMenu/       # right-click &quot;spawn outputs&quot; menu
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>        fields/            # custom field providers (dropdowns, icons, info-icon)
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        outputDispenser.ts stepIdGenerator.ts
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>      registration/        # registers each block family with Blockly — one folder per family
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>        steps/             # catalog-driven step blocks + param-field registration
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>        values/            # value/literal/variable-ref/path value blocks
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>        assertions/        # assertion blocks + helpers
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>        policy/            # policy blocks + constants
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>        structure/         # root/auth/precondition/filter/structural container blocks
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>        utility/           # utility blocks (wait, function, etc.)
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>      api-path/            # API-path picker block (core builder + modal UI)
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>        core/ modal/
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>      path/                # JSON-path picker block (builder + schema tree UI + resolver)
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>        core/ modal/ schema/
+</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>      json/                # inline JSON editor block (editor core + modal + var-refs)
+</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>        core/ modal/
+</span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>    fields/                # custom Blockly Field classes (not block defs) — one module per field (Phase 6)
+</span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>      index.ts
+</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>      wrappedText/         # ← SPLIT: FieldWrappedText + bubblePatch + wrappedTextDialog
+</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>      templateString/      # template-string field: parser, modal, bridge, types
+</span><span id="__span-3-34"><a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>    hooks/                 # React hooks bridging Blockly ↔ React/store
+</span><span id="__span-3-35"><a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>      index.ts
+</span><span id="__span-3-36"><a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>      useBlocklyWorkspace.ts   # ← SPLIT: thin composition of the focused hooks below
+</span><span id="__span-3-37"><a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>      useBlocklyInit.ts        # ← NEW: workspace + catalog bootstrap (init effect)
+</span><span id="__span-3-38"><a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>      useBlocklyStoreSync.ts   # ← NEW: debounced store↔workspace sync effect
+</span><span id="__span-3-39"><a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>      useBlocklyResize.ts      # ← NEW: resize + toolbox refresh effect
+</span><span id="__span-3-40"><a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>      # existing focused hooks kept as-is, composed by useBlocklyWorkspace:
+</span><span id="__span-3-41"><a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>      useWorkspaceInit.ts useModelSync.ts useToolboxRefresh.ts
+</span><span id="__span-3-42"><a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>      useCanvasState.ts useWorkspaceFileSwitch.ts
+</span><span id="__span-3-43"><a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>    serialization/         # workspace ↔ model conversion — the round-trip core
+</span><span id="__span-3-44"><a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>      index.ts             # public surface (signatures unchanged by refactor)
+</span><span id="__span-3-45"><a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>      serialize/           # workspace → model — orchestrator + per-responsibility nested modules
+</span><span id="__span-3-46"><a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a>        index.ts                       # barrel: re-exports each nested module below
+</span><span id="__span-3-47"><a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a>        workspaceToModel.ts            # orchestrator only (stays at the serialize/ root)
+</span><span id="__span-3-48"><a id="__codelineno-3-48" name="__codelineno-3-48" href="#__codelineno-3-48"></a>        reader/                        # READ a Blockly statement chain into model steps
+</span><span id="__span-3-49"><a id="__codelineno-3-49" name="__codelineno-3-49" href="#__codelineno-3-49"></a>          index.ts
+</span><span id="__span-3-50"><a id="__codelineno-3-50" name="__codelineno-3-50" href="#__codelineno-3-50"></a>          stepChainReader.ts           # (was readStepChain): walk a statement chain into steps
+</span><span id="__span-3-51"><a id="__codelineno-3-51" name="__codelineno-3-51" href="#__codelineno-3-51"></a>        writer/                        # WRITE blocks → steps / policies / preconditions
+</span><span id="__span-3-52"><a id="__codelineno-3-52" name="__codelineno-3-52" href="#__codelineno-3-52"></a>          index.ts
+</span><span id="__span-3-53"><a id="__codelineno-3-53" name="__codelineno-3-53" href="#__codelineno-3-53"></a>          blockToStepSerializer.ts     # (was blockToStep): one block + catalog → step
+</span><span id="__span-3-54"><a id="__codelineno-3-54" name="__codelineno-3-54" href="#__codelineno-3-54"></a>          policySerializers.ts         # policy + constraint-chain serialization
+</span><span id="__span-3-55"><a id="__codelineno-3-55" name="__codelineno-3-55" href="#__codelineno-3-55"></a>          preconditionSerializers.ts   # precondition policy block serialization
+</span><span id="__span-3-56"><a id="__codelineno-3-56" name="__codelineno-3-56" href="#__codelineno-3-56"></a>          utilityStepSerializers.ts    # utility step serialization (export/wait/function)
+</span><span id="__span-3-57"><a id="__codelineno-3-57" name="__codelineno-3-57" href="#__codelineno-3-57"></a>        validation/                    # FLATTEN validate blocks + pre-serialize guards
+</span><span id="__span-3-58"><a id="__codelineno-3-58" name="__codelineno-3-58" href="#__codelineno-3-58"></a>          index.ts
+</span><span id="__span-3-59"><a id="__codelineno-3-59" name="__codelineno-3-59" href="#__codelineno-3-59"></a>          validateBlockFlattener.ts    # (was flattenValidate): flatten validate blocks → steps
+</span><span id="__span-3-60"><a id="__codelineno-3-60" name="__codelineno-3-60" href="#__codelineno-3-60"></a>          validationHelpers.ts         # inline-validation + filter-expression read guards
+</span><span id="__span-3-61"><a id="__codelineno-3-61" name="__codelineno-3-61" href="#__codelineno-3-61"></a>      populate/            # model → workspace (other direction) — nested sub-modules (Phase 5)
+</span><span id="__span-3-62"><a id="__codelineno-3-62" name="__codelineno-3-62" href="#__codelineno-3-62"></a>        index.ts
+</span><span id="__span-3-63"><a id="__codelineno-3-63" name="__codelineno-3-63" href="#__codelineno-3-63"></a>        modelToWorkspace.ts          # top-level orchestrator (stays at populate/ root)
+</span><span id="__span-3-64"><a id="__codelineno-3-64" name="__codelineno-3-64" href="#__codelineno-3-64"></a>        populateTest.ts              # ← SPLIT (Phase 4): loops params, dispatches to registry
+</span><span id="__span-3-65"><a id="__codelineno-3-65" name="__codelineno-3-65" href="#__codelineno-3-65"></a>        paramPopulators/             # ← NEW: one populator per param type (data-driven, no switch)
+</span><span id="__span-3-66"><a id="__codelineno-3-66" name="__codelineno-3-66" href="#__codelineno-3-66"></a>          index.ts                   #   re-exports the registry below
+</span><span id="__span-3-67"><a id="__codelineno-3-67" name="__codelineno-3-67" href="#__codelineno-3-67"></a>          paramPopulatorRegistry.ts  #   ← NEW: Record&lt;ParamType, ParamPopulator&gt;
+</span><span id="__span-3-68"><a id="__codelineno-3-68" name="__codelineno-3-68" href="#__codelineno-3-68"></a>          dropdownParamPopulator.ts variableParamPopulator.ts textParamPopulator.ts
+</span><span id="__span-3-69"><a id="__codelineno-3-69" name="__codelineno-3-69" href="#__codelineno-3-69"></a>          numberParamPopulator.ts jsonParamPopulator.ts arrayParamPopulator.ts
+</span><span id="__span-3-70"><a id="__codelineno-3-70" name="__codelineno-3-70" href="#__codelineno-3-70"></a>          stepsParamPopulator.ts filterExpressionParamPopulator.ts
+</span><span id="__span-3-71"><a id="__codelineno-3-71" name="__codelineno-3-71" href="#__codelineno-3-71"></a>          jsonPathParamPopulator.ts apiPathParamPopulator.ts   # one file per ParamType
+</span><span id="__span-3-72"><a id="__codelineno-3-72" name="__codelineno-3-72" href="#__codelineno-3-72"></a>        assertions/                  # ← SPLIT (Phase 5): assertion population, grouping, normalization
+</span><span id="__span-3-73"><a id="__codelineno-3-73" name="__codelineno-3-73" href="#__codelineno-3-73"></a>          index.ts
+</span><span id="__span-3-74"><a id="__codelineno-3-74" name="__codelineno-3-74" href="#__codelineno-3-74"></a>          assertionPopulators.ts     #   ← RENAME (was populateAssertions.ts)
+</span><span id="__span-3-75"><a id="__codelineno-3-75" name="__codelineno-3-75" href="#__codelineno-3-75"></a>          assertionGrouping.ts assertionNormalization.ts
+</span><span id="__span-3-76"><a id="__codelineno-3-76" name="__codelineno-3-76" href="#__codelineno-3-76"></a>        populateFilterExpressions.ts # filter-expression population (single-responsibility leaf — NOT a folder-module per §2.4 guardrail)
+</span><span id="__span-3-77"><a id="__codelineno-3-77" name="__codelineno-3-77" href="#__codelineno-3-77"></a>        stepOutputTracker.ts         # step-output identity tracking (shared leaf — NOT a folder-module per §2.4 guardrail)
+</span><span id="__span-3-78"><a id="__codelineno-3-78" name="__codelineno-3-78" href="#__codelineno-3-78"></a>      helpers/             # ← RENAME folder → serializationParts/ ; the ONLY serialization-helpers home
+</span><span id="__span-3-79"><a id="__codelineno-3-79" name="__codelineno-3-79" href="#__codelineno-3-79"></a>        index.ts
+</span><span id="__span-3-80"><a id="__codelineno-3-80" name="__codelineno-3-80" href="#__codelineno-3-80"></a>        assertionChainBuilders.ts    # ← RENAME (was assertions.ts): assertion-chain builders
+</span><span id="__span-3-81"><a id="__codelineno-3-81" name="__codelineno-3-81" href="#__codelineno-3-81"></a>        blockFieldAccessors.ts       # ← RENAME (was blockUtils.ts): low-level field/connection access
+</span><span id="__span-3-82"><a id="__codelineno-3-82" name="__codelineno-3-82" href="#__codelineno-3-82"></a>        structuralBlockBuilders.ts   # ← RENAME (was structuralBlocks.ts): flow/container builders
+</span><span id="__span-3-83"><a id="__codelineno-3-83" name="__codelineno-3-83" href="#__codelineno-3-83"></a>        valueBlockBuilders.ts        # ← RENAME (was valueBlocks.ts): value/literal block builders
+</span><span id="__span-3-84"><a id="__codelineno-3-84" name="__codelineno-3-84" href="#__codelineno-3-84"></a>        workspaceBlockFactory.ts     # ← NEW: block-instance creation (absorbs flat helpers.ts)
+</span><span id="__span-3-85"><a id="__codelineno-3-85" name="__codelineno-3-85" href="#__codelineno-3-85"></a>      paramNormalizers.ts varSyntax.ts assertionChain.ts
+</span><span id="__span-3-86"><a id="__codelineno-3-86" name="__codelineno-3-86" href="#__codelineno-3-86"></a>      deferredDropdowns.ts unsupportedStepPayload.ts
+</span><span id="__span-3-87"><a id="__codelineno-3-87" name="__codelineno-3-87" href="#__codelineno-3-87"></a>      # serialization/helpers.ts ← DELETE (flat grab-bag dissolved into serializationParts/)
+</span><span id="__span-3-88"><a id="__codelineno-3-88" name="__codelineno-3-88" href="#__codelineno-3-88"></a>    sync/                  # live workspace event wiring (selection, phase rules, listeners)
+</span><span id="__span-3-89"><a id="__codelineno-3-89" name="__codelineno-3-89" href="#__codelineno-3-89"></a>      blockSelection.ts phaseEnforcement.ts workspaceListeners.ts
+</span><span id="__span-3-90"><a id="__codelineno-3-90" name="__codelineno-3-90" href="#__codelineno-3-90"></a>    toolbox/               # builds the Blockly toolbox dynamically from the catalog
+</span><span id="__span-3-91"><a id="__codelineno-3-91" name="__codelineno-3-91" href="#__codelineno-3-91"></a>      toolboxBuilder.ts toolboxConfig.ts phaseConfig.ts connectorCategory.ts
+</span><span id="__span-3-92"><a id="__codelineno-3-92" name="__codelineno-3-92" href="#__codelineno-3-92"></a>    ui/                    # block-editor-local panels (validation, warnings)
+</span><span id="__span-3-93"><a id="__codelineno-3-93" name="__codelineno-3-93" href="#__codelineno-3-93"></a>      ValidationPanel.tsx WarningTooltip.tsx
+</span><span id="__span-3-94"><a id="__codelineno-3-94" name="__codelineno-3-94" href="#__codelineno-3-94"></a>
+</span><span id="__span-3-95"><a id="__codelineno-3-95" name="__codelineno-3-95" href="#__codelineno-3-95"></a>  environment-editor/      # SUT environment + variables editor (form-driven)
+</span><span id="__span-3-96"><a id="__codelineno-3-96" name="__codelineno-3-96" href="#__codelineno-3-96"></a>    EnvironmentEditor.tsx index.ts yamlPreview.ts
+</span><span id="__span-3-97"><a id="__codelineno-3-97" name="__codelineno-3-97" href="#__codelineno-3-97"></a>    services/              # ← SPLIT: ServicesSection + Internal/External/ServiceCard
+</span><span id="__span-3-98"><a id="__codelineno-3-98" name="__codelineno-3-98" href="#__codelineno-3-98"></a>    variables/             # ← SPLIT: VariablesSection + VariableRow
+</span><span id="__span-3-99"><a id="__codelineno-3-99" name="__codelineno-3-99" href="#__codelineno-3-99"></a>    preview/               # ← SPLIT: YamlPreviewSection + yamlPreview wiring
+</span><span id="__span-3-100"><a id="__codelineno-3-100" name="__codelineno-3-100" href="#__codelineno-3-100"></a>    shared/                # ← SPLIT: FieldWithToggle (reused by both sections)
+</span><span id="__span-3-101"><a id="__codelineno-3-101" name="__codelineno-3-101" href="#__codelineno-3-101"></a>
+</span><span id="__span-3-102"><a id="__codelineno-3-102" name="__codelineno-3-102" href="#__codelineno-3-102"></a>  tck-dashboard/           # TCK overview: metadata, pipeline, data-flow graph
+</span><span id="__span-3-103"><a id="__codelineno-3-103" name="__codelineno-3-103" href="#__codelineno-3-103"></a>    TckDashboard.tsx MetadataSection.tsx index.ts
+</span><span id="__span-3-104"><a id="__codelineno-3-104" name="__codelineno-3-104" href="#__codelineno-3-104"></a>    forms/                 # metadata + chip form fields
+</span><span id="__span-3-105"><a id="__codelineno-3-105" name="__codelineno-3-105" href="#__codelineno-3-105"></a>    pipeline/              # pipeline table + summary widgets
+</span><span id="__span-3-106"><a id="__codelineno-3-106" name="__codelineno-3-106" href="#__codelineno-3-106"></a>    dataflow/              # React-Flow data-flow graph (nodes, edges, layout, panels)
+</span><span id="__span-3-107"><a id="__codelineno-3-107" name="__codelineno-3-107" href="#__codelineno-3-107"></a>      graph/               # ← SPLIT: canvas, nodes, edges, layout, react-flow adapter
+</span><span id="__span-3-108"><a id="__codelineno-3-108" name="__codelineno-3-108" href="#__codelineno-3-108"></a>      panels/              # ← SPLIT: node-detail, graph-info, metadata, variables panels
+</span><span id="__span-3-109"><a id="__codelineno-3-109" name="__codelineno-3-109" href="#__codelineno-3-109"></a>      builder/             # ← SPLIT: dataFlowBuilder + flowDataToReactFlow + types/constants
+</span><span id="__span-3-110"><a id="__codelineno-3-110" name="__codelineno-3-110" href="#__codelineno-3-110"></a>
+</span><span id="__span-3-111"><a id="__codelineno-3-111" name="__codelineno-3-111" href="#__codelineno-3-111"></a>  yaml-editor/             # Monaco-based YAML/schema/testdata editors — split by concern (Phase 13)
+</span><span id="__span-3-112"><a id="__codelineno-3-112" name="__codelineno-3-112" href="#__codelineno-3-112"></a>    index.ts monacoSetup.ts
+</span><span id="__span-3-113"><a id="__codelineno-3-113" name="__codelineno-3-113" href="#__codelineno-3-113"></a>    editors/               # ← SPLIT: one module per editor surface
+</span><span id="__span-3-114"><a id="__codelineno-3-114" name="__codelineno-3-114" href="#__codelineno-3-114"></a>      MonacoEditor.tsx SchemaEditor.tsx TestdataEditor.tsx
+</span><span id="__span-3-115"><a id="__codelineno-3-115" name="__codelineno-3-115" href="#__codelineno-3-115"></a>      testdataEditorTransforms.ts   # ← RENAME (was TestdataEditorHelpers.ts): testdata shape transforms
+</span><span id="__span-3-116"><a id="__codelineno-3-116" name="__codelineno-3-116" href="#__codelineno-3-116"></a>    VariablePicker/        # @variable insertion popover + scope resolution hook
+</span><span id="__span-3-117"><a id="__codelineno-3-117" name="__codelineno-3-117" href="#__codelineno-3-117"></a>
+</span><span id="__span-3-118"><a id="__codelineno-3-118" name="__codelineno-3-118" href="#__codelineno-3-118"></a>  preconditions/           # precondition rule editor — split by concern (Phase 11)
+</span><span id="__span-3-119"><a id="__codelineno-3-119" name="__codelineno-3-119" href="#__codelineno-3-119"></a>    PreconditionsPanel.tsx index.ts
+</span><span id="__span-3-120"><a id="__codelineno-3-120" name="__codelineno-3-120" href="#__codelineno-3-120"></a>    modal/                 # ← SPLIT: AddPreconditionModal + modal-local pieces
+</span><span id="__span-3-121"><a id="__codelineno-3-121" name="__codelineno-3-121" href="#__codelineno-3-121"></a>    list/                  # ← SPLIT: PreconditionsList + PreconditionEditor
+</span><span id="__span-3-122"><a id="__codelineno-3-122" name="__codelineno-3-122" href="#__codelineno-3-122"></a>    rules/                 # ← SPLIT: RuleSection + ConstraintRow + templatePolicies
+</span><span id="__span-3-123"><a id="__codelineno-3-123" name="__codelineno-3-123" href="#__codelineno-3-123"></a>
+</span><span id="__span-3-124"><a id="__codelineno-3-124" name="__codelineno-3-124" href="#__codelineno-3-124"></a>  project-explorer/        # left-hand file/test tree — split by concern (Phase 12)
+</span><span id="__span-3-125"><a id="__codelineno-3-125" name="__codelineno-3-125" href="#__codelineno-3-125"></a>    ProjectExplorer.tsx index.ts
+</span><span id="__span-3-126"><a id="__codelineno-3-126" name="__codelineno-3-126" href="#__codelineno-3-126"></a>    tree/                  # ← SPLIT: TreeRow + ExplorerHeader + useTestDragReorder
+</span><span id="__span-3-127"><a id="__codelineno-3-127" name="__codelineno-3-127" href="#__codelineno-3-127"></a>    contextMenu/           # ← SPLIT: ExplorerContextMenu + ExplorerContextMenuParts
+</span><span id="__span-3-128"><a id="__codelineno-3-128" name="__codelineno-3-128" href="#__codelineno-3-128"></a>      explorerContextMenu.types.ts   # ← RENAME (was explorerContextMenuTypes.ts)
+</span><span id="__span-3-129"><a id="__codelineno-3-129" name="__codelineno-3-129" href="#__codelineno-3-129"></a>    actions/               # ← SPLIT: ExplorerActions (create/rename/delete triggers)
+</span><span id="__span-3-130"><a id="__codelineno-3-130" name="__codelineno-3-130" href="#__codelineno-3-130"></a>
+</span><span id="__span-3-131"><a id="__codelineno-3-131" name="__codelineno-3-131" href="#__codelineno-3-131"></a>  execution/               # live run view (steps + flow) driven by execution store
+</span><span id="__span-3-132"><a id="__codelineno-3-132" name="__codelineno-3-132" href="#__codelineno-3-132"></a>    ExecutionPanel.tsx StepCard.tsx StepFlowView.tsx index.ts
+</span><span id="__span-3-133"><a id="__codelineno-3-133" name="__codelineno-3-133" href="#__codelineno-3-133"></a>  graph-view/              # dependency graph view (nodes + layout engine)
+</span><span id="__span-3-134"><a id="__codelineno-3-134" name="__codelineno-3-134" href="#__codelineno-3-134"></a>    DependencyGraph.tsx nodeTypes.tsx layoutEngine.ts index.ts
+</span><span id="__span-3-135"><a id="__codelineno-3-135" name="__codelineno-3-135" href="#__codelineno-3-135"></a>  sequence-view/           # sequence diagram view
+</span><span id="__span-3-136"><a id="__codelineno-3-136" name="__codelineno-3-136" href="#__codelineno-3-136"></a>    SequenceDiagram.tsx index.ts
+</span><span id="__span-3-137"><a id="__codelineno-3-137" name="__codelineno-3-137" href="#__codelineno-3-137"></a>  export/                  # export-to-file dialog
+</span><span id="__span-3-138"><a id="__codelineno-3-138" name="__codelineno-3-138" href="#__codelineno-3-138"></a>    ExportDialog.tsx ExportDialogParts.tsx index.ts
+</span></code></pre></div>
+Responsibility: each feature folder owns its components, local hooks, and local
+helpers. Features talk to each other <strong>only</strong> through <code>store/</code>. The feature barrel
+<code>index.ts</code> is the single import surface; deep nested modules (<code>blocks/registration/…</code>,
+<code>serialization/serialize/…</code>) expose themselves to the rest of the feature via
+their own module barrel, never to other features.</p>
+<h3 id="2e-store-zustand-state-slices">2e. <code>store/</code> — Zustand state slices</h3>
+<p><div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>store/
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  index.ts                 # barrel — the ONLY path features may import (@/store)
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  store.types.ts           # ← RENAME (was types.ts): shared cross-slice store types
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  project/                 # project/test document state + thin actions (I/O ← MOVE to services)
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    useProjectStore.ts     #   state + actions; delegates persistence/import to services/project
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    projectAssetActions.ts projectTestActions.ts   # action slices
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    # projectFilePersistence/projectImportExport/exampleProjectLoader/
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    # projectImportTransforms/projectExportTransforms/projectDocumentParser
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    #   ← MOVE to services/project (pure I/O has no place in a store)
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  editor/                  # active-editor/tab state
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  environment/             # SUT environment + service registry state
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>  execution/               # live-run state + SSE transport (api, stream, event handlers, conn mgr)
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>  compile/                 # compile request state + compile API client
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>  notifications/           # transient notification queue
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>  ui/                      # misc UI flags (panel sizes, toggles)
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>  selectors/               # derived/aggregated read models over the slices (no mutation) — split by concern (Phase 15)
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    index.ts               #   barrel
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    # selectors.ts ← SPLIT into per-domain selector modules (tck/test/variable read models)
+</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    # helpers.ts   ← RENAME to a descriptive selector-builder module (banned generic name)
+</span></code></pre></div>
+Responsibility: hold mutable state and expose actions. May import <code>services/</code> and
+<code>models/</code>. After Phase 16, contains <strong>no</strong> pure file I/O. Each slice folder has its
+own <code>index.ts</code>; the top-level <code>store/index.ts</code> re-exports the public hooks +
+selectors so features never deep-import a slice file.</p>
+<h3 id="2f-services-pure-framework-free-logic">2f. <code>services/</code> — pure, framework-free logic</h3>
+<p><div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>services/
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  index.ts                 # barrel
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  yaml/                    # model ↔ YAML (frozen v2 contract)
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    yamlFieldMap.ts        # ← NEW (was fieldMap.ts): single source of truth for field mapping
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    modelToYaml.ts         #   forward serialize — consumes yamlFieldMap
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    yamlToModel.ts         #   reverse parse — consumes yamlFieldMap
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    yamlLineMap.ts         #   line-number mapping for editor decorations
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>  project/                 # ← NEW: pure project I/O moved out of store/project
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    index.ts
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    projectFilePersistence.ts    # ← RENAME (was persistence.ts): localStorage load/save
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    projectImportExport.ts       # ← RENAME (was projectIO.ts): import/export I/O
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    exampleProjectLoader.ts      # ← RENAME (was importExample.ts): bundled-example fetch
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    projectImportTransforms.ts   # ← RENAME (was importHelpers.ts): import shape transforms
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    projectExportTransforms.ts   # ← RENAME (was projectIOHelpers.ts): export shape transforms
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    projectDocumentParser.ts     # ← RENAME (was documentLoader.ts): document parse/load
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>  graph/                   # model → dependency-graph transform
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    modelToGraph.ts
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    dependencyGraphNodeBuilders.ts   # ← RENAME (was graphHelpers.ts): node/edge builders
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>  sequence/                # model → sequence-diagram transform
+</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    modelToSequence.ts
+</span><span id="__span-5-21"><a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>  validation/              # schema/model validation
+</span><span id="__span-5-22"><a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    validator.ts
+</span></code></pre></div>
+Responsibility: deterministic transforms and I/O. Imports <code>models/</code> only. Never
+imports React or <code>store/</code>. Each domain module has its own barrel; tests live
+beside their target (<code>*.test.ts</code>).</p>
+<h3 id="2g-models-shared-__tests__-leaf-cross-cutting-layers">2g. <code>models/</code>, <code>shared/</code>, <code>__tests__/</code> — leaf + cross-cutting layers</h3>
+<p><div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>models/                    # leaf schema layer — imports nothing internal
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  index.ts schemaFactories.ts environment.ts execution.ts
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  schema/                  # ← SPLIT (Phase 14): schema.ts decomposed by concern
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    index.ts               #   barrel — re-exports the public schema types
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    testSchema.ts          #   test/step/param core types
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    phaseSchema.ts         #   phase + ordering types
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    assertionSchema.ts     #   assertion/validation types
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>shared/                    # cross-cutting reuse with NO domain knowledge
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  ui/                      # generic dialogs/components, one folder per component + barrel
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    AppErrorBoundary/ ConfirmDialog/ PreconditionsDialog/ SchemaDownloadDialog/
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    ServiceDialog/ VariableEditorDialog/
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>  hooks/                   # generic reusable hooks (resizable panel, pipeline layout)
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>  theme/                   # Tractus-X MUI theme (TS theme object — NOT SCSS)
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>  types/                   # ambient declarations (e.g. blockly-internals.d.ts)
+</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>  # styles/ ← does NOT live here; ALL SCSS lives in assets/styles/ (see §2.1)
+</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>
+</span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>__tests__/                 # cross-cutting unit tests, grouped by the layer they target
+</span><span id="__span-6-19"><a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>  models/ store/ utils/
+</span></code></pre></div>
+Responsibility: <code>models/</code> is the dependency sink (no internal imports). <code>shared/</code>
+holds only generic, domain-agnostic building blocks — anything that "knows" about
+TCKs, steps, or YAML belongs in a feature or service, not here. <strong>SCSS does not
+live under <code>shared/</code> — it is consolidated under <code>assets/styles/</code> (§2.1)</strong>, the
+single source of styling. This supersedes the earlier <code>shared/styles/</code> idea so
+there is exactly one place to look for any token, mixin, or theme rule.</p>
+<h3 id="21-assetsstyles-the-single-scss-source-tree">2.1. <code>assets/styles/</code> — the single SCSS source tree</h3>
+<p><strong>Rule:</strong> there is <strong>one</strong> styling root — <code>ide/src/assets/styles/</code> — and it is
+SCSS-only (no plain <code>.css</code> as a <em>shared</em> source). Every shared token, mixin,
+reset, layout rule, feature stylesheet, and the Blockly theme lives here, wired
+together with <code>@use</code> / <code>@forward</code> (never <code>@import</code>, which is deprecated and
+double-emits). Requires the <code>sass</code> dev dependency.</p>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>assets/
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>  styles/
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    main.scss              # composition root: @use abstracts; @forward base/layout/... — the ONE entry imported by app/main.tsx
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    abstracts/             # NO CSS OUTPUT — variables, maps, mixins, functions only
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>      _designTokens.scss   #   color/spacing/radius/z-index/typography tokens (Sass maps)
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>      _mixins.scss         #   reusable mixins (focusRing, panelSurface, scrollbar, truncate)
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>      _functions.scss      #   pure Sass functions (token getters, rem(), clampScale())
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>      _placeholders.scss   #   %card, %dialogShell, %toolbarRow — shared via @extend
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>      _index.scss          #   @forward all of the above; consumed via `@use &quot;abstracts&quot; as *`
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    base/                  # global resets + element defaults — emits once, app-wide
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>      _reset.scss _typography.scss _globals.scss _index.scss
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    layout/                # app shell chrome styling (topbar, panels, bottom-panel, status, welcome)
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>      _topbar.scss _editorPanels.scss _bottomPanel.scss _statusBar.scss _welcomeScreen.scss _index.scss
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    features/              # one stylesheet per feature — mirrors features/&lt;name&gt;
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>      _blockEditor.scss _environmentEditor.scss _tckDashboard.scss _yamlEditor.scss
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>      _preconditions.scss _projectExplorer.scss _execution.scss _graphView.scss
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>      _sequenceView.scss _export.scss _index.scss
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>    components/            # shared/ui component styles (one per shared component)
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>      _confirmDialog.scss _serviceDialog.scss _variableEditorDialog.scss
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>      _appErrorBoundary.scss _preconditionsDialog.scss _index.scss
+</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    themes/                # color tokens + the Blockly workspace theme (build-time)
+</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>      _blocklyTheme.scss   #   block/category colors, flyout, toolbox styling
+</span><span id="__span-7-23"><a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>      _txColorTokens.scss  #   Tractus-X brand color tokens (CSS custom props for runtime theming)
+</span><span id="__span-7-24"><a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>      _index.scss
+</span></code></pre></div>
+<p>Responsibilities (one line each):
+- <strong>abstracts/</strong> — design tokens, mixins, functions, placeholders. <strong>Produces zero
+  CSS</strong>; only definitions consumed elsewhere via <code>@use "abstracts" as *</code>.
+- <strong>base/</strong> — resets, typography, global element defaults. Emitted exactly once.
+- <strong>layout/</strong> — styling for the app shell (<code>layout/</code> components only).
+- <strong>features/</strong> — one <code>_&lt;feature&gt;.scss</code> per feature, mirroring <code>features/&lt;name&gt;</code>.
+- <strong>components/</strong> — styling for generic <code>shared/ui/</code> components.
+- <strong>themes/</strong> — Blockly workspace theme + Tractus-X color tokens (runtime <code>--tx-*</code>
+  custom properties stay here; build-time reuse stays SCSS).
+- <strong>main.scss</strong> — the <strong>only</strong> stylesheet <code>app/main.tsx</code> imports; it forwards the
+  rest in cascade order: <code>abstracts → base → themes → layout → components → features</code>.</p>
+<p><strong>Component-scoped styling decision (pick ONE — this plan picks centralized):</strong>
+This plan uses the <strong>centralized</strong> model: every stylesheet lives under
+<code>assets/styles/</code> (above), and components reference shared classes/tokens — there
+are <strong>no</strong> co-located <code>*.module.scss</code> files. Rationale: the IDE's current styling
+is already a flat set of 66 component <code>.css</code> files with heavy cross-component
+token reuse (colors, spacing, panel surfaces); centralizing makes the cascade
+order explicit, lets <code>abstracts/</code> be the single token source, and removes the
+duplication that scattered files invite. (CSS-Modules would re-scatter styling and
+fight the existing global <code>--tx-*</code> theming.) Shared tokens/mixins <strong>always</strong> come
+from <code>assets/styles/abstracts/</code> via <code>@use</code> — never copied.</p>
+<hr />
+<h2 id="3-module-responsibility-map">3. Module / Responsibility Map</h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Single responsibility</th>
+<th>Moves IN</th>
+<th>Moves OUT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>serialize/workspaceToModel.ts</code></td>
+<td>Orchestrate workspace→model conversion</td>
+<td>—</td>
+<td><code>readStepChain</code>, <code>flattenValidate</code>, <code>blockToStep</code> extracted to siblings</td>
+</tr>
+<tr>
+<td><code>serialize/stepChainReader.ts</code></td>
+<td>Walk a Blockly statement chain into steps</td>
+<td><code>readStepChain</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>serialize/validateBlockFlattener.ts</code></td>
+<td>Flatten validate blocks into step records</td>
+<td><code>flattenValidateToSteps</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>serialize/blockToStepSerializer.ts</code></td>
+<td>Convert one block + catalog → step definition</td>
+<td><code>blockToStep</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>populate/populateTest.ts</code></td>
+<td>Loop params, dispatch to populator registry</td>
+<td>—</td>
+<td>the 13-arm <code>switch</code> body</td>
+</tr>
+<tr>
+<td><code>populate/paramPopulators/*ParamPopulator.ts</code></td>
+<td>One param-type → workspace population each</td>
+<td>switch arms (one file per type)</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>populate/paramPopulators/paramPopulatorRegistry.ts</code></td>
+<td><code>Record&lt;ParamType, ParamPopulator&gt;</code> registry</td>
+<td>dispatch table</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>populate/assertions/</code></td>
+<td>The one real multi-file populate seam: assertion population, grouping, normalization</td>
+<td>flat <code>populate*</code>/<code>assertion*</code> files</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>fields/wrappedText/</code></td>
+<td>The wrapped-text Blockly field (class + patch + dialog)</td>
+<td><code>FieldWrappedText</code>, <code>bubblePatch</code>, <code>wrappedTextDialog</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>blocks/common/catalog/{loader,variables}/</code></td>
+<td>Catalog fetch/parse vs. variable collection (two modules)</td>
+<td><code>catalogLoader</code>; <code>variableCollection</code>+<code>typedVariableCollection</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>environment-editor/{services,variables,preview,shared}/</code></td>
+<td>One module per editor section + shared field</td>
+<td>flat section components</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>tck-dashboard/dataflow/{graph,panels,builder}/</code></td>
+<td>Graph render vs. detail panels vs. data builders</td>
+<td>flat dataflow files</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>preconditions/{modal,list,rules}/</code></td>
+<td>Precondition modal vs. list/editor vs. rule sections</td>
+<td>flat precondition components</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>project-explorer/{tree,contextMenu,actions}/</code></td>
+<td>Tree render vs. context menu vs. file actions</td>
+<td>flat explorer components</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>yaml-editor/editors/</code></td>
+<td>The three editor surfaces (Monaco/Schema/Testdata) + transforms</td>
+<td>flat editor components</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>models/schema/</code></td>
+<td>Schema types split by concern (test/phase/assertion)</td>
+<td><code>schema.ts</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>store/selectors/*</code></td>
+<td>Per-domain derived read models</td>
+<td>split <code>selectors.ts</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>serialization/serializationParts/</code> (barrel)</td>
+<td>All serialization helpers, one folder, descriptive names</td>
+<td>contents of flat <code>helpers.ts</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>serializationParts/workspaceBlockFactory.ts</code></td>
+<td>Create Blockly block instances during populate</td>
+<td>block-creation helpers</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>serializationParts/valueBlockBuilders.ts</code></td>
+<td>Build value/literal/variable-ref blocks</td>
+<td>value helpers</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>serializationParts/blockFieldAccessors.ts</code></td>
+<td>Low-level field/connection read/write</td>
+<td>block-access helpers</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>hooks/useBlocklyInit.ts</code></td>
+<td>Bootstrap workspace + load catalog</td>
+<td>init <code>useEffect</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>hooks/useBlocklyStoreSync.ts</code></td>
+<td>Debounced store↔workspace sync</td>
+<td>sync <code>useEffect</code> + refs</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>hooks/useBlocklyResize.ts</code></td>
+<td>Resize + toolbox refresh</td>
+<td>resize <code>useEffect</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>hooks/useBlocklyWorkspace.ts</code></td>
+<td>Compose the three hooks, expose same API</td>
+<td>—</td>
+<td>three effect bodies</td>
+</tr>
+<tr>
+<td><code>services/project/*</code></td>
+<td>Pure project I/O (load/save/import/export)</td>
+<td><code>projectFilePersistence</code>, <code>projectImportExport</code>, <code>exampleProjectLoader</code>, <code>projectImportTransforms</code>, <code>projectExportTransforms</code>, <code>projectDocumentParser</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>store/project/useProjectStore.ts</code></td>
+<td>Project state + actions, delegate I/O</td>
+<td>—</td>
+<td>pure I/O files</td>
+</tr>
+<tr>
+<td><code>services/yaml/yamlFieldMap.ts</code></td>
+<td>Single field-mapping source of truth</td>
+<td>shared field map</td>
+<td>duplicated mapping in both directions</td>
+</tr>
+<tr>
+<td><code>services/yaml/modelToYaml.ts</code></td>
+<td>Forward serialize using <code>yamlFieldMap</code></td>
+<td>—</td>
+<td>inline field knowledge</td>
+</tr>
+<tr>
+<td><code>services/yaml/yamlToModel.ts</code></td>
+<td>Reverse parse using <code>yamlFieldMap</code></td>
+<td>—</td>
+<td>inline field knowledge</td>
+</tr>
+<tr>
+<td><code>assets/styles/abstracts/</code></td>
+<td>Tokens/mixins/functions/placeholders — zero CSS output</td>
+<td>shared values from all <code>.css</code> files</td>
+<td>duplication across 66 stylesheets</td>
+</tr>
+<tr>
+<td><code>assets/styles/main.scss</code></td>
+<td>Single SCSS entry, cascade-ordered <code>@use</code>/<code>@forward</code></td>
+<td>every component stylesheet</td>
+<td>scattered per-component <code>.css</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-migration-phases-ordered-leaf-first">4. Migration Phases (ordered, leaf-first)</h2>
+<p>Order is <strong>leaf-first</strong>: delete dead code, then split leaves with no dependents,
+then modules with internal dependents, then the contract-touching mapping last.
+Each phase is independently shippable and verified green.</p>
+<h3 id="phase-0-delete-dead-componentsblockeditor-tree">Phase 0 — Delete dead <code>components/BlockEditor/</code> tree</h3>
+<ul>
+<li><strong>Scope:</strong> remove <code>src/components/BlockEditor/**</code> (7 files). Confirm
+  <code>src/components/YamlEditor/</code> is also dead before removing; if live, leave it.</li>
+<li><strong>Why first:</strong> removes the two largest files and eliminates duplicate-helper
+  confusion before any helper work begins.</li>
+<li><strong>Import-chain impact:</strong> none expected (verified zero external importers). The
+  type checker is the safety net.</li>
+</ul>
+<h3 id="phase-1-split-serializeworkspacetomodelts">Phase 1 — Split <code>serialize/workspaceToModel.ts</code></h3>
+<ul>
+<li><strong>Scope:</strong> extract <code>stepChainReader</code>, <code>validateBlockFlattener</code>, <code>blockToStepSerializer</code>
+  into sibling files; <code>workspaceToModel.ts</code> becomes the orchestrator. Update
+  <code>serialize/index.ts</code> barrel.</li>
+<li><strong>Why this order:</strong> these are pure functions with the serialization folder as
+  their only consumer — a self-contained leaf.</li>
+<li><strong>Import-chain impact:</strong> internal to <code>serialization/serialize/</code>. The public
+  barrel export <code>workspaceToModel</code> is unchanged, so external callers are unaffected.</li>
+</ul>
+<h3 id="phase-2-split-hooksuseblocklyworkspacets">Phase 2 — Split <code>hooks/useBlocklyWorkspace.ts</code></h3>
+<ul>
+<li><strong>Scope:</strong> extract <code>useBlocklyInit</code>, <code>useBlocklyStoreSync</code>, <code>useBlocklyResize</code>;
+  <code>useBlocklyWorkspace</code> composes them and returns the identical shape.</li>
+<li><strong>Why this order:</strong> the hook is consumed only by <code>BlocklyWorkspace.tsx</code>; keeping
+  the composed hook's signature identical means one consumer, zero ripple.</li>
+<li><strong>Import-chain impact:</strong> confined to <code>block-editor/hooks/</code>. Public return type
+  unchanged.</li>
+</ul>
+<h3 id="phase-3-dissolve-flat-serializationhelpersts-into-serializationparts">Phase 3 — Dissolve flat <code>serialization/helpers.ts</code> into <code>serializationParts/</code></h3>
+<ul>
+<li><strong>Scope:</strong> rename the existing <code>helpers/</code> folder to <code>serializationParts/</code> with
+  descriptive file names (<code>assertionChainBuilders.ts</code>, <code>blockFieldAccessors.ts</code>,
+  <code>structuralBlockBuilders.ts</code>, <code>valueBlockBuilders.ts</code>); move the grab-bag
+  contents of the flat <code>helpers.ts</code> into <code>workspaceBlockFactory.ts</code> (and the
+  matching descriptive files); delete the flat file; make
+  <code>serializationParts/index.ts</code> the single barrel.</li>
+<li><strong>Why this order:</strong> after Phase 1, <code>serialize/</code> already imports from the helpers
+  folder; consolidating now gives one import surface for Phase 4.</li>
+<li><strong>Import-chain impact:</strong> importers move from <code>../helpers</code> to <code>../serializationParts</code>
+  via the barrel; verify no importer reached into <code>helpers.ts</code> by full filename.</li>
+</ul>
+<h3 id="phase-4-decompose-populatepopulatetestts-switch">Phase 4 — Decompose <code>populate/populateTest.ts</code> switch</h3>
+<ul>
+<li><strong>Scope:</strong> replace the 13-arm <code>switch (p.type)</code> with a data-driven
+  <code>paramPopulators/</code> folder: one <code>&lt;type&gt;ParamPopulator.ts</code> file per param type plus
+  <code>paramPopulatorRegistry.ts</code> (<code>Record&lt;ParamType, ParamPopulator&gt;</code>); <code>populateTest.ts</code>
+  loops params and dispatches via the registry.</li>
+<li><strong>Why this order:</strong> depends on the consolidated <code>helpers/</code> from Phase 3; turning
+  the switch into a registry is the anti-hardcoding payoff.</li>
+<li><strong>Import-chain impact:</strong> internal to <code>populate/</code>. <code>populate/index.ts</code> keeps
+  exporting <code>populateTest</code>. New <code>ParamType</code> values plug in by adding a file +
+  registry entry — no switch edit.</li>
+</ul>
+<h3 id="phase-5-modularize-serializationpopulate-into-nested-sub-modules">Phase 5 — Modularize <code>serialization/populate/</code> into nested sub-modules</h3>
+<ul>
+<li><strong>Scope:</strong> group the only <strong>real multi-file seam</strong> in the flat <code>populate/</code> folder
+  into a module: <code>assertions/</code> (<code>assertionPopulators</code> ← <code>populateAssertions</code>,
+  <code>assertionGrouping</code>, <code>assertionNormalization</code>) with its own barrel.
+  <code>populateFilterExpressions.ts</code> (one function) and <code>stepOutputTracker.ts</code> (shared
+  leaf) <strong>remain single-responsibility files at the <code>populate/</code> root</strong> —
+  wrapping each in its own folder would be a banned single-file module (§2.4
+  guardrail). <code>modelToWorkspace.ts</code> + <code>populateTest.ts</code> stay at the root as
+  orchestrators.</li>
+<li><strong>Why this order:</strong> after Phase 4 the param-populator registry already lives
+  under <code>populate/</code>; carving out the genuine assertion cluster now leaves one clean
+  <code>populate/index.ts</code> surface without inventing depth where no seam exists.</li>
+<li><strong>Import-chain impact:</strong> internal to <code>populate/</code>; the barrel keeps exporting the
+  same symbols (<code>populateAssertions</code> re-exported via <code>./assertions</code>). No file is
+  oversized — this is a §0.1/§0.2 modularity split.</li>
+</ul>
+<h3 id="phase-6-modularize-block-editorfields-into-per-field-modules">Phase 6 — Modularize <code>block-editor/fields/</code> into per-field modules</h3>
+<ul>
+<li><strong>Scope:</strong> the flat <code>fields/</code> folder (§1h) becomes one module per field class:
+  <code>wrappedText/</code> (<code>FieldWrappedText</code> ← at-limit 297 lines, <code>bubblePatch</code>,
+  <code>wrappedTextDialog</code>) alongside the existing <code>templateString/</code>. <code>fields/index.ts</code>
+  re-exports both module barrels.</li>
+<li><strong>Why this order:</strong> <code>fields/</code> is consumed only inside <code>block-editor</code>; splitting
+  the wrapped-text field also relieves the 297-line <code>FieldWrappedText.ts</code>.</li>
+<li><strong>Import-chain impact:</strong> confined to <code>block-editor/fields/</code>; importers move to the
+  <code>fields/</code> barrel. Custom-field registration behavior unchanged.</li>
+<li><strong>Reconciliation (executed):</strong> the 5 wrapped-text importers were rerouted to the
+  specific <code>fields/wrappedText/</code> module barrel rather than the umbrella <code>fields/</code>
+  barrel — this honors the cross-module "direct relative path to the responsibility
+  module" rule and avoids pulling the unrelated <code>templateString</code> surface into
+  registration/config call sites. <code>fields/index.ts</code> still re-exports both module
+  barrels for the <code>block-editor/index.ts</code> <code>export * from "./fields"</code> consumer.</li>
+</ul>
+<h3 id="phase-7-split-blockscommoncatalog-by-responsibility">Phase 7 — Split <code>blocks/common/catalog/</code> by responsibility</h3>
+<ul>
+<li><strong>Scope:</strong> the <code>catalog/</code> module bundles two jobs (§1h): <code>loader/</code>
+  (<code>catalogLoader.ts</code>, 284) for fetch/parse and <code>variables/</code> (<code>variableCollection</code>
+  280 + <code>typedVariableCollection</code>) for variable collection. Split into the two
+  sub-modules, each with a barrel; <code>catalog/index.ts</code> re-exports both.</li>
+<li><strong>Why this order:</strong> catalog loading is the data-driven source for every block;
+  isolating loading from variable collection clarifies the data flow before later
+  block-registration work.</li>
+<li><strong>Import-chain impact:</strong> internal to <code>blocks/common/</code>; the <code>catalog/</code> barrel
+  surface is unchanged. Also relieves two near-limit files.</li>
+<li><strong>Plan reconciliation (guardrail):</strong> The plan specified both <code>loader/</code> and
+  <code>variables/</code> sub-modules. Per the nesting policy guardrail, <code>loader/</code> would wrap a
+  single file (<code>catalogLoader.ts</code>) in its own folder-module — a banned single-file
+  module. Therefore <code>catalogLoader.ts</code> stays flat at the <code>catalog/</code> root, and only
+  the real 2-file seam (<code>variableCollection</code> + <code>typedVariableCollection</code>) becomes
+  the <code>variables/</code> module. The <code>catalog/index.ts</code> barrel re-exports both.</li>
+</ul>
+<h3 id="phase-8-remove-dead-root-level-block-duplicates">Phase 8 — Remove dead root-level block duplicates</h3>
+<ul>
+<li><strong>Scope:</strong> delete <code>blocks/catalogBlocks.ts</code> (246) and <code>blocks/valueBlocks.ts</code>
+  (277) — superseded duplicates of <code>blocks/registration/steps/catalogBlocks.ts</code> and
+  <code>blocks/registration/values/valueBlocks.ts</code> (§1i). <strong>Verify zero importers first.</strong></li>
+<li><strong>Why this order:</strong> legacy removal (Charter Directive 4) — clears the largest
+  remaining un-registration block files before block-area work elsewhere.</li>
+<li><strong>Import-chain impact:</strong> none expected; <code>tsc</code> is the safety net. If any importer
+  exists, repoint it to the <code>registration/</code> module and re-verify.</li>
+</ul>
+<h3 id="phase-9-modularize-featuresenvironment-editor-by-section">Phase 9 — Modularize <code>features/environment-editor/</code> by section</h3>
+<ul>
+<li><strong>Scope:</strong> the flat folder (§1h) becomes section modules: <code>services/</code>
+  (<code>ServicesSection</code>, <code>ServiceCard</code>, <code>InternalServiceCard</code>, <code>ExternalServiceCard</code>),
+  <code>variables/</code> (<code>VariablesSection</code>, <code>VariableRow</code>), <code>preview/</code> (<code>YamlPreviewSection</code></li>
+<li><code>yamlPreview</code>), <code>shared/</code> (<code>FieldWithToggle</code>, reused by both sections). Feature
+  barrel <code>index.ts</code> unchanged.</li>
+<li><strong>Why this order:</strong> self-contained feature; touches only its own folder.</li>
+<li><strong>Import-chain impact:</strong> internal to the feature; external code still imports the
+  <code>@/features/environment-editor</code> barrel only.</li>
+</ul>
+<h3 id="phase-10-modularize-featurestck-dashboarddataflow-by-concern">Phase 10 — Modularize <code>features/tck-dashboard/dataflow/</code> by concern</h3>
+<ul>
+<li><strong>Scope:</strong> the 18-file flat folder (§1h) becomes <code>graph/</code> (canvas, nodes, edges,
+  layout, React-Flow adapter), <code>panels/</code> (node-detail, graph-info, metadata,
+  variables panels), <code>builder/</code> (<code>dataFlowBuilder</code>, <code>flowDataToReactFlow</code>, <code>types</code>,
+  <code>constants</code>). Each gets a barrel; <code>dataflow/index.ts</code> re-exports them.</li>
+<li><strong>Why this order:</strong> the single largest flat folder; isolated to one feature.</li>
+<li><strong>Import-chain impact:</strong> internal to <code>tck-dashboard</code>; the feature barrel surface
+  is unchanged. No file is oversized — a pure §0.2 split.</li>
+</ul>
+<h3 id="phase-11-modularize-featurespreconditions-by-concern">Phase 11 — Modularize <code>features/preconditions/</code> by concern</h3>
+<ul>
+<li><strong>Scope:</strong> the flat folder (§1h) becomes <code>modal/</code> (<code>AddPreconditionModal</code>),
+  <code>list/</code> (<code>PreconditionsList</code>, <code>PreconditionEditor</code>), <code>rules/</code> (<code>RuleSection</code>,
+  <code>ConstraintRow</code>, <code>templatePolicies</code>); <code>PreconditionsPanel.tsx</code> stays at the root
+  as the composition entry. Feature barrel unchanged.</li>
+<li><strong>Why this order:</strong> self-contained feature; no cross-feature ripple.</li>
+<li><strong>Import-chain impact:</strong> internal to the feature.</li>
+</ul>
+<h3 id="phase-12-modularize-featuresproject-explorer-by-concern">Phase 12 — Modularize <code>features/project-explorer/</code> by concern</h3>
+<ul>
+<li><strong>Scope:</strong> the flat folder (§1h) becomes <code>tree/</code> (<code>TreeRow</code>, <code>ExplorerHeader</code>,
+  <code>useTestDragReorder</code>), <code>contextMenu/</code> (<code>ExplorerContextMenu</code>,
+  <code>ExplorerContextMenuParts</code>, <code>explorerContextMenu.types.ts</code>), <code>actions/</code>
+  (<code>ExplorerActions</code>); <code>ProjectExplorer.tsx</code> stays as the composition entry.</li>
+<li><strong>Why this order:</strong> self-contained feature; the drag/context-menu logic is the
+  real seam.</li>
+<li><strong>Import-chain impact:</strong> internal to the feature.</li>
+</ul>
+<h3 id="phase-13-modularize-featuresyaml-editor-by-editor-surface">Phase 13 — Modularize <code>features/yaml-editor/</code> by editor surface</h3>
+<ul>
+<li><strong>Scope:</strong> group the three editors under <code>editors/</code> (<code>MonacoEditor</code>,
+  <code>SchemaEditor</code>, <code>TestdataEditor</code>, plus <code>testdataEditorTransforms</code> ←
+  <code>TestdataEditorHelpers</code>); keep <code>VariablePicker/</code> and <code>monacoSetup.ts</code> as their own
+  modules. Feature barrel unchanged.</li>
+<li><strong>Why this order:</strong> self-contained feature; clarifies that three distinct editor
+  surfaces share one feature.</li>
+<li><strong>Import-chain impact:</strong> internal to the feature.</li>
+</ul>
+<h3 id="phase-14-decompose-modelsschemats-into-a-schema-module">Phase 14 — Decompose <code>models/schema.ts</code> into a <code>schema/</code> module</h3>
+<ul>
+<li><strong>Scope:</strong> split the 281-line <code>models/schema.ts</code> along concern seams into
+  <code>models/schema/</code> (<code>testSchema</code>, <code>phaseSchema</code>, <code>assertionSchema</code>) with a barrel
+  re-exporting the public types. <code>models/index.ts</code> keeps the same exported surface.</li>
+<li><strong>Why this order:</strong> <code>models/</code> is the leaf layer — splitting it ripples nowhere as
+  long as the barrel surface is identical. <strong>Frozen-type caution:</strong> type <em>names</em> and
+  shapes are unchanged; only their file home moves.</li>
+<li><strong>Import-chain impact:</strong> every <code>@/models</code> consumer is unaffected (barrel
+  surface identical); <code>tsc</code> catches any deep import.</li>
+</ul>
+<h3 id="phase-15-modularize-storeselectors-and-tidy-slice-internals">Phase 15 — Modularize <code>store/selectors/</code> and tidy slice internals</h3>
+<ul>
+<li><strong>Scope:</strong> split <code>store/selectors/selectors.ts</code> into per-domain selector modules
+  and rename the banned <code>store/selectors/helpers.ts</code> to a descriptive
+  selector-builder module; confirm every slice folder (<code>project/</code>, <code>editor/</code>,
+  <code>environment/</code>, <code>execution/</code>, <code>compile/</code>, <code>notifications/</code>, <code>ui/</code>) exposes its own
+  barrel. No state shape or action signature changes.</li>
+<li><strong>Why this order:</strong> store internals are consumed via the <code>@/store</code> barrel; tidying
+  selectors here precedes the I/O move (Phase 16) that also touches <code>store/project/</code>.</li>
+<li><strong>Import-chain impact:</strong> internal to <code>store/</code>; the <code>@/store</code> barrel surface is
+  unchanged.</li>
+</ul>
+<h3 id="phase-16-move-pure-io-to-servicesproject">Phase 16 — Move pure I/O to <code>services/project/</code></h3>
+<ul>
+<li><strong>Scope:</strong> relocate the project I/O modules to <code>services/project/</code> with
+  descriptive names (<code>projectFilePersistence</code>, <code>projectImportExport</code>,
+  <code>exampleProjectLoader</code>, <code>projectImportTransforms</code>, <code>projectExportTransforms</code>,
+  <code>projectDocumentParser</code>); <code>store/project/</code> actions import them from <code>@/services</code>.</li>
+<li><strong>Why this order:</strong> respects the <code>store → services</code> rule in <code>ARCHITECTURE.md</code>;
+  sequenced after the store tidy (Phase 15) so <code>store/project/</code> is touched once.</li>
+<li><strong>Import-chain impact:</strong> <code>@/store/project/*</code> deep importers of these I/O files
+  (if any) repoint to <code>@/services/project</code>. Store barrel and <code>useProjectStore</code>
+  surface unchanged.</li>
+</ul>
+<h3 id="phase-17-centralize-modelyaml-field-mapping">Phase 17 — Centralize model↔YAML field mapping</h3>
+<ul>
+<li><strong>Scope:</strong> extract a single <code>services/yaml/yamlFieldMap.ts</code>; refactor
+  <code>modelToYaml</code> and <code>yamlToModel</code> to consume it. <strong>Contract-touching — see README
+  lockstep rule.</strong></li>
+<li><strong>Why this order:</strong> highest blast radius and the only phase touching a frozen
+  cross-codebase contract (YAML v2). Done late, alone, with golden-file
+  verification that emitted YAML is byte-identical before/after.</li>
+<li><strong>Import-chain impact:</strong> internal to <code>services/yaml/</code>; public exports unchanged.
+  Requires coordination/sign-off per the lockstep rule even though no byte changes.</li>
+</ul>
+<h3 id="phase-18-descriptive-name-sweep-remaining-generic-file-names">Phase 18 — Descriptive-name sweep (remaining generic file names)</h3>
+<ul>
+<li><strong>Scope:</strong> rename the generic/ambiguous file names not already covered by earlier
+  phases so the tree matches the §2.0 convention: <code>store/types.ts →
+  store.types.ts</code>, <code>bottom-panel/types.ts → bottomPanel.types.ts</code>,
+  <code>block-editor/workspaceTypes.ts → blocklyWorkspace.types.ts</code>,
+  <code>services/graph/graphHelpers.ts → dependencyGraphNodeBuilders.ts</code>, and any
+  remaining <code>helpers.ts</code>/<code>utils.ts</code> survivors.</li>
+<li><strong>Why this order:</strong> pure mechanical renames with no logic change; done after the
+  structural splits so each renamed file already sits in its final module.</li>
+<li><strong>Import-chain impact:</strong> rename + update every importer; barrels re-export under
+  the new name. The type checker catches any missed reference.</li>
+</ul>
+<h3 id="phase-19-consolidate-all-styling-into-scss-under-assetsstyles">Phase 19 — Consolidate all styling into SCSS under <code>assets/styles/</code></h3>
+<ul>
+<li><strong>Scope:</strong> the styling migration described in §2.1. Steps:</li>
+<li><strong>Inventory</strong> the 66 scattered <code>.css</code> files (see §1g) and group each by its
+     target bucket (abstracts/base/layout/features/components/themes).</li>
+<li><strong>Add the <code>sass</code> dev dependency</strong> and create the <code>assets/styles/</code> tree with
+     <code>_index.scss</code> barrels and <code>main.scss</code> as the single entry.</li>
+<li><strong>Extract shared values</strong> (colors, spacing, radii, z-index, panel surfaces,
+     scrollbars) into <code>abstracts/_designTokens.scss</code> + <code>_mixins.scss</code> —
+     de-duplicating the values currently repeated across component <code>.css</code> files.</li>
+<li><strong>Move</strong> each component's CSS into its bucket stylesheet, converting to SCSS
+     and replacing duplicated values with <code>@use "abstracts" as *</code> token/mixin refs.</li>
+<li><strong>Rewire imports:</strong> components stop importing their own <code>.css</code>; <code>app/main.tsx</code>
+     imports only <code>assets/styles/main.scss</code>. Use <code>@use</code>/<code>@forward</code> everywhere —
+     <strong>no <code>@import</code></strong>.</li>
+<li><strong>Delete</strong> the old per-component <code>.css</code> files.</li>
+<li><strong>Why this order:</strong> independent of the TS structural phases; done late so style
+  churn doesn't collide with file moves. Touches no TS logic and no contract.</li>
+<li><strong>Import-chain impact:</strong> removes ~66 <code>import './X.css'</code> statements; adds one
+  <code>import '@/assets/styles/main.scss'</code> in <code>main.tsx</code>. Visual output must be
+  unchanged (computed styles identical) — verify in the browser.</li>
+<li><strong>Acceptance:</strong> no <code>.css</code> file remains under <code>ide/src/</code> except generated/vendor;
+  no SCSS uses <code>@import</code>; <code>vite build</code> emits one CSS bundle; the app renders
+  pixel-identical to pre-migration.</li>
+</ul>
+<h3 id="phase-20-enforce-barrels-featurestore-mediation-naming-styles">Phase 20 — Enforce barrels, feature→store mediation, naming + styles</h3>
+<ul>
+<li><strong>Scope:</strong> add an ESLint <code>no-restricted-imports</code> (or equivalent) guard: features
+  import store only via <code>@/store</code>; no feature→feature imports; optionally migrate
+  the deep <code>@/store/*</code> imports to the barrel. Add lint/CI checks that <strong>ban the
+  generic file names</strong> from §2.0 and <strong>reject stray style files</strong> outside
+  <code>assets/styles/</code>.</li>
+<li><strong>Why last:</strong> a guardrail that locks in the deeply-modular structure achieved by
+  Phases 0–19.</li>
+<li><strong>Import-chain impact:</strong> mechanical import-path rewrites; no runtime change.</li>
+</ul>
+<hr />
+<h2 id="5-risks">5. Risks</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Blast radius</th>
+<th>Contract touch point</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Very low — dead code</td>
+<td>None</td>
+<td>Verify zero importers (done); rely on <code>tsc</code>. Double-check <code>YamlEditor</code> liveness first.</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Low — internal to <code>serialize/</code></td>
+<td>None (internal to serialization, not the YAML contract)</td>
+<td>Barrel export unchanged; run serialization tests.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Low — one consumer (<code>BlocklyWorkspace.tsx</code>)</td>
+<td>None</td>
+<td>Keep composed hook signature identical; manual smoke of block editor.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Low–medium — many helpers importers</td>
+<td>None</td>
+<td>Barrel path moves <code>../helpers → ../serializationParts</code>; grep for filename-specific imports of <code>helpers.ts</code>.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Medium — populate path is core to model→workspace</td>
+<td>None directly, but feeds the serialization round-trip</td>
+<td>Registry must cover <strong>all</strong> existing param types; round-trip tests (model→workspace→model) must stay green.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Low — internal to <code>populate/</code></td>
+<td>None</td>
+<td>Pure folder reorg; barrel keeps same exports; round-trip tests green.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Low — internal to <code>fields/</code></td>
+<td>None</td>
+<td>One consumer (block-editor); smoke wrapped-text + template-string fields in browser.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Low — internal to <code>blocks/common/</code></td>
+<td><strong>Block catalog schema</strong> (consumer only)</td>
+<td>Loader output unchanged; catalog barrel surface identical; verify blocks still load.</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Very low — dead duplicates</td>
+<td>None</td>
+<td>Verify zero importers before delete; rely on <code>tsc</code>.</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Low–medium — environment editor feature</td>
+<td><strong>TCK env/services manifest</strong> (consumer only)</td>
+<td>Pure section reorg; smoke the env editor + YAML preview in browser.</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Low–medium — dataflow view (18 files)</td>
+<td>None</td>
+<td>Pure reorg; smoke the data-flow graph render + panels in browser.</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Low — preconditions feature</td>
+<td>None</td>
+<td>Pure reorg; smoke the precondition modal/list/rules in browser.</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Low — project-explorer feature</td>
+<td>None</td>
+<td>Pure reorg; smoke tree render, context menu, drag-reorder in browser.</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Low — yaml-editor feature</td>
+<td>None</td>
+<td>Pure reorg; smoke all three editors + variable picker in browser.</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Low — leaf <code>models/</code> layer</td>
+<td><strong>Frozen type names/shapes</strong></td>
+<td>Barrel surface identical; only file homes move; <code>tsc</code> enforces no shape drift.</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Low — store internals</td>
+<td>None</td>
+<td>Selector outputs unchanged; <code>@/store</code> barrel surface identical; selector tests green.</td>
+</tr>
+<tr>
+<td>16</td>
+<td>Medium — project load/save</td>
+<td><strong>TCK env/services manifest</strong> + project format (read by store)</td>
+<td>Pure move, no logic change; persistence round-trip tests; verify localStorage keys unchanged.</td>
+</tr>
+<tr>
+<td>17</td>
+<td><strong>High</strong> — both YAML directions</td>
+<td><strong>YAML v2 syntax (FROZEN, lockstep)</strong></td>
+<td>Golden-file diff: emitted YAML byte-identical; coordinate with <code>testlab-master</code>; ship alone.</td>
+</tr>
+<tr>
+<td>18</td>
+<td>Low — pure renames + import rewrites</td>
+<td>None</td>
+<td>Mechanical rename; <code>tsc</code> catches missed references; barrels re-export new names.</td>
+</tr>
+<tr>
+<td>19</td>
+<td>Medium — all styling</td>
+<td>None (visual only, no TS/contract)</td>
+<td>Convert CSS→SCSS without value changes; verify computed styles + pixel parity in browser; one CSS bundle.</td>
+</tr>
+<tr>
+<td>20</td>
+<td>Low — import rewrites + lint</td>
+<td>None</td>
+<td>Lint-only + mechanical; full <code>tsc</code>/<code>build</code> after.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cross-codebase flags:</strong> only <strong>Phase 17</strong> alters a frozen contract boundary
+(YAML v2 / serialization↔YAML↔compiler chain) and therefore falls under the
+lockstep rule. <strong>Phases 7, 9, and 16</strong> touch frozen-contract <em>consumers</em> (block
+catalog schema, TCK env/services manifest) but must not change their shape.
+<strong>Phase 14</strong> moves frozen type <em>homes</em> without changing names or shapes. <strong>Phase 19</strong>
+changes only styling (no TS, no contract). All other phases are frontend-internal.</p>
+<hr />
+<h2 id="6-acceptance-criteria">6. Acceptance Criteria</h2>
+<p>A phase is <strong>done</strong> only when all of the following hold (run from <code>ide/</code>):</p>
+<ol>
+<li><strong>No file over 300 lines:</strong>
+   <div class="highlight"><span class="filename">Bash</span><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>find<span class="w"> </span>ide/src<span class="w"> </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.ts&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.tsx&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>wc<span class="w"> </span>-l<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;$1 &gt; 300 &amp;&amp; !/total/&#39;</span>
+</span></code></pre></div>
+   must print nothing.</li>
+<li><strong>Types clean:</strong> <code>cd ide &amp;&amp; npx tsc --noEmit</code> succeeds with zero errors.</li>
+<li><strong>Build clean:</strong> <code>cd ide &amp;&amp; npx vite build</code> succeeds.</li>
+<li><strong>Tests green:</strong> the existing IDE test suite passes unchanged — <strong>no test
+   assertion or fixture is modified</strong> (structural-only proof).</li>
+<li><strong>No new feature→feature imports:</strong>
+   <div class="highlight"><span class="filename">Bash</span><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>grep<span class="w"> </span>-rn<span class="w"> </span><span class="s2">&quot;from [&#39;\&quot;]@/features/&quot;</span><span class="w"> </span>ide/src/features
+</span></code></pre></div>
+   stays empty (currently empty; must remain so).</li>
+<li><strong>Barrels intact:</strong> every reorganized folder exposes an <code>index.ts</code>; external
+   consumers import the barrel, not internal files. After Phase 20, the lint guard
+   enforces this automatically.</li>
+<li><strong>Behavior parity (Phases 16–17):</strong> project persistence round-trips and emitted
+   YAML are <strong>byte-identical</strong> to pre-refactor output (golden-file comparison).</li>
+<li><strong>No generic file names (Phase 18+):</strong> the banned names from §2.0 do not appear:
+   <div class="highlight"><span class="filename">Bash</span><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>find<span class="w"> </span>ide/src<span class="w"> </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;helpers.ts&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;utils.ts&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;misc.ts&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;common.ts&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*2.ts&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span>-not<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;index.ts&#39;</span>
+</span></code></pre></div>
+   must print nothing; every file name reads as a domain noun + role suffix.</li>
+<li><strong>Single SCSS source (Phase 19+):</strong> no stray style files exist outside the
+   chosen home:
+   <div class="highlight"><span class="filename">Bash</span><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>find<span class="w"> </span>ide/src<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.css&#39;</span><span class="w">                       </span><span class="c1"># must print nothing</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>find<span class="w"> </span>ide/src<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.scss&#39;</span><span class="w"> </span>-not<span class="w"> </span>-path<span class="w"> </span><span class="s1">&#39;*/assets/styles/*&#39;</span><span class="w">   </span><span class="c1"># must print nothing</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>grep<span class="w"> </span>-rn<span class="w"> </span><span class="s2">&quot;@import&quot;</span><span class="w"> </span>ide/src/assets/styles<span class="w">          </span><span class="c1"># must print nothing (use @use/@forward)</span>
+</span></code></pre></div>
+   <code>app/main.tsx</code> imports exactly one stylesheet (<code>@/assets/styles/main.scss</code>), and
+   the rendered UI is pixel-identical to pre-migration (browser-verified).</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Eclipse Tractus-X Contributors
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "navigation.instant", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../assets/javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

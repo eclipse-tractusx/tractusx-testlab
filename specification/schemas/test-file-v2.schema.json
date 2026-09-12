@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclipse-tractusx.github.io/tractusx-testlab/schemas/test-file-v2.schema.json",
+  "title": "Test File v2",
+  "description": "JSON Schema for Tractus-X TestLab test files (kind: test) using YAML Syntax v2. Validates structural shape per ADR-0010. Licensed under Apache-2.0: https://www.apache.org/licenses/LICENSE-2.0",
+  "type": "object",
+  "required": ["kind", "testlab", "id", "namespace", "metadata", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "test",
+      "description": "File kind discriminator. Must be 'test' for test files."
+    },
+    "testlab": {
+      "type": "string",
+      "description": "TestLab syntax version identifier (e.g., 'v1-alpha')."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,99}$",
+      "description": "Unique test identifier within its namespace. Lowercase alphanumeric with hyphens/underscores."
+    },
+    "namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Parent TCK namespace this test belongs to (e.g., 'ccm-v0.0.1')."
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "setup": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/step"
+      },
+      "description": "Steps executed before the main test steps. Used for per-test setup and variable generation."
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/step"
+      },
+      "minItems": 1,
+      "description": "Main test execution steps. At least one step is required."
+    },
+    "teardown": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/step"
+      },
+      "description": "Steps executed after the main test steps. Used for cleanup regardless of test outcome."
+    }
+  },
+  "$defs": {
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable test name."
+        },
+        "version": {
+          "type": "string",
+          "description": "Optional test version string."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of what this test validates."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Categorization tags for filtering and grouping."
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["id", "uses", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,49}$",
+          "description": "Unique step identifier within this test. Referenced via ${{ steps.id.field }} or ${{ setup.id.field }}."
+        },
+        "uses": {
+          "type": "string",
+          "description": "Step type reference (e.g., 'connector/query_catalog', 'util/generate_uuid')."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable step label displayed in the IDE."
+        },
+        "with": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Step input parameters. Values may use ${{ }} expressions for variable references."
+        },
+        "returns": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/returnField"
+          },
+          "description": "Named output declarations. Each key becomes a referenceable variable."
+        },
+        "validate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assertion"
+          },
+          "description": "Post-step validation assertions."
+        }
+      }
+    },
+    "returnField": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "integer", "boolean", "object", "array", "any"],
+          "description": "Data type of the returned value."
+        },
+        "class": {
+          "type": "string",
+          "description": "Semantic class for IDE variable filtering (e.g., 'uuid', 'asset_id', 'offer_id')."
+        }
+      }
+    },
+    "assertion": {
+      "type": "object",
+      "required": ["uses"],
+      "additionalProperties": true,
+      "properties": {
+        "uses": {
+          "type": "string",
+          "description": "Assertion type reference (e.g., 'validate/assert', 'validate/schema')."
+        },
+        "with": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Assertion input parameters (e.g., input, operator, value)."
+        }
+      }
+    }
+  }
+}

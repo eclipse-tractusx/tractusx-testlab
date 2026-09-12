@@ -1,0 +1,260 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://eclipse-tractusx.github.io/tractusx-testlab/schemas/test-file.schema.json",
+  "title": "TestLab Test File (kind: test)",
+  "description": "JSON Schema for TestLab YAML Syntax v2 test files. Licensed under Apache-2.0. See https://www.apache.org/licenses/LICENSE-2.0",
+  "type": "object",
+  "required": ["kind", "name", "version", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "test",
+      "description": "Document type identifier. Must be 'test' for test files."
+    },
+    "name": {
+      "type": "string",
+      "description": "Unique identifier for this test within its TCK.",
+      "examples": ["e2e_submodel_validation", "create-and-verify-asset"]
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version of this test file.",
+      "examples": ["1.0", "2.0.0"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description shown in logs and reports."
+    },
+    "setup": {
+      "type": "array",
+      "description": "Steps executed before the main test steps. Their returns are visible to steps and teardown.",
+      "items": {
+        "$ref": "#/definitions/step"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "description": "Main test steps executed in order. Must contain at least one step.",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/step"
+      }
+    },
+    "teardown": {
+      "type": "array",
+      "description": "Cleanup steps executed after all main steps, regardless of pass/fail. Can reference all preceding variables.",
+      "items": {
+        "$ref": "#/definitions/step"
+      }
+    }
+  },
+  "definitions": {
+    "step": {
+      "type": "object",
+      "description": "A step definition representing a single operation in the test flow.",
+      "required": ["uses", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable step identifier. Must be unique within the file (across setup, steps, and teardown).",
+          "pattern": "^[a-z][a-z0-9_]{0,49}$",
+          "examples": ["create_asset_1", "negotiate_2", "gen_id"]
+        },
+        "uses": {
+          "type": "string",
+          "description": "Step type in namespace/action format (e.g., edc/create_asset).",
+          "examples": [
+            "connector/provider/create_asset",
+            "connector/consumer/negotiate",
+            "connector/consumer/initiate_transfer",
+            "connector/http/call_via_dataplane",
+            "http/call",
+            "mock/create_endpoint",
+            "mock/wait_for_call",
+            "util/generate_uuid",
+            "util/wait",
+            "validate/json_schema",
+            "notification/send",
+            "flow/if"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable label for logs and reports.",
+          "examples": ["Create the test asset", "Verify provider is healthy"]
+        },
+        "with": {
+          "type": "object",
+          "description": "Input parameters passed to the step handler. Values support ${{ vars.x }} and ${{ env.x }} interpolation.",
+          "additionalProperties": true,
+          "examples": [
+            {
+              "asset_id": "${{ vars.generated_id }}",
+              "description": "Test asset for negotiation",
+              "service": "provider"
+            }
+          ]
+        },
+        "returns": {
+          "type": "object",
+          "description": "Typed output declarations. Keys are output variable names available to subsequent steps via ${{ vars.x }}.",
+          "additionalProperties": {
+            "$ref": "#/definitions/returnDefinition"
+          },
+          "examples": [
+            {
+              "asset_id": {
+                "type": "string",
+                "class": "asset_id"
+              }
+            }
+          ]
+        },
+        "validate": {
+          "type": "array",
+          "description": "Assertions evaluated against step return variables. Each assertion uses the same uses/with pattern as steps. The 'input' field must reference a variable declared in this step's 'returns:' block.",
+          "items": {
+            "$ref": "#/definitions/assertion"
+          },
+          "examples": [
+            [
+              { "uses": "validate/assert", "with": { "input": "status_code", "operator": "equals", "value": 200 } },
+              { "uses": "validate/field", "with": { "input": "response_body", "path": "header.messageId", "operator": "matches_regex", "value": "^urn:uuid:[0-9a-f-]{36}$" } }
+            ]
+          ]
+        }
+      }
+    },
+    "returnDefinition": {
+      "type": "object",
+      "description": "A typed return value declaration for a step output.",
+      "required": ["type", "class"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Data type of the return value.",
+          "enum": ["string", "integer", "boolean", "object", "array"]
+        },
+        "class": {
+          "type": "string",
+          "description": "Semantic class from the class registry (ADR-0009).",
+          "examples": ["asset_id", "agreement_id", "negotiation_id", "url", "uuid", "bpn"]
+        }
+      }
+    },
+    "assertion": {
+      "type": "object",
+      "description": "An assertion using the same uses/with pattern as steps. Part of the validate/ namespace. The 'input' field always references a variable from a previous step's 'returns:' declaration (i.e., a ${{ vars.step_name.field }} reference resolved at runtime).",
+      "required": ["uses", "with"],
+      "additionalProperties": false,
+      "properties": {
+        "uses": {
+          "type": "string",
+          "description": "Assertion type in validate/ namespace.",
+          "enum": [
+            "validate/assert",
+            "validate/field",
+            "validate/object",
+            "validate/schema"
+          ]
+        },
+        "with": {
+          "oneOf": [
+            {
+              "description": "validate/assert — compare a direct return variable against a scalar or array value.",
+              "type": "object",
+              "required": ["input", "operator", "value"],
+              "additionalProperties": false,
+              "properties": {
+                "input": {
+                  "type": "string",
+                  "description": "A return variable from a previous step's 'returns:' block. Always resolves to ${{ vars.step_name.field }} at runtime.",
+                  "examples": ["status_code", "edr_token", "negotiation_id"]
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Comparison operator.",
+                  "enum": ["equals", "not_equals", "not_null", "matches_regex", "one_of", "contains", "gt", "gte", "lt", "lte"]
+                },
+                "value": {
+                  "description": "Expected value — scalar or array. Supports ${{ vars.x }} and ${{ env.x }} interpolation.",
+                  "examples": [200, "COMPLETED", ["IN_PROGRESS", "COMPLETED", "REJECTED"]]
+                }
+              }
+            },
+            {
+              "description": "validate/field — compare a nested field within a return variable. Requires 'path' for dot-notation traversal.",
+              "type": "object",
+              "required": ["input", "path", "operator"],
+              "additionalProperties": false,
+              "properties": {
+                "input": {
+                  "type": "string",
+                  "description": "A return variable from a previous step's 'returns:' block. Always resolves to ${{ vars.step_name.field }} at runtime.",
+                  "examples": ["response_body", "catalog_response"]
+                },
+                "path": {
+                  "type": "string",
+                  "description": "Dot-notation path into the return variable's value.",
+                  "examples": ["header.messageId", "content.requestStatus", "items[0].id"]
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Comparison operator.",
+                  "enum": ["equals", "not_equals", "not_null", "matches_regex", "one_of", "contains", "gt", "gte", "lt", "lte"]
+                },
+                "value": {
+                  "description": "Expected value. Optional when operator is 'not_null'. Supports ${{ vars.x }} and ${{ env.x }} interpolation.",
+                  "examples": ["^urn:uuid:[0-9a-f-]{36}$", "COMPLETED"]
+                }
+              }
+            },
+            {
+              "description": "validate/object — deep-compare a return variable against a full JSON object.",
+              "type": "object",
+              "required": ["input", "operator", "value"],
+              "additionalProperties": false,
+              "properties": {
+                "input": {
+                  "type": "string",
+                  "description": "A return variable from a previous step's 'returns:' block. Always resolves to ${{ vars.step_name.field }} at runtime.",
+                  "examples": ["response_body", "asset_payload"]
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Object comparison operator.",
+                  "enum": ["equals", "contains"]
+                },
+                "value": {
+                  "type": "object",
+                  "description": "Expected JSON object for deep comparison. Supports ${{ vars.x }} and ${{ env.x }} interpolation in values.",
+                  "examples": [{"status": "COMPLETED", "type": "ISO9001"}]
+                }
+              }
+            },
+            {
+              "description": "validate/schema — validate a return variable's value against a JSON schema.",
+              "type": "object",
+              "required": ["input", "schema"],
+              "additionalProperties": false,
+              "properties": {
+                "input": {
+                  "type": "string",
+                  "description": "A return variable from a previous step's 'returns:' block. Always resolves to ${{ vars.step_name.field }} at runtime.",
+                  "examples": ["response_body", "notification_payload"]
+                },
+                "schema": {
+                  "type": "string",
+                  "description": "Schema reference. Use ${{ env.schemas.x }} to reference schemas defined in the TCK manifest.",
+                  "examples": ["${{ env.schemas.certificate_response }}", "${{ env.schemas.notification_header }}"]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

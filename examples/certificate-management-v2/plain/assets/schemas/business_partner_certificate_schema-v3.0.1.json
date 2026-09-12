@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:samm:io.catenax.business_partner_certificate:3.1.0",
+  "title": "BusinessPartnerCertificate",
+  "description": "Schema for CX-0135 BusinessPartnerCertificate semantic model v3.1.0 payload validation.",
+  "type": "object",
+  "required": ["businessPartnerNumber", "certificateType"],
+  "properties": {
+    "businessPartnerNumber": {
+      "type": "string",
+      "pattern": "^BPN[LSA][0-9A-Z]{12}$",
+      "description": "BPN of the certificate holder"
+    },
+    "certificateType": {
+      "type": "string",
+      "description": "Certificate type identifier (e.g. iso9001, iatf16949)"
+    },
+    "registrationNumber": {
+      "type": "string",
+      "description": "Registration number of the certificate"
+    },
+    "areaOfApplication": {
+      "type": "string",
+      "description": "Area of application for the certificate"
+    },
+    "enclosedSites": {
+      "type": "array",
+      "description": "Sites enclosed by the certificate",
+      "items": {
+        "type": "object",
+        "required": ["enclosedSiteBpn"],
+        "properties": {
+          "enclosedSiteBpn": {
+            "type": "string",
+            "pattern": "^BPN[SA][0-9A-Z]{12}$",
+            "description": "BPNS or BPNA of the enclosed site"
+          }
+        }
+      }
+    },
+    "validFrom": {
+      "type": "string",
+      "format": "date",
+      "description": "Start date of certificate validity"
+    },
+    "validTo": {
+      "type": "string",
+      "format": "date",
+      "description": "End date of certificate validity"
+    },
+    "issuer": {
+      "type": "object",
+      "description": "Issuing authority of the certificate",
+      "properties": {
+        "issuerName": {
+          "type": "string",
+          "description": "Name of the issuing authority"
+        },
+        "issuerBpn": {
+          "type": "string",
+          "pattern": "^BPN[LSA][0-9A-Z]{12}$",
+          "description": "BPN of the issuing authority"
+        }
+      }
+    },
+    "trustLevel": {
+      "type": "string",
+      "enum": ["none", "low", "medium", "high", "trusted"],
+      "description": "Trust level assigned to the certificate"
+    },
+    "validator": {
+      "type": "object",
+      "description": "Entity that validated the certificate",
+      "properties": {
+        "validatorName": { "type": "string" },
+        "validatorBpn": { "type": "string", "pattern": "^BPN[LSA][0-9A-Z]{12}$" }
+      }
+    },
+    "uploader": {
+      "type": "string",
+      "pattern": "^BPN[LSA][0-9A-Z]{12}$",
+      "description": "BPN of the entity that uploaded the certificate"
+    },
+    "document": {
+      "type": "object",
+      "description": "Document attached to the certificate",
+      "properties": {
+        "documentID": {
+          "type": "string",
+          "description": "Unique identifier of the document"
+        },
+        "creationDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation date of the document"
+        },
+        "contentType": {
+          "type": "string",
+          "description": "MIME type of the document content"
+        },
+        "contentBase64": {
+          "type": "string",
+          "description": "Base64-encoded document content"
+        }
+      }
+    },
+    "type": {
+      "type": "object",
+      "description": "Certificate type and version information",
+      "properties": {
+        "certificateVersion": {
+          "type": "string",
+          "description": "Version of the certificate standard"
+        },
+        "certificateType": {
+          "type": "string",
+          "description": "Type identifier of the certificate"
+        }
+      }
+    }
+  }
+}

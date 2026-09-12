@@ -1,0 +1,5638 @@
+<!--
+  Eclipse Tractus-X - Tractus-X TestLab
+
+  Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+  See the NOTICE file(s) distributed with this work for additional
+  information regarding copyright ownership.
+
+  This program and the accompanying materials are made available under the
+  terms of the Apache License, Version 2.0 which is available at
+  https://www.apache.org/licenses/LICENSE-2.0.
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+  either express or implied. See the
+  License for the specific language govern in permissions and limitations
+  under the License.
+
+  SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- It was reviewed and tested by a human committer. -->
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Visual test authoring tool for Eclipse Tractus-X dataspaces">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/logo_tractus-x-min.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Index - Tractus-X TestLab Documentation</title>
+      
+    
+    
+  
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/stylesheets/orange-black-theme.css">
+  <style>
+    .md-header__inner {
+      display: flex !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      height: 3rem !important;
+      padding: 0 0.1rem !important;
+      gap: 0 !important;
+      position: relative !important;
+    }
+
+    .md-header__button.md-logo {
+      order: 1 !important;
+      flex: 0 0 auto !important;
+      margin: 0 !important;
+      padding: 0.2rem 0.1rem !important;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+
+    .md-header__button[for="__drawer"] {
+      order: 2 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0.2rem !important;
+      display: none !important;
+    }
+
+    @media screen and (max-width: 1220px) {
+      .md-header__button[for="__drawer"] {
+        display: inline-flex !important;
+      }
+    }
+
+    .md-header__title {
+      order: 3 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0 0 0.15rem !important;
+      overflow: visible !important;
+      font-family: 'Manrope', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 1.2rem !important;
+      letter-spacing: -0.02em !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      line-height: 3rem !important;
+      height: 3rem !important;
+    }
+
+    .md-header__title .md-header__ellipsis {
+      font-size: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      display: none !important;
+    }
+
+    .md-header__title::before {
+      content: "Tractus-X TestLab" !important;
+      color: #ffffff !important;
+      font-size: 1.2rem !important;
+      font-weight: 700 !important;
+      white-space: nowrap !important;
+    }
+
+    .md-header__title::after {
+      content: "docs" !important;
+      color: rgba(255, 215, 0, 0.7) !important;
+      font-size: 0.5rem !important;
+      font-weight: 500 !important;
+      background: none !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.12em !important;
+      white-space: nowrap !important;
+      align-self: flex-start !important;
+      margin-top: 0.55rem !important;
+      margin-left: -0.2rem !important;
+    }
+
+    .md-search {
+      order: 5 !important;
+      flex: 1 1 auto !important;
+      max-width: none !important;
+      width: auto !important;
+      margin: 0 0 0 0.75rem !important;
+    }
+
+    label[for="__search"] {
+      order: 4 !important;
+      flex: 0 0 auto !important;
+    }
+
+    .md-header .md-version {
+      order: 6 !important;
+      flex: 0 0 auto !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      margin: 0 0.4rem !important;
+    }
+  </style>
+
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/orange-black-theme.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#architecture-cleanup-finding-ledger" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Tractus-X TestLab Documentation" class="md-header__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tractus-X TestLab Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Index
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../specification/" class="md-tabs__link">
+          
+  
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
+          
+  
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Tractus-X TestLab Documentation" class="md-nav__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    Tractus-X TestLab Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Welcome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../home/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Terminology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/functional-requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functional Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/constraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Constraints & Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Walkthrough
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/writing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/compiling-packages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiling Packages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/executing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Executing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/reference/syntax/cheat-sheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax Cheat Sheet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/syntax/tck-syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TCK Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/create-step-executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create a Step Executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-service-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Service Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-assertion-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add an Assertion Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-validation-rule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Validation Rule
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/development-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-conformity-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CCM Conformity Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Certificate Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Certificate Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/certificate-management-ide-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-business-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Business Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-architecture-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../product-scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Scope
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI-Assisted Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Contracts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Step Contracts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../step-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single Source of Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ide-engine-contract-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IDE-Engine Contract Parity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-conflict-decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Conflict Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-migration-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Migration Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../block-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../creating-a-step/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating a Step
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../execution-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infrastructure-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment-injection-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Injection Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../step-reference-drift-report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13" id="__nav_5_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decision Records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/ADR-0000-template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0000 Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_3" id="__nav_5_13_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Backend
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0005-filesystem-participant-manager-with-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0005 Participant Manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0012-compilation-and-packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0012 Compilation and Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0014-flat-compilation-intermediate-representation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0014 Flat Compilation IR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0015-package-asset-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0015 Package Asset Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0016-execution-trace-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0016 Execution Trace Format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0017-input-callback-endpoint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0017 Input Callback Endpoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0019-service-requirements-and-engine-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0019 Service Requirements and Engine Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0022-tck-static-inspection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0022 TCK Static Inspection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0023-variable-scope-annotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0023 Variable Scope Annotation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0024-test-skip-configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0024 Test-Level Skip Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_4" id="__nav_5_13_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Shared
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0003-sse-for-live-ide-execution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0003 SSE for Live Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0008-test-case-to-tck-rename/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0008 TCK Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0009-typed-variable-class-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0009 Typed Variable Class System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0010-yaml-syntax-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0010 YAML Syntax v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0011-environment-and-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0011 Environment and Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0018-unified-variables-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0018 Unified Variables Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0021-remove-precondition-concept/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0021 Remove Precondition Concept
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0025-assertions-read-declared-returns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0025 Assertions Read Declared Returns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-ledger-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this ledger exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gate-questions-answered-2026-08-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate questions — answered 2026-08-17
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gate questions — answered 2026-08-17">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#q3-inverts-the-largest-planned-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q3 inverts the largest planned change
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase status
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase status">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#p0-outcome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P0 outcome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme-a-silence-where-there-should-be-an-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme A — Silence where there should be an error
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Theme A — Silence where there should be an error">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f-a10-found-during-p0-not-in-the-original-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-A10 — found during P0, not in the original review
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme-b-four-descriptions-of-one-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme B — Four descriptions of one contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme-c-subsystems-wired-to-fields-that-no-longer-exist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme C — Subsystems wired to fields that no longer exist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme-d-layering-and-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme D — Layering and structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme-e-the-same-job-done-several-ways" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme E — The same job, done several ways
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme-f-error-model-and-typing-floor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme F — Error model and typing floor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme-g-nothing-is-enforced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme G — Nothing is enforced
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Theme G — Nothing is enforced">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f-g04-found-by-the-packaging-smoke-test-on-its-first-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-G04 — found by the packaging smoke test on its first run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme-h-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme H — Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme-i-cli-behaviour-and-record-keeping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme I — CLI behaviour and record-keeping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#invariants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Invariants
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Invariants">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-p2p3-ratchet-is-armed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The P2/P3 ratchet is armed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p1-note-why-f-e03-moved-to-p5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P1 note — why F-E03 moved to P5
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#f-a11-found-in-p2-in-a-shipped-tck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-A11 — found in P2, in a shipped TCK
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p2-in-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2 in progress
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#f-b04-the-check-that-had-never-fired" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-B04 — the check that had never fired
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p2-complete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P2 complete
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="P2 complete">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f-a06-what-the-finding-actually-turned-out-to-be" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-A06 — what the finding actually turned out to be
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-a08-the-schema-half-is-blocked-not-skipped" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-A08 — the schema half is blocked, not skipped
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-a07-a-timeout-is-not-a-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-A07 — a timeout is not a result
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p3-part-1-the-ir-was-not-executable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P3, part 1 — the IR was not executable
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="P3, part 1 — the IR was not executable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#two-further-defects-found-on-the-way" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two further defects found on the way
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#still-to-do-in-p3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Still to do in P3
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#corrections-from-review-2026-08-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Corrections from review — 2026-08-17
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Corrections from review — 2026-08-17">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#expects-i-implemented-it-wrongly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        expects: — I implemented it wrongly
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dataspace_version-is-deprecated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dataspace_version is deprecated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#namespace-is-the-tck-id-at-test-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        namespace is the TCK id at test level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#already-fixed-the-symbol-table-repr-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Already fixed: the symbol-table repr keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#f-a09-closed-the-digest-now-covers-what-executes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-A09 closed — the digest now covers what executes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="F-A09 closed — the digest now covers what executes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verified-end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verified end to end
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p3-part-3-the-schemas-are-generated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P3, part 3 — the schemas are generated
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="P3, part 3 — the schemas are generated">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#it-immediately-exposed-a-test-that-passed-for-the-wrong-reason" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        It immediately exposed a test that passed for the wrong reason
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-b06-one-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-B06 — one version
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p4-part-1-the-seams-are-typed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P4, part 1 — the seams are typed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="P4, part 1 — the seams are typed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f-f03-the-warning-on-every-invocation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-F03 — the warning on every invocation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-f02-what-the-engine-requires-stated-as-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-F02 — what the engine requires, stated as types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#two-defects-the-protocols-surfaced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two defects the Protocols surfaced
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#still-open-in-p4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Still open in P4
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-d02-the-cycle-is-one-way-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-D02 — the cycle is one-way now
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#f-e01-one-http-client-and-a-bigger-problem-underneath" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-E01 — one HTTP client, and a bigger problem underneath
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="F-E01 — one HTTP client, and a bigger problem underneath">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#two-behaviours-that-had-to-be-preserved-deliberately" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two behaviours that had to be preserved deliberately
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-test-doubles-moved-too" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The test doubles moved too
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-e07-the-sdk-is-synchronous-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-E07 — the SDK is synchronous (new)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#p4-complete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        P4 complete
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="P4 complete">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f-e07-the-sdk-calls-are-off-the-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-E07 — the SDK calls are off the loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-e05-a-path-names-the-key-the-document-has" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-E05 — a path names the key the document has
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-f04-one-typing-dialect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-F04 — one typing dialect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-d03-the-context-is-about-a-run-again" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-D03 — the context is about a run again
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-a03-a-step-that-could-not-produce-its-output-now-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-A03 — a step that could not produce its output now fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-d06-the-code-that-decides-authenticity-is-tested" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-D06 — the code that decides authenticity is tested
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-b07-and-f-i02-one-format-one-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-B07 and F-I02 — one format, one command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-f02-remainder-no-module-is-exempt-from-the-type-checker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-F02 remainder — no module is exempt from the type checker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f-d05-the-file-size-ratchet-tightened" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F-D05 — the file-size ratchet, tightened
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-verification-2026-08-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline verification — 2026-08-18
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline verification — 2026-08-18">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-verdict-was-a-step-tally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The verdict was a step tally
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-console-trace-threw-away-everything-it-was-given" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The console trace threw away everything it was given
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-validator-never-walked-teardown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The validator never walked teardown
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#steps-n-counted-one-phase-of-three" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps: N counted one phase of three
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-reference-that-reaches-into-a-document-said-nothing-useful" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A reference that reaches into a document said nothing useful
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2e-combinations-against-the-live-dataspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E2E — combinations against the live dataspace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-was-and-was-not-run-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What was and was not run locally
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/eclipse-tractusx/tractusx-testlab/edit/main/docs/developer/architecture-cleanup/README.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<!--
+ Eclipse Tractus-X - Tractus-X TestLab
+
+ Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+ See the NOTICE file(s) distributed with this work for additional
+ information regarding copyright ownership.
+
+ This program and the accompanying materials are made available under the
+ terms of the Apache License, Version 2.0 which is available at
+ https://www.apache.org/licenses/LICENSE-2.0.
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations
+ under the License.
+
+ SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This document was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5). -->
+<!-- It was reviewed and validated by a human committer. -->
+
+<h1 id="architecture-cleanup-finding-ledger">Architecture Cleanup — Finding Ledger</h1>
+<blockquote>
+<p>Started 2026-08-17 on <code>feat/architecture_refactoring</code>.
+Source review: 49 findings, two reproduced failures.</p>
+</blockquote>
+<p><strong>This effort changes behaviour.</strong> It is deliberately distinct from
+<a href="../refactor-plan/"><code>refactor-plan/</code></a>, which is structural-only and
+promises no contract changes. This one rejects input that used to be accepted,
+deletes code that is reachable-but-inert, and replaces the package format.</p>
+<h2 id="why-this-ledger-exists">Why this ledger exists</h2>
+<p>The work spans five phases over several weeks. Every finding below carries an ID
+used in commit messages, test <code>reason=</code> strings, and code comments, so a change
+can always be traced back to the reason it was made — and so a finding cannot be
+quietly dropped between sessions.</p>
+<p><strong>Status values:</strong> <code>open</code> · <code>in-progress</code> · <code>done</code> · <code>blocked</code> · <code>dropped</code>
+(with a reason).</p>
+<hr />
+<h2 id="gate-questions-answered-2026-08-17">Gate questions — answered 2026-08-17</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q1</td>
+<td>Are inter-test <code>depends_on</code> dependencies a v1 feature?</td>
+<td><strong>No — delete the machinery.</strong></td>
+</tr>
+<tr>
+<td>Q2</td>
+<td>Is an unsigned <code>.tck</code> a supported distribution format?</td>
+<td><strong><code>.tck</code> is the one distribution <em>and</em> execution format.</strong> The separate package format is wrong and goes.</td>
+</tr>
+<tr>
+<td>Q3</td>
+<td>Does the IDE consume <code>tck-execution.json</code>?</td>
+<td><strong>No — and that is not what it is for.</strong> It is the compiled, machine-readable form <em>the player is meant to execute</em>. The IDE only authors declarative YAML and, at run time, renders the trace by parsing CloudEvents.</td>
+</tr>
+<tr>
+<td>Q4</td>
+<td>Is the AI-provenance subtitle a compliance artefact?</td>
+<td><strong>No.</strong> Keep it in file headers; do not enforce it in CI.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="q3-inverts-the-largest-planned-change">Q3 inverts the largest planned change</h3>
+<p>The review recorded <code>compiler/ir/</code> (866 LOC) as the single biggest deletion,
+on the evidence that nothing executes <code>tck-execution.json</code> — it is written,
+fingerprinted, and read back only to verify its own digest.</p>
+<p>That evidence was right; the conclusion was wrong. <strong>The IR is not dead code,
+it is unwired code.</strong> The intended pipeline is:</p>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>YAML (authored in the IDE)  →  compile  →  tck-execution.json  →  player executes
+</span></code></pre></div>
+<p>What actually ships today executes the raw YAML carried alongside the IR, and
+fingerprints the IR nobody runs. So the correct move is the opposite of
+deletion:</p>
+<ul>
+<li><strong>Keep</strong> <code>compiler/ir/</code> and make the player execute the IR.</li>
+<li><strong>Delete the second representation instead</strong> — <code>tck-bundle.yaml</code> and the
+  <code>tests/*.yaml</code> copies inside the archive, plus the player's YAML-from-package
+  load path.</li>
+<li>A <code>.tck</code> then carries <code>manifest.yaml</code> + <code>tck-execution.json</code> + <code>assets/</code>, and
+  nothing else that could be mistaken for the thing that runs.</li>
+</ul>
+<p>This is a better outcome than the deletion it replaces: <strong>F-A09 closes
+structurally rather than by patching the digest.</strong> Once the fingerprinted
+artefact and the executed artefact are the same file, there is no gap left to
+verify the wrong side of. Combined with Q2 collapsing two package formats into
+one, P3 gets simpler than estimated, not harder.</p>
+<p>Net effect on the deletion budget: −866 (IR retained) +~400 (bundle/YAML paths
+removed), so roughly 1,300 LOC rather than 1,750. Revised in the phase notes
+below.</p>
+<hr />
+<h2 id="phase-status">Phase status</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Scope</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>P0</strong></td>
+<td>Enforcement layer — ruff, mypy, CI gates</td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td><strong>P1</strong></td>
+<td>Deletion pass</td>
+<td><strong>done</strong> — 1,060 lines removed, 152 added</td>
+</tr>
+<tr>
+<td><strong>P2</strong></td>
+<td>Close the false-positive class</td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td><strong>P3</strong></td>
+<td>Rewrite compiler + collapse to one <code>.tck</code>, executed from the IR</td>
+<td>in-progress — IR made lossless; player wiring next</td>
+</tr>
+<tr>
+<td><strong>P4</strong></td>
+<td>Rewrite execution engine + type the seams</td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td><strong>P5</strong></td>
+<td>Rename, reshape, add invariants</td>
+<td>not started</td>
+</tr>
+</tbody>
+</table>
+<h3 id="p0-outcome">P0 outcome</h3>
+<p>Three gates now run in CI (<code>.github/workflows/test.yml</code>) and all pass:</p>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ruff check src tests tools</code></td>
+<td>clean — 880 violations fixed, no rule deferred</td>
+</tr>
+<tr>
+<td><code>mypy</code></td>
+<td>clean — 135 errors → 0 gated; 72 remain behind per-module ratchet entries</td>
+</tr>
+<tr>
+<td><code>pytest tests/</code></td>
+<td>1,310 pass, 0 fail — integration suite no longer excluded</td>
+</tr>
+<tr>
+<td><code>testlab docs --check</code></td>
+<td>added; step reference must match the models</td>
+</tr>
+<tr>
+<td>wheel installs + every module imports</td>
+<td>added; catches undeclared dependencies</td>
+</tr>
+</tbody>
+</table>
+<p>Fully type-clean and gated: <code>infrastructure</code>, <code>logging</code>, <code>security</code>, <code>services</code>,
+<code>syntax</code>. Every other package has a <code>[[tool.mypy.overrides]]</code> entry naming the
+finding that clears it — removing the entry is how a package graduates.</p>
+<p><strong>Not done in P0, deliberately:</strong> <code>ruff format</code> would rewrite 151 files. That
+belongs in one isolated commit with a <code>.git-blame-ignore-revs</code>, not mixed into
+behavioural work where it would make every other diff unreviewable. Deferred to
+P5.</p>
+<hr />
+<h2 id="theme-a-silence-where-there-should-be-an-error">Theme A — Silence where there should be an error</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Sev</th>
+<th>Finding</th>
+<th>Phase</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-A01</td>
+<td>Critical</td>
+<td>Authoring models accept and drop unknown keys (<code>extra="ignore"</code>)</td>
+<td>P2</td>
+<td><strong>done</strong> — all 14 authoring models strict; error names the full path</td>
+</tr>
+<tr>
+<td>F-A02</td>
+<td>Critical</td>
+<td>Unresolved <code>${{ }}</code> reference becomes its own literal text</td>
+<td>P2</td>
+<td><strong>done</strong> — raises <code>UnresolvedReferenceError</code>, naming what is in scope</td>
+</tr>
+<tr>
+<td>F-A03</td>
+<td>Critical</td>
+<td>Steps fabricate <code>HttpResponse(500)</code> and still report PASSED (15 sites)</td>
+<td>P2</td>
+<td><strong>done</strong> — 15 sites raise <code>StepExecutionError</code>; no step invents a status the SUT never sent</td>
+</tr>
+<tr>
+<td>F-A04</td>
+<td>Critical</td>
+<td><code>run_step</code> catches 5 exception types; the rest abort the whole job</td>
+<td>P2</td>
+<td><strong>done</strong> — catches broadly, classifies engine fault vs SUT failure</td>
+</tr>
+<tr>
+<td>F-A05</td>
+<td>Critical</td>
+<td>Assertion with no <code>operator</code> silently becomes <code>not_null</code>, ignoring <code>value</code></td>
+<td>P2</td>
+<td><strong>done</strong> — operands checked against the operator's declared arity</td>
+</tr>
+<tr>
+<td>F-A06</td>
+<td>Critical</td>
+<td>Zero executed assertions is a passing result</td>
+<td>P2</td>
+<td><strong>done</strong> — <code>declared</code> vs <code>total</code> recorded; a run that verified nothing says so</td>
+</tr>
+<tr>
+<td>F-A07</td>
+<td>High</td>
+<td>Polling treats timeout as a normal outcome</td>
+<td>P2</td>
+<td><strong>done</strong> — raises unless the step asks for <code>allow_timeout</code></td>
+</tr>
+<tr>
+<td>F-A08</td>
+<td>High</td>
+<td>Unknown keys also accepted by JSON Schemas and the config loader</td>
+<td>P2/P3</td>
+<td><strong>done</strong> — config in P2; the generated schemas carry <code>additionalProperties: false</code></td>
+</tr>
+<tr>
+<td>F-A09</td>
+<td>Critical</td>
+<td>Package integrity check does not cover the executed test files</td>
+<td>P3</td>
+<td><strong>done</strong> — one digest over every archive entry; seal and verify share one function</td>
+</tr>
+<tr>
+<td>F-A10</td>
+<td>Critical</td>
+<td><code>metadata.dataspace_version</code> was never read — a jupiter TCK ran as saturn, silently</td>
+<td>P0</td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td>F-A11</td>
+<td>High</td>
+<td><code>expects: fail</code> silently dropped by the model</td>
+<td>P2</td>
+<td><strong>done</strong> — declared; the validations carry the expectation</td>
+</tr>
+</tbody>
+</table>
+<h3 id="f-a10-found-during-p0-not-in-the-original-review">F-A10 — found during P0, not in the original review</h3>
+<p><code>_target_release</code> read <code>definition.dataspace_version</code>. That field does not exist
+on <code>TckDefinition</code>; the flat spelling lives on <code>TckMetadataDefinition</code>. Because
+the read went through <code>getattr(…, "")</code>, the miss looked exactly like "the author
+did not state a release".</p>
+<p>Two consequences, and the second is the dangerous one:</p>
+<ol>
+<li>A TCK declaring <code>metadata.dataspace_version: jupiter</code> with no <code>dataspace:</code>
+   block resolved to the <strong>saturn</strong> default, so the SDK built saturn connector
+   services for a jupiter deployment — the wrong DSP dialect.</li>
+<li>It also returned <code>release_stated=False</code>, which is precisely the flag that
+   tells <code>InfrastructureManager.align()</code> not to hold the release against the
+   bound deployment. <strong>The <code>StandardConflictError</code> guard was therefore bypassed</strong>,
+   so the mismatch raised nothing at all.</li>
+</ol>
+<p>Found because mypy objected to <code>getattr</code> on a statically-known attribute, and
+fixed by reading the declared field directly. Three regression tests in
+<code>tests/unit/player/test_player_infrastructure.py::TestRelease</code>.</p>
+<p>The <code>SimpleNamespace</code> test double in that file had to become a real
+<code>TckDefinition</code> for the tests to keep passing — which is the point: the stub was
+as silent about the missing field as the model was, so it agreed with the bug.
+That is the concrete cost of F-F02's defensive <code>getattr</code> style, in one place.</p>
+<h2 id="theme-b-four-descriptions-of-one-contract">Theme B — Four descriptions of one contract</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Sev</th>
+<th>Finding</th>
+<th>Phase</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-B01</td>
+<td>High</td>
+<td>JSON Schema and Pydantic model disagree on 6 required fields</td>
+<td>P3</td>
+<td><strong>done</strong> — schemas generated from the models; <code>testlab schema --check</code> in CI</td>
+</tr>
+<tr>
+<td>F-B02</td>
+<td>High</td>
+<td><code>validate/*</code> registered as steps but forbidden by the validator</td>
+<td>P1</td>
+<td><strong>done</strong> — module deleted; its stronger schema check ported into the reachable path</td>
+</tr>
+<tr>
+<td>F-B03</td>
+<td>High</td>
+<td>Three variable syntaxes live against a rule permitting one</td>
+<td>P1</td>
+<td><strong>done</strong> — <code>${var}</code>, <code>@var</code>, <code>source: VARIABLE</code> all removed</td>
+</tr>
+<tr>
+<td>F-B04</td>
+<td>Medium</td>
+<td>Undeclared-variable check greps a syntax no test uses</td>
+<td>P2</td>
+<td><strong>done</strong> — scope-aware, now an error; 23 spurious warnings → 0</td>
+</tr>
+<tr>
+<td>F-B05</td>
+<td>Medium</td>
+<td>Two accepted shapes for <code>env.schemas</code> / <code>env.testdata</code></td>
+<td>P3</td>
+<td><strong>done</strong> — the generated schema describes the list form the models declare</td>
+</tr>
+<tr>
+<td>F-B06</td>
+<td>Medium</td>
+<td>Three version numbers for one artefact; <code>v1-alpha2</code> is not PEP 440</td>
+<td>P3</td>
+<td><strong>done</strong> — <code>1.0.0a2</code>, read from package metadata everywhere</td>
+</tr>
+<tr>
+<td>F-B07</td>
+<td>Low</td>
+<td>Docstrings promise <code>.tck</code>, code writes <code>.stck</code>; "inlining" does not inline</td>
+<td>P3</td>
+<td><strong>done</strong> — <code>.stck</code> deleted; <code>.tck</code> is the one format, plain or encrypted</td>
+</tr>
+<tr>
+<td>F-B08</td>
+<td>High</td>
+<td>Compiler and runtime parse <code>${{ }}</code> with different regexes</td>
+<td>P3</td>
+<td><strong>done in P1</strong> — one grammar in <code>syntax/patterns.py</code>, five definitions gone</td>
+</tr>
+</tbody>
+</table>
+<h2 id="theme-c-subsystems-wired-to-fields-that-no-longer-exist">Theme C — Subsystems wired to fields that no longer exist</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Sev</th>
+<th>Finding</th>
+<th>Phase</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-C01</td>
+<td>High</td>
+<td>4 execution subsystems are permanent no-ops (<code>depends_on</code>, <code>outputs</code>, <code>services</code>, <code>variables</code>)</td>
+<td>P1</td>
+<td><strong>done</strong> — <code>ordering.py</code>, <code>_helpers.py</code>, <code>resolve_service_def</code>, 4 phantom properties deleted</td>
+</tr>
+<tr>
+<td>F-C02</td>
+<td>Medium</td>
+<td>CLI progress bar reads 3 keys no event carries → always renders FAIL</td>
+<td>P4</td>
+<td><strong>done (reading bug)</strong> — typed-event contract stays in P4</td>
+</tr>
+<tr>
+<td>F-C03</td>
+<td>Medium</td>
+<td><code>server/routes/jobs.py</code> defines the same 2 symbols twice</td>
+<td>P0</td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td>F-C04</td>
+<td>Medium</td>
+<td>8 stale xfail markers; 4 duplicate test files</td>
+<td>P0</td>
+<td><strong>done</strong> — <code>xfail_strict</code> now prevents recurrence</td>
+</tr>
+<tr>
+<td>F-C05</td>
+<td>Low</td>
+<td>Unused assignment/param, duplicated imports, wrong docstring</td>
+<td>P0</td>
+<td><strong>done</strong> — plus a dead helper calling an undefined name</td>
+</tr>
+</tbody>
+</table>
+<h2 id="theme-d-layering-and-structure">Theme D — Layering and structure</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Sev</th>
+<th>Finding</th>
+<th>Phase</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-D01</td>
+<td>High</td>
+<td>Folder layout does not predict step identity</td>
+<td>P5</td>
+<td><strong>done</strong> — every step's path mirrors its id; enforced</td>
+</tr>
+<tr>
+<td>F-D02</td>
+<td>High</td>
+<td>Import cycle player ↔ steps, held open by deferred imports</td>
+<td>P4</td>
+<td><strong>done</strong> — <code>contracts.StepInvoker</code>; the edge is one-way</td>
+</tr>
+<tr>
+<td>F-D03</td>
+<td>High</td>
+<td><code>StepContext</code> is a god object; reaches into <code>ServiceManager._definitions</code></td>
+<td>P4</td>
+<td><strong>done</strong> — <code>DataspaceAccess</code> split out; 222 → 151 lines</td>
+</tr>
+<tr>
+<td>F-D04</td>
+<td>Medium</td>
+<td>Alias shims renaming functions for no behavioural reason</td>
+<td>P1</td>
+<td><strong>done</strong> — 6 files → <code>phase.py</code></td>
+</tr>
+<tr>
+<td>F-D05</td>
+<td>Medium</td>
+<td>13 files over 300 lines; 5 folders over 5 files</td>
+<td>P5</td>
+<td><strong>done</strong> — 16 → 13 over 300, largest 638 → 422; ratcheted, may only shrink</td>
+</tr>
+<tr>
+<td>F-D06</td>
+<td>Medium</td>
+<td>No test package for <code>config</code>, <code>logging</code>, <code>security</code>, <code>syntax</code>, <code>schemas</code></td>
+<td>P3</td>
+<td><strong>done</strong> — <code>tests/unit/security/</code>, 15 tests over encryption, signing and sealing</td>
+</tr>
+</tbody>
+</table>
+<h2 id="theme-e-the-same-job-done-several-ways">Theme E — The same job, done several ways</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Sev</th>
+<th>Finding</th>
+<th>Phase</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-E01</td>
+<td>High</td>
+<td>Blocking <code>requests</code> inside <code>async def</code>, alongside <code>httpx</code></td>
+<td>P4</td>
+<td><strong>done (our half)</strong> — one async client; SDK half is F-E07</td>
+</tr>
+<tr>
+<td>F-E02</td>
+<td>High</td>
+<td>4 undeclared runtime deps: <code>requests</code>, <code>rich</code>, <code>cryptography</code>, <code>starlette</code></td>
+<td>P0</td>
+<td><strong>done</strong> — declared; <code>starlette</code> reached via <code>fastapi</code>. <code>requests</code> goes in P4</td>
+</tr>
+<tr>
+<td>F-E03</td>
+<td>Medium</td>
+<td>16 of 56 steps overlap another step</td>
+<td><strong>P5</strong></td>
+<td>deferred — see note</td>
+</tr>
+<tr>
+<td>F-E04</td>
+<td>Medium</td>
+<td>Two dot-path extractors with different semantics</td>
+<td>P1</td>
+<td><strong>done</strong> — <code>_get_nested</code> deleted with its module</td>
+</tr>
+<tr>
+<td>F-E05</td>
+<td>Medium</td>
+<td>Hidden camelCase fallback in path lookup</td>
+<td>P4</td>
+<td><strong>done</strong> — a path names the key the document has</td>
+</tr>
+<tr>
+<td>F-E06</td>
+<td>Low</td>
+<td>Two lockfiles, one tracked</td>
+<td>P0</td>
+<td><strong>done</strong> — <code>uv.lock</code> removed; poetry is what CI uses</td>
+</tr>
+<tr>
+<td>F-E07</td>
+<td>High</td>
+<td>The SDK is synchronous, so ~22 SDK calls block the loop too</td>
+<td>P4</td>
+<td><strong>done</strong> — 18 network calls offloaded via <code>sdk_call.run</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="theme-f-error-model-and-typing-floor">Theme F — Error model and typing floor</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Sev</th>
+<th>Finding</th>
+<th>Phase</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-F01</td>
+<td>High</td>
+<td>Documented <code>TestLabError</code> hierarchy does not exist</td>
+<td>P2</td>
+<td><strong>done</strong> — <code>TestLabError</code> → Authoring/Execution/Engine; all 12 reparented</td>
+</tr>
+<tr>
+<td>F-F02</td>
+<td>High</td>
+<td>Service layer typed <code>object</code>; 56 defensive <code>getattr</code> sites follow</td>
+<td>P4</td>
+<td><strong>done</strong> — <code>contracts/services.py</code>; mypy in <code>steps</code> 59 → 17</td>
+</tr>
+<tr>
+<td>F-F03</td>
+<td>Medium</td>
+<td><code>UserWarning</code> on every import and CLI invocation</td>
+<td>P4</td>
+<td><strong>done</strong> — field renamed <code>assertions</code>, YAML key unchanged</td>
+</tr>
+<tr>
+<td>F-F04</td>
+<td>Medium</td>
+<td>Two typing dialects (<code>Optional[X]</code> 62 files, <code>X \| None</code> 12)</td>
+<td>P4</td>
+<td><strong>done</strong> — <code>Optional</code>/<code>Union</code> gone; rules enforced</td>
+</tr>
+</tbody>
+</table>
+<h2 id="theme-g-nothing-is-enforced">Theme G — Nothing is enforced</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Sev</th>
+<th>Finding</th>
+<th>Phase</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-G01</td>
+<td>Critical</td>
+<td>No linter, type checker or formatter anywhere</td>
+<td>P0</td>
+<td><strong>done</strong> — ruff check, ruff format and mypy all gated in CI, no exemptions</td>
+</tr>
+<tr>
+<td>F-G02</td>
+<td>High</td>
+<td>CI excludes integration tests and every documented quality gate</td>
+<td>P0</td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td>F-G03</td>
+<td>Medium</td>
+<td>No packaging smoke test</td>
+<td>P0</td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td>F-G04</td>
+<td>Medium</td>
+<td><code>__main__.py</code> runs the CLI on <em>import</em>, not only on <code>python -m</code></td>
+<td>P0</td>
+<td><strong>done</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="f-g04-found-by-the-packaging-smoke-test-on-its-first-run">F-G04 — found by the packaging smoke test on its first run</h3>
+<p><code>__main__.py</code> called <code>main()</code> at module level with no <code>if __name__ ==
+"__main__":</code> guard, so importing <code>tractusx_testlab.__main__</code> launched the CLI.
+Anything that walks the package triggered it: the smoke test, documentation
+generators, coverage collectors. The new gate caught this the first time it ran,
+which is the argument for the gate.</p>
+<p>Also confirmed live while building the wheel: <code>version = "v1-alpha2"</code> is not
+PEP 440 and the artefact builds as <code>tractusx_testlab-1a2</code> (F-B06). The repository
+and the distributed package disagree about what version this is.</p>
+<h2 id="theme-h-configuration">Theme H — Configuration</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Sev</th>
+<th>Finding</th>
+<th>Phase</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-H01</td>
+<td>High</td>
+<td>Hand-written env mapping, already drifted (<code>logs_dir</code> has no var)</td>
+<td>P5</td>
+<td><strong>done</strong> — pydantic-settings derives every name</td>
+</tr>
+<tr>
+<td>F-H02</td>
+<td>Medium</td>
+<td>No sample config; surface documented across 5 pages</td>
+<td>P5</td>
+<td><strong>done</strong> — <code>testlab.config.example.yaml</code> + <code>testlab config</code></td>
+</tr>
+<tr>
+<td>F-H03</td>
+<td>Medium</td>
+<td>One prefix, two unrelated naming schemes</td>
+<td>P5</td>
+<td><strong>done</strong> — both derived from their models</td>
+</tr>
+</tbody>
+</table>
+<h2 id="theme-i-cli-behaviour-and-record-keeping">Theme I — CLI behaviour and record-keeping</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Sev</th>
+<th>Finding</th>
+<th>Phase</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-I01</td>
+<td>Medium</td>
+<td><code>run</code> compiles as a side effect, writing into the source tree</td>
+<td>P5</td>
+<td><strong>done</strong> — builds to a temp dir</td>
+</tr>
+<tr>
+<td>F-I02</td>
+<td>Medium</td>
+<td>Three overlapping package-inspection commands</td>
+<td>P5</td>
+<td><strong>done</strong> — <code>info</code>/<code>decompile</code> folded into <code>inspect --manifest</code> / <code>--extract</code></td>
+</tr>
+<tr>
+<td>F-I03</td>
+<td>Low</td>
+<td><code>util/log</code> uses <code>print()</code>, bypassing structured logging</td>
+<td>P5</td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td>F-I04</td>
+<td>Low</td>
+<td>150 files carry another project's copyright header</td>
+<td>P5</td>
+<td><strong>done</strong> — 217 files corrected</td>
+</tr>
+<tr>
+<td>F-I05</td>
+<td>Low</td>
+<td>Stray tracked files; inaccurate AI-provenance record</td>
+<td>P5</td>
+<td><strong>done</strong> — stray files removed; subtitle kept per Q4</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="invariants">Invariants</h2>
+<p>The five tests that keep the cleanup from regressing. Each fails the build when
+a second way of doing something reappears.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Invariant</th>
+<th>Test</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>I1</td>
+<td>Every step's module path is derivable from its id</td>
+<td><code>tests/unit/steps/test_step_registration.py</code></td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td>I2</td>
+<td>Every registered step is reachable by the validator</td>
+<td><code>tests/unit/steps/test_step_registration.py</code></td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td>I3</td>
+<td>Generated step reference and JSON Schemas equal the committed ones</td>
+<td><code>testlab docs --check</code>, <code>testlab schema --check</code></td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td>I6</td>
+<td>Compiling a TCK loses nothing the models declare</td>
+<td><code>tests/unit/compiler/test_ir_is_lossless.py</code></td>
+<td><strong>done</strong></td>
+</tr>
+<tr>
+<td>I4</td>
+<td>A TCK with unknown keys, unresolvable refs, or zero assertions is rejected</td>
+<td><code>tests/unit/test_no_false_positives.py</code></td>
+<td><strong>written — 7 tests, all <code>xfail(strict)</code> against P2/P3</strong></td>
+</tr>
+<tr>
+<td>I5</td>
+<td>No duplicate basenames, no file over 300 lines, no banned module names</td>
+<td><code>tests/unit/structure/test_module_layout.py</code></td>
+<td><strong>done</strong> — with a shrinking allowlist</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-p2p3-ratchet-is-armed">The P2/P3 ratchet is armed</h3>
+<p><code>tests/unit/test_no_false_positives.py</code> holds both reproductions from the review
+plus five siblings, each asserting the <em>correct</em> behaviour and marked
+<code>xfail(strict=True)</code> against its finding:</p>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Finding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a misspelled <code>validte:</code> key is rejected</td>
+<td>F-A01</td>
+</tr>
+<tr>
+<td>an unknown key on a step is rejected</td>
+<td>F-A01</td>
+</tr>
+<tr>
+<td>an unresolvable <code>${{ }}</code> reference fails the run</td>
+<td>F-A02</td>
+</tr>
+<tr>
+<td>an assertion with no <code>operator</code> is rejected</td>
+<td>F-A05</td>
+</tr>
+<tr>
+<td>a run that executed no declared assertion fails</td>
+<td>F-A06</td>
+</tr>
+<tr>
+<td>a tampered test file inside a <code>.tck</code> is refused</td>
+<td>F-A09</td>
+</tr>
+<tr>
+<td>a package missing its digest target is refused</td>
+<td>F-A09</td>
+</tr>
+</tbody>
+</table>
+<p>With <code>xfail_strict = true</code>, the moment a fix lands the test XPASSes and the build
+fails until the marker comes off. <strong>A finding in this file cannot be closed
+quietly, and cannot regress quietly either.</strong></p>
+<p>One further test in that file is deliberately <em>not</em> xfail: it characterises the
+three-representation archive layout as it exists today, so P3's collapse to a
+single artefact shows up as a visible, intentional change rather than a silent
+one.</p>
+<hr />
+<h2 id="p1-note-why-f-e03-moved-to-p5">P1 note — why F-E03 moved to P5</h2>
+<p>The other P1 items delete code no TCK can reach. Collapsing the 16 overlapping
+steps is different in kind: it changes the <strong>authoring surface</strong>, and it is a
+merge rather than a deletion.</p>
+<p>Two findings from checking before cutting:</p>
+<ul>
+<li>Nine of the ten candidates have <strong>zero uses</strong> across <code>docs/examples</code> and
+  <code>tests</code> — only <code>pull_data_filtered</code> is used (5 times).</li>
+<li>But the wizard family exists <em>specifically</em> for IDE form-based authoring, and
+  the IDE is a separate repository. A TCK authored there could use them and
+  would not appear in this search.</li>
+</ul>
+<p>And the catalog variants are not duplicates in the deletion sense: they call
+three different SDK methods (<code>get_catalog_with_filter</code>, <code>get_catalog_by_asset_id</code>,
+<code>get_catalog_with_bpnl</code>). Folding them into one step with optional parameters is
+a real API design decision, not a cut.</p>
+<p>Both belong with the naming and step-path work in P5, where authoring-surface
+changes are made deliberately and can be coordinated with the IDE.</p>
+<hr />
+<h2 id="f-a11-found-in-p2-in-a-shipped-tck">F-A11 — found in P2, in a shipped TCK</h2>
+<p><code>extra="forbid"</code> (F-A01) immediately rejected a key in the certificate-management
+example: <code>expects: fail</code>.</p>
+<p>It is documented syntax — <a href="../../specification/syntax/tck-syntax/">syntax spec §9.3</a>,
+marked <em>(P3)</em> as planned — and <code>StepDefinition</code> had no such field, so Pydantic
+dropped it. The example's <code>send_unknown_cert_type</code> step declares that the SUT
+<strong>must reject</strong> an unknown certificate type. It ran as an ordinary step, so a SUT
+that happily <em>accepted</em> the request was recorded as PASSED. The negative test
+asserted nothing.</p>
+<p>Implemented rather than rejected, because the syntax is specified and already in
+use: <code>expects: fail</code> now inverts the step's outcome in <code>_finish()</code>. An engine
+fault is never inverted — TestLab breaking is not the SUT correctly refusing.</p>
+<p>This is the second finding (with F-A10) that only surfaced because a silent
+tolerance was removed. Both were invisible while the engine accepted anything.</p>
+<h2 id="p2-in-progress">P2 in progress</h2>
+<table>
+<thead>
+<tr>
+<th>Done</th>
+<th>Still open</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-A01 – F-A08, F-A10, F-A11, F-B04, F-C02, F-F01</td>
+<td>— (F-A08's schema half moved to P3)</td>
+</tr>
+</tbody>
+</table>
+<p>The original reproduction from the review now fails as it should:</p>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ testlab validate probe/index.yaml
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  [ERROR] tests/t1.yaml: parse error —
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>      execution.0.validte: Extra inputs are not permitted;
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>      execution.1.whit: Extra inputs are not permitted;
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>      execution.1.unknown_key_here: Extra inputs are not permitted
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>Invalid — 1 error(s)
+</span></code></pre></div>
+<p>Every offending key is named with its full path. The validator previously
+printed only <code>loc[0]</code>, which for this file would have said <code>execution:</code> and left
+the author to find which step and which key in a file of dozens.</p>
+<hr />
+<h2 id="f-b04-the-check-that-had-never-fired">F-B04 — the check that had never fired</h2>
+<p>Fixing the regex (P1) made this check run for the first time, and it immediately
+produced <strong>23 warnings against the shipped example</strong> — every one spurious. It
+compared references against <code>getattr(test, "variables", {})</code>, one of the
+phantom properties deleted in P1, so the set it checked against was always empty
+and the message said so:</p>
+<blockquote>
+<p><em>"may be provided via shared_variables, runtime_vars, or output propagation"</em></p>
+</blockquote>
+<p>That was true of every reference in every TCK, so the warning carried no
+information and was correctly ignored by everyone.</p>
+<p>It now resolves against the namespace the run will actually have — the manifest's
+<code>env</code> variables, testdata and schemas, the test's own step ids per phase, and
+the generated infrastructure binding keys — and is an <strong>error</strong>, because at run
+time an unresolved reference is now fatal (F-A02).</p>
+<p>The shipped example went from 23 warnings to <code>OK — no issues</code>. A typo is caught
+with the available names listed beside it:</p>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>[ERROR] (step 1) tests/t.yaml: &#39;${{ env.sut_bnp.value }}&#39; in param &#39;message&#39;
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>        names nothing this TCK supplies. Available: env.sut_bpn, execution.ok, …
+</span></code></pre></div>
+<p>Only the <em>root</em> of a reference is checked — <code>env.sut_bpn</code> out of
+<code>env.sut_bpn.value</code>. How deep a declared output can be walked is the step's
+business, not the manifest's, and checking further would reject valid tests.</p>
+<hr />
+<h2 id="p2-complete">P2 complete</h2>
+<h3 id="f-a06-what-the-finding-actually-turned-out-to-be">F-A06 — what the finding actually turned out to be</h3>
+<p><code>extra="forbid"</code> closed the reproduction's path: a dropped <code>validate:</code> block is
+now a compile error, so assertions cannot go missing that way. But the finding
+underneath survived it — <strong>a run that checked nothing was indistinguishable from
+a run that checked everything and passed.</strong> Both printed <code>RESULT: PASS</code>.</p>
+<p>Making a zero-assertion run a hard error is wrong: a provisioning-only TCK
+legitimately asserts nothing. So the fix is to make the difference <em>visible</em> and
+to measure the case that would be a defect:</p>
+<ul>
+<li><code>AssertionSummary.declared</code> records what the executed steps asked for, beside
+  <code>total</code> for what ran. Steps skipped by <code>if:</code> are excluded — a check never
+  reached was not dropped.</li>
+<li><code>unevaluated</code> (declared − total) fails the test. It should be unreachable,
+  which is why it is measured rather than trusted: assertions going missing
+  between the test and the result is the defect this review began with.</li>
+<li>A run that evaluated nothing now says so in the report instead of printing an
+  unqualified PASS.</li>
+</ul>
+<h3 id="f-a08-the-schema-half-is-blocked-not-skipped">F-A08 — the schema half is blocked, not skipped</h3>
+<p><code>TestlabConfig</code> is now <code>extra="forbid"</code>. The JSON Schemas are <strong>not</strong> set to
+<code>additionalProperties: false</code>, deliberately: they are stale (F-B01) and list
+<code>testlab</code>/<code>steps</code> where the models declare <code>syntax</code>/<code>execution</code>. Turning off
+extra properties against a stale schema would reject <code>syntax:</code> — which every TCK
+has.</p>
+<p>This is safe to defer because ordering makes it redundant rather than dangerous:
+<code>Compiler.validate</code> binds the Pydantic models <em>before</em> it runs the JSON Schema,
+and those are now strict. The schema half lands in P3 with schema generation,
+which removes the drift rather than papering over it.</p>
+<h3 id="f-a07-a-timeout-is-not-a-result">F-A07 — a timeout is not a result</h3>
+<p><code>poll_until_terminal</code> returned the last observed state on timeout and logged a
+warning, so a negotiation that never reached FINALIZED and one that reached it in
+200 ms produced the same shape. It now raises, naming the id, the last state seen
+and the states it was waiting for. <code>allow_timeout=True</code> is the escape hatch, and
+it has to be asked for.</p>
+<p>Two tests had encoded the old behaviour. One was titled <em>"An unreadable
+negotiation must not burn the whole wait window"</em> and asserted the step
+<strong>passed</strong> with <code>state: None</code>. Its stated intent — fail fast — is preserved; it
+now asserts the failure it always described.</p>
+<hr />
+<h2 id="p3-part-1-the-ir-was-not-executable">P3, part 1 — the IR was not executable</h2>
+<p>Q3 settled that <code>tck-execution.json</code> is the form the player is <em>meant</em> to run.
+Before wiring the player to it, the obvious question: <strong>is it lossless?</strong></p>
+<p>It was not. Compiled against the models, the IR dropped seven declarations:</p>
+<table>
+<thead>
+<tr>
+<th>Dropped</th>
+<th>What the run would have done instead</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>infrastructure</code></td>
+<td>demanded no capabilities — <code>MissingBindingError</code> never raised</td>
+</tr>
+<tr>
+<td><code>dataspace</code> / <code>dataspace_version</code></td>
+<td>defaulted the ecosystem release, so the SDK builds the wrong connector dialect (the same failure as F-A10)</td>
+</tr>
+<tr>
+<td><code>namespace</code></td>
+<td>lost the tie back to its TCK</td>
+</tr>
+<tr>
+<td><code>if</code></td>
+<td>conditional steps run unconditionally</td>
+</tr>
+<tr>
+<td><code>expects</code></td>
+<td>negative tests run as positive ones (F-A11, in a shipped TCK)</td>
+</tr>
+<tr>
+<td><code>timeout_s</code></td>
+<td>timeouts never applied</td>
+</tr>
+</tbody>
+</table>
+<p>Wiring the player to the IR in that state would have introduced five regressions
+at once, each silent. <strong>The IR is now lossless</strong>, and
+<code>tests/unit/compiler/test_ir_is_lossless.py</code> compares the compiled output against
+<code>TestDefinition</code> and <code>StepDefinition</code> themselves — so a field added to a model
+without the builder learning to carry it fails the build rather than going
+missing at run time.</p>
+<p>The test also guards its own fixture: one case asserts the fixture TCK exercises
+every model field, because a losslessness test is only as good as the document it
+compiles.</p>
+<h3 id="two-further-defects-found-on-the-way">Two further defects found on the way</h3>
+<p><strong>The symbol table named assets by their Python repr.</strong> <code>_collect_simple_symbols</code>
+iterated <code>env.schemas</code> and <code>env.testdata</code> as mappings; they are lists of
+<code>{id, source}</code>. Iterating a list yields the entry dicts, so the symbols came out
+as:</p>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>&quot;env.schemas.{&#39;id&#39;: &#39;certificate_schema&#39;, &#39;source&#39;: &#39;business_partner_…json&#39;}&quot;
+</span></code></pre></div>
+<p><code>env.schemas.certificate_schema</code> was absent from the table entirely.</p>
+<p><strong>The compiled namespace was one nothing else used.</strong> Main-phase outputs were
+filed under <code>steps.&lt;id&gt;.&lt;field&gt;</code> while the runtime publishes <code>execution.&lt;id&gt;.…</code>,
+the syntax reference documents <code>execution.</code>, and all six references in the
+shipped TCK are written <code>execution.</code>. The runtime side of this mismatch carries a
+comment saying it was fixed; the compiler side never was.</p>
+<h3 id="still-to-do-in-p3">Still to do in P3</h3>
+<p>Wire the player to execute the IR, delete the second representation
+(<code>tck-bundle.yaml</code> and the <code>tests/*.yaml</code> copies), digest the executed bytes
+(<strong>F-A09</strong>), generate the JSON Schemas from the models (<strong>F-B01</strong>, <strong>F-B05</strong>,
+F-A08's remainder), and settle the version and extension (<strong>F-B06</strong>, <strong>F-B07</strong>).</p>
+<hr />
+<h2 id="corrections-from-review-2026-08-17">Corrections from review — 2026-08-17</h2>
+<p>Three points raised against the P2/P3 work. Two were mistakes on my part.</p>
+<h3 id="expects-i-implemented-it-wrongly"><code>expects:</code> — I implemented it wrongly</h3>
+<p>I read syntax spec §9.3 ("<code>expects: fail</code> inverts the step's own success
+criterion") as a runtime outcome inversion and implemented it in the runner.
+<strong>That was wrong, and it would have failed the shipped TCK on a correct run.</strong></p>
+<p>The shipped negative test asks the SUT to reject an unknown certificate type,
+and then asserts:</p>
+<div class="highlight"><span class="filename">YAML</span><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">expects</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fail</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">validate</span><span class="p">:</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validate/field</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="nt">with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> input</span><span class="p">:</span><span class="w"> </span><span class="nv">status_code</span><span class="p p-Indicator">,</span><span class="nt"> operator</span><span class="p">:</span><span class="w"> </span><span class="nv">equals</span><span class="p p-Indicator">,</span><span class="nt"> value</span><span class="p">:</span><span class="w"> </span><span class="nv">200</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</span></code></pre></div>
+<p>The refusal is an <em>application-level</em> answer — HTTP 200 carrying a rejection
+body. The validations are the expectation. Inverting the step outcome turns
+exactly the correct runs into failures; verified directly against <code>_finish()</code>
+before removing it.</p>
+<p><code>expects</code> stays <strong>declared</strong> — it is documented syntax, it is in use, and
+<code>extra="forbid"</code> would otherwise reject the shipped TCK — but it is descriptive.
+It reaches the compiled IR so the IDE and reporting can see which steps are
+negative tests. The inversion is gone.</p>
+<h3 id="dataspace_version-is-deprecated"><code>dataspace_version</code> is deprecated</h3>
+<p>Removed from <code>TestDefinition</code> and <code>TckMetadataDefinition</code>. The <code>dataspace:</code>
+block is now the only place a release is stated.</p>
+<p>This supersedes part of the F-A10 fix: that fix corrected the player to read the
+flat field from <code>metadata</code> (where it lived) instead of from the definition (where
+it never did). With the field gone, <code>_target_release</code> reads <code>dataspace.version</code>
+or the default, and there is no second source to disagree with.</p>
+<p>Also removed from the IR carry-list, and from the server's compile route — which
+<strong>required</strong> a <code>dataspace</code> block on any <code>kind: test</code> document. No shipped test
+file has one; only the manifest does. The route had been rejecting
+correctly-authored test files.</p>
+<h3 id="namespace-is-the-tck-id-at-test-level"><code>namespace</code> is the TCK id at test level</h3>
+<p>Not carried in the compiled test. It is required to equal the TCK id, which the
+manifest already states, so it is derivable rather than lost — recorded in the
+losslessness test's <code>_DOCUMENT_FIELDS</code> alongside <code>kind</code> and <code>syntax</code>.</p>
+<h3 id="already-fixed-the-symbol-table-repr-keys">Already fixed: the symbol-table repr keys</h3>
+<p><code>env.schemas.{'id': …}</code> was corrected earlier in P3 — <code>_collect_simple_symbols</code>
+was iterating a list of <code>{id, source}</code> as if it were a mapping. Symbols now read
+<code>env.schemas.certificate_schema</code>.</p>
+<hr />
+<h2 id="f-a09-closed-the-digest-now-covers-what-executes">F-A09 closed — the digest now covers what executes</h2>
+<p>The digest was computed in the IR builder over <code>manifest.yaml + tck-execution.json
++ asset digests</code>, and the archive was assembled <em>afterwards</em> by the CLI, which
+copied in the test files the player actually runs. The seal was therefore
+computed before the thing it was sealing existed.</p>
+<p><code>compiler/package_digest.py</code> is now the one place a package is sealed and the one
+place it is verified — <code>seal()</code> and <code>verify()</code> over the same bytes. Every archive
+entry is covered, name included, so a test cannot be swapped for another under a
+name the manifest already trusts.</p>
+<p>Three silent-pass conditions removed with it:</p>
+<ul>
+<li><code>_verify_tck_integrity</code> returned early when <code>tck-execution.json</code> was absent.
+  <strong>Deleting one file from a <code>.tck</code> skipped verification entirely.</strong> A missing
+  manifest, a missing digest and a mismatch are now all refusals.</li>
+<li>Verification ran <em>after</em> extraction. It now runs on the archive's bytes, so a
+  package that fails never reaches a path something else might read.</li>
+<li>Signature checking was guarded by <code>if compiler_public_key and sig_raw:</code>, and
+  <code>testlab run</code> only demanded a key for <code>.stck</code> — so an encrypted <code>.tck</code> loaded
+  without one decrypted and ran <strong>with its signature unexamined</strong>. A signed
+  package is now verified or refused; there is no third outcome.</li>
+</ul>
+<p>The test fixtures build their archives through the same <code>seal()</code>, so a fixture is
+by construction a package the loader accepts — a test cannot pass against a
+sealing rule that exists only in the test.</p>
+<h3 id="verified-end-to-end">Verified end to end</h3>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ testlab run tamper/out/tamper-tck.tck        # untouched
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  RESULT: PASS  |  1 passed  0 failed
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>$ testlab run tamper/tampered.tck              # one step appended to tests/t.yaml
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>Refused to run tampered.tck:
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>  Package checksum mismatch — the contents are not the ones this package was sealed with.
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>  expected blake2b:e5c91eabf654bc2467ccf45112950b667006238a44ed2d08b4466342a926bdb1
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>  actual   blake2b:c10ac7a323aeadc179c658012a35116affe757467fab85a4c9166b42bdc61c18
+</span></code></pre></div>
+<p><strong>Both reproductions from the architecture review are now closed.</strong> Of the seven
+regression tests written at the start, six pass with their markers removed; the
+seventh (F-A06's) stays armed by choice, documenting an invariant whose original
+route is now unreachable.</p>
+<hr />
+<h2 id="p3-part-3-the-schemas-are-generated">P3, part 3 — the schemas are generated</h2>
+<p><code>compiler/schema_export.py</code> renders <code>tck_index.schema.json</code> and
+<code>tck_test.schema.json</code> from <code>TckDefinition</code> and <code>TestDefinition</code>.
+<code>testlab schema</code> writes them, <code>testlab schema --check</code> fails the build when the
+committed files no longer match, and CI runs it beside <code>testlab docs --check</code>.</p>
+<p>What the hand-written schemas had drifted into:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Hand-written</th>
+<th>The models</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>discriminator</td>
+<td><code>testlab</code></td>
+<td><code>syntax</code></td>
+</tr>
+<tr>
+<td>main phase</td>
+<td><code>steps</code></td>
+<td><code>execution</code></td>
+</tr>
+<tr>
+<td>required</td>
+<td>+<code>description</code>, <code>authors</code>, <code>license</code>, <code>standards</code>, step <code>name</code></td>
+<td>not required</td>
+</tr>
+<tr>
+<td>absent</td>
+<td><code>syntax</code>, <code>dataspace</code>, <code>infrastructure</code>, <code>expects</code>, <code>if</code>, <code>timeout_s</code></td>
+<td>declared</td>
+</tr>
+<tr>
+<td>unknown keys</td>
+<td><code>additionalProperties: true</code></td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>by_alias=True</code> matters in the renderer: tests write <code>with:</code> and <code>if:</code> while
+the fields are <code>with_</code> and <code>if_condition</code>, because those spellings are not legal
+Python. The schema has to describe the YAML, not the Python.</p>
+<h3 id="it-immediately-exposed-a-test-that-passed-for-the-wrong-reason">It immediately exposed a test that passed for the wrong reason</h3>
+<p><code>test_validate_bad_step</code> asserted exit code 1 against a fixture named
+<code>_BAD_STEP_YAML</code> that <strong>contained no bad step</strong> — just a manifest with an empty
+<code>tests:</code> list. It failed only because the stale schema demanded <code>description</code> and
+<code>standards</code>, which the models make optional. Once the schema matched the models
+the document was valid, which it always had been, and the test had nothing left
+to fail on. The fixture now names a step the registry does not have, and the test
+asserts the step name appears in the output.</p>
+<h3 id="f-b06-one-version">F-B06 — one version</h3>
+<p><code>v1-alpha2</code> is not PEP 440; the wheel built as <code>tractusx_testlab-1a2</code>, so the
+repository and the artefact disagreed about what version this was. Now <code>1.0.0a2</code>,
+and the OpenAPI document reads it from package metadata rather than hardcoding
+<code>0.7.1</code> — the health endpoint, the API docs and the wheel finally agree.</p>
+<hr />
+<h2 id="p4-part-1-the-seams-are-typed">P4, part 1 — the seams are typed</h2>
+<h3 id="f-f03-the-warning-on-every-invocation">F-F03 — the warning on every invocation</h3>
+<p><code>StepDefinition.validate</code> shadowed <code>BaseModel.validate</code>, so Pydantic warned on
+every import of the library — including every <code>testlab</code> command — and mypy
+reported the override as a type error. The field is now <code>assertions</code>, with
+<code>validation_alias</code> and <code>serialization_alias</code> both <code>validate</code>: tests, the IR and
+the published JSON Schema are unchanged, and the shadowing is gone.</p>
+<p>Renaming it immediately found a reader I had missed. <code>validator.py</code> still said
+<code>step_def.validate</code>, which no longer resolved to the field — it resolved to
+<code>BaseModel.validate</code>, the deprecated method — and failed with
+<code>TypeError: 'method' object is not iterable</code>. That is precisely the hazard the
+shadowing created, made visible by removing it.</p>
+<p>Test warnings: 28 → 6.</p>
+<h3 id="f-f02-what-the-engine-requires-stated-as-types">F-F02 — what the engine requires, stated as types</h3>
+<p><code>contracts/services.py</code> declares <code>ConnectorConsumer</code>, <code>ConnectorProvider</code>,
+<code>RegistryService</code>, <code>NotificationService</code> and <code>Controller</code> as Protocols. They are
+deliberately <strong>not</strong> a mirror of the SDK: they are the ~25 members the steps
+actually call, which makes the engine's requirement of a connector readable in
+one place.</p>
+<p>The SDK stays untyped at its own boundary, so an SDK object satisfies a Protocol
+structurally and what gets checked is the half we own.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mypy errors in <code>steps</code></td>
+<td>59</td>
+<td>17</td>
+</tr>
+<tr>
+<td><code>getattr</code> probes in steps + context</td>
+<td>56</td>
+<td>22</td>
+</tr>
+<tr>
+<td>ratcheted modules</td>
+<td><code>steps.*</code> (whole package)</td>
+<td>10, listed individually</td>
+</tr>
+</tbody>
+</table>
+<p>The remaining 17 are ordinary step-level typing — <code>Any</code> flowing out of the SDK
+into a declared payload — not the <code>object</code> seam. They are listed module by module
+in <code>pyproject.toml</code> so the debt shrinks one file at a time.</p>
+<h3 id="two-defects-the-protocols-surfaced">Two defects the Protocols surfaced</h3>
+<p><strong><code>mock/api</code> still resolved <code>@name</code>.</strong> The last surviving legacy-syntax resolver,
+kept alive by one test. It was also actively wrong: it treated <em>any</em> string
+beginning with <code>@</code> as a variable reference, so a JSON-LD value like <code>"@id"</code> in a
+mock response body was mangled on its way past. The body is a step parameter —
+<code>${{ ... }}</code> in it is resolved before the step runs, like every other parameter —
+so the second pass was removed.</p>
+<p><strong><code>flow/if</code> annotated a result <code>StepResult | None</code></strong> when <code>run_step</code> never
+returns <code>None</code>, which mypy read as a possible <code>AttributeError</code> on the next line.</p>
+<h3 id="still-open-in-p4">Still open in P4</h3>
+<p>F-D02 (the player↔steps import cycle — <code>contracts/</code> is now the leaf package that
+can hold the invoker Protocol), F-D03 (<code>StepContext</code> still carries the
+connector-shaped accessors), F-E01 (blocking <code>requests</code> inside <code>async def</code>),
+F-E05 (the camelCase fallback in path extraction), F-F04 (the typing dialect).</p>
+<h3 id="f-d02-the-cycle-is-one-way-now">F-D02 — the cycle is one-way now</h3>
+<p><code>flow/if</code> and <code>flow/retry</code> run the steps nested inside them, which means a step
+calling the runner — while the player imports the steps package to register
+them. The edge went both ways, held open by importing <code>run_step</code> from inside the
+<code>execute</code> bodies. That is legal Python, and it hides a cycle rather than removing
+one.</p>
+<p><code>contracts.StepInvoker</code> states the shape of the runner; <code>StepContext</code> carries
+one; <code>run_step</code> binds itself as it starts. A flow step now asks the context to
+run a nested step and never names the player.</p>
+<p>Verified statically, module-level imports outside <code>TYPE_CHECKING</code>:</p>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>steps → player : none — the cycle is broken
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>player → steps : player/execution/phase.py, player/execution/step_runner.py
+</span></code></pre></div>
+<p>The invoker is bound in <code>run_step</code> rather than at the composition root, so every
+context that reaches a step can run a nested one — including the ones tests build
+directly. The two flow-step unit tests now hand their mock context the real
+runner, which is honest about what they exercise: a step that contains steps
+needs something that can run one.</p>
+<p><code>contracts/</code> is a leaf package — it imports nothing from the rest of testlab — so
+anything may depend on it. That is what makes it the right home for this, and for
+the service Protocols beside it.</p>
+<hr />
+<h2 id="f-e01-one-http-client-and-a-bigger-problem-underneath">F-E01 — one HTTP client, and a bigger problem underneath</h2>
+<p><code>steps/http_client.py</code> is now the only way a step makes an HTTP call. All eight
+<code>requests</code> call sites are converted; <code>requests</code> no longer appears anywhere under
+<code>steps/</code>.</p>
+<p>The harm was concrete: the event loop those calls blocked is the same one running
+the in-process callback server. A step waiting on a slow registry stopped the
+SUT's callbacks from being answered — with a 600-second step timeout, the server
+could be unreachable for ten minutes while the test sat waiting for a callback
+that could not arrive.</p>
+<h3 id="two-behaviours-that-had-to-be-preserved-deliberately">Two behaviours that had to be preserved deliberately</h3>
+<p><strong>Header casing.</strong> <code>dict(httpx_response.headers)</code> lower-cases every name, because
+httpx's own lookups are case-insensitive and it normalises for them. A test
+gets no such courtesy: a TCK reading <code>response_headers.X-Next-Cursor</code> finds
+nothing once the key is <code>x-next-cursor</code>. <code>requests</code> preserved the wire casing, so
+<code>headers_of()</code> rebuilds from the raw pairs. Caught by an existing combination
+test — without it this would have shipped as a silent break in any TCK that reads
+a header.</p>
+<p><strong><code>resp.ok</code>.</strong> A <code>requests</code> attribute httpx does not have. On a <code>MagicMock</code> it
+read as truthy, so the OAuth2 refusal path stopped refusing. Now reads
+<code>status_code &gt;= 400</code>, which is transport-independent.</p>
+<h3 id="the-test-doubles-moved-too">The test doubles moved too</h3>
+<p><code>tests/conftest.py::http_response</code> builds a response shaped like the one a step
+now receives — content type for <code>body_of</code>, raw pairs for <code>headers_of</code>. It is
+shared rather than repeated per file, because getting either half wrong makes a
+test pass while the step misreads real responses. One local double had
+<code>{"Content-Type": ...}</code> as a plain dict, whose case-sensitive <code>.get("content-type")</code>
+returns <code>None</code>.</p>
+<p>Unifying the client also <strong>merged patch targets</strong>: the DTR lookup tests patched
+<code>requests.post</code> and <code>requests.get</code> separately, and now one mock answers both
+calls in order.</p>
+<h3 id="f-e07-the-sdk-is-synchronous-new">F-E07 — the SDK is synchronous (new)</h3>
+<p>Measured while doing this: <code>tractusx_sdk</code>'s adapters import <code>requests</code>, and no
+service method is a coroutine. So roughly <strong>22 SDK call sites also block the
+loop</strong> — catalog queries, negotiations, transfers, data pulls: exactly the long
+ones.</p>
+<p>Converting our eight calls fixes the code we own and is worth having, but it is
+about a quarter of the problem. The rest needs <code>asyncio.to_thread</code> at the SDK
+boundary. Recorded as its own finding rather than folded into F-E01, because the
+review measured only our own calls and the scale of the remainder was not known
+until now.</p>
+<hr />
+<h2 id="p4-complete">P4 complete</h2>
+<h3 id="f-e07-the-sdk-calls-are-off-the-loop">F-E07 — the SDK calls are off the loop</h3>
+<p><code>steps/sdk_call.py</code> runs a blocking SDK operation on a worker thread. Eighteen
+network-reaching calls go through it; <code>get_filter_expression</code> and
+<code>_prepare_headers</code> stay inline because they only build a request, and a thread
+hop costs more than the work.</p>
+<p>Three helpers had to become <code>async</code> and their callers <code>await</code> them —
+<code>fetch_data_address</code>, <code>_register_shell</code>, <code>_register_submodel</code> — which is the
+honest consequence: a function that reaches the network in an async engine
+should say so in its signature.</p>
+<h3 id="f-e05-a-path-names-the-key-the-document-has">F-E05 — a path names the key the document has</h3>
+<p><code>_dict_get</code> tried the written key and then silently retried its camelCase form,
+so <code>header.message_id</code> found <code>messageId</code>. A second spelling for one field,
+undocumented and unbounded, and no way to say from a test why a path resolved.</p>
+<p>Nothing real depended on it: every path in the shipped TCKs, and every other path
+in the extraction tests, already writes the actual key. One test read
+<code>submodel_descriptors</code> and existed to exercise the fallback itself. Where a
+document genuinely carries two spellings the payload model declares the alias —
+<code>authCode</code> and <code>@id</code> already do — and that is visible.</p>
+<h3 id="f-f04-one-typing-dialect">F-F04 — one typing dialect</h3>
+<p><code>Optional[...]</code> and <code>Union[...]</code> are gone from <code>src/</code> (62 files and 0 remaining
+respectively). <code>UP007</code>, <code>UP045</code> and <code>UP046</code> came off the ratchet and are enforced.</p>
+<h3 id="f-d03-the-context-is-about-a-run-again">F-D03 — the context is about a run again</h3>
+<p><code>DataspaceAccess</code> now owns the eight connector-shaped accessors and the SDK
+controller URL builder. <code>StepContext</code> is 222 → 151 lines and carries variables,
+job, config, infrastructure and the step invoker — nothing that knows what a
+catalog is.</p>
+<p>Call sites read <code>context.dataspace.consumer()</code> rather than
+<code>context.get_consumer_service()</code>, which also says where the thing comes from.</p>
+<p><code>ServiceManager</code> gained a public <code>definition_of_type</code>, so nothing reaches into
+<code>_definitions</code> from another module any more.</p>
+<h3 id="f-a03-a-step-that-could-not-produce-its-output-now-fails">F-A03 — a step that could not produce its output now fails</h3>
+<p>Fifteen sites built an <code>HttpResponse</code> with a fabricated status — usually <code>500</code>,
+sometimes <code>200 if x else 500</code> — when the operation they were meant to perform
+had produced nothing. A step fails on a raise or a hard assertion, so a
+fabricated status is a value that flows into the next step's <code>${{ }}</code> and into
+the assertions as if the SUT had sent it. A negotiation with no EDR reported
+PASSED.</p>
+<p>All fifteen raise <code>StepExecutionError</code> naming what was missing. No step invents
+a status code, so a status in a result came off a wire.</p>
+<h3 id="f-d06-the-code-that-decides-authenticity-is-tested">F-D06 — the code that decides authenticity is tested</h3>
+<p><code>security/</code> generates the keys, encrypts the payload and verifies the signature
+that say a <code>.tck</code> is the one its compiler built, and it had no unit tests. Fifteen
+now cover the round trip, a flipped ciphertext bit, the wrong recipient, the
+multi-recipient unwrap, a signing key handed where an encryption key was meant,
+three signature cases, and the six sealing outcomes — edited entry, renamed
+entry, removed entry, no manifest, no recorded digest, and the good one.</p>
+<h3 id="f-b07-and-f-i02-one-format-one-command">F-B07 and F-I02 — one format, one command</h3>
+<p><code>.stck</code> is deleted. It was a second archive format for the same job as an
+encrypted <code>.tck</code>, and a strictly weaker one: it carried the authoring YAML
+rather than the compiled package, skipped the package-digest check that
+<code>_verify_tck_integrity</code> runs, and resolved <code>env.schemas</code> and <code>env.testdata</code> from
+whatever sat next to the file on disk — assets outside the sealed envelope, read
+by a package that presents itself as sealed.</p>
+<p>With it go <code>Packager</code>, <code>Compiler.compile</code>, <code>Compiler.compile_tck</code>,
+<code>Loader._load_package</code>, and the <code>--encrypt</code> flag, which had been a third way to
+say what supplying keys already said — and said it by producing a <em>different
+format</em>. <code>compile</code> now has two independent choices and no third spelling of
+either: <code>--plain</code> writes loose files instead of an archive, and supplying both
+<code>--compiler-keys</code> and <code>--player-pub</code> signs and encrypts. Supplying one without
+the other is an error naming the one that is missing.</p>
+<p><code>testlab info</code> and <code>testlab decompile</code> are gone into <code>testlab inspect</code>. Three
+verbs asked one question — what is in this package? — and each carried its own
+copy of the decrypt-and-verify dance, with <code>info</code> and <code>decompile</code> reading the
+archive directly rather than through the loader. <code>inspect</code> verifies once and
+every section reads the verified bytes, so there is no longer a command that
+reports a tampered package's own account of itself. <code>--manifest</code> is what <code>info</code>
+printed; <code>--extract</code> is what <code>decompile</code> did, for every entry rather than one
+YAML, and for plain packages too. <code>--json</code> emits one object keyed by section
+whatever the flags — it used to emit a bare result with no flags and an envelope
+with them, so a consumer had to know the argv to know the shape.</p>
+<p>One thing found while wiring the smoke test: <code>compile</code> echoed the checksum the
+IR builder computed, which is taken <em>before</em> the archive is sealed, so the number
+printed by the compile was not the number in the package it had just written.
+<code>_create_tck_archive</code> returns the sealed digest and that is what is reported.</p>
+<h3 id="f-f02-remainder-no-module-is-exempt-from-the-type-checker">F-F02 remainder — no module is exempt from the type checker</h3>
+<p>The mypy ratchet is empty and its override blocks are deleted. It held fourteen
+modules and 72 errors when the gate went in; F-F02's Protocols cleared 59, and
+the last 24 came off one file at a time.</p>
+<p>Two of them were live defects the exemption was hiding:</p>
+<ul>
+<li><code>step_docs.render_shared_models</code> decided whether to print "Additional keys
+  sent by the counterpart are passed through unchanged" by reading <code>model</code> — a
+  variable left over from the <em>outer</em> loop, holding the last step's output
+  model rather than the nested model being documented. The note was printed,
+  or not, for the wrong object.</li>
+<li><code>_sized</code> handed <code>int()</code> an unnarrowed <code>object</code> under a <code>type: ignore</code> that
+  did not even cover the error code being raised.</li>
+</ul>
+<p>The rest were narrowing, and most of them came from one place: <code>get_variable</code>
+returns <code>object</code>, honestly, because a variable holds whatever a step published
+— and every caller that wanted a URL or a token either narrowed it or, more
+often, passed <code>object</code> into <code>.rstrip()</code> or an HTTP header. <code>StepContext.get_str</code>
+narrows once, and the sites that read text now say so. The one site where
+absence is meaningful to the SDK — <code>negotiate</code>'s <code>target</code> — deliberately still
+reads <code>get_variable</code>, because <code>""</code> would say a target was named.</p>
+<p>Also typed properly rather than ignored: <code>StepPayload.of</code> returns <code>Self</code>, so
+<code>DataAddressPayload.of(...)</code> is a data address and not a bare payload; the
+<code>Controller</code> Protocol declares <code>create</code>, which half its callers use; and
+<code>_parse_test</code> returns the definition it parses instead of <code>object</code>.</p>
+<h3 id="f-d05-the-file-size-ratchet-tightened">F-D05 — the file-size ratchet, tightened</h3>
+<p>Sixteen files were over 300 lines; thirteen are, and the largest is 422 rather
+than 638. <code>cli/compile.py</code> 457 → 175 and <code>cli/run.py</code> 326 → 190 dropped off the
+list entirely.</p>
+<p>Three splits, each on a seam the code already had:</p>
+<ul>
+<li><code>steps/connector/provision.py</code> (561) → a package with one module per resource
+  family — <code>asset</code>, <code>policy</code>, <code>contract_definition</code> — plus <code>_shared</code> for the
+  read-an-id and create-or-409 helpers. That is how the connector's management
+  API is divided and how a test uses them.</li>
+<li><code>steps/digital_twin/provider.py</code> (638) → <code>provider/shell.py</code> and
+  <code>provider/submodel_descriptor.py</code>. A submodel descriptor is addressed through
+  the shell that holds it, which is the one import between them.</li>
+<li><code>cli/run.py</code> and <code>cli/inspect.py</code> → <code>_run_report.py</code> and <code>_inspect_report.py</code>,
+  the same seam in both: the command decides what to do, the report module
+  decides what the terminal shows.</li>
+</ul>
+<p>And one deduplication, which is why the split was worth doing at all: the two
+DTR step families each declared <code>DtrParams</code>, <code>DescriptorPayload</code>,
+<code>SpecificAssetId</code>, <code>ShellLookupOutput</code> and two helpers — 85 lines, verbatim, in
+both. They describe the Asset Administration Shell, not a side of it: the
+provider registers a descriptor and the consumer reads the same one back. They
+live in <code>steps/registry_models.py</code> now, beside the readers in
+<code>registry_reading.py</code>.</p>
+<p>The duplication was visible in the shipped documentation the whole time —
+<code>docs/specification/reference/steps.md</code> documented <code>SpecificAssetId</code> twice,
+because it existed twice. Deduplicating the code removed the doubled entry.</p>
+<h2 id="pipeline-verification-2026-08-18">Pipeline verification — 2026-08-18</h2>
+<p>Built a TCK that uses the whole chain and ran it, rather than reasoning about
+it. Five defects, each of which had shipped.</p>
+<h3 id="the-verdict-was-a-step-tally">The verdict was a step tally</h3>
+<p><code>TckResult.passed</code> counts steps with <code>PASSED</code>. <code>finalize_job</code> asked
+<code>if result.passed:</code> — and a non-zero count is truthy. <strong>Any run where at least
+one step passed published <code>job_completed</code></strong>, while the CLI printed FAIL from
+<code>status</code>. The event stream is what the IDE reads, so a failed TCK showed as a
+green job; only a run where <em>every</em> step failed reported failure.</p>
+<p><code>steps_passed</code> / <code>steps_total</code> are named for what they are and the verdict is
+<code>status</code>. Pinned in <code>tests/unit/player/test_run_verdict.py</code>, including the
+four-of-five reproduction.</p>
+<h3 id="the-console-trace-threw-away-everything-it-was-given">The console trace threw away everything it was given</h3>
+<p><code>_build_inline_message</code> looked for flat <code>status</code> / <code>duration_s</code> / <code>request</code> /
+<code>response</code> keys. The typed events carry a nested <code>result</code> and a nested
+<code>assertion</code>, so none of those keys were ever present and every line printed as
+its event name and its test: <code>assertion.result [wiring]</code>. The JSONL had the
+whole story the entire time.</p>
+<p><code>logging/console.py</code> renders the real shapes — which check ran, what it asked
+and saw, which step finished, how long it took, and the request and response
+when the step made one. Thirteen tests in <code>tests/unit/logging/</code>.</p>
+<h3 id="the-validator-never-walked-teardown">The validator never walked <code>teardown</code></h3>
+<p><code>validate()</code> iterated <code>setup</code> and <code>execution</code>. A teardown step could name a
+step type that does not exist, assert with an operand its operator never reads,
+or declare a <code>returns:</code> the step does not publish, and <code>testlab validate</code>
+answered OK.</p>
+<p><strong>The shipped e2e TCK was in exactly that state</strong> — <code>dtr_roundtrip.yaml</code>'s
+teardown asserted with <code>expected:</code>, which the engine refuses. The e2e job's
+first step is <code>testlab validate</code>, so the CI signal was red-on-arrival and the
+validator was hiding one of the four errors. Fixed both.</p>
+<p>Errors also name the phase now: a setup step 0, an execution step 0 and a
+teardown step 0 all printed as <code>(step 0)</code>. And the main phase is labelled
+<code>execution</code> — the word authors write in <code>${{ execution.&lt;id&gt; }}</code> — rather than
+<code>main</code>, which appears nowhere in the syntax.</p>
+<h3 id="steps-n-counted-one-phase-of-three"><code>Steps: N</code> counted one phase of three</h3>
+<p><code>Test.step_count</code> returned <code>len(definition.execution)</code>. <code>testlab run</code>
+announced "Steps: 2" for a run that executed five, and gave the progress bar a
+total it went past. <code>testlab inspect</code> had always counted all three, so the two
+commands disagreed about the same package.</p>
+<h3 id="a-reference-that-reaches-into-a-document-said-nothing-useful">A reference that reaches into a document said nothing useful</h3>
+<p><code>${{ execution.call.body.kind }}</code> against a step that declared <code>body</code> failed
+with a list of everything in scope. The rule is that a reference is a <em>name</em>
+and the walk happens once, in <code>returns:</code> — <code>returns: { body.kind: ... }</code> — but
+nothing said so at the point of failure.</p>
+<p>I first "fixed" this by making the resolver descend, which was wrong: the walk
+already had one spelling, and a second one is the alias this project does not
+allow. Reverted. <code>UnresolvedReferenceError</code> now detects that a prefix is in
+scope and names the remedy.</p>
+<h3 id="e2e-combinations-against-the-live-dataspace">E2E — combinations against the live dataspace</h3>
+<p>Two scenarios added to <code>tests/e2e/connector-dtr-smoke/</code>:</p>
+<ul>
+<li><code>dsp_step_by_step.yaml</code> — the journey <code>connector_negotiation.yaml</code> runs as
+  one <code>pull_data_filtered</code> step, driven as six wired steps instead: catalog →
+  dataset → negotiation → transfer → EDR → data-plane fetch. Each step reads
+  what the one before published, so this is what fails if the runtime stops
+  carrying a real value across a phase boundary. The last step spends the EDR,
+  which a token assembled from unresolved references cannot do.</li>
+<li><code>negative_paths.yaml</code> — asks the live dataspace for things that are not
+  there and asserts the answers say so. A green run means absence is reported
+  as absence.</li>
+</ul>
+<p>The manifest marks every test <code>skippable: true</code>, so the workflow runs <strong>one
+compiled package as several combinations</strong> (<code>--var skip_tests=…</code>): full,
+wiring-only, registry-only, plus an unknown id that must be refused. It also
+runs <code>testlab inspect --json</code> and asserts the package carries every test the
+manifest declared, so a test lost between manifest and archive is caught before
+anything executes.</p>
+<h3 id="what-was-and-was-not-run-locally">What was and was not run locally</h3>
+<p>The pipeline work above was verified by running it. The two new e2e scenarios
+were, at first, only <em>validated and compiled</em> — <code>testlab validate</code> proves a
+scenario is well-formed and <code>testlab compile</code> proves it packages, and neither
+runs a step. A scenario can be valid, compile cleanly, and fail on its first
+call in a job that costs 25 minutes and a Kubernetes cluster to reach.</p>
+<p><code>tests/combinations/test_e2e_scenarios_offline.py</code> closes that: it reads the
+step lists out of the shipped YAML and executes them against the connector and
+HTTP doubles. Both scenarios run. The assertions are about values having
+<em>travelled</em> — the asset id the negotiation asks for came out of the catalog two
+hops earlier, and the data-plane fetch arrives at a server, which a URL
+assembled from an unresolved reference does not.</p>
+<p>Driving it turned up a missing method on <code>ConsumerDouble</code>
+(<code>get_filter_expression</code>, which <code>query_catalog_with_filters</code> calls), so the
+double now stands in for the SDK surface the scenario actually uses.</p>
+<p>What this cannot say anything about is the dataspace: whether two real EDCs
+complete a DSP handshake, whether the IdentityHub issues a usable token,
+whether the registry answers at the ingress path. That is what
+<code>e2e-umbrella.yml</code> is for, and it has not run yet — <code>kind</code> is not available
+locally. The division is shape and wiring here, dataspace there.</p>
+<p><code>tests/combinations/test_tck_pipeline.py</code> is the same journey without a
+cluster: author three test files, compile, inspect, run, and run combinations —
+18 tests covering the wiring on the wire (the ticket a setup step published
+arrives in the execution step's header, and the state from <em>that</em> step's
+response body arrives in teardown's), assertion recording, soft-failure
+semantics, and selection refusal.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Eclipse Tractus-X Contributors
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "navigation.instant", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../assets/javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

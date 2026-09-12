@@ -1,0 +1,4414 @@
+<!--
+  Eclipse Tractus-X - Tractus-X TestLab
+
+  Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+  See the NOTICE file(s) distributed with this work for additional
+  information regarding copyright ownership.
+
+  This program and the accompanying materials are made available under the
+  terms of the Apache License, Version 2.0 which is available at
+  https://www.apache.org/licenses/LICENSE-2.0.
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+  either express or implied. See the
+  License for the specific language govern in permissions and limitations
+  under the License.
+
+  SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- It was reviewed and tested by a human committer. -->
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Visual test authoring tool for Eclipse Tractus-X dataspaces">
+      
+      
+      
+      
+        <link rel="prev" href="../contract-conflict-decisions/">
+      
+      
+        <link rel="next" href="../data-models/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/logo_tractus-x-min.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Contract Migration Plan - Tractus-X TestLab Documentation</title>
+      
+    
+    
+  
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/stylesheets/orange-black-theme.css">
+  <style>
+    .md-header__inner {
+      display: flex !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      height: 3rem !important;
+      padding: 0 0.1rem !important;
+      gap: 0 !important;
+      position: relative !important;
+    }
+
+    .md-header__button.md-logo {
+      order: 1 !important;
+      flex: 0 0 auto !important;
+      margin: 0 !important;
+      padding: 0.2rem 0.1rem !important;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+
+    .md-header__button[for="__drawer"] {
+      order: 2 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0.2rem !important;
+      display: none !important;
+    }
+
+    @media screen and (max-width: 1220px) {
+      .md-header__button[for="__drawer"] {
+        display: inline-flex !important;
+      }
+    }
+
+    .md-header__title {
+      order: 3 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0 0 0.15rem !important;
+      overflow: visible !important;
+      font-family: 'Manrope', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 1.2rem !important;
+      letter-spacing: -0.02em !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      line-height: 3rem !important;
+      height: 3rem !important;
+    }
+
+    .md-header__title .md-header__ellipsis {
+      font-size: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      display: none !important;
+    }
+
+    .md-header__title::before {
+      content: "Tractus-X TestLab" !important;
+      color: #ffffff !important;
+      font-size: 1.2rem !important;
+      font-weight: 700 !important;
+      white-space: nowrap !important;
+    }
+
+    .md-header__title::after {
+      content: "docs" !important;
+      color: rgba(255, 215, 0, 0.7) !important;
+      font-size: 0.5rem !important;
+      font-weight: 500 !important;
+      background: none !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.12em !important;
+      white-space: nowrap !important;
+      align-self: flex-start !important;
+      margin-top: 0.55rem !important;
+      margin-left: -0.2rem !important;
+    }
+
+    .md-search {
+      order: 5 !important;
+      flex: 1 1 auto !important;
+      max-width: none !important;
+      width: auto !important;
+      margin: 0 0 0 0.75rem !important;
+    }
+
+    label[for="__search"] {
+      order: 4 !important;
+      flex: 0 0 auto !important;
+    }
+
+    .md-header .md-version {
+      order: 6 !important;
+      flex: 0 0 auto !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      margin: 0 0.4rem !important;
+    }
+  </style>
+
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/orange-black-theme.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#contract-migration-implementation-plan" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Tractus-X TestLab Documentation" class="md-header__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tractus-X TestLab Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Contract Migration Plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../specification/" class="md-tabs__link">
+          
+  
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
+          
+  
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Tractus-X TestLab Documentation" class="md-nav__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    Tractus-X TestLab Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Welcome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../home/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Terminology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/functional-requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functional Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/constraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Constraints & Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Walkthrough
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/writing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/compiling-packages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiling Packages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/executing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Executing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/reference/syntax/cheat-sheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax Cheat Sheet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/syntax/tck-syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TCK Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/create-step-executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create a Step Executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-service-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Service Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-assertion-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add an Assertion Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-validation-rule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Validation Rule
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/development-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-conformity-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CCM Conformity Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Certificate Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Certificate Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/certificate-management-ide-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-business-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Business Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-architecture-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../product-scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Scope
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI-Assisted Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Contracts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Step Contracts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../step-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single Source of Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ide-engine-contract-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IDE-Engine Contract Parity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-conflict-decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Conflict Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Migration Plan
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Migration Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#engine-track-tractusx-testlab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ENGINE TRACK (tractusx-testlab)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ENGINE TRACK (tractusx-testlab)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#e1-internal-aliases-done-commit-3be95d1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E1 — Internal aliases ✅ DONE (commit 3be95d1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2-negotiate-transfer-c01-c02-c10-c11-c28-c33-c34-plus-c18s-engine-half" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E2 — Negotiate / transfer (C01, C02, C10, C11, C28, C33, C34, plus C18's engine half)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e3-catalog-pull_data-contract-definition-c13-c14-c23-c29-c35-c36" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E3 — Catalog / pull_data / contract-definition (C13, C14, C23, C29, C35, C36)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e4-dtr-c37-new-c04c27-lookup-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E4 — DTR (C37 + new C04/C27 lookup step)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e5-wizard-creation-steps-c26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E5 — Wizard creation steps (C26)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e6-http-mock-c17-c30-c31-c38-c39-c24-verify-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E6 — HTTP / mock (C17, C30, C31, C38, C39; C24 verify-only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e7-flowif-semantic_schema-deletion-c16-fallback-restriction-c06-c32-c16-c40" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E7 — flow/if, semantic_schema deletion, C16, fallback restriction (C06, C32, C16, C40)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e8-typed-execution-events-c46" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E8 — Typed execution events (C46)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e9-extraforbid-full-suite-gate-docs-regen-c47" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E9 — extra="forbid" + full-suite gate + docs regen (C47)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ide-track-cx-test-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IDE TRACK (cx-test-suite)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IDE TRACK (cx-test-suite)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#i1-connector-blocks-c01-c02-c09-c10-c13-c14-c19-c23-c28-c29-c33-c34-c36" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I1 — Connector blocks (C01, C02, C09, C10, C13, C14, C19, C23, C28, C29, C33, C34, C36)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#i2-dtr-blocks-c03-c05-c15-c37-c04c27-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I2 — DTR blocks (C03, C05, C15, C37, C04/C27 split)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#i3-wizard-blocks-mockhttp-fields-flowif-wiring-c26-c17-c30-c31-c38-c39-c06" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I3 — Wizard blocks, mock/http fields, flow/if wiring (C26, C17, C30, C31, C38, C39, C06)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#i4-sse-typed-events-c46" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I4 — SSE typed events (C46)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#i5-ownership-sync-cleanup-c41c45" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I5 — Ownership &amp; sync cleanup (C41–C45)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#i6-docs-regen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I6 — Docs regen
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#final-verification-both-repos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FINAL VERIFICATION (both repos)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../block-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../creating-a-step/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating a Step
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../execution-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infrastructure-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment-injection-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Injection Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../step-reference-drift-report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13" id="__nav_5_13_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decision Records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/ADR-0000-template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0000 Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_3" id="__nav_5_13_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Backend
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0005-filesystem-participant-manager-with-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0005 Participant Manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0012-compilation-and-packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0012 Compilation and Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0014-flat-compilation-intermediate-representation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0014 Flat Compilation IR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0015-package-asset-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0015 Package Asset Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0016-execution-trace-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0016 Execution Trace Format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0017-input-callback-endpoint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0017 Input Callback Endpoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0019-service-requirements-and-engine-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0019 Service Requirements and Engine Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0022-tck-static-inspection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0022 TCK Static Inspection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0023-variable-scope-annotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0023 Variable Scope Annotation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0024-test-skip-configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0024 Test-Level Skip Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_4" id="__nav_5_13_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Shared
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0003-sse-for-live-ide-execution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0003 SSE for Live Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0008-test-case-to-tck-rename/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0008 TCK Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0009-typed-variable-class-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0009 Typed Variable Class System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0010-yaml-syntax-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0010 YAML Syntax v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0011-environment-and-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0011 Environment and Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0018-unified-variables-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0018 Unified Variables Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0021-remove-precondition-concept/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0021 Remove Precondition Concept
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0025-assertions-read-declared-returns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0025 Assertions Read Declared Returns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#engine-track-tractusx-testlab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ENGINE TRACK (tractusx-testlab)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ENGINE TRACK (tractusx-testlab)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#e1-internal-aliases-done-commit-3be95d1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E1 — Internal aliases ✅ DONE (commit 3be95d1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2-negotiate-transfer-c01-c02-c10-c11-c28-c33-c34-plus-c18s-engine-half" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E2 — Negotiate / transfer (C01, C02, C10, C11, C28, C33, C34, plus C18's engine half)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e3-catalog-pull_data-contract-definition-c13-c14-c23-c29-c35-c36" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E3 — Catalog / pull_data / contract-definition (C13, C14, C23, C29, C35, C36)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e4-dtr-c37-new-c04c27-lookup-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E4 — DTR (C37 + new C04/C27 lookup step)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e5-wizard-creation-steps-c26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E5 — Wizard creation steps (C26)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e6-http-mock-c17-c30-c31-c38-c39-c24-verify-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E6 — HTTP / mock (C17, C30, C31, C38, C39; C24 verify-only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e7-flowif-semantic_schema-deletion-c16-fallback-restriction-c06-c32-c16-c40" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E7 — flow/if, semantic_schema deletion, C16, fallback restriction (C06, C32, C16, C40)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e8-typed-execution-events-c46" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E8 — Typed execution events (C46)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e9-extraforbid-full-suite-gate-docs-regen-c47" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E9 — extra="forbid" + full-suite gate + docs regen (C47)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ide-track-cx-test-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IDE TRACK (cx-test-suite)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IDE TRACK (cx-test-suite)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#i1-connector-blocks-c01-c02-c09-c10-c13-c14-c19-c23-c28-c29-c33-c34-c36" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I1 — Connector blocks (C01, C02, C09, C10, C13, C14, C19, C23, C28, C29, C33, C34, C36)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#i2-dtr-blocks-c03-c05-c15-c37-c04c27-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I2 — DTR blocks (C03, C05, C15, C37, C04/C27 split)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#i3-wizard-blocks-mockhttp-fields-flowif-wiring-c26-c17-c30-c31-c38-c39-c06" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I3 — Wizard blocks, mock/http fields, flow/if wiring (C26, C17, C30, C31, C38, C39, C06)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#i4-sse-typed-events-c46" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I4 — SSE typed events (C46)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#i5-ownership-sync-cleanup-c41c45" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I5 — Ownership &amp; sync cleanup (C41–C45)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#i6-docs-regen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I6 — Docs regen
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#final-verification-both-repos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FINAL VERIFICATION (both repos)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/eclipse-tractusx/tractusx-testlab/edit/main/docs/developer/contract-migration-plan.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<!--
+ Eclipse Tractus-X - Tractus-X TestLab
+
+ Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+ See the NOTICE file(s) distributed with this work for additional
+ information regarding copyright ownership.
+
+ This program and the accompanying materials are made available under the
+ terms of the Apache License, Version 2.0 which is available at
+ https://www.apache.org/licenses/LICENSE-2.0.
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations
+ under the License.
+
+ SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This document was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5). -->
+<!-- It is an implementation handoff plan; review before executing. -->
+
+<h1 id="contract-migration-implementation-plan">Contract migration — implementation plan</h1>
+<p>Executable handoff plan for the IDE ↔ engine contract harmonization. The
+decisions being implemented are in
+<a href="../contract-conflict-decisions/">contract-conflict-decisions.md</a> (every
+conflict C01–C47 now has exactly one ticked box; margin notes beside a ticked
+box override it — notably C04's note supersedes C27's step id). The analysis
+behind them is <a href="../ide-engine-contract-parity/">ide-engine-contract-parity.md</a>.</p>
+<p><strong>Repos:</strong></p>
+<ul>
+<li>Engine: <code>tractusx-testlab</code> (this repo). Python 3.12, pydantic v2, pytest.
+  Test: <code>poetry run pytest -q</code> (narrow with a path or <code>-k</code>).</li>
+<li>IDE: <code>cx-test-suite</code> at <code>/Users/matbmoser/catenax-eV/cx-test-suite</code>
+  (github <code>catenax-eV/cx-test-suite</code>, branch <code>feat/ai</code>). TypeScript, Blockly,
+  vitest. Test: <code>npx vitest run &lt;path&gt;</code>; full: <code>npm test</code>.</li>
+<li>Parity ground truth:
+  <code>poetry run python tools/compare_ide_parity.py --ide /Users/matbmoser/catenax-eV/cx-test-suite</code>
+  — run from the engine repo. Baseline before this migration: <strong>62 breaking
+  divergences across 33 IDE blocks</strong>. Acceptance: <strong>0</strong>, both test suites green.</li>
+</ul>
+<p><strong>Ground rules (non-negotiable):</strong></p>
+<ol>
+<li>One canonical name, one canonical shape per concept. Never keep an alias,
+   a deprecated-but-accepted spelling, or dual input shapes. Rename fully and
+   migrate every caller.</li>
+<li>After any rename, grep the WHOLE repo (src, tests, docs/examples, stubs,
+   e2e fixtures) for the old spelling and fix every hit.</li>
+<li>Steps never name their connector service — services are seeded at runtime.
+   The only sanctioned way to address a <em>remote</em> party's data is the
+   <code>dataplane_url</code> + <code>edr_token</code> parameter pair.</li>
+<li>Copy the Apache-2.0 header verbatim from a neighboring file when creating
+   files. Match existing docstring/comment style. No speculative abstraction.</li>
+<li>Commit per cluster, in the order below (later clusters depend on earlier
+   renames; C47 last because it hard-fails any stale spelling left behind).</li>
+</ol>
+<p><strong>Branch state right now (engine, <code>feat/run_security_consitency</code>):</strong></p>
+<ul>
+<li>Cluster E1 is DONE — commit <code>3be95d1</code> ("refactor: drop engine-internal alias
+  spellings…"). Details below so nobody redoes it.</li>
+<li>These uncommitted files are the repo owner's separate WIP — do NOT commit,
+  revert, or fold them into migration commits:
+  <code>models/__init__.py</code>, <code>models/primitives/enums.py</code>,
+  <code>models/runtime/events.py</code> (untracked), <code>player/execution/_trace_formatter.py</code>,
+  <code>player/execution/monitor.py</code>, <code>player/execution/phases/_run_phase.py</code>,
+  <code>player/execution/player.py</code>, <code>docs/developer/contract-conflict-decisions.md</code>.
+  (The <code>events.py</code>/player files look like the beginnings of C46 — see E8;
+  coordinate with them rather than duplicating.)</li>
+</ul>
+<hr />
+<h2 id="engine-track-tractusx-testlab">ENGINE TRACK (tractusx-testlab)</h2>
+<h3 id="e1-internal-aliases-done-commit-3be95d1">E1 — Internal aliases ✅ DONE (commit <code>3be95d1</code>)</h3>
+<p>Already implemented; recorded here for context:</p>
+<ul>
+<li>C20/C21: <code>CounterPartyParams</code> (<code>steps/_contracts.py</code>) lost the
+  <code>provider_url</code>/<code>bpnl</code> <code>AliasChoices</code> — only <code>counter_party_address</code> /
+  <code>counter_party_id</code> validate now.</li>
+<li>C22: <code>FilterExpression</code> input accepts only <code>operand_left</code>/<code>operand_right</code>;
+  <code>operandLeft</code>/<code>operandRight</code> remain <strong>serialization-only</strong>
+  (<code>serialization_alias</code>), used by <code>to_sdk()</code>.</li>
+<li>C25: <code>validate/schema</code> (<code>steps/utility/validate.py</code>) — field <code>json_schema</code>
+  now has <code>validation_alias="schema"</code> only; tests write <code>schema:</code>, the
+  <code>json_schema:</code> spelling is dead.</li>
+<li>C19 (shared-model half): <code>FilterExpressionParams.filter_expression</code> renamed
+  to <code>filters</code> (no alias); <code>CatalogFilter</code> (the nested <code>filter:</code> block dual
+  shape) deleted; <code>QueryCatalogParams</code>/<code>QueryCatalogByBpnlParams</code> now declare
+  <code>filters</code>; callers in <code>catalog_query.py</code>, <code>catalog_filter.py</code> updated
+  (<code>do_dsp.py</code>/<code>pull_data/_executor.py</code> go through the untouched
+  <code>sdk_filter_expression()</code> helper, which now reads <code>self.filters</code>).</li>
+<li>Tests updated: <code>tests/test_catalog_query_contract.py</code> (alias tests replaced
+  with canonical + rejection tests), <code>tests/test_step_docs.py</code> (alias test now
+  uses the local <code>_Sample.aliased</code> field; page test asserts <code>provider_url</code>
+  absent), <code>tests/test_ccm_steps.py</code>, <code>tests/test_connector_do_dsp.py</code>
+  (inputs snake_case, SDK asserts camelCase), e2e yaml
+  <code>tests/e2e/connector-dtr-smoke/tests/connector_negotiation.yaml</code>
+  (<code>filter_expression:</code> → <code>filters:</code>).</li>
+<li>KNOWN DEBT for E9: <code>tests/test_step_docs.py::TestGeneratedPage::
+  test_committed_page_matches_the_code</code> fails until the docs page is
+  regenerated (see E9). Do not "fix" it before then.</li>
+</ul>
+<h3 id="e2-negotiate-transfer-c01-c02-c10-c11-c28-c33-c34-plus-c18s-engine-half">E2 — Negotiate / transfer (C01, C02, C10, C11, C28, C33, C34, plus C18's engine half)</h3>
+<p>Files: <code>steps/connector/negotiate.py</code>, <code>transfer.py</code>, <code>dataplane.py</code>,
+<code>_contracts.py</code>, <code>syntax/context_vars.py</code>, <code>catalog_query.py</code> (exports).</p>
+<ol>
+<li><strong>C01</strong> rename step id <code>connector/consumer/negotiate_contract</code> →
+   <code>connector/consumer/negotiate</code> (<code>@step(...)</code> in <code>negotiate.py</code>; class/docstring
+   references too).</li>
+<li><strong>C10</strong> in <code>NegotiateContractParams</code>: rename field <code>target</code> → <code>asset_id</code>.
+   The context-var fallback chain: rename <code>CATALOG_TARGET = "catalog_target"</code>
+   → <code>CATALOG_ASSET_ID = "catalog_asset_id"</code> in <code>syntax/context_vars.py</code>, and
+   rename the <code>catalog_target</code> export field in
+   <code>QueryCatalogByAssetIdExports</code> (<code>catalog_query.py</code>) to <code>catalog_asset_id</code>
+   (alias = the new constant). Grep for <code>catalog_target</code> and <code>CATALOG_TARGET</code>
+   across repo (also used in <code>negotiate.py</code> and possibly <code>do_dsp.py</code>).</li>
+<li><strong>C11</strong> verify-only: <code>policy</code> param stays an ODRL document fed from
+   <code>catalog_policy</code> — already correct today, no <code>offer_id</code> support.</li>
+<li><strong>C33</strong> negotiate outputs gain <code>agreement_id</code> + <code>state</code>: after
+   <code>start_edr_negotiation</code>, poll the negotiation until terminal
+   (FINALIZED/TERMINATED) or timeout. SDK surface available on the consumer
+   service (verified by introspection): <code>contract_negotiations</code> (controller
+   accessor), <code>get_edr_entry(negotiation_id=…)</code>, plus <code>edrs</code>,
+   <code>transfer_processes</code>. The EDC management API answer for one negotiation is
+   <code>GET /v3/contractnegotiations/{id}</code> → <code>{"state": …, "contractAgreementId": …}</code>.
+   Inspect <code>consumer.contract_negotiations</code> for a <code>get_by_id</code>-style method; if
+   the SDK exposes none, do a plain <code>requests.get</code> against
+   <code>context.get_consumer_endpoint_url("contract_negotiations", negotiation_id)</code>
+   with the seeded management headers (look at how <code>context.get_consumer_endpoint_url</code>
+   is used in <code>transfer.py</code>/<code>dataplane.py</code>). Add <code>agreement_id</code> + <code>state</code> to
+   <code>NegotiationOutput</code> and <code>NegotiationExports</code> (context var name:
+   <code>contract_agreement_id</code> already exists as <code>DSP_CONTRACT_AGREEMENT_ID</code>; add
+   a plain <code>AGREEMENT_ID = "agreement_id"</code> constant — do not overload the DSP
+   ones, they belong to the raw-DSP step family). Poll with the same
+   delay/timeout style <code>transfer.py</code>'s neighbors use; keep it short (a few
+   seconds default).</li>
+<li><strong>C02</strong> rename step id <code>connector/consumer/transfer_data</code> →
+   <code>connector/consumer/initiate_transfer</code> (<code>transfer.py</code>). Keep behavior:
+   resolve <code>negotiation_id</code> → <code>transfer_id</code> → <code>fetch_data_address(...)</code>.</li>
+<li><strong>C28</strong> add <code>transfer_type: Optional[str]</code> to the params
+   (<code>HttpData-PULL</code> default when omitted; accepted: <code>HttpData-PUSH</code>,
+   <code>AmazonS3-PUSH</code>). PUSH mode issues a real
+   <code>POST /v3/transferprocesses</code> via the SDK (<code>consumer.transfer_processes</code>
+   controller — inspect it; else raw POST to
+   <code>context.get_consumer_endpoint_url("transfer_processes")</code>) with body
+   <code>{transferType, contractId (the agreement id), counterPartyAddress,
+   dataDestination}</code> and then polls the transfer process state. Add a
+   <code>data_destination: Optional[dict]</code> param for the PUSH target (required when
+   <code>transfer_type</code> is <code>*-PUSH</code>; validate that in a <code>model_validator</code>). PULL
+   path unchanged.</li>
+<li><strong>C34</strong> output canonicalization — <code>data_address</code> stays, <code>dataplane_endpoint</code>
+   dies <strong>everywhere</strong> (they're two names for one value):</li>
+<li><code>syntax/context_vars.py</code>: delete <code>DATAPLANE_ENDPOINT</code>; keep
+     <code>DATA_ADDRESS = "data_address"</code>; delete the "older spelling" comment.</li>
+<li><code>_contracts.py</code> <code>DataplaneExports</code>: rename field <code>dataplane_endpoint</code> →
+     <code>data_address</code> (alias <code>DATA_ADDRESS</code>).</li>
+<li><code>transfer.py</code> <code>TransferDataExports</code>: drop its duplicated <code>data_address</code>
+     field (now inherited) and stop exporting <code>dataplane_endpoint</code>.</li>
+<li><code>transfer.py</code> output/exports gain <code>state</code> (the transfer/negotiation state
+     string, mirroring C33).</li>
+<li><code>dataplane.py</code> <code>GetEdrStep.execute</code>: <code>DataplaneExports(data_address=…)</code>.</li>
+<li><code>dataplane.py</code> <code>DataplaneCallStep.execute</code>: fallback var becomes
+     <code>DATA_ADDRESS</code>.</li>
+<li>Grep <code>dataplane_endpoint</code> repo-wide (docs/examples too).</li>
+<li><strong>C18 engine half</strong> in <code>dataplane.py</code> <code>DataplaneCallParams</code>: rename field
+   <code>endpoint</code> → <code>dataplane_url</code> and <code>token</code> → <code>edr_token</code>; delete both
+   <code>AliasChoices</code> (the <code>url</code>, <code>endpoint</code>, <code>token</code> spellings die). Keep the
+   dict-or-string coercion in <code>endpoint_url()</code> (rename to match). Drop the
+   now-unused <code>AliasChoices</code> import.</li>
+<li>Update ALL callers/tests: grep <code>negotiate_contract</code>, <code>transfer_data</code>,
+   <code>"target"</code> (in negotiate contexts), <code>catalog_target</code>, <code>dataplane_endpoint</code>,
+   <code>"endpoint"</code>/<code>"token"</code> raw-param keys in tests
+   (<code>tests/test_transfer_and_dataplane.py</code>, <code>test_connector_negotiate*.py</code> if
+   present — discover with grep), e2e yaml under <code>tests/e2e/</code>, and
+   <code>docs/examples/**</code> and <code>stubs/**</code> tests.</li>
+</ol>
+<p>Test: <code>poetry run pytest tests -k "negotiate or transfer or dataplane or edr" -q</code>.</p>
+<h3 id="e3-catalog-pull_data-contract-definition-c13-c14-c23-c29-c35-c36">E3 — Catalog / pull_data / contract-definition (C13, C14, C23, C29, C35, C36)</h3>
+<p>Files: <code>steps/connector/provision.py</code>, <code>pull_data/_executor.py</code>,
+<code>pull_data/_constants.py</code>, <code>catalog_query.py</code>, <code>do_dsp.py</code>,
+<code>catalog_filter.py</code>, <code>consume.py</code>.</p>
+<ol>
+<li><strong>C13</strong> <code>expected_policies</code> is THE param name for every consumer-side
+   policy filter: rename <code>policies</code> → <code>expected_policies</code> in
+   <code>pull_data_filtered_by_policy</code> params, <code>query_catalog_by_asset_id</code> params
+   (<code>catalog_query.py</code>), and <code>do_dsp</code>/<code>do_dsp_with_bpnl</code> params (<code>do_dsp.py</code>).
+   The kwarg passed INTO the SDK (<code>consumer.do_dsp(policies=…)</code>) keeps the
+   SDK's name — only the test-facing param renames.</li>
+<li><strong>C14</strong> <code>create_contract_definition</code> (<code>provision.py</code>): param
+   <code>contract_id</code> → <code>contract_definition_id</code>; output field <code>contract_def_id</code> →
+   <code>contract_definition_id</code>. One name both directions.</li>
+<li><strong>C23</strong> same step: field <code>usage_policy_id</code> → <code>contract_policy_id</code> (the IDE
+   already sends <code>contract_policy_id</code>; the on-record recommendation was
+   overridden). The value still lands in the EDC <code>contractPolicyId</code> API field.</li>
+<li><strong>C29</strong> same step: add <code>asset_selector: list[FilterExpression]</code>
+   (reuse <code>FilterExpression</code> from <code>_contracts.py</code> — same
+   <code>operand_left/operator/operand_right</code> shape, serialized camelCase via
+   <code>to_sdk()</code>), passed to the EDC contract-definition <code>assetsSelector</code> array.
+   <code>asset_id</code> remains as the simple single-asset form; when both given,
+   <code>asset_selector</code> wins (document that in the field description); when only
+   <code>asset_id</code> given, build the one-criterion selector from it (that is what
+   the step already does implicitly today — check how <code>provision.py</code> builds
+   the definition body).</li>
+<li><strong>C35</strong> <code>query_catalog</code> output wrap: today <code>QueryCatalogStep</code> returns the
+   raw <code>CatalogPayload</code> as value. Change its output to the
+   <code>FilteredCatalogOutput</code> shape already defined in <code>catalog_filter.py</code>
+   (<code>catalog</code> + <code>datasets</code>) — move that model into <code>_contracts.py</code> (or import
+   it) so both steps share one output model, and return
+   <code>catalog=&lt;full document&gt;</code>, <code>datasets=as_dataset_list(catalog)</code>.
+   The IDE's <code>returns:</code> then reads <code>catalog</code> and <code>datasets</code> — never
+   <code>dcat:dataset</code>.</li>
+<li><strong>C36</strong> <code>pull_data_filtered</code> (<code>pull_data/_executor.py</code> + its step wrapper in
+   <code>pull_data/__init__.py</code> or <code>consume.py</code> — locate with grep
+   <code>pull_data_filtered</code>): add <code>agreement_id</code> to its output/exports, sourced
+   the same way its <code>_by_policy</code> sibling publishes it.</li>
+</ol>
+<p>Update callers/tests: grep <code>contract_id</code>, <code>contract_def_id</code>,
+<code>usage_policy_id</code>, <code>"policies"</code> (test-facing), plus e2e/docs/stubs.</p>
+<p>Test: <code>poetry run pytest tests -k "provision or contract or pull_data or catalog" -q</code>.</p>
+<h3 id="e4-dtr-c37-new-c04c27-lookup-step">E4 — DTR (C37 + new C04/C27 lookup step)</h3>
+<p>File: <code>steps/industry/dtr.py</code> (~230 lines; read fully first — its shared
+<code>DtrParams</code>/<code>DescriptorPayload</code> pattern is the style to follow).</p>
+<ol>
+<li><strong>C37</strong> <code>DescriptorPayload.id_short</code>: change
+   <code>alias="idShort"</code> → <code>validation_alias="idShort"</code> so the AAS API's camelCase
+   is accepted on input but the field ALWAYS serializes as <code>id_short</code>.
+   Verify with a quick check that step output rendering (<code>.of(body)</code> →
+   <code>bind_output</code>) dumps <code>id_short</code>. C03/C05/C15 are already correct on the
+   engine side (ids <code>digital-twin/provider/create_shell_descriptor</code>,
+   <code>…/create_submodel_descriptor</code>, param <code>aas_identifier</code>) — verify, no change.</li>
+<li><strong>C04+C27</strong> new step — id EXACTLY
+   <code>digital-twin-registry/consumer/dataplane/lookup_shell</code>
+   (deliberate 4-segment exception; do not normalize). It searches a
+   COUNTERPARTY's registry through an EDC dataplane — it must NOT call
+   <code>context.get_aas_service()</code> (that's the locally-seeded registry).</li>
+<li>Params: <code>specific_asset_ids: list[dict]</code> (AAS specificAssetIds criteria,
+     <code>[{"name": …, "value": …}]</code>), <code>dataplane_url: str</code>, <code>edr_token: str</code>.</li>
+<li>Behavior: the AAS registry lookup API is
+     <code>GET {base}/lookup/shells?assetIds=&lt;base64url(JSON of each criterion)&gt;</code>
+     (one <code>assetIds</code> query param per criterion, each a base64url-encoded JSON
+     object — this is the AAS v3 spec encoding; check
+     <code>tractusx_sdk.industry</code> for an existing encoder before hand-rolling).
+     Issue it with <code>requests.get(dataplane_url + "/lookup/shells", …)</code>,
+     header <code>Authorization: &lt;edr_token&gt;</code> — same bare-HTTP pattern as
+     <code>DataplaneCallStep.execute</code> in <code>steps/connector/dataplane.py</code>.
+     The response is <code>{"result": [&lt;shell ids&gt;]}</code> (v3 paginated shape:
+     <code>{"paging_metadata": …, "result": […]}</code>).</li>
+<li>Optionally follow up with <code>GET {dataplane_url}/shell-descriptors/{b64(id)}</code>
+     per id to fill <code>shell_descriptors</code>; keep it simple — one page, no
+     pagination loop.</li>
+<li>Output model: <code>shell_ids: list[str]</code> + <code>shell_descriptors: list[dict]</code>.</li>
+<li>Return a real <code>HttpRequest</code>/<code>HttpResponse</code> pair in the <code>StepOutput</code> like
+     every other step in the file.</li>
+</ol>
+<p>Test: <code>poetry run pytest tests -k "dtr or shell or submodel" -q</code> (add a unit
+test for the new step with a mocked <code>requests</code> — copy the mocking style of
+existing dataplane tests).</p>
+<h3 id="e5-wizard-creation-steps-c26">E5 — Wizard creation steps (C26)</h3>
+<p>Files: <code>steps/connector/provision.py</code>, <code>steps/industry/dtr.py</code>.</p>
+<p>Two shapes = two separate steps (never one step accepting either shape):</p>
+<ul>
+<li>Existing raw-payload steps stay as-is: <code>connector/provider/create_asset</code>
+  (param <code>asset</code>: full document), <code>connector/provider/create_policy</code>
+  (param <code>policy</code>), <code>digital-twin/provider/create_shell_descriptor</code>
+  (param <code>shell_descriptor</code>), <code>…/create_submodel_descriptor</code>
+  (param <code>submodel_descriptor</code>).</li>
+<li>NEW wizard siblings with flat guided fields that assemble the document and
+  then call the SAME underlying creation logic (extract a module-level helper
+  from each raw step's <code>execute</code>; no duplicated API calls):</li>
+<li><code>connector/provider/wizard/create_asset</code> — fields <code>asset_id</code>, <code>name</code>,
+    <code>description</code> (opt), <code>base_url</code>, <code>content_type</code> (opt), <code>properties</code>
+    (opt dict) → assembles the EDC asset document.</li>
+<li><code>connector/provider/wizard/create_policy</code> — fields <code>policy_id</code>,
+    <code>permissions</code> (list), <code>prohibitions</code> (opt list), <code>obligations</code> (opt list)
+    → assembles the ODRL policy document.</li>
+<li><code>digital-twin/provider/wizard/create_shell_descriptor</code> — fields
+    <code>id</code> (opt, generate UUID urn if absent), <code>id_short</code>, <code>global_asset_id</code>
+    (opt), <code>specific_asset_ids</code> (opt list), <code>submodel_descriptors</code> (opt list)
+    → assembles a ShellDescriptor.</li>
+<li><code>digital-twin/provider/wizard/create_submodel_descriptor</code> — fields
+    <code>aas_identifier</code>, <code>id</code> (opt), <code>id_short</code>, <code>semantic_id</code>, <code>endpoint_url</code>
+    → assembles a SubModelDescriptor (semantic_id becomes the AAS
+    <code>semanticId</code> reference structure; endpoint_url becomes the single
+    SUBMODEL-3.0 endpoint entry — mirror what the IDE's old
+    <code>add_submodel.json</code> flat fields meant; see the parity report section B).
+  Field names above deliberately match the IDE's existing flat block fields
+  (parity section B: <code>name</code>, <code>description</code>, <code>base_url</code>, <code>content_type</code>,
+  <code>properties</code>; <code>permissions</code>, <code>prohibitions</code>, <code>obligations</code>; <code>id_short</code>,
+  <code>global_asset_id</code>, <code>specific_asset_ids</code>, <code>submodel_descriptors</code>;
+  <code>id_short</code>, <code>semantic_id</code>, <code>endpoint_url</code>) so the IDE blocks re-target with
+  a rename only.</li>
+</ul>
+<p>Test: <code>poetry run pytest tests -k "asset or policy or wizard or provision" -q</code>.</p>
+<h3 id="e6-http-mock-c17-c30-c31-c38-c39-c24-verify-only">E6 — HTTP / mock (C17, C30, C31, C38, C39; C24 verify-only)</h3>
+<p>Files: <code>steps/server/mock.py</code>, <code>steps/server/wait.py</code>,
+<code>server/mock_registry.py</code>, HTTP step (grep <code>http/http_request</code> — likely
+<code>steps/utility/</code> or <code>steps/server/</code>), <code>steps/industry/notification.py</code>.</p>
+<ol>
+<li><strong>C30</strong> <code>http/http_request</code>: add <code>query_params: dict[str, str]</code> (default
+   <code>{}</code>), merged into the URL (pass <code>params=</code> to <code>requests.request</code>).</li>
+<li><strong>C31</strong> <code>mock/api</code>: add <code>response_headers: dict[str, str]</code> param; the mock
+   endpoint replies with them (thread through <code>server/mock_registry.py</code> /
+   <code>player/execution/mock_server.py</code> — find where status/body are stored per
+   endpoint and add headers alongside).</li>
+<li><strong>C38</strong> <code>mock/api</code> output becomes a structured mock instance (replaces the
+   bare string): fields <code>endpoint_id</code>, <code>base_mock_url</code> (mock server root),
+   <code>full_mock_url</code> (root + the unique generated path — directly callable).
+   Build it from what the registry already knows when registering the mock.</li>
+<li><strong>C17</strong> <code>mock/wait/http_request</code> param: <code>endpoint_id: str</code> → <code>mock</code>, typed
+   as the C38 mock-instance object (dict/model with at least <code>endpoint_id</code>).
+   The step reads <code>mock["endpoint_id"]</code> (or model attr) to find the endpoint.
+   Accept ONLY the object — not a bare id string (no dual shape).</li>
+<li><strong>C39</strong> <code>mock/wait/http_request</code> outputs: keep/ensure <code>request_method</code>,
+   <code>request_path</code>, <code>request_headers</code>, <code>request_body</code>; ADD <code>request_query_params</code>
+   and <code>elapsed_ms</code> (wall-clock waited). Rename any un-prefixed spellings.</li>
+<li><strong>C24</strong> verify <code>notification/consumer/send</code> uses <code>dataplane_url</code>,
+   <code>edr_token</code>, <code>content</code> (should already; fix any <code>endpoint_url</code>/<code>auth_token</code>
+   /<code>payload</code> leftovers).</li>
+<li>C07 (<code>http/http_request</code> name) and C08 (mock module inconsistency): keep
+   as-is — no-ops by decision.</li>
+</ol>
+<p>Test: <code>poetry run pytest tests -k "mock or wait or http" -q</code>.</p>
+<h3 id="e7-flowif-semantic_schema-deletion-c16-fallback-restriction-c06-c32-c16-c40">E7 — flow/if, semantic_schema deletion, C16, fallback restriction (C06, C32, C16, C40)</h3>
+<ol>
+<li><strong>C06</strong> new file <code>steps/flow/if.py</code> (id <code>flow/if</code>), modeled on
+   <code>steps/flow/retry.py</code> (read it first — nested <code>list[StepDefinition]</code>
+   params, global-registry lookup via <code>_ANY_VERSION</code>, sequential nested
+   execution, <code>StepValue[list[Any]]</code> output):</li>
+<li>Params: <code>condition: str</code> (a <code>${{ }}</code> expression — evaluate with the
+     EXISTING evaluator in <code>steps/conditions.py</code> / <code>_condition_parsing.py</code>;
+     do not write a new parser), <code>then: list[StepDefinition]</code> (required,
+     <code>min_length=1</code>), <code>else_: list[StepDefinition]</code> (default <code>[]</code>,
+     <code>validation_alias="else"</code>, <code>serialization_alias="else"</code>).</li>
+<li>Behavior: evaluate once; run <code>then</code> steps in order when truthy, <code>else</code>
+     when falsy (no-op if empty). Nested failures propagate like retry's do.</li>
+<li>Output: <code>branch_taken</code> (<code>"then"</code>/<code>"else"</code>/<code>"none"</code>),
+     <code>condition_result: bool</code>, <code>outputs: list</code> (executed branch's outputs).</li>
+<li>Register the module import wherever <code>steps/flow/__init__.py</code> /
+     <code>steps/__init__.py</code> imports <code>delay</code>/<code>retry</code>.</li>
+<li><code>flow/condition</code> is NOT an engine step — it's an IDE composer block that
+     assembles the <code>condition</code> string (same as
+     <code>connector/consumer/filter_expression</code>). Do not register it.</li>
+<li><strong>C32</strong> delete <code>validate/semantic_schema</code> entirely: grep <code>semantic_schema</code>
+   (step likely in <code>steps/industry/semantic.py</code>); remove the step class +
+   registration; keep any unrelated code in the file; update <code>__init__</code>
+   imports; grep docs.</li>
+<li><strong>C16</strong> <code>util/json_path_extract</code> (<code>steps/utility/json_extract.py</code> line ~118)
+   currently has <code>validation_alias=AliasChoices("source", "variable")</code>. The
+   canonical name is <code>input</code> (ADR-0025 renamed <code>util/validate_path</code> already —
+   verify). Rename the field to <code>input</code> with NO aliases (<code>source</code> and
+   <code>variable</code> both die), update callers/tests/examples.</li>
+<li><strong>C40</strong> restrict universal output fallbacks —
+   <code>steps/_checks/extraction.py</code>:</li>
+<li><code>request</code>/<code>response</code> stay on every <code>StepOutput</code> and stay visible in
+     logs/trace (do not touch logging).</li>
+<li>But <code>${{ execution.&lt;step&gt;.&lt;name&gt; }}</code> resolution must only resolve names
+     the step's declared <code>output_model</code> actually has. The blanket fallthrough
+     lives in <code>_fallback_resolution()</code> (tries <code>output.response</code> attrs →
+     <code>response.body</code> dict keys → <code>StepOutput</code> slots for ANY name) and the
+     <code>response_body</code>/<code>response_headers</code> aliases in <code>_resolve_first_segment()</code>.</li>
+<li>Implementation: thread the resolving step's <code>output_model</code> (or its
+     <code>model_fields</code> name-set) into <code>extract_path</code> from the call site (find
+     callers: grep <code>extract_path(</code> — resolver lives around
+     <code>player/execution/_helpers.py</code> / <code>authoring</code> expression resolution).
+     When the first segment is NOT in the declared field set (and not a key
+     of a dict <code>value</code>), return <code>None</code> instead of falling through to
+     response internals. Delete <code>_fallback_resolution</code> if nothing legitimate
+     remains, or gate it on the declared-field check.</li>
+<li>Fix tests that relied on blanket fallbacks (<code>status_code</code>, <code>body</code>,
+     <code>duration_ms</code>, <code>response_body</code> references in tests) to use
+     declared outputs. <code>validate/assert</code>-family steps that deliberately read
+     <code>input:</code> values are unaffected (they receive values, not paths into
+     other steps).</li>
+</ol>
+<p>Test: <code>poetry run pytest tests -k "flow or condition or extract or validate" -q</code>,
+then the full suite briefly — C40 has wide blast radius.</p>
+<h3 id="e8-typed-execution-events-c46">E8 — Typed execution events (C46)</h3>
+<p>⚠️ The repo owner's uncommitted WIP (<code>models/runtime/events.py</code>,
+<code>player/execution/monitor.py</code>, <code>_trace_formatter.py</code>, <code>_run_phase.py</code>,
+<code>player.py</code>, <code>models/primitives/enums.py</code>) appears to BE the start of this
+work. READ those diffs first (<code>git diff</code> + the untracked events.py). Build on
+them; do not start parallel.</p>
+<p>Target design (per decision C46): an event manager every execution component
+publishes typed lifecycle events through, with an explicit <code>kind</code> field, so
+the IDE never string-sniffs <code>step_type</code> again.</p>
+<ul>
+<li>Event kinds (minimum): <code>job_started</code>, <code>job_completed</code>, <code>job_failed</code>,
+  <code>job_cancelled</code>, <code>step_started</code>, <code>step_completed</code>, <code>step_failed</code>,
+  <code>step_skipped</code>, <code>assertion_result</code>.</li>
+<li>Payloads reuse <code>StepStatus</code> / <code>StepResult</code> from
+  <code>models/primitives/enums.py</code> / <code>models/runtime/results.py</code>; each step event
+  carries <code>step_id</code>, <code>uses</code>, <code>status</code>, and a short error/output summary.
+  <code>assertion_result</code> additionally carries pass/fail + message (this is what
+  replaces the IDE's <code>step_type.includes("assert")</code> hack).</li>
+<li>Wire through the existing SSE stack: <code>server/streaming/routes.py</code>,
+  <code>lifecycle.py</code>, <code>_event_buffer.py</code> (ordering/ids come from <code>EventBuffer</code>,
+  not wall-clock), <code>formatter.py</code> (keep <code>TERMINAL_EVENTS</code> names
+  <code>job.completed</code>/<code>job.failed</code>/<code>job.cancelled</code> on the wire).</li>
+<li>Write <code>docs/developer/execution-events.md</code>: every kind, payload shape, one
+  example JSON each. This document is the contract the IDE track (I6)
+  implements against — it must be complete.</li>
+</ul>
+<p>Test: <code>poetry run pytest tests -k "stream or sse or event or monitor" -q</code>.</p>
+<h3 id="e9-extraforbid-full-suite-gate-docs-regen-c47">E9 — extra="forbid" + full-suite gate + docs regen (C47)</h3>
+<p>MUST run last on the engine side.</p>
+<ol>
+<li><code>steps/base.py</code> (where <code>StepParams</code>' <code>ConfigDict</code> lives — it may be in
+   <code>steps/base.py</code> or <code>_contracts.py</code>; grep <code>extra="allow"</code> under <code>steps/</code>):
+   flip StepParams to <code>extra="forbid"</code>. Unknown <code>with:</code> keys are now
+   validation errors surfaced at compile/run.</li>
+<li>Run the FULL suite: <code>poetry run pytest -q</code>. Every failure is a stale
+   spelling somewhere — fix the caller, never loosen back to <code>allow</code>.
+   Also flip/keep <code>DescriptorPayload</code>-style <em>output</em> payloads on
+   <code>extra="allow"</code> — the forbid applies to <code>StepParams</code> (inputs) only;
+   AAS/DCAT documents legitimately carry unknown keys.</li>
+<li>Regenerate the step reference page (fixes the E1 known-debt test):
+   the generator is <code>cli/docs.py</code> — run
+   <code>poetry run python -m tractusx_testlab docs</code> (check <code>cli/docs.py</code> for the
+   exact subcommand/output path; the committed page is
+   <code>docs/specification/reference/steps.md</code>).</li>
+<li>Update <code>docs/developer/ide-engine-contract-parity.md</code> to describe the
+   post-migration contract (final names), keeping the reproduce instructions.</li>
+<li>Run the parity checker; capture output in the commit message. Engine-side
+   acceptance: categories B–G empty except entries that require the IDE-side
+   work (sections A and B referencing IDE-only spellings disappear only after
+   the IDE track).</li>
+</ol>
+<hr />
+<h2 id="ide-track-cx-test-suite">IDE TRACK (cx-test-suite)</h2>
+<p>Block catalog = source of truth artifacts: <code>public/blocks/**/*.json</code> +
+<code>public/blocks/index.json</code>, loaded by
+<code>src/features/ide/features/block-editor/blocks/common/catalog/catalogLoader.ts</code>,
+registered generically by <code>…/registration/steps/catalogBlocks.ts</code>.
+Serialization (blocks → YAML):
+<code>…/serialization/serialize/writer/blockToStepSerializer.ts</code> (+
+<code>ifBlockSerializer.ts</code>, tests beside them).</p>
+<h3 id="i1-connector-blocks-c01-c02-c09-c10-c13-c14-c19-c23-c28-c29-c33-c34-c36">I1 — Connector blocks (C01, C02, C09, C10, C13, C14, C19, C23, C28, C29, C33, C34, C36)</h3>
+<p>Files: <code>public/blocks/connector/**/*.json</code>, <code>public/blocks/index.json</code>,
+<code>…/catalog/stepAliases.ts</code>, <code>…/common/stepIdGenerator.ts</code> (check for
+hardcoded ids).</p>
+<ul>
+<li>C01/C02: ensure <code>negotiate.json</code> <code>uses</code> = <code>connector/consumer/negotiate</code>,
+  <code>initiate_transfer.json</code> <code>uses</code> = <code>connector/consumer/initiate_transfer</code>
+  (files already named right; the <code>uses</code> VALUE inside is what the parity
+  checker failed on — it previously pointed nowhere).</li>
+<li>C09: delete <code>stepAliases.ts</code> and every import/call (document importer).
+  Old documents using <code>flow/log</code>, <code>util/wait</code>, <code>http/call_dataplane</code>, bare
+  <code>base64</code>/<code>parse_kv</code> stop resolving — intended.</li>
+<li>C10: <code>negotiate.json</code> param <code>asset_id</code> (delete <code>offer_id</code> field — C11
+  decided ODRL-policy negotiation; the block feeds <code>policy</code> from a catalog
+  output instead). Rename any <code>catalog_target</code> output reference to
+  <code>catalog_asset_id</code>.</li>
+<li>C13: <code>pull_data_filtered_by_policy.json</code> param stays <code>expected_policies</code>
+  (engine renamed to match — verify the block, no change expected).</li>
+<li>C14/C23: <code>create_contract_def.json</code>: <code>contract_def_id</code> →
+  <code>contract_definition_id</code> (input + declared output); <code>contract_policy_id</code>
+  stays (engine renamed to match).</li>
+<li>C19: blocks already write <code>filters</code> — verify all four
+  (query_catalog_with_filters, both pull_data shortcuts, filter_expression
+  composer) and remove any <code>filter_expression</code> spelling.</li>
+<li>C28: <code>initiate_transfer.json</code> keeps <code>transfer_type</code> dropdown
+  (HttpData-PULL default / HttpData-PUSH / AmazonS3-PUSH) + add
+  <code>data_destination</code> (JSON field, only meaningful for PUSH).
+  Delete <code>agreement_id</code>/<code>asset_id</code> params from the block — the engine step
+  takes <code>negotiation_id</code> (verify the block offers <code>negotiation_id</code>).</li>
+<li>C29: <code>create_contract_def.json</code> gains <code>asset_selector</code> — an array of
+  criteria entries; reuse the filter-expression structural block pattern
+  (<code>…/registration/structure/filterExpressionBlock.ts</code>) for the repeatable
+  <code>operand_left/operator/operand_right</code> rows.</li>
+<li>C33/C34/C36 declared outputs: <code>negotiate.json</code> → <code>negotiation_id</code>,
+  <code>agreement_id</code>, <code>state</code>; <code>initiate_transfer.json</code> → <code>data_address</code>,
+  <code>edr_token</code>, <code>state</code> (NO <code>dataplane_endpoint</code>); <code>pull_data_filtered.json</code>
+  → add <code>agreement_id</code>.</li>
+</ul>
+<p>Test: <code>npx vitest run src/features/ide/features/block-editor/blocks/common/catalog</code>.</p>
+<h3 id="i2-dtr-blocks-c03-c05-c15-c37-c04c27-split">I2 — DTR blocks (C03, C05, C15, C37, C04/C27 split)</h3>
+<p>Files: <code>public/blocks/digital-twin-registry/*.json</code> → move/rename;
+<code>public/blocks/index.json</code>.</p>
+<ul>
+<li>C03: <code>register_shell.json</code> → <code>public/blocks/digital-twin/provider/create_shell_descriptor.json</code>,
+  <code>uses: digital-twin/provider/create_shell_descriptor</code>. NOTE C26: its flat
+  fields (<code>id_short</code>, <code>global_asset_id</code>, <code>specific_asset_ids</code>,
+  <code>submodel_descriptors</code>) now match the engine's
+  <code>digital-twin/provider/wizard/create_shell_descriptor</code> — decide per block:
+  the flat-field block targets the WIZARD id; add a separate raw-JSON block
+  for the plain id (JSON editor modal pattern, see
+  <code>…/blocks/json/</code>). Same logic for C05.</li>
+<li>C05: <code>add_submodel.json</code> → <code>digital-twin/provider/wizard/create_submodel_descriptor</code>
+  (flat fields incl. <code>aas_identifier</code> — C15 rename from <code>shell_id</code>), plus a
+  raw <code>create_submodel_descriptor</code> block (params <code>aas_identifier</code>,
+  <code>submodel_descriptor</code>).</li>
+<li>C37: every DTR block's declared outputs use <code>id</code> + <code>id_short</code>
+  (rename <code>shell_id</code>/<code>submodel_id</code>/<code>idShort</code> spellings).</li>
+<li>C04/C27: replace <code>lookup_shell.json</code> with TWO blocks:</li>
+<li><code>digital-twin/provider/get_shell_descriptor.json</code> — param
+     <code>aas_identifier</code>; outputs <code>id</code>, <code>id_short</code> (+ document passthrough).</li>
+<li><code>digital-twin-registry/consumer/dataplane/lookup_shell.json</code> — uses id
+     EXACTLY that 4-segment string; params <code>specific_asset_ids</code> (array),
+     <code>dataplane_url</code>, <code>edr_token</code> — copy the class-typed input pattern from
+     <code>public/blocks/connector/dataplane/http_call_dataplane.json</code> (its
+     <code>dataplane_url</code>/<code>edr_token</code> fields accept matching prior outputs);
+     outputs <code>shell_ids</code>, <code>shell_descriptors</code>.</li>
+<li>Update <code>index.json</code> for all adds/removes/moves.</li>
+</ul>
+<p>Test: <code>npx vitest run -t dtr</code> plus catalog tests.</p>
+<h3 id="i3-wizard-blocks-mockhttp-fields-flowif-wiring-c26-c17-c30-c31-c38-c39-c06">I3 — Wizard blocks, mock/http fields, flow/if wiring (C26, C17, C30, C31, C38, C39, C06)</h3>
+<ul>
+<li>C26: add <code>public/blocks/connector/provider/wizard/create_asset.json</code> and
+  <code>wizard/create_policy.json</code> matching the engine wizard field lists (E5).
+  The EXISTING <code>create_asset.json</code>/<code>create_policy.json</code> flat-field blocks:
+  re-point their flat fields to the wizard ids OR convert them to raw-JSON
+  payload blocks (<code>asset</code>/<code>policy</code> single JSON field via the JSON editor
+  modal) — end state: one block per engine step, names aligned with E5.</li>
+<li>C30: <code>http/http_call.json</code> gains <code>query_params</code> (key/value rows or JSON
+  object field).</li>
+<li>C31: <code>mock/mock_endpoint.json</code> gains <code>response_headers</code>.</li>
+<li>C38: <code>mock_endpoint.json</code> outputs → <code>endpoint_id</code>, <code>base_mock_url</code>,
+  <code>full_mock_url</code> (replace <code>mock</code> bare-string output; the whole-instance
+  output is what C17's wait block consumes — declare the step output class so
+  the wait block's <code>mock</code> input can accept it).</li>
+<li>C17: <code>wait/wait_for_call.json</code> <code>mock</code> input becomes class-typed, accepting
+  the mock/api output instance (dropdown-of-prior-outputs pattern —
+  <code>…/common/fields/dropdownProviders.ts</code> / <code>typedInputs.ts</code>).</li>
+<li>C39: <code>wait_for_call.json</code> outputs: <code>request_method</code>, <code>request_path</code>,
+  <code>request_headers</code>, <code>request_body</code>, <code>request_query_params</code>, <code>elapsed_ms</code>.</li>
+<li>C06: engine now has <code>flow/if</code> — align <code>public/blocks/flow/if.json</code> params
+  (<code>condition</code>, <code>then</code>, <code>else</code>) and outputs (<code>branch_taken</code>,
+  <code>condition_result</code>); verify <code>ifBlockSerializer.ts</code> emits nested step lists
+  under <code>then:</code>/<code>else:</code>; <code>flow/condition.json</code> stays a structural composer
+  (no standalone <code>uses</code> execution) feeding the condition string. Remove any
+  "engine doesn't have it" special-casing (grep <code>flow/if</code> in
+  <code>monacoSetup.ts</code>, <code>complianceRules.ts</code>).</li>
+</ul>
+<p>Tests: <code>npx vitest run src/features/ide/features/block-editor</code> (serialization
++ catalog suites).</p>
+<h3 id="i4-sse-typed-events-c46">I4 — SSE typed events (C46)</h3>
+<p>BLOCKED until E8's <code>docs/developer/execution-events.md</code> exists in the engine
+repo — read it first; do not guess shapes.</p>
+<p>Files (all currently string-sniff <code>step_type</code> / hardcode <code>ASSERTION_FAILED</code>):
+<code>src/features/ide/store/execution/sseStream.ts</code>,
+<code>src/features/tck-executions/models/sse.ts</code>,
+<code>src/features/tck-executions/adapters/parseSse.ts</code>,
+<code>src/features/tck-executions/views/execution/liveTrace.ts</code>,
+<code>src/features/tck-executions/services/tckExecutionsService.ts</code>,
+<code>src/features/tck-executions/services/realTckExecutionsService.ts</code>,
+fixtures <code>src/features/tck-executions/data/fixtures/*</code>.</p>
+<ul>
+<li><code>models/sse.ts</code>: discriminated union on <code>kind</code>, one member per engine event
+  kind, shapes copied exactly from execution-events.md.</li>
+<li><code>parseSse.ts</code> / <code>sseStream.ts</code> / <code>liveTrace.ts</code> / services: switch on
+  <code>kind</code>; <code>ASSERTION_FAILED</code> display state comes from the <code>assertion_result</code>
+  event, not from <code>step_type.includes("assert")</code>.</li>
+<li>Update fixtures (<code>extraTraceSpecs.ts</code>, <code>sseFromSpec.test.ts</code>) to emit the
+  new event shapes.</li>
+<li>Behavior-preserving: same UI outcomes for the same underlying happenings.</li>
+</ul>
+<p>Test: <code>npx vitest run src/features/tck-executions</code>.</p>
+<h3 id="i5-ownership-sync-cleanup-c41c45">I5 — Ownership &amp; sync cleanup (C41–C45)</h3>
+<ul>
+<li>C41: IDE catalog stays source of truth — a standing constraint, no code.</li>
+<li>C42: delete <code>…/catalog/runtimeStepRegistry.ts</code> + all imports; the loaded
+  catalog is the only registry the IDE consults.</li>
+<li>C43: delete <code>STEP_PARITY.md</code> (repo root).</li>
+<li>C45: <code>src/features/ide/features/yaml-editor/monacoSetup.ts</code> and
+  <code>src/features/ide/services/validation/complianceRules.ts</code>: replace
+  hardcoded step-id lists with derivations from the loaded catalog
+  (<code>catalogLoader.ts</code> exports). New steps must never require a hand-edit
+  there again.</li>
+<li>C44: <code>…/serialize/writer/blockToStepSerializer.ts</code> (+
+  <code>utilityStepSerializers.ts</code> if still present — search first): replace
+  per-step special cases with a generic walk over the block's catalog entry
+  (declared <code>with:</code> fields → params, declared <code>returns:</code> → outputs).
+  Composer/structural blocks legitimately keep custom code: filter/condition
+  expressions, flow/if nested lists, JSON payload modal blocks, wizard forms.
+  HIGHEST-RISK cluster — run the entire serialization test suite, not a
+  slice.</li>
+</ul>
+<p>After: repo-wide grep <code>runtimeStepRegistry|STEP_PARITY</code> must be empty.</p>
+<p>Test: <code>npx vitest run src/features/ide</code> then <code>npm test</code>.</p>
+<h3 id="i6-docs-regen">I6 — Docs regen</h3>
+<ul>
+<li>Regenerate/update <code>AVAILABLE_STEPS.md</code> from the final catalog (check
+  <code>package.json</code> tests for a generator; if hand-maintained, update the
+  step tables to the final ids/params/outputs — cross-check against
+  <code>public/blocks/index.json</code>).</li>
+<li><code>CHANGELOG.md</code> entry for the contract migration.</li>
+</ul>
+<hr />
+<h2 id="final-verification-both-repos">FINAL VERIFICATION (both repos)</h2>
+<ol>
+<li>Engine: <code>poetry run pytest -q</code> → all green.</li>
+<li>IDE: <code>npm test</code> → all green.</li>
+<li>Parity: <code>poetry run python tools/compare_ide_parity.py --ide &lt;cx-test-suite&gt;</code>
+   → <strong>0 divergences</strong>. Every remaining line is a bug in this migration;
+   fix it, don't rationalize it.</li>
+<li>The parity checker itself may need updating where decisions changed the
+   rules of the game (e.g. it must know <code>flow/condition</code> and
+   <code>connector/consumer/filter_expression</code> are composer blocks, and that
+   <code>digital-twin-registry/consumer/dataplane/lookup_shell</code> is a real engine
+   step) — read <code>tools/compare_ide_parity.py</code> (353 lines) and adjust its
+   expectations to the new contract if it hard-codes old ones.</li>
+<li>Commit messages: one commit per cluster (<code>E2</code>…<code>I6</code>), message naming the
+   conflict ids covered. Do not push or open PRs without the owner's say-so.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Eclipse Tractus-X Contributors
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "navigation.instant", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../assets/javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

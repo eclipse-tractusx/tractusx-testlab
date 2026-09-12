@@ -1,0 +1,363 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclipse-tractusx.github.io/tractusx-testlab/schemas/tck-manifest-v2.schema.json",
+  "title": "TCK Manifest v2",
+  "description": "JSON Schema for Tractus-X TestLab TCK manifests (kind: tck) using YAML Syntax v2. Validates structural shape per ADR-0010 and ADR-0021 (unified variables). Licensed under Apache-2.0: https://www.apache.org/licenses/LICENSE-2.0",
+  "type": "object",
+  "required": ["kind", "testlab", "id", "namespace", "metadata", "env", "tests"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "tck",
+      "description": "Manifest kind discriminator. Must be 'tck' for TCK manifests."
+    },
+    "testlab": {
+      "type": "string",
+      "description": "TestLab syntax version identifier (e.g., 'v1-alpha')."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,99}$",
+      "description": "Unique TCK identifier. Lowercase alphanumeric with hyphens/underscores."
+    },
+    "namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "TCK namespace for scoping (e.g., 'ccm-v0.0.1')."
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "env": {
+      "$ref": "#/$defs/env"
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "List of test file path references to execute."
+    }
+  },
+  "$defs": {
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable TCK name."
+        },
+        "version": {
+          "type": "string",
+          "description": "TCK version string (e.g., 'v0.0.1')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of what this TCK validates."
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/author"
+          },
+          "description": "List of TCK authors."
+        },
+        "copyright_holders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Copyright holder statements (e.g., '2026 Catena-X Automotive Network e.V.')."
+        },
+        "license": {
+          "type": "string",
+          "description": "SPDX license identifier (e.g., 'Apache-2.0')."
+        },
+        "standards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/standard"
+          },
+          "description": "Standards validated by this TCK."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Categorization tags for filtering and grouping."
+        },
+        "dataspace_version": {
+          "type": "string",
+          "enum": ["saturn", "jupiter"],
+          "description": "Target dataspace version. 'saturn' = EDC v0.11+ / DSP 2025-1, 'jupiter' = EDC v0.8–0.10."
+        }
+      }
+    },
+    "author": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Author full name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Author email address."
+        },
+        "company": {
+          "type": "string",
+          "description": "Author company or organization."
+        }
+      }
+    },
+    "standard": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Standard identifier (e.g., 'CX-0135')."
+        },
+        "organization": {
+          "type": "string",
+          "description": "Organization responsible for the standard (e.g., 'Catena-X Automotive Network e.V.')."
+        },
+        "version": {
+          "type": "string",
+          "description": "Standard version (e.g., 'v3.1.0')."
+        }
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "variables": {
+          "description": "Environment variables (ADR-0021 unified-variables model). Either a simple key-value map referenced via ${{ env.<name> }}, or an array of typed variable definitions referenced via ${{ env.<id>.<field> }}. Complex prerequisites such as access policies are declared here with 'config/connector/policy'.",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": ["string", "number", "boolean", "object"]
+              },
+              "description": "Simple key-value form. Referenced via ${{ env.<name> }}."
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/variableDefinition"
+              },
+              "description": "Typed variable definitions. Referenced via ${{ env.<id>.<field> }}."
+            }
+          ]
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/serviceDefinition"
+          },
+          "description": "Array of service definitions. Each service has a name, uses, and with block."
+        },
+        "schemas": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/schemaReference"
+          },
+          "description": "Named schema references. Keys become referenceable schema identifiers."
+        },
+        "testdata": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/testdataReference"
+          },
+          "description": "Named test data file references with MIME types."
+        }
+      },
+      "description": "Environment configuration: variables, services, schemas, and testdata."
+    },
+    "schemaReference": {
+      "type": "object",
+      "required": ["file"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Relative file path to the JSON Schema file."
+        }
+      }
+    },
+    "testdataReference": {
+      "type": "object",
+      "required": ["file", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Relative file path to the test data file."
+        },
+        "type": {
+          "type": "string",
+          "description": "MIME type of the test data file (e.g., 'application/json', 'application/pdf')."
+        }
+      }
+    },
+    "serviceDefinition": {
+      "type": "object",
+      "required": ["name", "uses", "with"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,49}$",
+          "description": "Service identifier. Referenced via ${{ env.services.name }}."
+        },
+        "uses": {
+          "type": "string",
+          "pattern": "^service/[a-z][a-z0-9_]*$",
+          "description": "Service type from the service/ namespace (e.g., 'service/connector_service')."
+        },
+        "with": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Service configuration parameters. Structure depends on the service type. May include auth block."
+        }
+      }
+    },
+    "variableDefinition": {
+      "type": "object",
+      "required": ["id", "uses"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,49}$",
+          "description": "Unique variable identifier. Referenced via ${{ env.<id> }}."
+        },
+        "uses": {
+          "type": "string",
+          "pattern": "^(variable/[a-z][a-z0-9_/]*|config/[a-z][a-z0-9_/]*)$",
+          "description": "Variable capability. 'variable/type/<type>' declares a typed value (a constant 'value' or 'source: input' to prompt the user); 'config/connector/policy' declares a reusable access policy. Referenced via ${{ env.<id> }}."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable variable label shown in the UI."
+        },
+        "with": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Variable inputs: a constant 'value', or 'source: input' to prompt the user at runtime."
+        },
+        "returns": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/variableReturnField"
+          },
+          "description": "Named output declarations produced by this variable. Referenced via ${{ env.<id> }}."
+        }
+      }
+    },
+    "variableReturnField": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "integer", "boolean", "object", "array", "any"],
+          "description": "Data type of the returned value."
+        },
+        "class": {
+          "type": "string",
+          "description": "Semantic class for IDE variable filtering (e.g., 'url', 'bpn', 'policy')."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable label for input variables. Shown in the input form."
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "Placeholder text for input variables. Shown as input hint."
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["id", "uses", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,49}$",
+          "description": "Unique step identifier within this scope. Referenced via ${{ steps.id.field }}."
+        },
+        "uses": {
+          "type": "string",
+          "description": "Step type reference (e.g., 'connector/query_catalog', 'util/generate_uuid')."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable step label displayed in the IDE."
+        },
+        "with": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Step input parameters. Values may use ${{ }} expressions for variable references."
+        },
+        "returns": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/returnField"
+          },
+          "description": "Named output declarations. Each key becomes a referenceable variable."
+        },
+        "validate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assertion"
+          },
+          "description": "Post-step validation assertions."
+        }
+      }
+    },
+    "returnField": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "integer", "boolean", "object", "array", "any"],
+          "description": "Data type of the returned value."
+        },
+        "class": {
+          "type": "string",
+          "description": "Semantic class for IDE variable filtering (e.g., 'uuid', 'asset_id', 'offer_id')."
+        }
+      }
+    },
+    "assertion": {
+      "type": "object",
+      "required": ["uses"],
+      "additionalProperties": true,
+      "properties": {
+        "uses": {
+          "type": "string",
+          "description": "Assertion type reference (e.g., 'validate/assert', 'validate/schema')."
+        },
+        "with": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Assertion input parameters (e.g., input, operator, value)."
+        }
+      }
+    }
+  }
+}

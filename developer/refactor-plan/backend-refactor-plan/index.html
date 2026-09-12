@@ -1,0 +1,4561 @@
+<!--
+  Eclipse Tractus-X - Tractus-X TestLab
+
+  Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+  See the NOTICE file(s) distributed with this work for additional
+  information regarding copyright ownership.
+
+  This program and the accompanying materials are made available under the
+  terms of the Apache License, Version 2.0 which is available at
+  https://www.apache.org/licenses/LICENSE-2.0.
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+  either express or implied. See the
+  License for the specific language govern in permissions and limitations
+  under the License.
+
+  SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- It was reviewed and tested by a human committer. -->
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Visual test authoring tool for Eclipse Tractus-X dataspaces">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/logo_tractus-x-min.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Backend refactor plan - Tractus-X TestLab Documentation</title>
+      
+    
+    
+  
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../../assets/stylesheets/orange-black-theme.css">
+  <style>
+    .md-header__inner {
+      display: flex !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      height: 3rem !important;
+      padding: 0 0.1rem !important;
+      gap: 0 !important;
+      position: relative !important;
+    }
+
+    .md-header__button.md-logo {
+      order: 1 !important;
+      flex: 0 0 auto !important;
+      margin: 0 !important;
+      padding: 0.2rem 0.1rem !important;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+
+    .md-header__button[for="__drawer"] {
+      order: 2 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0.2rem !important;
+      display: none !important;
+    }
+
+    @media screen and (max-width: 1220px) {
+      .md-header__button[for="__drawer"] {
+        display: inline-flex !important;
+      }
+    }
+
+    .md-header__title {
+      order: 3 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0 0 0.15rem !important;
+      overflow: visible !important;
+      font-family: 'Manrope', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 1.2rem !important;
+      letter-spacing: -0.02em !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      line-height: 3rem !important;
+      height: 3rem !important;
+    }
+
+    .md-header__title .md-header__ellipsis {
+      font-size: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      display: none !important;
+    }
+
+    .md-header__title::before {
+      content: "Tractus-X TestLab" !important;
+      color: #ffffff !important;
+      font-size: 1.2rem !important;
+      font-weight: 700 !important;
+      white-space: nowrap !important;
+    }
+
+    .md-header__title::after {
+      content: "docs" !important;
+      color: rgba(255, 215, 0, 0.7) !important;
+      font-size: 0.5rem !important;
+      font-weight: 500 !important;
+      background: none !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.12em !important;
+      white-space: nowrap !important;
+      align-self: flex-start !important;
+      margin-top: 0.55rem !important;
+      margin-left: -0.2rem !important;
+    }
+
+    .md-search {
+      order: 5 !important;
+      flex: 1 1 auto !important;
+      max-width: none !important;
+      width: auto !important;
+      margin: 0 0 0 0.75rem !important;
+    }
+
+    label[for="__search"] {
+      order: 4 !important;
+      flex: 0 0 auto !important;
+    }
+
+    .md-header .md-version {
+      order: 6 !important;
+      flex: 0 0 auto !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      margin: 0 0.4rem !important;
+    }
+  </style>
+
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/orange-black-theme.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#backend-refactor-plan-srctractusx_testlab" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Tractus-X TestLab Documentation" class="md-header__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tractus-X TestLab Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Backend refactor plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../specification/" class="md-tabs__link">
+          
+  
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../tutorials/" class="md-tabs__link">
+          
+  
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../contributing/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Tractus-X TestLab Documentation" class="md-nav__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    Tractus-X TestLab Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Welcome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/specification/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Terminology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/specification/functional-requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functional Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/specification/data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/specification/constraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Constraints & Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/specification/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Walkthrough
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/walkthrough/writing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/walkthrough/compiling-packages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiling Packages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/walkthrough/executing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Executing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/reference/syntax/cheat-sheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax Cheat Sheet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../specification/syntax/tck-syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TCK Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/create-step-executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create a Step Executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/add-service-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Service Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/add-assertion-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add an Assertion Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/add-validation-rule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Validation Rule
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/development-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-conformity-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CCM Conformity Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Certificate Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Certificate Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/certificate-management-ide-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-business-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Business Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/ccm-architecture-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../product-scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Scope
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI-Assisted Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Contracts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Step Contracts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../step-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single Source of Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ide-engine-contract-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IDE-Engine Contract Parity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contract-conflict-decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Conflict Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contract-migration-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Migration Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../block-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../creating-a-step/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating a Step
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../execution-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../environment-injection-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Injection Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../step-reference-drift-report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13" id="__nav_5_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decision Records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/ADR-0000-template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0000 Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_3" id="__nav_5_13_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Backend
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0005-filesystem-participant-manager-with-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0005 Participant Manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0012-compilation-and-packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0012 Compilation and Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0014-flat-compilation-intermediate-representation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0014 Flat Compilation IR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0015-package-asset-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0015 Package Asset Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0016-execution-trace-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0016 Execution Trace Format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0017-input-callback-endpoint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0017 Input Callback Endpoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0019-service-requirements-and-engine-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0019 Service Requirements and Engine Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0022-tck-static-inspection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0022 TCK Static Inspection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0023-variable-scope-annotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0023 Variable Scope Annotation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/backend/ADR-0024-test-skip-configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0024 Test-Level Skip Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_4" id="__nav_5_13_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Shared
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0003-sse-for-live-ide-execution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0003 SSE for Live Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0008-test-case-to-tck-rename/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0008 TCK Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0009-typed-variable-class-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0009 Typed Variable Class System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0010-yaml-syntax-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0010 YAML Syntax v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0011-environment-and-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0011 Environment and Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0018-unified-variables-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0018 Unified Variables Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0021-remove-precondition-concept/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0021 Remove Precondition Concept
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-records/shared/ADR-0025-assertions-read-declared-returns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0025 Assertions Read Declared Returns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-objective-a-deeply-modular-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Objective — a deeply modular backend
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0. Objective — a deeply modular backend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#guardrail-no-over-engineering-non-negotiable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guardrail — no over-engineering (non-negotiable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doctrine-behavior-contract-unchanged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Doctrine — behavior + contract unchanged
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-current-state-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Current-State Assessment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Current-State Assessment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1a-near-limit-watch-list-actual-line-counts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1a. Near-limit watch list (actual line counts)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1b-multi-responsibility-files-below-the-limit-but-bundling-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1b. Multi-responsibility files (below the limit, but bundling concerns)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1c-flat-packages-that-should-nest-deep-modularity-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1c. Flat packages that should nest (deep-modularity targets)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-target-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Target Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Target Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-layering-import-rules-apply-at-every-depth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Layering &amp; import rules (apply at every depth)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-complete-nested-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Complete nested tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-where-the-structure-changes-seam-not-arbitrary-cut" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Where the structure changes (seam, not arbitrary cut)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layer-boundary-notes-blur-to-watch-not-fix-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer-boundary notes (blur to watch, not fix-now)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-module-responsibility-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Module / Responsibility Map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-migration-phases-leaf-first-deep-modularity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Migration Phases (leaf-first, deep modularity)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Migration Phases (leaf-first, deep modularity)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-ordering-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase ordering &amp; status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-stepsconnectorconsumepy-p1-at-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1 — steps/connector/consume.py (P1, at limit) ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-playerexecution_phase_runnerspy-p1-dedup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2 — player/execution/_phase_runners.py (P1, dedup)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-stepsconditionspy-p2-grammar-isolation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3 — steps/conditions.py (P2, grammar isolation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-stepspreconditionpolicy_configpy-p2-dedupe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4 — steps/precondition/policy_config.py (P2, dedupe)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-5-steps_checks-package-p2-flat-nested" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 5 — steps/_checks/ package (P2, flat → nested)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-6-compiler-nesting-p2-flat-nested" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 6 — compiler/ nesting (P2, flat → nested)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-7-servicesmanagerpy-split-p2-factory-vs-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 7 — services/manager.py split (P2, factory vs lifecycle)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-8-server-nesting-p2-flat-nested" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 8 — server/ nesting (P2, flat → nested)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-9-playerexecutionplayerpy-split-p3-extract-formatter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 9 — player/execution/player.py split (P3, extract formatter)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-10-watch-list-guard-p3-no-op-unless-touched" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 10 — Watch-list guard (P3, no-op unless touched)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-11-models-conditional-nesting-p3-guardrail-gated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 11 — models/ conditional nesting (P3, guardrail-gated)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Risks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Risks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cross-codebase-contract-touch-points-ship-in-lockstep-with-frontend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-codebase contract touch points (ship in lockstep with frontend)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-acceptance-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Acceptance Criteria
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/eclipse-tractusx/tractusx-testlab/edit/main/docs/developer/refactor-plan/backend-refactor-plan.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<!--
+ Eclipse Tractus-X - Tractus-X TestLab
+
+ Copyright (c) 2026 Catena-X Automotive Network e.V.
+ Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+ Licensed under the Creative Commons Attribution 4.0 International License
+ (the "License"); you may not use this file except in compliance with the
+ License. You may obtain a copy of the License at
+
+    https://creativecommons.org/licenses/by/4.0/
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+
+ SPDX-License-Identifier: CC-BY-4.0
+-->
+
+<h1 id="backend-refactor-plan-srctractusx_testlab">Backend Refactor Plan — <code>src/tractusx_testlab/</code></h1>
+<blockquote>
+<p>All phases obey the Refactor Charter in <a href="../">README.md</a> — structural-only, no new features, same API contracts / CLI / runtime behavior / <code>.stck</code> output, stable throughout, legacy/dead code removal allowed, end goal production-ready (clean, concise, modular).</p>
+<p><strong>Scope:</strong> structural-only. No behavior, no contract, no <code>.stck</code>/CLI/API change.
+Every phase ends green on the test suite and type/lint checks. See
+<a href="../">README.md</a> for shared contracts and the lockstep rule.</p>
+</blockquote>
+<p>The backend already has a clean <strong>layered</strong> package layout (<code>models/ · services/ ·
+steps/ · compiler/ · player/ · server/ · …</code>) and zero files over 300 lines. This
+plan now drives that architecture all the way down: <strong>every concern becomes a
+module in its own right, nested as deep as real responsibility seams require.</strong></p>
+<hr />
+<h2 id="0-objective-a-deeply-modular-backend">0. Objective — a deeply modular backend</h2>
+<p><strong>The goal is a deeply modular backend, not merely "split files over 300 lines."</strong></p>
+<p>Every concern — step domains, compile passes, IR assembly, validation rules,
+expression grammar, server routes, streaming, model groups, and service wiring —
+becomes a <strong>module in its own right</strong>: a package with a single nameable
+responsibility, its own barrel (<code>__init__.py</code>) as public surface, and freedom to
+nest into <strong>sub-packages within sub-packages</strong> wherever a real seam exists.
+Modularity is the objective; file size is only one of several triggers that reveal
+where modularity is missing.</p>
+<p><strong>Triggers that signal a module is needed</strong> (any one is sufficient):</p>
+<ol>
+<li><strong>A file bundles more than one nameable responsibility</strong> — even well under 300
+   lines. A 180-line module that holds an orchestrator <em>plus</em> its grammar regexes
+   <em>plus</em> parse helpers is three modules wearing one filename.</li>
+<li><strong>A package is a flat dump of siblings</strong> that obviously cluster by concern (e.g.
+   one <code>compiler/</code> folder mixing IR assembly, lowering passes, and validation
+   rules that are really <em>ir/</em> + <em>validation/</em> sub-packages).</li>
+<li><strong>A file exceeds 300 lines</strong> — the loudest trigger, but the <em>last</em> one to rely
+   on. By the time a module is oversized, the missing seams are already obvious.</li>
+<li><strong>The same logic appears twice</strong> (e.g. three phase loops re-implementing one
+   per-step iteration) — extract it into one importable module.</li>
+</ol>
+<p><strong>This plan therefore covers the whole backend</strong>, not only today's near-limit
+files. Sub-300 modules and flat packages that bundle responsibilities are
+modularized too.</p>
+<h3 id="guardrail-no-over-engineering-non-negotiable">Guardrail — no over-engineering (non-negotiable)</h3>
+<p>Nest <strong>only</strong> where a real, nameable responsibility seam exists. Each module must
+have a single nameable purpose and a minimal public surface. <strong>Do not</strong> create a
+single-function "module" just to add depth, do not split a cohesive unit, and do
+not invent a package that holds one stray file with no sibling concern (unless the
+§2 tree defines that seam). A private helper used by exactly one module stays a
+<code>_helper.py</code> next to its caller — it does not become a package. The boring,
+readable structure a human can navigate always wins over artificial depth.</p>
+<h3 id="doctrine-behavior-contract-unchanged">Doctrine — behavior + contract unchanged</h3>
+<p>Modularization is <strong>purely structural</strong>. No phase changes runtime behavior, the
+compiled <code>.stck</code> output, the CLI surface, the HTTP API, or any observable contract.
+Every phase is a <strong>pure move + barrel re-export</strong> — public import paths
+(<code>from tractusx_testlab... import ...</code>) are preserved, tests are unchanged, and the
+<code>@step(...)</code> registry resolves every moved step type as before. The 300-line
+acceptance check in §6 remains, but it is a <strong>floor</strong>, not the target — passing it
+does not mean a package is modular.</p>
+<blockquote>
+<p><strong>Baseline note (test suite):</strong> there is a known set of <strong>20 pre-existing CCM
+fixture-path failures</strong> (<code>test_ccm_compile_all.py</code>, <code>test_ccm_integration_parsing.py</code>)
+caused by concurrent <code>docs/examples</code> renames and an empty <code>tests/fixtures/</code> — they
+are <strong>unrelated to this refactor</strong> and out of scope here. A phase is "green" when
+it introduces <strong>no new</strong> failures beyond this baseline.</p>
+</blockquote>
+<hr />
+<h2 id="1-current-state-assessment">1. Current-State Assessment</h2>
+<p>The backend is <strong>already layered and healthy</strong> — but layering is not the same as
+deep modularity. Several packages are still <strong>flat dumps</strong> of single-concern files
+that should cluster into sub-packages, and a few modules <strong>bundle two
+responsibilities</strong> under one filename. Those are the seams this plan targets.
+Baseline metrics (verified 2026-05-29):</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Files exceeding 300 lines</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td><code>except Exception</code> / bare <code>except:</code></td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td><code>print(</code> (excluding <code>_fingerprint</code>)</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>Layered package layout</td>
+<td>Intact (12 top-level layers)</td>
+</tr>
+</tbody>
+</table>
+<p>This is <strong>not</strong> a rescue refactor — the layers are sound. But "no file over 300
+lines" is a <strong>floor, not the goal</strong>. The work below makes the backend <em>deeply</em>
+modular: flat single-concern packages gain sub-packages along real seams, and the
+handful of files that bundle two responsibilities split into focused modules. The
+near-limit files are simply the loudest of these triggers.</p>
+<h3 id="1a-near-limit-watch-list-actual-line-counts">1a. Near-limit watch list (actual line counts)</h3>
+<p>These files are within ~40 lines of the 300 limit. They are the <strong>loudest</strong>
+trigger, but not the only one — several already double as multi-responsibility
+modules (§1b/§1c).</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th style="text-align: right;">Lines</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../../src/tractusx_testlab/compiler/_ir_helpers.py">compiler/_ir_helpers.py</a></td>
+<td style="text-align: right;">299</td>
+<td>Split into <code>compiler/ir/</code> (Phase 6)</td>
+</tr>
+<tr>
+<td><a href="../../../src/tractusx_testlab/server/streaming.py">server/streaming.py</a></td>
+<td style="text-align: right;">298</td>
+<td>Split into <code>server/streaming/</code> (Phase 8)</td>
+</tr>
+<tr>
+<td><a href="../../../src/tractusx_testlab/player/execution/player.py">player/execution/player.py</a></td>
+<td style="text-align: right;">298</td>
+<td>Extract trace/result formatting (Phase 9)</td>
+</tr>
+<tr>
+<td><a href="../../../src/tractusx_testlab/compiler/ir_builder.py">compiler/ir_builder.py</a></td>
+<td style="text-align: right;">278</td>
+<td>Split into <code>compiler/ir/</code> (Phase 6)</td>
+</tr>
+<tr>
+<td><a href="../../../src/tractusx_testlab/server/routes.py">server/routes.py</a></td>
+<td style="text-align: right;">271</td>
+<td>Split into <code>server/routes/</code> (Phase 8)</td>
+</tr>
+<tr>
+<td><a href="../../../src/tractusx_testlab/steps/conditions.py">steps/conditions.py</a></td>
+<td style="text-align: right;">267</td>
+<td>Grammar isolation (Phase 3)</td>
+</tr>
+<tr>
+<td><a href="../../../src/tractusx_testlab/player/loading/_parser.py">player/loading/_parser.py</a></td>
+<td style="text-align: right;">267</td>
+<td>Watch (Phase 10 watch-list)</td>
+</tr>
+<tr>
+<td><a href="../../../src/tractusx_testlab/services/manager.py">services/manager.py</a></td>
+<td style="text-align: right;">262</td>
+<td>Split factory vs lifecycle (Phase 7)</td>
+</tr>
+<tr>
+<td><a href="../../../src/tractusx_testlab/cli/compile.py">cli/compile.py</a></td>
+<td style="text-align: right;">260</td>
+<td>Watch (Phase 10 watch-list)</td>
+</tr>
+<tr>
+<td><a href="../../../src/tractusx_testlab/steps/_checks.py">steps/_checks.py</a></td>
+<td style="text-align: right;">213</td>
+<td>Split into <code>steps/_checks/</code> (Phase 5)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="1b-multi-responsibility-files-below-the-limit-but-bundling-concerns">1b. Multi-responsibility files (below the limit, but bundling concerns)</h3>
+<p>These are not near the limit, but mix two concerns under one roof. Extracting the
+secondary concern improves reuse and testability without changing behavior.</p>
+<ul>
+<li><strong><a href="../../../src/tractusx_testlab/steps/connector/consume.py">steps/connector/consume.py</a></strong> — <em>(✅ Phase 1, done)</em> split into <code>_dsp_consumer.py</code> + <code>catalog_query.py</code> + <code>negotiate.py</code> + <code>transfer.py</code>; <code>consume.py</code> is now a barrel.</li>
+<li><strong><a href="../../../src/tractusx_testlab/player/execution/_phase_runners.py">player/execution/_phase_runners.py</a></strong> (180 lines) — <code>execute_setup_steps</code>, <code>execute_main_steps</code>, <code>execute_teardown_steps</code> each re-implement the same per-step loop (monitor → condition gate → resolve step class → run → collect). <em>(Phase 2)</em></li>
+<li><strong><a href="../../../src/tractusx_testlab/steps/conditions.py">steps/conditions.py</a></strong> — <code>ConditionEvaluator</code> plus <strong>eight</strong> module-level compiled regexes and parsing free-functions for the <code>${{ ... }}</code> / legacy <code>${ }</code> expression grammar. <em>(Phase 3)</em></li>
+<li><strong><a href="../../../src/tractusx_testlab/steps/precondition/policy_config.py">steps/precondition/policy_config.py</a></strong> — <code>_build_jupiter_policy</code> and <code>_build_saturn_policy</code> are two version-specific ODRL body builders embedded next to the step class. <em>(Phase 4)</em></li>
+<li><strong><a href="../../../src/tractusx_testlab/steps/_checks.py">steps/_checks.py</a></strong> (213) — bundles distinct check families (status/equality/JSONPath/schema) that the assertion + condition steps share; cluster into a <code>steps/_checks/</code> package. <em>(Phase 5)</em></li>
+<li><strong><a href="../../../src/tractusx_testlab/services/manager.py">services/manager.py</a></strong> (262) — service <strong>factory/creation</strong> wiring mixed with <strong>lifecycle</strong> (start/stop/own) management. <em>(Phase 7)</em></li>
+<li><strong><a href="../../../src/tractusx_testlab/player/execution/player.py">player/execution/player.py</a></strong> (298) — orchestration mixed with result/execution-trace <strong>formatting</strong>; extract the formatter. <em>(Phase 9)</em></li>
+</ul>
+<h3 id="1c-flat-packages-that-should-nest-deep-modularity-targets">1c. Flat packages that should nest (deep-modularity targets)</h3>
+<p>These packages are <strong>single-layer dumps</strong> whose files obviously cluster by
+sub-concern. Each becomes a small set of nested sub-packages along the seam — the
+core of the deep-modularity goal beyond the oversized-file triggers.</p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Today (flat)</th>
+<th>Real sub-concerns → sub-packages</th>
+<th style="text-align: center;">Phase</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compiler/</code></td>
+<td>10 sibling files (orchestrator + IR assembly + lowering + validation + assets + expressions + fingerprint)</td>
+<td><code>ir/</code> (builder, helpers, assets, lowering) · <code>validation/</code> (validator, rules, expressions) · top-level orchestrator/packager/fingerprint</td>
+<td style="text-align: center;">6</td>
+</tr>
+<tr>
+<td><code>server/</code></td>
+<td>9 sibling files (app + routes + compile + callbacks + streaming + buffer + registry + storage)</td>
+<td><code>routes/</code> (route groups: compile/run/callback) · <code>streaming/</code> (SSE formatter + lifecycle + buffer) · top-level app/storage/registry</td>
+<td style="text-align: center;">8</td>
+</tr>
+<tr>
+<td><code>models/</code></td>
+<td>8 flat domain files</td>
+<td>keep flat <strong>unless</strong> a file bundles groups: <code>enums.py</code> (service/phase/state enum families) and <code>results.py</code> (step + assertion + trace results) are the only nest candidates → <code>enums/</code>, <code>results/</code></td>
+<td style="text-align: center;">11</td>
+</tr>
+<tr>
+<td><code>authoring/</code></td>
+<td>test + parser + registry + <code>_builders</code></td>
+<td>builders cluster (<code>_builders.py</code>) → <code>_builders/</code> only if it grows; otherwise leave — <strong>guardrail check</strong></td>
+<td style="text-align: center;">10 (watch)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Guardrail reminder:</strong> <code>config/</code>, <code>logging/</code>, <code>syntax/</code>, <code>security/crypto</code>,
+<code>security/trust</code>, <code>services/participants.py</code>, and the already-nested <code>player/</code>,
+<code>steps/connector|industry|precondition|utility|server|pull_data</code> packages are
+<strong>already correctly modular</strong> — they are explicitly <strong>out of scope</strong>. Do not nest
+them further; there is no real seam to add.</p>
+</blockquote>
+<hr />
+<h2 id="2-target-architecture">2. Target Architecture</h2>
+<p>The layered structure is <strong>confirmed</strong>. This section defines the <strong>complete nested
+end-state</strong> the migration phases (§4) converge to — not just the top-level layers,
+but every meaningful sub-package down to the responsibility seam. Items marked
+<strong>(new)</strong> are introduced by a phase; everything else exists today. Each directory
+owns one concern and exposes its public surface via a barrel <code>__init__.py</code>.</p>
+<h3 id="21-layering-import-rules-apply-at-every-depth">2.1 Layering &amp; import rules (apply at every depth)</h3>
+<p>The dependency arrows point <strong>one way only</strong> — inner layers never import outer ones:</p>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>syntax  ──▶  (leaf: pure constants, no testlab imports)
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>models  ──▶  syntax
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>config  ──▶  models, syntax
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>security ─▶  models
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>services ─▶  models, config, security        (SDK service wiring)
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>steps   ──▶  models, services, syntax, config (NEVER imports player/server/cli)
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>compiler ─▶  models, syntax, steps (registry only)
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>player  ──▶  steps, services, models, config, compiler
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>server  ──▶  player, compiler, services, models
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>cli     ──▶  compiler, player, server, config   (thinnest layer, top of stack)
+</span></code></pre></div>
+<p>Rules enforced by these arrows:</p>
+<ul>
+<li><strong><code>steps/</code> is the keystone</strong> — it depends <em>downward</em> on <code>models</code>/<code>services</code>/<code>syntax</code>
+  but is imported <em>upward</em> by <code>compiler</code> (for <code>@step</code> registry validation) and
+  <code>player</code> (for execution). A step module must <strong>never</strong> import from <code>player/</code>,
+  <code>server/</code>, or <code>cli/</code>.</li>
+<li><strong><code>models/</code> holds no behavior</strong> — only Pydantic data, enums, exceptions. Anything
+  with logic belongs in <code>services</code>, <code>steps</code>, <code>compiler</code>, or <code>player</code>.</li>
+<li><strong><code>__init__.py</code> is a barrel only</strong> at every level — it re-exports the package's
+  public surface and contains <strong>no logic</strong>. Sub-packages re-export their leaves so
+  callers import <code>from ...steps.connector import QueryCatalogStep</code>, never the file.</li>
+<li><strong>Private helpers</strong> (<code>_*.py</code>) are package-internal — never re-exported through the
+  barrel, never imported across package boundaries.</li>
+</ul>
+<h3 id="22-complete-nested-tree">2.2 Complete nested tree</h3>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>tractusx_testlab/
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  __init__.py                      # top barrel — public package surface only
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  __main__.py                      # `python -m tractusx_testlab` → cli entrypoint
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  cli/                             # Typer command groups — thin; delegate, never compute
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    __init__.py                    #   barrel: assembles `app` via add_typer(...)
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    compile.py                     #   `testlab compile` — calls compiler/, no IR logic here
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    run.py                         #   `testlab run` — calls player/, no execution logic here
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    validate.py                    #   `testlab validate` — calls compiler validator only
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    serve.py                       #   `testlab serve` — boots server/app
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    keys.py                        #   `testlab keys` — calls security/crypto
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>  compiler/                        # COMPILE-TIME: YAML → IR → validation → package
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    __init__.py                    #   barrel: Compiler, Validator, Packager
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    compiler.py                    #   orchestrator: drives build → validate → package
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    packager.py                    #   IR → `.stck` package on disk
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    _fingerprint.py                #   (priv) deterministic package fingerprint
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    ir/                            #   (new, Phase 6) IR assembly + lowering
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>      __init__.py                  #     barrel: build_ir entrypoint
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>      builder.py                   #     YAML doc → IR  (was ir_builder.py, 278L)
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>      _helpers.py                  #     (priv) IR node assembly helpers (was _ir_helpers.py, 299L)
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>      _assets.py                   #     (priv) asset-node IR construction (was _assets.py)
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>      _compilation.py              #     (priv) IR lowering passes (was _ir_compilation.py)
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    validation/                    #   (new, Phase 6) IR → diagnostics
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>      __init__.py                  #     barrel: Validator (public validation entrypoint)
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>      validator.py                 #     orchestrates rules → diagnostics (was validator.py)
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>      _rules.py                    #     (priv) individual validation rules (was _validation.py)
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>      _expressions.py              #     (priv) compile-time expression checks (see §3 grammar)
+</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>
+</span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>  config/                          # configuration loading &amp; settings (data + I/O only)
+</span><span id="__span-1-31"><a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    __init__.py                    #   barrel: ConfigLoader, settings types
+</span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    loader.py                      #   read/merge config sources → TestlabConfig
+</span><span id="__span-1-33"><a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>    settings.py                    #   Pydantic settings models (no behavior)
+</span><span id="__span-1-34"><a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>
+</span><span id="__span-1-35"><a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>  logging/                         # structured logging — cross-cutting, depends on nothing
+</span><span id="__span-1-36"><a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>    __init__.py                    #   barrel: StructuredLogger / get_logger
+</span><span id="__span-1-37"><a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>    structured.py                  #   JSON/structured log formatter + adapter
+</span><span id="__span-1-38"><a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>
+</span><span id="__span-1-39"><a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>  models/                          # Pydantic DATA ONLY — no behavior, no I/O
+</span><span id="__span-1-40"><a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>    __init__.py                    #   barrel: all public models/enums/exceptions
+</span><span id="__span-1-41"><a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>    exceptions.py                  #   TestLabError hierarchy (Compilation/Execution/...)
+</span><span id="__span-1-42"><a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>    definitions.py                 #   step/TCK definition models
+</span><span id="__span-1-43"><a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>    jobs.py                        #   JobStatus and job lifecycle models
+</span><span id="__span-1-44"><a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>    preconditions.py               #   precondition declaration models
+</span><span id="__span-1-45"><a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>    security.py                    #   key/identity/trust data models
+</span><span id="__span-1-46"><a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>    server.py                      #   mock-server request/response models
+</span><span id="__span-1-47"><a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>    enums/                         #   (new, Phase 11 — only if seam holds) enum families
+</span><span id="__span-1-48"><a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>      __init__.py                  #     barrel: all enums
+</span><span id="__span-1-49"><a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>      service.py                   #     ServiceState, ServiceType
+</span><span id="__span-1-50"><a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a>      phases.py                    #     phase/lifecycle enums
+</span><span id="__span-1-51"><a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a>    results/                       #   (new, Phase 11 — only if seam holds) result models
+</span><span id="__span-1-52"><a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a>      __init__.py                  #     barrel: all result models
+</span><span id="__span-1-53"><a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a>      step.py                      #     step + assertion result models
+</span><span id="__span-1-54"><a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>      trace.py                     #     execution-trace models
+</span><span id="__span-1-55"><a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a>
+</span><span id="__span-1-56"><a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>  player/                          # RUN-TIME: load → execute → track jobs
+</span><span id="__span-1-57"><a id="__codelineno-1-57" name="__codelineno-1-57" href="#__codelineno-1-57"></a>    __init__.py                    #   barrel: TestlabPlayer, job API
+</span><span id="__span-1-58"><a id="__codelineno-1-58" name="__codelineno-1-58" href="#__codelineno-1-58"></a>    jobs.py                        #   in-flight job registry + status tracking
+</span><span id="__span-1-59"><a id="__codelineno-1-59" name="__codelineno-1-59" href="#__codelineno-1-59"></a>
+</span><span id="__span-1-60"><a id="__codelineno-1-60" name="__codelineno-1-60" href="#__codelineno-1-60"></a>    loading/                       #   run-time YAML/package → executable test
+</span><span id="__span-1-61"><a id="__codelineno-1-61" name="__codelineno-1-61" href="#__codelineno-1-61"></a>      __init__.py                  #     barrel: loader public surface
+</span><span id="__span-1-62"><a id="__codelineno-1-62" name="__codelineno-1-62" href="#__codelineno-1-62"></a>      loader.py                    #     package/YAML → Test object
+</span><span id="__span-1-63"><a id="__codelineno-1-63" name="__codelineno-1-63" href="#__codelineno-1-63"></a>      _parser.py                   #     (priv) YAML → raw structures   [watch: 267L]
+</span><span id="__span-1-64"><a id="__codelineno-1-64" name="__codelineno-1-64" href="#__codelineno-1-64"></a>      _constants.py                #     (priv) loader keys/defaults
+</span><span id="__span-1-65"><a id="__codelineno-1-65" name="__codelineno-1-65" href="#__codelineno-1-65"></a>      ordering.py                  #     phase/step ordering (setup→main→teardown)
+</span><span id="__span-1-66"><a id="__codelineno-1-66" name="__codelineno-1-66" href="#__codelineno-1-66"></a>      resolver.py                  #     variable/@ref + dependency resolution
+</span><span id="__span-1-67"><a id="__codelineno-1-67" name="__codelineno-1-67" href="#__codelineno-1-67"></a>
+</span><span id="__span-1-68"><a id="__codelineno-1-68" name="__codelineno-1-68" href="#__codelineno-1-68"></a>    execution/                     #   the step-execution engine
+</span><span id="__span-1-69"><a id="__codelineno-1-69" name="__codelineno-1-69" href="#__codelineno-1-69"></a>      __init__.py                  #     barrel: player, context, monitor
+</span><span id="__span-1-70"><a id="__codelineno-1-70" name="__codelineno-1-70" href="#__codelineno-1-70"></a>      player.py                    #     orchestration: runs phases via phases/  [Phase 9]
+</span><span id="__span-1-71"><a id="__codelineno-1-71" name="__codelineno-1-71" href="#__codelineno-1-71"></a>      _trace_formatter.py          #     (new, Phase 9) result/execution-trace formatting
+</span><span id="__span-1-72"><a id="__codelineno-1-72" name="__codelineno-1-72" href="#__codelineno-1-72"></a>      context.py                   #     StepContext — per-run state container (data)
+</span><span id="__span-1-73"><a id="__codelineno-1-73" name="__codelineno-1-73" href="#__codelineno-1-73"></a>      monitor.py                   #     ExecutionMonitor — progress/event emission
+</span><span id="__span-1-74"><a id="__codelineno-1-74" name="__codelineno-1-74" href="#__codelineno-1-74"></a>      step_runner.py               #     single-step driver: resolve → run → collect outputs
+</span><span id="__span-1-75"><a id="__codelineno-1-75" name="__codelineno-1-75" href="#__codelineno-1-75"></a>      preconditions.py             #     precondition evaluation gate before main phase
+</span><span id="__span-1-76"><a id="__codelineno-1-76" name="__codelineno-1-76" href="#__codelineno-1-76"></a>      mock_server.py               #     run-time mock-server lifecycle hook
+</span><span id="__span-1-77"><a id="__codelineno-1-77" name="__codelineno-1-77" href="#__codelineno-1-77"></a>      _helpers.py                  #     (priv) shared execution utilities
+</span><span id="__span-1-78"><a id="__codelineno-1-78" name="__codelineno-1-78" href="#__codelineno-1-78"></a>      _phase_runners.py            #     (priv) phase loops → refactored to one _run_phase
+</span><span id="__span-1-79"><a id="__codelineno-1-79" name="__codelineno-1-79" href="#__codelineno-1-79"></a>      phases/                      #     (new, Phase 2) one driver, thin phase wrappers
+</span><span id="__span-1-80"><a id="__codelineno-1-80" name="__codelineno-1-80" href="#__codelineno-1-80"></a>        __init__.py                #       barrel: run_setup/run_main/run_teardown
+</span><span id="__span-1-81"><a id="__codelineno-1-81" name="__codelineno-1-81" href="#__codelineno-1-81"></a>        _run_phase.py              #       (new) shared async per-step loop (single source)
+</span><span id="__span-1-82"><a id="__codelineno-1-82" name="__codelineno-1-82" href="#__codelineno-1-82"></a>        setup.py                   #       (new) setup wrapper: stop-on-fail + gate
+</span><span id="__span-1-83"><a id="__codelineno-1-83" name="__codelineno-1-83" href="#__codelineno-1-83"></a>        main.py                    #       (new) main wrapper: stop-on-fail + gate
+</span><span id="__span-1-84"><a id="__codelineno-1-84" name="__codelineno-1-84" href="#__codelineno-1-84"></a>        teardown.py                #       (new) teardown wrapper: runs unconditionally
+</span><span id="__span-1-85"><a id="__codelineno-1-85" name="__codelineno-1-85" href="#__codelineno-1-85"></a>
+</span><span id="__span-1-86"><a id="__codelineno-1-86" name="__codelineno-1-86" href="#__codelineno-1-86"></a>  authoring/                       # test object model + builder DSL (author-facing)
+</span><span id="__span-1-87"><a id="__codelineno-1-87" name="__codelineno-1-87" href="#__codelineno-1-87"></a>    __init__.py                    #   barrel: Test, registry, builders
+</span><span id="__span-1-88"><a id="__codelineno-1-88" name="__codelineno-1-88" href="#__codelineno-1-88"></a>    test.py                      #   Test aggregate (phases, steps, metadata)
+</span><span id="__span-1-89"><a id="__codelineno-1-89" name="__codelineno-1-89" href="#__codelineno-1-89"></a>    parser.py                      #   author YAML → Test
+</span><span id="__span-1-90"><a id="__codelineno-1-90" name="__codelineno-1-90" href="#__codelineno-1-90"></a>    registry.py                    #   step-type registry lookup
+</span><span id="__span-1-91"><a id="__codelineno-1-91" name="__codelineno-1-91" href="#__codelineno-1-91"></a>    _builders.py                   #   (priv) fluent builder helpers
+</span><span id="__span-1-92"><a id="__codelineno-1-92" name="__codelineno-1-92" href="#__codelineno-1-92"></a>
+</span><span id="__span-1-93"><a id="__codelineno-1-93" name="__codelineno-1-93" href="#__codelineno-1-93"></a>  security/                        # crypto + trust (logic over models/security.py)
+</span><span id="__span-1-94"><a id="__codelineno-1-94" name="__codelineno-1-94" href="#__codelineno-1-94"></a>    __init__.py                    #   barrel: keygen, signing, trust public API
+</span><span id="__span-1-95"><a id="__codelineno-1-95" name="__codelineno-1-95" href="#__codelineno-1-95"></a>    crypto/                        #   cryptographic primitives
+</span><span id="__span-1-96"><a id="__codelineno-1-96" name="__codelineno-1-96" href="#__codelineno-1-96"></a>      __init__.py                  #     barrel: keygen/sign/encrypt entrypoints
+</span><span id="__span-1-97"><a id="__codelineno-1-97" name="__codelineno-1-97" href="#__codelineno-1-97"></a>      keygen.py                    #     key generation + fingerprint
+</span><span id="__span-1-98"><a id="__codelineno-1-98" name="__codelineno-1-98" href="#__codelineno-1-98"></a>      signing.py                   #     sign/verify operations
+</span><span id="__span-1-99"><a id="__codelineno-1-99" name="__codelineno-1-99" href="#__codelineno-1-99"></a>      encryption.py                #     encrypt/decrypt operations
+</span><span id="__span-1-100"><a id="__codelineno-1-100" name="__codelineno-1-100" href="#__codelineno-1-100"></a>    trust/                         #   identity &amp; trust-store management
+</span><span id="__span-1-101"><a id="__codelineno-1-101" name="__codelineno-1-101" href="#__codelineno-1-101"></a>      __init__.py                  #     barrel: identity, trust store, vault
+</span><span id="__span-1-102"><a id="__codelineno-1-102" name="__codelineno-1-102" href="#__codelineno-1-102"></a>      identity.py                  #     participant identity handling
+</span><span id="__span-1-103"><a id="__codelineno-1-103" name="__codelineno-1-103" href="#__codelineno-1-103"></a>      trust_store.py               #     trusted-key/cert store
+</span><span id="__span-1-104"><a id="__codelineno-1-104" name="__codelineno-1-104" href="#__codelineno-1-104"></a>      vault.py                     #     secret/key vault access
+</span><span id="__span-1-105"><a id="__codelineno-1-105" name="__codelineno-1-105" href="#__codelineno-1-105"></a>
+</span><span id="__span-1-106"><a id="__codelineno-1-106" name="__codelineno-1-106" href="#__codelineno-1-106"></a>  server/                          # FastAPI mock server + compile/run HTTP surface
+</span><span id="__span-1-107"><a id="__codelineno-1-107" name="__codelineno-1-107" href="#__codelineno-1-107"></a>    __init__.py                    #   barrel: app factory, CallbackManager, storage
+</span><span id="__span-1-108"><a id="__codelineno-1-108" name="__codelineno-1-108" href="#__codelineno-1-108"></a>    app.py                         #   FastAPI app factory + wiring
+</span><span id="__span-1-109"><a id="__codelineno-1-109" name="__codelineno-1-109" href="#__codelineno-1-109"></a>    mock_registry.py               #   registered mock-route table
+</span><span id="__span-1-110"><a id="__codelineno-1-110" name="__codelineno-1-110" href="#__codelineno-1-110"></a>    storage.py                     #   PackageStorage — package persistence
+</span><span id="__span-1-111"><a id="__codelineno-1-111" name="__codelineno-1-111" href="#__codelineno-1-111"></a>    routes/                        #   (new, Phase 8) route handlers grouped by surface
+</span><span id="__span-1-112"><a id="__codelineno-1-112" name="__codelineno-1-112" href="#__codelineno-1-112"></a>      __init__.py                  #     barrel: register_routes(app)
+</span><span id="__span-1-113"><a id="__codelineno-1-113" name="__codelineno-1-113" href="#__codelineno-1-113"></a>      compile.py                   #     compile endpoint handler (was server/compile.py)
+</span><span id="__span-1-114"><a id="__codelineno-1-114" name="__codelineno-1-114" href="#__codelineno-1-114"></a>      callbacks.py                 #     inbound callback/input endpoints (was callbacks.py)
+</span><span id="__span-1-115"><a id="__codelineno-1-115" name="__codelineno-1-115" href="#__codelineno-1-115"></a>      mock.py                      #     mock/run route handlers (was routes.py, 271L)
+</span><span id="__span-1-116"><a id="__codelineno-1-116" name="__codelineno-1-116" href="#__codelineno-1-116"></a>    streaming/                     #   (new, Phase 8) SSE streaming
+</span><span id="__span-1-117"><a id="__codelineno-1-117" name="__codelineno-1-117" href="#__codelineno-1-117"></a>      __init__.py                  #     barrel: SSE stream public surface
+</span><span id="__span-1-118"><a id="__codelineno-1-118" name="__codelineno-1-118" href="#__codelineno-1-118"></a>      lifecycle.py                 #     connection open/close/keepalive (was streaming.py, 298L)
+</span><span id="__span-1-119"><a id="__codelineno-1-119" name="__codelineno-1-119" href="#__codelineno-1-119"></a>      formatter.py                 #     (new) event → SSE wire formatting
+</span><span id="__span-1-120"><a id="__codelineno-1-120" name="__codelineno-1-120" href="#__codelineno-1-120"></a>      _event_buffer.py             #     (priv) SSE event ring buffer (was _event_buffer.py)
+</span><span id="__span-1-121"><a id="__codelineno-1-121" name="__codelineno-1-121" href="#__codelineno-1-121"></a>
+</span><span id="__span-1-122"><a id="__codelineno-1-122" name="__codelineno-1-122" href="#__codelineno-1-122"></a>  services/                        # SDK SERVICE WIRING + lifecycle (no protocol reimpl)
+</span><span id="__span-1-123"><a id="__codelineno-1-123" name="__codelineno-1-123" href="#__codelineno-1-123"></a>    __init__.py                    #   barrel: ServiceManager, participant API
+</span><span id="__span-1-124"><a id="__codelineno-1-124" name="__codelineno-1-124" href="#__codelineno-1-124"></a>    manager.py                     #   ServiceManager facade: owns lifecycle  [Phase 7]
+</span><span id="__span-1-125"><a id="__codelineno-1-125" name="__codelineno-1-125" href="#__codelineno-1-125"></a>    _factory.py                    #   (new, Phase 7) SDK connector/discovery/AAS creation
+</span><span id="__span-1-126"><a id="__codelineno-1-126" name="__codelineno-1-126" href="#__codelineno-1-126"></a>    participants.py                #   participant ↔ service mapping &amp; config
+</span><span id="__span-1-127"><a id="__codelineno-1-127" name="__codelineno-1-127" href="#__codelineno-1-127"></a>
+</span><span id="__span-1-128"><a id="__codelineno-1-128" name="__codelineno-1-128" href="#__codelineno-1-128"></a>  steps/                           # STEP EXECUTORS — one domain per sub-package
+</span><span id="__span-1-129"><a id="__codelineno-1-129" name="__codelineno-1-129" href="#__codelineno-1-129"></a>    __init__.py                    #   barrel: BaseStep, @step registry, all step types
+</span><span id="__span-1-130"><a id="__codelineno-1-130" name="__codelineno-1-130" href="#__codelineno-1-130"></a>    base.py                        #   BaseStep ABC + @step decorator/registry
+</span><span id="__span-1-131"><a id="__codelineno-1-131" name="__codelineno-1-131" href="#__codelineno-1-131"></a>    assertions.py                  #   assertion evaluation steps
+</span><span id="__span-1-132"><a id="__codelineno-1-132" name="__codelineno-1-132" href="#__codelineno-1-132"></a>    conditions.py                  #   ConditionEvaluator orchestration only  [Phase 3]
+</span><span id="__span-1-133"><a id="__codelineno-1-133" name="__codelineno-1-133" href="#__codelineno-1-133"></a>    _condition_parsing.py          #   (new, Phase 3) regex grammar + _evaluate_* helpers
+</span><span id="__span-1-134"><a id="__codelineno-1-134" name="__codelineno-1-134" href="#__codelineno-1-134"></a>    _checks/                       #   (new, Phase 5) shared check primitives by family
+</span><span id="__span-1-135"><a id="__codelineno-1-135" name="__codelineno-1-135" href="#__codelineno-1-135"></a>      __init__.py                  #     barrel: all check primitives (was _checks.py, 213L)
+</span><span id="__span-1-136"><a id="__codelineno-1-136" name="__codelineno-1-136" href="#__codelineno-1-136"></a>      status.py                    #     status/outcome checks
+</span><span id="__span-1-137"><a id="__codelineno-1-137" name="__codelineno-1-137" href="#__codelineno-1-137"></a>      equality.py                  #     equality/comparison checks
+</span><span id="__span-1-138"><a id="__codelineno-1-138" name="__codelineno-1-138" href="#__codelineno-1-138"></a>      json_path.py                 #     JSONPath validation (was _json_path_validation.py)
+</span><span id="__span-1-139"><a id="__codelineno-1-139" name="__codelineno-1-139" href="#__codelineno-1-139"></a>      extraction.py                #     JSONPath/value extraction (was _path_extraction.py)
+</span><span id="__span-1-140"><a id="__codelineno-1-140" name="__codelineno-1-140" href="#__codelineno-1-140"></a>
+</span><span id="__span-1-141"><a id="__codelineno-1-141" name="__codelineno-1-141" href="#__codelineno-1-141"></a>    connector/                     #   EDC connector / DSP domain steps
+</span><span id="__span-1-142"><a id="__codelineno-1-142" name="__codelineno-1-142" href="#__codelineno-1-142"></a>      __init__.py                  #     barrel: all connector step classes
+</span><span id="__span-1-143"><a id="__codelineno-1-143" name="__codelineno-1-143" href="#__codelineno-1-143"></a>      consume.py                   #     → barrel re-export after split  [Phase 1]
+</span><span id="__span-1-144"><a id="__codelineno-1-144" name="__codelineno-1-144" href="#__codelineno-1-144"></a>      _dsp_consumer.py             #     (new, Phase 1) _DspConsumer helper
+</span><span id="__span-1-145"><a id="__codelineno-1-145" name="__codelineno-1-145" href="#__codelineno-1-145"></a>      catalog_query.py             #     (new, Phase 1) the 3 QueryCatalog* steps
+</span><span id="__span-1-146"><a id="__codelineno-1-146" name="__codelineno-1-146" href="#__codelineno-1-146"></a>      catalog_filter.py            #     catalog filter-expression step
+</span><span id="__span-1-147"><a id="__codelineno-1-147" name="__codelineno-1-147" href="#__codelineno-1-147"></a>      provision.py                 #     provider-side asset provisioning step
+</span><span id="__span-1-148"><a id="__codelineno-1-148" name="__codelineno-1-148" href="#__codelineno-1-148"></a>      extract.py                   #     dataplane/EDR extraction step
+</span><span id="__span-1-149"><a id="__codelineno-1-149" name="__codelineno-1-149" href="#__codelineno-1-149"></a>      dataplane.py                 #     dataplane GET step
+</span><span id="__span-1-150"><a id="__codelineno-1-150" name="__codelineno-1-150" href="#__codelineno-1-150"></a>      cleanup.py                   #     connector teardown/cleanup step
+</span><span id="__span-1-151"><a id="__codelineno-1-151" name="__codelineno-1-151" href="#__codelineno-1-151"></a>      utils.py                     #     connector-step shared utilities
+</span><span id="__span-1-152"><a id="__codelineno-1-152" name="__codelineno-1-152" href="#__codelineno-1-152"></a>      dsp.py                       #     → barrel re-export for dsp/ subpackage
+</span><span id="__span-1-153"><a id="__codelineno-1-153" name="__codelineno-1-153" href="#__codelineno-1-153"></a>      dsp/                         #     low-level DSP protocol steps (one verb/file)
+</span><span id="__span-1-154"><a id="__codelineno-1-154" name="__codelineno-1-154" href="#__codelineno-1-154"></a>        __init__.py                #       barrel: dsp step classes
+</span><span id="__span-1-155"><a id="__codelineno-1-155" name="__codelineno-1-155" href="#__codelineno-1-155"></a>        version.py                 #       DSP version-negotiation step
+</span><span id="__span-1-156"><a id="__codelineno-1-156" name="__codelineno-1-156" href="#__codelineno-1-156"></a>        catalog.py                 #       DSP catalog request step
+</span><span id="__span-1-157"><a id="__codelineno-1-157" name="__codelineno-1-157" href="#__codelineno-1-157"></a>        negotiate.py               #       DSP contract-negotiation step
+</span><span id="__span-1-158"><a id="__codelineno-1-158" name="__codelineno-1-158" href="#__codelineno-1-158"></a>        transfer.py                #       DSP transfer step
+</span><span id="__span-1-159"><a id="__codelineno-1-159" name="__codelineno-1-159" href="#__codelineno-1-159"></a>        resolve.py                 #       DSP endpoint/EDR resolve step
+</span><span id="__span-1-160"><a id="__codelineno-1-160" name="__codelineno-1-160" href="#__codelineno-1-160"></a>        generic.py                 #       generic DSP request step
+</span><span id="__span-1-161"><a id="__codelineno-1-161" name="__codelineno-1-161" href="#__codelineno-1-161"></a>        _constants.py              #       (priv) DSP context/property keys
+</span><span id="__span-1-162"><a id="__codelineno-1-162" name="__codelineno-1-162" href="#__codelineno-1-162"></a>
+</span><span id="__span-1-163"><a id="__codelineno-1-163" name="__codelineno-1-163" href="#__codelineno-1-163"></a>    industry/                      #   Industry / AAS / DTR domain steps
+</span><span id="__span-1-164"><a id="__codelineno-1-164" name="__codelineno-1-164" href="#__codelineno-1-164"></a>      __init__.py                  #     barrel: industry step classes
+</span><span id="__span-1-165"><a id="__codelineno-1-165" name="__codelineno-1-165" href="#__codelineno-1-165"></a>      dtr.py                       #     Digital Twin Registry steps
+</span><span id="__span-1-166"><a id="__codelineno-1-166" name="__codelineno-1-166" href="#__codelineno-1-166"></a>      submodels.py                 #     submodel CRUD steps
+</span><span id="__span-1-167"><a id="__codelineno-1-167" name="__codelineno-1-167" href="#__codelineno-1-167"></a>      semantic.py                  #     semantic-model steps
+</span><span id="__span-1-168"><a id="__codelineno-1-168" name="__codelineno-1-168" href="#__codelineno-1-168"></a>      notification.py              #     notification (EDC/industry) steps
+</span><span id="__span-1-169"><a id="__codelineno-1-169" name="__codelineno-1-169" href="#__codelineno-1-169"></a>
+</span><span id="__span-1-170"><a id="__codelineno-1-170" name="__codelineno-1-170" href="#__codelineno-1-170"></a>    precondition/                  #   precondition setup steps (idempotent config)
+</span><span id="__span-1-171"><a id="__codelineno-1-171" name="__codelineno-1-171" href="#__codelineno-1-171"></a>      __init__.py                  #     barrel: precondition step classes
+</span><span id="__span-1-172"><a id="__codelineno-1-172" name="__codelineno-1-172" href="#__codelineno-1-172"></a>      asset_config.py              #     asset precondition step
+</span><span id="__span-1-173"><a id="__codelineno-1-173" name="__codelineno-1-173" href="#__codelineno-1-173"></a>      contract_config.py           #     contract precondition step
+</span><span id="__span-1-174"><a id="__codelineno-1-174" name="__codelineno-1-174" href="#__codelineno-1-174"></a>      policy_config.py             #     policy step class only  [Phase 4]
+</span><span id="__span-1-175"><a id="__codelineno-1-175" name="__codelineno-1-175" href="#__codelineno-1-175"></a>      _policy_builders.py          #     (new, Phase 4) Jupiter/Saturn ODRL builders
+</span><span id="__span-1-176"><a id="__codelineno-1-176" name="__codelineno-1-176" href="#__codelineno-1-176"></a>
+</span><span id="__span-1-177"><a id="__codelineno-1-177" name="__codelineno-1-177" href="#__codelineno-1-177"></a>    pull_data/                     #   data-pull domain steps
+</span><span id="__span-1-178"><a id="__codelineno-1-178" name="__codelineno-1-178" href="#__codelineno-1-178"></a>      __init__.py                  #     barrel: pull-data step(s)
+</span><span id="__span-1-179"><a id="__codelineno-1-179" name="__codelineno-1-179" href="#__codelineno-1-179"></a>      _executor.py                 #     (priv) pull execution helper
+</span><span id="__span-1-180"><a id="__codelineno-1-180" name="__codelineno-1-180" href="#__codelineno-1-180"></a>      _constants.py                #     (priv) pull keys/defaults
+</span><span id="__span-1-181"><a id="__codelineno-1-181" name="__codelineno-1-181" href="#__codelineno-1-181"></a>
+</span><span id="__span-1-182"><a id="__codelineno-1-182" name="__codelineno-1-182" href="#__codelineno-1-182"></a>    server/                        #   mock-server-facing steps
+</span><span id="__span-1-183"><a id="__codelineno-1-183" name="__codelineno-1-183" href="#__codelineno-1-183"></a>      __init__.py                  #     barrel: mock/wait steps
+</span><span id="__span-1-184"><a id="__codelineno-1-184" name="__codelineno-1-184" href="#__codelineno-1-184"></a>      mock.py                      #     register-mock step
+</span><span id="__span-1-185"><a id="__codelineno-1-185" name="__codelineno-1-185" href="#__codelineno-1-185"></a>      wait.py                      #     wait-for-callback step
+</span><span id="__span-1-186"><a id="__codelineno-1-186" name="__codelineno-1-186" href="#__codelineno-1-186"></a>
+</span><span id="__span-1-187"><a id="__codelineno-1-187" name="__codelineno-1-187" href="#__codelineno-1-187"></a>    utility/                       #   pure helper/value steps (no external I/O)
+</span><span id="__span-1-188"><a id="__codelineno-1-188" name="__codelineno-1-188" href="#__codelineno-1-188"></a>      __init__.py                  #     barrel: utility step classes
+</span><span id="__span-1-189"><a id="__codelineno-1-189" name="__codelineno-1-189" href="#__codelineno-1-189"></a>      uuid_gen.py                  #     auto-generate UUID step
+</span><span id="__span-1-190"><a id="__codelineno-1-190" name="__codelineno-1-190" href="#__codelineno-1-190"></a>      variables.py                 #     set/transform variable step
+</span><span id="__span-1-191"><a id="__codelineno-1-191" name="__codelineno-1-191" href="#__codelineno-1-191"></a>      json_extract.py              #     extract value from JSON step
+</span><span id="__span-1-192"><a id="__codelineno-1-192" name="__codelineno-1-192" href="#__codelineno-1-192"></a>      load_schema.py               #     load JSON schema step
+</span><span id="__span-1-193"><a id="__codelineno-1-193" name="__codelineno-1-193" href="#__codelineno-1-193"></a>
+</span><span id="__span-1-194"><a id="__codelineno-1-194" name="__codelineno-1-194" href="#__codelineno-1-194"></a>  syntax/                          # LEAF: default syntax constants — no testlab imports
+</span><span id="__span-1-195"><a id="__codelineno-1-195" name="__codelineno-1-195" href="#__codelineno-1-195"></a>    __init__.py                    #   barrel: defaults, keys, patterns, context vars
+</span><span id="__span-1-196"><a id="__codelineno-1-196" name="__codelineno-1-196" href="#__codelineno-1-196"></a>    defaults.py                    #   default syntax values
+</span><span id="__span-1-197"><a id="__codelineno-1-197" name="__codelineno-1-197" href="#__codelineno-1-197"></a>    keys.py                        #   canonical key names
+</span><span id="__span-1-198"><a id="__codelineno-1-198" name="__codelineno-1-198" href="#__codelineno-1-198"></a>    patterns.py                    #   regex/token patterns (grammar tokens)
+</span><span id="__span-1-199"><a id="__codelineno-1-199" name="__codelineno-1-199" href="#__codelineno-1-199"></a>    context_vars.py                #   built-in context variable names
+</span><span id="__span-1-200"><a id="__codelineno-1-200" name="__codelineno-1-200" href="#__codelineno-1-200"></a>
+</span><span id="__span-1-201"><a id="__codelineno-1-201" name="__codelineno-1-201" href="#__codelineno-1-201"></a>  schemas/                         # packaged JSON schemas (data assets, no code)
+</span><span id="__span-1-202"><a id="__codelineno-1-202" name="__codelineno-1-202" href="#__codelineno-1-202"></a>    __init__.py                    #   barrel / package marker
+</span></code></pre></div>
+<blockquote>
+<p><strong>Note on <code>schemas/</code>:</strong> holds shipped JSON-schema assets (resources), not Python
+logic. It stays a flat data package — no nesting needed.</p>
+</blockquote>
+<h3 id="23-where-the-structure-changes-seam-not-arbitrary-cut">2.3 Where the structure changes (seam, not arbitrary cut)</h3>
+<p>Every change below extracts a <strong>reusable</strong> unit along a responsibility seam (detail
+in §3/§4) — never an arbitrary line-count cut:</p>
+<p><strong>Mixed-concern file splits:</strong>
+- <code>steps/connector/consume.py</code> (5 steps + helper) → <code>_dsp_consumer.py</code> + <code>catalog_query.py</code>
+  + <code>dsp/negotiate.py</code> + <code>dsp/transfer.py</code>; <code>consume.py</code> becomes a barrel. <em>(✅ Phase 1)</em>
+- <code>player/execution/_phase_runners.py</code> (3 near-identical loops) → <code>execution/phases/</code>
+  with one <code>_run_phase.py</code> driver and thin <code>setup/main/teardown</code> wrappers. <em>(Phase 2)</em>
+- <code>steps/conditions.py</code> (orchestration + grammar) → <code>_condition_parsing.py</code> (grammar)
+  + <code>conditions.py</code> (orchestration only). <em>(Phase 3)</em>
+- <code>steps/precondition/policy_config.py</code> (step + 2 builders) → <code>_policy_builders.py</code>. <em>(Phase 4)</em>
+- <code>services/manager.py</code> (factory + lifecycle) → <code>_factory.py</code> + <code>manager.py</code> facade. <em>(Phase 7)</em>
+- <code>player/execution/player.py</code> (orchestration + trace formatting) → <code>_trace_formatter.py</code>. <em>(Phase 9)</em></p>
+<p><strong>Flat-package → nested sub-packages:</strong>
+- <code>steps/_checks.py</code> (+ <code>_json_path_validation.py</code>, <code>_path_extraction.py</code>) → <code>steps/_checks/</code>
+  (status / equality / json_path / extraction). <em>(Phase 5)</em>
+- <code>compiler/</code> flat → <code>compiler/ir/</code> (builder + helpers + assets + lowering) and
+  <code>compiler/validation/</code> (validator + rules + expressions). <em>(Phase 6)</em>
+- <code>server/</code> flat → <code>server/routes/</code> (compile / callbacks / mock groups) and
+  <code>server/streaming/</code> (lifecycle + formatter + buffer). <em>(Phase 8)</em>
+- <code>models/enums.py</code> → <code>models/enums/</code>; <code>models/results.py</code> → <code>models/results/</code> —
+  <strong>only if</strong> the families are genuinely separable (guardrail check at execution). <em>(Phase 11)</em></p>
+<h3 id="layer-boundary-notes-blur-to-watch-not-fix-now">Layer-boundary notes (blur to watch, not fix-now)</h3>
+<ul>
+<li><strong><code>steps/execution</code> import direction:</strong> <code>_phase_runners.py</code> imports <code>run_step</code> /
+  <code>store_step_outputs</code> from <code>step_runner</code> via <strong>function-local imports</strong> to dodge a
+  circular import. This is a smell, but resolving it means re-ordering module
+  dependencies — out of scope for a structural-only pass. Document it; do not
+  rewire it now.</li>
+<li><strong><code>compiler</code> ↔ <code>player/loading</code>:</strong> both parse YAML-ish input (<code>ir_builder</code> /
+  <code>_ir_helpers</code> vs <code>loading/_parser</code>). The boundary is correct (compile-time vs
+  run-time), but the <strong>expression/condition grammar</strong> is the one rule set that
+  must stay single-sourced (see Phase 3) to avoid drift between compile validation
+  and runtime evaluation.</li>
+</ul>
+<p>No layer needs to be created, merged, or moved.</p>
+<hr />
+<h2 id="3-module-responsibility-map">3. Module / Responsibility Map</h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Current responsibility</th>
+<th>Proposed split (seam)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>steps/connector/consume.py</code> <em>(✅ done)</em></td>
+<td>DSP consumer helper + 5 step classes</td>
+<td><code>_dsp_consumer.py</code> + <code>catalog_query.py</code> + <code>dsp/negotiate.py</code> + <code>dsp/transfer.py</code>; barrel re-export</td>
+</tr>
+<tr>
+<td><code>player/execution/_phase_runners.py</code></td>
+<td>3 near-identical phase loops</td>
+<td>Extract shared <code>async _run_phase(...)</code>; setup/main/teardown become thin wrappers in <code>execution/phases/</code></td>
+</tr>
+<tr>
+<td><code>steps/conditions.py</code></td>
+<td><code>ConditionEvaluator</code> + regex grammar + parse helpers</td>
+<td><code>_condition_parsing.py</code> (regexes + <code>_evaluate_*</code>); <code>conditions.py</code> keeps orchestration only</td>
+</tr>
+<tr>
+<td><code>steps/precondition/policy_config.py</code></td>
+<td>step class + Jupiter/Saturn policy builders</td>
+<td><code>_policy_builders.py</code> (both builders + shared ODRL scaffolding); step class stays</td>
+</tr>
+<tr>
+<td><code>steps/_checks.py</code> (+ <code>_json_path_validation</code>, <code>_path_extraction</code>)</td>
+<td>4 check families in flat files</td>
+<td><code>steps/_checks/</code> package: <code>status.py</code> · <code>equality.py</code> · <code>json_path.py</code> · <code>extraction.py</code></td>
+</tr>
+<tr>
+<td><code>compiler/</code> (10 flat files)</td>
+<td>orchestrator + IR + validation mixed at one level</td>
+<td><code>compiler/ir/</code> (builder/helpers/assets/compilation) + <code>compiler/validation/</code> (validator/rules/expressions); orchestrator + packager + fingerprint stay top-level</td>
+</tr>
+<tr>
+<td><code>services/manager.py</code> (262)</td>
+<td>SDK service <strong>creation</strong> + <strong>lifecycle</strong></td>
+<td><code>_factory.py</code> (create connector/discovery/AAS) + <code>manager.py</code> facade (own/start/stop)</td>
+</tr>
+<tr>
+<td><code>server/</code> (9 flat files)</td>
+<td>app + route groups + SSE + storage mixed</td>
+<td><code>server/routes/</code> (compile/callbacks/mock) + <code>server/streaming/</code> (lifecycle/formatter/buffer); app/storage/registry stay top-level</td>
+</tr>
+<tr>
+<td><code>player/execution/player.py</code> (298)</td>
+<td>orchestration + trace/result formatting</td>
+<td>extract <code>_trace_formatter.py</code>; <code>player.py</code> keeps orchestration</td>
+</tr>
+<tr>
+<td><code>models/enums.py</code>, <code>models/results.py</code></td>
+<td>bundled enum/result families</td>
+<td><code>models/enums/</code>, <code>models/results/</code> <strong>only if</strong> families separate cleanly (guardrail check)</td>
+</tr>
+<tr>
+<td><code>player/loading/_parser.py</code> (267), <code>cli/compile.py</code> (260), <code>authoring/_builders.py</code></td>
+<td>near-limit / cohesive</td>
+<td><strong>Watch only</strong> (Phase 10) — split-first rule on next feature touch; no move now</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-migration-phases-leaf-first-deep-modularity">4. Migration Phases (leaf-first, deep modularity)</h2>
+<p>Ordered so each step is independent and leaf-first (no module is split before its
+dependents are stable). Every phase is a <strong>pure move + barrel re-export</strong> — public
+import paths preserved, tests unchanged, <code>@step(...)</code> registry unaffected. Phases
+1–4 split the mixed-concern files; phases 5–9 carry deep modularity across the rest
+of the backend (flat packages and bundled responsibilities); phases 10–11 are the
+watch-list guard and the conditional model nesting.</p>
+<h4 id="phase-ordering-status">Phase ordering &amp; status</h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Phase</th>
+<th>Target (seam)</th>
+<th style="text-align: center;">Priority</th>
+<th style="text-align: center;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>consume.py</code> split</td>
+<td><code>_dsp_consumer.py</code> + <code>catalog_query.py</code> + <code>dsp/negotiate.py</code> + <code>dsp/transfer.py</code>; <code>consume.py</code> → barrel</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>_phase_runners.py</code> dedup</td>
+<td><code>execution/phases/</code> — one <code>_run_phase</code> driver + thin setup/main/teardown wrappers</td>
+<td style="text-align: center;">P1</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>conditions.py</code> grammar isolation</td>
+<td><code>_condition_parsing.py</code> (regexes + <code>_evaluate_*</code>); <code>conditions.py</code> orchestration only</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>policy_config.py</code> dedupe</td>
+<td><code>_policy_builders.py</code> (Jupiter/Saturn ODRL builders)</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>steps/_checks/</code> package</td>
+<td>nest check families: <code>status</code> · <code>equality</code> · <code>json_path</code> · <code>extraction</code></td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>compiler/</code> nesting</td>
+<td><code>compiler/ir/</code> (builder/helpers/assets/compilation) + <code>compiler/validation/</code> (validator/rules/expressions)</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>services/manager.py</code> split</td>
+<td><code>_factory.py</code> (SDK service creation) + <code>manager.py</code> lifecycle facade</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>server/</code> nesting</td>
+<td><code>server/routes/</code> (compile/callbacks/mock) + <code>server/streaming/</code> (lifecycle/formatter/buffer)</td>
+<td style="text-align: center;">P2</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>player/execution/player.py</code> split</td>
+<td>extract <code>_trace_formatter.py</code>; <code>player.py</code> keeps orchestration</td>
+<td style="text-align: center;">P3</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Watch-list guard</td>
+<td>no moves — record watch list (<code>_parser.py</code>, <code>cli/compile.py</code>, <code>_builders.py</code>) in repo memory</td>
+<td style="text-align: center;">P3</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>models/</code> conditional nesting</td>
+<td><code>models/enums/</code>, <code>models/results/</code> — guardrail: cohesive, no split needed</td>
+<td style="text-align: center;">P3</td>
+<td style="text-align: center;"><strong>Done</strong> ✅</td>
+</tr>
+</tbody>
+</table>
+<h3 id="phase-1-stepsconnectorconsumepy-p1-at-limit">Phase 1 — <code>steps/connector/consume.py</code> (P1, at limit) ✅</h3>
+<ol>
+<li>Create <code>steps/connector/_dsp_consumer.py</code>; move <code>_DspConsumer</code>.</li>
+<li>Create <code>steps/connector/catalog_query.py</code>; move the three <code>QueryCatalog*</code> steps.</li>
+<li>Move <code>NegotiateContractStep</code> → <code>negotiate.py</code>, <code>TransferDataStep</code> → <code>transfer.py</code>.</li>
+<li>Turn <code>consume.py</code> (or <code>connector/__init__.py</code>) into a barrel re-export so the
+   <code>@step(...)</code> registry and existing imports resolve unchanged.</li>
+<li><code>pytest -x -q</code> — connector + integration suites green. <strong>(done; no new failures)</strong></li>
+</ol>
+<h3 id="phase-2-playerexecution_phase_runnerspy-p1-dedup">Phase 2 — <code>player/execution/_phase_runners.py</code> (P1, dedup)</h3>
+<ol>
+<li>Create <code>player/execution/phases/</code> with <code>_run_phase.py</code> holding one private
+   <code>async _run_phase(*, test, phase, stop_on_failure, gate_conditions, ...)</code>.</li>
+<li>Add thin <code>setup.py</code> / <code>main.py</code> / <code>teardown.py</code> wrappers configuring policy
+   (setup &amp; main stop on failure + gate on <code>if_condition</code>; teardown unconditional);
+   <code>phases/__init__.py</code> re-exports <code>run_setup</code> / <code>run_main</code> / <code>run_teardown</code>.</li>
+<li>Keep the existing function-local <code>step_runner</code> imports (do not rewire circular
+   dependency in this pass).</li>
+<li><code>pytest -x -q</code> — runner / execution / precondition-execution suites green.</li>
+</ol>
+<h3 id="phase-3-stepsconditionspy-p2-grammar-isolation">Phase 3 — <code>steps/conditions.py</code> (P2, grammar isolation)</h3>
+<ol>
+<li>Create <code>steps/_condition_parsing.py</code>; move the 8 compiled regexes and
+   <code>_evaluate_status_fn</code> / <code>_evaluate_step_outcome</code> / comparison helpers.</li>
+<li><code>conditions.py</code> imports from it; <code>ConditionEvaluator</code> keeps orchestration only.</li>
+<li>This single-sources the expression grammar referenced by compile-time
+   validation and runtime evaluation — guard against drift.</li>
+<li><code>pytest -x -q</code> — condition / sse / pause-resume suites green.</li>
+</ol>
+<h3 id="phase-4-stepspreconditionpolicy_configpy-p2-dedupe">Phase 4 — <code>steps/precondition/policy_config.py</code> (P2, dedupe)</h3>
+<ol>
+<li>Create <code>steps/precondition/_policy_builders.py</code>; move both version builders +
+   shared ODRL scaffolding (constraint/permission assembly).</li>
+<li><code>policy_config.py</code> keeps the <code>@step</code> class only.</li>
+<li><code>pytest -x -q</code> — precondition policy/contract suites green.</li>
+</ol>
+<h3 id="phase-5-steps_checks-package-p2-flat-nested">Phase 5 — <code>steps/_checks/</code> package (P2, flat → nested)</h3>
+<ol>
+<li>Create <code>steps/_checks/</code> package; move check families into <code>status.py</code>,
+   <code>equality.py</code>, plus the existing <code>_json_path_validation.py</code> → <code>json_path.py</code> and
+   <code>_path_extraction.py</code> → <code>extraction.py</code>.</li>
+<li><code>steps/_checks/__init__.py</code> re-exports the same names the old flat module
+   exposed, so <code>assertions.py</code> / <code>conditions.py</code> imports resolve unchanged.</li>
+<li><strong>Guardrail check:</strong> if a family is a single cohesive function, leave it as one
+   file — do not create a one-function module.</li>
+<li><code>pytest -x -q</code> — assertion / condition / step-executor suites green.</li>
+</ol>
+<h3 id="phase-6-compiler-nesting-p2-flat-nested">Phase 6 — <code>compiler/</code> nesting (P2, flat → nested)</h3>
+<ol>
+<li>Create <code>compiler/ir/</code> and move <code>ir_builder.py</code> → <code>ir/builder.py</code>,
+   <code>_ir_helpers.py</code> → <code>ir/_helpers.py</code>, <code>_assets.py</code> → <code>ir/_assets.py</code>,
+   <code>_ir_compilation.py</code> → <code>ir/_compilation.py</code>; <code>ir/__init__.py</code> exposes <code>build_ir</code>.</li>
+<li>Create <code>compiler/validation/</code> and move <code>validator.py</code> → <code>validation/validator.py</code>,
+   <code>_validation.py</code> → <code>validation/_rules.py</code>, <code>_expressions.py</code> →
+   <code>validation/_expressions.py</code>; <code>validation/__init__.py</code> exposes <code>Validator</code>.</li>
+<li><code>compiler/__init__.py</code> re-exports <code>Compiler</code>, <code>Validator</code>, <code>Packager</code> unchanged;
+   <code>compiler.py</code>, <code>packager.py</code>, <code>_fingerprint.py</code> stay top-level.</li>
+<li><code>pytest -x -q</code> — compiler / compile-endpoint / CCM-compile suites green (no new
+   failures beyond the baseline CCM fixture-path set).</li>
+</ol>
+<h3 id="phase-7-servicesmanagerpy-split-p2-factory-vs-lifecycle">Phase 7 — <code>services/manager.py</code> split (P2, factory vs lifecycle)</h3>
+<ol>
+<li>Create <code>services/_factory.py</code>; move SDK connector/discovery/AAS <strong>creation</strong>
+   wiring (<code>ServiceFactory</code> calls) out of <code>manager.py</code>.</li>
+<li><code>manager.py</code> keeps the <code>ServiceManager</code> <strong>lifecycle</strong> facade (own/start/stop)
+   and delegates creation to <code>_factory.py</code>.</li>
+<li><code>pytest -x -q</code> — participant / service-manager / mock-server suites green.</li>
+</ol>
+<h3 id="phase-8-server-nesting-p2-flat-nested">Phase 8 — <code>server/</code> nesting (P2, flat → nested)</h3>
+<ol>
+<li>Create <code>server/routes/</code>; move <code>compile.py</code> → <code>routes/compile.py</code>,
+   <code>callbacks.py</code> → <code>routes/callbacks.py</code>, and the <code>routes.py</code> handlers →
+   <code>routes/mock.py</code>; <code>routes/__init__.py</code> exposes <code>register_routes(app)</code>.</li>
+<li>Create <code>server/streaming/</code>; split <code>streaming.py</code> into <code>streaming/lifecycle.py</code>
+   (connection open/close/keepalive) + <code>streaming/formatter.py</code> (event → SSE wire)
+   and move <code>_event_buffer.py</code> → <code>streaming/_event_buffer.py</code>.</li>
+<li><code>server/__init__.py</code> and <code>app.py</code> wiring re-export/import the same public names;
+   <code>app.py</code>, <code>storage.py</code>, <code>mock_registry.py</code> stay top-level.</li>
+<li><code>pytest -x -q</code> — health / compile-endpoint / sse-streaming / pause-resume-event
+   suites green.</li>
+</ol>
+<h3 id="phase-9-playerexecutionplayerpy-split-p3-extract-formatter">Phase 9 — <code>player/execution/player.py</code> split (P3, extract formatter)</h3>
+<ol>
+<li>Create <code>player/execution/_trace_formatter.py</code>; move result/execution-trace
+   formatting out of <code>player.py</code>.</li>
+<li><code>player.py</code> keeps orchestration and calls the formatter.</li>
+<li><code>pytest -x -q</code> — runner / sse-streaming / test-runner suites green.</li>
+</ol>
+<h3 id="phase-10-watch-list-guard-p3-no-op-unless-touched">Phase 10 — Watch-list guard (P3, no-op unless touched)</h3>
+<p>No moves now. Record the watch list (<code>player/loading/_parser.py</code> 267,
+<code>cli/compile.py</code> 260, <code>authoring/_builders.py</code> 208 + §1a) in repo memory so the
+<strong>next</strong> feature touching any near-limit file triggers a split-first rule rather
+than an overflow.</p>
+<h3 id="phase-11-models-conditional-nesting-p3-guardrail-gated">Phase 11 — <code>models/</code> conditional nesting (P3, guardrail-gated)</h3>
+<ol>
+<li>Inspect <code>models/enums.py</code> and <code>models/results.py</code> at execution time. <strong>Only if</strong>
+   each holds genuinely separable families (e.g. service enums vs phase enums; step
+   results vs trace models) create <code>models/enums/</code> and <code>models/results/</code> with the
+   families as leaf modules and a barrel re-exporting every name.</li>
+<li><strong>Guardrail:</strong> if a file is one cohesive set of related models, leave it flat —
+   nesting cohesive data into one-file packages is over-engineering and is rejected.</li>
+<li><code>pytest -x -q</code> — model / compiler / runner suites green.</li>
+</ol>
+<hr />
+<h2 id="5-risks">5. Risks</h2>
+<p><strong>Overall risk: LOW.</strong> Every phase is a mechanical move-and-re-export with no logic
+change, validated by the existing suite.</p>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Severity</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Step <code>@step(...)</code> registry breaks if a moved module isn't imported</td>
+<td>Medium</td>
+<td>Keep barrel re-exports in <code>consume.py</code> / <code>connector/__init__.py</code> / <code>_checks/__init__.py</code>; assert registry membership in tests after each phase</td>
+</tr>
+<tr>
+<td>Circular-import regression in <code>player/execution</code></td>
+<td>Medium</td>
+<td>Preserve existing function-local imports in <code>_phase_runners</code>; do <strong>not</strong> rewire in this pass</td>
+</tr>
+<tr>
+<td>Condition-grammar drift between compile &amp; runtime</td>
+<td>Medium</td>
+<td>Phase 3 single-sources the grammar in one module; both callers import it</td>
+</tr>
+<tr>
+<td>Hidden behavior change during dedupe/extraction (Phases 2, 4, 7, 9)</td>
+<td>Low</td>
+<td>Pure extraction; identical inputs/outputs; suite is the gate</td>
+</tr>
+<tr>
+<td>Package nesting breaks a public import path (Phases 5, 6, 8, 11)</td>
+<td>Medium</td>
+<td>Barrel <code>__init__.py</code> re-exports every previously public name; run the full suite after each move</td>
+</tr>
+<tr>
+<td>Over-nesting cohesive code into one-file packages</td>
+<td>Low</td>
+<td>Guardrail check per phase (§0); leave flat with a one-line reason when no seam exists</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cross-codebase-contract-touch-points-ship-in-lockstep-with-frontend">Cross-codebase contract touch points (ship in lockstep with frontend)</h3>
+<p>These serialization ↔ YAML ↔ compiler boundaries are <strong>contracts shared with the
+IDE</strong>. This plan does <strong>not</strong> change them — but any future change here must ship
+together with the frontend agent's matching change:</p>
+<ul>
+<li><strong>YAML v2 syntax</strong> (<code>@variable_name</code> refs, <code>${{ }}</code> expressions) — touched
+  indirectly by Phase 3 (grammar isolation). Verify no token/precedence change.</li>
+<li><strong>Block schema</strong> (<code>ide/public/blocks/**</code>) — step <code>type</code> strings are the join key;
+  renames are forbidden in a structural pass.</li>
+<li><strong>TCK manifest model</strong> — compiler input contract; untouched.</li>
+<li><strong><code>.stck</code> package format</strong> — compiler output contract; untouched.</li>
+</ul>
+<hr />
+<h2 id="6-acceptance-criteria">6. Acceptance Criteria</h2>
+<p>All must hold after <strong>every</strong> phase (run from repo root). The line-count check is a
+<strong>floor, not the goal</strong> — passing it does not mean a package is deeply modular; the
+structural checks below are what prove the objective.</p>
+<div class="highlight"><span class="filename">Bash</span><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># 1. No source file exceeds 300 lines (floor, not the objective)</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>find<span class="w"> </span>src<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.py&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>wc<span class="w"> </span>-l<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;$1&gt;300 &amp;&amp; !/total/&#39;</span><span class="w">   </span><span class="c1"># → empty</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># 2. No broad exception handling</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>grep<span class="w"> </span>-rn<span class="w"> </span><span class="s2">&quot;except Exception:\|except:&quot;</span><span class="w"> </span>src/<span class="w"> </span>--include<span class="o">=</span><span class="s2">&quot;*.py&quot;</span><span class="w">      </span><span class="c1"># → empty</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># 3. No print statements</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>grep<span class="w"> </span>-rn<span class="w"> </span><span class="s2">&quot;print(&quot;</span><span class="w"> </span>src/<span class="w"> </span>--include<span class="o">=</span><span class="s2">&quot;*.py&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;_fingerprint&quot;</span><span class="w"> </span><span class="c1"># → empty</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># 4. Test suite introduces NO NEW failures beyond the baseline</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-q<span class="w">   </span><span class="c1"># → only the 20 pre-existing CCM fixture-path failures</span>
+</span></code></pre></div>
+<blockquote>
+<p><strong>Baseline:</strong> the suite carries <strong>20 known CCM fixture-path failures</strong> unrelated
+to this refactor (see §0). A phase passes when the failing-test set is <strong>identical
+before and after</strong> — never larger. Do not attempt to fix the baseline here.</p>
+</blockquote>
+<p>Plus structural checks (the real proof of the objective):</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Deep modularity:</strong> every flat package called out in §1c is nested along its
+      real seam (or explicitly left flat by the guardrail with a one-line reason).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Layered package layout intact; barrels (<code>__init__.py</code>) expose public surface only.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Each new sub-package has a single nameable responsibility and a minimal public surface.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>No over-engineering:</strong> no single-function "module", no one-file package added
+      purely for depth (guardrail held).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Step <code>@step(...)</code> registry resolves all moved step types unchanged.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No public import path broken (existing <code>from tractusx_testlab...</code> imports still resolve).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Condition grammar single-sourced in one module.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Each split is a responsibility seam (one concern per new file/package), not an arbitrary cut.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Eclipse Tractus-X Contributors
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "navigation.instant", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../assets/javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

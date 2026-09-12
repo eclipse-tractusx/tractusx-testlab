@@ -1,0 +1,4795 @@
+<!--
+  Eclipse Tractus-X - Tractus-X TestLab
+
+  Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+  See the NOTICE file(s) distributed with this work for additional
+  information regarding copyright ownership.
+
+  This program and the accompanying materials are made available under the
+  terms of the Apache License, Version 2.0 which is available at
+  https://www.apache.org/licenses/LICENSE-2.0.
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+  either express or implied. See the
+  License for the specific language govern in permissions and limitations
+  under the License.
+
+  SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- It was reviewed and tested by a human committer. -->
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Visual test authoring tool for Eclipse Tractus-X dataspaces">
+      
+      
+      
+      
+        <link rel="prev" href="../infrastructure-bindings/">
+      
+      
+        <link rel="next" href="../step-reference-drift-report/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/logo_tractus-x-min.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Environment Injection Analysis - Tractus-X TestLab Documentation</title>
+      
+    
+    
+  
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/stylesheets/orange-black-theme.css">
+  <style>
+    .md-header__inner {
+      display: flex !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      height: 3rem !important;
+      padding: 0 0.1rem !important;
+      gap: 0 !important;
+      position: relative !important;
+    }
+
+    .md-header__button.md-logo {
+      order: 1 !important;
+      flex: 0 0 auto !important;
+      margin: 0 !important;
+      padding: 0.2rem 0.1rem !important;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+
+    .md-header__button[for="__drawer"] {
+      order: 2 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0.2rem !important;
+      display: none !important;
+    }
+
+    @media screen and (max-width: 1220px) {
+      .md-header__button[for="__drawer"] {
+        display: inline-flex !important;
+      }
+    }
+
+    .md-header__title {
+      order: 3 !important;
+      flex: 0 0 auto !important;
+      margin: 0 0 0 0.15rem !important;
+      overflow: visible !important;
+      font-family: 'Manrope', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 1.2rem !important;
+      letter-spacing: -0.02em !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      line-height: 3rem !important;
+      height: 3rem !important;
+    }
+
+    .md-header__title .md-header__ellipsis {
+      font-size: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      display: none !important;
+    }
+
+    .md-header__title::before {
+      content: "Tractus-X TestLab" !important;
+      color: #ffffff !important;
+      font-size: 1.2rem !important;
+      font-weight: 700 !important;
+      white-space: nowrap !important;
+    }
+
+    .md-header__title::after {
+      content: "docs" !important;
+      color: rgba(255, 215, 0, 0.7) !important;
+      font-size: 0.5rem !important;
+      font-weight: 500 !important;
+      background: none !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.12em !important;
+      white-space: nowrap !important;
+      align-self: flex-start !important;
+      margin-top: 0.55rem !important;
+      margin-left: -0.2rem !important;
+    }
+
+    .md-search {
+      order: 5 !important;
+      flex: 1 1 auto !important;
+      max-width: none !important;
+      width: auto !important;
+      margin: 0 0 0 0.75rem !important;
+    }
+
+    label[for="__search"] {
+      order: 4 !important;
+      flex: 0 0 auto !important;
+    }
+
+    .md-header .md-version {
+      order: 6 !important;
+      flex: 0 0 auto !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      margin: 0 0.4rem !important;
+    }
+  </style>
+
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/orange-black-theme.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#environment-context-injection-analysis-report" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Tractus-X TestLab Documentation" class="md-header__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tractus-X TestLab Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Environment Injection Analysis
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../specification/" class="md-tabs__link">
+          
+  
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
+          
+  
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api-reference/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Tractus-X TestLab Documentation" class="md-nav__button md-logo" aria-label="Tractus-X TestLab Documentation" data-md-component="logo">
+      
+  <img src="../../assets/images/logo_tractus-x.svg" alt="logo">
+
+    </a>
+    Tractus-X TestLab Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/eclipse-tractusx/tractusx-testlab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eclipse-tractusx/tractusx-testlab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Welcome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../home/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Terminology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/functional-requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Functional Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/constraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Constraints & Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/specification/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Walkthrough
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/writing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/compiling-packages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiling Packages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/walkthrough/executing-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Executing Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/reference/syntax/cheat-sheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax Cheat Sheet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/syntax/tck-syntax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TCK Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/create-step-executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create a Step Executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-service-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Service Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-assertion-type/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add an Assertion Type
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/add-validation-rule/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add a Validation Rule
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/development-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-conformity-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CCM Conformity Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Certificate Management
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Certificate Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/certificate-management-ide-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-business-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Business Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-developer-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/ccm-architecture-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../product-scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Scope
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI-Assisted Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Contracts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Step Contracts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../step-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single Source of Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ide-engine-contract-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IDE-Engine Contract Parity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-conflict-decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Conflict Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-migration-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Migration Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../block-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../creating-a-step/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating a Step
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../execution-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infrastructure-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Injection Analysis
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Injection Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-pipeline-as-it-actually-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The pipeline as it actually runs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. The pipeline as it actually runs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#injection-hops-in-execution-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Injection hops, in execution order
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Findings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Findings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f1-the-documented-priority-ladder-is-partly-dead-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F1 — The documented priority ladder is partly dead code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f2-source-input-variables-are-silently-never-seeded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F2 — source: input variables are silently never seeded
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f3-unresolved-references-silently-become-literal-strings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F3 — Unresolved references silently become literal strings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f4-two-expression-resolvers-with-different-rules-only-one-of-which-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F4 — Two expression resolvers with different rules, only one of which runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f5-infrastructure-is-string-scraped-not-modelled-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F5 — infrastructure.* is string-scraped, not modelled — fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f6-service-selection-depends-on-dict-insertion-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F6 — Service selection depends on dict insertion order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f7-cli-run-bypasses-configloader-entirely-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F7 — CLI run bypasses ConfigLoader entirely — fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f8-type-fidelity-depends-on-which-door-you-entered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F8 — Type fidelity depends on which door you entered
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f9-ten-naming-conventions-in-one-flat-namespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F9 — Ten naming conventions in one flat namespace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f10-two-generations-of-documentation-both-wrong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F10 — Two generations of documentation, both wrong
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f11-declaring-a-capability-obliges-the-operator-to-nothing-partly-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F11 — Declaring a capability obliges the operator to nothing — partly fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-root-causes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Root causes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-proposed-target-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Proposed target architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Proposed target architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-one-typed-runenvironment-built-once-before-the-player" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A. One typed RunEnvironment, built once, before the player
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-replace-the-string-scrape-with-a-resolver-over-the-typed-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B. Replace the string scrape with a resolver over the typed profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-namespaced-context-with-explicit-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C. Namespaced context with explicit scopes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d-make-resolution-strict-and-single-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D. Make resolution strict and single-implementation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e-a-capability-contract-registry-declaring-a-capability-makes-its-keys-obligatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E. A capability contract registry — declaring a capability makes its keys obligatory
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="E. A capability contract registry — declaring a capability makes its keys obligatory">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#e1-the-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.1 The registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2-auth-is-a-closed-discriminated-union-never-a-free-form-dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.2 Auth is a closed discriminated union, never a free-form dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e3-one-mechanical-naming-rule-across-all-three-surfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.3 One mechanical naming rule across all three surfaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e4-validation-is-fail-fast-and-total" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.4 Validation is fail-fast and total
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e5-generating-the-operators-starting-point" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.5 Generating the operator's starting point
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e6-what-this-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.6 What this fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-suggested-sequencing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Suggested sequencing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-open-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Open decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../step-reference-drift-report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Step Reference Drift Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13" id="__nav_5_13_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decision Records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/ADR-0000-template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0000 Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_3" id="__nav_5_13_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backend
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Backend
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0005-filesystem-participant-manager-with-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0005 Participant Manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0012-compilation-and-packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0012 Compilation and Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0014-flat-compilation-intermediate-representation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0014 Flat Compilation IR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0015-package-asset-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0015 Package Asset Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0016-execution-trace-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0016 Execution Trace Format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0017-input-callback-endpoint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0017 Input Callback Endpoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0019-service-requirements-and-engine-bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0019 Service Requirements and Engine Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0022-tck-static-inspection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0022 TCK Static Inspection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0023-variable-scope-annotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0023 Variable Scope Annotation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/backend/ADR-0024-test-skip-configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0024 Test-Level Skip Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_13_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_13_4" id="__nav_5_13_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_13_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_13_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Shared
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0003-sse-for-live-ide-execution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0003 SSE for Live Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0008-test-case-to-tck-rename/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0008 TCK Rename
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0009-typed-variable-class-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0009 Typed Variable Class System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0010-yaml-syntax-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0010 YAML Syntax v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0011-environment-and-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0011 Environment and Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0018-unified-variables-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0018 Unified Variables Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0021-remove-precondition-concept/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0021 Remove Precondition Concept
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decision-records/shared/ADR-0025-assertions-read-declared-returns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0025 Assertions Read Declared Returns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-pipeline-as-it-actually-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The pipeline as it actually runs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. The pipeline as it actually runs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#injection-hops-in-execution-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Injection hops, in execution order
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Findings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Findings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f1-the-documented-priority-ladder-is-partly-dead-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F1 — The documented priority ladder is partly dead code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f2-source-input-variables-are-silently-never-seeded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F2 — source: input variables are silently never seeded
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f3-unresolved-references-silently-become-literal-strings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F3 — Unresolved references silently become literal strings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f4-two-expression-resolvers-with-different-rules-only-one-of-which-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F4 — Two expression resolvers with different rules, only one of which runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f5-infrastructure-is-string-scraped-not-modelled-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F5 — infrastructure.* is string-scraped, not modelled — fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f6-service-selection-depends-on-dict-insertion-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F6 — Service selection depends on dict insertion order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f7-cli-run-bypasses-configloader-entirely-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F7 — CLI run bypasses ConfigLoader entirely — fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f8-type-fidelity-depends-on-which-door-you-entered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F8 — Type fidelity depends on which door you entered
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f9-ten-naming-conventions-in-one-flat-namespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F9 — Ten naming conventions in one flat namespace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f10-two-generations-of-documentation-both-wrong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F10 — Two generations of documentation, both wrong
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#f11-declaring-a-capability-obliges-the-operator-to-nothing-partly-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F11 — Declaring a capability obliges the operator to nothing — partly fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-root-causes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Root causes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-proposed-target-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Proposed target architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Proposed target architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-one-typed-runenvironment-built-once-before-the-player" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A. One typed RunEnvironment, built once, before the player
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-replace-the-string-scrape-with-a-resolver-over-the-typed-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B. Replace the string scrape with a resolver over the typed profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-namespaced-context-with-explicit-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C. Namespaced context with explicit scopes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d-make-resolution-strict-and-single-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D. Make resolution strict and single-implementation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e-a-capability-contract-registry-declaring-a-capability-makes-its-keys-obligatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E. A capability contract registry — declaring a capability makes its keys obligatory
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="E. A capability contract registry — declaring a capability makes its keys obligatory">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#e1-the-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.1 The registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2-auth-is-a-closed-discriminated-union-never-a-free-form-dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.2 Auth is a closed discriminated union, never a free-form dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e3-one-mechanical-naming-rule-across-all-three-surfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.3 One mechanical naming rule across all three surfaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e4-validation-is-fail-fast-and-total" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.4 Validation is fail-fast and total
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e5-generating-the-operators-starting-point" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.5 Generating the operator's starting point
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e6-what-this-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E.6 What this fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-suggested-sequencing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Suggested sequencing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-open-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Open decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/eclipse-tractusx/tractusx-testlab/edit/main/docs/developer/environment-injection-analysis.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<!--
+ Eclipse Tractus-X - Tractus-X TestLab
+
+ Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+ See the NOTICE file(s) distributed with this work for additional
+ information regarding copyright ownership.
+
+ This program and the accompanying materials are made available under the
+ terms of the Apache License, Version 2.0 which is available at
+ https://www.apache.org/licenses/LICENSE-2.0.
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations
+ under the License.
+
+ SPDX-License-Identifier: Apache-2.0
+-->
+<!-- This document was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5). -->
+<!-- It was reviewed and validated by a human committer. -->
+
+<h1 id="environment-context-injection-analysis-report">Environment &amp; Context Injection — Analysis Report</h1>
+<blockquote>
+<p>Date: 2026-08-06 | Branch: <code>feat/run_security_consitency</code>
+Scope: how operator-supplied configuration, infrastructure bindings, and test
+variables enter a run and reach a step. Backend only (<code>src/tractusx_testlab/</code>).
+Status: <strong>partly implemented</strong> — F5 and F7 are fixed, and §4 A (the binding
+half), §4 B and §4 E.3 shipped with the <code>InfrastructureManager</code>. See
+<a href="../infrastructure-bindings/">Infrastructure Bindings</a> for the result. The
+findings below are recorded as they were measured; the sections that have
+since been addressed say so where they are stated.</p>
+</blockquote>
+<h2 id="summary">Summary</h2>
+<p>There is no single injection mechanism. There are <strong>three unrelated entry doors</strong>,
+<strong>two unrelated configuration axes that never meet</strong>, <strong>nine write sites</strong> into one
+untyped dictionary, and <strong>two independent expression resolvers</strong> with inverse
+normalization rules — only one of which ever executes.</p>
+<p>The binding half of <a href="../decision-records/backend/ADR-0019-service-requirements-and-engine-bindings/">ADR-0019</a>
+was never implemented. The typed model that exists (<code>InfrastructureConfig</code>) describes
+<em>requirements</em> and is never consulted by the player; the data that is actually used
+(the operator's binding values) is unmodelled and recovered by string-prefix scraping
+at runtime.</p>
+<p>The practical symptom is that an unresolved variable reference is not an error. It
+silently becomes the literal template string, passes step validation, and surfaces
+several layers later as a connector or HTTP failure.</p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Findings</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dead / misleading code</td>
+<td>F1, F10</td>
+</tr>
+<tr>
+<td>Silent failure</td>
+<td>F2, F3</td>
+</tr>
+<tr>
+<td>Duplicated or divergent logic</td>
+<td>F4</td>
+</tr>
+<tr>
+<td>Missing architecture (ADR-0019 §2/§3)</td>
+<td>F5</td>
+</tr>
+<tr>
+<td>Unbounded, unspecified input surface</td>
+<td>F11</td>
+</tr>
+<tr>
+<td>Order-dependent behavior</td>
+<td>F6</td>
+</tr>
+<tr>
+<td>Inconsistent behavior across entry points</td>
+<td>F7, F8</td>
+</tr>
+<tr>
+<td>Namespace collisions</td>
+<td>F9</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="1-the-pipeline-as-it-actually-runs">1. The pipeline as it actually runs</h2>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>                  ┌─ CLI      --config file.yaml + --var K=V ──┐
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a> operator input ──┼─ HTTP     POST /jobs {runtime_vars: {...}} ─┼──&gt; runtime_vars: dict
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                  └─ Library  player.run(runtime_vars={...})  ──┘         │
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                                                                          │
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a> TestlabConfig ── testlab.config.yaml + TESTLAB_* env ──&gt; (never meets ────┘ ... it doesn&#39;t)
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                                                            runtime_vars)
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                                                                          v
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                            StepContext._variables : dict[str, object]  &lt;-- 9 writers
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                                                                          │
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                                    string-prefix scrape ─────────────────┤
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                                    (&quot;infrastructure.*&quot;)                  │
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                                              v                           v
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                                       ServiceManager              regex substitution
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                                       (ServiceDefinition)         ${{ }} / ${} / @var
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                                              └──────────&gt; step execute()
+</span></code></pre></div>
+<h3 id="injection-hops-in-execution-order">Injection hops, in execution order</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Where</th>
+<th>What it writes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>cli/run.py:108</code></td>
+<td>config-YAML <code>variables:</code> → <code>runtime_vars</code> (<strong>all values <code>str()</code>-cast</strong>)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>player/execution/_context_seeder.py:59</code></td>
+<td><code>_tck_root</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>player/execution/_context_seeder.py:136-137</code></td>
+<td><code>testdata.&lt;id&gt;</code> <strong>and</strong> <code>env.testdata.&lt;id&gt;</code>; same for schemas</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>player/execution/_context_seeder.py:63-67</code></td>
+<td><code>shared_variables</code> defaults — <strong>dead code, see F1</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>player/execution/_context_seeder.py:94-97</code></td>
+<td><code>env.variables</code> with <code>source: value</code> → <code>&lt;id&gt;</code> and <code>&lt;id&gt;.&lt;field&gt;</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>player/execution/_context_seeder.py:72-73</code></td>
+<td><code>runtime_vars</code> verbatim, overwriting everything</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>player/execution/infrastructure_seeder.py:158</code></td>
+<td>scrapes <code>infrastructure.*</code> string keys → <code>ServiceDefinition</code>s; writes back <code>infrastructure.engine.connector</code> as a <em>service-name string</em></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>player/execution/_helpers.py:34</code></td>
+<td>per-test <code>variables:</code> defaults</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>player/execution/step_runner.py:117-119</code>, <code>steps/base.py:302-304</code>, <code>player/execution/player.py:261-262</code></td>
+<td>step returns (<code>&lt;field&gt;</code> <strong>and</strong> <code>steps.&lt;id&gt;.&lt;field&gt;</code>), step exports, test outputs (<code>&lt;name&gt;</code> <strong>and</strong> <code>!&lt;test&gt;:&lt;name&gt;</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Everything lands in the same <code>dict[str, object]</code> at <code>player/execution/context.py:54</code>.
+There is no schema, no namespace object, no provenance, and no type information.</p>
+<hr />
+<h2 id="2-findings">2. Findings</h2>
+<h3 id="f1-the-documented-priority-ladder-is-partly-dead-code">F1 — The documented priority ladder is partly dead code</h3>
+<p><code>_context_seeder.py:49-56</code> documents a three-level priority: shared variables →
+<code>env.variables</code> → <code>runtime_vars</code>. <strong>Level 1 never executes.</strong>
+<code>getattr(tck.definition, "shared_variables", None)</code> always returns <code>None</code>, because
+<code>TckDefinition</code> (<code>models/authoring/definitions.py:198</code>) has no such field — the
+block is <code>env.variables</code>.</p>
+<p>The compiler validator still directs authors to it
+(<code>compiler/validation/validator.py:133</code>). The docstring describes an architecture
+that is not present.</p>
+<h3 id="f2-source-input-variables-are-silently-never-seeded">F2 — <code>source: input</code> variables are silently never seeded</h3>
+<p><code>seed_env_variables</code> (<code>_context_seeder.py:76</code>) only handles <code>with.value</code>. Every
+<code>source: input</code> variable — which is <em>the entire SUT-supplied surface</em> per ADR-0019 §4
+— is skipped, with no log line and no error. The variable's <code>returns:</code> fields are
+skipped with it, so <code>${{ env.sut_counter_party_id.value }}</code> has nothing behind it.</p>
+<h3 id="f3-unresolved-references-silently-become-literal-strings">F3 — Unresolved references silently become literal strings</h3>
+<p>This is the direct cause of the painful manual debugging that motivated this report.
+Verified against the running code:</p>
+<div class="highlight"><span class="filename">Python</span><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">store</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;sut_counter_party_id&#39;</span><span class="p">:</span> <span class="s1">&#39;BPNL0001&#39;</span><span class="p">}</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">resolve_str</span><span class="p">(</span><span class="s1">&#39;${{ env.sut_counter_party_id.value }}&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># → &#39;${{ env.sut_counter_party_id.value }}&#39;   &lt;-- the literal template</span>
+</span></code></pre></div>
+<p><code>player/loading/resolver.py:74-77</code> returns the original string when the lookup yields
+<code>None</code>. That literal then passes Pydantic validation, because <code>CounterPartyParams</code>
+(<code>steps/_contracts.py:99</code>) declares <code>counter_party_address: str = Field(default="")</code>
+— any string is valid. An unset variable therefore becomes an HTTP request to a URL
+literally named <code>${{ env.… }}</code>, and the failure surfaces several layers away as a
+connector error.</p>
+<p>There is a naming trap on top of it: the operator writes <code>sut_counter_party_id: BPNL0001</code>
+in the run-config, but the test reads <code>.value</code>. Nothing bridges the two, and nothing
+warns.</p>
+<h3 id="f4-two-expression-resolvers-with-different-rules-only-one-of-which-runs">F4 — Two expression resolvers with different rules, only one of which runs</h3>
+<ul>
+<li><strong>Compiler</strong> — <code>compiler/validation/_expressions.py:70</code> normalizes <code>testdata.x</code> →
+  <code>env.testdata.x</code> and emits <code>$ref</code> / <code>$concat</code> IR.</li>
+<li><strong>Player</strong> — <code>player/loading/resolver.py:44</code> strips <code>env.</code> and does a flat lookup.</li>
+</ul>
+<p>These are inverse transforms of the same syntax. The player never consumes the IR:
+<code>compile_tck</code> bundles <strong>raw YAML</strong> (<code>tck-bundle.yaml</code>, <code>compiler/compiler.py:169</code>) and
+the loader <code>yaml.safe_load</code>s it back. Compile-time validation therefore validates a
+representation that never executes, and any divergence is invisible until runtime.</p>
+<p>This also explains the dead double-write at <code>_context_seeder.py:137</code>:
+<code>env.testdata.&lt;id&gt;</code> is never read, because the resolver strips <code>env.</code> before looking up.</p>
+<h3 id="f5-infrastructure-is-string-scraped-not-modelled-fixed">F5 — <code>infrastructure.*</code> is string-scraped, not modelled — <strong>fixed</strong></h3>
+<blockquote>
+<p>Fixed by the <code>Infrastructure</code> model and <code>InfrastructureManager</code>: the fields
+below are declared, the three surfaces are generated from them, an unknown key
+is an error, and requirements are checked against bindings before the first
+step. Suffix-stripping remains, deriving <code>base_url</code> and <code>dma_path</code> from the
+declared <code>management_url</code>. What follows is the state that motivated it.</p>
+</blockquote>
+<p>ADR-0019 §2 specifies a structured <code>bindings:</code> profile with a schema and a loader. It
+was never built — <code>grep -rn "bindings" src/**/*.py</code> returns nothing. Instead,
+<code>player/execution/infrastructure_seeder.py</code> does
+<code>key.startswith("infrastructure.engine.connector.")</code> over the flat dict and
+hand-assembles a <code>ServiceDefinition</code>. Consequences:</p>
+<ul>
+<li><code>InfrastructureConfig</code> (<code>models/authoring/infrastructure.py:73</code>) — the typed model
+  that <em>does</em> exist — models only <em>requirements</em> (<code>required</code>, <code>standard</code>). It is used
+  by <code>testlab inspect</code> and never by the player. Requirements are declared and never
+  checked against what was actually bound.</li>
+<li>Field names (<code>management_url</code>, <code>api_key</code>, <code>api_key_header</code>, <code>participant_id</code>,
+  <code>dsp_url</code>, <code>name</code>, <code>version</code>) exist only as string literals inside the seeder.
+  Nothing validates them; a typo yields a skipped service and a <code>logger.debug</code>.</li>
+<li><code>_strip_management_suffix</code> (<code>infrastructure_seeder.py:83</code>) guesses <code>base_url</code> by
+  pattern-matching two hardcoded suffixes, reconstructing information the operator
+  already had.</li>
+<li><code>infrastructure.engine.connector</code> is used as <strong>both a key prefix and a leaf key</strong>
+  (<code>infrastructure_seeder.py:186</code>), the leaf holding the sentinel
+  <code>"__engine_connector__"</code>. A flat namespace cannot express "node and leaf".</li>
+<li>The alias branch at <code>infrastructure_seeder.py:192-206</code> registers the engine
+  connector a <em>second</em> time as a PROVIDER under <code>infrastructure.engine.connector.name</code>,
+  with a comment stating it exists so <code>service: testlab</code> resolves. That is a
+  name-string workaround for a missing role model.</li>
+</ul>
+<h3 id="f6-service-selection-depends-on-dict-insertion-order">F6 — Service selection depends on dict insertion order</h3>
+<p><code>_first_service_of_type</code> (<code>player/execution/context.py:122</code>) iterates <code>service_names</code>
+and returns the first match. Registration order is: infrastructure seeder (engine, then
+engine-alias, then SUT) → per-test <code>services:</code>. <strong>Which connector a step talks to is
+therefore a function of seeding order, not of anything declared.</strong></p>
+<p><code>context.py:133</code> additionally reaches into <code>self._services._definitions</code> — a private
+field of another class.</p>
+<h3 id="f7-cli-run-bypasses-configloader-entirely-fixed">F7 — CLI <code>run</code> bypasses <code>ConfigLoader</code> entirely — <strong>fixed</strong></h3>
+<blockquote>
+<p><code>cli/run.py</code> now loads through <code>ConfigLoader</code>, passing only the log directory
+as a CLI override, so the file and the environment reach a CLI run exactly as
+they reach the server.</p>
+</blockquote>
+<p><code>cli/run.py:79</code> constructs <code>TestlabConfig(logs_dir=...)</code> directly. <code>TestlabPlayer</code>
+only falls back to <code>ConfigLoader.load()</code> when <code>config is None</code>
+(<code>player/execution/player.py:87</code>).</p>
+<p>Net effect: <strong><code>testlab.config.yaml</code> and every <code>TESTLAB_*</code> environment variable are
+silently ignored on the CLI run path</strong> — vault config, <code>TESTLAB_SERVER_PORT</code>,
+<code>TESTLAB_KEYS_DIR</code>, all of it. The server path (<code>server/app.py:58</code>) honours them.
+Same product, two behaviours.</p>
+<h3 id="f8-type-fidelity-depends-on-which-door-you-entered">F8 — Type fidelity depends on which door you entered</h3>
+<p><code>_load_config_variables</code> casts everything with <code>str()</code> (<code>cli/run.py:123-125</code>). So
+<code>sut_response_timeout: 60</code> in <code>stubs/ccm-sut/run-config.yaml:34</code> arrives as <code>"60"</code>.
+The same key supplied via <code>POST /jobs</code> or the library API arrives as <code>int</code>. Steps that
+do arithmetic or comparison behave differently depending on the entry point.</p>
+<h3 id="f9-ten-naming-conventions-in-one-flat-namespace">F9 — Ten naming conventions in one flat namespace</h3>
+<p>Coexisting inside <code>_variables</code>, with no separator discipline:</p>
+<p><code>_tck_root</code> · <code>testdata.&lt;id&gt;</code> · <code>env.testdata.&lt;id&gt;</code> · <code>&lt;var_id&gt;</code> · <code>&lt;var_id&gt;.&lt;field&gt;</code> ·
+<code>infrastructure.&lt;side&gt;.&lt;cap&gt;</code> · <code>infrastructure.&lt;side&gt;.&lt;cap&gt;.&lt;field&gt;</code> ·
+<code>steps.&lt;id&gt;.&lt;field&gt;</code> · <code>&lt;field&gt;</code> (same value, flat) · <code>!&lt;test&gt;:&lt;export&gt;</code> · plus the
+<code>syntax/context_vars.py</code> constants (<code>catalog_target</code>, <code>datasets</code>, <code>edr_token</code>, …).</p>
+<p>A step export named <code>datasets</code> collides with a user variable named <code>datasets</code>; last
+writer wins, silently.</p>
+<h3 id="f10-two-generations-of-documentation-both-wrong">F10 — Two generations of documentation, both wrong</h3>
+<p><code>docs/tutorials/ccm-developer-guide.md:206</code> documents the V1 flat model
+(<code>testlab_management_url</code>, <code>provider_address</code>). The shipped example
+<code>docs/examples/certificate-management-v2/raw/index.yaml:70</code> uses the V2 <code>env.variables</code>
+verb form. The code path that makes the V2 example work (the <code>infrastructure.*</code>
+prefixes) is documented <strong>only</strong> in <code>tests/test_infrastructure_seeder.py:57</code>.</p>
+<p>An operator has no correct document from which to write a run-config.</p>
+<h3 id="f11-declaring-a-capability-obliges-the-operator-to-nothing-partly-fixed">F11 — Declaring a capability obliges the operator to nothing — <strong>partly fixed</strong></h3>
+<blockquote>
+<p>The key vocabulary is now declared per capability, and a <code>required: true</code>
+capability with no binding fails before the first step naming the key it
+owes. What is not yet built is the rest of §4 E: only the identifying address
+is obligatory (not a full per-capability contract), and <code>auth</code> is still the
+flat <code>api_key</code> / <code>api_key_header</code> pair rather than the discriminated union of
+§4 E.2 — so OAuth-protected infrastructure remains unexpressible.</p>
+</blockquote>
+<p><code>infrastructure.sut.connector.required: true</code> states that the run needs a SUT connector.
+It does <strong>not</strong> state what the operator must supply for it, and nothing anywhere does.
+The required keys are distributed across three places that cannot be reconciled:</p>
+<ul>
+<li>the scraper's string literals (<code>infrastructure_seeder.py:105-127</code>) — <code>management_url</code>,
+  <code>api_key</code>, <code>api_key_header</code>, <code>participant_id</code>, <code>dsp_url</code>;</li>
+<li>whatever the TCK author named their <code>source: input</code> variables — the CCM TCK picked
+  <code>sut_counter_party_id</code> / <code>sut_counter_party_address</code>
+  (<code>docs/examples/certificate-management-v2/raw/index.yaml:72-89</code>), but nothing constrained
+  that choice, so a second TCK needing the same connector may name them differently;</li>
+<li>the step contracts that ultimately consume them (<code>steps/_contracts.py:99</code>).</li>
+</ul>
+<p><code>ServiceDefinition.auth</code> is a bare <code>dict</code> (<code>models/authoring/definitions.py:69</code>) and the
+seeder populates it only for the API-key case (<code>infrastructure_seeder.py:126-127</code>), so
+<strong>OAuth-protected infrastructure is not expressible at all</strong> — there is no key an operator
+could supply for a token URL, client ID, or secret.</p>
+<p>The result is an input surface with no boundary: the operator cannot know what is
+obligatory, the engine cannot check it, and a missing key is discovered as a step failure.
+This is the finding that §4 E addresses.</p>
+<hr />
+<h2 id="3-root-causes">3. Root causes</h2>
+<p>The individual findings all descend from three structural causes.</p>
+<ol>
+<li>
+<p><strong>The context is a <code>dict[str, object]</code>, not a model.</strong> Nine writers, no schema, no
+   provenance, no types, no collision detection. Every consumer re-derives structure
+   with string prefixes and <code>getattr</code> chains. This is why F5, F6, and F9 exist, and why
+   debugging a single variable requires reading nine files.</p>
+</li>
+<li>
+<p><strong>ADR-0019's binding half was never implemented.</strong> The requirements half
+   (<code>InfrastructureConfig</code>) is modelled and unused; the bindings half (the operator
+   profile, with a schema and loader) is used and unmodelled. The seeder occupies the
+   seam where a typed model belongs, and it is written in <code>startswith()</code>. Because that
+   half is missing, a declared requirement carries no obligation and no vocabulary — F11.</p>
+</li>
+<li>
+<p><strong>Resolution is untyped textual substitution with a silent-failure default.</strong>
+   Missing → literal passthrough → permissive <code>str</code> field → error surfaces three layers
+   downstream. Combined with F4's two divergent resolvers, nothing catches a bad
+   reference at any stage.</p>
+</li>
+</ol>
+<hr />
+<h2 id="4-proposed-target-architecture">4. Proposed target architecture</h2>
+<p>Five pieces, ordered so that each is independently shippable.</p>
+<h3 id="a-one-typed-runenvironment-built-once-before-the-player">A. One typed <code>RunEnvironment</code>, built once, before the player</h3>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>RunEnvironment
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── config:   TestlabConfig          # engine settings (logs, ports, vault) — one loader, all doors
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── bindings: BindingProfile         # ADR-0019 §2, Pydantic-modelled, schema-validated
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│     ├── engine: {connector: ConnectorBinding, dtr: DtrBinding}
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│     └── sut:    {connector: ConnectorBinding, dtr: DtrBinding}
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>└── inputs:   dict[str, Any]         # operator answers to `source: input` variables, typed
+</span></code></pre></div>
+<p>All three doors (CLI / HTTP / library) construct this same object through one factory.
+F7 and F8 disappear, because there is one construction path with one type contract.</p>
+<h3 id="b-replace-the-string-scrape-with-a-resolver-over-the-typed-profile">B. Replace the string scrape with a resolver over the typed profile</h3>
+<p><code>seed_infrastructure_services</code> becomes:</p>
+<div class="highlight"><span class="filename">Python</span><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">bind_infrastructure</span><span class="p">(</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">requirements</span><span class="p">:</span> <span class="n">InfrastructureConfig</span><span class="p">,</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">profile</span><span class="p">:</span> <span class="n">BindingProfile</span><span class="p">,</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ServiceDefinition</span><span class="p">]</span>
+</span></code></pre></div>
+<p>It matches each <code>required: true</code> capability against a binding and <strong>fails fast with a
+typed error naming the unbound capability</strong> — ADR-0019 §3, currently unimplemented.
+<code>management_url</code>, <code>api_key_header</code>, and <code>dsp_url</code> become model fields with validators
+instead of string literals. Suffix-stripping goes away: <code>ConnectorBinding</code> carries
+<code>base_url</code> and <code>management_path</code> as separate declared fields.</p>
+<h3 id="c-namespaced-context-with-explicit-scopes">C. Namespaced context with explicit scopes</h3>
+<p>Replace the flat dict with scoped stores — <code>env</code>, <code>infrastructure</code>, <code>steps</code>, <code>exports</code>,
+<code>internal</code> — each with a declared key shape. A write to an occupied key in a different
+scope is an error, not a silent overwrite. This resolves F9, F6 (services looked up by
+role and side, not insertion order), and the node-vs-leaf collision in F5.</p>
+<h3 id="d-make-resolution-strict-and-single-implementation">D. Make resolution strict and single-implementation</h3>
+<ul>
+<li>Unresolved reference raises <code>UnresolvedReferenceError</code>, naming the expression, the
+  scope searched, and the nearest keys — not a literal passthrough. This alone converts
+  a multi-layer debug into a one-line message.</li>
+<li>One resolver shared by compiler and player. Either the player consumes the <code>$ref</code> IR,
+  or the compiler validates against the player's resolution rules. Two inverse
+  normalizations of the same syntax cannot both be correct.</li>
+<li>Add a <code>dump_context</code> / <code>--explain-vars</code> diagnostic printing every key with its value,
+  its type, and <strong>which of the nine writers set it</strong>. This is the highest-value
+  debugging artifact and is cheap once (A) and (C) exist.</li>
+</ul>
+<h3 id="e-a-capability-contract-registry-declaring-a-capability-makes-its-keys-obligatory">E. A capability contract registry — declaring a capability makes its keys obligatory</h3>
+<p>This is the piece that closes the open-ended input surface. Today <code>infrastructure:</code> says
+<em>whether</em> a capability is needed but says nothing about <em>what the operator must supply for
+it</em>, so the required keys live only in the scraper's string literals
+(<code>infrastructure_seeder.py:105-127</code>) and in whatever the TCK author happened to name their
+<code>source: input</code> variables. Two TCKs needing the same SUT connector can demand different key
+names, and nothing detects a missing key until a step fails mid-run.</p>
+<p><strong>Rule: each <code>(side, capability)</code> pair has exactly one contract, and
+<code>required: true</code> binds the operator to it.</strong> Nothing else may be required, and nothing in
+the contract may be omitted.</p>
+<div class="highlight"><span class="filename">Text Only</span><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>infrastructure.sut.connector.required: true
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>        │
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        └── obliges the operator to supply CONTRACTS[(&quot;sut&quot;, &quot;connector&quot;)] in full
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>            → validated at load, before any step runs
+</span></code></pre></div>
+<h4 id="e1-the-registry">E.1 The registry</h4>
+<table>
+<thead>
+<tr>
+<th>Side + capability</th>
+<th>Required keys</th>
+<th>Optional keys (with defaults)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sut.connector</code></td>
+<td><code>participant_id</code> (BPNL), <code>dsp_url</code> (DSP endpoint)</td>
+<td><code>management_url</code> — only when the operator runs the SUT too</td>
+</tr>
+<tr>
+<td><code>sut.dtr</code></td>
+<td><code>base_url</code></td>
+<td><code>api_path</code> = <code>/api/v3</code>, <code>auth</code> = <code>{type: none}</code></td>
+</tr>
+<tr>
+<td><code>engine.connector</code></td>
+<td><code>base_url</code>, <code>participant_id</code> (BPNL), <code>auth</code></td>
+<td><code>management_path</code> = <code>/management</code>, <code>dsp_path</code> = <code>/api/v1/dsp</code>, <code>version</code> ← <code>dataspace.version</code></td>
+</tr>
+<tr>
+<td><code>engine.dtr</code></td>
+<td><code>base_url</code>, <code>auth</code></td>
+<td><code>api_path</code> = <code>/api/v3</code></td>
+</tr>
+</tbody>
+</table>
+<p>The asymmetry is deliberate and follows ADR-0019 §4. The <strong>engine</strong> side is infrastructure
+TestLab <em>operates</em>, so it needs management access and therefore credentials. The <strong>SUT</strong>
+side is a counter-party TestLab only <em>talks to</em> over DSP, so it needs an identity and an
+endpoint and no credentials at all — which is exactly the pair
+<code>connector/consumer/query_catalog</code> and every negotiation step consume via
+<code>CounterPartyParams</code> (<code>steps/_contracts.py:99</code>), and exactly the two variables the CCM TCK
+declares by hand today as <code>sut_counter_party_id</code> / <code>sut_counter_party_address</code>
+(<code>docs/examples/certificate-management-v2/raw/index.yaml</code>). Under this design the TCK stops
+declaring them: requiring <code>sut.connector</code> <em>is</em> the declaration.</p>
+<h4 id="e2-auth-is-a-closed-discriminated-union-never-a-free-form-dict">E.2 Auth is a closed discriminated union, never a free-form dict</h4>
+<p><code>ServiceDefinition.auth</code> is <code>dict</code> today (<code>models/authoring/definitions.py:69</code>), and the
+scraper populates it only for the API-key case — OAuth is unrepresentable. Replace it with a
+tagged union so the shape is decided by <code>type</code> and validated at load:</p>
+<div class="highlight"><span class="filename">YAML</span><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># API key</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">auth</span><span class="p">:</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api_key</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">X-Api-Key</span><span class="w">          </span><span class="c1"># optional, this is the default</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${TESTLAB_ENGINE_CONNECTOR_AUTH_VALUE}</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># OAuth2 client credentials</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="nt">auth</span><span class="p">:</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oauth2_client_credentials</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">  </span><span class="nt">token_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://idp.example.com/realms/cx/protocol/openid-connect/token</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">  </span><span class="nt">client_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">testlab-engine</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">  </span><span class="nt">client_secret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${TESTLAB_ENGINE_CONNECTOR_AUTH_CLIENT_SECRET}</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">  </span><span class="nt">scope</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">                  </span><span class="c1"># optional</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">  </span><span class="nt">audience</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">               </span><span class="c1"># optional</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="c1"># Explicitly unauthenticated — must be stated, never inferred from absence</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="nt">auth</span><span class="p">:</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
+</span></code></pre></div>
+<div class="highlight"><span class="filename">Python</span><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">AuthConfig</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">Union</span><span class="p">[</span><span class="n">ApiKeyAuth</span><span class="p">,</span> <span class="n">OAuth2ClientCredentialsAuth</span><span class="p">,</span> <span class="n">NoAuth</span><span class="p">],</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">Field</span><span class="p">(</span><span class="n">discriminator</span><span class="o">=</span><span class="s2">&quot;type&quot;</span><span class="p">),</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="p">]</span>
+</span></code></pre></div>
+<p>Three properties follow, none of which hold today:</p>
+<ul>
+<li>An unknown <code>type</code> is a load-time error listing the permitted values.</li>
+<li><code>client_secret</code> missing under <code>oauth2_client_credentials</code> is a load-time error at the
+  exact path — not a <code>401</code> from the connector twenty steps later.</li>
+<li>Secret fields are typed <code>SecretStr</code>, so the provenance dump (D) and the
+  <code>tck.boot.binding.*</code> events (ADR-0019 §4) redact them structurally rather than by
+  key-name guesswork.</li>
+</ul>
+<h4 id="e3-one-mechanical-naming-rule-across-all-three-surfaces">E.3 One mechanical naming rule across all three surfaces</h4>
+<p>Every contract key appears in three places, and all three derive from the same path — no
+lookup table, no per-capability special cases. This is what replaces the ten colliding
+conventions of F9 within the infrastructure namespace:</p>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Form</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Binding profile YAML</td>
+<td><code>&lt;side&gt;.&lt;capability&gt;.&lt;field&gt;</code></td>
+<td><code>sut.connector.dsp_url</code></td>
+</tr>
+<tr>
+<td>Context variable</td>
+<td><code>infrastructure.&lt;side&gt;.&lt;capability&gt;.&lt;field&gt;</code></td>
+<td><code>infrastructure.sut.connector.dsp_url</code></td>
+</tr>
+<tr>
+<td>Environment variable</td>
+<td><code>TESTLAB_&lt;SIDE&gt;_&lt;CAPABILITY&gt;_&lt;FIELD&gt;</code></td>
+<td><code>TESTLAB_SUT_CONNECTOR_DSP_URL</code></td>
+</tr>
+</tbody>
+</table>
+<p>Nested fields extend the path (<code>engine.connector.auth.client_id</code> →
+<code>TESTLAB_ENGINE_CONNECTOR_AUTH_CLIENT_ID</code>). The env-var form is generated from the model,
+so it cannot drift from the YAML form.</p>
+<h4 id="e4-validation-is-fail-fast-and-total">E.4 Validation is fail-fast and total</h4>
+<p><code>bind_infrastructure</code> (B) checks the requirements against the profile before the first step
+and reports <strong>every</strong> problem at once, rather than aborting on the first:</p>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Error</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>required: true</code> capability with no binding block</td>
+<td><code>MissingBindingError(side, capability, required_keys)</code></td>
+</tr>
+<tr>
+<td>Binding block missing a contract key</td>
+<td><code>IncompleteBindingError</code> at the exact path</td>
+</tr>
+<tr>
+<td>Capability key not in the registry</td>
+<td><code>UnknownCapabilityError(side, capability, known)</code></td>
+</tr>
+<tr>
+<td>Binding supplied for a capability that is not <code>required: true</code></td>
+<td><code>UnusedBindingError</code> — warning by default</td>
+</tr>
+</tbody>
+</table>
+<p>The first error is the important one: it can print the full list of keys the operator still
+owes, because the registry knows them.</p>
+<h4 id="e5-generating-the-operators-starting-point">E.5 Generating the operator's starting point</h4>
+<p>Because the registry is data, the exact set of obligatory keys for a given TCK is
+derivable, so operators stop guessing:</p>
+<div class="highlight"><span class="filename">Bash Session</span><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gp">$ </span>testlab<span class="w"> </span>bindings<span class="w"> </span>template<span class="w"> </span>./certificate-management-tck
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="gp"># </span>Required<span class="w"> </span>by<span class="w"> </span>infrastructure.sut.connector<span class="w"> </span><span class="o">(</span>required:<span class="w"> </span><span class="nb">true</span><span class="o">)</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="go">sut:</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="go">  connector:</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="go">    participant_id: &quot;&quot;              # BPNL of the system under test</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="go">    dsp_url: &quot;&quot;                     # DSP endpoint URL</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="gp"># </span>Required<span class="w"> </span>by<span class="w"> </span>infrastructure.engine.connector<span class="w"> </span><span class="o">(</span>required:<span class="w"> </span><span class="nb">true</span><span class="o">)</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="go">engine:</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="go">  connector:</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="go">    base_url: &quot;&quot;</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="go">    participant_id: &quot;&quot;</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="go">    auth:</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="go">      type: api_key                 # api_key | oauth2_client_credentials | none</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="go">      value: &quot;&quot;</span>
+</span></code></pre></div>
+<p>The same registry drives the IDE form and the <code>tck.boot.requirements</code> event that ADR-0019 §3
+already specifies but that nothing emits today.</p>
+<h4 id="e6-what-this-fixes">E.6 What this fixes</h4>
+<ul>
+<li><strong>F2</strong> — <code>source: input</code> largely disappears for infrastructure. The SUT surface is
+  supplied by contract rather than by hand-declared, per-TCK input variables.</li>
+<li><strong>F5</strong> — the scraper's implicit key vocabulary becomes an explicit, typed, tested model.</li>
+<li><strong>F3</strong> — most unresolved-reference failures were missing infrastructure keys; those now
+  fail at load with a named key instead of resolving to a literal string.</li>
+<li><strong>F9</strong> — one derivation rule replaces ad-hoc naming inside <code>infrastructure.*</code>.</li>
+</ul>
+<hr />
+<h2 id="5-suggested-sequencing">5. Suggested sequencing</h2>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Change</th>
+<th>Risk</th>
+<th>Unblocks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Strict resolution + <code>UnresolvedReferenceError</code> + provenance dump</td>
+<td>low, high signal</td>
+<td>immediately exposes how many F2/F3 failures are latent today</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Delete dead <code>shared_variables</code> branch; fix validator message; remove dead <code>env.&lt;folder&gt;.&lt;id&gt;</code> write</td>
+<td>trivial</td>
+<td>removes misleading code</td>
+</tr>
+<tr>
+<td>3</td>
+<td><del>Single <code>RunEnvironment</code> factory; route CLI through <code>ConfigLoader</code></del> — <strong>done</strong> for the config and binding halves; <code>inputs</code> still unmodelled, so F8 stands</td>
+<td>low</td>
+<td>fixes F7</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Add the capability contract registry + <code>AuthConfig</code> union (§4 E)</td>
+<td>medium</td>
+<td>makes required keys declarable and verifiable at all</td>
+</tr>
+<tr>
+<td>5</td>
+<td><del><code>BindingProfile</code> model + <code>bind_infrastructure</code> replacing the scraper</del> — <strong>done</strong> as <code>Infrastructure</code> + <code>InfrastructureManager</code></td>
+<td>medium</td>
+<td>fixed F5; ADR-0019 §3 fail-fast now enforced</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>testlab bindings template</code> + <code>tck.boot.requirements</code> event</td>
+<td>low</td>
+<td>operators stop guessing key names</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Scoped context, role-based service lookup</td>
+<td>medium-high</td>
+<td>fixes F6, F9</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Unify compiler/player resolvers</td>
+<td>medium</td>
+<td>fixes F4</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Rewrite operator-facing config docs against the real format</td>
+<td>low</td>
+<td>fixes F10</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step 1 should precede everything else.</strong> It will report empirically how much of the
+current suite passes on literal-string parameters rather than real values, which sizes
+the remaining work.</p>
+<hr />
+<h2 id="6-open-decisions">6. Open decisions</h2>
+<p>Four questions must be answered before implementation begins.</p>
+<ol>
+<li>
+<p><strong>Binding profile location.</strong> Should <code>BindingProfile</code> be a <strong>separate operator file</strong>
+   (<code>--bindings profile.yaml</code>, as ADR-0019 §2 describes) or remain merged into the
+   existing <code>--config</code> variables block? ADR-0019 explicitly left this open
+   ("Open: exact binding-profile location"). The contract registry (§4 E) argues for the
+   separate file: a flat <code>variables:</code> map cannot carry the nested <code>auth:</code> union, and the
+   generated template needs somewhere of its own to be written.</p>
+</li>
+<li>
+<p><strong>Strictness rollout.</strong> Should strict resolution be <strong>hard-fail</strong> from the first
+   release, or <strong>warn-then-fail-at-end</strong> for one release cycle? Hard-fail will break
+   tests that currently report as passing while sending literal template strings.</p>
+</li>
+<li>
+<p><strong>Are the contracts closed or extensible?</strong> A closed registry gives the consistency
+   this design is for, but a deployment needing one extra field per capability then has
+   nowhere to put it. Recommendation: closed for v1, with the escape hatch being a new
+   registry entry rather than an open <code>extra:</code> map — an open map reintroduces exactly the
+   ambiguity being removed.</p>
+</li>
+<li>
+<p><strong>Migration of the hand-declared SUT variables.</strong> The CCM TCK declares
+   <code>sut_counter_party_id</code> / <code>sut_counter_party_address</code> as <code>source: input</code> variables today.
+   Should the contract keys be <strong>aliased</strong> to those names for one release, or should the
+   TCKs be rewritten to reference <code>${{ infrastructure.sut.connector.participant_id }}</code>
+   directly? (ADR-0019 §4's 2026-07 amendment already permits the direct form.)</p>
+</li>
+</ol>
+<h2 id="references">References</h2>
+<ul>
+<li><a href="../decision-records/backend/ADR-0019-service-requirements-and-engine-bindings/">ADR-0019 — Service Requirements and Engine Bindings</a></li>
+<li><a href="../decision-records/shared/ADR-0018-unified-variables-model/">ADR-0018 — Unified Variables Model</a></li>
+<li><a href="../decision-records/shared/ADR-0011-environment-and-services/">ADR-0011 — Environment and Services</a></li>
+<li><a href="../decision-records/shared/ADR-0010-yaml-syntax-v2/">ADR-0010 — YAML Syntax v2</a></li>
+<li><a href="../refactor-plan/backend-refactor-plan/">Backend Refactor Plan</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Eclipse Tractus-X Contributors
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "navigation.instant", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../assets/javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>
