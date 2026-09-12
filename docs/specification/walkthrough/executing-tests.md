@@ -337,8 +337,35 @@ Traceback (most recent call last):
   ...
 ConnectionError: [Connector Service]: It was not possible to get the catalog…
 ...
-  RESULT: FAIL  |  1 passed  1 failed  |  Duration: 1205ms
+
+╔==============================================================================╗
+║                           Script: dtr-filterability                          ║
+╠==============================================================================╣
+║  STEP                                          RESULT      TIME              ║
+║  --------------------------------------------------------------------------  ║
+║  ✓ encode_filter                                 PASS      0.0s              ║
+║  ✗ pull_dtr                                      FAIL      0.5s              ║
+╠==============================================================================╣
+║  RESULT: FAIL  |  1 passed  1 failed  0 skipped  |  Total: 0.5s              ║
+╚==============================================================================╝
+
+  ✗ pull_dtr
+           Error: [Connector Service]: catalog request refused, 403
+
+  Assertions: 1 total, 1 passed, 0 hard-failed, 0 soft-failed
+
+╔==============================================================================╗
+║                                TEST RUN SUMMARY                              ║
+╠==============================================================================╣
+║  SCRIPT                                        RESULT      TIME              ║
+║  --------------------------------------------------------------------------  ║
+║  ✗ dtr-filterability                             FAIL      0.5s              ║
+╠==============================================================================╣
+║  RESULT: FAIL  |  1 passed  1 failed  0 skipped  |  Total: 1.2s              ║
+╚==============================================================================╝
 ```
+
+On a terminal the icons and the RESULT column are coloured — green for a pass, red for a failure, yellow for a skip — and the transcript keeps the words without the colour. The tables are the ones the Tractus-X SDK's TCK runners draw, so a report from either tool reads the same.
 
 #### The execution trace
 
