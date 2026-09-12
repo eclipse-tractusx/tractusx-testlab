@@ -886,7 +886,7 @@ jobs:
           # The payload store behind the engine's registry entries (see
           # ci/submodel_server.py). The Umbrella profile switches off both
           # `simple-data-backend` bundles, so nothing in the release serves a
-          # submodel, and `digital-twin/submodel/*` plus the whole Industry
+          # submodel, and `digital-twin-registry/submodel/*` plus the whole Industry
           # Core journey would have no backend to address.
           #
           # It is the one component both sides dial: the engine uploads to it

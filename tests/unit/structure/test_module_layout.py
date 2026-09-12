@@ -49,17 +49,15 @@ MAX_LINES = 300
 #: number is what it is now, so a file may not grow while it waits.
 OVERSIZED: dict[str, int] = {
     "steps/digital_twin_registry/consumer.py": 412,
-    "steps/digital_twin/submodel.py": 386,
+    "steps/digital_twin_registry/submodel.py": 386,
     "steps/assertions/operators.py": 382,
     "compiler/validation/validator.py": 373,
-    "steps/digital_twin/provider/shell.py": 363,
+    "steps/digital_twin_registry/provider/shell.py": 363,
     "steps/step_contract.py": 363,
     "compiler/ir/builder.py": 344,
     "compiler/validation/_manifest_validation.py": 337,
     "steps/_checks/extraction.py": 330,
     "infrastructure/profiles.py": 329,
-    "authoring/step_docs.py": 314,
-    "cli/_tck_packager.py": 305,
     # One class doing one thing — publishing every transition to the log, the
     # stream and the trace. Splitting it by event family would scatter that
     # single job across three files to save three lines.

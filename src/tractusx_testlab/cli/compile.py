@@ -37,6 +37,7 @@ from tractusx_testlab.cli._tck_packager import (
     compile_encrypted_plain,
     compile_encrypted_tck,
     embed_bundle_yaml,
+    sealed_entries,
 )
 from tractusx_testlab.compiler import package_digest
 
@@ -57,14 +58,7 @@ def _create_tck_archive(source_dir: Path, archive_path: Path) -> str:
     """
     import yaml
 
-    entries = {
-        path.relative_to(source_dir).as_posix(): path.read_bytes()
-        for path in sorted(source_dir.rglob("*"))
-        if path.is_file()
-    }
-
-    if package_digest.MANIFEST_ENTRY in entries:
-        entries = package_digest.seal(entries)
+    entries = sealed_entries(source_dir)
 
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in sorted(entries):

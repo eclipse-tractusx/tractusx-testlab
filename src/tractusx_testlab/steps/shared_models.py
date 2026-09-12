@@ -236,7 +236,7 @@ def data_address_token(data_address: dict | None) -> str | None:
 class HttpTransportParams(StepParams):
     """How a step reaches an HTTP server, regardless of what it sends.
 
-    Steps that build their own URL and verb — ``digital-twin/submodel/upload`` always POSTs
+    Steps that build their own URL and verb — ``digital-twin-registry/submodel/upload`` always POSTs
     to a URL it generates — take only this half.
     """
 

@@ -24,7 +24,7 @@
 
 """The submodel payload store the Industry Core journey has nothing else to run against.
 
-TestLab's ``digital-twin/submodel/upload`` and ``digital-twin/submodel/delete``
+TestLab's ``digital-twin-registry/submodel/upload`` and ``digital-twin-registry/submodel/delete``
 steps address the engine's own submodel server, bound as
 ``engine.dtr.submodel_base_url``. A shell descriptor in a Digital Twin Registry
 is only a pointer: it says where a submodel's payload lives, and something else

@@ -70,5 +70,3 @@ Two rules are already tables rather than code, and a new entry belongs in the ta
 poetry run testlab validate path/to/test.yaml --version saturn
 poetry run pytest -k valid
 ```
-
-> **Note:** The IDE performs its own real-time validation as the user edits; that counterpart lives in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository.

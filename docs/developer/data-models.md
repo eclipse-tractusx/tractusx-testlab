@@ -37,9 +37,6 @@ All public models are re-exported from the package root, so
 `from tractusx_testlab.models import StepDefinition` always works regardless of the
 internal file layout.
 
-The cx-test-suite IDE keeps TypeScript mirrors of the authoring shapes for
-serialization; those types are documented in that repository.
-
 ## The YAML document structure
 
 The engine compiles two document kinds, discriminated by an explicit `kind:` field
@@ -111,7 +108,7 @@ When any of this does not hold up, the author is told so by
 `syntax/diagnostics.py` rather than by Pydantic: the finding names the step by
 its id, the line the key sits on, and — for a rejected key — the keys that
 would have been accepted, with a near-miss called out as the likely typo. The
-same renderer serves the compiler, the player, the IDE compile endpoint and a
+same renderer serves the compiler, the player, the server's compile endpoint and a
 step binding its `with:` block at runtime, so one wrong key reads the same
 wherever it is caught.
 
@@ -239,7 +236,7 @@ records a callback received (or timed out) on a mock listener.
 Frozen event models the execution monitor publishes while a job runs —
 `JobStartedEvent`, `TestStartedEvent`, `StepCompletedEvent`,
 `AssertionResultEvent`, and so on — each carrying its `EventKind` so consumers
-(CLI, server SSE stream, the IDE) can dispatch on `kind` directly. The SSE wire
+(the CLI, the server's SSE stream and its clients) can dispatch on `kind` directly. The SSE wire
 name is derived from the kind by turning its underscore into a dot
 (`step_completed` → `step.completed`). See
 [Execution Events](execution-events.md) for the full catalogue.

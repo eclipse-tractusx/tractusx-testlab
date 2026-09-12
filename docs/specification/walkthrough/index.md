@@ -47,30 +47,30 @@ flowchart LR
     end
 
     subgraph "4. Results"
-        D["JSON-lines logs<br/>+ summary report"]
+        D["Console summary<br/>+ CloudEvents trace"]
     end
 
     A --> B --> C --> D
 
-    style A fill:#e1f5fe,stroke:#0288d1
-    style B fill:#fff3e0,stroke:#f57c00
-    style C fill:#f3e5f5,stroke:#7b1fa2
-    style D fill:#e8f5e9,stroke:#388e3c
+    style A fill:#0288d133,stroke:#0288d1
+    style B fill:#f57c0033,stroke:#f57c00
+    style C fill:#7b1fa233,stroke:#7b1fa2
+    style D fill:#388e3c33,stroke:#388e3c
 ```
 
 ## Prerequisites
 
 - Python 3.12+
-- `tractusx-sdk` installed (`pip install tractusx-sdk`)
-- Access to a provider and consumer connector (URLs + API keys or OAuth2 credentials)
+- `tractusx-testlab` installed (`pip install --pre tractusx-testlab`) — see [Installation](../../home/installation.md)
+- For the connector tests, a connector for the engine and one for the system under test (management URLs, API keys, DSP endpoint and participant IDs)
 
 ## Sections
 
 | Section | Description |
 |---------|-------------|
 | [Writing Tests](writing-tests.md) | Create YAML tests, declare variables, define steps and assertions, organize into a TCK with assets |
-| [Compiling Packages](compiling-packages.md) | Validate and package tests into `.tck`, inspect the compiled output, compile with encryption |
-| [Executing Tests](executing-tests.md) | Run tests via CLI, provide runtime variables, read results, use the Player API programmatically |
+| [Compiling Packages](compiling-packages.md) | Validate and package tests into `.tck`, inspect the compiled output, sign and encrypt for a player |
+| [Executing Tests](executing-tests.md) | Bind infrastructure, run tests via CLI, provide runtime variables, read results, use the Player API and the server |
 
 ---
 

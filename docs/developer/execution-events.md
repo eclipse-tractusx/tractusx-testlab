@@ -4,11 +4,10 @@
 
 Everything the execution engine does is reported as an event: a job starting, a
 test finishing, a step passing, an assertion failing. Those events are what a
-live view of a run is built from — the IDE's execution panel, the CLI's progress
-output, a log sink.
+live view of a run is built from — a client following the server's event stream,
+the CLI's progress output, a log sink.
 
 This page is the contract between the engine and whatever consumes those events.
-It is what the IDE implements against.
 
 ## The one rule
 
@@ -34,7 +33,7 @@ second path that could emit a differently-shaped event.
 Events reach a consumer over Server-Sent Events:
 
 ```text
-GET /tck-execution/{job_id}/stream
+GET /testlab/tck-execution/{job_id}/stream
 ```
 
 Each event is one SSE frame:
@@ -59,8 +58,7 @@ data: {"kind":"step_completed","job_id":"…","test_id":"…","step_id":"…","r
 ### The CloudEvents envelope
 
 A service that persists or forwards these events wraps each one in a CloudEvents
-1.0 envelope — `cx-test-suite-engine` does, for its trace file and its own SSE
-stream. The envelope adds an identity and a position; it does **not** rename
+1.0 envelope. The envelope adds an identity and a position; it does **not** rename
 anything, and `data` is the event verbatim, `kind` included.
 
 Its `id` is a **path to where in the run the event happened**, so it is

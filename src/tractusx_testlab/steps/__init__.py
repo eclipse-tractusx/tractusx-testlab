@@ -22,7 +22,6 @@
 
 # Import step subpackages to trigger @step registrations
 import tractusx_testlab.steps.connector
-import tractusx_testlab.steps.digital_twin
 import tractusx_testlab.steps.digital_twin_registry
 import tractusx_testlab.steps.flow
 import tractusx_testlab.steps.http

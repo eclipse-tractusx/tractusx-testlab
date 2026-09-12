@@ -76,5 +76,8 @@ jobs:
       uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc #v1.12
       with:
         packages-dir: python-package/dist
+        # PyPI never overwrites a file, so a re-run for an already published
+        # version must be a no-op rather than a failed job.
+        skip-existing: true
         password: ${{ secrets.PYPI_TOKEN }}
         user: __token__

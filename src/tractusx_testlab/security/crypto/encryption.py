@@ -26,6 +26,7 @@
 
 from __future__ import annotations
 
+import base64
 import os
 
 from cryptography.hazmat.primitives import hashes, serialization
@@ -128,3 +129,25 @@ def decrypt_package(
     aes_key = _rsa_private_key(private_pem).decrypt(encrypted_key, _oaep())
     aesgcm = AESGCM(aes_key)
     return aesgcm.decrypt(nonce, ciphertext, None)
+
+
+def wrapped_key_for(authorized_players: list[dict], private_pem: bytes) -> bytes:
+    """Return the content key wrapped for the holder of *private_pem*.
+
+    Each authorized player has its own copy of the key, wrapped with its own
+    public key and listed under its fingerprint. The loader used to unwrap the
+    first entry whoever was asking, so a package compiled for several players
+    opened for the first and failed with a bare "Decryption failed" for the rest.
+    """
+    from tractusx_testlab.security.crypto.keygen import fingerprint_of_private_key
+
+    fingerprint = fingerprint_of_private_key(private_pem)
+    for player in authorized_players:
+        if player.get("player_id") == fingerprint:
+            return base64.b64decode(player["encrypted_key"])
+    authorized = ", ".join(str(p.get("player_id", ""))[:16] for p in authorized_players)
+    raise ValueError(
+        f"This package was not compiled for this player: the key fingerprint "
+        f"{fingerprint[:16]} is not among the authorized players ({authorized}). "
+        f"Ask the compiler to add this player's encryption.pub with --player-pub."
+    )

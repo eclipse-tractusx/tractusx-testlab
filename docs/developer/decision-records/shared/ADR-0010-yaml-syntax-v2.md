@@ -47,7 +47,7 @@ TestLab YAML v1 used a custom syntax (`type:`, `params:`, `@variable_name`, `sto
 ### Forces
 
 - Primary users are certification testers — syntax must be learnable in minutes.
-- The IDE auto-generates YAML from blocks — human authoring is secondary but must be pleasant.
+- Test authors write the YAML directly — hand authoring must be pleasant.
 - The compiler must validate structural correctness and variable resolution at compile time.
 - Steps produce typed outputs (ADR-0009) — the syntax must express return types and classes.
 - TCK manifests define shared environment (services, schemas, variables) inherited by all tests.
@@ -63,7 +63,7 @@ We adopt a GHA-inspired YAML syntax with the following specification.
 
 | Keyword | Purpose | Required | Scope |
 |---------|---------|----------|-------|
-| `id` | Stable identifier | Yes (IDE auto-generates) | Step, Document root |
+| `id` | Stable identifier | Yes | Step, Document root |
 | `uses` | Step type (replaces v1 `type:`) | Yes | Step |
 | `name` | Human-readable label | Yes | Step, `metadata` block |
 | `with` | Input parameters (replaces v1 `params:`) | No | Step |
@@ -111,7 +111,7 @@ Fields within a step MUST appear in this canonical order:
 
 Order: **id → uses → name → with → returns → validate**
 
-The compiler MUST reject steps where `id` does not appear first or `uses` does not appear second. Remaining fields may appear in any order but the canonical order is enforced by IDE serialization.
+The compiler MUST reject steps where `id` does not appear first or `uses` does not appear second. Remaining fields may appear in any order but tools that generate YAML emit the canonical order (see [Serialization Rules](#serialization-rules)).
 
 ### 3. Variable Interpolation
 
@@ -191,27 +191,23 @@ Any additional `execution.*` key can be provided at runtime through three inject
 
 #### 3.5 User Mental Model: Two Variable Concepts Only
 
-The `${{ steps.x }}` / `${{ env.x }}` interpolation syntax is an **implementation detail** that TCK authors should never need to think about. From the user's perspective, there are exactly **two concepts**:
+Behind the `${{ steps.x }}` / `${{ env.x }}` interpolation syntax, TCK authors deal with exactly **two concepts**:
 
-| User Concept | Label in IDE | Actual Syntax | Semantics |
-|--------------|-------------|---------------|-----------|
-| **Local variable** | "Step output" / "Local" | `${{ steps.x }}` | Private to the current test — produced by a step's `returns` and consumed by subsequent steps within the same test file. Not visible to other tests. |
-| **Environment variable** | "Environment" / "Public" | `${{ env.x }}` | Shared across the entire TCK — defined once in the TCK manifest and inherited by all test files. Can be overwritten if needed, globally visible. |
+| User Concept | Actual Syntax | Semantics |
+|--------------|---------------|-----------|
+| **Local variable** | `${{ steps.x }}` | Private to the current test — produced by a step's `returns` and consumed by subsequent steps within the same test file. Not visible to other tests. |
+| **Environment variable** | `${{ env.x }}` | Shared across the entire TCK — defined once in the TCK manifest and inherited by all test files. Can be overwritten if needed, globally visible. |
 
 **Design rules:**
 
-1. **The IDE hides interpolation syntax entirely.** Users pick variables from dropdowns or drag output tokens — they never type `${{ }}` manually.
-2. **Variable labels use domain language.** The IDE shows "Asset ID (from Create Asset step)" not `${{ steps.create_asset_1.asset_id }}`.
-3. **Color-coding distinguishes scope.** Local variables and environment variables use distinct visual indicators so users always know the scope at a glance.
-4. **No third category.** There is no "global mutable", no "shared between tests", no "session" scope. Two concepts only — local outputs and public environment. If a value must be shared, it belongs in `env`.
-5. **Qualification is automatic.** When ambiguity arises (two steps return the same variable name), the IDE silently switches to the qualified form — the user sees a disambiguation prompt ("Which step's output?"), never raw syntax.
-6. **Environment overwrite is explicit.** To update an environment variable mid-test, the user uses a dedicated "Set Environment Variable" block (`util/set_env`). This keeps mutations visible and auditable — the block clearly shows which variable is being changed and to what value.
+1. **No third category.** There is no "global mutable", no "shared between tests", no "session" scope. Two concepts only — local outputs and public environment. If a value must be shared, it belongs in `env`.
+2. **Environment overwrite is explicit.** To update an environment variable mid-test, the test uses the dedicated `util/set_env` step. This keeps mutations visible and auditable — the step clearly shows which variable is being changed and to what value.
 
-**Rationale:** TCK authors are certification testers, not developers. Forcing them to understand expression interpolation, scoping rules, or qualified references adds cognitive load that produces zero value. The IDE and compiler handle the plumbing; the user thinks in "my step's output" and "the test environment".
+**Rationale:** TCK authors are certification testers, not developers. Every additional scope or scoping rule adds cognitive load that produces zero value. Two scopes, each with its own prefix, keep the model small, and the compiler handles resolution and validation; the user thinks in "my step's output" and "the test environment".
 
 #### 3.5.1 Overwriting Environment Variables (`util/set_env`)
 
-When a test needs to change an environment variable (e.g., switch a URL, update a token after rotation), the user uses the **"Set Environment Variable"** block:
+When a test needs to change an environment variable (e.g., switch a URL, update a token after rotation), the test uses the **`util/set_env`** step:
 
 ```yaml
 - id: update_provider_url
@@ -225,12 +221,8 @@ When a test needs to change an environment variable (e.g., switch a URL, update 
 **Semantics:**
 
 - **Modifies the environment variable directly.** After execution, `${{ env.provider_url }}` resolves to the new value for all subsequent steps.
-- **The `env` config reflects the change.** If the user inspects the environment variables panel in the IDE, the modified variable shows its updated value (marked as "modified" to distinguish from the original TCK manifest default).
 - The override is visible to all subsequent steps, including `teardown`.
-- **Persistence follows normal save behavior.** The change is in-memory until the user explicitly saves the file — just like any other edit. Saving writes the updated value to the TCK manifest on disk.
 - The compiler validates that `variable` references an existing key in `env.variables`.
-
-**IDE presentation:** The block shows as "Set Environment Variable" with a dropdown of available environment variable names and a value input. No `${{ }}` syntax is exposed.
 
 ### 4. Step IDs
 
@@ -240,8 +232,6 @@ When a test needs to change an environment variable (e.g., switch a URL, update 
 | Max length | 50 characters |
 | Uniqueness | Unique within a test file (across setup + steps + teardown) |
 | Stability | IDs do not change when steps are reordered |
-| Generation | IDE auto-generates from step type (e.g., `create_asset_1`, `negotiate_2`) |
-| User override | Users may set custom IDs via the IDE or YAML |
 
 **Compiler rules:**
 
@@ -613,7 +603,7 @@ All file references use **bare filenames** — the parent folder is implied by t
 
 | Extension | MIME Type (`type`) | Notes |
 |-----------|-----------|-------|
-| `.json` | `application/json` | Primary format — most blocks support this |
+| `.json` | `application/json` | Primary format — most steps support this |
 | `.xml` | `application/xml` | For XML-based payloads |
 | `.pdf` | `application/pdf` | Binary attachments (e.g., certificate documents) |
 | `.txt` | `text/plain` | Plain text payloads |
@@ -638,11 +628,11 @@ All file references use **bare filenames** — the parent folder is implied by t
 
 The `type` field declares the MIME type explicitly. The compiler validates that the file extension matches the declared type and rejects mismatches.
 
-> **Note:** Not every block supports every file type. Each block's `with:` field documentation declares which types it accepts. JSON is the default and most widely supported format. The compiler validates type compatibility between testdata references and the blocks that consume them.
+> **Note:** Not every step supports every file type. Each step's `with:` field documentation declares which types it accepts. JSON is the default and most widely supported format. The compiler validates type compatibility between testdata references and the steps that consume them.
 
 ##### Using `env.testdata` in Steps
 
-Testdata entries declared in `env.testdata` are referenced in step fields using the `${{ env.testdata.<key> }}` expression. The compiler resolves the reference to the file content at compile time, inlining the payload where the block expects it.
+Testdata entries declared in `env.testdata` are referenced in step fields using the `${{ env.testdata.<key> }}` expression. The compiler resolves the reference to the file content at compile time, inlining the payload where the step expects it.
 
 **Mock step — serving a JSON testdata file as the response body:**
 
@@ -791,7 +781,7 @@ The human-readable display label (`name`) lives inside `metadata` — it is not 
 | **Pattern** | `^[a-z][a-z0-9-]*$` (lowercase kebab-case) |
 | **Semantics** | On TCK: defines the namespace. On test: must exactly match the `namespace` of the parent TCK. |
 
-The `namespace` field is the shared machine identifier that links TCKs and tests. The `name` field inside `metadata` is the human-readable label for display in the IDE and reports.
+The `namespace` field is the shared machine identifier that links TCKs and tests. The `name` field inside `metadata` is the human-readable label for display in reports.
 
 **`id` specification:**
 
@@ -853,7 +843,7 @@ A list of industry standards that the TCK validates against.
 | `organization` | No | Publishing organization (e.g. `"Catena-X Automotive Network e.V."`, `"Eclipse Dataspace Working Group"`. `"International Standarization Organization"`, `"Manufacturing-X"`) |
 | `version` | No | Standard version (e.g. `v3.1.0`) |
 
-Standards entries link a TCK to the formal specifications it certifies. The `id` is the canonical reference used in reports, IDE labels, and compliance matrices. When `organization` is omitted, the standard is assumed to belong to the ecosystem's default standards body. When `version` is omitted, the TCK applies to all versions of the standard.
+Standards entries link a TCK to the formal specifications it certifies. The `id` is the canonical reference used in reports and compliance matrices. When `organization` is omitted, the standard is assumed to belong to the ecosystem's default standards body. When `version` is omitted, the TCK applies to all versions of the standard.
 
 **`tags` specification:**
 
@@ -862,7 +852,7 @@ Standards entries link a TCK to the formal specifications it certifies. The `id`
 | **Type** | List of strings |
 | **Required** | No |
 | **Pattern** | Uppercase or lowercase alphanumeric, no spaces (e.g. `CCM`, `DTR`, `Notifications`) |
-| **Semantics** | Free-form labels for filtering and grouping in the IDE and reports |
+| **Semantics** | Free-form labels for filtering and grouping in tooling and reports |
 
 Tags are display-only metadata — they have no effect on compilation or execution. Use them to categorize TCKs by domain area (e.g. `CCM` for Certificate Management, `DTR` for Digital Twin Registry).
 
@@ -927,7 +917,7 @@ The `testlab` field is required on **every** YAML document (both `kind: tck` and
 **Rationale:**
 
 - **Explicit ownership**: A test file is self-describing — you can read its namespace and know which TCK it belongs to without checking directory structure or manifest listings.
-- **Standalone loading**: Tools (IDE, CLI) can load a single test file and resolve its environment by looking up the TCK with the matching `namespace`.
+- **Standalone loading**: Tools (such as the CLI) can load a single test file and resolve its environment by looking up the TCK with the matching `namespace`.
 - **Compiler safety**: Prevents accidental inclusion of a test in the wrong TCK manifest — the namespace mismatch is caught at compile time.
 
 ```yaml
@@ -1348,13 +1338,13 @@ The compiler validates YAML files and rejects invalid documents with actionable 
 
 ---
 
-## IDE Serialization Rules
+## Serialization Rules
 
-The IDE (Blockly workspace → YAML) MUST follow these rules when serializing:
+Tools that generate YAML MUST follow these rules when serializing:
 
 1. **Field order**: Always emit `id → uses → name → with → returns → validate`.
 2. **ID generation**: auto-generate from `uses` value + incrementing suffix (e.g., `create_asset_1`).
-3. **Empty blocks omitted**: Do not emit `with:`, `returns:`, or `validate:` if they have no content.
+3. **Empty sections omitted**: Do not emit `with:`, `returns:`, or `validate:` if they have no content.
 4. **String quoting**: Quote strings containing special characters (`${{ }}`, `:`, `#`, `{`, `}`). Do not quote plain strings.
 5. **Indentation**: 2 spaces, no tabs.
 6. **Document separator**: Each file starts with `kind:` — no `---` separator needed (single-document files).
@@ -1372,7 +1362,7 @@ The runtime (Python player) executes steps with these semantics:
 4. **Failure handling**: If a step fails, its `returns` are NOT stored. Subsequent steps referencing those returns receive `null`.
 5. **Teardown always runs**: Even if `steps` fail, `teardown` executes (best-effort cleanup).
 6. **Validate execution**: Assertions in `validate:` run immediately after the step completes. Each assertion is resolved via its `uses:` type and executed with its `with:` parameters. A failed assertion marks the step as failed but does NOT abort the test — remaining steps still execute (fail-continue mode).
-7. **Environment modifiable via `util/set_env`**: `env` variables can only be changed through the `util/set_env` step — no other step type can mutate them. The modification updates the in-memory env state and is reflected in the IDE's environment panel (marked as "modified"). Persistence to disk follows normal save semantics.
+7. **Environment modifiable via `util/set_env`**: `env` variables can only be changed through the `util/set_env` step — no other step type can mutate them. The modification updates the in-memory env state.
 
 ---
 
@@ -1614,15 +1604,15 @@ teardown:
 - **Instant familiarity**: Developers who know GitHub Actions can read TestLab YAML without documentation.
 - **Steps are functions**: `uses` + `with` + `returns` maps cleanly to function call semantics.
 - **Compile-time safety**: Variable resolution is fully validated before execution — no runtime surprises.
-- **IDE-friendly**: The canonical field order and auto-generated IDs make serialization deterministic.
+- **Deterministic serialization**: The canonical field order and generated IDs make tool-generated YAML deterministic.
 - **Extensible**: New step namespaces and variable scopes can be added without syntax changes.
-- **Typed outputs**: `returns` with `type` and `class` enable IDE filtering (ADR-0009) and documentation.
+- **Typed outputs**: `returns` with `type` and `class` enable class-based input filtering (ADR-0009) and documentation.
 
 ### Negative
 
 - **Breaking change from v1**: All existing YAML files must be migrated (mitigated by CLI tool).
-- **Verbosity increase**: `${{ steps.x }}` is longer than `@x` (mitigated by IDE auto-completion).
-- **Learning curve for `${{ }}`**: Users unfamiliar with GHA must learn expression syntax (mitigated by IDE doing the heavy lifting).
+- **Verbosity increase**: `${{ steps.x }}` is longer than `@x`.
+- **Learning curve for `${{ }}`**: Users unfamiliar with GHA must learn expression syntax.
 - **Strict ordering**: Canonical field order adds one more thing the compiler must validate.
 
 ### Risks
@@ -1630,9 +1620,8 @@ teardown:
 | Risk | Mitigation |
 |------|-----------|
 | v1 YAML files break silently | Compiler detects `type:` and `params:` as v1 markers → emits "This appears to be v1 syntax. Run `testlab migrate v1-to-v2`." |
-| Users forget `returns:` metadata | IDE blocks auto-declare returns from block JSON — user never writes them manually |
 | Schema files drift from actual API | Schema validation is optional (only when `schema` operator is used in `validate:`) |
-| Qualified variable syntax is verbose | IDE defaults to flat form; only switches to qualified on ambiguity |
+| Qualified variable syntax is verbose | Flat form is the default; the qualified form is needed only on ambiguity |
 
 ---
 
@@ -1718,4 +1707,4 @@ the ADR reference and a migration path.
 - [ADR-0021: Remove Precondition Concept](ADR-0021-remove-precondition-concept.md) — removes `preconditions:` and `precondition/*` verbs
 - [ADR-0019: Service Requirements and Engine Bindings](../backend/ADR-0019-service-requirements-and-engine-bindings.md) — infrastructure topology
 - [GitHub Actions Workflow Syntax](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions) — inspiration source
-- [Product Scope](../../product-scope.md) — lifecycle: IDE → YAML → compile → execute → feedback
+- [Product Scope](../../product-scope.md) — lifecycle: YAML → compile → execute → feedback

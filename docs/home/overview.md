@@ -1,6 +1,7 @@
 # Overview
 
-Tractus-X TestLab is a test authoring and execution library for Eclipse Tractus-X dataspaces.
+Tractus-X TestLab is a test authoring and execution engine for Eclipse Tractus-X dataspaces. It ships as a
+Python library, the `testlab` CLI and a FastAPI server; the YAML test files are its interface.
 
 ## How It Works
 

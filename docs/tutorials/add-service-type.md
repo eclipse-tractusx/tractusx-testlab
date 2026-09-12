@@ -83,5 +83,3 @@ A step executor then calls `context.get_my_service()`.
 ```bash
 poetry run pytest -k service
 ```
-
-> **Note:** The IDE's service configuration form (schemas, dialog fields) lives in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository and is extended there.

@@ -1,6 +1,6 @@
 <!--
 
-Eclipse Tractus-X - Software Development KIT
+Eclipse Tractus-X - Tractus-X TestLab
 
 Copyright (c) 2026 Catena-X Automotive Network e.V.
 Copyright (c) 2026 Contributors to the Eclipse Foundation
@@ -21,9 +21,16 @@ SPDX-License-Identifier: CC-BY-4.0
 
 ## Motivation
 
-Tests frequently contain sensitive material: OAuth2 client credentials, service URLs, Business Partner Numbers, and endpoint data that describe the internal topology of a dataspace deployment. If a compiled `.tck` is exfiltrated — through a compromised CI runner, a leaked artifact store, or accidental public upload — all embedded secrets are exposed.
+Tests can carry sensitive material: service URLs, Business Partner Numbers, policies, and test data that describe the internal topology of a dataspace deployment. If a compiled `.tck` is exfiltrated — through a compromised CI runner, a leaked artifact store, or accidental public upload — everything inside it is exposed.
 
-To mitigate this risk, **Testlab encrypts packages by default**. Every compiled `.tck` is a non-human-readable, encrypted artifact. Only Players that hold a valid private key and are explicitly authorized by the Compiler can decrypt and execute the package. A plain-text (unencrypted) mode is available as an explicit opt-in for local development only.
+To mitigate this, `testlab compile` can **sign and encrypt** a package for a named set of Players. An encrypted package can only be opened by a Player holding one of the authorized private keys, and only after its signature has been checked against the Compiler's public key.
+
+Encryption is opt-in: `testlab compile` without keys writes a readable `.tck`. Supply `--compiler-keys` **and** `--player-pub` to encrypt; supplying only one of the two is an error.
+
+!!! note "Secrets do not belong in a TCK"
+    Credentials and endpoints of the system under test are infrastructure bindings, supplied by the operator at run time
+    (`testlab.config.yaml` or `TESTLAB_*` variables), and values the operator provides are `source: input` variables.
+    Encryption protects the test logic and test data; it is not a place to store secrets.
 
 ---
 
@@ -31,12 +38,11 @@ To mitigate this risk, **Testlab encrypts packages by default**. Every compiled 
 
 | Principle | Description |
 |-----------|-------------|
-| **Encrypted by default** | `testlab compile` always produces an encrypted package. Authors must explicitly opt out with `--plain` for local development use. |
-| **Defense in depth** | Secrets are protected at rest (AES-256-GCM), in transit (signature verification), and at access (RSA key authorization). |
+| **Explicit encryption** | Supplying both `--compiler-keys` and `--player-pub` signs and encrypts the package; supplying neither leaves it readable. There is no third mode. |
 | **Compiler-controlled access** | The Compiler decides which Players may decrypt a package by wrapping the content key with each authorized Player's RSA public key. |
-| **Re-authorization requires the Compiler key** | Only the Compiler that originally compiled the package (or a holder of its signing key) can re-sign or re-authorize the package for additional Players. Without the Compiler key, the package cannot be modified, re-authorized, or re-signed. |
-| **Non-repudiation** | Every encrypted package is signed with the Compiler's Ed25519 key. Players verify the signature against their trust store before decryption, ensuring the package has not been tampered with and originated from a trusted source. |
-| **Minimal metadata exposure** | The `manifest.yaml` remains unencrypted to allow tooling to inspect package metadata (name, version, authorized players) without decryption. No secrets are stored in the manifest. |
+| **Signed content** | Every encrypted package is signed with the Compiler's Ed25519 key. A Player refuses to open an encrypted package without the Compiler's public key to verify it against — a signed package is verified or refused. |
+| **Sealed content** | Every package, encrypted or not, carries a `blake2b` checksum over all of its entries. A package whose contents differ from the ones it was sealed with is refused. |
+| **Minimal metadata exposure** | The `manifest.yaml` of an encrypted package stays readable so tooling can show the TCK identity, checksum, compiler and authorized players. Test files and asset paths are omitted from it. |
 
 ---
 
@@ -44,13 +50,12 @@ To mitigate this risk, **Testlab encrypts packages by default**. Every compiled 
 
 | Threat | Scenario | Mitigation |
 |--------|----------|------------|
-| **Package theft** | An attacker obtains a `.tck` file from CI artifacts, an S3 bucket, or a shared drive. | The `payload.enc` blob is encrypted with AES-256-GCM. Without an authorized Player's RSA private key, the content is indecipherable. |
-| **Credential extraction** | An attacker attempts to read OAuth2 secrets, service URLs, or BPN values from the YAML tests inside the package. | Tests are never stored in plaintext inside a default-compiled package. All test and asset content is inside the encrypted `payload.enc`. |
-| **Package tampering** | An attacker modifies the manifest or payload to inject malicious steps or alter assertions. | The Ed25519 signature covers both manifest and payload. Any modification invalidates the signature. Players reject packages with invalid or missing signatures. |
-| **Unauthorized execution** | An attacker attempts to run a stolen package on their own Player instance. | The AES content key is wrapped individually for each authorized Player's RSA public key. An unauthorized Player's fingerprint will not appear in `authorized_players`, and it cannot unwrap the AES key. |
-| **Compiler impersonation** | An attacker creates a fake Compiler identity and signs a malicious package. | Players only accept packages signed by Compilers whose Ed25519 public keys are present in the Player's trust store (`~/.testlab/trusted_compilers/`). An unknown Compiler is rejected. |
-| **Key compromise (Player)** | A Player's RSA private key is leaked. | The compromised Player's public key should be removed from future compilations. Existing packages remain at risk, but new packages will not authorize the compromised Player. Key rotation is supported — generate a new key pair and re-share the public key. |
-| **Key compromise (Compiler)** | A Compiler's Ed25519 signing key is leaked. | Remove the compromised key from all Players' trust stores. Re-compile and re-sign all packages with a new Compiler key pair. |
+| **Package theft** | An attacker obtains a `.tck` file from CI artifacts, an S3 bucket, or a shared drive. | For an encrypted package, the tests and assets are inside `payload.enc`, encrypted with AES-256-GCM. Without an authorized Player's RSA private key, the content is indecipherable. |
+| **Package tampering** | An attacker modifies the payload to inject steps or alter assertions, or edits the readable manifest — its TCK identity, checksum or authorized Players. | The Ed25519 signature covers `manifest.yaml` and `payload.enc` together; AES-GCM authenticates the ciphertext; the `blake2b` package checksum covers every decrypted entry and must equal the checksum the signed manifest states. Any modification is refused. |
+| **Unauthorized execution** | An attacker attempts to run a stolen package on their own Player. | The AES content key is wrapped only for the authorized Players' RSA public keys. Any other private key cannot unwrap it. |
+| **Compiler impersonation** | An attacker signs a malicious package with their own key. | The Player verifies the signature against the Compiler public key the operator passes (`--compiler-pub`). A package signed by any other key is refused. |
+| **Key compromise (Player)** | A Player's RSA private key is leaked. | Generate a new identity and stop authorizing the old public key. Packages already compiled for the old key remain openable with it. |
+| **Key compromise (Compiler)** | A Compiler's Ed25519 signing key is leaked. | Generate a new Compiler identity, distribute its `signing.pub` to Players, and re-compile the affected packages. |
 
 ---
 
@@ -58,17 +63,14 @@ To mitigate this risk, **Testlab encrypts packages by default**. Every compiled 
 
 ### Overview
 
-Testlab uses a **hybrid encryption** scheme:
+TestLab uses a **hybrid encryption** scheme:
 
-1. **Content encryption** — AES-256-GCM (symmetric) encrypts the actual tests and assets into `payload.enc`.
-2. **Key wrapping** — RSA-OAEP with SHA-256 (asymmetric) wraps the AES key individually for each authorized Player.
-3. **Package signing** — Ed25519 (asymmetric) provides authenticity and tamper detection.
+1. **Content encryption** — AES-256-GCM (symmetric) encrypts the compiled package content into `payload.enc`.
+2. **Key wrapping** — RSA-OAEP with SHA-256 (MGF1-SHA256) wraps the AES key individually for each authorized Player.
+3. **Package signing** — Ed25519 signs the readable `manifest.yaml` together with `payload.enc`, so the manifest stays
+   unencrypted yet cannot be changed.
 
-This architecture ensures that:
-
-- A single random AES key encrypts the content (fast, regardless of Player count).
-- Each Player receives a copy of the AES key encrypted with its own RSA public key.
-- The Compiler signs the entire package, binding the manifest metadata to the encrypted payload.
+A single random AES key encrypts the content regardless of how many Players are authorized; each Player receives a copy of that key wrapped with its own RSA public key.
 
 ### Encryption Flow (Compile-time)
 
@@ -78,75 +80,105 @@ sequenceDiagram
     participant C as Compiler
     participant FS as File System
 
-    A->>C: testlab compile tck.yaml<br/>--authorize-player player1.pub<br/>--authorize-player player2.pub<br/>--signing-key compiler.pem
+    A->>C: testlab compile index.yaml<br/>--compiler-keys .keys/compiler<br/>--player-pub player1/encryption.pub<br/>--player-pub player2/encryption.pub
 
-    Note over C: Default behavior — encryption is automatic
+    C->>C: Parse and validate the TCK
+    C->>C: Compile the IR, embed tests and assets,<br/>seal with a blake2b checksum
+    C->>C: Pack the content as a gzip TAR
+    C->>C: Generate a random AES-256 key,<br/>encrypt the TAR with AES-256-GCM → payload.enc
 
-    C->>C: Parse and validate YAML tests
-    C->>C: Generate random AES-256 key (32 bytes)
-    C->>C: Encrypt tests/ + assets/ with AES-256-GCM<br/>produces payload.enc
-
-    loop For each authorized Player
-        C->>C: Load Player public key (RSA-2048+)
-        C->>C: Wrap AES key with RSA-OAEP-SHA256<br/>produces encrypted_key block
+    loop For each --player-pub
+        C->>C: Wrap the AES key with RSA-OAEP-SHA256<br/>→ authorized_players entry
     end
 
-    C->>C: Build manifest.yaml<br/>(metadata + security block)
-    C->>C: Sign (manifest + payload) with Ed25519<br/>produces signature.sig
+    C->>C: Build the redacted manifest.yaml<br/>(TCK identity + security block)
+    C->>C: Sign manifest.yaml ‖ payload.enc<br/>with the Compiler's Ed25519 key → signature.sig
     C->>FS: Write .tck archive<br/>(manifest.yaml + payload.enc + signature.sig)
 ```
+
+### What the Signature Covers
+
+`signature.sig` is a base64 Ed25519 signature over the exact bytes of both other archive entries:
+
+```text
+"tractusx-testlab/tck-signature/v1" 0x00 ‖ len(manifest.yaml) as 8-byte big-endian ‖ manifest.yaml ‖ payload.enc
+```
+
+The fixed prefix keeps a package signature from being valid for anything else the key signs, and the length prefix fixes
+the boundary between the two entries. The manifest therefore carries no `signature` field: a signature cannot be part of
+the bytes it signs.
+
+Because the manifest is signed as it is stored, anyone holding the Compiler's `signing.pub` can confirm that the
+readable manifest — TCK identity, `package.checksum`, `compiler_id`, authorized Players — is the one the Compiler
+wrote, without a Player key. A Player then also checks that the checksum of the decrypted content equals the checksum
+that manifest states, so the manifest's description is the package.
 
 ### Decryption Flow (Player-side)
 
 ```mermaid
 sequenceDiagram
+    participant O as Operator
     participant P as Player
-    participant KS as Key Store<br/>~/.testlab/keys/
-    participant TS as Trust Store<br/>~/.testlab/trusted_compilers/
     participant PKG as .tck
 
-    P->>PKG: Open archive, read manifest.yaml
-    P->>P: Detect security.format = "encrypted-v1"
-    P->>TS: Load trusted Compiler public keys
-    P->>PKG: Read signature.sig
-    P->>P: Verify Ed25519 signature<br/>over manifest + payload
+    O->>P: testlab run pkg.tck<br/>--player-keys .keys/player<br/>--compiler-pub .keys/compiler/signing.pub
+    P->>PKG: Open archive, read manifest.yaml, payload.enc, signature.sig
 
-    alt Signature invalid or Compiler not trusted
-        P->>P: Abort: PackageSignatureError
+    alt No --player-keys
+        P->>P: Refuse: package is encrypted
     end
 
-    P->>KS: Load own RSA private key
-    P->>P: Compute own fingerprint (player_id)
-    P->>P: Find matching entry in<br/>manifest.security.authorized_players
-
-    alt Player not authorized
-        P->>P: Abort: PackageAuthorizationError
+    alt No signature.sig, or no --compiler-pub
+        P->>P: Refuse: signature cannot be checked
     end
 
-    P->>P: RSA-OAEP decrypt encrypted_key<br/>recovers AES-256 key
-    P->>PKG: Read payload.enc
-    P->>P: AES-256-GCM decrypt payload.enc<br/>recovers tests/ + assets/ in memory
+    P->>P: Verify the Ed25519 signature<br/>over manifest.yaml ‖ payload.enc
+    alt Signature invalid
+        P->>P: Refuse: untrusted source
+    end
 
-    Note over P: Decrypted content is NEVER written to disk
-
-    P->>P: Verify SHA-256 checksum
-    P->>P: Proceed with execution
+    P->>P: Select the authorized_players entry<br/>matching its own fingerprint
+    P->>P: RSA-OAEP unwrap the AES key<br/>with encryption.pem
+    P->>P: AES-256-GCM decrypt payload.enc
+    P->>P: Verify the blake2b package checksum,<br/>and that it equals the manifest's
+    P->>P: Load the TCK and execute
 ```
 
-### Extraction
+The decrypted content is unpacked into a temporary directory for loading.
 
-Extracting a package — writing its tests and assets back out in readable form — requires an authorized Player's private key **and** the Compiler's public signing key (for signature verification):
+### Manifest of an Encrypted Package
 
-| Actor | Can extract? | How |
-|-------|---------------|-----|
-| **Authorized Player** | Yes | Automatically decrypts during `testlab run` (in memory only). Use `testlab inspect --extract` to write the contents to disk. |
-| **Unauthorized Player** | No | Cannot unwrap the AES key. The encrypted payload is opaque binary data. |
-| **Third party (no keys)** | No | Cannot bypass AES-256-GCM. Cannot forge Ed25519 signatures. Package is indecipherable. |
+```yaml
+kind: manifest
+package:
+  format: tck
+  format_version: 1.0.0
+  testlab: v1-alpha
+  checksum: blake2b:36431aa4…
+  encrypted: true
+  allow_asset_override: false
+tck:
+  id: my-first-tck
+  metadata: { name: My First TCK, version: "1.0" }
+compilation:
+  compiled_at: "2026-09-12T21:43:34Z"
+  compiler_version: …
+  fingerprint: { nonce: "blake2b:…", public_key: "ed25519:…", digest: "blake2b:…" }
+security:
+  algorithm: AES-256-GCM
+  key_derivation: RSA-OAEP-SHA256
+  compiler_id: 15e6377e…          # SHA-256 of the Compiler's signing.pub
+  authorized_players:
+    - player_id: bb6fcab0…        # SHA-256 of the Player's encryption.pub
+      encrypted_key: pRdVuTMH…    # base64 RSA-OAEP-wrapped AES key
+```
 
-#### Command
+### Inspection and Extraction
+
+`testlab inspect` performs the same checks as `testlab run` before it reports anything, and `--extract` writes the verified contents to a directory:
 
 ```bash
-testlab inspect connector_e2e-1.0.tck \
+testlab inspect my-first-tck.tck \
   --player-keys .keys/player \
   --compiler-pub .keys/compiler/signing.pub \
   --extract ./extracted
@@ -154,35 +186,17 @@ testlab inspect connector_e2e-1.0.tck \
 
 | Flag | Required | Description |
 |------|----------|-------------|
-| `--player-keys` / `-k` | If encrypted | Directory containing the Player identity (`encryption.pem`). The Player must be in the package's `authorized_players` list. |
-| `--compiler-pub` / `-c` | If signed | Path to the Compiler's Ed25519 public key (`signing.pub`). Used to verify the package signature before decryption. |
+| `--player-keys` / `-k` | If encrypted | Directory containing the Player identity (`encryption.pem`). |
+| `--compiler-pub` / `-c` | If encrypted | Path to the Compiler's Ed25519 public key (`signing.pub`). |
 | `--extract <dir>` | No | Write the verified contents to a directory. Without it, `inspect` only reports. |
 
-#### Verification Steps
+If any check fails, the command aborts and nothing is written — including the report itself, so a tampered package's own account of what it contains is never shown.
 
-`testlab inspect` performs the same security checks as `testlab run`:
-
-1. **Signature verification** — Ed25519 signature is verified against the Compiler's public key.
-2. **Key unwrapping** — The AES content key is unwrapped using the Player's RSA private key.
-3. **Payload decryption** — AES-256-GCM decrypts the payload.
-4. **Integrity check** — SHA-256 checksum of the decrypted content is verified against the manifest.
-
-If any step fails, the command aborts with an error and no output is written —
-including the report itself, so there is no way to read a tampered package's own
-account of what it contains.
-
-```mermaid
-flowchart TD
-    PKG[".tck<br/>(encrypted)"]
-    PKG --> Q1{"Has authorized<br/>Player key?"}
-    Q1 -->|Yes| VERIFY["Verify Ed25519 signature<br/>with compiler public key"]
-    VERIFY --> DECRYPT["RSA-OAEP unwrap AES key<br/>AES-256-GCM decrypt payload"]
-    DECRYPT --> CHECK["Verify SHA-256 checksum"]
-    CHECK --> OUT{"--stdout?"}
-    OUT -->|Yes| PRINT["Print YAML to stdout"]
-    OUT -->|No| WRITE["Write YAML to file"]
-    Q1 -->|No| BLOCKED["Cannot access content<br/>AES-256-GCM is unbreakable<br/>without the key"]
-```
+| Actor | Can read the content? |
+|-------|-----------------------|
+| **Authorized Player** (with the Compiler public key) | Yes — `testlab run`, `testlab inspect`, `testlab inspect --extract` |
+| **Anyone else** | No — only the redacted `manifest.yaml` |
+| **Anyone, unencrypted package** | Yes — it is a ZIP archive |
 
 ---
 
@@ -190,251 +204,126 @@ flowchart TD
 
 ### Identity Model
 
-Every Compiler and Player has a cryptographic identity:
+`testlab keygen` generates one identity: an RSA-4096 key pair for encryption **and** an Ed25519 key pair for signing. The same command serves both roles — a Compiler uses the signing pair, a Player uses the encryption pair.
 
-| Entity | Key Type | Purpose | Fingerprint Format |
-|--------|----------|---------|-------------------|
-| **Player** | RSA-2048+ key pair | Decrypt AES content keys from `authorized_players` blocks | `player:sha256:<hex>` |
-| **Compiler** | Ed25519 key pair | Sign packages for authenticity; required for decompilation | `compiler:sha256:<hex>` |
+| Key file | Algorithm | Used by | Purpose |
+|----------|-----------|---------|---------|
+| `encryption.pem` / `encryption.pub` | RSA-4096 (PKCS#8 / SPKI PEM) | Player | Unwrap the AES content key; the `.pub` is what a Compiler authorizes |
+| `signing.pem` / `signing.pub` | Ed25519 (PKCS#8 / SPKI PEM) | Compiler | Sign packages; the `.pub` is what a Player verifies against |
 
-Fingerprints are computed as `SHA-256(DER-encoded public key)` and are used to match identities across manifest entries and trust stores.
+Fingerprints are the SHA-256 hex digest of the PEM-encoded public key. They appear as `player_id` and `compiler_id` in the manifest.
 
 ### Key Generation
 
 ```bash
-# Generate Player identity (RSA key pair)
-testlab keygen
-# Output:
-#   ~/.testlab/keys/player.pem  (private, permissions 0600)
-#   ~/.testlab/keys/player.pub  (public — share with Compiler)
+# On the compiling machine
+testlab keygen --out-dir .keys --label compiler
+# → .keys/compiler/{encryption,signing}.{pem,pub}
 
-# Generate Compiler identity (Ed25519 key pair)
-testlab keygen --compiler
-# Output:
-#   ./compiler_signing.pem  (private — keep secure)
-#   ./compiler_signing.pub  (public — share with Players)
+# On each Player machine
+testlab keygen --out-dir .keys --label player
+# → .keys/player/{encryption,signing}.{pem,pub}
 ```
 
-### Directory Layout
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--out-dir` / `-o` | `.keys` | Parent directory; keys are written to `<out-dir>/<label>/` |
+| `--label` / `-l` | `default` | Name of the identity's subdirectory |
+| `--override-keys` | off | Regenerate even if keys already exist. Without it, existing keys are reused. |
 
-```
-~/.testlab/
-├── keys/
-│   ├── player.pem              # Player RSA private key (permissions: 0600)
-│   └── player.pub              # Player RSA public key
-└── trusted_compilers/
-    ├── team_compiler.pub       # Trusted Compiler Ed25519 public key
-    └── ci_compiler.pub         # Another trusted Compiler key
-```
-
-### Trust Store
-
-The Player's trust store (`~/.testlab/trusted_compilers/`) contains the Ed25519 public keys of Compilers whose packages this Player will accept. The signature verification process:
-
-1. Read `security.compiler_id` from the manifest.
-2. Iterate over public keys in `~/.testlab/trusted_compilers/`.
-3. Compute the fingerprint of each key and compare against `compiler_id`.
-4. If a match is found, verify the Ed25519 signature in `signature.sig`.
-5. If no match is found, reject the package with `PackageSignatureError`.
+Share `encryption.pub` from each Player with the Compiler, and `signing.pub` from the Compiler with each Player. Keep the `.pem` files private: `keygen` writes them with the process's default file permissions, so restrict them yourself (for example `chmod 600 .keys/*/*.pem`).
 
 ### Key Rotation
 
 | Scenario | Procedure |
 |----------|-----------|
-| **Rotate Player key** | Generate new key pair (`testlab keygen --force`). Share new `player.pub` with all Compilers. Old packages remain openable with the old key until it is deleted. |
-| **Rotate Compiler key** | Generate new key pair (`testlab keygen --compiler`). Distribute new `compiler_signing.pub` to all Players' trust stores. Re-compile and re-sign affected packages. Remove old key from trust stores. |
-| **Revoke a Player** | Simply do not include the Player's public key in future `--authorize-player` arguments. Existing packages remain decryptable by the revoked Player until they are re-compiled. |
-| **Revoke a Compiler** | Remove the Compiler's public key from all Players' trust stores. Existing packages signed by that Compiler will no longer be accepted. |
+| **Rotate a Player key** | `testlab keygen --label player --override-keys`. Share the new `encryption.pub` with the Compiler; packages compiled for the old key need the old key. |
+| **Rotate the Compiler key** | `testlab keygen --label compiler --override-keys`. Distribute the new `signing.pub` to Players and re-compile the affected packages. |
+| **Revoke a Player** | Stop passing its `encryption.pub` to `--player-pub`. Packages already compiled for it remain decryptable by it. |
+| **Revoke a Compiler** | Stop passing its `signing.pub` to `--compiler-pub`. |
 
-### HashiCorp Vault Integration
+### Keys on a Server
 
-For production deployments, signing keys can be stored in and retrieved from a [HashiCorp Vault](https://www.vaultproject.io/) KV v2 secrets engine instead of the local filesystem. This centralizes key management, provides audit logging, and avoids distributing private keys to individual machines.
+The CLI takes keys per command (`--player-keys`, `--compiler-pub`). A server or an embedded `TestlabPlayer` cannot be
+handed a private key per request, and is not: the engine *is* the Player, so it reads its own identity and the
+Compilers it accepts from its settings.
 
-#### Configuration
+| Setting | Default | Holds |
+|---------|---------|-------|
+| `keys_dir` / `TESTLAB_KEYS_DIR` | `~/.testlab/keys` | The engine's Player identity — the directory `testlab keygen` wrote, with `encryption.pem` directly inside |
+| `trust_store_dir` / `TESTLAB_TRUST_STORE_DIR` | `~/.testlab/trusted_compilers` | One `signing.pub` per trusted Compiler, under any file name ending in `.pub` |
 
-Vault integration is configured via `testlab.config.yaml`, environment variables, or CLI flags. The precedence order is: CLI flags > environment variables > configuration file > filesystem defaults.
-
-**Configuration file** (`testlab.config.yaml`):
-
-```yaml
-vault:
-  url: "https://vault.example.com"
-  token: "${VAULT_TOKEN}"
-  secret_path: "secret/data/testlab/keys"
-```
-
-**Environment variables:**
+For an encrypted package the engine unwraps the key with `<keys_dir>/encryption.pem` and verifies the signature
+against the trusted key whose fingerprint equals the manifest's `compiler_id`. A package signed by a Compiler that is
+not in the trust store is refused. The `vault` block (`vault_url`, `vault_token`, `vault_secret_path`) is declared but
+not read in `1.0.0a3`.
 
 ```bash
-export TESTLAB_VAULT_URL="https://vault.example.com"
-export TESTLAB_VAULT_TOKEN="hvs.CAES..."      # Vault user token
-export TESTLAB_VAULT_SECRET_PATH="secret/data/testlab/keys"
-```
-
-**CLI flags:**
-
-```bash
-testlab keygen --compiler \
-  --vault-url https://vault.example.com \
-  --vault-token hvs.CAES... \
-  --vault-secret-path secret/data/testlab/keys
-```
-
-#### Vault Secret Layout
-
-When Vault is configured, keys are stored under the configured `secret_path`:
-
-```
-secret/data/testlab/keys/
-  player/
-    private_key    # PEM-encoded RSA private key
-    public_key     # PEM-encoded RSA public key
-    fingerprint    # player:sha256:<hex>
-  compiler/
-    signing_key    # PEM-encoded Ed25519 private key
-    verification_key  # PEM-encoded Ed25519 public key
-    fingerprint    # compiler:sha256:<hex>
-  trusted_compilers/
-    <fingerprint>  # PEM-encoded Ed25519 public key per trusted compiler
-```
-
-#### Behavior When Vault Is Configured
-
-| Command | Filesystem (default) | Vault |
-|---------|---------------------|-------|
-| `testlab keygen` | Writes to `~/.testlab/keys/` | Writes to `vault_secret_path/player/` |
-| `testlab keygen --compiler` | Writes to current directory | Writes to `vault_secret_path/compiler/` |
-| `testlab compile` | Reads `--signing-key` from filesystem | Reads compiler signing key from `vault_secret_path/compiler/signing_key` |
-| `testlab run` (encrypted) | Reads Player key from `~/.testlab/keys/` | Reads Player private key from `vault_secret_path/player/private_key` |
-| Trust store lookup | Reads from `~/.testlab/trusted_compilers/` | Reads from `vault_secret_path/trusted_compilers/` |
-
-When Vault is configured, the `--signing-key` and `--authorize-player` CLI flags become optional for `compile` — the Compiler reads keys directly from Vault. You can still provide explicit file paths to override the Vault-stored keys.
-
-#### Fallback Behavior
-
-If Vault is unreachable or the token is expired, the security module raises a `VaultConnectionError` with guidance:
-
-```
-Error: Cannot connect to Vault at https://vault.example.com
-  Verify TESTLAB_VAULT_URL, TESTLAB_VAULT_TOKEN, and network connectivity.
-  To use local filesystem keys instead, remove the vault configuration.
+testlab keygen --out-dir /etc/testlab --label player
+mkdir -p /etc/testlab/trusted_compilers && cp compiler-signing.pub /etc/testlab/trusted_compilers/
+export TESTLAB_KEYS_DIR=/etc/testlab/player
+export TESTLAB_TRUST_STORE_DIR=/etc/testlab/trusted_compilers
+testlab serve
 ```
 
 ---
 
 ## Compilation Modes
 
-### Default: Encrypted
+`--plain` (directory instead of archive) and encryption (keys supplied or not) are independent choices:
 
-Every `testlab compile` invocation produces an encrypted package by default:
+| Command | Output |
+|---------|--------|
+| `testlab compile index.yaml` | Readable `.tck` archive |
+| `testlab compile index.yaml -c <compiler-dir> -p <player.pub> [-p …]` | Signed and encrypted `.tck` archive |
+| `testlab compile index.yaml --plain` | Readable loose files in a directory (default `<manifest dir>/plain`) |
+| `testlab compile index.yaml --plain -c <compiler-dir> -p <player.pub>` | Encrypted loose files in a directory |
 
-```bash
-# Default behavior — encrypted output
-testlab compile tck.yaml \
-  --authorize-player player1.pub \
-  --authorize-player player2.pub \
-  --signing-key compiler.pem \
-  --output my_tck-1.0.tck
-```
-
-The Compiler requires:
-
-- At least one `--authorize-player` (whose Player can run the package)
-- A `--signing-key` (the Compiler's Ed25519 private key)
-
-If `--authorize-player` or `--signing-key` is missing, the Compiler will raise an error:
+If only one of `--compiler-keys` / `--player-pub` is supplied, compilation stops:
 
 ```
-Error: Encryption is enabled by default. You must provide:
-  --authorize-player <player.pub>   (at least one authorized Player)
-  --signing-key <compiler.pem>      (Compiler signing key)
-
-To compile without encryption (development only), use --plain.
+Error: --player-pub is required to encrypt a package. Supply both --compiler-keys and --player-pub, or neither.
 ```
-
-### Opt-in: Plain Mode (Development Only)
-
-For local development and debugging, plain mode disables encryption:
-
-```bash
-# Development-only — human-readable output
-testlab compile tck.yaml --plain --output my_tck-1.0.tck
-```
-
-When `--plain` is used:
-
-- No encryption is applied — tests and assets are stored as-is in the ZIP.
-- No `--authorize-player` or `--signing-key` is required.
-- A warning is emitted:
-
-```
-WARNING: Package compiled in plain mode. Tests and assets are NOT encrypted.
-         Do not distribute plain packages — they may contain secrets.
-         Use encrypted mode (default) for any shared or production package.
-```
-
-- The `manifest.yaml` will NOT contain a `security` block.
-- The archive contains `manifest.yaml`, `tests/`, and `assets/` in the clear.
 
 ### Mode Comparison
 
-| Aspect | Encrypted (default) | Plain (`--plain`) |
-|--------|:-------------------:|:-----------------:|
+| Aspect | Encrypted `.tck` | Unencrypted `.tck` |
+|--------|:----------------:|:------------------:|
 | Tests readable? | No | Yes |
-| Assets readable? | No | Yes |
-| Requires Player key? | Yes | No |
-| Requires Compiler key? | Yes | No |
-| Archive structure | `manifest.yaml` + `payload.enc` + `signature.sig` | `manifest.yaml` + `tests/` + `assets/` |
-| Suitable for distribution? | Yes | No |
-| Suitable for CI/CD? | Yes | No (secrets exposed) |
-| Extractable? | Only with Compiler or Player key | Anyone with `unzip` |
+| Requires Player key to run? | Yes | No |
+| Requires Compiler public key to run? | Yes | No |
+| Archive entries | `manifest.yaml`, `payload.enc`, `signature.sig` | `manifest.yaml`, `tck-bundle.yaml`, `tck-execution.json`, `tests/`, `assets/` |
+| Checksum verified at load? | Yes | Yes |
 
 ---
 
 ## CLI Reference
 
-### Compilation Commands
-
 | Command | Description |
 |---------|-------------|
-| `testlab compile <tck.yaml>` | Compile with encryption (default) — requires `--authorize-player` and `--signing-key` |
-| `testlab compile <tck.yaml> --plain` | Compile without encryption (development only) |
-| `testlab compile <tck.yaml> --authorize-player <key.pub>` | Authorize a Player to decrypt (repeatable) |
-| `testlab compile <tck.yaml> --signing-key <key.pem>` | Sign with Compiler Ed25519 key |
-| `testlab compile <tck.yaml> --output <file>` | Specify output filename |
-
-### Key Management Commands
-
-| Command | Description |
-|---------|-------------|
-| `testlab keygen` | Generate Player RSA key pair (`~/.testlab/keys/`) |
-| `testlab keygen --compiler` | Generate Compiler Ed25519 key pair (current directory) |
-| `testlab keygen --force` | Overwrite existing keys (key rotation) |
-| `testlab export-key --player` | Print Player public key to stdout |
-| `testlab export-key --fingerprint` | Print Player fingerprint |
-| `testlab keygen --vault-url <url> --vault-token <token> --vault-secret-path <path>` | Generate keys and store in HashiCorp Vault |
-| `testlab keygen --compiler --vault-url <url> --vault-token <token> --vault-secret-path <path>` | Generate Compiler keys and store in Vault |
-
-### Inspection Commands
-
-| Command | Description |
-|---------|-------------|
-| `testlab inspect <package>` | Report the tests, steps and validations a package declares |
-| `testlab inspect <package> --manifest` | Show manifest metadata (works on both plain and encrypted) |
-| `testlab inspect <package> --extract <dir>` | Write the verified tests and assets to a directory |
+| `testlab keygen [-o <dir>] [-l <label>] [--override-keys]` | Generate an RSA-4096 + Ed25519 identity in `<dir>/<label>/` |
+| `testlab compile <index.yaml> [-o <file>]` | Compile an unencrypted `.tck` |
+| `testlab compile <index.yaml> -c <compiler-dir> -p <player.pub> [-p …]` | Compile a signed, encrypted `.tck` for the listed Players |
+| `testlab run <pkg.tck> -k <player-dir> --compiler-pub <signing.pub>` | Run an encrypted package |
+| `testlab inspect <pkg.tck> [-k <player-dir> -c <signing.pub>] [--manifest]` | Report what a package contains |
+| `testlab inspect <pkg.tck> [-k … -c …] --extract <dir>` | Write the verified contents to a directory |
 
 ---
 
-## Error Handling
+## Error Messages
 
-| Error | Cause | Resolution |
-|-------|-------|------------|
-| `PackageAuthorizationError` | Player's fingerprint not found in `authorized_players` | Ask the Compiler to re-compile with your Player's public key |
-| `PackageDecryptionError` | RSA key unwrapping or AES decryption failed | Verify the correct Player private key is at `~/.testlab/keys/player.pem` |
-| `PackageSignatureError` | Compiler not in trust store, or signature is invalid | Add the Compiler's `*.pub` to `~/.testlab/trusted_compilers/`, or the package may be tampered |
-| `ChecksumError` | SHA-256 mismatch after decryption | Package content was corrupted — re-obtain from the Compiler |
-| `MissingEncryptionArgsError` | `--authorize-player` or `--signing-key` not provided (and `--plain` not set) | Provide the required keys, or use `--plain` for development |
-| `VaultConnectionError` | Cannot reach Vault server, or token is expired/invalid | Verify `TESTLAB_VAULT_URL`, `TESTLAB_VAULT_TOKEN`, and network connectivity. Remove vault config to use local keys |
+| Message | Cause | Resolution |
+|---------|-------|------------|
+| `Package '<name>' is encrypted — provide --player-keys to load it.` | No player identity supplied | Pass `--player-keys` |
+| `Encrypted package '<name>' is signed, but no compiler public key was supplied to check it against. Pass --compiler-pub.` | No Compiler public key supplied | Pass `--compiler-pub` (`-c` for `inspect`) |
+| `Encrypted package '<name>' carries no signature.` | `signature.sig` missing | Re-obtain the package from the Compiler |
+| `Package signature verification failed — untrusted source. …` | Signed by another key, or `manifest.yaml` or `payload.enc` changed | Check you have the right `signing.pub`; otherwise the package was tampered with |
+| `The package manifest does not describe its payload: …` | The signed manifest states a different checksum than the decrypted content carries | Re-obtain the package from the Compiler |
+| `Encrypted .tck has no authorized_players in manifest.` | Malformed package | Re-compile |
+| `This package was not compiled for this player: …` | The Player's `encryption.pub` was not passed to `--player-pub` | Ask the Compiler to re-compile with it |
+| `Package '<name>' is encrypted, and this engine has no player identity: …` | Server: no `encryption.pem` in `keys_dir` | Set `TESTLAB_KEYS_DIR` |
+| `Package '<name>' is signed by compiler <id>, which this engine does not trust. …` | Server: the Compiler's `signing.pub` is not in `trust_store_dir` | Copy it there |
+| `Error: --player-pub is required to encrypt a package. …` | Only one of the two key options supplied | Supply both, or neither |
 
 ---
 
@@ -445,4 +334,4 @@ This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses
 - SPDX-License-Identifier: CC-BY-4.0
 - SPDX-FileCopyrightText: 2025, 2026 Contributors to the Eclipse Foundation
 - SPDX-FileCopyrightText: 2025, 2026 Catena-X Automotive Network e.V.
-- Source URL: [https://github.com/eclipse-tractusx/tractusx-sdk](https://github.com/eclipse-tractusx/tractusx-sdk)
+- Source URL: [https://github.com/eclipse-tractusx/tractusx-testlab](https://github.com/eclipse-tractusx/tractusx-testlab)

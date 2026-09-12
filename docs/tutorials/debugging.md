@@ -23,11 +23,9 @@
 
 # How to Debug Common Issues
 
-For issues in the visual IDE (blocks, toolbox, YAML sync), see the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository — this page covers the engine.
-
 ## "Unknown step type" at validation or runtime
 
-1. Check the `uses:` id against the generated [step reference](../specification/reference/steps.md), or ask the CLI directly:
+1. Check the `uses:` id against the generated [step reference](../api-reference/steps/index.md), or ask the CLI directly:
 
     ```bash
     poetry run testlab docs --step connector/consumer/negotiate --json

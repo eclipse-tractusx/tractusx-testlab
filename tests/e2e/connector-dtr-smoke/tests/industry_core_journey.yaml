@@ -59,7 +59,7 @@ setup:
   # an Industry Core failure. The aspect-addressed layout is exercised on its
   # own below, against the same server, without a data plane in between.
   - id: upload_submodel
-    uses: digital-twin/submodel/upload
+    uses: digital-twin-registry/submodel/upload
     name: Upload the submodel payload to the engine's backend
     with:
       data:
@@ -91,7 +91,7 @@ setup:
   # server that resolved the two spellings differently would store one
   # resource under two names.
   - id: upload_aspect_scoped
-    uses: digital-twin/submodel/upload
+    uses: digital-twin-registry/submodel/upload
     name: Upload a second payload under its aspect URN
     with:
       semantic_id: "urn:samm:io.catenax.serial_part:3.0.0#SerialPart"
@@ -163,7 +163,7 @@ setup:
         type: string
 
   - id: create_shell
-    uses: digital-twin/provider/wizard/create_shell_descriptor
+    uses: digital-twin-registry/provider/wizard/create_shell_descriptor
     name: Register the twin for the serialised part
     with:
       id_short: testlabE2eSerialPart
@@ -195,7 +195,7 @@ setup:
   # body — is the step's to write, so what the test states is only what is
   # specific to this twin. Every one of those fields is read back below.
   - id: create_submodel_descriptor
-    uses: digital-twin/provider/wizard/create_submodel_descriptor
+    uses: digital-twin-registry/provider/wizard/create_submodel_descriptor
     name: Point the twin at the payload and at the asset that serves it
     with:
       aas_identifier: "${{ setup.create_shell.id }}"
@@ -215,7 +215,7 @@ execution:
   # reading values the test already knows — a chain wired from the setup ids
   # would pass even if the registry stored something else entirely.
   - id: read_twin
-    uses: digital-twin/provider/get_shell_descriptor
+    uses: digital-twin-registry/provider/get_shell_descriptor
     name: Read the twin back from the registry
     with:
       aas_identifier: "${{ setup.create_shell.id }}"
@@ -377,7 +377,7 @@ execution:
 
 teardown:
   - id: delete_shell
-    uses: digital-twin/provider/delete_shell_descriptor
+    uses: digital-twin-registry/provider/delete_shell_descriptor
     name: Remove the twin
     with:
       aas_identifier: "${{ setup.create_shell.id }}"
@@ -410,7 +410,7 @@ teardown:
   # thing to go because the asset in front of it has to be withdrawn first —
   # an offer that resolves to nothing is worse than no offer.
   - id: delete_submodel
-    uses: digital-twin/submodel/delete
+    uses: digital-twin-registry/submodel/delete
     name: Remove the uploaded payload
     with:
       path: "${{ setup.upload_submodel.path }}"
@@ -419,7 +419,7 @@ teardown:
   # written under. A delete that answered 404 here would mean the upload and
   # the delete composed the address differently, which nothing else would say.
   - id: delete_aspect_scoped
-    uses: digital-twin/submodel/delete
+    uses: digital-twin-registry/submodel/delete
     name: Remove the aspect-addressed payload
     with:
       path: "${{ setup.upload_aspect_scoped.path }}"

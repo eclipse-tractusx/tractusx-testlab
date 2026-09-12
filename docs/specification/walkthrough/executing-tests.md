@@ -1,6 +1,6 @@
 <!--
 
-Eclipse Tractus-X - Software Development KIT
+Eclipse Tractus-X - Tractus-X TestLab
 
 Copyright (c) 2026 Catena-X Automotive Network e.V.
 Copyright (c) 2026 Contributors to the Eclipse Foundation
@@ -19,286 +19,220 @@ SPDX-License-Identifier: CC-BY-4.0
 
 # Executing Tests
 
-This section shows how to run compiled `.tck` packages (or raw TCKs) against live dataspace connectors and interpret results.
+This section shows how to run a TCK against live dataspace connectors and read the results.
 
 ## Prerequisites
 
 You've completed [Compiling Packages](compiling-packages.md) and have:
 
-- A compiled package: `connector_e2e-1.0.tck`
-- Running connector instances (provider + consumer) with known URLs
-- Valid OAuth2 client credentials for each connector
+- The TCK `my-certificate-tck/index.yaml`, or its compiled package `dist/my-certificate-tck.tck`
+- A connector TestLab drives (the *engine* side) and the connector of the system under test (the *SUT* side), with
+  their management URL, API key, DSP endpoint and participant ID
+
+`testlab run` accepts either target. Given a manifest, it compiles it to a temporary package first; a `.tck` runs as is.
 
 ---
 
-## Step 1 — Run a Compiled Package
+## Step 1 — Bind the Infrastructure
 
-### Basic Execution
+A TCK never names the connectors it talks to. Its `infrastructure` block only says which capabilities each side must
+have — here `engine.connector` and `sut.connector` — and the operator binds them. Unbound, the run stops before the first step and names every key it needs:
 
-Pass runtime variables with `--var`:
+```text
+Cannot run my-certificate-tck.tck:
+  This TCK requires infrastructure that is not fully bound: engine.connector, sut.connector
+  engine.connector — set:
+      infrastructure.engine.connector.management_url   (or TESTLAB_ENGINE_CONNECTOR_MANAGEMENT_URL)
+      infrastructure.engine.connector.participant_id   (or TESTLAB_ENGINE_CONNECTOR_PARTICIPANT_ID)
+  sut.connector — set:
+      infrastructure.sut.connector.participant_id   (or TESTLAB_SUT_CONNECTOR_PARTICIPANT_ID)
+      infrastructure.sut.connector.dsp_url   (or TESTLAB_SUT_CONNECTOR_DSP_URL)
+```
+
+Bind them in `testlab.config.yaml` — in the working directory or `~/.testlab/` — (copy `testlab.config.example.yaml`
+from the repository):
+
+```yaml title="testlab.config.yaml"
+infrastructure:
+  engine:
+    connector:
+      management_url: https://engine.example.com/management
+      api_key: "<engine management API key>"
+      participant_id: BPNL000000000TLB
+  sut:
+    connector:
+      management_url: https://sut.example.com/management
+      dsp_url: https://sut.example.com/api/v1/dsp
+      participant_id: BPNL000000000001
+    dtr:
+      base_url: https://sut.example.com/semantics/registry
+```
+
+or through the environment, which overrides the file:
 
 ```bash
-testlab run connector_e2e-1.0.tck \
-  --var provider_url=https://provider.example.com \
-  --var consumer_url=https://consumer.example.com \
-  --var token_url=https://auth.example.com/token \
-  --var provider_client_id=prov-client \
-  --var provider_client_secret=prov-secret \
-  --var consumer_client_id=cons-client \
-  --var consumer_client_secret=cons-secret \
-  --var provider_bpn=BPNL000000000001
+export TESTLAB_SUT_CONNECTOR_DSP_URL=https://sut.example.com/api/v1/dsp
+export TESTLAB_SUT_CONNECTOR_PARTICIPANT_ID=BPNL000000000001
 ```
 
-**Expected output:**
-
-```
-Loading connector_e2e-1.0.tck
-   Test case: connector_e2e v1.0
-   SDK: 0.5.0 (compiled 2026-03-30T14:22:00Z)
-   Checksum: valid
-
-Job created: a1b2c3d4-e5f6-7890-abcd-1234567890ab
-Running TCK "connector_e2e" (2 tests, 9 steps)
-
-── provision_and_consume ────────────────────────────────────────
-
-  [1/6] create_asset
-        POST https://provider.example.com/management/v3/assets
-        PASS  status=200 (320ms)
-
-  [2/6] create_policy
-        POST https://provider.example.com/management/v3/policydefinitions
-        PASS  status=200 (180ms)
-
-  [3/6] create_contract_definition
-        POST https://provider.example.com/management/v3/contractdefinitions
-        PASS  status=200 (150ms)
-
-  [4/6] query_catalog
-        POST https://consumer.example.com/management/v3/catalog/request
-        PASS  status=200, offers ≥ 1 (420ms)
-
-  [5/6] negotiate_contract
-        POST https://consumer.example.com/management/v3/contractnegotiations
-        PASS  status=200, state="FINALIZED" (8.2s, polled 4×)
-
-  [6/6] transfer_data
-        POST https://consumer.example.com/management/v3/transferprocesses
-        PASS  status=200, state="COMPLETED" (12.4s, polled 6×)
-
-  [cleanup] delete_asset
-        DELETE https://provider.example.com/management/v3/assets/...
-        DONE  status=204 (110ms)
-
-── submodel_validation ──────────────────────────────────────────
-
-  [1/3] fetch_submodel_data
-        GET https://consumer.example.com/management/v3/submodel/...
-        PASS  status=200 (250ms)
-
-  [2/3] validate_schema
-        Validating response against schemas/serial-part-3.0.json
-        PASS  schema valid (12ms)
-
-  [3/3] check_fields
-        Assert catenaXId matches ^urn:uuid:[0-9a-f-]{36}$
-        Assert manufacturerPartId is not empty
-        PASS  2/2 assertions (5ms)
-
-─────────────────────────────────────────────────────────────────
-
-Test case PASSED — 9/9 steps passed (22.1s total)
-```
-
-### Using a Variables File
-
-For repeatable runs, define variables in a YAML file:
-
-```yaml
-# vars.yaml
-provider_url: "https://provider.example.com"
-consumer_url: "https://consumer.example.com"
-token_url: "https://auth.example.com/token"
-provider_client_id: "prov-client"
-provider_client_secret: "prov-secret"
-consumer_client_id: "cons-client"
-consumer_client_secret: "cons-secret"
-provider_bpn: "BPNL000000000001"
-```
-
-```bash
-testlab run connector_e2e-1.0.tck --vars-file vars.yaml
-```
-
-Variables from `--var` flags override `--vars-file` values:
-
-```bash
-# Override provider_url while using vars.yaml for everything else
-testlab run connector_e2e-1.0.tck \
-  --vars-file vars.yaml \
-  --var provider_url=https://staging-provider.example.com
-```
+`testlab config` prints the settings and bindings that resolved, and which came from the environment. Connector
+steps address the bound SUT connector by default; `counter_party_address` and `counter_party_id` are only passed to
+address somebody else.
 
 ---
 
-## Step 2 — Run from Raw YAML (Without Compiling)
+## Step 2 — Supply Input Variables
 
-During development, you can run a TCK directly without compiling:
+Variables declared with `source: input` are values the operator provides. A run that lacks one stops before it starts:
 
-```bash
-testlab run tck.yaml \
-  --var provider_url=https://provider.example.com \
-  --var consumer_url=https://consumer.example.com \
-  --var token_url=https://auth.example.com/token \
-  --var provider_client_id=prov-client \
-  --var provider_client_secret=prov-secret \
-  --var consumer_client_id=cons-client \
-  --var consumer_client_secret=cons-secret \
-  --var provider_bpn=BPNL000000000001
+```text
+Cannot run my-certificate-tck.tck:
+  This TCK needs 1 input variable(s) that were not supplied:
+      callback_timeout_s
+  Set them under 'variables:' in the run config, or pass --var name=value.
 ```
 
-This performs validate → compile-in-memory → execute in one step. Useful for local development; for CI/CD or distribution, always use compiled `.tck` packages.
+Pass them with `--var`:
+
+```bash
+testlab run dist/my-certificate-tck.tck --var callback_timeout_s=60
+```
+
+or collect them in a run config file under `variables:` and pass it with `--config`. `--var` overrides the file:
+
+```yaml title="run.yaml"
+variables:
+  callback_timeout_s: 60
+```
+
+```bash
+testlab run dist/my-certificate-tck.tck --config run.yaml
+```
+
+`testlab inspect <package> --variables` lists which variables a TCK asks for, with their scope (`engine` or `sut`).
 
 ---
 
-## Step 3 — Skip Optional Tests
+## Step 3 — Run
 
-Some tests in a TCK are marked `skippable: true` by the author, indicating they cover
-optional capabilities that the SUT may not yet support. You can bypass them at runtime
-using the `skip_tests` variable — without modifying the package itself.
+```bash
+testlab run dist/my-certificate-tck.tck --config run.yaml
+```
+
+The console shows each step as it runs, then one result table per test and a run summary. Every box is 80 columns
+wide unless a step label needs more, in which case all of them widen:
+
+```text
+╔===========================================================================================╗
+║                                     Test: Ping Catalog                                    ║
+╠===========================================================================================╣
+║  STEP                                                                     RESULT      TIME║
+║  ---------------------------------------------------------------------------------------  ║
+║  ✓ ping-catalog[query_catalog]:connector/consumer/query_catalog             PASS      0.4s║
+╠===========================================================================================╣
+║  RESULT: PASS  |  1 passed  0 failed  0 skipped  |  Total: 0.4s                           ║
+╚===========================================================================================╝
+
+  Assertions: 1 total, 1 passed, 0 hard-failed, 0 soft-failed
+
+…
+
+╔===========================================================================================╗
+║                                      TCK RUN SUMMARY                                      ║
+╠===========================================================================================╣
+║  TEST                                                                     RESULT      TIME║
+║  ---------------------------------------------------------------------------------------  ║
+║  ✓ Ping Catalog                                                             PASS      0.4s║
+║  ✓ Request Certificate                                                      PASS      9.8s║
+╠===========================================================================================╣
+║  RESULT: PASS  |  2 passed  0 failed  0 skipped  |  Total: 10.2s                          ║
+╚===========================================================================================╝
+```
+
+Setup steps are labelled `test[setup:<id>]`. A failed step lists why under its table — the failed checks by their
+`name`, or the error and whether it came from the SUT or the engine — and `testlab run` exits non-zero when any test fails.
+
+---
+
+## Step 4 — Skip Optional Tests
+
+A test the author marked `skippable: true` in the manifest may be left out at run time with the `skip_tests`
+variable — without modifying the package.
 
 ### Discover which tests are skippable
 
 ```bash
-testlab inspect connector_e2e-1.0.tck
+testlab inspect dist/my-certificate-tck.tck
 ```
 
-Each test in the output shows its **ID** and whether it is skippable:
-
-```
-  Test: Validate catalog policy  |  ID: catalog_policy_validation.yaml  |  Skippable: Yes
-  Test: Request certificate       |  ID: request_certificate.yaml        |  Skippable: No
+```text
+  Test: Ping Catalog  |  ID: ping_catalog.yaml  |  Skippable: Yes
+  Test: Request Certificate  |  ID: request_certificate.yaml  |  Skippable: No
 ```
 
-The **ID** (e.g. `catalog_policy_validation.yaml`) is what you pass to `skip_tests`.
-The display name is for humans only — it cannot be used to identify a test for skipping.
+The **ID** (the test's file name) is what `skip_tests` takes; the display name cannot be used.
 
-### Skip a single test
+### Skip tests
 
 ```bash
-testlab run connector_e2e-1.0.tck \
-  --var skip_tests=catalog_policy_validation.yaml \
-  --var provider_url=https://provider.example.com \
-  --var ...
+testlab run dist/my-certificate-tck.tck --config run.yaml --var skip_tests=ping_catalog.yaml
 ```
 
-### Skip multiple tests
+Several tests are separated by commas (`--var skip_tests=a.yaml,b.yaml`), or listed in the run config:
 
-Repeating `--var skip_tests=...` overwrites the previous value. Use a config YAML
-to skip more than one test:
-
-```yaml
-# skip.yaml
-skip_tests:
-  - catalog_policy_validation.yaml
-  - error_handling.yaml
+```yaml title="run.yaml"
+variables:
+  callback_timeout_s: 60
+  skip_tests: ping_catalog.yaml,error_handling.yaml
 ```
 
-```bash
-testlab run connector_e2e-1.0.tck \
-  --config skip.yaml \
-  --var provider_url=https://provider.example.com \
-  --var ...
+A skipped test is reported as `SKIP` and does not count as a pass:
+
+```text
+║  - Ping Catalog                                                             SKIP      0.0s║
+║  ✓ Request Certificate                                                      PASS      9.8s║
+╠===========================================================================================╣
+║  RESULT: PASS  |  1 passed  0 failed  1 skipped  |  Total: 9.8s                           ║
 ```
 
-### Result
+### Invalid skip requests
 
-Skipped tests appear in the output with status `SKIPPED`:
+The request is checked **before any test executes**. Naming a test that does not exist, or is not skippable, refuses the whole run:
 
-```
-── catalog_policy_validation ────────────────────────────────────
-  [SKIPPED] Test intentionally skipped by operator request.
-─────────────────────────────────────────────────────────────────
-
-Test case COMPLETED — 5/5 executed, 1 skipped
-```
-
-The overall TCK result is `COMPLETED` when all executed tests pass and any number
-of `SKIPPED` tests are present. A single `FAILED` test makes the TCK `FAILED`.
-
-### Error: invalid skip request
-
-Validation runs **before any test executes**. If you request skipping a test that does
-not exist or is not marked skippable, the run aborts immediately:
-
-```
-Error: Cannot skip test(s) 'request_certificate.yaml': not marked skippable.
-Set skippable: true on the test entry in the TCK manifest to allow skipping.
+```text
+Cannot run my-certificate-tck.tck:
+  Cannot skip test(s) 'request_certificate.yaml': not marked skippable. Set skippable: true on the test entry in the TCK manifest to allow skipping.
 ```
 
 !!! note
-    Only the TCK author can allow skipping. Tests without `skippable: true` are
-    mandatory conformance checks that cannot be bypassed by the operator.
+    Only the TCK author can allow skipping. Tests without `skippable: true` are mandatory conformance checks.
 
 ---
 
-## Step 5 — Run Encrypted Packages (Default)
+## Step 5 — Run Encrypted Packages
 
-Packages are encrypted by default. To run them, the Player must have:
-
-1. Its private key at `~/.testlab/keys/player.pem`
-2. The Compiler's verification key in `~/.testlab/trusted_compilers/`
-
-See [Compiling Packages - Step 2](compiling-packages.md#step-2-generate-keys-one-time-setup) for key setup.
+An encrypted package needs the Player's identity and the Compiler's public key (see
+[Compiling Packages — Step 4](compiling-packages.md#step-4--sign-and-encrypt-for-a-player-optional)):
 
 ```bash
-testlab run connector_e2e-1.0.tck \
-  --vars-file vars.yaml
+testlab run dist/my-certificate-tck-encrypted.tck \
+  --player-keys .keys/player \
+  --compiler-pub .keys/compiler/signing.pub \
+  --config run.yaml
 ```
 
-The Player automatically:
+The Player first verifies the Compiler's signature over the readable manifest and the encrypted payload, then unwraps
+its own copy of the content key, decrypts the payload, verifies the package checksum against the one the manifest
+states, and only then loads the TCK. Without keys it refuses:
 
-1. Verifies the `signature.sig` using the trusted Compiler key
-2. Finds its own entry in `authorized_players` by fingerprint
-3. Unwraps the AES key using its RSA private key
-4. Decrypts `payload.enc` to recover tests and assets
-5. Executes in-memory (decrypted content is never written to disk)
-
-**Expected output:**
-
-```
-Loading connector_e2e-1.0.tck
-   Test case: connector_e2e v1.0
-   Encrypted package detected
-   Signature verified (compiler:sha256:a1b2c3d4...)
-   Player authorized (player:sha256:d4e5f6a1...)
-   Payload decrypted (AES-256-GCM)
-```
-
-Plain packages (compiled with `--plain`) skip the decryption steps and load directly.
-
-**Error: unauthorized Player:**
-
-```
-Loading connector_e2e-1.0.tck
-   Encrypted package detected
-   Player fingerprint player:sha256:99aabb... not found in authorized_players
-   Error: This Player is not authorized to execute this package.
-```
-
-**Error: untrusted Compiler:**
-
-```
-Loading connector_e2e-1.0.tck
-   Encrypted package detected
-   Compiler compiler:sha256:a1b2c3d4... not in trust store
-   Error: Package was signed by an untrusted Compiler.
-         Add the compiler's public key to ~/.testlab/trusted_compilers/
+```text
+Refused to run my-certificate-tck-encrypted.tck:
+  Package 'my-certificate-tck-encrypted.tck' is encrypted — provide --player-keys to load it.
 ```
 
 ---
 
-## Step 6 — Result Logs and Reports
+## Step 6 — Result Logs
 
 ### The Two Records a Run Leaves
 
@@ -312,8 +246,8 @@ Every run writes two files, and they are not two formats of the same thing.
 | **Read it when** | You want to see what happened | You want to know exactly what went over the wire, or you are feeding a tool |
 
 ```bash
-testlab run connector_e2e-1.0.tck \
-  --vars-file vars.yaml \
+testlab run dist/my-certificate-tck.tck \
+  --config run.yaml \
   --logs-dir ./logs \
   --data-dir ./data
 ```
@@ -410,7 +344,7 @@ One CloudEvent per line. Each is self-contained: it says which TCK, which test, 
 
 `errors[].origin` tells you who to go to: `sut` means the system under test answered wrongly, `engine` means TestLab itself broke and the run says nothing about the SUT.
 
-**A step that failed on the policy** — a DSP step turns down every offer whose policy is not one the test named, and says which condition turned them down. `context` carries the same comparison structurally, so the IDE renders it:
+**A step that failed on the policy** — a DSP step turns down every offer whose policy is not one the test named, and says which condition turned them down. `context` carries the same comparison structurally, so a client can render it:
 
 ```json
 {"specversion":"1.0",
@@ -448,505 +382,176 @@ jq 'select(.id | contains("/pull_dtr/")) | .data.exchanges[]?' data/*/*.jsonl
 jq 'select(.id | contains("/execution/"))' data/*/*.jsonl
 ```
 
-
-### JUnit XML Report
-
-For CI/CD integration, generate a JUnit XML report:
-
-```bash
-testlab run connector_e2e-1.0.tck \
-  --vars-file vars.yaml \
-  --junit results.xml
-```
-
-### Summary Report
-
-Use `--report` to generate a Markdown summary:
-
-```bash
-testlab run connector_e2e-1.0.tck \
-  --vars-file vars.yaml \
-  --report report.md
-```
-
-**Example summary (all passed):**
-
-```markdown
-# Test Report — connector_e2e v1.0
-
-| Metric | Value |
-|--------|-------|
-| Started | 2026-03-30T14:30:00Z |
-| Duration | 22.1s |
-| Tests | 2 |
-| Steps | 9 passed, 0 failed, 0 skipped |
-| Assertions | 9 passed, 0 failed |
-| Result | PASSED |
-
-## provision_and_consume
-
-| # | Step | Status | Duration |
-|---|------|--------|----------|
-| 1 | create_asset | PASS | 320ms |
-| 2 | create_policy | PASS | 180ms |
-| 3 | create_contract_definition | PASS | 150ms |
-| 4 | query_catalog | PASS | 420ms |
-| 5 | negotiate_contract | PASS | 8.2s |
-| 6 | transfer_data | PASS | 12.4s |
-
-## submodel_validation
-
-| # | Step | Status | Duration |
-|---|------|--------|----------|
-| 1 | fetch_submodel_data | PASS | 250ms |
-| 2 | validate_schema | PASS | 12ms |
-| 3 | check_fields | PASS | 5ms |
-```
-
-**Example summary (with failures):**
-
-```markdown
-# Test Report — connector_e2e v1.0
-
-| Metric | Value |
-|--------|-------|
-| Started | 2026-03-30T14:30:00Z |
-| Duration | 38.5s |
-| Tests | 2 |
-| Steps | 4 passed, 1 failed, 1 stopped |
-| Assertions | 5 passed, 1 failed |
-| Result | FAILED |
-
-## provision_and_consume
-
-| # | Step | Status | HTTP | Duration | Error |
-|---|------|--------|------|----------|-------|
-| 1 | create_asset | PASS | 200 | 320ms | — |
-| 2 | create_policy | PASS | 200 | 180ms | — |
-| 3 | create_contract_definition | PASS | 200 | 150ms | — |
-| 4 | query_catalog | PASS | 200 | 420ms | — |
-| 5 | negotiate_contract | FAIL | 502 | 30.2s | Expected status_code=200, got 502 |
-| 6 | transfer_data | STOP | — | 60.0s | Timed out after 60s |
-```
-
 ---
 
 ## Step 7 — Programmatic Execution (Python API)
 
-You can run packages from Python code:
+`TestlabPlayer` runs a compiled `.tck` from Python:
 
 ```python
-from tractusx_sdk.extensions.testlab import Player
+import asyncio
 
-async def run_tests():
-    player = Player()
+from tractusx_testlab.config.loader import ConfigLoader
+from tractusx_testlab.player import TestlabPlayer
+
+
+async def main() -> None:
+    # Settings resolve as the CLI's do: defaults, testlab.config.yaml, then
+    # TESTLAB_* environment variables, then these overrides.
+    config = ConfigLoader.load(cli_overrides={"logs_dir": "./logs", "data_dir": "./data"})
+    player = TestlabPlayer(config=config)
 
     result = await player.run(
-        "connector_e2e-1.0.tck",
-        runtime_vars={
-            "provider_url": "https://provider.example.com",
-            "consumer_url": "https://consumer.example.com",
-            "token_url": "https://auth.example.com/token",
-            "provider_client_id": "prov-client",
-            "provider_client_secret": "prov-secret",
-            "consumer_client_id": "cons-client",
-            "consumer_client_secret": "cons-secret",
-            "provider_bpn": "BPNL000000000001",
-        },
+        "dist/my-certificate-tck.tck",
+        runtime_vars={"callback_timeout_s": "60"},
     )
 
-    # Every run creates a Job with a unique ID
-    print(f"Job ID: {result.job_id}")
-    print(f"Test case: {result.tck_name}")
-    print(f"Status: {result.status}")           # COMPLETED | FAILED | WAITING
-    print(f"Duration: {result.duration_ms}ms")
-    print(f"Steps: {result.passed}/{result.total}")
-
-    for test_result in result.tests:
-        for step in test_result.steps:
-            print(f"  [{step.status}] {step.name} ({step.duration_ms}ms)")
-
-            # Access the full HTTP request/response
-            if step.request:
-                print(f"    -> {step.request.method} {step.request.url}")
-                print(f"    -> Headers: {step.request.headers}")
-                print(f"    -> Body: {step.request.body}")
-
-            if step.response:
-                print(f"    <- HTTP {step.response.status_code}")
-                print(f"    <- Headers: {step.response.headers}")
-                print(f"    <- Body: {step.response.body}")
-                print(f"    <- Duration: {step.response.duration_ms}ms")
-
-            # Access error details for failed/stopped steps
+    print(f"TCK {result.tck_id}: {result.status.value}")
+    for test in result.tests:
+        print(f"  {test.test_name}: {test.status.value}")
+        for step in test.execution:
+            print(f"    [{step.status.value}] {step.phase.value}:{step.step_name} ({step.duration_s:.2f}s)")
             if step.error:
-                print(f"    !! Error: {step.error}")
-            if step.error_traceback:
-                print(f"    !! Traceback: {step.error_traceback}")
+                print(f"      {step.error_origin}: {step.error}")
 
-    # Access job memory (persisted across all steps and wait/resume cycles)
-    print(f"Job memory: {result.job.memory}")
 
-    # Access job events (lifecycle audit trail)
-    for event in result.job.events:
-        print(f"  [{event.timestamp}] {event.event_type}: {event.description}")
+asyncio.run(main())
 ```
 
-For tests that enter `WAITING` state (e.g., awaiting an external callback), you can poll or subscribe to the job:
+- `player.run(path, runtime_vars=…)` takes packages only; `player.run_tck(tck, runtime_vars=…)` runs a TCK already
+  loaded with `tractusx_testlab.player.Loader().load(path)`. An encrypted package cannot be run through `run()`.
+- `result` is a `TckResult` (`tck_id`, `status`, `tests`, `started_at`, `finished_at`). Each `TestResult` carries
+  `test_id`, `test_name`, `status`, `execution` (every step of every phase, in order), `assertion_summary` and `error`.
+- Each `StepResult` carries `step_name`, `step_type`, `phase` (`SETUP`, `EXECUTION`, `TEARDOWN`), `status`
+  (`PASSED`, `FAILED`, `SKIPPED`, …), `duration_s`, `inputs`, `output`, `request`, `response`, `exchanges`,
+  `assertions`, and on failure `error`, `error_code`, `error_origin` and `error_traceback`.
 
-```python
-    # If the job is waiting for an external response, poll until done
-    if result.status == "WAITING":
-        print(f"Job waiting for: {result.job.waiting_for}")
-        final = await player.wait_for_job(result.job_id, timeout=300)
-        print(f"Final status: {final.status}")
-```
+See also `docs/examples/run_tck_as_backend.py`, which loads a package, lists the variables it requires, and runs it.
 
-### Server Mode
+---
 
-Run the Player as an HTTP server for remote triggering:
+## Step 8 — Server Mode
+
+`testlab serve` starts the TestLab FastAPI app. It runs TCKs, streams live execution events to its clients over SSE, and serves the mock and
+callback endpoints tests register — so a TCK whose tests use `mock/api` expects the SUT to reach this server.
 
 ```bash
 testlab serve --port 8100
 ```
 
-#### Upload a Package
+The interactive API documentation is served at `/docs`.
 
-Upload a `.tck` file to the server so it can be executed later by name. Both encrypted and plain packages are accepted:
+### Upload and run a package
 
 ```bash
-# Upload an encrypted package
-curl -X POST http://localhost:8100/api/v1/packages \
-  -F "file=@connector_e2e-1.0.tck"
+curl -X POST http://localhost:8100/testlab/packages -F "file=@dist/my-certificate-tck-1.0.tck"
 ```
-
-**Response:**
 
 ```json
 {
-  "package_id": "connector_e2e-1.0",
-  "name": "connector_e2e",
+  "package_id": "6a8a4fc04cf9",
+  "name": "my-certificate-tck",
   "version": "1.0",
   "format": "ENCRYPTED",
-  "size_bytes": 14100,
-  "uploaded_at": "2026-03-30T14:28:00Z",
-  "checksum": "sha256:e3b0c44298fc1c149afbf4c8996fb924..."
+  "size_bytes": 15651,
+  "uploaded_at": "2026-09-12T22:01:37.812944Z",
+  "checksum": "97e363efb569752a7166d6c52c42a3033970e4bae411e9afabd20cdc89e996c4",
+  "file_path": "…/packages/6a8a4fc04cf9/my-certificate-tck-1.0.tck"
 }
 ```
 
-Upload a plain package:
+The name and version are read from the file name, split at its last `-` (`<name>-<version>.tck`), so upload a
+package under a versioned file name. Upload is limited to `max_upload_bytes` (50 MB by default).
+
+!!! note "Known limitations in 1.0.0a3"
+    `format` is reported as `ENCRYPTED` for every package, readable or not, and `GET /testlab/packages` lists each
+    package with the whole file stem as its `name` and an empty `version`. Uploaded packages are stored under
+    `<storage_dir>/packages/`.
 
 ```bash
-# Upload a plain (development) package
-curl -X POST http://localhost:8100/api/v1/packages \
-  -F "file=@connector_e2e-1.0.tck"
-```
-
-```json
-{
-  "package_id": "connector_e2e-1.0",
-  "name": "connector_e2e",
-  "version": "1.0",
-  "format": "PLAIN",
-  "size_bytes": 5423,
-  "uploaded_at": "2026-03-30T14:28:00Z",
-  "checksum": "sha256:a1b2c3d4e5f6..."
-}
-```
-
-List uploaded packages:
-
-```bash
-curl http://localhost:8100/api/v1/packages
-```
-
-```json
-{
-  "packages": [
-    {
-      "package_id": "connector_e2e-1.0",
-      "name": "connector_e2e",
-      "version": "1.0",
-      "format": "ENCRYPTED",
-      "uploaded_at": "2026-03-30T14:28:00Z"
-    }
-  ]
-}
-```
-
-Delete an uploaded package:
-
-```bash
-curl -X DELETE http://localhost:8100/api/v1/packages/connector_e2e-1.0
-```
-
-#### Run a Test
-
-Trigger a test run via HTTP. Every run creates a **Job** — a stateful entity that tracks the full execution lifecycle. You can reference an uploaded package by `package_id` or provide a filesystem path:
-
-```bash
-curl -X POST http://localhost:8100/api/v1/run \
+curl -X POST http://localhost:8100/testlab/run/package \
   -H "Content-Type: application/json" \
-  -d '{
-    "package": "connector_e2e-1.0",
-    "runtime_vars": {
-      "provider_url": "https://provider.example.com",
-      "consumer_url": "https://consumer.example.com",
-      "token_url": "https://auth.example.com/token",
-      "provider_client_id": "prov-client",
-      "provider_client_secret": "prov-secret",
-      "consumer_client_id": "cons-client",
-      "consumer_client_secret": "cons-secret",
-      "provider_bpn": "BPNL000000000001"
-    }
-  }'
+  -d '{"package_id": "6a8a4fc04cf9", "runtime_vars": {"callback_timeout_s": "60"}}'
 ```
-
-**Response (completed job):**
 
 ```json
-{
-  "job_id": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
-  "status": "COMPLETED",
-  "tck": "connector_e2e",
-  "created_at": "2026-03-30T14:30:00Z",
-  "started_at": "2026-03-30T14:30:00Z",
-  "finished_at": "2026-03-30T14:30:22Z",
-  "duration_ms": 22100,
-  "current_step": null,
-  "waiting_for": null,
-  "tests": [
-    {
-      "name": "provision_and_consume",
-      "status": "PASSED",
-      "steps": [
-        {
-          "step": "create_asset",
-          "status": "PASS",
-          "duration_ms": 320,
-          "request": {
-            "method": "POST",
-            "url": "https://provider.example.com/management/v3/assets",
-            "headers": {"Content-Type": "application/json", "Authorization": "Bearer ***"},
-            "body": {"@context": {}, "asset": {"@id": "asset-001"}}
-          },
-          "response": {
-            "status_code": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": {"@id": "asset-001", "createdAt": "2026-03-30T14:30:01Z"},
-            "duration_ms": 315
-          },
-          "error": null
-        },
-        {
-          "step": "create_policy",
-          "status": "PASS",
-          "duration_ms": 180,
-          "request": {
-            "method": "POST",
-            "url": "https://provider.example.com/management/v3/policydefinitions"
-          },
-          "response": {"status_code": 200, "duration_ms": 175},
-          "error": null
-        },
-        {
-          "step": "create_contract_definition",
-          "status": "PASS",
-          "duration_ms": 150,
-          "request": {
-            "method": "POST",
-            "url": "https://provider.example.com/management/v3/contractdefinitions"
-          },
-          "response": {"status_code": 200, "duration_ms": 145},
-          "error": null
-        },
-        {
-          "step": "query_catalog",
-          "status": "PASS",
-          "duration_ms": 420,
-          "request": {
-            "method": "POST",
-            "url": "https://consumer.example.com/management/v3/catalog/request"
-          },
-          "response": {"status_code": 200, "duration_ms": 415},
-          "error": null
-        },
-        {
-          "step": "negotiate_contract",
-          "status": "PASS",
-          "duration_ms": 8200,
-          "request": {
-            "method": "POST",
-            "url": "https://consumer.example.com/management/v3/contractnegotiations"
-          },
-          "response": {"status_code": 200, "duration_ms": 8150},
-          "error": null
-        },
-        {
-          "step": "transfer_data",
-          "status": "PASS",
-          "duration_ms": 12400,
-          "request": {
-            "method": "POST",
-            "url": "https://consumer.example.com/management/v3/transferprocesses"
-          },
-          "response": {"status_code": 200, "duration_ms": 12350},
-          "error": null
-        }
-      ]
-    },
-    {
-      "name": "submodel_validation",
-      "status": "PASSED",
-      "steps": [
-        {
-          "step": "fetch_submodel_data",
-          "status": "PASS",
-          "duration_ms": 250,
-          "request": {
-            "method": "GET",
-            "url": "https://consumer.example.com/management/v3/submodel/..."
-          },
-          "response": {"status_code": 200, "duration_ms": 245},
-          "error": null
-        },
-        {
-          "step": "validate_schema",
-          "status": "PASS",
-          "duration_ms": 12,
-          "request": null,
-          "response": null,
-          "error": null
-        },
-        {
-          "step": "check_fields",
-          "status": "PASS",
-          "duration_ms": 5,
-          "request": null,
-          "response": null,
-          "error": null
-        }
-      ]
-    }
-  ]
-}
+{"job_id": "f574e1925147431a95bf52a8dae302a1", "status": "QUEUED"}
 ```
 
-The response includes every step with its full request/response detail and error state. Non-HTTP steps (like `validate_schema` and `check_fields`) have `null` request/response fields. Sensitive headers are redacted automatically.
+Instead of `package_id`, `"path"` names a `.tck` on the server's file system. The run happens in the background; follow it with the job endpoints.
 
-#### Job in WAITING State
+An encrypted package runs with the server's own Player identity and trusted Compilers, never with keys sent in the
+request — see [Keys on a Server](../specification/security.md#keys-on-a-server).
 
-When a test includes an `await_callback` step, the `/run` endpoint returns immediately with the job in `WAITING` state. The job resumes automatically when the callback arrives:
+### Follow a job
 
 ```bash
-# Start a test that waits for a notification acknowledgment
-curl -X POST http://localhost:8100/api/v1/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "package": "notification_e2e-1.0",
-    "runtime_vars": { "..." }
-  }'
+curl http://localhost:8100/testlab/tck-execution/f574e1925147431a95bf52a8dae302a1
 ```
-
-**Response (job waiting):**
 
 ```json
 {
-  "job_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
-  "status": "WAITING",
-  "tck": "notification_e2e",
-  "created_at": "2026-03-30T15:00:00Z",
-  "started_at": "2026-03-30T15:00:00Z",
+  "job_id": "f574e1925147431a95bf52a8dae302a1",
+  "status": "RUNNING",
+  "package_name": null,
+  "tck_id": "my-certificate-tck",
+  "runtime_vars": {"callback_timeout_s": "60"},
+  "memory": {"state": {}, "events": []},
+  "created_at": "2026-09-12T22:01:37.819734Z",
+  "started_at": "2026-09-12T22:01:37.901204Z",
   "finished_at": null,
-  "duration_ms": null,
-  "current_test": "send_and_acknowledge",
-  "current_step": "wait_for_ack",
-  "waiting_for": "callback: /callbacks/notif-ack-xyz",
-  "memory": {
-    "notification_id": "notif-abc-123",
-    "sent_at": "2026-03-30T15:00:02Z"
-  }
+  "total_duration_s": null,
+  "current_test": "request-certificate",
+  "current_step": "wait_callback",
+  "waiting_for": null,
+  "result": null,
+  "error": null
 }
 ```
 
-Query the job later to check if it has completed:
+A job's `status` is one of `QUEUED`, `RUNNING`, `WAITING`, `PAUSED`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT`;
+`result` holds the `TckResult` once it finishes. `GET /testlab/tck-execution/{job_id}/stream` streams the job's events
+as Server-Sent Events (reconnect with `Last-Event-ID` to replay missed ones) — see
+[Execution Events](../../developer/execution-events.md).
+
+### Run YAML directly
+
+A client can also post YAML documents rather than packages. `/testlab/compile` validates one document — a manifest or a test —
+and always answers `200`:
 
 ```bash
-curl http://localhost:8100/api/v1/jobs/f9e8d7c6-b5a4-3210-fedc-ba9876543210
-```
-
-Once the external system calls `POST /callbacks/notif-ack-xyz`, the job resumes and eventually returns `COMPLETED` or `FAILED`.
-
-#### Query Jobs
-
-List all jobs:
-
-```bash
-curl http://localhost:8100/api/v1/jobs
+curl -X POST http://localhost:8100/testlab/compile \
+  -H "Content-Type: application/x-yaml" --data-binary @my-certificate-tck/index.yaml
 ```
 
 ```json
-{
-  "jobs": [
-    {
-      "job_id": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
-      "status": "COMPLETED",
-      "tck": "connector_e2e",
-      "created_at": "2026-03-30T14:30:00Z",
-      "duration_ms": 22100
-    },
-    {
-      "job_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
-      "status": "WAITING",
-      "tck": "notification_e2e",
-      "created_at": "2026-03-30T15:00:00Z",
-      "waiting_for": "callback: /callbacks/notif-ack-xyz"
-    }
-  ]
-}
-```
-
-Filter by status:
-
-```bash
-curl http://localhost:8100/api/v1/jobs?status=WAITING
-```
-
-Get job memory:
-
-```bash
-curl http://localhost:8100/api/v1/jobs/f9e8d7c6-b5a4-3210-fedc-ba9876543210/memory
+{"status": "ok", "errors": []}
 ```
 
 ```json
-{
-  "notification_id": "notif-abc-123",
-  "sent_at": "2026-03-30T15:00:02Z"
-}
+{"status": "error", "errors": [{"path": "id", "message": "required key 'id' is missing from a tck"}]}
 ```
 
-Get job event log:
+`POST /testlab/tck-execution/run` takes a YAML body the same way and starts a job.
 
-```bash
-curl http://localhost:8100/api/v1/jobs/f9e8d7c6-b5a4-3210-fedc-ba9876543210/events
-```
+### Server API Endpoints
 
-```json
-{
-  "events": [
-    {"timestamp": "2026-03-30T15:00:00Z", "event_type": "job_created", "description": "Job created for notification_e2e-1.0"},
-    {"timestamp": "2026-03-30T15:00:00Z", "event_type": "job_started", "description": "Execution started"},
-    {"timestamp": "2026-03-30T15:00:01Z", "event_type": "step_completed", "description": "send_notification: PASS (1.2s)"},
-    {"timestamp": "2026-03-30T15:00:01Z", "event_type": "job_waiting", "description": "Waiting for callback: /callbacks/notif-ack-xyz"}
-  ]
-}
-```
-
-Cancel a job:
-
-```bash
-curl -X POST http://localhost:8100/api/v1/jobs/f9e8d7c6-b5a4-3210-fedc-ba9876543210/cancel
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/testlab/health` | Health and engine version |
+| `POST` | `/testlab/packages` | Upload a `.tck` package (multipart form, field `file`) |
+| `GET` | `/testlab/packages` | List uploaded packages |
+| `DELETE` | `/testlab/packages/{package_id}` | Delete an uploaded package |
+| `POST` | `/testlab/run/package` | Run an uploaded (`package_id`) or on-disk (`path`) package — returns `202` and a job |
+| `POST` | `/testlab/compile` | Validate a YAML body; returns `{status, errors[]}` |
+| `POST` | `/testlab/tck-execution/run` | Run a TCK posted as YAML (`/run/yaml` is an alias) — returns `202` and a job |
+| `GET` | `/testlab/tck-execution` | List jobs (`?status=` filter) |
+| `GET` | `/testlab/tck-execution/{job_id}` | Job detail, including the result once finished |
+| `GET` | `/testlab/tck-execution/{job_id}/stream` | Live events (SSE) |
+| `POST` | `/testlab/tck-execution/{job_id}/pause` | Pause a running job (`409` unless `RUNNING`) |
+| `POST` | `/testlab/tck-execution/{job_id}/resume` | Resume a paused job (`409` unless `PAUSED`) |
+| `POST` | `/testlab/tck-execution/{job_id}/cancel` | Cancel a job |
+| `GET` `POST` `PUT` `DELETE` | `/testlab/callbacks/{path}` | Callback endpoints steps listen on; unregistered paths answer `404` |
 
 ---
 
@@ -954,42 +559,22 @@ curl -X POST http://localhost:8100/api/v1/jobs/f9e8d7c6-b5a4-3210-fedc-ba9876543
 
 | Command | Description |
 |---------|-------------|
-| `testlab run <file>` | Execute a `.tck` or raw `tck.yaml` |
-| `testlab run <file> --var KEY=VALUE` | Pass a runtime variable |
-| `testlab run <file> --vars-file <vars.yaml>` | Load variables from a file |
-| `testlab run <file> --logs-dir <dir>` | Where the run transcript is written (default `./logs`) |
-| `testlab run <file> --data-dir <dir>` | Where the CloudEvents execution trace is written (default `./data`) |
-| `testlab run <file> --junit <file.xml>` | Write JUnit XML report |
-| `testlab run <file> --report <file.md>` | Write Markdown summary report |
-| `testlab run <file> --timeout 300` | Set global timeout in seconds (default: 600) |
-| `testlab jobs` | List all jobs (with optional `--status` filter) |
-| `testlab job <job_id>` | Show job detail (status, memory, events) |
-| `testlab cancel <job_id>` | Cancel a running or waiting job |
-| `testlab serve --port <port>` | Start Player in HTTP server mode |
-
-### Server API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/v1/packages` | Upload a `.tck` package (multipart form, field `file`) |
-| `GET` | `/api/v1/packages` | List uploaded packages |
-| `GET` | `/api/v1/packages/{package_id}` | Get package metadata |
-| `DELETE` | `/api/v1/packages/{package_id}` | Delete an uploaded package |
-| `POST` | `/api/v1/run` | Execute a package (creates a Job) |
-| `GET` | `/api/v1/jobs` | List all jobs (supports `?status=` filter) |
-| `GET` | `/api/v1/jobs/{job_id}` | Get job detail (status, memory, tests, events) |
-| `POST` | `/api/v1/jobs/{job_id}/cancel` | Cancel a running or waiting job |
-| `GET` | `/api/v1/jobs/{job_id}/memory` | Get job memory key-value store |
-| `GET` | `/api/v1/jobs/{job_id}/events` | Get job lifecycle event log |
+| `testlab run <index.yaml or .tck>` | Execute a TCK |
+| `testlab run <target> --var KEY=VALUE` | Pass a runtime variable (repeatable) |
+| `testlab run <target> --config <run.yaml>` | Load runtime variables from the file's `variables:` map |
+| `testlab run <target> --logs-dir <dir>` | Where the run transcript is written (default `./logs`) |
+| `testlab run <target> --data-dir <dir>` | Where the CloudEvents execution trace is written (default `./data`) |
+| `testlab run <pkg.tck> -k <player-dir> --compiler-pub <signing.pub>` | Run an encrypted package |
+| `testlab config [--json]` | Show resolved settings and infrastructure bindings |
+| `testlab serve [--host <addr>] [--port <port>] [--reload]` | Start the server (default `0.0.0.0:8000`) |
 
 ---
 
 ## Next Steps
 
-- Return to the [Walkthrough Overview](index.md) for a summary
-- Review the [YAML Test Format](../reference/yaml-format.md) reference for all step types
-- See the [Package Format](../reference/package-format.md) specification for archive internals
-- Consult [Functional Requirements](../specification/functional-requirements.md) for full requirement traceability
+- Return to the [Walkthrough Overview](index.md)
+- Look up every step in the [Step Reference](../../api-reference/steps/index.md)
+- Read the [TCK Syntax](../../tck-syntax/index.md) reference
 
 ---
 
@@ -1000,4 +585,4 @@ This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses
 - SPDX-License-Identifier: CC-BY-4.0
 - SPDX-FileCopyrightText: 2025, 2026 Contributors to the Eclipse Foundation
 - SPDX-FileCopyrightText: 2025, 2026 Catena-X Automotive Network e.V.
-- Source URL: [https://github.com/eclipse-tractusx/tractusx-sdk](https://github.com/eclipse-tractusx/tractusx-sdk)
+- Source URL: [https://github.com/eclipse-tractusx/tractusx-testlab](https://github.com/eclipse-tractusx/tractusx-testlab)

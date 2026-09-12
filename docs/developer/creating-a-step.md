@@ -33,7 +33,7 @@ The declaration is what makes a step usable by everything around it:
 
 - The runner validates the test's `with:` block against it before your code runs.
 - Assertions and `returns:` navigate the output shape it promises.
-- The [step reference page](../specification/reference/steps.md) is generated from it, so a parameter you rename in code cannot go stale in the docs.
+- The [step reference page](../api-reference/steps/index.md) is generated from it, so a parameter you rename in code cannot go stale in the docs.
 - The next step's inputs can be *the same model* as this step's outputs, which is what makes the wiring between steps visible in the types.
 
 ### What runs, in what order
@@ -404,11 +404,11 @@ async def test_absent_keys_are_not_invented(self) -> None:
 ## Regenerating the reference
 
 ```bash
-testlab docs           # rewrites docs/specification/reference/steps.md
+testlab docs           # rewrites docs/api-reference/steps/
 testlab docs --check   # CI runs this; fails if the page is out of date
 ```
 
-Your step appears automatically with its parameters, defaults, output fields, and published variables. Nested models are rendered once, in a shared section.
+Your step appears automatically with its parameters, defaults, output fields, and published variables. It lands on its module's page (`docs/api-reference/steps/<category>/<module>.md`) and in the site navigation; nested models are rendered once per page, below the steps.
 
 The generator reads `model_fields`, not `model_json_schema()`, because JSON Schema drops alias information — and an aliased spelling (a reserved word like `schema:`, or an export's context-variable name) is exactly what a test author needs to see. Write field descriptions as full sentences; they are the documentation.
 
@@ -430,5 +430,5 @@ The generator reads `model_fields`, not `model_json_schema()`, because JSON Sche
 ## See also
 
 - [Create a Step Executor](../tutorials/create-step-executor.md) — the same material as a worked example
-- [Step Reference](../specification/reference/steps.md) — the generated catalogue of every step
+- [Step Reference](../api-reference/steps/index.md) — the generated catalogue of every step
 - [Block Lifecycle](block-lifecycle.md) — how a step travels from YAML through the registry and executor to an SDK call

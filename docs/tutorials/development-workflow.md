@@ -23,21 +23,21 @@
 
 # How to Run the Full Development Workflow
 
-The IDE frontend is developed in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository; this repository is the Python engine and CLI.
+This repository is the Python engine, the `testlab` CLI and the server.
 
 ## Python development
 
 The project is managed with Poetry (>= 2.0) and requires Python 3.12+:
 
 ```bash
-# Install all dependency groups (test, docs)
+# Install the package with its dev, test and docs groups
 poetry install
 
 # Run tests
 poetry run pytest -v
 
 # Run the CLI
-poetry run testlab validate tests/e2e/connector-dtr-smoke/tests/dtr_roundtrip.yaml
+poetry run testlab validate tests/e2e/connector-dtr-smoke/index.yaml
 poetry run testlab compile tests/e2e/connector-dtr-smoke/index.yaml --plain
 poetry run testlab run tests/e2e/connector-dtr-smoke/index.yaml
 ```

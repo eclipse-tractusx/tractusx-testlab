@@ -114,7 +114,7 @@ class RegistryService(Protocol):
     def delete_asset_administration_shell_descriptor(self, *args: Any, **kwargs: Any) -> Any: ...
     def create_submodel_descriptor(self, *args: Any, **kwargs: Any) -> Any: ...
 
-    #: Reached into by ``digital-twin/provider/lookup_shells`` to reuse the
+    #: Reached into by ``digital-twin-registry/provider/lookup_shells`` to reuse the
     #: SDK's auth headers. A private SDK member in a public contract is a smell,
     #: and declaring it here is what makes that visible rather than hidden
     #: inside a getattr — see F-F02's follow-up note in the cleanup ledger.

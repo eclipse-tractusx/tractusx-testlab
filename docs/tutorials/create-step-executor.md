@@ -25,7 +25,7 @@
 
 A step executor is the Python code that runs when a block is executed at runtime. Every block type needs a corresponding step executor.
 
-A step declares its interface: what it accepts under `with:` and what it returns. Every step publishes all of its return outputs — each top-level output field becomes a context variable of the same name. This is not optional — defining a `BaseStep` subclass without `params_model` and `output_model` raises a `TypeError` at import time. The declaration is also what generates the [step reference](../specification/reference/steps.md), so a parameter you rename in code cannot go stale in the docs.
+A step declares its interface: what it accepts under `with:` and what it returns. Every step publishes all of its return outputs — each top-level output field becomes a context variable of the same name. This is not optional — defining a `BaseStep` subclass without `params_model` and `output_model` raises a `TypeError` at import time. The declaration is also what generates the [step reference](../api-reference/steps/index.md), so a parameter you rename in code cannot go stale in the docs.
 
 This page walks through one example end to end. For the rules behind it — every base class, the shared contract models, what fails and what it says — see [Creating a Step](../developer/creating-a-step.md).
 
@@ -318,7 +318,7 @@ Note the shape of the assertion on `result.value`: because the step declared its
 ```bash
 cd /path/to/tractusx-testlab
 pytest tests/test_check_health.py -v
-testlab docs           # regenerate docs/specification/reference/steps.md
+testlab docs           # regenerate docs/api-reference/steps/
 testlab docs --check   # CI runs this; it fails if the page is out of date
 ```
 

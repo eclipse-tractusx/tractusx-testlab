@@ -123,6 +123,7 @@ async def run_step(
             step_instance, step_def, step_name, context, started_at, params
         )
     wire.attach_to(result, recorder)
+    result.cac = list(getattr(step_def, "cac", None) or [])
     return result
 
 

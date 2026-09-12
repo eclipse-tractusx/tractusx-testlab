@@ -98,7 +98,7 @@ def _manifest() -> dict:
             "version": "1.0",
             "authors": [],
             "license": "Apache-2.0",
-            "standards": [],
+            "standards": [{"id": "CX-0135", "version": "v3.1.0"}],
         },
         "env": {
             "variables": [
@@ -137,6 +137,7 @@ def _test() -> dict:
                 "id": "act",
                 "name": "Act",
                 "uses": "util/log",
+                "cac": ["CX-0135:v3.1.0:CAC-014"],
                 "with": {"message": "${{ env.sut_bpn }}"},
                 "returns": {"value": {"type": "string"}},
                 "if": "success()",
@@ -146,6 +147,7 @@ def _test() -> dict:
                     {
                         "uses": "validate/assert/not_null",
                         "name": "the step produced a value",
+                        "cac": ["CX-0135:v3.1.0:CAC-015"],
                         "with": {"input": "value"},
                     }
                 ],
@@ -264,6 +266,13 @@ class TestEveryStepFieldSurvives:
         _, compiled = _compile(tmp_path)
         instruction = next(i for i in compiled[0]["instructions"] if i["id"] == "act")
         assert instruction["validate"][0]["name"] == "the step produced a value"
+
+    def test_an_assertion_keeps_the_cac_it_verifies(self, tmp_path) -> None:
+        """It is what the coverage matrix counts the check under."""
+        _, compiled = _compile(tmp_path)
+        instruction = next(i for i in compiled[0]["instructions"] if i["id"] == "act")
+        assert instruction["cac"] == ["CX-0135:v3.1.0:CAC-014"]
+        assert instruction["validate"][0]["cac"] == ["CX-0135:v3.1.0:CAC-015"]
 
 
 class TestEveryTestFieldSurvives:

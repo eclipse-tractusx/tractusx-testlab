@@ -72,27 +72,22 @@ The test suite runs 8 scenarios covering the full CX-0135 standard:
 | Expose Asset | Can your system publish certificate data for download? | Your certificates are discoverable in the network |
 | Error Handling | Does your system reject invalid requests correctly? | Bad requests get clear error responses |
 
-**Pass** (green) = your implementation meets the CX-0135 requirement.
-**Fail** (red) = your implementation needs changes before certification.
+**Pass** = your implementation meets the CX-0135 requirement.
+**Fail** = your implementation needs changes before certification.
 
 ## Running the Tests
 
-### Step 1: Open the TestLab IDE
+### Step 1: Get the TestLab engine
 
-The visual IDE is the separate **cx-test-suite** application ([eclipse-tractusx/cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite)), which connects to the TestLab engine in this repository. Open your browser and navigate to the TestLab IDE (your administrator provides the URL). You see a visual editor with blocks on a canvas.
+TestLab runs from the command line. A technical colleague installs it once (`pip install tractusx-testlab`) — see the [Developer Guide](ccm-developer-guide.md) for setup.
 
-!!! note "No IDE available?"
-    A technical colleague can run the same test suite directly from the command line with the TestLab engine: `testlab run index.yaml --config run-config.yaml`. The results are the same — the IDE only adds the visual experience.
+### Step 2: Locate the Certificate Management suite
 
-### Step 2: Load the Certificate Management Example
-
-1. Click **"Example Projects"** in the welcome screen
-2. Select **"Certificate Management (CX-0135)"**
-3. The editor loads the pre-built test suite with 8 test scenarios
+The pre-built test suite ships with TestLab at `docs/examples/certificate-management-v2/raw/index.yaml`.
 
 ### Step 3: Configure Your Test Environment
 
-Click the **run configuration** panel and fill in your company details:
+Put your company details in a run configuration file (for example `run-config.yaml`), or pass them one by one with `--var KEY=VALUE`:
 
 | Field | What to Enter |
 |-------|---------------|
@@ -103,34 +98,34 @@ Click the **run configuration** panel and fill in your company details:
 !!! tip "Using the stub for a quick demo"
     You can run the tests against a local stub server without a real EDC connector. See the [Developer Guide](ccm-developer-guide.md) for instructions.
 
-### Step 4: Click Execute
+### Step 4: Run the Tests
 
-Press the **Execute** button in the toolbar. The IDE sends the test suite to the backend and streams results back in real-time.
+```bash
+testlab run docs/examples/certificate-management-v2/raw/index.yaml --config run-config.yaml
+```
+
+TestLab validates and compiles the suite, then runs it against your system and reports results as it goes.
 
 ```mermaid
 sequenceDiagram
-    participant You as You (Browser)
-    participant IDE as TestLab IDE
-    participant Backend as TestLab Backend
+    participant You as You
+    participant TestLab as TestLab Engine
     participant SUT as Your System
 
-    You->>IDE: Click Execute
-    IDE->>Backend: Submit test suite
-    Backend->>SUT: Run test steps
-    SUT-->>Backend: Responses
-    Backend-->>IDE: Real-time results (SSE)
-    IDE-->>You: Green/Red indicators
+    You->>TestLab: testlab run
+    TestLab->>SUT: Run test steps
+    SUT-->>TestLab: Responses
+    TestLab-->>You: Pass/Fail per test and step
 ```
 
 ### Step 5: Read the Results
 
-The execution panel shows each test step with a status indicator:
+TestLab prints each test and step with its result:
 
-- **Green checkmark** — the step passed
-- **Red X** — the step failed (expand for details)
-- **Spinner** — the step is running
+- **Pass** — the step passed
+- **Fail** — the step failed, with details
 
-Each failed step includes an explanation: what was expected, what was received, and what to do next.
+Each failed step includes an explanation: what was expected, what was received, and what to do next. The command exits with a non-zero status when any test fails, and keeps a transcript of the run in the logs directory (`./logs` by default).
 
 ## Understanding Failures
 

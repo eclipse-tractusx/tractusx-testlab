@@ -48,6 +48,21 @@ def _fingerprint(public_bytes: bytes) -> str:
     return hashlib.sha256(public_bytes).hexdigest()
 
 
+def fingerprint_of_private_key(private_pem: bytes) -> str:
+    """Fingerprint of the public half of *private_pem*.
+
+    The public key is re-derived in the SPKI PEM form :func:`generate_rsa_keypair`
+    writes, so this equals the fingerprint a compiler records for the
+    ``encryption.pub`` issued alongside the key.
+    """
+    private_key = serialization.load_pem_private_key(private_pem, password=None)
+    public_bytes = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    return _fingerprint(public_bytes)
+
+
 def generate_rsa_keypair(key_size: int = 4096) -> KeyPair:
     """Generate an RSA key pair (for AES key wrapping)."""
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)

@@ -92,7 +92,7 @@ poetry run pytest -k validate
 
 ## Step 4 — Regenerate the step reference
 
-The step reference is generated from the parameter models. `poetry run testlab docs --check` fails when `docs/specification/reference/steps.md` is stale; regenerate it:
+The step reference is generated from the parameter models. `poetry run testlab docs --check` fails when `docs/api-reference/steps/` is stale; regenerate it:
 
 ```bash
 poetry run testlab docs
@@ -101,5 +101,3 @@ poetry run testlab docs
 ## When an operator is not enough
 
 If the check needs a genuinely different input contract (like `validate/schema`, which takes a `schema:` document instead of an operator), add a new `validate/*` step instead: a `StepParams` model, a `StepValue` output, and a `BaseStep` subclass registered with `@step("validate/<name>")` — the same pattern as the three existing steps in `src/tractusx_testlab/steps/utility/validate.py`. See [Create a New Step Executor](create-step-executor.md) for the full walkthrough.
-
-The visual IDE's assertion blocks live in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository and are updated there.

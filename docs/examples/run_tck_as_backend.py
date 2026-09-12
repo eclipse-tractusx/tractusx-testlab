@@ -64,17 +64,11 @@ TCK_PATH = Path("/tmp/test-out/certificate-management-tck.tck")
 
 # Simulated incoming request variables (what a backend would receive from the caller).
 # Keys match the variable ids declared in the TCK env block.
+# The `source: input` variables the TCK declares. Connectors are not variables:
+# bind them in testlab.config.yaml or TESTLAB_* environment variables.
 REQUEST_VARS: dict[str, str] = {
-    "provider_url": "http://localhost:8090/api/v1/dsp",
-    "provider_bpn": "BPNL000000000001",
-    "consumer_bpn": "BPNL000000000002",
-    "location_bpns": "BPNS000000000001",
-    "testlab_management_url": "http://localhost:8090/api/v1/dsp",
-    "testlab_dsp_url": "http://localhost:8090/api/v1/dsp",
-    "testlab_mock_base_url": "http://localhost:8100",
-    # Optional overrides (have defaults in the TCK — safe to omit):
-    # "certificate_type": "iso9001",
-    # "sut_response_timeout": "60",
+    "sut_counter_party_id": "BPNL000000000001",
+    "sut_counter_party_address": "http://localhost:8090/api/v1/dsp",
 }
 
 
@@ -144,7 +138,10 @@ async def execute(tck, runtime_vars: dict[str, str]) -> TckResult:
 
 def print_result(result: TckResult) -> None:
     """Print a human-readable summary of the TCK execution result."""
-    duration = f"{result.duration_ms:.0f}ms" if result.duration_ms else "n/a"
+    if result.started_at and result.finished_at:
+        duration = f"{(result.finished_at - result.started_at).total_seconds():.1f}s"
+    else:
+        duration = "n/a"
     print(f"\n[result] Status  : {result.status}")
     print(f"[result] Duration: {duration}")
     print(f"[result] Tests : {len(result.tests)}")
@@ -155,7 +152,7 @@ def print_result(result: TckResult) -> None:
         print(f"  [{test.status}] {test.test_name}  ({passed}/{total} steps passed)")
         for step in test.execution:
             icon = "✓" if step.status.value == "PASSED" else "✗"
-            print(f"    {icon} {step.step_id}  [{step.status}]")
+            print(f"    {icon} {step.step_name}  [{step.status}]")
             if step.error:
                 print(f"      error: {step.error}")
 
@@ -185,7 +182,7 @@ def main() -> None:
 
     print_result(result)
 
-    sys.exit(0 if result.status.value in ("COMPLETED",) else 1)
+    sys.exit(0 if result.status.value == "COMPLETED" else 1)
 
 
 if __name__ == "__main__":

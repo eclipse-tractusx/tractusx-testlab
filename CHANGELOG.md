@@ -5,7 +5,20 @@ Further information can be found on the [README.md](README.md) file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [v1-alpha]
+## [Unreleased]
+
+## [1.0.0a3] - 2026-09-12
+
+### Changed
+
+- Dependencies are pinned to the versions cleared by the Eclipse Dash IP check,
+  `DEPENDENCIES` records that tree, and the check runs in CI
+- The package version is a PEP 440 release number (`1.0.0a3`, tagged
+  `v1.0.0a3`), independent of the TCK syntax version (`v1-alpha`), which
+  changes only when the format does. Earlier releases are superseded: their
+  dependency trees predate the IP check
+- The publish workflow skips distributions PyPI already holds instead of
+  failing, since PyPI never overwrites a published file
 
 ### Added
 
@@ -28,7 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `validate/assert/<operator>` is accepted as a spelling of `validate/assert`
   with `operator:`, giving the deleted `assert/<operator>` names a home in the
   surviving namespace
-- The three connector delete steps and `digital-twin/provider/delete_shell_descriptor`
+- The three connector delete steps and `digital-twin-registry/provider/delete_shell_descriptor`
   publish `status_code`, so a TCK can assert on a deletion's outcome (204 vs 404)
   instead of asserting on nothing
 - `notification/consumer/send` honours `content` in SDK mode; a test writing
@@ -63,7 +76,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   criteria is no longer bounded by the URL length; the paged answer's cursor
   comes back alongside the identifiers and their descriptors, and `limit` /
   `cursor` read the page after it. `mock/dtr` serves the endpoint too
-- `digital-twin/submodel/delete` step, removing one submodel from the engine's
+- `digital-twin-registry/submodel/delete` step, removing one submodel from the engine's
   submodel server. It takes the `path` the upload published — the address the
   data actually landed on — and publishes the status the server answered with,
   so a teardown can tell a submodel that was there (204) from one that was
@@ -237,7 +250,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `steps/assertions.py` is now the `steps/assertions/` package — the operator
   table, the `uses:` vocabulary and the engine are separate modules
 
-- `digital-twin/provider/wizard/create_submodel_descriptor` takes the endpoint's
+- `digital-twin-registry/provider/wizard/create_submodel_descriptor` takes the endpoint's
   `interface` — the one key CX-0002 leaves a choice in — as an optional param
   defaulting to `SUBMODEL-3.0`. The rest of the endpoint is fixed by the
   standard and written rather than asked for: `endpointProtocol` (`HTTP`),
@@ -252,28 +265,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `id_short` is optional, and an omitted one leaves `idShort` out of the
   descriptor rather than writing an empty name. A step naming no interface
   produces the exact document it did before
-- `digital-twin/provider/wizard/create_submodel_descriptor` takes `asset_id` and
+- `digital-twin-registry/provider/wizard/create_submodel_descriptor` takes `asset_id` and
   `dsp_endpoint`, both required, and writes them into the descriptor's
   `subprotocolBody` (`id=…;dspEndpoint=…`, `subprotocol: DSP`, encoding `plain`).
   The guided step used to describe the submodel's endpoint with a bare `href`,
   so the descriptor it assembled told a consumer where the data sits but not
   which offer to negotiate for it
-- `digital-twin/submodel/upload` no longer takes `backend_base_url`. The
+- `digital-twin-registry/submodel/upload` no longer takes `backend_base_url`. The
   submodel server is the engine's own, seeded as `submodel_backend_url`
   (`TESTLAB_SUBMODEL_BACKEND_URL`), so a test cannot redirect the upload
   somewhere the step never meant to write; an engine without one fails the step
   with a `StepConfigError` instead of posting nowhere
-- **Breaking.** `digital-twin/submodel/upload` requires `data`. The `{"test":
+- **Breaking.** `digital-twin-registry/submodel/upload` requires `data`. The `{"test":
   true}` default let a test upload a placeholder and then assert against it —
   a test that passed without the provider's data ever being named
-- `digital-twin/submodel/upload` addresses a submodel the way the Industry Core
+- `digital-twin-registry/submodel/upload` addresses a submodel the way the Industry Core
   does — `<server>/<percent-encoded semantic_id>/<submodel_id>`, so submodels of
   one aspect sit together and a data plane can be pointed at the aspect alone.
   The aspect segment is percent-encoded because a raw `#` in a URN would start a
   fragment and cut the id off the address; the id is written as it is, the way
   the TCK stores `.../urn:uuid:<uuid4>`. `semantic_id` is optional: data naming
   no aspect has nothing to group under and is stored at `<server>/<submodel_id>`
-- `digital-twin/submodel/upload` takes `submodel_id`, the id the data is stored
+- `digital-twin-registry/submodel/upload` takes `submodel_id`, the id the data is stored
   under, and generates a fresh `urn:uuid:<uuid4>` when it is omitted. A
   descriptor written ahead of the upload, or a second run overwriting the first,
   decides the id; it is an id and not an address, so it cannot carry a scheme, a
