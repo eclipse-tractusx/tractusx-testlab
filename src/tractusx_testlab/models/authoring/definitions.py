@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Syntax v1-alpha authoring models — compile-time structures for scripts and TCKs.
+"""Syntax v1-alpha authoring models — compile-time structures for tests and TCKs.
 
 All models follow the GitHub Actions-like verb-form YAML schema using ``uses``
 and ``with`` keys.  The ``syntax`` field pins the format version (``v1-alpha``).
@@ -51,7 +51,7 @@ from tractusx_testlab.models.primitives.enums import ServiceType, VariableScope,
 #: assertions; a ``whit:`` block was dropped and the step ran with no
 #: parameters. The reasoning was already written down one layer in, on
 #: ``StepParams``, and simply never applied to the models that select it: a key
-#: the author wrote and the engine ignored is how a script comes to look like it
+#: the author wrote and the engine ignored is how a test comes to look like it
 #: configured something it never configured.
 _STRICT = ConfigDict(populate_by_name=True, extra="forbid")
 
@@ -86,7 +86,7 @@ class ServiceDefinition(BaseModel):
 
 
 class ImportDefinition(BaseModel):
-    """Reference to an external script to import into a TCK."""
+    """Reference to an external test to import into a TCK."""
 
     model_config = _STRICT
 
@@ -100,7 +100,7 @@ class ImportDefinition(BaseModel):
 
 
 class MetadataDefinition(BaseModel):
-    """Metadata block common to scripts and TCK manifests."""
+    """Metadata block common to tests and TCK manifests."""
 
     model_config = _STRICT
 
@@ -147,7 +147,7 @@ class StepDefinition(BaseModel):
     #: The step's checks. Named ``assertions`` in Python because a field called
     #: ``validate`` shadows ``BaseModel.validate`` — Pydantic warned about it on
     #: every import of this library, including every ``testlab`` invocation, and
-    #: mypy reported the override as a type error. Scripts still write
+    #: mypy reported the override as a type error. Tests still write
     #: ``validate:``; the aliases are what make that the only spelling anyone
     #: outside this file sees.
     assertions: list[Assertion] | None = Field(
@@ -175,9 +175,10 @@ class StepDefinition(BaseModel):
     if_condition: str | None = Field(default=None, alias="if")
 
 
-class ScriptDefinition(BaseModel):
-    """Top-level test script definition."""
+class TestDefinition(BaseModel):
+    """Top-level test definition."""
 
+    __test__ = False  # a TestLab test, not a pytest one
     model_config = _STRICT
 
     kind: Literal["test"] = "test"
@@ -192,7 +193,7 @@ class ScriptDefinition(BaseModel):
     setup: list[StepDefinition] = Field(default_factory=list)
     execution: list[StepDefinition] = Field(default_factory=list)
     teardown: list[StepDefinition] = Field(default_factory=list)
-    #: The ecosystem release and the capabilities this script needs. Both are
+    #: The ecosystem release and the capabilities this test needs. Both are
     #: stated in blocks — there is no flat ``dataspace_version`` field: it was
     #: the older spelling of ``dataspace.version`` and having two ways to say
     #: one thing is how the two came to disagree.

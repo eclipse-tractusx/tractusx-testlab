@@ -29,8 +29,8 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepValue
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 class GenerateUuidParams(StepParams):
     """Input contract of ``util/generate_uuid`` — the step takes nothing.
 
-    A prefix like ``urn:uuid:`` is not an input either: a script that needs
+    A prefix like ``urn:uuid:`` is not an input either: a test that needs
     one writes it where the value is used, e.g. ``urn:uuid:${{ ... .uuid }}``.
     """
 
@@ -48,7 +48,7 @@ class GenerateUuidParams(StepParams):
 class GenerateUuidOutput(StepValue[str]):
     """The generated identifier — the output *is* the UUID string.
 
-    There is one value and no object around it; a script reads it as the
+    There is one value and no object around it; a test reads it as the
     step's ``value``, the same way it reads ``util/json_path_extract``.
     """
 

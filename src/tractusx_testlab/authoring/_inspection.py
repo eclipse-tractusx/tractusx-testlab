@@ -24,7 +24,7 @@
 
 """Pure helper — maps a loaded Tck into a TckInspectionResult.
 
-This module mirrors the pattern of ``scripting/_variable_form.py``:
+This module mirrors the pattern of ``authoring/_variable_form.py``:
 a side-effect-free function that is called by ``Tck.inspect()``.
 """
 
@@ -34,48 +34,48 @@ from typing import TYPE_CHECKING
 
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.inspection import (
-    ScriptInspection,
     StepMeta,
     TckInspectionResult,
+    TestInspection,
 )
 
 if TYPE_CHECKING:
-    from tractusx_testlab.scripting.script import Tck
+    from tractusx_testlab.authoring.test import Tck
 
 
 def build_inspection_result(tck: Tck) -> TckInspectionResult:
     """Extract static metadata from *tck* without executing any steps.
 
     Args:
-        tck: The :class:`~tractusx_testlab.scripting.script.Tck` to describe.
+        tck: The :class:`~tractusx_testlab.authoring.test.Tck` to describe.
 
     Returns:
         A frozen :class:`TckInspectionResult` with general and step-level metadata.
     """
-    script_inspections: list[ScriptInspection] = []
+    test_inspections: list[TestInspection] = []
 
-    for script in tck.scripts:
+    for test in tck.tests:
         step_metas: list[StepMeta] = []
-        step_metas.extend(_map_steps(script.setup, StepPhase.SETUP))
-        step_metas.extend(_map_steps(script.steps, StepPhase.EXECUTION))
-        step_metas.extend(_map_steps(script.teardown, StepPhase.TEARDOWN))
-        script_inspections.append(
-            ScriptInspection(
-                name=script.name,
-                test_id=script.test_id,
-                skippable=script.skippable,
+        step_metas.extend(_map_steps(test.setup, StepPhase.SETUP))
+        step_metas.extend(_map_steps(test.steps, StepPhase.EXECUTION))
+        step_metas.extend(_map_steps(test.teardown, StepPhase.TEARDOWN))
+        test_inspections.append(
+            TestInspection(
+                name=test.name,
+                test_id=test.test_id,
+                skippable=test.skippable,
                 steps=tuple(step_metas),
             )
         )
 
-    total_steps = sum(len(s.steps) for s in script_inspections)
-    total_validations = sum(sm.validation_count for s in script_inspections for sm in s.steps)
+    total_steps = sum(len(s.steps) for s in test_inspections)
+    total_validations = sum(sm.validation_count for s in test_inspections for sm in s.steps)
 
     return TckInspectionResult(
         name=tck.name,
         total_steps=total_steps,
         total_validations=total_validations,
-        scripts=tuple(script_inspections),
+        tests=tuple(test_inspections),
     )
 
 

@@ -82,7 +82,7 @@ class ConditionEvaluator:
 
         Args:
             condition: The raw ``if`` expression string, or ``None`` (always run).
-            previous_results: Results of all steps executed so far in the script.
+            previous_results: Results of all steps executed so far in the test.
             context: The current execution context (for variable lookups).
 
         Returns:

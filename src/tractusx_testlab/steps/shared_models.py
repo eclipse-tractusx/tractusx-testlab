@@ -57,7 +57,7 @@ class NoOutput(StepValue[None]):
     """This step produces no value — it acts, and there is nothing to read back.
 
     Declaring it is the point: "no output" and "output not declared yet" look
-    the same to a script author unless one of them says so.
+    the same to a test author unless one of them says so.
     """
 
 
@@ -81,7 +81,7 @@ class DeletionOutput(StepPayload):
 class StoreInVariableParams(StepParams):
     """Adds the ``store_in_variable`` escape hatch to a step's inputs.
 
-    The variable name comes from the script rather than from the step, so it
+    The variable name comes from the test rather than from the step, so it
     cannot be a declared output field the way a fixed name is — the step
     writes it directly.
     """
@@ -100,7 +100,7 @@ class StoreInVariableParams(StepParams):
 class FilterExpression(BaseModel):
     """One catalog filter criterion.
 
-    Scripts and IDE blocks write snake_case; the connector management API
+    Tests and IDE blocks write snake_case; the connector management API
     expects camelCase, so the camelCase form exists only on serialisation —
     input accepts the snake_case spelling alone.
     """
@@ -145,7 +145,7 @@ class CatalogPayload(StepPayload):
     """A provider's DCAT catalog.
 
     The catalog is a JSON-LD document defined by DSP rather than by testlab, so
-    the three envelope keys scripts assert on are named here and everything else
+    the three envelope keys tests assert on are named here and everything else
     the provider sends round-trips untouched.
 
     Only the JSON-LD spellings populate these fields — no ``populate_by_name``
@@ -158,7 +158,7 @@ class CatalogPayload(StepPayload):
     (see :mod:`tractusx_testlab.steps.dsp_keys`) — and a single declared field
     could only round-trip one of the two, rewriting the other provider's
     document on the way out.  They pass through untouched under whichever
-    spelling arrived, and the reading a script is meant to use is
+    spelling arrived, and the reading a test is meant to use is
     :attr:`CatalogOutput.datasets`, which is a list in either generation.
     """
 
@@ -173,8 +173,8 @@ class CatalogOutput(StepPayload):
     """What every catalog query returns: the document, and its offers as a list.
 
     The raw catalog is a JSON-LD document whose offers live under a key that
-    depends on the provider's DSP generation — a key no script should have to
-    spell, and no script can spell once for both.  Wrapping it means a
+    depends on the provider's DSP generation — a key no test should have to
+    spell, and no test can spell once for both.  Wrapping it means a
     ``returns:`` block reads ``catalog`` for the document and ``datasets`` for
     the offers, whichever spelling and whichever shape the provider sent them
     in.
@@ -245,7 +245,7 @@ class HttpTransportParams(StepParams):
     )
     timeout: float | None = Field(
         default=None,
-        description="Request timeout in seconds; the script's default is used when omitted.",
+        description="Request timeout in seconds; the test's default is used when omitted.",
     )
 
     @field_validator("headers", mode="before")
@@ -282,5 +282,5 @@ class HttpBodyOutput(StepValue[Any]):
     """A response body: parsed JSON when the server sent JSON, otherwise the raw text.
 
     Steps that call HTTP return the body itself rather than wrapping it, so a
-    script asserts on ``value.field`` the same way it would read the document.
+    test asserts on ``value.field`` the same way it would read the document.
     """

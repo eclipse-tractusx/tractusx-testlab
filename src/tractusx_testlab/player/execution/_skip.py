@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING
 from tractusx_testlab.models.primitives.exceptions import SkipNotAllowedError
 
 if TYPE_CHECKING:
-    from tractusx_testlab.scripting.script import Tck
+    from tractusx_testlab.authoring.test import Tck
 
 
 def resolve_skip_ids(tck: Tck, runtime_vars: dict | None) -> frozenset[str]:
@@ -70,8 +70,8 @@ def resolve_skip_ids(tck: Tck, runtime_vars: dict | None) -> frozenset[str]:
     else:
         skip_ids = [str(entry) for entry in raw]
 
-    all_test_ids = {s.test_id for s in tck.scripts}
-    skippable_ids = {s.test_id for s in tck.scripts if s.skippable}
+    all_test_ids = {s.test_id for s in tck.tests}
+    skippable_ids = {s.test_id for s in tck.tests if s.skippable}
 
     unknown = [sid for sid in skip_ids if sid not in all_test_ids]
     if unknown:

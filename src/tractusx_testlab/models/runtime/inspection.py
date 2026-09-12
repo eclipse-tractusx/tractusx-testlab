@@ -42,9 +42,10 @@ class StepMeta(BaseModel):
     validation_count: int
 
 
-class ScriptInspection(BaseModel):
-    """Inspection result for a single script within a TCK."""
+class TestInspection(BaseModel):
+    """Inspection result for a single test within a TCK."""
 
+    __test__ = False  # a TestLab test, not a pytest one
     model_config = ConfigDict(frozen=True)
 
     name: str
@@ -61,4 +62,4 @@ class TckInspectionResult(BaseModel):
     name: str
     total_steps: int
     total_validations: int
-    scripts: tuple[ScriptInspection, ...]
+    tests: tuple[TestInspection, ...]

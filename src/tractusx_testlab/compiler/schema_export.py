@@ -32,7 +32,7 @@ models was valid to the engine and invalid to the compiler, and the difference
 only showed when someone happened to run the CLI.
 
 Generating them removes the drift by construction: there is one description of a
-TCK — :class:`TckDefinition` and :class:`ScriptDefinition` — and the schema is a
+TCK — :class:`TckDefinition` and :class:`TestDefinition` — and the schema is a
 projection of it, published for the IDE and anything else outside this codebase.
 ``testlab schema --check`` fails the build when the committed files no longer
 match, exactly as ``testlab docs --check`` does for the step reference.
@@ -46,8 +46,8 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from tractusx_testlab.models.authoring.definitions import (
-    ScriptDefinition,
     TckDefinition,
+    TestDefinition,
 )
 
 #: Where the generated schemas are committed, relative to the package root.
@@ -56,7 +56,7 @@ SCHEMA_DIR = Path(__file__).parent / "schemas"
 #: Filename → the model it is generated from.
 SCHEMAS: dict[str, type[BaseModel]] = {
     "tck_index.schema.json": TckDefinition,
-    "tck_test.schema.json": ScriptDefinition,
+    "tck_test.schema.json": TestDefinition,
 }
 
 _SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
@@ -71,7 +71,7 @@ _BANNER = (
 def render(model: type[BaseModel]) -> str:
     """Return the JSON Schema for *model*, as the bytes that get committed.
 
-    ``by_alias`` matters: scripts write ``with:`` and ``if:``, while the fields
+    ``by_alias`` matters: tests write ``with:`` and ``if:``, while the fields
     are ``with_`` and ``if_condition`` because those spellings are not legal
     Python. The schema has to describe the YAML, not the Python.
     """

@@ -110,7 +110,7 @@ src/tractusx_testlab/
 ├── logging/      ← Structured logging
 ├── models/       ← Pydantic models
 ├── player/       ← Test execution engine
-├── scripting/    ← YAML parser + builders
+├── authoring/    ← YAML parser + builders
 ├── security/     ← Crypto key generation
 ├── server/       ← Mock server (FastAPI)
 ├── services/     ← Service manager

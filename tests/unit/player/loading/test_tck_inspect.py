@@ -30,20 +30,20 @@ import zipfile
 import pytest
 import yaml
 
+from tractusx_testlab.authoring.test import Tck
 from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.inspection import TckInspectionResult
-from tractusx_testlab.player.loading._parser import _SCRIPT_ADAPTER
+from tractusx_testlab.player.loading._parser import _TEST_ADAPTER
 from tractusx_testlab.player.loading.loader import _TCK_BUNDLE_ENTRY, Loader
-from tractusx_testlab.scripting.script import Tck
 
-_SINGLE_SCRIPT_YAML = """\
+_SINGLE_TEST_YAML = """\
 syntax: v1-alpha
 kind: test
 id: test-inspect-single
 namespace: testlab.test
 metadata:
-  name: Single Script Test
+  name: Single Test Test
   version: "1.0"
 setup:
   - id: setup_step
@@ -70,40 +70,40 @@ teardown:
         with: {input: status_code, value: 204}
 """
 
-_TCK_WITH_TWO_SCRIPTS = """\
+_TCK_WITH_TWO_TESTS = """\
 syntax: v1-alpha
 kind: tck
 id: tck-inspect
 metadata:
-  name: Multi-Script TCK
+  name: Multi-Test TCK
   version: "1.0"
 tests:
-  - id: script-a.yaml
-    name: Script A
-  - id: script-b.yaml
-    name: Script B
+  - id: test-a.yaml
+    name: Test A
+  - id: test-b.yaml
+    name: Test B
 """
 
-_SCRIPT_A_YAML = """\
+_TEST_A_YAML = """\
 syntax: v1-alpha
 kind: test
-id: script-a
+id: test-a
 namespace: testlab.test
 metadata:
-  name: Script A
+  name: Test A
   version: "1.0"
 execution:
   - uses: util/generate_uuid
     name: Step One
 """
 
-_SCRIPT_B_YAML = """\
+_TEST_B_YAML = """\
 syntax: v1-alpha
 kind: test
-id: script-b
+id: test-b
 namespace: testlab.test
 metadata:
-  name: Script B
+  name: Test B
   version: "1.0"
 execution:
   - uses: http/http_request
@@ -114,28 +114,28 @@ execution:
 
 
 @pytest.fixture()
-def single_script_tck() -> object:
-    """A Tck loaded from a single-script YAML with setup, execution, and teardown."""
+def single_test_tck() -> object:
+    """A Tck loaded from a single-test YAML with setup, execution, and teardown."""
     import yaml
 
-    data = yaml.safe_load(_SINGLE_SCRIPT_YAML)
-    script_def = _SCRIPT_ADAPTER.validate_python(data)
-    from tractusx_testlab.scripting.script import Tck
+    data = yaml.safe_load(_SINGLE_TEST_YAML)
+    test_def = _TEST_ADAPTER.validate_python(data)
+    from tractusx_testlab.authoring.test import Tck
 
-    return Tck.from_single_script(script_def)
+    return Tck.from_single_test(test_def)
 
 
 @pytest.fixture()
-def multi_script_tck(tmp_path) -> object:
-    """A Tck loaded from a TCK manifest with two scripts."""
+def multi_test_tck(tmp_path) -> object:
+    """A Tck loaded from a TCK manifest with two tests."""
 
     archive = tmp_path / "inspect.tck"
     sealed = package_digest.seal(
         {
             "manifest.yaml": b"kind: manifest\n",
-            _TCK_BUNDLE_ENTRY: _TCK_WITH_TWO_SCRIPTS.encode(),
-            "tests/script-a.yaml": _SCRIPT_A_YAML.encode(),
-            "tests/script-b.yaml": _SCRIPT_B_YAML.encode(),
+            _TCK_BUNDLE_ENTRY: _TCK_WITH_TWO_TESTS.encode(),
+            "tests/test-a.yaml": _TEST_A_YAML.encode(),
+            "tests/test-b.yaml": _TEST_B_YAML.encode(),
         }
     )
     with zipfile.ZipFile(archive, "w") as zf:
@@ -145,30 +145,30 @@ def multi_script_tck(tmp_path) -> object:
     return Loader().load(archive)
 
 
-class TestTckInspectSingleScript:
-    """Tests for Tck.inspect() on a single-script Tck."""
+class TestTckInspectSingleTest:
+    """Tests for Tck.inspect() on a single-test Tck."""
 
-    def test_inspect_returns_correct_type(self, single_script_tck) -> None:
-        result = single_script_tck.inspect()
+    def test_inspect_returns_correct_type(self, single_test_tck) -> None:
+        result = single_test_tck.inspect()
         assert isinstance(result, TckInspectionResult)
 
-    def test_inspect_name_matches_script(self, single_script_tck) -> None:
-        result = single_script_tck.inspect()
-        assert result.name == "Single Script Test"
+    def test_inspect_name_matches_test(self, single_test_tck) -> None:
+        result = single_test_tck.inspect()
+        assert result.name == "Single Test Test"
 
-    def test_inspect_counts_all_phases_in_total_steps(self, single_script_tck) -> None:
+    def test_inspect_counts_all_phases_in_total_steps(self, single_test_tck) -> None:
         # setup(1) + execution(2) + teardown(1) = 4
-        result = single_script_tck.inspect()
+        result = single_test_tck.inspect()
         assert result.total_steps == 4
 
-    def test_inspect_counts_validations_across_all_phases(self, single_script_tck) -> None:
+    def test_inspect_counts_validations_across_all_phases(self, single_test_tck) -> None:
         # exec_step_one(2) + teardown_step(1) = 3
-        result = single_script_tck.inspect()
+        result = single_test_tck.inspect()
         assert result.total_validations == 3
 
-    def test_inspect_extracts_correct_step_phases(self, single_script_tck) -> None:
-        result = single_script_tck.inspect()
-        steps = result.scripts[0].steps
+    def test_inspect_extracts_correct_step_phases(self, single_test_tck) -> None:
+        result = single_test_tck.inspect()
+        steps = result.tests[0].steps
         phases = [s.phase for s in steps]
         assert phases == [
             StepPhase.SETUP,
@@ -177,54 +177,54 @@ class TestTckInspectSingleScript:
             StepPhase.TEARDOWN,
         ]
 
-    def test_inspect_extracts_uses_identifier(self, single_script_tck) -> None:
-        result = single_script_tck.inspect()
-        steps = result.scripts[0].steps
+    def test_inspect_extracts_uses_identifier(self, single_test_tck) -> None:
+        result = single_test_tck.inspect()
+        steps = result.tests[0].steps
         assert steps[0].uses == "util/generate_uuid"
         assert steps[1].uses == "connector/request_catalog"
         assert steps[3].uses == "connector/provider/delete_asset"
 
-    def test_inspect_uses_name_field_when_present(self, single_script_tck) -> None:
-        result = single_script_tck.inspect()
-        steps = result.scripts[0].steps
+    def test_inspect_uses_name_field_when_present(self, single_test_tck) -> None:
+        result = single_test_tck.inspect()
+        steps = result.tests[0].steps
         assert steps[0].step_name == "Generate Asset ID"
         assert steps[1].step_name == "Request Catalog"
 
     def test_inspect_falls_back_to_uses_when_name_absent(self) -> None:
-        yaml_no_name = _SINGLE_SCRIPT_YAML.replace("    name: HTTP Call\n", "")
+        yaml_no_name = _SINGLE_TEST_YAML.replace("    name: HTTP Call\n", "")
         data = yaml.safe_load(yaml_no_name)
-        script_def = _SCRIPT_ADAPTER.validate_python(data)
-        tck = Tck.from_single_script(script_def)
+        test_def = _TEST_ADAPTER.validate_python(data)
+        tck = Tck.from_single_test(test_def)
         result = tck.inspect()
-        http_step = next(s for s in result.scripts[0].steps if s.uses == "http/http_request")
+        http_step = next(s for s in result.tests[0].steps if s.uses == "http/http_request")
         assert http_step.step_name == "http/http_request"
 
-    def test_inspect_per_step_validation_count(self, single_script_tck) -> None:
-        result = single_script_tck.inspect()
-        steps = {s.uses: s for s in result.scripts[0].steps}
+    def test_inspect_per_step_validation_count(self, single_test_tck) -> None:
+        result = single_test_tck.inspect()
+        steps = {s.uses: s for s in result.tests[0].steps}
         assert steps["util/generate_uuid"].validation_count == 0
         assert steps["connector/request_catalog"].validation_count == 2
         assert steps["http/http_request"].validation_count == 0
         assert steps["connector/provider/delete_asset"].validation_count == 1
 
-    def test_inspect_result_is_frozen(self, single_script_tck) -> None:
-        result = single_script_tck.inspect()
+    def test_inspect_result_is_frozen(self, single_test_tck) -> None:
+        result = single_test_tck.inspect()
         with pytest.raises(Exception):
             result.name = "mutated"  # type: ignore[misc]
 
 
-class TestTckInspectMultiScript:
-    """Tests for Tck.inspect() on a multi-script TCK."""
+class TestTckInspectMultiTest:
+    """Tests for Tck.inspect() on a multi-test TCK."""
 
-    def test_inspect_aggregates_total_steps_across_scripts(self, multi_script_tck) -> None:
-        # script-a(1) + script-b(2) = 3
-        result = multi_script_tck.inspect()
+    def test_inspect_aggregates_total_steps_across_tests(self, multi_test_tck) -> None:
+        # test-a(1) + test-b(2) = 3
+        result = multi_test_tck.inspect()
         assert result.total_steps == 3
 
-    def test_inspect_has_one_script_inspection_per_script(self, multi_script_tck) -> None:
-        result = multi_script_tck.inspect()
-        assert len(result.scripts) == 2
+    def test_inspect_has_one_test_inspection_per_test(self, multi_test_tck) -> None:
+        result = multi_test_tck.inspect()
+        assert len(result.tests) == 2
 
-    def test_inspect_zero_validations_when_none_declared(self, multi_script_tck) -> None:
-        result = multi_script_tck.inspect()
+    def test_inspect_zero_validations_when_none_declared(self, multi_test_tck) -> None:
+        result = multi_test_tck.inspect()
         assert result.total_validations == 0

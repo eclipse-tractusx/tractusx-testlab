@@ -25,11 +25,11 @@
 """The policy a consumer-side connector step is given, in the shape the SDK takes.
 
 The SDK's connector service compares catalog offers against *raw* ODRL policy
-documents.  A script has three honest ways to say one — the document itself,
+documents.  A test has three honest ways to say one — the document itself,
 its JSON text, or the ``config/connector/policy`` manifest variable that holds
 it — and two spellings for its rules, ODRL's and the testlab simplified one.
 Folding all of them into the raw ODRL form happens here, once, so no step and
-no script has to unwrap or translate a policy by hand.
+no test has to unwrap or translate a policy by hand.
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ def as_raw_policy(value: Any) -> Any:
 
     The SDK's connector service takes a raw policy — the document with
     ``permission`` / ``prohibition`` / ``obligation`` at its top level.  A
-    script hands it one of three things: that document, the JSON text of it
+    test hands it one of three things: that document, the JSON text of it
     (a manifest variable declared with a ``value: |`` block), or a document
     nested under a ``policy`` key.  All three say the same policy, so the
     wrapper is peeled and the text parsed here rather than in every step that
@@ -137,7 +137,7 @@ class ExpectedPoliciesParams(StepParams):
     """Normalises ``expected_policies`` for every step that filters offers by policy.
 
     The field itself stays with the step — it is required for one step and
-    optional for the next — but what a script may write into it is one contract:
+    optional for the next — but what a test may write into it is one contract:
     the raw ODRL document, the simplified testlab spelling, JSON text, a single
     policy or a list of them, and the ``config/connector/policy`` variable that
     holds any of those.  Whatever arrives, ``execute`` sees the raw ODRL

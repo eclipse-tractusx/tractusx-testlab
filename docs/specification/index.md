@@ -84,16 +84,16 @@ steps:
 | G-1 | Enable test authors to define reusable, composable TCKs in YAML without writing Python code |
 | G-2 | Provide a compile step that catches errors early — undeclared variables, incompatible step types, version mismatches — before execution |
 | G-3 | Package compiled TCKs into portable `.tck` artifacts that can be shared, uploaded, stored, and versioned |
-| G-4 | Execute test packages at runtime via a singleton async Player, with support for loading from filesystem or programmatic input (dict/string) |
+| G-4 | Execute TCK packages at runtime via a singleton async Player, with support for loading from filesystem or programmatic input (dict/string) |
 | G-5 | Provide real-time, step-level execution monitoring with in-memory state queryable at any point during execution |
-| G-6 | Enforce dataspace version awareness — every script declares which dataspace version it targets, and steps are resolved accordingly |
+| G-6 | Enforce dataspace version awareness — every test declares which dataspace version it targets, and steps are resolved accordingly |
 | G-7 | Support configurable expected results (assertions) per step, with values sourced from inline YAML/JSON, files, or runtime variables |
 | G-8 | Produce structured, machine-parseable logs (JSON-lines) alongside human-readable console output |
 | G-9 | Ship a predefined step library covering Connector capabilities (provision, negotiate, transfer, consume, cleanup) and Industry capabilities (submodel consumption, aspect model validation, schema comparison) |
 | G-10 | Support arbitrary dataplane API calls (GET/POST/PUT/DELETE) authenticated via EDR tokens from prior steps |
 | G-11 | Ship every step as a typed executor with a declared input and output contract, so YAML never invokes arbitrary SDK functions and every parameter is validated at compile time |
-| G-12 | Provide managed service lifecycle — scripts declare required SDK services (connector consumer, connector provider, DTR) that are initialized once and reused across steps |
-| G-13 | Support async callback/webhook patterns — scripts can start a lightweight listener on an ephemeral endpoint, send a request, and await a response via `asyncio.Event` with configurable timeout |
+| G-12 | Provide managed service lifecycle — tests declare required SDK services (connector consumer, connector provider, DTR) that are initialized once and reused across steps |
+| G-13 | Support async callback/webhook patterns — tests can start a lightweight listener on an ephemeral endpoint, send a request, and await a response via `asyncio.Event` with configurable timeout |
 | G-14 | Support dual deployment modes for the Player — standalone CLI (`testlab serve`) and embeddable library API (`TestlabPlayer.from_app(app)`) |
 | G-15 | Secure `.tck` artifacts via hybrid encryption (AES-256-GCM + RSA-OAEP) and Ed25519 signing, ensuring compiled packages can only be decrypted and executed by authorized Player instances |
 | G-16 | Provide transparent service-step binding — steps reference managed services by name and the Player guarantees that the correct, pre-initialized SDK service instance is injected into each step |
@@ -104,9 +104,9 @@ steps:
 |----|----------|
 | NG-1 | Full-featured REST API for test management (scheduling, user management) — the embedded server provides execution endpoints, package management (upload/list/delete), and callback routes |
 | NG-2 | Persistent execution state in PostgreSQL (future — `SyncBackend` protocol) |
-| NG-3 | Parallel step execution within a single script |
+| NG-3 | Parallel step execution within a single test |
 | NG-4 | Step retry policies (retry count, backoff strategy) |
-| NG-5 | Cross-package script composition (`"!include"` across `.tck` boundaries) |
+| NG-5 | Cross-package test composition (`"!include"` across `.tck` boundaries) |
 
 ---
 
@@ -137,7 +137,7 @@ This specification is organized into the following sections:
 | Document | Description |
 |----------|-------------|
 | [Overview](walkthrough/index.md) | End-to-end walkthrough introduction and prerequisites |
-| [Writing Tests](walkthrough/writing-test-scripts.md) | Step-by-step guide to authoring YAML tests and TCKs |
+| [Writing Tests](walkthrough/writing-tests.md) | Step-by-step guide to authoring YAML tests and TCKs |
 | [Compiling Packages](walkthrough/compiling-packages.md) | Validating, compiling, and encrypting `.tck` packages |
 | [Executing Tests](walkthrough/executing-tests.md) | Running packages via CLI, vars files, Python API, and server mode |
 

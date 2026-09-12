@@ -24,7 +24,7 @@
 """Every ratified operator, run as a real assertion on a real step's output.
 
 ``apply_operator`` is unit-tested on plain values. That is not the same claim:
-an operator reaches a script through a ``uses`` string, a ``with`` block and an
+an operator reaches a test through a ``uses`` string, a ``with`` block and an
 ``input`` naming a declared return, and each of those is somewhere it can be
 lost. The IDE offers a dropdown of these twenty; this is what says all twenty
 survive the trip.
@@ -256,7 +256,7 @@ class TestAnAssertionThatCannotBeUnderstood:
 class TestAssertingAgainstAnEarlierStep:
     """An assertion compares against a value another step produced.
 
-    The comparison value is written the way every other value in a script is
+    The comparison value is written the way every other value in a test is
     written — ``${{ env.<name> }}``.  It used to be spelled ``@name`` here and
     dereferenced inside the assertion engine alone, which made the engine the one
     place in the system where a fourth reference syntax was understood.

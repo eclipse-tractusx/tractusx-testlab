@@ -33,8 +33,8 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from pydantic import ConfigDict, Field, model_validator
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client, sdk_call
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload, StepValue
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
-#: Metadata keys copied into the body when a script passes them alongside it.
+#: Metadata keys copied into the body when a test passes them alongside it.
 _NOTIFICATION_METADATA = ("notification_id", "sender_bpn", "recipient_bpn", "type", "status")
 
 
@@ -97,10 +97,10 @@ class SendNotificationParams(CounterPartyParams):
     def document(self) -> dict:
         """The notification document, from whichever of the two keys carried it.
 
-        Read by both modes, so a script that wrote ``content`` sends the same
+        Read by both modes, so a test that wrote ``content`` sends the same
         document whether it goes through the SDK or straight at a data plane —
         which it did not before: the SDK path used to read ``notification``
-        alone and silently send an empty notification for a ``content`` script.
+        alone and silently send an empty notification for a ``content`` test.
         """
         return dict(self.notification or self.content or {})
 
@@ -113,7 +113,7 @@ class SendNotificationParams(CounterPartyParams):
         return f"{base}/{path.lstrip('/')}"
 
     def direct_body(self) -> dict:
-        """The body to POST in direct mode, with any metadata the script passed alongside."""
+        """The body to POST in direct mode, with any metadata the test passed alongside."""
         body = self.document()
         extras = self.model_extra or {}
         for key in _NOTIFICATION_METADATA:
@@ -127,7 +127,7 @@ class SendNotificationOutput(StepPayload):
 
     Whatever the receiver answered, spread at the top level, plus the three
     parts of its answer named outright — status code, body and headers — so a
-    script can assert on any of them without reaching into the HTTP record.
+    test can assert on any of them without reaching into the HTTP record.
     """
 
     model_config = ConfigDict(extra="allow")

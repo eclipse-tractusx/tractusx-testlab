@@ -177,7 +177,7 @@ def _as_text(value: Any) -> str:
     Both dialects write a term either plainly or as a node reference
     (``{"@id": "odrl:eq"}``), and a right operand may be a list of accepted
     values. All of them are read and printed as they were written: a provider
-    that spells ``cx-policy:Membership`` where the script wrote ``Membership``
+    that spells ``cx-policy:Membership`` where the test wrote ``Membership``
     has stated a different condition, and quietly folding the two together would
     explain the mismatch away instead of naming it.
     """

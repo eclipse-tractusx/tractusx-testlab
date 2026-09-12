@@ -25,7 +25,7 @@
 """mock/dtr step — a protocol-aware Digital Twin Registry mock.
 
 Registers a small in-memory shell store and wires up the subset of the AAS
-Digital Twin Registry API that test scripts typically exercise:
+Digital Twin Registry API that tests typically exercise:
 
 - ``GET  /shell-descriptors``            — list all configured shells
 - ``GET  /shell-descriptors/{b64 id}``   — fetch one shell by its (base64url) id
@@ -43,8 +43,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import MockRequest, MockResponse, register_mock
 from tractusx_testlab.steps.mock._models import RequiredMockIdParams
 from tractusx_testlab.steps.shared_models import NoOutput
@@ -97,14 +97,14 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
     """Register a protocol-aware AAS Digital Twin Registry mock.
 
     Shells registered through the mock's own ``POST /shell-descriptors`` become
-    retrievable the same way the pre-configured ones are, so a script can
+    retrievable the same way the pre-configured ones are, so a test can
     exercise the write path and the read path against one registry.
 
     It answers the AAS v3 API as a real registry does, which is what makes it
     worth testing against: ``GET /lookup/shells`` takes one ``assetIds`` value
     per criterion, each a base64url-encoded ``SpecificAssetId`` object, and a
     value holding the whole list is refused with a 400 that says so. The
-    consumer-side steps already send it that way, so a script that uses them
+    consumer-side steps already send it that way, so a test that uses them
     needs to know none of this.
     """
 
@@ -170,7 +170,7 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
                 return MockResponse(status_code=400, body={"error": "invalid assetIds encoding"})
             if not all(isinstance(entry, dict) for entry in requested):
                 # The list-in-one-value spelling lands here. Refusing it by name
-                # is the point: a script that built the query by hand is told
+                # is the point: a test that built the query by hand is told
                 # which encoding the endpoint takes, instead of being answered
                 # as though it had asked for something.
                 return MockResponse(

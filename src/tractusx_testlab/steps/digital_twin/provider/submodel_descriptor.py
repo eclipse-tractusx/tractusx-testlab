@@ -39,8 +39,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.registry_models import (
     DescriptorPayload,

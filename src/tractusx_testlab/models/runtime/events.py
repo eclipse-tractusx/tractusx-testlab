@@ -28,7 +28,7 @@ Every event carries an explicit ``kind`` discriminator (see
 :class:`~tractusx_testlab.models.primitives.enums.EventKind`) so a consumer
 never needs to sniff ``step_type`` or other free-text fields to decide what
 happened. Payloads reuse the existing result models (``StepResult``,
-``ScriptResult``, ``AssertionResult``) rather than duplicating their fields.
+``TestResult``, ``AssertionResult``) rather than duplicating their fields.
 
 See ``docs/developer/execution-events.md`` for the full wire contract.
 """
@@ -44,8 +44,8 @@ from tractusx_testlab.models.runtime.results import (
     AssertionResult,
     CallbackResult,
     HttpExchange,
-    ScriptResult,
     StepResult,
+    TestResult,
 )
 
 
@@ -75,14 +75,14 @@ class JobResumedEvent(_ExecutionEvent):
 
 
 class JobCompletedEvent(_ExecutionEvent):
-    """A job finished with every script completed or intentionally skipped."""
+    """A job finished with every test completed or intentionally skipped."""
 
     kind: Literal[EventKind.JOB_COMPLETED] = EventKind.JOB_COMPLETED
     status: Literal[JobStatus.COMPLETED] = JobStatus.COMPLETED
 
 
 class JobFailedEvent(_ExecutionEvent):
-    """A job finished with at least one script failure, or raised an exception."""
+    """A job finished with at least one test failure, or raised an exception."""
 
     kind: Literal[EventKind.JOB_FAILED] = EventKind.JOB_FAILED
     status: Literal[JobStatus.FAILED] = JobStatus.FAILED
@@ -96,26 +96,28 @@ class JobCancelledEvent(_ExecutionEvent):
     status: Literal[JobStatus.CANCELLED] = JobStatus.CANCELLED
 
 
-class ScriptStartedEvent(_ExecutionEvent):
-    """A script within the job began executing."""
+class TestStartedEvent(_ExecutionEvent):
+    """A test within the job began executing."""
 
-    kind: Literal[EventKind.SCRIPT_STARTED] = EventKind.SCRIPT_STARTED
-    script: str
+    __test__ = False  # a TestLab test, not a pytest one
+    kind: Literal[EventKind.TEST_STARTED] = EventKind.TEST_STARTED
+    test_id: str
     index: int
 
 
-class ScriptCompletedEvent(_ExecutionEvent):
-    """A script finished; ``result.status`` carries the outcome."""
+class TestCompletedEvent(_ExecutionEvent):
+    """A test finished; ``result.status`` carries the outcome."""
 
-    kind: Literal[EventKind.SCRIPT_COMPLETED] = EventKind.SCRIPT_COMPLETED
-    result: ScriptResult
+    __test__ = False  # a TestLab test, not a pytest one
+    kind: Literal[EventKind.TEST_COMPLETED] = EventKind.TEST_COMPLETED
+    result: TestResult
 
 
 class StepStartedEvent(_ExecutionEvent):
     """A step began executing."""
 
     kind: Literal[EventKind.STEP_STARTED] = EventKind.STEP_STARTED
-    script: str
+    test_id: str
     step_id: str | None = None
     step_index: int
     step_type: str
@@ -123,7 +125,7 @@ class StepStartedEvent(_ExecutionEvent):
     phase: str
     #: The step's ``with:`` block with every ``${{ … }}`` reference already
     #: substituted — what the step is about to be given, not the template the
-    #: script wrote. It falls back to the template when a reference names
+    #: test wrote. It falls back to the template when a reference names
     #: nothing in scope, which is the failure the terminal event then reports.
     inputs: dict | None = None
 
@@ -139,7 +141,7 @@ class StepCallEvent(_ExecutionEvent):
     """
 
     kind: Literal[EventKind.STEP_CALL] = EventKind.STEP_CALL
-    script: str
+    test_id: str
     step_id: str | None = None
     step_type: str
     #: Position of the call within the step, from 1.
@@ -151,7 +153,7 @@ class StepCompletedEvent(_ExecutionEvent):
     """A step finished with ``StepStatus.PASSED``."""
 
     kind: Literal[EventKind.STEP_COMPLETED] = EventKind.STEP_COMPLETED
-    script: str
+    test_id: str
     step_id: str | None = None
     result: StepResult
 
@@ -160,7 +162,7 @@ class StepFailedEvent(_ExecutionEvent):
     """A step finished with ``StepStatus.FAILED`` — a hard assertion or an exception."""
 
     kind: Literal[EventKind.STEP_FAILED] = EventKind.STEP_FAILED
-    script: str
+    test_id: str
     step_id: str | None = None
     result: StepResult
 
@@ -169,7 +171,7 @@ class StepSkippedEvent(_ExecutionEvent):
     """A step was skipped — its ``if:`` condition was false, or no implementation exists."""
 
     kind: Literal[EventKind.STEP_SKIPPED] = EventKind.STEP_SKIPPED
-    script: str
+    test_id: str
     step_id: str | None = None
     result: StepResult
 
@@ -191,13 +193,13 @@ class Listener(BaseModel):
 class StepListeningEvent(_ExecutionEvent):
     """``mock/api`` has registered an endpoint: from now on the SUT may call it.
 
-    A call that arrives before the script reaches its wait step is held for
+    A call that arrives before the test reaches its wait step is held for
     it, so this is the earliest moment the address is worth announcing — and
     the one a person driving the SUT by hand acts on.
     """
 
     kind: Literal[EventKind.STEP_LISTENING] = EventKind.STEP_LISTENING
-    script: str
+    test_id: str
     step_id: str | None = None
     step_type: str
     listener: Listener
@@ -212,7 +214,7 @@ class StepWaitingEvent(_ExecutionEvent):
     """
 
     kind: Literal[EventKind.STEP_WAITING] = EventKind.STEP_WAITING
-    script: str
+    test_id: str
     step_id: str | None = None
     step_type: str
     listener: Listener
@@ -224,11 +226,11 @@ class StepReceivedEvent(_ExecutionEvent):
 
     ``request`` is the inbound request as the mock server took it, headers and
     body included; ``waited_ms`` is how long the wait step was blocked, which
-    is zero when the SUT called before the script got there.
+    is zero when the SUT called before the test got there.
     """
 
     kind: Literal[EventKind.STEP_RECEIVED] = EventKind.STEP_RECEIVED
-    script: str
+    test_id: str
     step_id: str | None = None
     step_type: str
     listener: Listener
@@ -246,7 +248,7 @@ class AssertionResultEvent(_ExecutionEvent):
     """
 
     kind: Literal[EventKind.ASSERTION_RESULT] = EventKind.ASSERTION_RESULT
-    script: str
+    test_id: str
     step_id: str | None = None
     step_name: str
     #: Position in the step's ``validate:`` block, from 0.
@@ -265,8 +267,8 @@ ExecutionEvent = (
     | JobCompletedEvent
     | JobFailedEvent
     | JobCancelledEvent
-    | ScriptStartedEvent
-    | ScriptCompletedEvent
+    | TestStartedEvent
+    | TestCompletedEvent
     | StepStartedEvent
     | StepCallEvent
     | StepCompletedEvent

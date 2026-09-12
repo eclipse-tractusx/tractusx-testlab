@@ -34,8 +34,8 @@ import httpx
 from pydantic import Field
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector import policy_mismatch
 from tractusx_testlab.steps.connector.policies import ExpectedPoliciesParams
@@ -198,7 +198,7 @@ def _edr_entry_of(consumer: Any, transfer_id: str | None) -> dict:
     """Read the EDR entry a transfer belongs to, for the identifiers it carries.
 
     ``get_transfer_id`` hands back only the transfer, but the negotiation and
-    the agreement behind it are what a script asserts on and what the
+    the agreement behind it are what a test asserts on and what the
     ``agreement_id`` output is for. The entry is looked up the same way the SDK
     looks one up by negotiation, filtered by transfer instead.
     """
@@ -248,7 +248,7 @@ class ConnectorPullDataFiltered(BaseStep[PullDataFilteredParams, PullDataOutput]
     """Run the full DSP flow in one step, optionally constrained to one policy.
 
     ``expected_policies`` reaches the SDK as the raw ODRL policies its offer
-    comparison takes, whichever way the script wrote them — see
+    comparison takes, whichever way the test wrote them — see
     :func:`~tractusx_testlab.steps.connector.policies.as_policy_list`.  With no
     policy the SDK takes the first offer.
     """

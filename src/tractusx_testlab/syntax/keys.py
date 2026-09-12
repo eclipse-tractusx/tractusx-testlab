@@ -32,7 +32,7 @@ DATASPACE_VERSION = "dataspace_version"
 KIND = "kind"
 TYPE = "type"
 
-# -- Script structure ---------------------------------------------------------
+# -- Test structure ---------------------------------------------------------
 IMPORT = "import"
 IMPORTS = "imports"
 VARIABLES = "variables"

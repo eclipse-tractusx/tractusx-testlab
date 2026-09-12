@@ -202,7 +202,7 @@ class TestShellLookup:
     async def test_the_dataplane_pair_falls_back_to_what_the_transfer_published(
         self, context: MagicMock
     ) -> None:
-        """A script that ran ``initiate_transfer`` first passes neither."""
+        """A test that ran ``initiate_transfer`` first passes neither."""
         context.set_variable(DATAPLANE_URL, _DATAPLANE)
         context.set_variable(EDR_TOKEN, _TOKEN)
 
@@ -248,7 +248,7 @@ class TestShellLookup:
     async def test_a_shell_the_registry_will_not_hand_over_leaves_its_id_behind(
         self, context: MagicMock
     ) -> None:
-        """The identifier stays readable, so a script can assert on the gap."""
+        """The identifier stays readable, so a test can assert on the gap."""
         with patch(
             "tractusx_testlab.steps.http_client.request",
             new_callable=AsyncMock,
@@ -458,10 +458,10 @@ class TestAssetLinkBody:
         )
         assert params.asset_link_body()[0]["externalSubjectId"] == {"keys": []}
 
-    def test_paging_parameters_the_script_left_out_are_not_sent(self) -> None:
+    def test_paging_parameters_the_test_left_out_are_not_sent(self) -> None:
         assert ShellLookupByAssetLinkParams.model_validate(_params()).page_query() == {}
 
-    def test_paging_parameters_the_script_set_are_sent(self) -> None:
+    def test_paging_parameters_the_test_set_are_sent(self) -> None:
         params = ShellLookupByAssetLinkParams.model_validate(_params(limit=5, cursor="c1"))
         assert params.page_query() == {"limit": 5, "cursor": "c1"}
 

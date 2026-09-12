@@ -103,7 +103,7 @@ def _make_progress_callback(progress, task_id):
             passed = str(step.get("status", "")).upper() == "PASSED"
             icon = "[green]PASS" if passed else "[red]FAIL"
             progress.update(task_id, advance=1, description=f"  {icon} {step.get('step_name', '')}")
-        elif event == "script.started":
-            progress.update(task_id, description=f"  Script: {payload.get('script', '')}")
+        elif event == "test.started":
+            progress.update(task_id, description=f"  Test: {payload.get('test_id', '')}")
 
     return _on_progress

@@ -29,10 +29,10 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import StepRegistry, step
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
-from tractusx_testlab.scripting.registry import StepRegistry, step
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepValue
 
 if TYPE_CHECKING:
@@ -51,7 +51,7 @@ class RetryParams(StepParams):
         min_length=1,
         description=(
             "Nested step definitions ('uses', 'with', 'validate', …) — the same "
-            "shape used at the top level of a script. A nested step may itself "
+            "shape used at the top level of a test. A nested step may itself "
             "be 'flow/retry'."
         ),
     )
@@ -103,7 +103,7 @@ async def _run_sequence(
     for idx, nested_def in enumerate(nested_defs):
         step_name = f"retry[{idx}]:{nested_def.uses}"
         # A nested step is resolved by name alone: only the phase runner holds
-        # the script's dataspace_version, so a version-specific step is looked
+        # the test's dataspace_version, so a version-specific step is looked
         # up by what it declares rather than skipped for want of a version.
         step_cls = StepRegistry.get_any(nested_def.uses)
         if step_cls is None:

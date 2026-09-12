@@ -195,7 +195,7 @@ class TestAlreadyProvisioned:
     async def test_a_409_is_reported_rather_than_raised(
         self, context: MagicMock, provider: MagicMock
     ) -> None:
-        """Re-running a script against a provisioned provider must not fail."""
+        """Re-running a test against a provisioned provider must not fail."""
         provider.contract_definitions.create.return_value = _Response(409)
 
         output = await CreateContractDefinitionStep().invoke(

@@ -46,7 +46,7 @@ metadata:
 
 setup:
   # The payload, on the server the engine was bound to. Nothing about the
-  # address is the script's to choose: `engine.dtr.submodel_base_url` is where
+  # address is the test's to choose: `engine.dtr.submodel_base_url` is where
   # it goes, and the step publishes the address in pieces because the pieces
   # are needed apart — the root becomes an EDC asset's backend, the path
   # becomes what a data plane appends to it.
@@ -192,7 +192,7 @@ setup:
   # The descriptor written field by field rather than as a document, which is
   # the form worth using here: the CX-0002 boilerplate a submodel endpoint has
   # to carry — the protocol, the version, the subprotocol and the shape of its
-  # body — is the step's to write, so what the script states is only what is
+  # body — is the step's to write, so what the test states is only what is
   # specific to this twin. Every one of those fields is read back below.
   - id: create_submodel_descriptor
     uses: digital-twin/provider/wizard/create_submodel_descriptor
@@ -212,7 +212,7 @@ setup:
 execution:
   # The consumer's starting point. Everything it needs to reach the payload is
   # in this one document, and the steps below take it apart rather than
-  # reading values the script already knows — a chain wired from the setup ids
+  # reading values the test already knows — a chain wired from the setup ids
   # would pass even if the registry stored something else entirely.
   - id: read_twin
     uses: digital-twin/provider/get_shell_descriptor

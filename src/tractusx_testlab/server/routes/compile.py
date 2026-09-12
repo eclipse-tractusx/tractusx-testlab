@@ -33,14 +33,14 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from tractusx_testlab.compiler.validation.validator import ScriptValidator
-from tractusx_testlab.models.authoring.definitions import ScriptDefinition, TckDefinition
-from tractusx_testlab.models.primitives.enums import ScriptKind
-from tractusx_testlab.scripting.parser import YamlParser
+from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.compiler.validation.validator import TestValidator
+from tractusx_testlab.models.authoring.definitions import TckDefinition, TestDefinition
+from tractusx_testlab.models.primitives.enums import DefinitionKind
 from tractusx_testlab.syntax import defaults, diagnostics
 
 _logger = logging.getLogger(__name__)
-_validator = ScriptValidator()
+_validator = TestValidator()
 
 compile_router = APIRouter(tags=["compile"])
 
@@ -69,11 +69,11 @@ async def compile_yaml(request: Request) -> JSONResponse:
     if isinstance(data, JSONResponse):
         return data
 
-    kind = _resolve_script_kind(data)
+    kind = _resolve_definition_kind(data)
     if isinstance(kind, JSONResponse):
         return kind
 
-    parsed = _parse_script(data, kind)
+    parsed = _parse_test(data, kind)
     if isinstance(parsed, JSONResponse):
         return parsed
 
@@ -107,39 +107,39 @@ def _parse_yaml_body(raw: bytes) -> dict | JSONResponse:
     return data
 
 
-def _resolve_script_kind(data: dict) -> ScriptKind | JSONResponse:
-    """Determine script kind from data, returning error response if invalid."""
+def _resolve_definition_kind(data: dict) -> DefinitionKind | JSONResponse:
+    """Determine definition kind from data, returning error response if invalid."""
     kind_value = data.get("kind")
     has_tests = "tests" in data
 
     try:
         if kind_value:
-            return ScriptKind(kind_value)
-        return ScriptKind.TCK if has_tests else ScriptKind.TEST
+            return DefinitionKind(kind_value)
+        return DefinitionKind.TCK if has_tests else DefinitionKind.TEST
     except ValueError:
         return JSONResponse(
             content={
                 "status": "error",
-                "errors": [_error("kind", f"Unknown script kind: {kind_value!r}")],
+                "errors": [_error("kind", f"Unknown definition kind: {kind_value!r}")],
             }
         )
 
 
-def _parse_script(
+def _parse_test(
     data: dict,
-    kind: ScriptKind,
-) -> JSONResponse | ScriptDefinition | TckDefinition:
-    """Parse the YAML data into a script/tck definition or return error response."""
+    kind: DefinitionKind,
+) -> JSONResponse | TestDefinition | TckDefinition:
+    """Parse the YAML data into a test/tck definition or return error response."""
     parser = YamlParser()
     try:
-        if kind == ScriptKind.TCK:
+        if kind == DefinitionKind.TCK:
             return parser.parse_tck_from_dict(data)
-        return parser.parse_script_from_dict(data)
+        return parser.parse_test_from_dict(data)
     except ValidationError as exc:
         # The IDE shows these verbatim, so they are the authored form: the
         # location names the step and the message names the keys that would
         # have been accepted. See `tractusx_testlab.syntax.diagnostics`.
-        model = TckDefinition if kind == ScriptKind.TCK else ScriptDefinition
+        model = TckDefinition if kind == DefinitionKind.TCK else TestDefinition
         errors = [
             _error(
                 finding.where,
@@ -158,8 +158,8 @@ def _parse_script(
 
 
 def _run_semantic_validation(
-    parsed: ScriptDefinition | TckDefinition,
-    kind: ScriptKind,
+    parsed: TestDefinition | TckDefinition,
+    kind: DefinitionKind,
 ) -> list[dict[str, str]]:
     """Run semantic validation and return list of error dicts (empty if OK)."""
     errors: list[dict[str, str]] = []
@@ -168,10 +168,10 @@ def _run_semantic_validation(
         parsed.metadata.name if hasattr(parsed, "metadata") else None
     )
     if not name or not name.strip():
-        errors.append(_error("name", "Script name is required and must not be empty"))
+        errors.append(_error("name", "Test name is required and must not be empty"))
 
-    if kind == ScriptKind.TEST and isinstance(parsed, ScriptDefinition):
-        # The release comes from the script's own ``dataspace`` block when it has
+    if kind == DefinitionKind.TEST and isinstance(parsed, TestDefinition):
+        # The release comes from the test's own ``dataspace`` block when it has
         # one, and otherwise from the default. It is not required here: a test
         # file belongs to a TCK, and it is the manifest that declares which
         # ecosystem release the suite certifies against — none of the shipped

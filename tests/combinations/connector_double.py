@@ -72,7 +72,7 @@ class _Controller:
 
 #: The keys a catalog dataset may name its asset under, plus the taxonomy term
 #: it is offered as. A catalog filter names one of them, and which one is the
-#: script's business rather than the double's.
+#: test's business rather than the double's.
 _DATASET_IDENTIFIERS: tuple[str, ...] = ("@id", "edc:id", "id")
 
 

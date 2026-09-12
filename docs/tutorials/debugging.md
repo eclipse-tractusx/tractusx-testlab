@@ -47,7 +47,7 @@ For issues in the visual IDE (blocks, toolbox, YAML sync), see the separate [cx-
 `testlab validate` (and `testlab run`, before executing) reports every finding with its step index and field:
 
 - **`Unknown step type '...'`** — see above.
-- **`Variable '${...}' referenced ... is not declared`** — a warning: the variable is not in the script's own declarations, but may still arrive via shared variables, runtime overrides (`--var KEY=VALUE`), or a previous step's `returns:`.
+- **`Variable '${...}' referenced ... is not declared`** — a warning: the variable is not in the test's own declarations, but may still arrive via shared variables, runtime overrides (`--var KEY=VALUE`), or a previous step's `returns:`.
 - **`'validate.with.input' value '...' is not produced by step '...'`** — an inline assertion may name any output the step publishes, plus the universal response fields; the message lists them. A `returns:` block is not required for an assertion, and does not narrow what one may name — so fix the typo rather than adding the name to `returns:`.
 - **Schema errors like `... is not valid under any of the given schemas (at 'steps.0' in tests/x.yaml)`** — the raw YAML violates `tck_index.schema.json` / `tck_test.schema.json`; the location in parentheses points at the offending key.
 
@@ -80,8 +80,8 @@ A consumer-side DSP step (`connector/consumer/pull_data_filtered`, `pull_data_fi
                 expected: 'FrameworkAgreement eq DataExchangeGovernance:1.0', 'UsagePurpose isAnyOf cx.core.digitalTwinRegistry:1'
 ```
 
-- **"the provider also requires"** — the deployment's policy carries a condition your `expected_policies` does not. Matching is exact, so an *extra* condition refuses the offer just as a missing one does. Add it to the policy variable the script uses, or accept that the deployment is not offering what the TCK requires.
-- **"the provider does not offer"** — the other direction: the script asks for a condition the offers do not carry.
+- **"the provider also requires"** — the deployment's policy carries a condition your `expected_policies` does not. Matching is exact, so an *extra* condition refuses the offer just as a missing one does. Add it to the policy variable the test uses, or accept that the deployment is not offering what the TCK requires.
+- **"the provider does not offer"** — the other direction: the test asks for a condition the offers do not carry.
 - **"the same conditions on both sides"** — the conditions agree and the policy documents still differ (an action, a rule kind, an operand spelled with a namespace prefix on one side only). Compare the two documents in the trace.
 - **`'expected_policies' is an empty list`** — an empty list accepts nothing at all. Name the policies, or omit the key to take any offer.
 

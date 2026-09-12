@@ -30,7 +30,7 @@ the author writes and the compiler drops is a field the run silently ignores,
 and the author has no way to tell.
 
 These tests compare the compiled output against the *models*, not against a
-hand-written list, so a field added to ``StepDefinition`` or ``ScriptDefinition``
+hand-written list, so a field added to ``StepDefinition`` or ``TestDefinition``
 without the builder learning to carry it fails here rather than going missing at
 run time.
 
@@ -52,9 +52,9 @@ from tractusx_testlab.compiler.ir._symbols import build_global_symbols
 from tractusx_testlab.compiler.ir.builder import build_ir
 from tractusx_testlab.models.authoring.definitions import (
     Assertion,
-    ScriptDefinition,
     StepDefinition,
     TckTestEntry,
+    TestDefinition,
 )
 
 # ---------------------------------------------------------------------------
@@ -115,7 +115,7 @@ def _manifest() -> dict:
     }
 
 
-def _script() -> dict:
+def _test() -> dict:
     return {
         "syntax": "v1-alpha",
         "kind": "test",
@@ -167,7 +167,7 @@ def _compile(tmp_path) -> tuple[dict, list[dict]]:
 def _write_tck(tmp_path) -> Path:
     """Write the fixture TCK to disk and return the manifest path."""
     (tmp_path / "tests").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "tests" / "everything.yaml").write_text(yaml.dump(_script()), encoding="utf-8")
+    (tmp_path / "tests" / "everything.yaml").write_text(yaml.dump(_test()), encoding="utf-8")
     for asset in ("schemas/cert.json", "testdata/body.json"):
         path = tmp_path / asset
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -190,29 +190,29 @@ def _compile_package(tmp_path) -> tuple[dict, dict]:
 class TestTheFixtureIsComplete:
     """A losslessness test is only as good as the document it compiles."""
 
-    def test_the_script_declares_every_script_field(self) -> None:
-        declared = set(_script())
-        missing = set(ScriptDefinition.model_fields) - declared
+    def test_the_test_declares_every_test_field(self) -> None:
+        declared = set(_test())
+        missing = set(TestDefinition.model_fields) - declared
         assert not missing, (
             f"The fixture does not exercise {sorted(missing)}, so the tests below "
-            f"cannot detect those being dropped. Add them to _script()."
+            f"cannot detect those being dropped. Add them to _test()."
         )
 
     def test_the_step_declares_every_step_field(self) -> None:
-        step = _script()["execution"][0]
+        step = _test()["execution"][0]
         missing = _step_keys() - set(step)
         assert not missing, (
-            f"The fixture step does not exercise {sorted(missing)}. Add them to _script()."
+            f"The fixture step does not exercise {sorted(missing)}. Add them to _test()."
         )
 
     def test_the_assertion_declares_every_assertion_field(self) -> None:
-        assertion = _script()["execution"][0]["validate"][0]
+        assertion = _test()["execution"][0]["validate"][0]
         missing = {
             field.validation_alias or field.alias or name
             for name, field in Assertion.model_fields.items()
         } - set(assertion)
         assert not missing, (
-            f"The fixture assertion does not exercise {sorted(missing)}. Add them to _script()."
+            f"The fixture assertion does not exercise {sorted(missing)}. Add them to _test()."
         )
 
     def test_the_test_entry_declares_every_manifest_entry_field(self) -> None:
@@ -222,9 +222,9 @@ class TestTheFixtureIsComplete:
             f"The fixture test entry does not exercise {sorted(missing)}. Add them to _manifest()."
         )
 
-    def test_the_fixture_is_a_valid_script(self) -> None:
+    def test_the_fixture_is_a_valid_test(self) -> None:
         """It must be something the engine would actually accept."""
-        ScriptDefinition.model_validate(_script())
+        TestDefinition.model_validate(_test())
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +242,7 @@ class TestEveryStepFieldSurvives:
         dropped = {
             name
             for name in _step_keys()
-            if name not in instruction and _script()["execution"][0].get(name) is not None
+            if name not in instruction and _test()["execution"][0].get(name) is not None
         }
         assert not dropped, (
             f"The compiler dropped {sorted(dropped)} from the compiled instruction. "
@@ -266,15 +266,15 @@ class TestEveryStepFieldSurvives:
         assert instruction["validate"][0]["name"] == "the step produced a value"
 
 
-class TestEveryScriptFieldSurvives:
-    """A script's own declarations reach the compiled test."""
+class TestEveryTestFieldSurvives:
+    """A test's own declarations reach the compiled test."""
 
-    def test_no_script_field_is_dropped(self, tmp_path) -> None:
+    def test_no_test_field_is_dropped(self, tmp_path) -> None:
         _, compiled = _compile(tmp_path)
         test = compiled[0]
 
         expected = (
-            set(ScriptDefinition.model_fields) - _DOCUMENT_FIELDS - _FLATTENED_INTO_INSTRUCTIONS
+            set(TestDefinition.model_fields) - _DOCUMENT_FIELDS - _FLATTENED_INTO_INSTRUCTIONS
         )
         dropped = expected - set(test)
         assert not dropped, (
@@ -292,7 +292,7 @@ class TestEveryScriptFieldSurvives:
 
 
 class TestTheSymbolTableNamesThingsTheRuntimeUses:
-    """Compiled symbol names must be the names a script actually writes."""
+    """Compiled symbol names must be the names a test actually writes."""
 
     def test_env_assets_are_named_by_id(self, tmp_path) -> None:
         """Not by the repr of the entry that declared them."""

@@ -26,7 +26,7 @@
 
 Reads the typed :class:`Infrastructure` the player resolved onto the context
 and registers the corresponding SDK service instances in the ``ServiceManager``
-before test execution begins. This is the seam where the declarative topology
+before the TCK's tests begin. This is the seam where the declarative topology
 model becomes live services, so a TCK whose only runtime input is a config
 block drives real connector calls without an explicit ``services:`` block.
 
@@ -167,7 +167,7 @@ def seed_infrastructure_services(
     """Register the SDK services the run's infrastructure bindings describe.
 
     Called once by the player after the bindings are resolved and validated,
-    before any test execution begins. Already-registered services are never
+    before any test runs. Already-registered services are never
     overwritten, so an explicit ``services:`` block in the YAML always takes
     precedence.
 
@@ -192,7 +192,7 @@ def seed_infrastructure_services(
             "infrastructure.engine.connector",
         )
 
-        # The same connector also acts as a provider when a script names it,
+        # The same connector also acts as a provider when a test names it,
         # which is what ``name`` binds: ``service: testlab`` in a provision
         # step resolves to the engine's own connector under that alias.
         alias = engine_connector.name

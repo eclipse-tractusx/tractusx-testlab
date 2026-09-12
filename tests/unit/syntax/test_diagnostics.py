@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""What an author is told when a script does not hold up.
+"""What an author is told when a test does not hold up.
 
 These are assertions about wording, which is unusual and deliberate: the message
 *is* the feature. A regression here does not break a run — it quietly puts the
@@ -36,11 +36,11 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from tractusx_testlab.models import ScriptDefinition
+from tractusx_testlab.models import TestDefinition
 from tractusx_testlab.syntax import diagnostics
 from tractusx_testlab.syntax.yaml_marks import line_index, nearest
 
-_SCRIPT = """
+_TEST = """
 kind: test
 syntax: v1-alpha
 id: example
@@ -62,15 +62,15 @@ execution:
 
 
 def _line_of(line: str) -> int:
-    """The 1-based line *line* sits on in the script under test."""
-    return _SCRIPT.splitlines().index(line) + 1
+    """The 1-based line *line* sits on in the test under test."""
+    return _TEST.splitlines().index(line) + 1
 
 
 def _findings(text: str) -> list[diagnostics.Diagnostic]:
     data = yaml.safe_load(text)
     with pytest.raises(ValidationError) as caught:
-        ScriptDefinition.model_validate(data)
-    return diagnostics.explain(caught.value, model=ScriptDefinition, data=data, text=text)
+        TestDefinition.model_validate(data)
+    return diagnostics.explain(caught.value, model=TestDefinition, data=data, text=text)
 
 
 class TestARejectedKey:
@@ -78,7 +78,7 @@ class TestARejectedKey:
 
     @pytest.fixture
     def finding(self) -> diagnostics.Diagnostic:
-        found = _findings(_SCRIPT)
+        found = _findings(_TEST)
         assert len(found) == 1
         return found[0]
 
@@ -114,22 +114,22 @@ class TestARejectedKey:
 
 class TestOtherFailures:
     def test_a_missing_required_key_names_the_block_it_belongs_to(self) -> None:
-        found = _findings(_SCRIPT.replace("    uses: connector/consumer/pull_data_filtered\n", ""))
+        found = _findings(_TEST.replace("    uses: connector/consumer/pull_data_filtered\n", ""))
         assert str(found[0]).startswith(
             "execution[0] 'pull_dtr' → uses (line 9): required key 'uses' is missing from a step"
         )
 
     def test_a_value_outside_the_vocabulary_lists_the_vocabulary(self) -> None:
-        found = _findings(_SCRIPT.replace("syntax: v1-alpha", "syntax: v2-alpha"))
+        found = _findings(_TEST.replace("syntax: v1-alpha", "syntax: v2-alpha"))
         assert found[0].message == "'v2-alpha' is not allowed here — expected 'v1-alpha'"
 
     def test_an_id_that_breaks_the_naming_rule_shows_the_rule(self) -> None:
-        found = _findings(_SCRIPT.replace("id: example\n", "id: Example\n"))
+        found = _findings(_TEST.replace("id: example\n", "id: Example\n"))
         assert "does not have the required form" in found[0].message
 
     def test_findings_come_out_in_file_order(self) -> None:
         """An author fixes a file downwards; Pydantic reports declared fields first."""
-        broken = _SCRIPT.replace("syntax: v1-alpha", "syntax: v2-alpha").replace(
+        broken = _TEST.replace("syntax: v1-alpha", "syntax: v2-alpha").replace(
             "  - id: pull_dtr", "  - id: pull_dtr\n    unknown_step_key: 1"
         )
         lines = [finding.line for finding in _findings(broken)]
@@ -137,7 +137,7 @@ class TestOtherFailures:
 
     def test_a_bulky_value_is_summarised_not_echoed_back(self) -> None:
         """The whole `validate:` list used to be printed back at the author."""
-        found = _findings(_SCRIPT.replace("    validate:", "    timeout_s:"))
+        found = _findings(_TEST.replace("    validate:", "    timeout_s:"))
         assert "a list" in found[0].message
         assert len(str(found[0])) < 200
 
@@ -168,21 +168,21 @@ class TestADocumentThatDoesNotParse:
 class TestAnAssertionMayBeNamed:
     def test_a_named_assertion_is_accepted(self) -> None:
         """Optional, and report-only — the check itself is `uses` and `with`."""
-        named = _SCRIPT.replace("        nmae:", "        name:")
-        script = ScriptDefinition.model_validate(yaml.safe_load(named))
-        assert script.execution[0].assertions is not None
-        assert script.execution[0].assertions[0].name == "an EDR token is obtained"
+        named = _TEST.replace("        nmae:", "        name:")
+        test = TestDefinition.model_validate(yaml.safe_load(named))
+        assert test.execution[0].assertions is not None
+        assert test.execution[0].assertions[0].name == "an EDR token is obtained"
 
     def test_an_unnamed_assertion_is_still_accepted(self) -> None:
-        without = _SCRIPT.replace('        nmae: "an EDR token is obtained"\n', "")
-        script = ScriptDefinition.model_validate(yaml.safe_load(without))
-        assert script.execution[0].assertions is not None
-        assert script.execution[0].assertions[0].name is None
+        without = _TEST.replace('        nmae: "an EDR token is obtained"\n', "")
+        test = TestDefinition.model_validate(yaml.safe_load(without))
+        assert test.execution[0].assertions is not None
+        assert test.execution[0].assertions[0].name is None
 
 
 class TestLineIndex:
     def test_a_key_is_indexed_at_its_own_line_not_its_value_block(self) -> None:
-        index = line_index(_SCRIPT)
+        index = line_index(_TEST)
         assert index[("execution", 0, "validate")] == _line_of("    validate:")
         assert index[("execution", 0, "id")] == _line_of("  - id: pull_dtr")
 
@@ -190,5 +190,5 @@ class TestLineIndex:
         assert line_index("a: [1, 2\nb: }") == {}
 
     def test_a_path_with_no_line_falls_back_to_its_container(self) -> None:
-        index = line_index(_SCRIPT)
+        index = line_index(_TEST)
         assert nearest(index, ("execution", 0, "never_written")) == index[("execution", 0)]

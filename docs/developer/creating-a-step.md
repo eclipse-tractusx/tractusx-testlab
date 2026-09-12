@@ -21,7 +21,7 @@
 
 # Creating a Step
 
-A **step** is one executable action in a test script — querying a catalog, registering an asset, waiting for a callback. This page is the reference for writing one: the rules, the choices, and the models you can reuse.
+A **step** is one executable action in a test — querying a catalog, registering an asset, waiting for a callback. This page is the reference for writing one: the rules, the choices, and the models you can reuse.
 
 If you would rather follow a single worked example end to end, start with the [Create a Step Executor tutorial](../tutorials/create-step-executor.md) and come back here for the details.
 
@@ -31,7 +31,7 @@ Every step declares its interface. This is enforced, not encouraged: defining a 
 
 The declaration is what makes a step usable by everything around it:
 
-- The runner validates the script's `with:` block against it before your code runs.
+- The runner validates the test's `with:` block against it before your code runs.
 - Assertions and `returns:` navigate the output shape it promises.
 - The [step reference page](../specification/reference/steps.md) is generated from it, so a parameter you rename in code cannot go stale in the docs.
 - The next step's inputs can be *the same model* as this step's outputs, which is what makes the wiring between steps visible in the types.
@@ -59,7 +59,7 @@ Two consequences worth internalising:
 
 | Base class | Role | Config |
 |---|---|---|
-| `StepParams` | one field per accepted `with:` key | `extra="allow"` — unknown keys are kept, so a script written against a newer step still runs on an older engine |
+| `StepParams` | one field per accepted `with:` key | `extra="allow"` — unknown keys are kept, so a test written against a newer step still runs on an older engine |
 | `StepPayload` | one field per key of the returned object | `extra="forbid"` — the fields are the public surface |
 | `StepValue[T]` | the output *is* a bare value, not an object | a Pydantic `RootModel`; no fields to declare |
 
@@ -78,7 +78,7 @@ import httpx
 from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepParams, StepPayload
 
 if TYPE_CHECKING:
@@ -158,7 +158,7 @@ class Base64Params(StepParams):
 
 ### One spelling per parameter
 
-Every parameter has exactly **one canonical name** — no aliases, no legacy spellings. A script that uses an old name is migrated, not accommodated (see [Step Contracts](step-contracts.md) for why the rule exists). Declare the field once, under the name scripts write:
+Every parameter has exactly **one canonical name** — no aliases, no legacy spellings. A test that uses an old name is migrated, not accommodated (see [Step Contracts](step-contracts.md) for why the rule exists). Declare the field once, under the name tests write:
 
 ```python
 class CounterPartyParams(StepParams):
@@ -194,7 +194,7 @@ Give the params model helper methods when a value needs converting for a downstr
 
 ### Fields named like Pydantic attributes
 
-`schema` shadows a `BaseModel` attribute and warns. Declare the field under another name and alias it back, so scripts write `schema:` and only `schema:` — the alias is the one spelling, not a second one:
+`schema` shadows a `BaseModel` attribute and warns. Declare the field under another name and alias it back, so tests write `schema:` and only `schema:` — the alias is the one spelling, not a second one:
 
 ```python
 json_schema: Any = Field(
@@ -215,18 +215,18 @@ json_schema: Any = Field(
 | a document defined by someone else's spec | a `StepPayload` with `extra="allow"`, bound with `.of()` | `CatalogPayload` |
 | nothing at all | `NoOutput` | `flow/delay`, the `delete_*` steps |
 
-Do not invent a wrapper object around a bare value to satisfy `StepPayload`. That would change the shape every existing script reads. `StepValue` exists so the type can be declared without touching the wire format — its docstring is the description, since there is only one value to describe:
+Do not invent a wrapper object around a bare value to satisfy `StepPayload`. That would change the shape every existing test reads. `StepValue` exists so the type can be declared without touching the wire format — its docstring is the description, since there is only one value to describe:
 
 ```python
 class Base64Output(StepValue[str]):
     """The encoded or decoded string."""
 ```
 
-`NoOutput` is a declaration, not an omission. "This step produces nothing" and "nobody wrote down what this step produces" must not look the same to a script author.
+`NoOutput` is a declaration, not an omission. "This step produces nothing" and "nobody wrote down what this step produces" must not look the same to a test author.
 
 ### Documents that come from a counterpart
 
-A DCAT catalog, an AAS descriptor, and an EDR data address are shaped by their own specifications. Name the keys scripts assert on, let the rest through untouched, and bind the document with `of()`:
+A DCAT catalog, an AAS descriptor, and an EDR data address are shaped by their own specifications. Name the keys tests assert on, let the rest through untouched, and bind the document with `of()`:
 
 ```python
 class CatalogPayload(StepPayload):
@@ -246,7 +246,7 @@ return StepOutput(value=CatalogPayload.of(catalog))
 
 Note what `CatalogPayload` deliberately does *not* set: `populate_by_name`. Only the JSON-LD spellings populate those fields, so a provider that happens to send a plain `id` key keeps it as `id` rather than having it silently rewritten to `@id`.
 
-A key whose *spelling* depends on the counterpart's DSP generation must not be a declared field at all. The catalog's offers arrive under `dcat:dataset` from a legacy connector (EDC 0.8-0.10) and under `dataset` from a DSP 2025-1 one (EDC 0.11+), because the newer `@context` sets `@vocab` and expands the prefix away. A single field can round-trip only one of those two spellings and would rewrite the other provider's document on the way out. So the varying key passes through as an extra, and the step's own wrapper declares the reading a script uses — `CatalogOutput.datasets`, a list in either generation.
+A key whose *spelling* depends on the counterpart's DSP generation must not be a declared field at all. The catalog's offers arrive under `dcat:dataset` from a legacy connector (EDC 0.8-0.10) and under `dataset` from a DSP 2025-1 one (EDC 0.11+), because the newer `@context` sets `@vocab` and expands the prefix away. A single field can round-trip only one of those two spellings and would rewrite the other provider's document on the way out. So the varying key passes through as an extra, and the step's own wrapper declares the reading a test uses — `CatalogOutput.datasets`, a list in either generation.
 
 Read such a key through [`steps/dsp_keys.py`](../../src/tractusx_testlab/steps/dsp_keys.py), never through a literal. The spellings there come from `tractusx_sdk.dataspace.constants`: the SDK is the component that speaks both dialects, and a key it renames must not need renaming here too. Every spelling is tried, in the SDK's own order, because the run's `dataspace_version` says which connector *we* drive — the document was written by the counter-party's, which is free to be a generation behind.
 
@@ -258,11 +258,11 @@ Read such a key through [`steps/dsp_keys.py`](../../src/tractusx_testlab/steps/d
 - A field you deliberately set to `None` still appears as null, because you said so.
 - **A field you leave to its default is absent from the output.** Pass every field you mean to publish, explicitly.
 
-`StepValue` is exempt: its `root` is already the plain data a script reads, so it is handed over as-is rather than dumped in JSON mode, which would coerce whatever a provider sent.
+`StepValue` is exempt: its `root` is already the plain data a test reads, so it is handed over as-is rather than dumped in JSON mode, which would coerce whatever a provider sent.
 
 ### Returning nothing on a failure path
 
-`StepOutput(value=None)` is allowed and means the step produced no value on this path. Report the failure through the HTTP record rather than by raising, when a script should be able to assert on it:
+`StepOutput(value=None)` is allowed and means the step produced no value on this path. Report the failure through the HTTP record rather than by raising, when a test should be able to assert on it:
 
 ```python
 if not catalog:
@@ -285,7 +285,7 @@ Two consequences follow:
 
 ### The escape hatch
 
-Some variable names come from the script, not the step: `store_in_variable`, or `mock/api`'s `id`. Those cannot be output fields, because the step does not know the name. Declare them as *parameters* and write them directly. `StoreInVariableParams` and `MockIdParams` exist for this; both say so in their docstrings, which is what keeps the exception visible instead of looking like an oversight.
+Some variable names come from the test, not the step: `store_in_variable`, or `mock/api`'s `id`. Those cannot be output fields, because the step does not know the name. Declare them as *parameters* and write them directly. `StoreInVariableParams` and `MockIdParams` exist for this; both say so in their docstrings, which is what keeps the exception visible instead of looking like an oversight.
 
 ## Reusing a contract another step already declares
 
@@ -354,15 +354,15 @@ The subpackages are already imported by `steps/__init__.py`, so nothing else nee
 | No `params_model` | class definition | `Step 'X' must set params_model to a StepParams subclass…` |
 | No `output_model` | class definition | `Step 'X' must set output_model to a StepPayload subclass…` |
 | `output_model` set to a params model | class definition | same as above |
-| Script omits a required param | `bind_params` | `Invalid parameters for step 'util/base64': input: Field required` |
-| Script passes a wrong type | `bind_params` | `…: mode: Input should be 'encode' or 'decode'` |
+| Test omits a required param | `bind_params` | `Invalid parameters for step 'util/base64': input: Field required` |
+| Test passes a wrong type | `bind_params` | `…: mode: Input should be 'encode' or 'decode'` |
 | `execute` returns a raw dict | `bind_output` | `Step 'X' returned dict, but declares output_model=Y. Build the declared model…` |
 
 The first three fire at *import*, so a broken step never reaches a test run.
 
 ## Testing a step
 
-Call `invoke()`, not `execute()`. `invoke()` is the path the runner takes — it validates the params, runs `execute`, publishes exports, and serialises the output — so a test that calls it exercises what a script actually gets.
+Call `invoke()`, not `execute()`. `invoke()` is the path the runner takes — it validates the params, runs `execute`, publishes exports, and serialises the output — so a test that calls it exercises what a test actually gets.
 
 ```python
 @pytest.mark.asyncio
@@ -410,7 +410,7 @@ testlab docs --check   # CI runs this; fails if the page is out of date
 
 Your step appears automatically with its parameters, defaults, output fields, and published variables. Nested models are rendered once, in a shared section.
 
-The generator reads `model_fields`, not `model_json_schema()`, because JSON Schema drops alias information — and an aliased spelling (a reserved word like `schema:`, or an export's context-variable name) is exactly what a script author needs to see. Write field descriptions as full sentences; they are the documentation.
+The generator reads `model_fields`, not `model_json_schema()`, because JSON Schema drops alias information — and an aliased spelling (a reserved word like `schema:`, or an export's context-variable name) is exactly what a test author needs to see. Write field descriptions as full sentences; they are the documentation.
 
 ## Checklist
 

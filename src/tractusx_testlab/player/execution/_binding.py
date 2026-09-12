@@ -34,11 +34,11 @@ was told to skip (``_skip``).
 
 from __future__ import annotations
 
+from tractusx_testlab.authoring._infrastructure import collect_infrastructure_requirements
+from tractusx_testlab.authoring.test import Tck
 from tractusx_testlab.infrastructure.mapping import collect_overrides, flatten
 from tractusx_testlab.infrastructure.profiles import InfrastructureManager
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.scripting._infrastructure import collect_infrastructure_requirements
-from tractusx_testlab.scripting.script import Tck
 from tractusx_testlab.syntax import defaults
 
 

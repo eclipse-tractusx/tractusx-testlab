@@ -28,33 +28,33 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tractusx_testlab.authoring._infrastructure import collect_infrastructure_requirements
+from tractusx_testlab.authoring._inspection import build_inspection_result
+from tractusx_testlab.authoring._variable_form import parse_variables_block
 from tractusx_testlab.models.authoring.definitions import (
-    ScriptDefinition,
     TckDefinition,
+    TestDefinition,
     VariableDefinition,
 )
 from tractusx_testlab.models.authoring.infrastructure import InfrastructureConfig
 from tractusx_testlab.models.runtime.inspection import TckInspectionResult
-from tractusx_testlab.scripting._infrastructure import collect_infrastructure_requirements
-from tractusx_testlab.scripting._inspection import build_inspection_result
-from tractusx_testlab.scripting._variable_form import parse_variables_block
 from tractusx_testlab.syntax import defaults
 
 
-class TestScript:
-    """Runtime wrapper for a single script definition."""
+class Test:
+    """Runtime wrapper for a single test definition."""
 
     __test__ = False  # Prevent pytest from collecting this class
     __slots__ = ("_skippable", "_test_id", "definition")
 
     def __init__(
         self,
-        definition: ScriptDefinition,
+        definition: TestDefinition,
         *,
         skippable: bool = False,
         test_id: str = "",
     ):
-        """Initialize with a parsed script definition."""
+        """Initialize with a parsed test definition."""
         self.definition = definition
         self._skippable = skippable
         self._test_id = test_id
@@ -66,17 +66,22 @@ class TestScript:
 
     @property
     def test_id(self) -> str:
-        """The manifest entry filename (e.g. 'test-request.yaml') used for skip matching."""
+        """The manifest entry filename (e.g. 'test-request.yaml') used for skip matching.
+
+        Not the ``id:`` inside the test document: that one is what
+        :attr:`~tractusx_testlab.models.runtime.results.TestResult.test_id`,
+        the trace and the events name a test by.
+        """
         return self._test_id
 
     @property
     def name(self) -> str:
-        """Script name from the definition metadata."""
+        """Test name from the definition metadata."""
         return self.definition.metadata.name
 
     @property
     def dataspace_version(self) -> str:
-        """The ecosystem release this script runs against.
+        """The ecosystem release this test runs against.
 
         Read from the ``dataspace:`` block, which is the only place it is
         stated; the flat field of the same name is gone. Used to pick a
@@ -101,10 +106,10 @@ class TestScript:
         return self.definition.teardown
 
     def step_count(self) -> int:
-        """Return how many steps this script runs, across all three phases.
+        """Return how many steps this test runs, across all three phases.
 
         Setup and teardown are steps: they invoke the same catalog, publish
-        under the same rules and can fail the script. Counting only
+        under the same rules and can fail the test. Counting only
         ``execution`` made ``testlab run`` announce "Steps: 2" for a run that
         went on to execute five, and gave the progress bar a total it passed.
         """
@@ -116,20 +121,20 @@ class TestScript:
 
     @property
     def definition_version(self) -> str:
-        """Test suite version from metadata."""
+        """Test version from metadata."""
         return self.definition.metadata.version
 
 
 class Tck:
     """Runtime wrapper for a TCK definition."""
 
-    __slots__ = ("_scripts", "base_dir", "definition")
+    __slots__ = ("_tests", "base_dir", "definition")
 
     def __init__(self, definition: TckDefinition, base_dir: Path | None = None):
         """Initialize with a TCK definition and optional base directory."""
         self.definition = definition
         self.base_dir = base_dir
-        self._scripts: list[TestScript] = []
+        self._tests: list[Test] = []
 
     @property
     def name(self) -> str:
@@ -142,22 +147,22 @@ class Tck:
         return self.definition.metadata.version
 
     @property
-    def scripts(self) -> list[TestScript]:
-        """List of wrapped test scripts in this TCK."""
-        return self._scripts
+    def tests(self) -> list[Test]:
+        """List of wrapped tests in this TCK."""
+        return self._tests
 
     @property
     def id(self) -> str:
         """TCK ID from the manifest (used for logging and event payloads)."""
         return self.definition.id
 
-    def script_count(self) -> int:
-        """Return the number of scripts in this TCK."""
-        return len(self._scripts)
+    def test_count(self) -> int:
+        """Return the number of tests in this TCK."""
+        return len(self._tests)
 
     def total_steps(self) -> int:
-        """Return the total step count across all scripts."""
-        return sum(script.step_count() for script in self._scripts)
+        """Return the total step count across all tests."""
+        return sum(test.step_count() for test in self._tests)
 
     def all_variables(self) -> dict[str, VariableDefinition]:
         """Return all variables declared in the TCK env block.
@@ -185,7 +190,7 @@ class Tck:
         """Extract static metadata from this TCK without executing any steps.
 
         Returns general metadata (name, total steps, total validations) and
-        per-step metadata (name, ``uses`` identifier, phase) for every script.
+        per-step metadata (name, ``uses`` identifier, phase) for every test.
 
         Returns:
             A frozen :class:`~tractusx_testlab.models.runtime.inspection.TckInspectionResult`.
@@ -196,7 +201,7 @@ class Tck:
         """Extract consolidated infrastructure requirements from this TCK.
 
         Returns the TCK-level ``infrastructure:`` block when present. Otherwise
-        merges per-script ``infrastructure:`` blocks: ``required=True`` wins and
+        merges per-test ``infrastructure:`` blocks: ``required=True`` wins and
         the first non-``None`` standard wins per capability key.
 
         Returns:
@@ -206,20 +211,20 @@ class Tck:
         return collect_infrastructure_requirements(self)
 
     def skippable_tests(self) -> list[str]:
-        """Return the test IDs of scripts marked ``skippable: true`` in the TCK manifest.
+        """Return the test IDs of tests marked ``skippable: true`` in the TCK manifest.
 
         These are the IDs an operator may legally pass via the ``skip_tests``
         runtime variable to omit a test from a run.
         """
-        return [s.test_id for s in self._scripts if s.skippable]
+        return [s.test_id for s in self._tests if s.skippable]
 
     @classmethod
-    def from_single_script(
+    def from_single_test(
         cls,
-        script_def: ScriptDefinition,
+        test_def: TestDefinition,
         base_dir: Path | None = None,
     ) -> Tck:
-        """Wrap a single ScriptDefinition in a minimal TckDefinition and return a Tck."""
+        """Wrap a single TestDefinition in a minimal TckDefinition and return a Tck."""
         from tractusx_testlab.models.authoring.definitions import (
             TckDefinition,
             TckMetadataDefinition,
@@ -228,14 +233,14 @@ class Tck:
         tck_def = TckDefinition(
             kind="tck",
             syntax="v1-alpha",
-            id=script_def.id,
+            id=test_def.id,
             metadata=TckMetadataDefinition(
-                name=script_def.metadata.name,
-                description=script_def.metadata.description,
-                version=script_def.metadata.version,
+                name=test_def.metadata.name,
+                description=test_def.metadata.description,
+                version=test_def.metadata.version,
             ),
             tests=[],
         )
         instance = cls(tck_def, base_dir=base_dir)
-        instance._scripts = [TestScript(script_def, skippable=False, test_id=script_def.id)]
+        instance._tests = [Test(test_def, skippable=False, test_id=test_def.id)]
         return instance

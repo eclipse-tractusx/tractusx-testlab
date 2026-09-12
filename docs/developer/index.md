@@ -23,7 +23,7 @@
 
 # Developer Handover — TestLab Engine
 
-This documentation is a technical handover guide for the **TestLab engine**, the Python compiler, runner, and mock server that executes certification test scripts for Eclipse Tractus-X dataspaces. It covers architecture, data flow, and the patterns used throughout the codebase so that a new developer can orient quickly and contribute confidently.
+This documentation is a technical handover guide for the **TestLab engine**, the Python compiler, runner, and mock server that executes certification tests for Eclipse Tractus-X dataspaces. It covers architecture, data flow, and the patterns used throughout the codebase so that a new developer can orient quickly and contribute confidently.
 
 The **IDE frontend** — the browser-based visual authoring tool built on React and Blockly — lives in the separate **cx-test-suite** repository. It talks to this engine through the server API and the block catalog generated from the engine's step registry; nothing in this repository renders UI.
 
@@ -32,7 +32,7 @@ The **IDE frontend** — the browser-based visual authoring tool built on React 
 ```
 tractusx-testlab/
 ├── src/tractusx_testlab/         ← The engine: CLI, compiler, player, server, steps
-├── tests/                        ← Pytest suite (incl. e2e/ smoke scripts)
+├── tests/                        ← Pytest suite (incl. e2e/ smoke tests)
 ├── stubs/                        ← Type stubs for untyped dependencies
 ├── tools/                        ← Maintenance tooling (e.g. IDE parity checker)
 ├── docs/                         ← This documentation (MkDocs)
@@ -81,7 +81,7 @@ The IDE frontend's stack (React, Blockly, Zustand, Monaco, …) is documented in
 ## Key design principles
 
 1. **One canonical contract per step.** One id, one set of parameter names, one output shape — declared in Pydantic next to the executor, with no aliases and no backward-compat shims. See [Step Contracts](step-contracts.md).
-2. **The YAML is the interface.** Scripts use `uses:` / `with:` / `returns:`; whatever authored them — the cx-test-suite IDE or a text editor — the engine compiles and runs the same document.
+2. **The YAML is the interface.** Tests use `uses:` / `with:` / `returns:`; whatever authored them — the cx-test-suite IDE or a text editor — the engine compiles and runs the same document.
 3. **Steps are functions.** Every step has typed inputs and typed outputs, and publishes all of its return outputs — each top-level output field becomes a context variable of the same name.
 4. **Delegate the protocol.** Steps call tractusx-sdk services rather than re-implementing dataspace protocols.
 5. **Hide plumbing.** Connector services are seeded into the run context at runtime — no step names its service.

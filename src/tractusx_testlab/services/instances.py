@@ -48,9 +48,9 @@ logger = logging.getLogger(__name__)
 
 
 class ServiceManager:
-    """Lifecycle manager for SDK service instances referenced by test scripts.
+    """Lifecycle manager for SDK service instances referenced by tests.
 
-    Services are declared in the YAML script ``services:`` block, then initialised
+    Services are declared in the YAML test ``services:`` block, then initialised
     lazily on first access and cached for the lifetime of the execution.
     """
 
@@ -66,7 +66,7 @@ class ServiceManager:
     # ------------------------------------------------------------------
 
     def register(self, definition: ServiceDefinition) -> None:
-        """Register a service definition from the script."""
+        """Register a service definition from the test."""
         self._definitions[definition.name] = definition
         self._states[definition.name] = ServiceState.DECLARED
 

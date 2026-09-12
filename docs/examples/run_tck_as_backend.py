@@ -86,7 +86,7 @@ def load_tck(path: Path) -> object:
     """Load a compiled .tck archive and return the runtime Tck object."""
     print(f"[loader] Loading TCK from: {path}")
     tck = Loader().load(path)
-    print(f"[loader] Loaded '{tck.name}' — {tck.script_count()} scripts, {tck.total_steps()} steps")
+    print(f"[loader] Loaded '{tck.name}' — {tck.test_count()} tests, {tck.total_steps()} steps")
     return tck
 
 
@@ -147,13 +147,13 @@ def print_result(result: TckResult) -> None:
     duration = f"{result.duration_ms:.0f}ms" if result.duration_ms else "n/a"
     print(f"\n[result] Status  : {result.status}")
     print(f"[result] Duration: {duration}")
-    print(f"[result] Scripts : {len(result.scripts)}")
+    print(f"[result] Tests : {len(result.tests)}")
 
-    for script in result.scripts:
-        passed = sum(1 for s in script.execution if s.status.value == "PASSED")
-        total = len(script.execution)
-        print(f"  [{script.status}] {script.script_name}  ({passed}/{total} steps passed)")
-        for step in script.execution:
+    for test in result.tests:
+        passed = sum(1 for s in test.execution if s.status.value == "PASSED")
+        total = len(test.execution)
+        print(f"  [{test.status}] {test.test_name}  ({passed}/{total} steps passed)")
+        for step in test.execution:
             icon = "✓" if step.status.value == "PASSED" else "✗"
             print(f"    {icon} {step.step_id}  [{step.status}]")
             if step.error:

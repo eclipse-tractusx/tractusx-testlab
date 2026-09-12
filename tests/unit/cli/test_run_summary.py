@@ -37,13 +37,13 @@ import typer
 
 from tractusx_testlab.cli._run_summary import print_run_results, render_run_results
 from tractusx_testlab.models.authoring.definitions import Assertion
-from tractusx_testlab.models.primitives.enums import ScriptStatus, StepStatus
+from tractusx_testlab.models.primitives.enums import StepStatus, TestStatus
 from tractusx_testlab.models.runtime.results import (
     AssertionResult,
     AssertionSummary,
-    ScriptResult,
     StepResult,
     TckResult,
+    TestResult,
 )
 
 GREEN, RED, YELLOW = "\x1b[32m", "\x1b[31m", "\x1b[33m"
@@ -54,18 +54,18 @@ def _step(name: str, status: StepStatus, **kw) -> StepResult:
 
 
 def _result() -> TckResult:
-    """Two scripts: one clean, one with a failure and a skip after it."""
+    """Two tests: one clean, one with a failure and a skip after it."""
     started = datetime(2026, 9, 12, 10, 0, 0)
     return TckResult(
         tck_id="demo-tck",
-        status=ScriptStatus.FAILED,
+        status=TestStatus.FAILED,
         started_at=started,
         finished_at=started + timedelta(seconds=3.25),
-        scripts=[
-            ScriptResult(
-                script_id="provision",
-                script_name="provision",
-                status=ScriptStatus.COMPLETED,
+        tests=[
+            TestResult(
+                test_id="provision",
+                test_name="provision",
+                status=TestStatus.COMPLETED,
                 total_duration_s=1.0,
                 execution=[
                     _step("create_asset", StepStatus.PASSED, duration_s=0.4),
@@ -73,10 +73,10 @@ def _result() -> TckResult:
                 ],
                 assertion_summary=AssertionSummary(declared=2, total=2, passed=2),
             ),
-            ScriptResult(
-                script_id="consume",
-                script_name="consume",
-                status=ScriptStatus.FAILED,
+            TestResult(
+                test_id="consume",
+                test_name="consume",
+                status=TestStatus.FAILED,
                 total_duration_s=2.25,
                 execution=[
                     _step("encode_filter", StepStatus.PASSED, duration_s=0.05),
@@ -136,14 +136,24 @@ class TestLayout:
     def test_the_footer_counts_every_outcome(self) -> None:
         """The old line subtracted passed from total, so a skip counted as a failure."""
         plain = _plain(render_run_results(_result()))
-        script_footer = next(line for line in plain if "RESULT: FAIL" in line)
-        assert "1 passed  1 failed  1 skipped" in script_footer
-        assert "Total: 2.2s" in script_footer
+        test_footer = next(line for line in plain if "RESULT: FAIL" in line)
+        assert "1 passed  1 failed  1 skipped" in test_footer
+        assert "Total: 2.2s" in test_footer
         run_footer = [line for line in plain if "RESULT: FAIL" in line][-1]
-        assert "3 passed  1 failed  1 skipped" in run_footer
+        assert "1 passed  1 failed  0 skipped" in run_footer
         assert "Total: 3.2s" in run_footer
 
-    def test_the_run_summary_lists_scripts(self) -> None:
+    def test_the_run_footer_counts_tests_not_steps(self) -> None:
+        """A test the operator skipped ran no steps; it is still one skipped test."""
+        result = _result()
+        result.tests.append(
+            TestResult(test_id="later", test_name="later", status=TestStatus.SKIPPED)
+        )
+        plain = _plain(render_run_results(result))
+        run_footer = [line for line in plain if "RESULT: FAIL" in line][-1]
+        assert "1 passed  1 failed  1 skipped" in run_footer
+
+    def test_the_run_summary_lists_tests(self) -> None:
         plain = _plain(render_run_results(_result()))
         start = next(i for i, line in enumerate(plain) if "TCK RUN SUMMARY" in line)
         summary = "\n".join(plain[start:])
@@ -156,19 +166,23 @@ class TestLayout:
         assert "           Error: catalog request refused" in text
         assert "                    403 from the provider" in text
         assert "           Failed: offer is made — expected 1 offer, got 0" in text
-        # The detail comes after the script's table, not inside it.
+        # The detail comes after the test's table, not inside it.
         footer = next(i for i, line in enumerate(plain) if "1 passed  1 failed  1 skipped" in line)
         error = next(i for i, line in enumerate(plain) if "Error: catalog" in line)
         assert error > footer
 
-    def test_a_long_step_name_is_cut_not_wrapped(self) -> None:
+    def test_a_long_step_name_widens_every_box_rather_than_being_cut(self) -> None:
+        """The engine names a step ``test[phase:id]:uses``; the whole of it must show."""
+        name = "inbound-call[teardown:delete_access_policy]:connector/provider/delete_policy"
         result = _result()
-        result.scripts[0].execution[0].step_name = "x" * 70
-        rows = [line for line in _plain(render_run_results(result)) if "xxxx" in line]
-        assert len(rows[0]) == 80
-        assert "…" in rows[0]
+        result.tests[0].execution[0].step_name = name
+        plain = _plain(render_run_results(result))
+        assert any(f"✓ {name} " in line for line in plain)
+        assert not any("…" in line for line in plain)
+        widths = {len(line) for line in plain if line.startswith(("║", "╔", "╠", "╚"))}
+        assert widths == {len(name) + 21 + 2}
 
-    def test_assertion_notes_follow_each_script(self) -> None:
+    def test_assertion_notes_follow_each_test(self) -> None:
         text = "\n".join(_plain(render_run_results(_result())))
         assert "Assertions: 2 total, 2 passed, 0 hard-failed, 0 soft-failed" in text
         assert "WARNING: 2 declared assertion(s) were never evaluated" in text
@@ -206,11 +220,33 @@ class TestPrinting:
         assert exit_info.value.exit_code == 1
         out = capsys.readouterr().out
         assert "\x1b" not in out
-        assert "RESULT: FAIL  |  3 passed  1 failed  1 skipped" in out
+        assert "RESULT: FAIL  |  1 passed  1 failed  0 skipped" in out
+
+    def test_force_color_keeps_the_colour_off_a_terminal(self, capsys, monkeypatch) -> None:
+        """A CI runner has no terminal, but its log viewer renders the codes."""
+        monkeypatch.setenv("FORCE_COLOR", "1")
+        monkeypatch.delenv("NO_COLOR", raising=False)
+        with pytest.raises(typer.Exit):
+            print_run_results(_result())
+        assert RED in capsys.readouterr().out
+
+    def test_no_color_wins_over_force_color(self, capsys, monkeypatch) -> None:
+        monkeypatch.setenv("FORCE_COLOR", "1")
+        monkeypatch.setenv("NO_COLOR", "1")
+        with pytest.raises(typer.Exit):
+            print_run_results(_result())
+        assert "\x1b" not in capsys.readouterr().out
+
+    def test_force_color_zero_means_off(self, capsys, monkeypatch) -> None:
+        monkeypatch.setenv("FORCE_COLOR", "0")
+        monkeypatch.delenv("NO_COLOR", raising=False)
+        with pytest.raises(typer.Exit):
+            print_run_results(_result())
+        assert "\x1b" not in capsys.readouterr().out
 
     def test_a_clean_run_exits_zero(self, capsys) -> None:
         result = _result()
-        result.status = ScriptStatus.COMPLETED
+        result.status = TestStatus.COMPLETED
         with pytest.raises(typer.Exit) as exit_info:
             print_run_results(result)
         assert exit_info.value.exit_code == 0

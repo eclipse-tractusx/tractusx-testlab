@@ -163,7 +163,7 @@ Usage: testlab [OPTIONS] COMMAND [ARGS]...
   Tractus-X Testlab CLI — compile, encrypt, validate, and run TCKs.
 
 Commands:
-  compile     Compile a YAML test script into a .tck package.
+  compile     Compile a TCK manifest into a .tck package.
   config      Show the resolved configuration.
   docs        Generate the step reference from the step catalog.
   inspect     Report what a .tck package contains, without executing it.
@@ -171,7 +171,7 @@ Commands:
   run         Load and execute a TCK, printing results to stdout.
   schema      Write the JSON Schemas for the authoring format.
   serve       Run the TestLab HTTP server.
-  validate    Validate a YAML test script without compiling.
+  validate    Validate a TCK manifest without compiling.
 ```
 
 ---

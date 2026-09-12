@@ -110,7 +110,7 @@ class TestNegotiate:
     async def test_asset_id_and_policy_fall_back_to_the_catalog_step(
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
-        """A script that ran ``query_catalog_by_asset_id`` first passes nothing."""
+        """A test that ran ``query_catalog_by_asset_id`` first passes nothing."""
         consumer = _consumer()
         consumer.start_edr_negotiation.return_value = _NEGOTIATION_ID
         mock_context.dataspace.consumer.return_value = consumer
@@ -166,7 +166,7 @@ class TestNegotiate:
     async def test_a_terminated_negotiation_is_reported_not_raised(
         self, mock_context: MagicMock, definition: MagicMock
     ) -> None:
-        """A refused negotiation is a result a script asserts on, not a crash."""
+        """A refused negotiation is a result a test asserts on, not a crash."""
         consumer = _consumer(contract_negotiations=_StatefulController({"state": "TERMINATED"}))
         consumer.start_edr_negotiation.return_value = _NEGOTIATION_ID
         mock_context.dataspace.consumer.return_value = consumer
@@ -197,7 +197,7 @@ class TestNegotiate:
         """C10 — the field is ``asset_id`` and nothing else.
 
         Under C47 the old spelling does not merely fail to bind: it is
-        rejected, so a script still saying ``target:`` is told so rather than
+        rejected, so a test still saying ``target:`` is told so rather than
         negotiating for nothing.
         """
         with pytest.raises(ValidationError, match="target"):
@@ -445,11 +445,11 @@ class TestDataplaneCallParams:
         assert params.resolved_token(_TOKEN) == _TOKEN
 
     def test_an_explicit_empty_token_is_not_replaced_by_the_fallback(self) -> None:
-        """A negative-path script asks for no token by writing '', in writing.
+        """A negative-path test asks for no token by writing '', in writing.
 
         Reading it with `params.edr_token or fallback` would treat '' the same
         as "omitted" and silently send the fallback — the token a *previous*
-        script in the same run published under the same context variable name —
+        test in the same run published under the same context variable name —
         which turns a test of "no token" into a test of a stale one.
         """
         params = DataplaneCallParams(dataplane_url=_ENDPOINT, edr_token="")

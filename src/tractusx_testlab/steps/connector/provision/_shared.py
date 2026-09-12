@@ -46,7 +46,7 @@ def _as_id(value: Any, *keys: str) -> str:
 
     Wiring ``${{ steps.create_policy.output }}`` into ``contract_policy_id`` passes
     the whole ``{"policy_id": …}`` object, so the id is picked out of it here
-    rather than making every script unwrap it by hand.
+    rather than making every test unwrap it by hand.
     """
     if isinstance(value, dict):
         for key in (*keys, "@id"):
@@ -62,7 +62,7 @@ def _config_object(value: Any, key: str) -> dict:
 
     Wiring ``${{ env.ccm_asset }}`` instead of ``${{ env.ccm_asset.asset }}``
     passes the whole variable, so the object is picked out of it here rather
-    than making every script spell out the return key.
+    than making every test spell out the return key.
     """
     if not isinstance(value, dict):
         return {}

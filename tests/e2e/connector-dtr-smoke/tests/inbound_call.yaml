@@ -38,10 +38,10 @@ metadata:
     mock server, and then pulls the mock's path through the SUT's data
     plane — so the inbound request `mock/wait/http_request` hands back was
     made by a real connector, from a pod, across the cluster boundary, not
-    by the script itself. What the consumer pulls through the data plane
+    by the test itself. What the consumer pulls through the data plane
     must be the mock's canned answer, and what the wait step reports must
-    be the request the data plane made, on the path the script asked for.
-    A second mock takes a POST: the body the script sends travels through
+    be the request the data plane made, on the path the test asked for.
+    A second mock takes a POST: the body the test sends travels through
     the consumer's and the provider's data planes, and the wait step checks
     the payload the mock received field by field.
 
@@ -104,7 +104,7 @@ setup:
 
   # The asset's backend is the mock server itself, not one endpoint on it:
   # the base URL is the server's root as the SUT can reach it, and the path
-  # travels with each call (`proxyPath`), so the script decides what it asks
+  # travels with each call (`proxyPath`), so the test decides what it asks
   # for. `full_mock_url` is not that root: the mock server binds on the
   # engine host, and the SUT's data plane runs in a pod, so the address it
   # dials is an operator input (`env.mock_server_external_url`).
@@ -171,7 +171,7 @@ execution:
         with: { input: edr_token, operator: not_null }
 
   # The SUT's data plane proxies this pull to the asset's backend, appending
-  # the path the script asks for. The body coming back through the data plane
+  # the path the test asks for. The body coming back through the data plane
   # is therefore the mock's canned answer, and no other component in the
   # dataspace could have produced it.
   - id: fetch_through_sut
@@ -195,9 +195,9 @@ execution:
 
   # By now the data plane has already called the mock: `mock/api` opened the
   # listener in setup, and the call was held for this step. That is the order
-  # a real SUT forces on every script — the SUT does not wait for the script
+  # a real SUT forces on every test — the SUT does not wait for the test
   # to reach its wait step — and it is the order this test pins down. The
-  # path is asserted literally: it is what the script sent, carried by the
+  # path is asserted literally: it is what the test sent, carried by the
   # consumer, the provider's data plane and the proxy setting in between.
   - id: await_call
     uses: mock/wait/http_request
@@ -224,7 +224,7 @@ execution:
 
   # The same transfer, used the other way: a POST with a body. The provider's
   # data plane forwards the method and the body (`proxyMethod`, `proxyBody`),
-  # so what the mock receives is what the script sent — two connectors later.
+  # so what the mock receives is what the test sent — two connectors later.
   - id: notify_through_sut
     uses: connector/dataplane/http_request
     name: Post a notification through the SUT's data plane to the mock
@@ -254,7 +254,7 @@ execution:
         with: { input: value, path: accepted, operator: equals, value: true }
 
   # The payload, checked where it arrived. Every field below was written by
-  # the script two steps up and has since been carried by the consumer's data
+  # the test two steps up and has since been carried by the consumer's data
   # plane, the provider's data plane and the mock server's request parser.
   - id: await_notification
     uses: mock/wait/http_request

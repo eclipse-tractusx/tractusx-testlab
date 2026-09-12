@@ -254,7 +254,7 @@ class TestRequestThenAssert:
 
 
 class TestStatusCodesThatAreNotErrors:
-    """A 4xx is an answer, not a crash — the script decides what it means."""
+    """A 4xx is an answer, not a crash — the test decides what it means."""
 
     async def test_a_404_is_reported_and_assertable(
         self, harness: Harness, http: HttpDouble

@@ -30,45 +30,45 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tractusx_testlab.authoring.test import Tck, Test
 from tractusx_testlab.models.authoring.definitions import TckTestEntry
-from tractusx_testlab.models.primitives.enums import ScriptStatus
+from tractusx_testlab.models.primitives.enums import TestStatus
 from tractusx_testlab.models.primitives.exceptions import SkipNotAllowedError
-from tractusx_testlab.models.runtime.inspection import ScriptInspection
+from tractusx_testlab.models.runtime.inspection import TestInspection
 from tractusx_testlab.player.execution._trace_formatter import (
     build_tck_result,
     make_intentionally_skipped_result,
 )
-from tractusx_testlab.scripting.script import Tck, TestScript
 
 # ---------------------------------------------------------------------------
 # Helpers / factories
 # ---------------------------------------------------------------------------
 
 
-def _make_script_def(script_id: str = "test-a") -> MagicMock:
-    """Return a minimal ScriptDefinition mock sufficient for TestScript."""
+def _make_test_def(definition_id: str = "test-a") -> MagicMock:
+    """Return a minimal TestDefinition mock sufficient for Test."""
     d = MagicMock()
-    d.metadata.name = script_id.replace("-", " ").title()
+    d.metadata.name = definition_id.replace("-", " ").title()
     d.dataspace = None
-    d.id = script_id
+    d.id = definition_id
     return d
 
 
-def _make_test_script(
-    script_id: str = "test-a",
+def _make_test(
+    definition_id: str = "test-a",
     skippable: bool = False,
     test_id: str = "test-a.yaml",
-) -> TestScript:
-    """Factory for a TestScript with the given skippable flag."""
-    return TestScript(_make_script_def(script_id), skippable=skippable, test_id=test_id)
+) -> Test:
+    """Factory for a Test with the given skippable flag."""
+    return Test(_make_test_def(definition_id), skippable=skippable, test_id=test_id)
 
 
-def _make_tck_with_scripts(
-    *scripts: tuple[str, bool],  # (test_id_stem, skippable)
+def _make_tck_with_tests(
+    *tests: tuple[str, bool],  # (test_id_stem, skippable)
 ) -> Tck:
-    """Build a minimal Tck populated with TestScript objects.
+    """Build a minimal Tck populated with Test objects.
 
-    Each entry in *scripts* is (stem, skippable) where stem produces
+    Each entry in *tests* is (stem, skippable) where stem produces
     test_id ``{stem}.yaml``.
     """
     tck_def = MagicMock()
@@ -77,18 +77,16 @@ def _make_tck_with_scripts(
     tck_def.env = None
     tck_def.tests = []
     tck = Tck(tck_def)
-    tck._scripts = [
-        _make_test_script(stem, skippable=skip, test_id=f"{stem}.yaml") for stem, skip in scripts
-    ]
+    tck._tests = [_make_test(stem, skippable=skip, test_id=f"{stem}.yaml") for stem, skip in tests]
     return tck
 
 
-def _make_script_result(name: str, status: ScriptStatus) -> MagicMock:
-    from tractusx_testlab.models.runtime.results import AssertionSummary, ScriptResult
+def _make_test_result(name: str, status: TestStatus) -> MagicMock:
+    from tractusx_testlab.models.runtime.results import AssertionSummary, TestResult
 
     now = datetime.now(UTC)
-    return ScriptResult(
-        script_name=name,
+    return TestResult(
+        test_name=name,
         status=status,
         execution=[],
         started_at=now,
@@ -118,26 +116,26 @@ class TestTckTestEntry:
 
 
 # ---------------------------------------------------------------------------
-# TestScript.skippable and .test_id properties
+# Test.skippable and .test_id properties
 # ---------------------------------------------------------------------------
 
 
-class TestTestScriptSkippable:
+class TestTestSkippable:
     def test_default_skippable_is_false(self):
-        script = _make_test_script()
-        assert script.skippable is False
+        test = _make_test()
+        assert test.skippable is False
 
     def test_skippable_true_propagates(self):
-        script = _make_test_script(skippable=True)
-        assert script.skippable is True
+        test = _make_test(skippable=True)
+        assert test.skippable is True
 
     def test_test_id_is_stored(self):
-        script = _make_test_script(test_id="my-test.yaml")
-        assert script.test_id == "my-test.yaml"
+        test = _make_test(test_id="my-test.yaml")
+        assert test.test_id == "my-test.yaml"
 
     def test_test_id_default_empty_string(self):
-        script = TestScript(_make_script_def())
-        assert script.test_id == ""
+        test = Test(_make_test_def())
+        assert test.test_id == ""
 
 
 # ---------------------------------------------------------------------------
@@ -147,15 +145,15 @@ class TestTestScriptSkippable:
 
 class TestTckSkippableTests:
     def test_no_skippable_tests_returns_empty(self):
-        tck = _make_tck_with_scripts(("test-a", False), ("test-b", False))
+        tck = _make_tck_with_tests(("test-a", False), ("test-b", False))
         assert tck.skippable_tests() == []
 
     def test_all_skippable_tests_returned(self):
-        tck = _make_tck_with_scripts(("test-a", True), ("test-b", True))
+        tck = _make_tck_with_tests(("test-a", True), ("test-b", True))
         assert sorted(tck.skippable_tests()) == ["test-a.yaml", "test-b.yaml"]
 
     def test_only_skippable_tests_returned(self):
-        tck = _make_tck_with_scripts(("test-a", True), ("test-b", False))
+        tck = _make_tck_with_tests(("test-a", True), ("test-b", False))
         assert tck.skippable_tests() == ["test-a.yaml"]
 
 
@@ -166,18 +164,18 @@ class TestTckSkippableTests:
 
 class TestMakeIntentionallySkippedResult:
     def test_status_is_skipped(self):
-        script = _make_test_script()
-        result = make_intentionally_skipped_result(script)
-        assert result.status == ScriptStatus.SKIPPED
+        test = _make_test()
+        result = make_intentionally_skipped_result(test)
+        assert result.status == TestStatus.SKIPPED
 
     def test_no_error_message(self):
-        script = _make_test_script()
-        result = make_intentionally_skipped_result(script)
+        test = _make_test()
+        result = make_intentionally_skipped_result(test)
         assert result.error is None
 
     def test_execution_list_is_empty(self):
-        script = _make_test_script()
-        result = make_intentionally_skipped_result(script)
+        test = _make_test()
+        result = make_intentionally_skipped_result(test)
         assert result.execution == []
 
 
@@ -192,40 +190,40 @@ class TestBuildTckResult:
 
     def test_all_completed_gives_completed(self):
         results = [
-            _make_script_result("a", ScriptStatus.COMPLETED),
-            _make_script_result("b", ScriptStatus.COMPLETED),
+            _make_test_result("a", TestStatus.COMPLETED),
+            _make_test_result("b", TestStatus.COMPLETED),
         ]
         tck_r = build_tck_result("TCK", results, self._now(), self._now())
-        assert tck_r.status == ScriptStatus.COMPLETED
+        assert tck_r.status == TestStatus.COMPLETED
 
     def test_skipped_plus_completed_gives_completed(self):
         results = [
-            _make_script_result("a", ScriptStatus.COMPLETED),
-            _make_script_result("b", ScriptStatus.SKIPPED),
+            _make_test_result("a", TestStatus.COMPLETED),
+            _make_test_result("b", TestStatus.SKIPPED),
         ]
         tck_r = build_tck_result("TCK", results, self._now(), self._now())
-        assert tck_r.status == ScriptStatus.COMPLETED
+        assert tck_r.status == TestStatus.COMPLETED
 
     def test_all_skipped_gives_completed(self):
-        results = [_make_script_result("a", ScriptStatus.SKIPPED)]
+        results = [_make_test_result("a", TestStatus.SKIPPED)]
         tck_r = build_tck_result("TCK", results, self._now(), self._now())
-        assert tck_r.status == ScriptStatus.COMPLETED
+        assert tck_r.status == TestStatus.COMPLETED
 
-    def test_failed_script_gives_failed(self):
+    def test_failed_test_gives_failed(self):
         results = [
-            _make_script_result("a", ScriptStatus.COMPLETED),
-            _make_script_result("b", ScriptStatus.FAILED),
+            _make_test_result("a", TestStatus.COMPLETED),
+            _make_test_result("b", TestStatus.FAILED),
         ]
         tck_r = build_tck_result("TCK", results, self._now(), self._now())
-        assert tck_r.status == ScriptStatus.FAILED
+        assert tck_r.status == TestStatus.FAILED
 
     def test_skipped_plus_failed_gives_failed(self):
         results = [
-            _make_script_result("a", ScriptStatus.SKIPPED),
-            _make_script_result("b", ScriptStatus.FAILED),
+            _make_test_result("a", TestStatus.SKIPPED),
+            _make_test_result("b", TestStatus.FAILED),
         ]
         tck_r = build_tck_result("TCK", results, self._now(), self._now())
-        assert tck_r.status == ScriptStatus.FAILED
+        assert tck_r.status == TestStatus.FAILED
 
 
 # ---------------------------------------------------------------------------
@@ -240,62 +238,62 @@ class TestValidateAndResolveSkipIds:
         return resolve_skip_ids(tck, runtime_vars)
 
     def test_empty_runtime_vars_returns_empty_frozenset(self):
-        tck = _make_tck_with_scripts(("test-a", True))
+        tck = _make_tck_with_tests(("test-a", True))
         result = self._resolve(tck, {})
         assert result == frozenset()
 
     def test_none_runtime_vars_returns_empty_frozenset(self):
-        tck = _make_tck_with_scripts(("test-a", True))
+        tck = _make_tck_with_tests(("test-a", True))
         result = self._resolve(tck, None)
         assert result == frozenset()
 
     def test_valid_skippable_id_returns_frozenset(self):
-        tck = _make_tck_with_scripts(("test-a", True), ("test-b", False))
+        tck = _make_tck_with_tests(("test-a", True), ("test-b", False))
         result = self._resolve(tck, {"skip_tests": ["test-a.yaml"]})
         assert result == frozenset({"test-a.yaml"})
 
     def test_non_skippable_id_raises_skip_not_allowed(self):
-        tck = _make_tck_with_scripts(("test-a", True), ("test-b", False))
+        tck = _make_tck_with_tests(("test-a", True), ("test-b", False))
         with pytest.raises(SkipNotAllowedError) as exc_info:
             self._resolve(tck, {"skip_tests": ["test-b.yaml"]})
         assert "test-b.yaml" in str(exc_info.value)
 
     def test_unknown_id_raises_skip_not_allowed(self):
-        tck = _make_tck_with_scripts(("test-a", True))
+        tck = _make_tck_with_tests(("test-a", True))
         with pytest.raises(SkipNotAllowedError) as exc_info:
             self._resolve(tck, {"skip_tests": ["does-not-exist.yaml"]})
         assert "does-not-exist.yaml" in str(exc_info.value)
 
     def test_multiple_valid_ids_accepted(self):
-        tck = _make_tck_with_scripts(("test-a", True), ("test-b", True))
+        tck = _make_tck_with_tests(("test-a", True), ("test-b", True))
         result = self._resolve(tck, {"skip_tests": ["test-a.yaml", "test-b.yaml"]})
         assert result == frozenset({"test-a.yaml", "test-b.yaml"})
 
 
 # ---------------------------------------------------------------------------
-# ScriptInspection.skippable
+# TestInspection.skippable
 # ---------------------------------------------------------------------------
 
 
-class TestScriptInspectionSkippable:
+class TestTestInspectionSkippable:
     def test_skippable_false_by_default(self):
-        insp = ScriptInspection(name="test", steps=())
+        insp = TestInspection(name="test", steps=())
         assert insp.skippable is False
 
     def test_skippable_true_is_stored(self):
-        insp = ScriptInspection(name="test", skippable=True, steps=())
+        insp = TestInspection(name="test", skippable=True, steps=())
         assert insp.skippable is True
 
     def test_build_inspection_result_propagates_skippable(self):
-        from tractusx_testlab.scripting._inspection import build_inspection_result
+        from tractusx_testlab.authoring._inspection import build_inspection_result
 
-        tck = _make_tck_with_scripts(("test-a", True), ("test-b", False))
+        tck = _make_tck_with_tests(("test-a", True), ("test-b", False))
         # Provide minimal step lists for the inspection helper
-        for script in tck._scripts:
-            script.definition.setup = []
-            script.definition.execution = []
-            script.definition.teardown = []
+        for test in tck._tests:
+            test.definition.setup = []
+            test.definition.execution = []
+            test.definition.teardown = []
 
         result = build_inspection_result(tck)
-        assert result.scripts[0].skippable is True
-        assert result.scripts[1].skippable is False
+        assert result.tests[0].skippable is True
+        assert result.tests[1].skippable is False

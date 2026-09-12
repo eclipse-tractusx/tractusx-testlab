@@ -336,7 +336,7 @@ class TestSendNotificationStep:
     ) -> None:
         """'content' is the older spelling of 'notification' — in both modes.
 
-        It used to be honoured only on the direct path, so an SDK-mode script
+        It used to be honoured only on the direct path, so an SDK-mode test
         that wrote 'content' sent an empty notification and got a 200 for it.
         """
         mock_notif_cls.return_value = MagicMock(to_data=MagicMock(return_value={}))

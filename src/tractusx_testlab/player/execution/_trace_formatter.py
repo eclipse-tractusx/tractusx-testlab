@@ -29,38 +29,38 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from tractusx_testlab.authoring.test import Test
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.logging.trace import ExecutionTrace
 from tractusx_testlab.models import (
     AssertionSummary,
-    ScriptResult,
-    ScriptStatus,
     TckResult,
+    TestResult,
+    TestStatus,
 )
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
-from tractusx_testlab.scripting.script import TestScript
 
-_NON_FAILING_STATUSES: frozenset[ScriptStatus] = frozenset(
+_NON_FAILING_STATUSES: frozenset[TestStatus] = frozenset(
     {
-        ScriptStatus.COMPLETED,
-        ScriptStatus.SKIPPED,
+        TestStatus.COMPLETED,
+        TestStatus.SKIPPED,
     }
 )
 
 
-def make_intentionally_skipped_result(script: TestScript) -> ScriptResult:
+def make_intentionally_skipped_result(test: Test) -> TestResult:
     """Build a SKIPPED result for a test intentionally omitted by the operator.
 
-    this result uses ``ScriptStatus.SKIPPED`` so the overall TCK result remains
+    this result uses ``TestStatus.SKIPPED`` so the overall TCK result remains
     ``COMPLETED`` when all non-skipped tests pass.
     """
     now = datetime.now(UTC)
-    return ScriptResult(
-        script_name=script.name,
-        dataspace_version=script.dataspace_version,
-        status=ScriptStatus.SKIPPED,
+    return TestResult(
+        test_name=test.name,
+        dataspace_version=test.dataspace_version,
+        status=TestStatus.SKIPPED,
         execution=[],
         started_at=now,
         finished_at=now,
@@ -71,21 +71,21 @@ def make_intentionally_skipped_result(script: TestScript) -> ScriptResult:
 
 def build_tck_result(
     tck_name: str,
-    script_results: list[ScriptResult],
+    test_results: list[TestResult],
     started_at: datetime,
     finished_at: datetime,
 ) -> TckResult:
-    """Aggregate script results into a single TckResult.
+    """Aggregate test results into a single TckResult.
 
-    The overall status is ``COMPLETED`` when every script is either ``COMPLETED``
+    The overall status is ``COMPLETED`` when every test is either ``COMPLETED``
     or ``SKIPPED`` (intentionally omitted by the operator).  Any ``FAILED`` or
-    ``CANCELLED`` script makes the overall result ``FAILED``.
+    ``CANCELLED`` test makes the overall result ``FAILED``.
     """
-    all_ok = all(script.status in _NON_FAILING_STATUSES for script in script_results)
+    all_ok = all(test.status in _NON_FAILING_STATUSES for test in test_results)
     return TckResult(
         tck_id=tck_name,
-        status=ScriptStatus.COMPLETED if all_ok else ScriptStatus.FAILED,
-        scripts=script_results,
+        status=TestStatus.COMPLETED if all_ok else TestStatus.FAILED,
+        tests=test_results,
         started_at=started_at,
         finished_at=finished_at,
     )
@@ -126,7 +126,7 @@ def finalize_job(
         jobs.complete(job.job_id)
         monitor.on_job_completed(job.job_id)
     else:
-        reason = "One or more scripts failed"
+        reason = "One or more tests failed"
         jobs.fail(job.job_id, reason)
         monitor.on_job_failed(job.job_id, error=reason)
     # After the verdict is published: ``tck.end`` is a trace event too.

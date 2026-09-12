@@ -162,7 +162,7 @@ class TestExtractPath:
         through an undocumented snake→camel fallback in ``_dict_get``. Every
         other path in this file — and every path in the shipped TCKs — already
         writes the real key, so the fallback existed for this test alone while
-        making it impossible to say from a script why a path resolved.
+        making it impossible to say from a test why a path resolved.
         """
         result = extract_path(StepOutput(value=SHELL_DESCRIPTOR), "submodelDescriptors")
         assert isinstance(result, list)

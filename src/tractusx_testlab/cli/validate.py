@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""CLI command for YAML test-script validation."""
+"""CLI command for TCK manifest validation."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ from tractusx_testlab.syntax import diagnostics
 
 @app.command()
 def validate(
-    script: Path = typer.Argument(..., help="Path to the YAML test script."),
+    manifest: Path = typer.Argument(..., help="Path to the TCK manifest (index.yaml)."),
     version: str | None = typer.Option(
         None,
         "--version",
@@ -45,23 +45,23 @@ def validate(
         help="Connector version for version-specific validation (e.g. 'saturn').",
     ),
 ) -> None:
-    """Validate a YAML test script without compiling."""
+    """Validate a TCK manifest and its tests without compiling."""
     from tractusx_testlab.compiler.compiler import Compiler
 
     compiler = Compiler()
     try:
-        result = compiler.validate(script, version=version)
+        result = compiler.validate(manifest, version=version)
     except (ValueError, yaml.YAMLError) as exc:
         # A manifest that does not parse is the author's problem to fix, not a
         # crash to report: nothing downstream can run, so it is the only
         # finding there is, and a traceback of our own call stack buries it.
-        message = exc if isinstance(exc, ValueError) else diagnostics.unparseable(exc, script)
+        message = exc if isinstance(exc, ValueError) else diagnostics.unparseable(exc, manifest)
         typer.echo(f"  [ERROR] {message}")
         typer.echo("\nInvalid — 1 error(s)")
         raise typer.Exit(1) from exc
 
     if not result.issues:
-        typer.echo(f"OK — {script.name} is valid (no issues)")
+        typer.echo(f"OK — {manifest.name} is valid (no issues)")
         raise typer.Exit(0)
 
     for issue in result.issues:

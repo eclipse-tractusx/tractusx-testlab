@@ -28,7 +28,7 @@ Steps used to reach for ``requests`` — synchronous — from inside ``async def
 execute``. Each call held the event loop for its whole duration, and that loop
 also runs the in-process callback server. A step waiting on a slow registry
 therefore stopped the SUT's callbacks from being answered: with a step timeout
-of 600 seconds, the server could be unreachable for ten minutes while the script
+of 600 seconds, the server could be unreachable for ten minutes while the test
 sat waiting for a callback that could not arrive.
 
 Two modules already used ``httpx.AsyncClient`` for the same job, so both patterns
@@ -116,7 +116,7 @@ def headers_of(response: httpx.Response) -> dict[str, str]:
     """Return a response's headers with the casing the server actually sent.
 
     ``dict(response.headers)`` lower-cases every name, because httpx's own
-    lookups are case-insensitive and it normalises for them. A script does not
+    lookups are case-insensitive and it normalises for them. A test does not
     get that courtesy: a TCK reading ``response_headers.X-Next-Cursor`` finds
     nothing once the key has become ``x-next-cursor``.
 

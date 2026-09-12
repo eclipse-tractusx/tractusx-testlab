@@ -24,10 +24,10 @@
 
 """Contract tests for ``digital-twin/submodel/upload`` and ``digital-twin/submodel/delete``.
 
-The submodel server is the engine's, not the script's: what these tests hold to
+The submodel server is the engine's, not the test's: what these tests hold to
 is that the steps read it from the engine configuration and refuse to run when
 there is none, rather than taking an address from whoever wrote the test. The
-path under that server is the half a script does decide, so the rest of these
+path under that server is the half a test does decide, so the rest of these
 hold the two apart — what the caller chose, and what the engine was configured
 with — and hold the steps to publishing both. The delete tests hold the pair
 together: what the upload published as ``path`` is what the delete removes.
@@ -157,7 +157,7 @@ async def test_data_with_no_aspect_is_stored_under_the_id_alone(monkeypatch) -> 
 
 
 @pytest.mark.asyncio
-async def test_the_id_the_script_gave_is_the_id_the_data_lands_under(monkeypatch) -> None:
+async def test_the_id_the_test_gave_is_the_id_the_data_lands_under(monkeypatch) -> None:
     _capture_post(monkeypatch)
 
     output = await UploadBackendDataStep().invoke(
@@ -184,7 +184,7 @@ async def test_a_generated_id_comes_back_beside_the_path_not_only_inside_it(
     )
 
     # A descriptor, a lookup or a delete names the submodel by its id; without
-    # this output a script would have to cut the id back out of the URL it is
+    # this output a test would have to cut the id back out of the URL it is
     # buried in — and out from behind an encoded aspect segment at that.
     submodel_id = output.value["submodel_id"]
     assert submodel_id.startswith("urn:uuid:")
@@ -246,7 +246,7 @@ def test_there_is_no_upload_without_a_payload_to_upload() -> None:
     with pytest.raises(ValidationError) as error:
         UploadBackendDataParams(semantic_id=_SEMANTIC_ID)
 
-    # A default payload would let a script upload a placeholder and then assert
+    # A default payload would let a test upload a placeholder and then assert
     # against it — a test that passes without the provider's data ever being
     # named. The data is the point of the upload, so the step asks for it.
     assert "data" in str(error.value)

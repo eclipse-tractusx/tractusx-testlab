@@ -26,7 +26,7 @@ cluster is created and destroyed within the job.
 
 `tests/e2e/connector-dtr-smoke/` is a small TCK, purpose-built as testlab's
 own CI signal (not a published certification TCK). Between them its thirteen
-scripts use every one of the 55 steps in the engine's catalogue
+tests use every one of the 55 steps in the engine's catalogue
 (`docs/specification/reference/steps.md`) and all three validation kinds —
 `validate/assert`, `validate/field` and `validate/schema` — so no step ships
 without having been run once against something real.
@@ -48,18 +48,18 @@ without having been run once against something real.
   the mock server's root (with `proxyPath` on), pulls the mock's path through
   the SUT's data plane, and then reads the data plane's request back with
   `mock/wait/http_request`. The body the consumer receives must be the mock's
-  canned answer and the path the mock saw must be the one the script sent, so
+  canned answer and the path the mock saw must be the one the test sent, so
   the call provably came from the provider's data plane pod and not from the
-  script. A second mock takes a POST: the script's JSON body goes through both
+  test. A second mock takes a POST: the test's JSON body goes through both
   data planes (`proxyMethod`, `proxyBody`) and the wait step checks the payload
   the mock received field by field.
 - `external_callback.yaml` — the wait step, actually waiting. The call in
-  `inbound_call.yaml` is a consequence of the script's own pull and has
-  already arrived when the wait step runs. Here the script tells a stand-in
+  `inbound_call.yaml` is a consequence of the test's own pull and has
+  already arrived when the wait step runs. Here the test tells a stand-in
   SUT in the cluster (`ci/stub_caller.py`, deployed by the workflow behind
   `tck-stub.local`) to call the mock in three seconds, is acknowledged at
   once, and blocks on `mock/wait/http_request`. The call arrives from the
-  stub's pod while the script is blocked, and `elapsed_ms` must show the wait
+  stub's pod while the test is blocked, and `elapsed_ms` must show the wait
   lasted the delay.
 - `catalog_variants.yaml` — the consumer catalogue the two DSP tests leave
   untouched: the unfiltered query, the query filtered by asset id, the
@@ -97,20 +97,21 @@ without having been run once against something real.
   takes no connector, no registry and no operator input, so it runs unchanged
   in any deployment.
 
-The workflow runs the package five ways from one compile, plus a selection the
-manifest does not permit, which must be refused. Pull requests get a reduced
-suite (`connector_negotiation`, `dtr_roundtrip`, `inbound_call`,
-`external_callback`, `engine_toolbox`); everything else runs on pushes: the
-full suite, the registry alone, the three tests where the dataspace calls
-testlab (`inbound_call`, `external_callback`, `notification_roundtrip`), and
-`engine_toolbox.yaml` on its own. The inbound combination also reads the run's
-trace back and fails unless every `tck.test.step.received` event is there, the
-external one shows the wait step blocked for the stub's delay, and both
-notifications arrived with their headers intact and with different sender and
-receiver partners. The engine-only combination is worth its minute because it
-runs against a fully deployed dataspace it never addresses: a step that had
-quietly grown a dependency on a seeded service would pass in the offline suite
-and fail there.
+The workflow runs the full suite, every test, on every event — pull requests
+included. The cluster bring-up is where the job's minutes go and a run takes
+seconds, so nothing is trimmed for a pull request. After the run, a step reads
+the trace back and fails unless every `tck.test.step.received` event is there
+(`inbound_call`, `external_callback`, `notification_roundtrip`,
+`push_transfer`), the external one shows the wait step blocked for the stub's
+delay, and both notifications arrived with their headers intact and with
+different sender and receiver partners. Two subset runs of the same compiled
+package follow — the registry alone, and `engine_toolbox.yaml` alone — plus a
+selection the manifest does not permit, which must be refused. The subsets add
+no coverage; they check that a test needing no connector journey runs without
+one having happened first, and that runtime selection works against a real
+SUT. The engine-only run is worth its seconds because it runs against a fully
+deployed dataspace it never addresses: a step that had quietly grown a
+dependency on a seeded service would pass in the offline suite and fail there.
 
 They bind through the `infrastructure.engine.connector` / `sut.connector` /
 `sut.dtr` / `engine.dtr` capabilities (ADR-0019); `ci/umbrella.vars.yaml`
@@ -188,6 +189,32 @@ never reaches `AGREED` or a DTR call answers 404.
    them into VCs held by the participants. That is an API flow the Umbrella docs
    ship as a Bruno collection for humans; `ci/issue_credentials.py` is the same
    flow, executed non-interactively.
+
+## A runtime that boots but never reports ready
+
+The release converges in under three minutes, every time, except when one of
+its EDC-based runtimes (an IdentityHub, the IssuerService) comes up wedged: the
+JVM logs `57 service extensions started` and `Runtime <id> ready`, every Jetty
+context is bound, and from then on the readiness probe on
+`/api/check/readiness` answers 404 while the liveness probe on the same port
+passes. The container never crashes, so nothing restarts it, and
+`helm install --wait` sits out its full 25-minute budget. Seen twice in forty
+runs, on two different images (`issuerservice-memory:0.3.2` on 2026-09-10,
+`identityhub-memory:0.4.0-SNAPSHOT` on 2026-09-12); the same image and
+configuration boots cleanly outside the cluster, and a fresh boot inside it has
+so far always come up clean.
+
+The deploy watcher runs `ci/restart_wedged_runtimes.py` once every 30 seconds.
+A pod that has been running for two minutes with its runtime logged ready and
+its container still not ready is deleted, and its Deployment brings up a new
+one in about forty seconds; the run gets a warning annotation naming the pod.
+Before deleting, the script fetches the readiness and liveness paths from a
+pod inside the cluster and prints status and body, which is the evidence an
+upstream issue needs and which no probe event carries. A runtime that has not
+logged ready is still booting or has crashed and is left alone, a Helm hook's
+pod is never touched, and each owner is restarted at most twice, so a runtime
+that is broken rather than wedged still ends in the helm timeout and the
+diagnostics artifact.
 
 ## Reproducing locally
 
@@ -283,7 +310,7 @@ it starts failing as a timeout rather than as whatever actually broke.
 Tractus-X registry decides who may see a twin: a twin is shown only to a
 partner named in one of its specific asset IDs, and the `Edc-Bpn` header the
 registry reads that name against is set by the provider's data plane from the
-token, never by the script. Which spelling of the consumer's identity ends up
+token, never by the test. Which spelling of the consumer's identity ends up
 on that header depends on the deployment, so the twin names the consumer under
 both its DID and its BPN and also carries the `PUBLIC_READABLE` wildcard. If
 that test starts coming back with an empty lookup rather than an error, those

@@ -29,6 +29,7 @@ from pathlib import Path
 
 import pytest
 
+from tractusx_testlab.authoring.test import Tck
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.infrastructure.profiles import InfrastructureManager
 from tractusx_testlab.models import Job
@@ -53,7 +54,6 @@ from tractusx_testlab.player.execution.infrastructure_seeder import (
     seed_infrastructure_services,
 )
 from tractusx_testlab.player.execution.player import TestlabPlayer
-from tractusx_testlab.scripting.script import Tck
 from tractusx_testlab.services.instances import ServiceManager
 
 

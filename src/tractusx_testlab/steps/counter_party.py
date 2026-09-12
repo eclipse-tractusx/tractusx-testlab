@@ -26,7 +26,7 @@
 
 Its own module because a counter-party is a topology fact before it is a step
 parameter: the address and the identity come from the SUT connector binding
-unless a script names somebody else, so the mixin has to know about the
+unless a test names somebody else, so the mixin has to know about the
 infrastructure the run was bound to, which the rest of the shared contract
 models do not.
 """
@@ -61,7 +61,7 @@ class CounterPartyParams(StepParams):
     resolve, so a TCK that also declared them as ``env`` variables was asking
     for the same two values twice and letting them disagree.
 
-    A script states them only when it addresses somebody the binding does not
+    A test states them only when it addresses somebody the binding does not
     describe — a second provider, or an endpoint a discovery step resolved.
     """
 
@@ -81,7 +81,7 @@ class CounterPartyParams(StepParams):
     )
 
     def counter_party(self, context: StepContext) -> CounterParty:
-        """The counter-party this step addresses, script first, binding second."""
+        """The counter-party this step addresses, test first, binding second."""
         sut = context.infrastructure.sut.connector
         return CounterParty(
             address=self.counter_party_address or sut.dsp_url,

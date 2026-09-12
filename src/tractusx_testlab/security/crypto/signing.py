@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Ed25519 signing and verification for compiled test packages."""
+"""Ed25519 signing and verification for compiled TCK packages."""
 
 from __future__ import annotations
 

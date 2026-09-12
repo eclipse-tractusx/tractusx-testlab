@@ -30,24 +30,24 @@ box, one row per step with a ``✓`` / ``✗`` / ``-`` icon, a RESULT column and
 TIME column, and the verdict with its tally in the footer. A person who runs
 both tools sees one report. Colour is added on top — green for a pass, red for
 a failure, yellow for a skip — and stripped by ``typer.echo`` when stdout is
-not a terminal, so a transcript or a CI log keeps the words.
+not a terminal, so a transcript or a CI log keeps the words. ``FORCE_COLOR``
+keeps the colour where there is no terminal but the reader renders escape
+codes anyway (a GitHub Actions log); ``NO_COLOR`` drops it everywhere.
 
-One table per script, each followed by the failures it had and its assertion
-notes, then a closing table with one row per script and the run's verdict.
+One table per test, each followed by the failures it had and its assertion
+notes, then a closing table with one row per test and the run's verdict. The
+frame itself is drawn by :mod:`_result_box`; this module decides what goes in
+it.
 """
 
 from __future__ import annotations
 
+import os
+
 import typer
 
-from tractusx_testlab.models.primitives.enums import ScriptStatus, StepStatus
-
-#: The SDK summary box is 80 columns; the same here.
-_WIDTH = 80
-_COL_NAME = 45
-_COL_RESULT = 6
-_COL_TIME = 8
-_INNER = _WIDTH - 2
+from tractusx_testlab.cli._result_box import NAME_WIDTH, Row, Table, box
+from tractusx_testlab.models.primitives.enums import StepStatus, TestStatus
 
 #: How each outcome is drawn: icon, the word in the RESULT column, its colour.
 _STEP_LOOK: dict[StepStatus, tuple[str, str, str]] = {
@@ -55,22 +55,39 @@ _STEP_LOOK: dict[StepStatus, tuple[str, str, str]] = {
     StepStatus.FAILED: ("✗", "FAIL", "red"),
     StepStatus.SKIPPED: ("-", "SKIP", "yellow"),
 }
-_SCRIPT_LOOK: dict[ScriptStatus, tuple[str, str, str]] = {
-    ScriptStatus.COMPLETED: ("✓", "PASS", "green"),
-    ScriptStatus.FAILED: ("✗", "FAIL", "red"),
-    ScriptStatus.SKIPPED: ("-", "SKIP", "yellow"),
-    ScriptStatus.CANCELLED: ("✗", "CANCEL", "red"),
+_TEST_LOOK: dict[TestStatus, tuple[str, str, str]] = {
+    TestStatus.COMPLETED: ("✓", "PASS", "green"),
+    TestStatus.FAILED: ("✗", "FAIL", "red"),
+    TestStatus.SKIPPED: ("-", "SKIP", "yellow"),
+    TestStatus.CANCELLED: ("✗", "CANCEL", "red"),
 }
-#: A step or script that ended in a state the table has no row style for
+#: A step or test that ended in a state the table has no row style for
 #: (still PENDING because the run was cut short, say) is drawn as what it is.
 _UNKNOWN_LOOK = ("?", "", "white")
 
 
 def print_run_results(result) -> None:
-    """Print one result table per script, the run summary, and exit accordingly."""
+    """Print one result table per test, the run summary, and exit accordingly."""
+    colour = _colour_wanted()
     for line in render_run_results(result):
-        typer.echo(line)
-    raise typer.Exit(0 if result.status == ScriptStatus.COMPLETED else 1)
+        typer.echo(line, color=colour)
+    raise typer.Exit(0 if result.status == TestStatus.COMPLETED else 1)
+
+
+def _colour_wanted() -> bool | None:
+    """Whether the report keeps its colour: the two conventions, else the terminal.
+
+    ``typer.echo`` strips colour when stdout is not a terminal, which is right
+    for a pipe and wrong for a CI runner: GitHub Actions has no terminal but
+    its log viewer renders the escape codes. ``FORCE_COLOR`` (anything but
+    empty or ``0``) keeps the colour there; ``NO_COLOR`` drops it anywhere and
+    wins when both are set. Unset, ``None`` leaves the decision to ``typer``.
+    """
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR", "0") != "0":
+        return True
+    return None
 
 
 def render_run_results(result) -> list[str]:
@@ -79,46 +96,50 @@ def render_run_results(result) -> list[str]:
     Kept apart from printing so a test can check the layout and the colouring
     without capturing a terminal: ``typer.unstyle`` on a line gives the text.
     """
+    tables = [*(_test_table(test) for test in result.tests), _run_table(result)]
+    # One width for the whole report, so the boxes line up under each other:
+    # the SDK's, or as wide as the longest name in any of them needs.
+    name_width = max([NAME_WIDTH, *(len(row.name) for table in tables for row in table.rows)])
     lines: list[str] = []
-    for script in result.scripts:
-        lines += _script_table(script)
-        lines += _script_failures(script)
-        lines += _assertion_notes(script)
-    lines += _run_table(result)
+    for table, test in zip(tables, [*result.tests, None], strict=True):
+        lines += box(table, name_width)
+        if test is not None:
+            lines += _test_failures(test)
+            lines += _assertion_notes(test)
     lines.append("")
     return lines
 
 
-def _script_table(script) -> list[str]:
-    """One box per script: its steps in execution order, its verdict below."""
-    rows = [
-        _row(*_look(_STEP_LOOK, step.status), step.step_name or step.step_type, step.duration_s)
-        for step in script.execution
-    ]
-    verdict = _verdict(
-        _look(_SCRIPT_LOOK, script.status),
-        [step.status for step in script.execution],
-        script.total_duration_s,
+def _test_table(test) -> Table:
+    """One box per test: its steps in execution order, its verdict below."""
+    return Table(
+        title=f"Test: {test.test_name or test.test_id}",
+        first_column="STEP",
+        rows=[
+            Row(*_look(_STEP_LOOK, step.status), step.step_name or step.step_type, step.duration_s)
+            for step in test.execution
+        ],
+        verdict=_look(_TEST_LOOK, test.status),
+        duration_s=test.total_duration_s,
     )
-    return _box(f"Test: {script.script_name or script.script_id}", "STEP", rows, verdict)
 
 
-def _run_table(result) -> list[str]:
-    """The closing box: one row per script, the run's verdict and step tally."""
-    rows = [
-        _row(
-            *_look(_SCRIPT_LOOK, script.status),
-            script.script_name or script.script_id,
-            script.total_duration_s,
-        )
-        for script in result.scripts
-    ]
-    verdict = _verdict(
-        _look(_SCRIPT_LOOK, result.status),
-        [step.status for script in result.scripts for step in script.execution],
-        result.duration_ms / 1000 if result.duration_ms else None,
+def _run_table(result) -> Table:
+    """The closing box: one row per test, the run's verdict and test tally."""
+    return Table(
+        title="TCK RUN SUMMARY",
+        first_column="TEST",
+        rows=[
+            Row(
+                *_look(_TEST_LOOK, test.status),
+                test.test_name or test.test_id,
+                test.total_duration_s,
+            )
+            for test in result.tests
+        ],
+        verdict=_look(_TEST_LOOK, result.status),
+        duration_s=result.duration_ms / 1000 if result.duration_ms else None,
     )
-    return _box("TCK RUN SUMMARY", "TEST", rows, verdict)
 
 
 def _look(table: dict, status) -> tuple[str, str, str]:
@@ -126,73 +147,10 @@ def _look(table: dict, status) -> tuple[str, str, str]:
     return icon, label or str(getattr(status, "value", status)), colour
 
 
-def _box(title: str, first_column: str, rows: list[str], verdict: str) -> list[str]:
-    """Frame *rows* the way the SDK's ``print_summary`` frames its steps."""
-    header = f"  {first_column:<{_COL_NAME}} {'RESULT':>{_COL_RESULT}}  {'TIME':>{_COL_TIME}}"
-    return [
-        "",
-        "╔" + "=" * _INNER + "╗",
-        "║" + f"  {title}".center(_INNER) + "║",
-        "╠" + "=" * _INNER + "╣",
-        "║" + header.ljust(_INNER) + "║",
-        "║" + ("  " + "-" * (_WIDTH - 6)).ljust(_INNER) + "║",
-        *rows,
-        "╠" + "=" * _INNER + "╣",
-        verdict,
-        "╚" + "=" * _INNER + "╝",
-    ]
-
-
-def _row(icon: str, label: str, colour: str, name: str, duration_s: float | None) -> str:
-    """One table row: coloured icon and RESULT word, plain name and time.
-
-    The padding is measured on the uncoloured text — the escape codes take no
-    columns, and measuring them would leave every coloured row short of the
-    right border.
-    """
-    name = _fit(name, _COL_NAME - 2)
-    time = f"{duration_s:.1f}s" if duration_s is not None else "-"
-    plain = f"  {icon} {name:<{_COL_NAME - 2}} {label:>{_COL_RESULT}}  {time:>{_COL_TIME}}"
-    styled = (
-        "  "
-        + typer.style(icon, fg=colour)
-        + f" {name:<{_COL_NAME - 2}} "
-        + typer.style(f"{label:>{_COL_RESULT}}", fg=colour)
-        + f"  {time:>{_COL_TIME}}"
-    )
-    return "║" + styled + " " * max(0, _INNER - len(plain)) + "║"
-
-
-def _verdict(look, step_statuses: list[StepStatus], duration_s: float | None) -> str:
-    """The footer line: ``RESULT: <word>``, the step tally, and the total time.
-
-    The tally counts steps by outcome rather than subtracting passed from
-    total, which is what the old summary line did — and which reported a
-    skipped step as a failed one.
-    """
-    _, label, colour = look
-    counts = {word: 0 for word in ("PASS", "FAIL", "SKIP")}
-    for status in step_statuses:
-        word = _STEP_LOOK.get(status, _UNKNOWN_LOOK)[1]
-        if word in counts:
-            counts[word] += 1
-    tally = f"{counts['PASS']} passed  {counts['FAIL']} failed  {counts['SKIP']} skipped"
-    total = f"Total: {duration_s:.1f}s" if duration_s is not None else "Total: -"
-    plain = f"  RESULT: {label}  |  {tally}  |  {total}"
-    styled = (
-        "  " + typer.style(f"RESULT: {label}", fg=colour, bold=True) + f"  |  {tally}  |  {total}"
-    )
-    return "║" + styled + " " * max(0, _INNER - len(plain)) + "║"
-
-
-def _fit(text: str, width: int) -> str:
-    return text if len(text) <= width else text[: width - 1] + "…"
-
-
-def _script_failures(script) -> list[str]:
+def _test_failures(test) -> list[str]:
     """What went wrong, listed under the table so the table stays one row a step."""
     lines: list[str] = []
-    for step in script.execution:
+    for step in test.execution:
         failed_checks = [check for check in step.assertions if not check.passed]
         if not step.error and not failed_checks:
             continue
@@ -204,12 +162,12 @@ def _script_failures(script) -> list[str]:
     return lines
 
 
-def _assertion_notes(script) -> list[str]:
-    if not script.execution:
-        # A script that never ran (skipped by the operator) checked nothing by
+def _assertion_notes(test) -> list[str]:
+    if not test.execution:
+        # A test that never ran (skipped by the operator) checked nothing by
         # design; saying so would read as a finding.
         return []
-    s = script.assertion_summary
+    s = test.assertion_summary
     lines = [
         "",
         f"  Assertions: {s.total} total, {s.passed} passed, "
@@ -218,11 +176,11 @@ def _assertion_notes(script) -> list[str]:
     if s.unevaluated:
         lines.append(
             f"  WARNING: {s.unevaluated} declared assertion(s) were never "
-            "evaluated — this result describes less than the script asked for."
+            "evaluated — this result describes less than the test asked for."
         )
     elif s.verified_nothing:
         lines.append(
-            "  NOTE: this script evaluated no assertions. It exercised the "
+            "  NOTE: this test evaluated no assertions. It exercised the "
             "steps but verified nothing about the system under test."
         )
     return lines
@@ -238,7 +196,7 @@ def _error_lines(error: str) -> list[str]:
     """A step's failure, keeping an explanation that runs to several lines.
 
     A message is not always a sentence. A failure that compared two documents —
-    the offers a provider made against the policy a script expects — says which
+    the offers a provider made against the policy a test expects — says which
     offers and which constraints, one per line, and printing that after a
     ``Error:`` label left every line but the first hanging at column zero,
     reading as unrelated output. The continuation is indented under the label

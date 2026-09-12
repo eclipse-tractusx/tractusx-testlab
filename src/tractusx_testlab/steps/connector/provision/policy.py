@@ -33,8 +33,8 @@ from typing import TYPE_CHECKING, Any
 from pydantic import Field, field_validator
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.connector.policies import as_odrl_policy
 from tractusx_testlab.steps.connector.provision._shared import (
     _config_object,
@@ -119,7 +119,7 @@ def _register_policy(
     policy as JSON-LD: a rule whose conditions sit under ``constraints`` rather
     than ``constraint`` carries no constraint the connector can see, and it
     answers "policy must contain at least one permission" about a policy the
-    script plainly wrote one into. One variable is registered here and matched
+    test plainly wrote one into. One variable is registered here and matched
     there, so both sides have to read the same two spellings.
     """
     provider = context.dataspace.provider()

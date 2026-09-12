@@ -26,7 +26,7 @@
 
 Backward compatible: legacy flat ``name: value`` and ``{type, default}`` forms
 are preserved, while the new ``uses/with/returns`` verb form is parsed
-additively. Used by both the scripting builder and the player loader so the two
+additively. Used by both the authoring builder and the player loader so the two
 code paths never drift.
 """
 

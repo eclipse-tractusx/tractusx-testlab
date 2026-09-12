@@ -30,8 +30,8 @@ from pathlib import Path
 
 import yaml
 
-from tractusx_testlab.compiler.validation.validator import ScriptValidator, ValidationResult
-from tractusx_testlab.scripting.parser import YamlParser
+from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.compiler.validation.validator import TestValidator, ValidationResult
 
 
 class Compiler:
@@ -44,21 +44,21 @@ class Compiler:
     __slots__ = ("_parser", "_validator")
 
     def __init__(self) -> None:
-        self._validator = ScriptValidator()
+        self._validator = TestValidator()
         self._parser = YamlParser()
 
-    def validate(self, script_path: Path, version: str | None = None) -> ValidationResult:
+    def validate(self, manifest_path: Path, version: str | None = None) -> ValidationResult:
         """Validate a YAML tck and its tests without compiling."""
         from tractusx_testlab.compiler.validation._manifest_validation import validate_tck_manifest
 
-        definition = self._parser.parse_tck(script_path)
+        definition = self._parser.parse_tck(manifest_path)
         # Validate restrictions and rules of tck and test files
-        result = self._validator.validate_tck(definition, script_path.parent, version=version)
+        result = self._validator.validate_tck(definition, manifest_path.parent, version=version)
 
         # Validate the tck and test files against JSON schemas
         try:
-            manifest_data = yaml.safe_load(script_path.read_text(encoding="utf-8"))
-            validate_tck_manifest(manifest_data, script_path.parent)
+            manifest_data = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+            validate_tck_manifest(manifest_data, manifest_path.parent)
         except ValueError as exc:
             for message in _new_findings(str(exc), result):
                 result.add_error(message)

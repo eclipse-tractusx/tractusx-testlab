@@ -24,9 +24,9 @@
 
 """What a step promises to publish, and whether a path names one of those things.
 
-Two places ask that question — a script's ``returns:`` and an assertion's
+Two places ask that question — a test's ``returns:`` and an assertion's
 ``input:`` — and both must answer it the way :mod:`~.extraction` will resolve
-the name at run time, or a legitimate script is refused for naming something
+the name at run time, or a legitimate test is refused for naming something
 that would have worked.
 """
 
@@ -78,7 +78,7 @@ def _root_annotation(model: Any) -> Any:
 
 
 def _may_carry_named_keys(annotation: Any) -> bool:
-    """Whether a value of *annotation* can hold keys a script could name."""
+    """Whether a value of *annotation* can hold keys a test could name."""
     if annotation is Any:
         return True
     origin = get_origin(annotation)

@@ -170,7 +170,7 @@ class ConnectorBinding(CapabilityBinding):
         default="",
         description=(
             "Optional service name this connector is additionally registered under, "
-            "so a script naming it explicitly resolves to the same deployment."
+            "so a test naming it explicitly resolves to the same deployment."
         ),
     )
 
@@ -239,7 +239,7 @@ class EngineDtrBinding(DtrBinding):
         description=(
             "Root URL submodel payloads are stored under, and the address the "
             "engine's registry entries point at. The engine addresses submodels "
-            "beneath it; a script never names a server of its own."
+            "beneath it; a test never names a server of its own."
         ),
         json_schema_extra=OPERATOR_SUPPLIED,
     )

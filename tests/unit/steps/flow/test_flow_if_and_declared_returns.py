@@ -31,10 +31,10 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
+from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.models import HttpResponse, StepDefinition
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.player.execution._step_outputs import store_step_outputs
-from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps._checks.extraction import declared_names, extract_path
 from tractusx_testlab.steps.assertions import apply_operator
 from tractusx_testlab.steps.flow.conditional import IfStep
@@ -90,7 +90,7 @@ class TestIfStep:
     async def test_a_false_condition_with_no_else_does_nothing(
         self, mock_context: MagicMock
     ) -> None:
-        """'none' is a result a script can assert on; silence is not."""
+        """'none' is a result a test can assert on; silence is not."""
         output = await IfStep().invoke(
             {
                 "conditions": [{"input": "pull", "operator": "equals", "value": "push"}],
@@ -117,7 +117,7 @@ class TestIfStep:
 
     @pytest.mark.asyncio
     async def test_a_branch_with_no_steps_is_rejected(self, mock_context: MagicMock) -> None:
-        """An 'if' whose 'then' does nothing is a script mistake, not a no-op."""
+        """An 'if' whose 'then' does nothing is a test mistake, not a no-op."""
         with pytest.raises(ValueError, match="then"):
             await IfStep().invoke(
                 {"conditions": [{"input": "x"}], "then": []}, mock_context, _definition()
@@ -173,8 +173,8 @@ class TestIfStep:
         )
         assert output.value["branch_taken"] == "then"
 
-    def test_the_else_branch_is_spelled_else_in_a_script(self) -> None:
-        """``else`` is a Python keyword; the script keyword is what matters."""
+    def test_the_else_branch_is_spelled_else_in_a_test(self) -> None:
+        """``else`` is a Python keyword; the test keyword is what matters."""
         params = IfStep.params_model.model_validate(
             {
                 "conditions": [{"input": "x"}],
@@ -185,7 +185,7 @@ class TestIfStep:
         assert len(params.otherwise) == 1
 
     def test_the_python_attribute_name_is_not_a_second_spelling(self) -> None:
-        """``otherwise:`` in a script would be ``else:`` under another name."""
+        """``otherwise:`` in a test would be ``else:`` under another name."""
         with pytest.raises(ValidationError, match="otherwise"):
             IfStep.params_model.model_validate(
                 {
@@ -211,7 +211,7 @@ class TestDeclaredNames:
         assert "transfer_id" in names
 
     def test_the_universal_slots_stay_readable(self) -> None:
-        """Every step reports a request and a response; scripts assert on them."""
+        """Every step reports a request and a response; tests assert on them."""
         names = declared_names(StepRegistry.get("http/http_request", ""))
         assert {"status_code", "response_body", "response_headers"} <= names
 

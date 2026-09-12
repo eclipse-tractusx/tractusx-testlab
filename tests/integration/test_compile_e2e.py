@@ -34,9 +34,9 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from tests.paths import FIXTURES_DIR, SRC_DIR
+from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.authoring.test import Tck
 from tractusx_testlab.models.authoring.definitions import TckDefinition
-from tractusx_testlab.scripting.parser import YamlParser
-from tractusx_testlab.scripting.script import Tck
 
 _SRC_DIR = str(SRC_DIR)
 
@@ -89,15 +89,15 @@ class TestTckParseCompilePipeline:
         assert entry.id == "ping_http.yaml"
         assert entry.name == "Make a ping"
 
-    def test_tck_scripts_empty_for_path_based_tck(
+    def test_tck_tests_empty_for_path_based_tck(
         self,
         simple_tck_data: dict,
     ) -> None:
-        """Tck wrapper has no pre-loaded scripts when tests are path-based."""
+        """Tck wrapper has no pre-loaded tests when tests are path-based."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)
         tck = Tck(definition)
 
-        assert tck.scripts == []
+        assert tck.tests == []
 
     def test_parse_tck_from_file(self) -> None:
         """YamlParser.parse_tck loads from a file path directly."""
@@ -109,7 +109,7 @@ class TestTckParseCompilePipeline:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# HTTP endpoint integration: POST /testlab/test-execution/run
+# HTTP endpoint integration: POST /testlab/tck-execution/run
 # ──────────────────────────────────────────────────────────────────────
 
 
@@ -161,7 +161,7 @@ class TestRunYamlEndpointE2E:
     ) -> None:
         """Submitting a valid TCK YAML returns 202 with a job_id — no 422 error."""
         response = await async_client.post(
-            "/testlab/test-execution/run",
+            "/testlab/tck-execution/run",
             content=simple_tck_yaml.encode(),
         )
 
@@ -183,9 +183,9 @@ class TestRunYamlEndpointE2E:
         mock_player: MagicMock,
         simple_tck_yaml: str,
     ) -> None:
-        """The endpoint fires player.run_tck with a Tck object containing scripts."""
+        """The endpoint fires player.run_tck with a Tck object containing tests."""
         await async_client.post(
-            "/testlab/test-execution/run",
+            "/testlab/tck-execution/run",
             content=simple_tck_yaml.encode(),
         )
 
@@ -195,7 +195,7 @@ class TestRunYamlEndpointE2E:
         mock_player.run_tck.assert_called_once()
         tck_arg = mock_player.run_tck.call_args[0][0]
         assert isinstance(tck_arg, Tck)
-        assert tck_arg.scripts, "Tck passed to player must have scripts"
+        assert tck_arg.tests, "Tck passed to player must have tests"
 
     @pytest.mark.asyncio
     @pytest.mark.xfail(
@@ -218,7 +218,7 @@ class TestRunYamlEndpointE2E:
         )
 
         response = await async_client.post(
-            "/testlab/test-execution/run",
+            "/testlab/tck-execution/run",
             content=single_test_yaml.encode(),
         )
 

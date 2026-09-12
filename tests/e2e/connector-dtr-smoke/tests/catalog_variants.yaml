@@ -36,9 +36,9 @@ metadata:
     dsp_step_by_step.yaml drives it the other, and between them they leave
     most of the consumer catalogue untouched: the unfiltered catalog query,
     the query that filters by asset id, the one-shot `do_dsp`, and the pull
-    that will only accept an offer made under a policy the script names. Each
+    that will only accept an offer made under a policy the test names. Each
     of those is a different code path into the same live provider, and a
-    script picks between them, so each is exercised here against offers this
+    test picks between them, so each is exercised here against offers this
     test provisions itself. The provider side is provisioned twice over as
     well — once from a whole asset and policy document, once field by field
     through the wizard steps — because the two forms are meant to register
@@ -167,7 +167,7 @@ execution:
         with: { input: datasets, operator: length_gt, value: 1 }
 
   # The same catalog, narrowed to one asset by the connector rather than by
-  # the script. What it publishes is the offer itself — the asset id and the
+  # the test. What it publishes is the offer itself — the asset id and the
   # policy it is offered under — which is what a negotiation has to be given.
   - id: catalog_by_asset
     uses: connector/consumer/query_catalog_by_asset_id
@@ -194,7 +194,7 @@ execution:
   # The offer document, reached by path rather than by the step that extracts
   # it. `extract_dataset` selects by `dct:type` and is covered in
   # dsp_step_by_step.yaml; this reads the same list positionally, which is
-  # what a script does when it already knows the catalog holds one answer.
+  # what a test does when it already knows the catalog holds one answer.
   - id: first_offer
     uses: util/validate_path
     name: Read the single offer out of the filtered catalog
@@ -211,7 +211,7 @@ execution:
   # Catalog, negotiation and transfer as one call. `pull_data_filtered` does
   # the same journey and reports every stage of it; this one reports only the
   # two things a data-plane call needs, which is the whole difference between
-  # them and the reason a script would choose it.
+  # them and the reason a test would choose it.
   - id: one_shot_flow
     uses: connector/consumer/do_dsp
     name: Run the whole DSP flow in a single step

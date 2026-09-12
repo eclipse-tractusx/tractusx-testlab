@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import pytest
 
-from tractusx_testlab.scripting.registry import StepRegistry
+from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.steps.shared_models import NoOutput
 from tractusx_testlab.steps.step_contract import (
     BaseStep,
@@ -80,10 +80,10 @@ class TestDeclaredSteps:
 
     @pytest.mark.parametrize("step_type", _ALL_STEP_TYPES)
     def test_step_rejects_a_with_key_it_did_not_declare(self, step_type: str) -> None:
-        """C47 — an undeclared ``with:`` key is a script mistake, not a no-op.
+        """C47 — an undeclared ``with:`` key is a test mistake, not a no-op.
 
         A step that loosened this back to ``extra="allow"`` would silently drop
-        the key, and the script would read as if it had configured something it
+        the key, and the test would read as if it had configured something it
         never configured.
         """
         assert _step_class(step_type).params_model.model_config["extra"] == "forbid"

@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""The DSP protocol version a request is made under, when a script picks one.
+"""The DSP protocol version a request is made under, when a test picks one.
 
 Which protocol a connector speaks follows from its dataspace release: a Saturn
 connector speaks ``dataspace-protocol-http:2025-1`` and a Jupiter one speaks

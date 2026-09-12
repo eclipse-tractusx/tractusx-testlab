@@ -68,7 +68,7 @@ PROVIDER_POLICY: dict[str, Any] = {
     ],
 }
 
-#: What the script expected: the same policy without ``Membership``.
+#: What the test expected: the same policy without ``Membership``.
 EXPECTED_POLICY: dict[str, Any] = {
     "permission": [
         {
@@ -222,7 +222,7 @@ class TestComparingOffers:
         assert [str(item) for item in comparison.expected_not_offered] == ["Dismantler eq active"]
 
     def test_an_offer_is_measured_against_the_expectation_it_is_closest_to(self) -> None:
-        """A script naming alternatives asks which one the provider came nearest to."""
+        """A test naming alternatives asks which one the provider came nearest to."""
         far = {
             "permission": {
                 "constraint": {"leftOperand": "A", "operator": "eq", "rightOperand": "1"}
@@ -303,7 +303,7 @@ class TestAgainstTheSdk:
         """The explanation is only ever of a match the SDK itself refused.
 
         Guards the seam: if the SDK ever accepted an offer with a constraint the
-        script did not ask for, this module would be explaining a failure that
+        test did not ask for, this module would be explaining a failure that
         no longer happens.
         """
         with pytest.raises(SdkPolicyMismatchError) as raised:

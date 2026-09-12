@@ -30,8 +30,8 @@ import pytest
 from pydantic import BaseModel, Field
 
 from tests.paths import DOCS_DIR
-from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.scripting.step_docs import (
+from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.authoring.step_docs import (
     accepted_names,
     default_repr,
     nested_models,

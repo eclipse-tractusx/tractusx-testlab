@@ -46,8 +46,8 @@ class StepParams(BaseModel):
     """Declared input contract of a step — one field per accepted ``with:`` key.
 
     Unknown keys are rejected.  A ``with:`` key the step does not declare is a
-    mistake in the script — a typo, or a name from a revision that no longer
-    exists — and silently dropping it is how a script comes to look like it
+    mistake in the test — a typo, or a name from a revision that no longer
+    exists — and silently dropping it is how a test comes to look like it
     configured something it never configured.  Rejecting it surfaces the
     mistake at validation time, where the author can still see it.
 
@@ -63,7 +63,7 @@ class StepPayload(BaseModel):
 
     Assertions and ``returns:`` navigate the output by dot-path, so every field
     declared here is part of the step's public surface: renaming one breaks the
-    scripts that read it.
+    tests that read it.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -93,7 +93,7 @@ class StepValue[RootT](RootModel[RootT]):
 
     ``util/base64`` returns a string and ``util/json_path_extract`` returns
     whatever the path pointed at.  Wrapping those in an object to satisfy
-    :class:`StepPayload` would change the shape every existing script reads, so
+    :class:`StepPayload` would change the shape every existing test reads, so
     they declare the type of the bare value instead::
 
         class Base64Output(StepValue[str]):
@@ -108,7 +108,7 @@ class StepContract(BaseModel):
     """Machine-readable description of a step's declared interface.
 
     Produced by :meth:`BaseStep.describe` for documentation generation and
-    script validation.  Both schemas are always present, because every step
+    test validation.  Both schemas are always present, because every step
     declares its inputs and its output.
     """
 
@@ -148,7 +148,7 @@ class BaseStep[ParamsT, PayloadT](ABC):
     """Abstract base class for all testlab steps.
 
     Subclasses implement ``execute`` and are registered via the ``@step``
-    decorator from ``scripting.registry``.
+    decorator from ``authoring.registry``.
 
     A step declares its interface by parameterising the base class and pointing
     the two model attributes at the declaring models::
@@ -312,7 +312,7 @@ class BaseStep[ParamsT, PayloadT](ABC):
         )
 
     async def cleanup(self, context: StepContext) -> None:  # noqa: B027
-        """Release anything this step holds, after its script finishes.
+        """Release anything this step holds, after its test finishes.
 
         Deliberately concrete and empty rather than abstract: most steps have
         nothing to release, and making every one of them write an empty override
@@ -353,7 +353,7 @@ def _dump_payload(payload: StepPayload | StepValue) -> Any:
     """
     if isinstance(payload, StepValue):
         # A bare value has no fields to filter, and its content is already the
-        # plain data a script reads — dumping it in JSON mode would coerce
+        # plain data a test reads — dumping it in JSON mode would coerce
         # whatever a provider sent.
         return payload.root
     return payload.model_dump(mode="json", by_alias=True, exclude_unset=True)

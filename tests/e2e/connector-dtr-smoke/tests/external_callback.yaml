@@ -34,13 +34,13 @@ metadata:
   description: >
     The wait step, waiting. inbound_call.yaml proves a real connector can
     reach testlab's mock server, but there the call is a consequence of the
-    script's own pull and has already arrived when the wait step runs. Here
+    test's own pull and has already arrived when the wait step runs. Here
     the caller is a stand-in system under test in the cluster
-    (ci/stub_caller.py): the script hands it the mock's address and a delay,
+    (ci/stub_caller.py): the test hands it the mock's address and a delay,
     is acknowledged at once, and then blocks on `mock/wait/http_request`
     with nothing else to do. The call arrives seconds later, from another
-    process, while the script is blocked — which is the situation the step
-    exists for, and the one no sequential script can produce on its own.
+    process, while the test is blocked — which is the situation the step
+    exists for, and the one no sequential test can produce on its own.
 
 setup:
   - id: open_callback
@@ -75,7 +75,7 @@ execution:
         delay_s: 3
         body:
           from: stub-sut
-          message: called back while the script was waiting
+          message: called back while the test was waiting
     returns:
       status_code:
         type: integer

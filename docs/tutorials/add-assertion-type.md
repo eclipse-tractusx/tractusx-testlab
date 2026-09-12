@@ -23,7 +23,7 @@
 
 # How to Add a New Assertion Type
 
-Assertions are steps. The three `validate/*` steps carry every assertion a script can write:
+Assertions are steps. The three `validate/*` steps carry every assertion a test can write:
 
 - `validate/assert` — apply an operator to a value
 - `validate/field` — apply an operator to a field at a dot-separated path inside a value

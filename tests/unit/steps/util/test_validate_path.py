@@ -28,9 +28,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps.util.validate_path import ValidatePathStep
 
 

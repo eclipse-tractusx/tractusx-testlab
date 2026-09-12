@@ -31,13 +31,13 @@ from urllib.parse import quote
 
 from pydantic import Field, field_validator
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import (
     HttpRequest,
     HttpResponse,
     StepConfigError,
     StepDefinition,
 )
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client
 from tractusx_testlab.steps.shared_models import DeletionOutput, HttpTransportParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
@@ -77,7 +77,7 @@ def _submodel_server(context: StepContext, definition: StepDefinition) -> str:
     """The submodel server the engine was bound to, without its trailing slash.
 
     An engine without one cannot run these steps, and says so rather than
-    addressing a server the script would have had to name itself.
+    addressing a server the test would have had to name itself.
     """
     backend_base_url = (context.infrastructure.engine.dtr.submodel_base_url or "").strip()
     if not backend_base_url:
@@ -117,9 +117,9 @@ class UploadBackendDataParams(HttpTransportParams):
     Only the transport half of an HTTP call: the step always POSTs, so a
     ``method`` input would be a knob that does nothing, and the submodel server
     is the one the engine is bound to (``engine.dtr.submodel_base_url``) rather than
-    one a script picks — a test that could send the data anywhere would be
+    one a test picks — a test that could send the data anywhere would be
     testing the address it was given rather than the provider's own backend.
-    What a script decides is which submodel it is writing, not where: the
+    What a test decides is which submodel it is writing, not where: the
     aspect and the id, which are what the address under that server is built
     from.
     """
@@ -236,7 +236,7 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
     """Upload sample data to the engine's submodel server, under its aspect and its id.
 
     The address is the Industry Core one — ``<server>/<encoded semantic_id>/<submodel_id>``,
-    and ``<server>/<submodel_id>`` when the payload names no aspect. A script
+    and ``<server>/<submodel_id>`` when the payload names no aspect. A test
     that gives no ``submodel_id`` gets a fresh ``urn:uuid:<uuid4>`` — exactly
     like the TCK does — so repeated runs never collide. One that gives an id
     decides where the data lands, which is what a submodel descriptor written

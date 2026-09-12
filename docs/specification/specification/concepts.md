@@ -28,7 +28,7 @@ graph LR
     subgraph Testlab
         A["Authoring<br/><i>YAML Tests</i>"]
         B["Compiler<br/><i>Validate · Resolve · Stamp</i>"]
-        C["Package<br/><i>.tck (ZIP)</i><br/><i>manifest + scripts + assets</i>"]
+        C["Package<br/><i>.tck (ZIP)</i><br/><i>manifest + tests + assets</i>"]
         D[\"Player<br/><i>Load · Execute · Monitor · Assert · Log<br/>Job lifecycle · Wait/Resume</i>\"]
         E["Server<br/><i>Package upload · Execution API<br/>Callback endpoints<br/>Dynamic API routes</i>"]
 
@@ -155,7 +155,7 @@ sequenceDiagram
 
 Every step is a **typed executor** registered in the Step Registry under its `uses:` id. Each step declares an input contract (its `with:` parameters) and an output contract (what `returns:` and assertions read), both validated at compile time.
 
-**Security model:** There is no generic "call any SDK function" step — SDK access happens only inside step implementations, so a YAML script can never invoke arbitrary code.
+**Security model:** There is no generic "call any SDK function" step — SDK access happens only inside step implementations, so a YAML test can never invoke arbitrary code.
 
 ```mermaid
 flowchart TD
@@ -174,7 +174,7 @@ flowchart TD
 
 ## Job-Based Execution Model
 
-Every test execution is treated as a **Job** — a first-class, stateful entity with a unique identity, persistent memory, and the ability to pause and resume. This design supports long-running test scenarios where a step must wait for an external system to respond (e.g., notification acknowledgments, async transfer completions, webhook callbacks).
+Every TCK execution is treated as a **Job** — a first-class, stateful entity with a unique identity, persistent memory, and the ability to pause and resume. This design supports long-running test scenarios where a step must wait for an external system to respond (e.g., notification acknowledgments, async transfer completions, webhook callbacks).
 
 ### Job Lifecycle
 
@@ -342,7 +342,7 @@ Services are seeded once at run start and live for the whole run — steps never
 
 ## Async Callbacks / Webhook Endpoints
 
-For operations that require waiting for an external response (e.g., notification acknowledgments, async processing results), scripts register a callback endpoint on the TestLab mock server via the `mock/api` step and hand its `full_mock_url` to the system under test. When a `mock/wait/http_request` step runs, the parent Job transitions to `WAITING` state — preserving all execution context in its memory — and resumes automatically when the callback arrives.
+For operations that require waiting for an external response (e.g., notification acknowledgments, async processing results), tests register a callback endpoint on the TestLab mock server via the `mock/api` step and hand its `full_mock_url` to the system under test. When a `mock/wait/http_request` step runs, the parent Job transitions to `WAITING` state — preserving all execution context in its memory — and resumes automatically when the callback arrives.
 
 ```mermaid
 sequenceDiagram
@@ -424,7 +424,7 @@ sequenceDiagram
 
     Compiler->>Compiler: Parse & validate YAML
     Compiler->>Compiler: Generate random AES-256 key
-    Compiler->>Compiler: Encrypt scripts/ + assets/ with AES-256-GCM<br/>→ payload.enc
+    Compiler->>Compiler: Encrypt tests/ + assets/ with AES-256-GCM<br/>→ payload.enc
 
     loop For each authorized Player
         Compiler->>Compiler: Load Player public key (RSA-2048+)
@@ -457,7 +457,7 @@ sequenceDiagram
 
     P->>P: RSA-OAEP decrypt encrypted_key<br/>→ AES-256 key
     P->>PKG: Read payload.enc
-    P->>P: AES-256-GCM decrypt payload.enc<br/>→ scripts/ + assets/
+    P->>P: AES-256-GCM decrypt payload.enc<br/>→ tests/ + assets/
     P->>TS: Load trusted compiler public keys
     P->>PKG: Read signature.sig
     P->>P: Verify Ed25519 signature<br/>over manifest + payload
@@ -615,7 +615,7 @@ The `ServiceManager` manages the lifecycle of SDK service instances:
 ```python
 class ServiceManager:
     def register(self, definition: ServiceDefinition) -> None:
-        """Register a service definition from the script's services block."""
+        """Register a service definition from the test's services block."""
 
     def register_all(self, definitions: list[ServiceDefinition]) -> None:
         """Register multiple service definitions at once."""
@@ -708,7 +708,7 @@ flowchart TD
 | **Package (.tck)** | A ZIP archive containing a manifest, compiled tests, and bundled assets (schemas, sample data). Portable, shareable, versionable. |
 | **Player** | The singleton async executor that loads packages or raw YAML, creates Jobs, executes tests step-by-step, evaluates assertions, and reports results. |
 | **Job** | A stateful execution entity created for every test run. Tracks lifecycle (`QUEUED` → `RUNNING` → `WAITING` → `COMPLETED`), maintains persistent memory across steps and wait/resume cycles, and provides query endpoints for status, memory, and events. |
-| **Job Memory** | A persistent key-value store attached to each Job. Survives across all scripts, steps, wait/resume cycles, and cleanup phases. Accessible via `context.job.memory`. |
+| **Job Memory** | A persistent key-value store attached to each Job. Survives across all tests, steps, wait/resume cycles, and cleanup phases. Accessible via `context.job.memory`. |
 | **Monitor** | The in-memory state store that tracks execution progress in real-time — queryable for current step, status, timing, assertion results, and job state. |
 | **Context** | The per-test runtime state bag (`StepContext`) that holds variables, configuration, the target dataspace version, and service references. Steps read from and write to the context. |
 | **Dataspace Version** | The connector protocol version a test targets (e.g., `"jupiter"`, `"saturn"`). Determines which step implementations and SDK services are used. |
@@ -718,7 +718,7 @@ flowchart TD
 | **Callback** | An async webhook pattern where the Player starts a temporary HTTP endpoint, sends a request to an external system, transitions the Job to `WAITING` state, and resumes automatically when the external system calls back with a response within a configurable timeout. |
 | **Callback Server** | A FastAPI-based HTTP server (standalone or embedded) that hosts ephemeral callback routes mounted dynamically by the Player per test execution. |
 | **Listener** | The callback registration created by the `mock/api` step: the mock endpoint's path and HTTP method, plus an `asyncio.Event` that the `mock/wait/http_request` step waits on. |
-| **Encrypted Package** | A `.tck` archive whose payload (scripts + assets) is encrypted with AES-256-GCM. Only authorized Players holding the matching RSA private key can decrypt and execute it. |
+| **Encrypted Package** | A `.tck` archive whose payload (tests + assets) is encrypted with AES-256-GCM. Only authorized Players holding the matching RSA private key can decrypt and execute it. |
 | **Player Identity** | An RSA key pair assigned to a Player instance. The public key's SHA-256 fingerprint serves as the Player's unique identifier for package authorization. |
 | **Key Block** | An entry in the package manifest's `security.authorized_players` list. Contains a Player's fingerprint and the AES content-encryption key wrapped with that Player's RSA public key. |
 | **Trust Store** | A directory (`~/.testlab/trusted_compilers/`) containing public keys of Compilers whose package signatures the Player will accept. |

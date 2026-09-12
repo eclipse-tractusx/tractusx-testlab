@@ -21,7 +21,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""Every cross-step reference in a shipped script must name a published name.
+"""Every cross-step reference in a shipped test must name a published name.
 
 A step's outputs are readable two different ways, and the difference between
 them is not visible in the YAML. Inside the step's own ``validate:`` block,
@@ -32,7 +32,7 @@ them is not visible in the YAML. Inside the step's own ``validate:`` block,
 writes one variable per key in that step's ``returns:`` block — and nothing at
 all when the block is absent.
 
-So a script can read ``body`` on a step in one place and fail to read it on the
+So a test can read ``body`` on a step in one place and fail to read it on the
 same step in another. The compiler does not currently separate the two cases:
 it checks that the name is one the step could publish, not that this step said
 it would. The result compiles, and then fails at run time with an unresolved
@@ -60,25 +60,25 @@ _REFERENCE = re.compile(
 
 _PHASES = ("setup", "execution", "teardown")
 
-_SCRIPT_DIRECTORIES = (
+_TEST_DIRECTORIES = (
     Path("tests/e2e/connector-dtr-smoke/tests"),
     Path("docs/examples/certificate-management-v2/raw/tests"),
     Path("docs/examples/industry-core-part-type-v2.1.1/tests"),
 )
 
 
-def _shipped_scripts() -> list[Path]:
+def _shipped_tests() -> list[Path]:
     return sorted(
         path
-        for directory in _SCRIPT_DIRECTORIES
+        for directory in _TEST_DIRECTORIES
         if directory.is_dir()
         for path in directory.glob("*.yaml")
     )
 
 
-def _unresolvable_references(script: Path) -> list[str]:
-    """Return every reference in *script* that names something no step publishes."""
-    text = script.read_text(encoding="utf-8")
+def _unresolvable_references(test: Path) -> list[str]:
+    """Return every reference in *test* that names something no step publishes."""
+    text = test.read_text(encoding="utf-8")
     document = yaml.safe_load(text) or {}
 
     published: dict[tuple[str, str], set[str]] = {
@@ -103,14 +103,14 @@ def _unresolvable_references(script: Path) -> list[str]:
     return problems
 
 
-def test_the_repository_ships_scripts_to_check() -> None:
+def test_the_repository_ships_tests_to_check() -> None:
     """Guards the guard: a glob that stopped matching would pass silently."""
-    scripts = _shipped_scripts()
-    assert len(scripts) >= 13, [str(path) for path in scripts]
+    tests = _shipped_tests()
+    assert len(tests) >= 13, [str(path) for path in tests]
 
 
-@pytest.mark.parametrize("script", _shipped_scripts(), ids=lambda path: path.name)
-def test_every_cross_step_reference_names_a_declared_return(script: Path) -> None:
+@pytest.mark.parametrize("test", _shipped_tests(), ids=lambda path: path.name)
+def test_every_cross_step_reference_names_a_declared_return(test: Path) -> None:
     """A reference the runtime cannot resolve is a failure this catches at rest.
 
     The failure it replaces is the worst kind a TCK has: the package compiles,
@@ -118,19 +118,19 @@ def test_every_cross_step_reference_names_a_declared_return(script: Path) -> Non
     unresolved reference that names a value the author can see written in the
     file two steps above.
     """
-    problems = _unresolvable_references(script)
+    problems = _unresolvable_references(test)
     assert not problems, "\n".join(problems)
 
 
 def test_the_check_would_notice_an_undeclared_return(tmp_path: Path) -> None:
     """The check has to fail on the shape it exists for, or it proves nothing.
 
-    Written as a script rather than as a fixture because the thing under test is
-    the reading of a script: a check that only ever saw correct files would go
+    Written as a test rather than as a fixture because the thing under test is
+    the reading of a test: a check that only ever saw correct files would go
     on passing after it stopped looking at anything.
     """
-    script = tmp_path / "undeclared.yaml"
-    script.write_text(
+    test = tmp_path / "undeclared.yaml"
+    test.write_text(
         yaml.safe_dump(
             {
                 "kind": "test",
@@ -146,5 +146,5 @@ def test_the_check_would_notice_an_undeclared_return(tmp_path: Path) -> None:
         ),
         encoding="utf-8",
     )
-    problems = _unresolvable_references(script)
+    problems = _unresolvable_references(test)
     assert problems == ["execution.first.value — step 'first' declares nothing"]

@@ -53,7 +53,7 @@ _MASS = frozenset({"metadata", "env", "infrastructure", "dataspace"})
 def noun_for(model: type[BaseModel]) -> str:
     """``ReturnFieldDefinition`` reads back to the author as "a return field"."""
     if model.__name__.endswith("Params"):
-        # A step's input contract is never named in a script — the author wrote
+        # A step's input contract is never named in a test — the author wrote
         # a `with:` block, and that is what the message has to call it.
         return "the step's `with:` block"
     name = model.__name__.removesuffix("Definition") or model.__name__

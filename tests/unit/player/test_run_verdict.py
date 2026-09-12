@@ -34,13 +34,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from tractusx_testlab.models import ScriptStatus, StepStatus
+from tractusx_testlab.models import StepStatus, TestStatus
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.results import (
     AssertionSummary,
-    ScriptResult,
     StepResult,
     TckResult,
+    TestResult,
 )
 from tractusx_testlab.player.execution._trace_formatter import build_tck_result, finalize_job
 
@@ -54,10 +54,10 @@ def _step(status: StepStatus) -> StepResult:
     )
 
 
-def _script(status: ScriptStatus, steps: list[StepResult]) -> ScriptResult:
+def _test(status: TestStatus, steps: list[StepResult]) -> TestResult:
     now = datetime.now(UTC)
-    return ScriptResult(
-        script_name="s",
+    return TestResult(
+        test_name="s",
         dataspace_version="saturn",
         status=status,
         execution=steps,
@@ -74,10 +74,10 @@ class TestTheVerdictIsTheStatus:
     def _mostly_passing(self) -> TckResult:
         now = datetime.now(UTC)
         steps = [_step(StepStatus.PASSED)] * 4 + [_step(StepStatus.FAILED)]
-        return build_tck_result("tck", [_script(ScriptStatus.FAILED, steps)], now, now)
+        return build_tck_result("tck", [_test(TestStatus.FAILED, steps)], now, now)
 
     def test_a_run_with_one_failed_step_is_failed(self) -> None:
-        assert self._mostly_passing().status == ScriptStatus.FAILED
+        assert self._mostly_passing().status == TestStatus.FAILED
 
     def test_the_tally_counts_only_the_passing_steps(self) -> None:
         result = self._mostly_passing()
@@ -101,7 +101,7 @@ class TestTheVerdictIsTheStatus:
     def test_a_wholly_passing_run_reports_completion(self) -> None:
         now = datetime.now(UTC)
         result = build_tck_result(
-            "tck", [_script(ScriptStatus.COMPLETED, [_step(StepStatus.PASSED)])], now, now
+            "tck", [_test(TestStatus.COMPLETED, [_step(StepStatus.PASSED)])], now, now
         )
         jobs, monitor, logger = MagicMock(), MagicMock(), MagicMock()
         finalize_job(jobs, MagicMock(), result, monitor, logger)
@@ -113,7 +113,7 @@ class TestTheVerdictIsTheStatus:
         """The one case the old code got right, kept so the fix is not a swap."""
         now = datetime.now(UTC)
         result = build_tck_result(
-            "tck", [_script(ScriptStatus.FAILED, [_step(StepStatus.FAILED)])], now, now
+            "tck", [_test(TestStatus.FAILED, [_step(StepStatus.FAILED)])], now, now
         )
-        assert result.status == ScriptStatus.FAILED
+        assert result.status == TestStatus.FAILED
         assert result.steps_passed == 0

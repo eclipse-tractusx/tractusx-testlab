@@ -41,7 +41,7 @@ metadata:
     DigitalTwinEventAPI asset — and then sends to it twice. The first send
     does the whole journey itself, catalog through transfer, and the second
     spends an EDR a separate pull already negotiated, because those are two
-    different code paths through one step and a script chooses between them.
+    different code paths through one step and a test chooses between them.
     Both times the document is read back on the receiving side field by
     field, so what is asserted is the payload that arrived after two data
     planes rather than the status code the sender was handed.
@@ -241,9 +241,9 @@ execution:
           path: header.receiverBpn
           operator: equals
           value: "${{ env.sut_bpnl }}"
-      # Written by the SDK rather than by the script: the header carries a
+      # Written by the SDK rather than by the test: the header carries a
       # send timestamp the sender is required to stamp, and its absence would
-      # mean the document went out as the script wrote it instead of as the
+      # mean the document went out as the test wrote it instead of as the
       # notification model serialises it.
       - uses: validate/field
         with: { input: request_body, path: header.sentDateTime, operator: not_null }
@@ -260,7 +260,7 @@ execution:
           operator: equals
           value: testlab-e2e-part-2
 
-  # The other way the same step is used. A script that has already negotiated
+  # The other way the same step is used. A test that has already negotiated
   # — for a catalogue of endpoints, say — has an EDR in hand and no reason to
   # negotiate again, so it hands the step a data plane and a token instead of
   # a counterparty. Giving `dataplane_url` is what selects that mode.
@@ -301,7 +301,7 @@ execution:
           receiverBpn: "${{ env.sut_bpnl }}"
           version: "3.0.0"
         content:
-          information: Sent over an EDR the script already held
+          information: Sent over an EDR the test already held
           listOfAffectedItems:
             - testlab-e2e-part-3
     returns:
@@ -336,7 +336,7 @@ execution:
           input: request_path
           operator: equals
           value: "/testlab-e2e/notification/direct"
-      # The direct mode posts the document as the script wrote it rather than
+      # The direct mode posts the document as the test wrote it rather than
       # through the notification model, so this is where the two modes are
       # actually distinguishable on the wire.
       - uses: validate/field
@@ -344,7 +344,7 @@ execution:
           input: request_body
           path: content.information
           operator: equals
-          value: Sent over an EDR the script already held
+          value: Sent over an EDR the test already held
       - uses: validate/field
         with:
           input: request_body

@@ -30,12 +30,12 @@ later, far from the typo that caused it.
 
 from __future__ import annotations
 
-from tractusx_testlab.compiler.validation.validator import ScriptValidator
-from tractusx_testlab.models import ScriptDefinition, StepDefinition
+from tractusx_testlab.compiler.validation.validator import TestValidator
+from tractusx_testlab.models import StepDefinition, TestDefinition
 
 
 def _errors_for(uses: str, returns: dict) -> list[str]:
-    script = ScriptDefinition(
+    test = TestDefinition(
         syntax="v1-alpha",
         kind="test",
         id="t",
@@ -43,7 +43,7 @@ def _errors_for(uses: str, returns: dict) -> list[str]:
         metadata={"name": "t"},
         execution=[StepDefinition(id="s1", uses=uses, returns=returns)],
     )
-    result = ScriptValidator().validate(script)
+    result = TestValidator().validate(test)
     return [issue.message for issue in result.issues if issue.level == "error"]
 
 

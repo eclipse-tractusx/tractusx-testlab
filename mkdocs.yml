@@ -131,7 +131,7 @@ nav:
       - Package Security: specification/specification/security.md
     - Walkthrough:
       - Overview: specification/walkthrough/index.md
-      - Writing Test Scripts: specification/walkthrough/writing-test-scripts.md
+      - Writing Tests: specification/walkthrough/writing-tests.md
       - Compiling Packages: specification/walkthrough/compiling-packages.md
       - Executing Tests: specification/walkthrough/executing-tests.md
     - Reference:

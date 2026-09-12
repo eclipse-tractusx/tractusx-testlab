@@ -31,9 +31,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from conftest import http_response
+from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps.security.oauth2 import (
     OAuth2ClientCredentialsStep,
     OAuth2PasswordStep,

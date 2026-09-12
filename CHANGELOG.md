@@ -9,7 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- `testlab run` ends with one result table per script and a run summary table,
+- The E2E deploy watcher restarts an EDC runtime that logged ready but whose
+  readiness probe never passes (`ci/restart_wedged_runtimes.py`), after
+  fetching the probe paths from inside the cluster for the record. Two of the
+  last forty runs sat out the 25-minute helm timeout on exactly that; the
+  replacement pod is ready in under a minute
+- `testlab run` ends with one result table per test and a run summary table,
   drawn in the same 80-column box the Tractus-X SDK's TCK runners print
   (`✓`/`✗`/`-` icons, RESULT and TIME columns, the verdict and step tally in
   the footer), with PASS, FAIL and SKIP coloured green, red and yellow on a
@@ -26,13 +31,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - The three connector delete steps and `digital-twin/provider/delete_shell_descriptor`
   publish `status_code`, so a TCK can assert on a deletion's outcome (204 vs 404)
   instead of asserting on nothing
-- `notification/consumer/send` honours `content` in SDK mode; a script writing
+- `notification/consumer/send` honours `content` in SDK mode; a test writing
   it previously sent an empty notification and got a 200 back for it
 
 - `security/oauth2/client_credentials`, `security/oauth2/password` and
   `security/oauth2/refresh_token` steps — one step per grant, matching the
   IDE's one-block-per-grant Security catalog. Each pins its grant, so the step
-  name a script uses is the grant it gets; the former mixed
+  name a test uses is the grant it gets; the former mixed
   `security/oauth2/get_token` step (grant selected by a `grant_type`
   parameter) is removed in their favour
 - `digital-twin-registry/consumer/dataplane/get_shell_descriptors` takes the
@@ -74,13 +79,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   terminal event carries the verdict, not a transcript of what it had been doing
   (ADR-0016)
 - Steps report **what went in and what came out**: `tck.test.step.start` carries
-  `inputs`, the `with:` block as the script wrote it, and the terminal event
+  `inputs`, the `with:` block as the test wrote it, and the terminal event
   carries `inputs` as they *resolved* next to `outputs`. A step that failed on
-  what a reference resolved to could not be debugged from the script, which only
+  what a reference resolved to could not be debugged from the test, which only
   says which reference was written
 
 ### Changed
 
+- **A TCK is made of tests, and the code says so.** The engine called them
+  scripts (`TestScript`, `ScriptResult`, `script_started`, the `Scripts`
+  section of `testlab inspect`), the manifest called them tests (`tests:`,
+  `skip_tests`) and the run summary used both. One word now: `Test`,
+  `TestDefinition`, `TestResult`, `TestStatus`, `Tck.tests`, `run_test`,
+  and the `tractusx_testlab.scripting` package is
+  `tractusx_testlab.authoring`. Where "test" meant the whole package it
+  says TCK: `testlab compile` and `testlab validate` take a TCK manifest,
+  a job runs a TCK, and the server's routes are
+  `/testlab/tck-execution/...`. On the event stream the IDE reads,
+  `script_started` / `script_completed` are `test_started` /
+  `test_completed`, the `script` field is `test_id`, and the result's
+  `script_id` / `script_name` are `test_id` / `test_name`. No aliases are
+  kept
 - **Every transcript line names the event it was written from, and a call says
   which call it was.** A step is many calls, and on the console they were many
   identical lines: `step.call [dtr-filterability]`, fourteen times for one
@@ -112,7 +131,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **A DSP step that finds no acceptable offer names the condition that refused
   it.** The SDK reports a catalog whose offers were all turned down as "no valid
   policy was found for any item in the list", which says neither what the
-  provider offered nor how it differed from what the script asked for — the
+  provider offered nor how it differed from what the test asked for — the
   reader had to fetch the catalog and diff two JSON-LD trees by eye. Both sides
   are now read down to their atomic ODRL conditions and the difference is
   reported as a set: the offers that were compared, what the provider *also*
@@ -131,7 +150,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `util/base64`, `util/json_path_extract` — published it naked, so the trace
   carried a bare string with nothing saying which output it was, and a reader
   could not treat the two shapes alike. The bare value is now published under
-  `value`, the name the script already reads it by in `returns:` and
+  `value`, the name the test already reads it by in `returns:` and
   `${{ execution.<step>.value }}`. A step that produced nothing still says
   `null`
 - **A step error carries its own code and the evidence behind it.** The trace's
@@ -165,7 +184,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **`step.start` reports the values, not the templates.** The event a step opens
   with carries its `with:` block with every `${{ … }}` reference already
   substituted for what the run seeded or produced. It used to carry the block as
-  the script wrote it, so a trace of a step reading
+  the test wrote it, so a trace of a step reading
   `expected_policies: ${{ env.usage_policy }}` named the manifest variable and
   never said what it held — the one thing the reader opened the trace for. The
   block is resolved once, before the event, and handed to the runner rather than
@@ -187,7 +206,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the step declared (ADR-0016)
 - Credential-bearing headers are masked in the step-named `request`/`response`
   too, not only in the recorded exchanges. A step builds that summary from what
-  it was handed, so an `Authorization` header a script set (an EDR token, a
+  it was handed, so an `Authorization` header a test set (an EDR token, a
   bearer) reached the transcript, the SSE stream and the trace in clear. The
   masking is applied on the way out; the result the run keeps is unchanged, so a
   `returns: {response_headers: ...}` still reads what the SUT sent
@@ -241,11 +260,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   which offer to negotiate for it
 - `digital-twin/submodel/upload` no longer takes `backend_base_url`. The
   submodel server is the engine's own, seeded as `submodel_backend_url`
-  (`TESTLAB_SUBMODEL_BACKEND_URL`), so a script cannot redirect the upload
+  (`TESTLAB_SUBMODEL_BACKEND_URL`), so a test cannot redirect the upload
   somewhere the step never meant to write; an engine without one fails the step
   with a `StepConfigError` instead of posting nowhere
 - **Breaking.** `digital-twin/submodel/upload` requires `data`. The `{"test":
-  true}` default let a script upload a placeholder and then assert against it —
+  true}` default let a test upload a placeholder and then assert against it —
   a test that passed without the provider's data ever being named
 - `digital-twin/submodel/upload` addresses a submodel the way the Industry Core
   does — `<server>/<percent-encoded semantic_id>/<submodel_id>`, so submodels of
@@ -266,7 +285,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - `util/generate_bpn`. A BPN is not a value a conformance test invents: it
   identifies a real participant, and the one under test comes from the run's
-  environment, not from a generator inside the script. A test that minted its
+  environment, not from a generator inside the test. A test that minted its
   own asserted against a partner nobody is.
 
 ### Fixed
@@ -286,7 +305,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   criteria arrived as a lookup with one, silently matching too much. The field
   is the multimap HTTP actually carries, read through `query()` for a
   single-valued parameter and `query_all()` for a repeatable one. `mock/wait`'s
-  `request_query_params` is unchanged: a script reading a callback's `state`
+  `request_query_params` is unchanged: a test reading a callback's `state`
   wants the value, not a list holding it
 - `connector/consumer/pull_data_filtered` reads its pre-fetched catalog in both
   DSP dialects. It looked only under `dataset`, so a counter-party a generation
@@ -306,7 +325,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - An inbound call to a path no step registered is refused with 404. The mock
   server buffered it and answered 200 instead: a system under test calling a
   callback address that does not exist was told it had succeeded, while the
-  script waited out its timeout on the address it did open, and every stray
+  test waited out its timeout on the address it did open, and every stray
   request accumulated in the buffer where a later listener on the same path
   could pick it up
 - `${{ … }}` references inside a `validate:` block are resolved before the

@@ -23,9 +23,9 @@
 ## It was reviewed and tested by a human committer.
 
 
-"""Publishing what a step returned into the variables a script can read.
+"""Publishing what a step returned into the variables a test can read.
 
-A step's outputs are addressable only where the script said so: a ``returns:``
+A step's outputs are addressable only where the test said so: a ``returns:``
 block names them, and a name it did not declare is a typo rather than a
 ``None`` three steps later. That check, and the two shapes a name is stored
 under — flat, and namespaced by phase and step id — are this module's whole job.
@@ -35,9 +35,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps.assertions import AssertionEngine
 
 

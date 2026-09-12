@@ -19,11 +19,11 @@ SPDX-License-Identifier: CC-BY-4.0
 
 # Compiling Packages
 
-This section shows how to validate your test scripts and compile them into a portable `.tck` package.
+This section shows how to validate your tests and compile them into a portable `.tck` package.
 
 ## Prerequisites
 
-You've completed [Writing Test Scripts](writing-test-scripts.md) and have:
+You've completed [Writing Tests](writing-tests.md) and have:
 
 ```
 my-connector-tests/
@@ -40,7 +40,7 @@ my-connector-tests/
 
 ## Step 1 — Validate Without Packaging
 
-Before packaging, you can validate that your YAML scripts are correct — all `${var}` references resolve, step types exist in the registry, and the dataspace version is supported:
+Before packaging, you can validate that your YAML tests are correct — all `${var}` references resolve, step types exist in the registry, and the dataspace version is supported:
 
 ```bash
 testlab validate tck.yaml
@@ -80,7 +80,7 @@ Test case "connector_e2e" validation failed
 
 ## Step 2 — Generate Keys (One-time Setup)
 
-Packages are **encrypted by default** to protect secrets embedded in test scripts. Before compiling, you need cryptographic keys for both the Compiler and the Player(s) that will run the tests.
+Packages are **encrypted by default** to protect secrets embedded in tests. Before compiling, you need cryptographic keys for both the Compiler and the Player(s) that will run the tests.
 
 ### Player Key (on the machine that will execute tests)
 
@@ -148,7 +148,7 @@ Encrypting package...
 
 Packaging...
    Writing manifest.yaml (unencrypted metadata + security block)
-   Writing payload.enc (encrypted scripts + assets)
+   Writing payload.enc (encrypted tests + assets)
    Writing signature.sig (Ed25519 signature)
 
 Encrypted package created: connector_e2e-1.0.tck (14.1 KB)
@@ -204,7 +204,7 @@ sdk_version: "0.5.0"
 compiled_at: "2026-03-30T14:25:00Z"
 dataspace_versions:
   - "saturn"
-scripts:
+tests:
   - "provision_and_consume"
   - "submodel_validation"
 checksum: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -227,15 +227,15 @@ security:
 | `version` | `1.0` | Test case version from `tck.yaml` |
 | `sdk_version` | `0.5.0` | SDK version used to compile — Player warns on mismatch |
 | `compiled_at` | ISO 8601 timestamp | Compilation timestamp |
-| `dataspace_versions` | `["saturn"]` | All dataspace versions referenced across scripts |
-| `scripts` | List of names | Execution order |
+| `dataspace_versions` | `["saturn"]` | All dataspace versions referenced across tests |
+| `tests` | List of names | Execution order |
 | `checksum` | `sha256:<hex>` | Integrity hash — Player rejects tampered packages |
 | `security` | Block | Encryption metadata — algorithm, compiler ID, authorized Players |
 
 ### Extracting a Package
 
 An authorized Player can write a package's contents back out — the manifest, the
-compiled instructions, the test scripts and the bundled assets — with
+compiled instructions, the tests and the bundled assets — with
 `testlab inspect --extract`. For an encrypted package this needs the Player's
 private key (to decrypt) and the Compiler's public key (to verify the signature):
 
@@ -311,7 +311,7 @@ Archive:  connector_e2e-1.0.tck
 
 !!! warning "Never distribute plain packages"
     Plain packages contain secrets (OAuth2 credentials, service URLs, BPNs) in cleartext.
-    Use plain mode only during local script development. Always compile with encryption
+    Use plain mode only during local test development. Always compile with encryption
     (the default) before sharing, uploading to CI, or distributing to other teams.
 
 ---

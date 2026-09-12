@@ -94,7 +94,7 @@ def _make_event_queue(
 
 
 class TestResumeEndpoint:
-    """POST /testlab/test-execution/{job_id}/resume tests."""
+    """POST /testlab/tck-execution/{job_id}/resume tests."""
 
     @pytest.mark.asyncio
     async def test_resume_paused_job_returns_200(
@@ -107,7 +107,7 @@ class TestResumeEndpoint:
         mock_player.jobs.pause(job.job_id)
 
         response = await client.post(
-            f"/testlab/test-execution/{job.job_id}/resume",
+            f"/testlab/tck-execution/{job.job_id}/resume",
         )
 
         assert response.status_code == 200
@@ -125,7 +125,7 @@ class TestResumeEndpoint:
         mock_player.jobs.start(job.job_id)
         mock_player.jobs.pause(job.job_id)
 
-        await client.post(f"/testlab/test-execution/{job.job_id}/resume")
+        await client.post(f"/testlab/tck-execution/{job.job_id}/resume")
 
         updated = mock_player.jobs.get(job.job_id)
         assert updated.status == JobStatus.RUNNING
@@ -140,7 +140,7 @@ class TestResumeEndpoint:
         mock_player.jobs.start(job.job_id)
 
         response = await client.post(
-            f"/testlab/test-execution/{job.job_id}/resume",
+            f"/testlab/tck-execution/{job.job_id}/resume",
         )
 
         assert response.status_code == 409
@@ -156,7 +156,7 @@ class TestResumeEndpoint:
         mock_player.jobs.complete(job.job_id)
 
         response = await client.post(
-            f"/testlab/test-execution/{job.job_id}/resume",
+            f"/testlab/tck-execution/{job.job_id}/resume",
         )
 
         assert response.status_code == 409
@@ -167,7 +167,7 @@ class TestResumeEndpoint:
         client: AsyncClient,
     ) -> None:
         response = await client.post(
-            "/testlab/test-execution/nonexistent/resume",
+            "/testlab/tck-execution/nonexistent/resume",
         )
 
         assert response.status_code == 404
@@ -196,7 +196,7 @@ class TestResumeEvent:
 
         with patch(f"{_STREAMING_MODULE}.create_event_queue", return_value=queue):
             response = await client.get(
-                f"/testlab/test-execution/{job.job_id}/stream",
+                f"/testlab/tck-execution/{job.job_id}/stream",
             )
 
         assert "event: job.resumed" in response.text

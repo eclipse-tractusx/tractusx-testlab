@@ -212,7 +212,7 @@ async def _execute_in_background(player: TestlabPlayer, target: Path, runtime_va
 
 
 @router.get(
-    "/test-execution",
+    "/tck-execution",
     responses={400: {"description": "Invalid status filter value"}},
 )
 async def list_jobs(
@@ -232,7 +232,7 @@ async def list_jobs(
 
 
 @router.get(
-    "/test-execution/{job_id}",
+    "/tck-execution/{job_id}",
     responses={404: {"description": "Job not found"}},
 )
 async def get_job(job_id: str, player: PlayerDep) -> JSONResponse:
@@ -244,7 +244,7 @@ async def get_job(job_id: str, player: PlayerDep) -> JSONResponse:
 
 
 @router.post(
-    "/test-execution/{job_id}/cancel",
+    "/tck-execution/{job_id}/cancel",
     status_code=200,
     responses={404: {"description": "Job not found"}},
 )
@@ -259,7 +259,7 @@ async def cancel_job(job_id: str, player: PlayerDep) -> JSONResponse:
 
 
 @router.post(
-    "/test-execution/{job_id}/pause",
+    "/tck-execution/{job_id}/pause",
     status_code=200,
     responses={
         404: {"description": "Job not found"},
@@ -279,7 +279,7 @@ async def pause_job(job_id: str, player: PlayerDep) -> JSONResponse:
 
 
 @router.post(
-    "/test-execution/{job_id}/resume",
+    "/tck-execution/{job_id}/resume",
     status_code=200,
     responses={
         404: {"description": "Job not found"},

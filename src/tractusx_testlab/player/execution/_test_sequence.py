@@ -22,10 +22,10 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""Running a TCK's scripts in the order its manifest lists them.
+"""Running a TCK's tests in the order its manifest lists them.
 
 Split out of the player because it answers a question of its own: given a plan
-and a set of skips, which scripts run and in what order. The player's job is the
+and a set of skips, which tests run and in what order. The player's job is the
 run's lifecycle around that — the job, the transcript, the trace, the teardown.
 """
 
@@ -34,46 +34,46 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from tractusx_testlab.player.execution._trace_formatter import make_intentionally_skipped_result
-from tractusx_testlab.player.execution.step_runner import run_script
+from tractusx_testlab.player.execution.step_runner import run_test
 
 if TYPE_CHECKING:
-    from tractusx_testlab.models.runtime.results import ScriptResult
+    from tractusx_testlab.authoring.test import Test
+    from tractusx_testlab.models.runtime.results import TestResult
     from tractusx_testlab.player.execution.context import StepContext
     from tractusx_testlab.player.execution.monitor import ExecutionMonitor
     from tractusx_testlab.player.jobs import JobManager
-    from tractusx_testlab.scripting.script import TestScript
 
 
-async def run_scripts(
-    scripts: list[TestScript],
+async def run_tests(
+    tests: list[Test],
     context: StepContext,
     job: Any,
     monitor: ExecutionMonitor,
     jobs: JobManager,
     skip_ids: frozenset[str],
-) -> list[ScriptResult]:
-    """Run each script in manifest order, honouring the operator's skips.
+) -> list[TestResult]:
+    """Run each test in manifest order, honouring the operator's skips.
 
-    Scripts run in the order the manifest lists them. There is no inter-script
-    dependency declaration in v1-alpha — a script says what it needs through the
+    Tests run in the order the manifest lists them. There is no inter-test
+    dependency declaration in v1-alpha — a test says what it needs through the
     infrastructure it requires and the variables it reads, not by naming another
-    script.
+    test.
     """
-    script_results: list[ScriptResult] = []
+    test_results: list[TestResult] = []
 
-    for idx, script in enumerate(scripts):
-        if script.test_id in skip_ids:
-            skipped = make_intentionally_skipped_result(script)
-            script_results.append(skipped)
-            monitor.on_script_started(job.job_id, script.definition.id, idx)
-            monitor.on_script_completed(job.job_id, skipped)
+    for idx, test in enumerate(tests):
+        if test.test_id in skip_ids:
+            skipped = make_intentionally_skipped_result(test)
+            test_results.append(skipped)
+            monitor.on_test_started(job.job_id, test.definition.id, idx)
+            monitor.on_test_completed(job.job_id, skipped)
             continue
 
-        monitor.on_script_started(job.job_id, script.definition.id, idx)
-        job.current_script = script.name
+        monitor.on_test_started(job.job_id, test.definition.id, idx)
+        job.current_test = test.name
 
-        script_result = await run_script(script, context, job.job_id, monitor, jobs)
-        script_results.append(script_result)
-        monitor.on_script_completed(job.job_id, script_result)
+        test_result = await run_test(test, context, job.job_id, monitor, jobs)
+        test_results.append(test_result)
+        monitor.on_test_completed(job.job_id, test_result)
 
-    return script_results
+    return test_results

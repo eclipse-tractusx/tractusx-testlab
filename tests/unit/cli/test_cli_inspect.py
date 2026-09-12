@@ -46,17 +46,17 @@ metadata:
   name: CLI Inspect TCK
   version: "1.0"
 tests:
-  - id: inspect-script.yaml
-    name: Inspect Script
+  - id: inspect-test.yaml
+    name: Inspect Test
 """
 
-_SCRIPT_YAML = """\
+_TEST_YAML = """\
 syntax: v1-alpha
 kind: test
-id: inspect-script
+id: inspect-test
 namespace: testlab.test
 metadata:
-  name: Inspect Script
+  name: Inspect Test
   version: "1.0"
 setup:
   - uses: util/generate_uuid
@@ -94,7 +94,7 @@ def tck_archive(tmp_path: Path) -> Path:
         archive,
         {
             _TCK_BUNDLE_ENTRY: _TCK_BUNDLE_YAML.encode(),
-            "tests/inspect-script.yaml": _SCRIPT_YAML.encode(),
+            "tests/inspect-test.yaml": _TEST_YAML.encode(),
         },
     )
     return archive
@@ -135,17 +135,17 @@ class TestInspectCommand:
         # Always an envelope keyed by section, whichever flags were passed.
         assert data["inspection"]["name"] == "CLI Inspect TCK"
 
-    def test_inspect_json_contains_scripts_and_steps(self, tck_archive: Path) -> None:
+    def test_inspect_json_contains_tests_and_steps(self, tck_archive: Path) -> None:
         result = runner.invoke(app, ["inspect", str(tck_archive), "--json"])
         data = json.loads(result.output)["inspection"]
-        assert len(data["scripts"]) == 1
-        steps = data["scripts"][0]["steps"]
+        assert len(data["tests"]) == 1
+        steps = data["tests"][0]["steps"]
         assert len(steps) == 3  # setup + execution + teardown
 
     def test_inspect_json_step_has_expected_fields(self, tck_archive: Path) -> None:
         result = runner.invoke(app, ["inspect", str(tck_archive), "--json"])
         data = json.loads(result.output)["inspection"]
-        step = data["scripts"][0]["steps"][0]
+        step = data["tests"][0]["steps"][0]
         assert "step_name" in step
         assert "uses" in step
         assert "phase" in step

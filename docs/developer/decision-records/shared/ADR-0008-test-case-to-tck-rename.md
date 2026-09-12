@@ -36,7 +36,7 @@ Accepted
 The product concept "test case" was too generic and caused multiple problems:
 
 - **Naming collision**: Python's `unittest.Tck` made class naming awkward and confusing in code.
-- **Conceptual ambiguity**: users couldn't tell whether "test case" meant the overarching container or an individual test script inside it.
+- **Conceptual ambiguity**: users couldn't tell whether "test case" meant the overarching container or an individual test inside it.
 - **Weak product identity**: the name didn't communicate that this is a Technology Compatibility Kit for certification testing.
 
 The product scope (`docs/developer/product-scope.md`) defines these containers as conformance test packages that validate Tractus-X standard implementations against a specification version.
@@ -52,7 +52,7 @@ Specific changes:
 - All method/variable names: `test_case` → `tck`
 - File extension: `.testpkg` → `.tckpkg`
 - UI labels: "Test Case" → "TCK"
-- Individual "test" scripts within a TCK keep their name unchanged
+- Individual "test" tests within a TCK keep their name unchanged
 
 **No backward compatibility** — this is a clean break at this early stage.
 

@@ -46,19 +46,19 @@ static summary.
 A parallel capability, `Tck.all_variables()` (implemented in
 [ADR-0018](../shared/ADR-0018-unified-variables-model.md)), already demonstrates the
 correct pattern for extracting static metadata from a loaded `Tck`: a frozen Pydantic
-model describes the result, a pure helper function in `scripting/_*.py` performs the
+model describes the result, a pure helper function in `authoring/_*.py` performs the
 extraction, and the `Tck` class exposes a single method that delegates to it.
 
 ## Decision
 
 ### 1. Method on `Tck`: `inspect()`
 
-We add `Tck.inspect() -> TckInspectionResult` to `scripting/script.py`, mirroring
+We add `Tck.inspect() -> TckInspectionResult` to `authoring/test.py`, mirroring
 the `Tck.all_variables() -> list[VariableDefinition]` pattern exactly:
 
 ```
 Tck.inspect()
-    └── calls build_inspection_result(self)          # scripting/_inspection.py
+    └── calls build_inspection_result(self)          # authoring/_inspection.py
             └── returns TckInspectionResult          # models/runtime/inspection.py
 ```
 
@@ -78,7 +78,7 @@ class StepMeta(BaseModel):
     phase: StepPhase        # SETUP | EXECUTION | TEARDOWN
     validation_count: int   # number of validate: entries on this step
 
-class ScriptInspection(BaseModel):
+class TestInspection(BaseModel):
     model_config = ConfigDict(frozen=True)
     name: str
     steps: tuple[StepMeta, ...]
@@ -88,21 +88,21 @@ class TckInspectionResult(BaseModel):
     name: str
     total_steps: int
     total_validations: int
-    scripts: tuple[ScriptInspection, ...]
+    tests: tuple[TestInspection, ...]
 ```
 
 All three are exported through `models/runtime/__init__.py` and `models/__init__.py`
 so consumers can import them as:
 
 ```python
-from tractusx_testlab.models import TckInspectionResult, ScriptInspection, StepMeta
+from tractusx_testlab.models import TckInspectionResult, TestInspection, StepMeta
 ```
 
-### 3. Pure helper in `scripting/_inspection.py`
+### 3. Pure helper in `authoring/_inspection.py`
 
-`build_inspection_result(tck)` iterates all scripts and, for each, maps the three
+`build_inspection_result(tck)` iterates all tests and, for each, maps the three
 phase lists (`setup`, `steps`, `teardown`) into `StepMeta` tuples using `_map_steps`.
-It computes `total_steps` and `total_validations` by aggregating across all scripts.
+It computes `total_steps` and `total_validations` by aggregating across all tests.
 The function has no side effects and does not touch the network or filesystem.
 
 ### 4. CLI command: `testlab inspect`
@@ -133,18 +133,18 @@ default.
 ### 5. Amendment (2026-07): `Tck.infrastructure_requirements()`
 
 Following the same pattern as `Tck.inspect()` and `Tck.all_variables()`, a method
-`Tck.infrastructure_requirements() -> InfrastructureConfig` is added to `scripting/script.py`.
+`Tck.infrastructure_requirements() -> InfrastructureConfig` is added to `authoring/test.py`.
 
 ```
 Tck.infrastructure_requirements()
-    └── calls collect_infrastructure_requirements(self)   # scripting/_infrastructure.py
+    └── calls collect_infrastructure_requirements(self)   # authoring/_infrastructure.py
             └── returns InfrastructureConfig              # models/authoring/infrastructure.py
 ```
 
 `collect_infrastructure_requirements(tck)` applies a two-pass merge:
 
 1. If the TCK manifest declares a top-level `infrastructure:` block, that block wins as-is.
-2. Otherwise, the function iterates all `TestScript` objects and merges their per-script
+2. Otherwise, the function iterates all `Test` objects and merges their per-test
    `infrastructure:` blocks: `required: true` wins over `required: false`, and the first
    non-`None` `standard` wins.
 

@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 # Ensure all built-in steps are registered
-from tractusx_testlab.scripting.registry import StepRegistry
+from tractusx_testlab.authoring.registry import StepRegistry
 
 
 class TestStepRegistry:

@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""TestlabPlayer — async executor that runs TCKs script-by-script, step-by-step."""
+"""TestlabPlayer — async executor that runs TCKs test-by-test, step-by-step."""
 
 from __future__ import annotations
 
@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 # Ensure built-in steps are registered
 import contextlib
 
+from tractusx_testlab.authoring.test import Tck as Tck
 from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.infrastructure.profiles import InfrastructureManager
@@ -47,8 +48,8 @@ from tractusx_testlab.models import (
 )
 from tractusx_testlab.player.execution._binding import bind_infrastructure
 from tractusx_testlab.player.execution._context_seeder import require_inputs, seed_context_variables
-from tractusx_testlab.player.execution._script_sequence import run_scripts
 from tractusx_testlab.player.execution._skip import resolve_skip_ids
+from tractusx_testlab.player.execution._test_sequence import run_tests
 from tractusx_testlab.player.execution._trace_formatter import (
     build_tck_result,
     finalize_job,
@@ -61,7 +62,6 @@ from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading._parser import is_encrypted_package
 from tractusx_testlab.player.loading.loader import Loader
-from tractusx_testlab.scripting.script import Tck as Tck
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import get_callback_manager, set_callback_manager
 from tractusx_testlab.services.instances import ServiceManager
@@ -176,7 +176,7 @@ class TestlabPlayer:
             return await self._execute_job(tck, job, runtime_vars)
 
     async def _execute_job(self, tck: Tck, job: Any, runtime_vars: dict | None) -> TckResult:
-        """Run every script of *tck* for an already-created job."""
+        """Run every test of *tck* for an already-created job."""
         self._jobs.start(job.job_id)
 
         job_logger, trace = open_run_records(self._logger, self._config, tck.id, job.job_id)
@@ -208,7 +208,7 @@ class TestlabPlayer:
         skip_ids = resolve_skip_ids(tck, runtime_vars)
 
         tck_started_at = datetime.now(UTC)
-        script_results = await run_scripts(tck.scripts, context, job, monitor, self._jobs, skip_ids)
+        test_results = await run_tests(tck.tests, context, job, monitor, self._jobs, skip_ids)
         tck_finished_at = datetime.now(UTC)
 
         svc_mgr.teardown()
@@ -219,7 +219,7 @@ class TestlabPlayer:
 
         result = build_tck_result(
             tck.name,
-            script_results,
+            test_results,
             tck_started_at,
             tck_finished_at,
         )

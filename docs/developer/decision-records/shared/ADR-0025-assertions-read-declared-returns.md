@@ -69,7 +69,7 @@ step's `with:` but not over an assertion's, which is why the `@name` prefix and
 `source: VARIABLE` exist at all — they are a private, weaker substitute for
 `${{ }}` inside assertion blocks.
 
-Every script in the repository writes the same two forms —
+Every test in the repository writes the same two forms —
 `validate/assert` with `input:` and `operator:` (51 occurrences),
 `validate/field` with the addition of `path:` (45) — and `validate/schema`
 twice. Nothing uses the `assert/*` block names or the flat `NOT_NULL` spellings.
@@ -84,7 +84,7 @@ nothing else. Concretely:
 ### 1. Returns are resolved before assertions run
 
 `store_step_outputs` moves ahead of assertion evaluation. Assertions are given
-the resolved return map, not the raw `StepOutput`. What a script asserts on is
+the resolved return map, not the raw `StepOutput`. What a test asserts on is
 therefore exactly what a later step reads from the context — one extraction, one
 result, no chance of the two disagreeing.
 
@@ -215,7 +215,7 @@ assertion engine calls. There is one implementation of `equals`.
 
 The `validate/*` family stays in the step registry. A validation is a step like
 any other: it has a params model, it is documented by `testlab docs`, it appears
-in the IDE toolbox, and it can stand on its own in `execution:` when a script
+in the IDE toolbox, and it can stand on its own in `execution:` when a test
 needs to check something no immediately preceding step produced.
 
 Writing one inside a step's `validate:` list runs *the same step*, with the
@@ -233,7 +233,7 @@ engine keeps the operator table from decision 5, the severity handling and the
 themselves.
 
 The `assert/*` family and the flat `NOT_NULL` spellings are deleted outright.
-They are a third naming scheme for what `validate/*` already does, and no script
+They are a third naming scheme for what `validate/*` already does, and no test
 has ever written one.
 
 `validate/semantic_schema` is deleted with them. Schema validation is one kind
@@ -242,7 +242,7 @@ checks only that the payload carries a semantic model's required *top-level
 keys*, which is a weaker check written in a second vocabulary — `schema_ref` and
 `required_keys` instead of `schema`. Pointing `validate/schema` at the JSON
 Schema derived from the same SAMM model does the job properly and with the
-family's own keys. No script uses it. What goes with it: the module
+family's own keys. No test uses it. What goes with it: the module
 [`industry/semantic.py`](../../../../src/tractusx_testlab/steps/industry/semantic.py),
 the seven unit tests in `tests/test_ccm_steps.py` and
 `tests/test_ccm_integration_steps.py`, its entry in the generated
@@ -268,7 +268,7 @@ survive it:
   the only key in the syntax that carries a schema.
 - **The frontend's operator list is rewritten to match.**
   [`AssertionOperator`](../../../../ide/src/models/schema.ts) is upper-case
-  (`EQUALS`, `NOT_NULL`) where scripts write lower-case, spells the regex check
+  (`EQUALS`, `NOT_NULL`) where tests write lower-case, spells the regex check
   `REGEX`, has no `null`, and carries four entries — `SCHEMA`,
   `SCHEMA_VALIDATION`, `ASSERT_FIELD`, `JSON_PATH_EXTRACT` — that are not
   operators at all under this record: two are `validate/schema`, one is
@@ -278,7 +278,7 @@ survive it:
   keys.
 
 Applied to [`request_certificate.yaml`](../../../examples/certificate-management-v2/raw/tests/request_certificate.yaml),
-the whole `validate:` surface of a script reads the same way in every block:
+the whole `validate:` surface of a test reads the same way in every block:
 
 ```yaml
     returns:
@@ -325,8 +325,8 @@ Almost nothing in an existing assertion moves. `input:` stays `input:`, no
 `uses:` that change are the `validate/field` blocks written without a path —
 two of the forty-five — and the only
 `with:` key that changes is `source:` on the two `util/` steps that spell it
-that way. The remaining rows have no occurrences in any script; the last two are
-the only entries that change a script's shape rather than its spelling.
+that way. The remaining rows have no occurrences in any test; the last two are
+the only entries that change a test's shape rather than its spelling.
 
 What actually tightens is not the spelling but the rules behind it: `input` must
 name a declared return, `operator` must be present and in the enum, and the
@@ -341,7 +341,7 @@ for it in the same commit.
 
 - A typo in an assertion fails at compile time with the name in the message,
   instead of passing an equality check against `None`.
-- What a script asserts on and what a later step consumes are the same resolved
+- What a test asserts on and what a later step consumes are the same resolved
   value, produced once.
 - `returns:` becomes a real interface: the IDE can populate a validate block's
   input list from the preceding step instead of asking the author to type a
@@ -350,7 +350,7 @@ for it in the same commit.
   implementation of each check, whether it is written inline or as a step.
 - The assertion catalog is describable in two tables — the `_USES_TO_TYPE` map,
   its legacy half and both silent fallbacks are deleted.
-- The blocks a script already writes stay the blocks a script writes. The syntax
+- The blocks a test already writes stay the blocks a test writes. The syntax
   gets stricter without getting less familiar, and every `uses:` in the
   repository survives the change.
 - A validation is documented, listed and offered like any other step, because it
@@ -361,11 +361,11 @@ for it in the same commit.
 - Every assertion in the repository is touched: 98 blocks across the examples,
   plus the TCK and the fixtures. Close to a search-and-replace, but not zero.
 - Asserting on a value now requires declaring it in `returns:`. That is one more
-  line in the cases where a script wants a single ad-hoc check on, say,
+  line in the cases where a test wants a single ad-hoc check on, say,
   `status_code`.
 - `value` is a conditional field: meaningful for ten operators, meaningless for
   three. The IDE has to drive its visibility from the operator dropdown, and a
-  hand-written script can still set it where it is ignored. This is the price of
+  hand-written test can still set it where it is ignored. This is the price of
   an operator parameter instead of fourteen blocks, and it is accepted
   knowingly.
 - Reaching a nested field costs two keys (`input` plus `path`) where a dotted
@@ -406,7 +406,7 @@ differ in three places, all deliberate.
   time a failed assertion carrying the same message — never a quiet `EXACT`
   comparison that passes.
 - **`returns:` names are checked against the step's declared outputs**
-  (`ScriptValidator._validate_returns`). This is decision 2's rule applied to
+  (`TestValidator._validate_returns`). This is decision 2's rule applied to
   `returns:` as well as to `input:`; it is what makes an output a step never
   publishes a compile error rather than an empty variable several steps later.
 
@@ -426,7 +426,7 @@ differ in three places, all deliberate.
    blocks and that argument still holds for the *toolbox* — the IDE emits the
    parameter form and only the parameter form. The suffix form exists so that
    the deleted `assert/<operator>` names have a home in the surviving namespace
-   for hand-written scripts; both spellings resolve through the same table to
+   for hand-written tests; both spellings resolve through the same table to
    the same check, so there is one implementation, not two.
 
 3. **`@name` and `source: VARIABLE` still resolve.** Decision 4 removes them in

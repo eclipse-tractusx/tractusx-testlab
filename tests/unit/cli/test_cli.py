@@ -190,15 +190,15 @@ class TestRunCommand:
 
         assert list(tmp_path.rglob("*.tck")) == []
 
-    def test_run_refuses_a_lone_test_script(self, tmp_path: Path) -> None:
+    def test_run_refuses_a_lone_test(self, tmp_path: Path) -> None:
         """A single ``kind: test`` file has no manifest to compile, so it is refused.
 
         It used to run — by the one path that skipped compilation entirely.
         """
-        script = tmp_path / "solo.yaml"
-        script.write_text(_BAD_STEP_TEST_YAML)
+        test = tmp_path / "solo.yaml"
+        test.write_text(_BAD_STEP_TEST_YAML)
 
-        result = runner.invoke(app, ["run", str(script)])
+        result = runner.invoke(app, ["run", str(test)])
 
         assert result.exit_code == 1
         assert "not a TCK manifest" in result.output
@@ -217,7 +217,7 @@ class TestPrintReport:
     def test_print_report_with_error(self, tmp_path: Path) -> None:
         """Test report with a step that has an error.
 
-        Written as a manifest plus a test file rather than a lone script: ``run``
+        Written as a manifest plus a test file rather than a lone test: ``run``
         compiles its target, and the compiler's unit is a TCK.
         """
         manifest = """\

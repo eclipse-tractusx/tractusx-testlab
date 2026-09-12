@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""What a script author is told when a key is not allowed or a value is wrong.
+"""What a test author is told when a key is not allowed or a value is wrong.
 
 Pydantic's own rendering is addressed to the person who wrote the model, not to
 the person who wrote the YAML. ``execution.1.validate.0.name: Extra inputs are
@@ -94,7 +94,7 @@ def explain(
     text: str | None = None,
     source: Path | None = None,
 ) -> list[Diagnostic]:
-    """Turn a Pydantic failure into diagnostics addressed to the script author.
+    """Turn a Pydantic failure into diagnostics addressed to the test author.
 
     *model* is the class the document was validated against and is what makes
     "these are the keys you may use here" answerable; *data* is the loaded

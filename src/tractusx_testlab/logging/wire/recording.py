@@ -186,7 +186,7 @@ def attach_to(result: Any, recorder: ExchangeRecorder) -> None:
     """Give a :class:`StepResult` everything the step sent.
 
     A step that built its own ``request`` / ``response`` keeps them: it chose
-    which of its calls the script is really about. A step that raised chose
+    which of its calls the test is really about. A step that raised chose
     nothing, so the last exchange stands in — and for a failure that is the call
     that failed, which is the whole point of recording at all.
     """

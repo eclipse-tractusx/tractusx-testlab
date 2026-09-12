@@ -114,7 +114,7 @@ Classes **D**, **E** and **F** are not breaks and are not gated on.
 
 What **E** still holds is deliberate, and all five entries are the same
 pattern: `mock/api`'s `id` and the four `store_in_variable`s name a context
-variable *from the script*, so a later hand-written step can read the value
+variable *from the test*, so a later hand-written step can read the value
 under a name the author chose. The IDE wires outputs by dragging them, which
 is that mechanism with a better interface; offering the field as well would
 put two ways of naming one value on the same block. The rest of **E** was
@@ -123,7 +123,7 @@ inheriting every other grant's credentials (and `grant_type`, pinned by the
 step name, stopped being an input at all); `create_asset` and `create_policy`
 dropped their `asset_id`/`policy_id` overrides, so the ID comes from the
 asset or policy document alone; `util/generate_uuid` dropped `prefix`, since
-a script writes `urn:uuid:${{ …​.uuid }}` where it uses the value; and
+a test writes `urn:uuid:${{ …​.uuid }}` where it uses the value; and
 `http_call` gained the `timeout` its engine step already accepted.
 
 **F** is now empty: every registered step has a block, so the catalog and the registry hold
@@ -149,7 +149,7 @@ no longer "how far apart are they" but "what stops them drifting again" — see
 
 The failure severity ranks A > B > C:
 
-- **A fails loudly.** The compiler rejects the script with
+- **A fails loudly.** The compiler rejects the test with
   `Unknown step type '<uses>'`
   ([`validator.py:99`](../../src/tractusx_testlab/compiler/validation/validator.py#L99)).
 - **B now also fails loudly.** Since C47, `StepParams` is `extra="forbid"`, so
@@ -188,7 +188,7 @@ engine publishes under exactly one other name.
 neither is a second spelling: `else` and `schema` are the only accepted keys,
 and the differing attribute names exist because `else` is a Python keyword and
 `schema` shadows a `BaseModel` method. Both models turn `validate_by_name` off
-so the attribute name cannot be written in a script, and the checker counts a
+so the attribute name cannot be written in a test, and the checker counts a
 field as an alias divergence only when it accepts more than one key.
 
 ## The rule: one name, one shape
@@ -209,14 +209,14 @@ So the rule for this repository is:
 > changed; nothing is added to bridge them.
 
 The version is `0.0.6-alpha`. There is no compatibility promise to break, and
-every script in the repository — `docs/examples`, the TCK, the test fixtures —
+every test in the repository — `docs/examples`, the TCK, the test fixtures —
 is migrated in the same commit as the rename that affects it.
 
 Three consequences follow, and they are the reason the rule is worth its cost.
 
 **`StepParams` is `extra="forbid"`** — done, C47.
 [`base.py`](../../src/tractusx_testlab/steps/base.py) no longer keeps unknown
-keys "so a script written against a newer revision still runs against an older
+keys "so a test written against a newer revision still runs against an older
 engine", which was backward compatibility, and was precisely what made every
 class-B finding silent. A `with:` key no step declares is now a validation error
 naming the key. `tests/test_step_contracts.py` asserts it for every registered
@@ -262,7 +262,7 @@ than an extra parameter on the registry one.
 
 ## The general principle behind the renames
 
-**A parameter carries the same name as the export it consumes.** Wiring a script
+**A parameter carries the same name as the export it consumes.** Wiring a test
 is then a matter of matching names rather than remembering translations:
 `connector/consumer/pull_data_filtered` publishes `dataplane_url` and
 `edr_token`, and those are exactly the parameter names
@@ -284,18 +284,18 @@ the dual-shape acceptance the rule forbids, and it would silently produce a
 different document than an author who supplied both expected.
 
 The document is the right shape to keep: it is the EDC / AAS payload verbatim,
-so it does not go stale as those standards add fields, and a script can hand it
+so it does not go stale as those standards add fields, and a test can hand it
 straight from a manifest variable (`${{ env.<id> }}`).
 
 Authoring the document by hand is a separate job, and it gets a separate step.
 The `wizard/*` steps take the flat fields, assemble the document, and create the
-resource — one step id per shape, so which one a script uses is visible in the
+resource — one step id per shape, so which one a test uses is visible in the
 `uses:` line rather than inferred from which keys were filled in.
 
 ## The other half: the document schema
 
 The step catalog is what this comparison measures, and it is not the whole
-contract. The shape of the document *around* the steps — which keys a script,
+contract. The shape of the document *around* the steps — which keys a test,
 a step, a `returns:` entry or a `validate:` entry may carry — is published as
 `compiler/schemas/tck_test.schema.json` and `tck_index.schema.json`, generated
 from the authoring models by `testlab schema` and checked by
@@ -324,7 +324,7 @@ scheduled or manually-triggered job rather than the per-commit test run.
 
 A checker is the weaker of the two guards, though, and it is worth being honest
 about which does the work. `extra="forbid"` on `StepParams` stops class B at the
-moment a script runs, in this repository, with no external checkout — that is
+moment a test runs, in this repository, with no external checkout — that is
 what makes the class impossible rather than merely visible. C40 does the same
 for class C: a `returns:` name is resolved only against what the step declared.
 Generating the block catalog from the registry would close class A the same way.

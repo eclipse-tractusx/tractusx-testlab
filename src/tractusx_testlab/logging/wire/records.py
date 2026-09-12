@@ -74,7 +74,7 @@ def as_recorded(result: Any) -> Any:
       to debug a SUT is worth nothing while it describes a request nobody sent.
       The last recorded call is the one it carries, which is the call the step
       was doing when it returned, and the call that failed when it did not.
-    * A credential the step was handed — the EDR token, a bearer a script set —
+    * A credential the step was handed — the EDR token, a bearer a test set —
       never went through the tracer, so it is masked here.
 
     The result the run keeps is untouched. Its ``request`` / ``response`` are

@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""YAML parser — fail-fast loading of test scripts and TCK manifests.
+"""YAML parser — fail-fast loading of tests and TCK manifests.
 
 Delegates all alias resolution and model validation to Pydantic's
 ``TypeAdapter`` after checking for the mandatory ``syntax`` / ``testlab``
@@ -37,12 +37,12 @@ import yaml
 from pydantic import TypeAdapter
 
 from tractusx_testlab.models.authoring.definitions import (
-    ScriptDefinition,
     TckDefinition,
+    TestDefinition,
 )
 from tractusx_testlab.syntax import diagnostics
 
-_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinition] = TypeAdapter(ScriptDefinition)
+_TEST_ADAPTER: TypeAdapter[TestDefinition] = TypeAdapter(TestDefinition)
 _TCK_ADAPTER: TypeAdapter[TckDefinition] = TypeAdapter(TckDefinition)
 
 _INCLUDE_PREFIX = "!include "
@@ -76,14 +76,14 @@ def _normalize_discriminator(data: dict, path: Path) -> dict:
 
 
 class YamlParser:
-    """Parses YAML test scripts and TCK manifests into definition models."""
+    """Parses YAML tests and TCK manifests into definition models."""
 
     @staticmethod
-    def parse_script(path: Path) -> ScriptDefinition:
-        """Parse a script YAML file into a ``ScriptDefinition``."""
+    def parse_test(path: Path) -> TestDefinition:
+        """Parse a test YAML file into a ``TestDefinition``."""
         data = _load_yaml(path)
         normalized = _normalize_discriminator(data, path)
-        return _SCRIPT_ADAPTER.validate_python(normalized)
+        return _TEST_ADAPTER.validate_python(normalized)
 
     @staticmethod
     def parse_tck(path: Path) -> TckDefinition:
@@ -93,10 +93,10 @@ class YamlParser:
         return _TCK_ADAPTER.validate_python(normalized)
 
     @staticmethod
-    def parse_script_from_dict(data: dict, path: Path | None = None) -> ScriptDefinition:
-        """Parse a script from an already-loaded YAML dict."""
+    def parse_test_from_dict(data: dict, path: Path | None = None) -> TestDefinition:
+        """Parse a test from an already-loaded YAML dict."""
         normalized = _normalize_discriminator(data, path or Path("<dict>"))
-        return _SCRIPT_ADAPTER.validate_python(normalized)
+        return _TEST_ADAPTER.validate_python(normalized)
 
     @staticmethod
     def parse_tck_from_dict(data: dict, path: Path | None = None) -> TckDefinition:

@@ -29,8 +29,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.dsp_protocol import DspProtocolParams

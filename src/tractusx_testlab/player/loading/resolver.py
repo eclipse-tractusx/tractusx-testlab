@@ -27,7 +27,7 @@
 ``${{ ... }}`` is the only reference syntax (ADR-0010).  Two older spellings —
 ``${var}`` and ``@var`` — were resolved here as well, which meant the same value
 could be written three ways and the compiler only understood one of them.  They
-are gone; the compiler rejects them by name so a script written against the old
+are gone; the compiler rejects them by name so a test written against the old
 grammar gets an error that says what to write instead.
 """
 

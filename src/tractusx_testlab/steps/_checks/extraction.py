@@ -40,7 +40,7 @@ def _dict_get(d: dict, key: str) -> Any:
     Exactly the key that was written. A ``snake_case``→``camelCase`` fallback
     used to run here, so ``header.message_id`` quietly found ``messageId`` — a
     second spelling for one field, undocumented and unbounded, which made it
-    impossible to say from a script why a path resolved. Where a document really
+    impossible to say from a test why a path resolved. Where a document really
     does carry two spellings, the payload model declares the alias: that is what
     ``authCode`` and ``@id`` already do, and it is visible.
     """
@@ -173,7 +173,7 @@ def _resolve_path_segment(current: Any, part: str) -> Any:
 
 
 #: Names every step output carries whatever it declares — the ``StepOutput``
-#: slots and the response fields a script can always assert on.
+#: slots and the response fields a test can always assert on.
 UNIVERSAL_RETURNS = frozenset(
     {
         "value",
@@ -192,7 +192,7 @@ UNIVERSAL_RETURNS = frozenset(
 def declared_names(step_cls: Any) -> frozenset[str]:
     """Every name a ``returns:`` block may read off *step_cls*.
 
-    A step's declared models are its public surface, so what a script can name
+    A step's declared models are its public surface, so what a test can name
     is what those models declare, plus the slots every output carries. Anything
     else is a typo or a guess at the step's internals, and resolving it would
     turn either into a silent ``None`` three steps later.
@@ -278,7 +278,7 @@ def _resolve_first_segment(
 
     if declared is not None and first not in declared:
         # The step never declared this name; reaching into its response for
-        # something that happens to share the spelling is how a script ends up
+        # something that happens to share the spelling is how a test ends up
         # asserting on a value no step promised.
         return None
 

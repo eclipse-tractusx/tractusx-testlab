@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Static validation of test scripts before compilation."""
+"""Static validation of tests before compilation."""
 
 from __future__ import annotations
 
@@ -31,9 +31,9 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.infrastructure.mapping import known_keys
-from tractusx_testlab.models import ScriptDefinition, StepDefinition, TckDefinition
-from tractusx_testlab.scripting.registry import StepRegistry
+from tractusx_testlab.models import StepDefinition, TckDefinition, TestDefinition
 from tractusx_testlab.steps._checks.extraction import declared_names
 from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
 from tractusx_testlab.steps.assertions.vocabulary import check_operands
@@ -88,10 +88,10 @@ def _root_of(reference: str) -> str:
     return ".".join(parts[:2]) if len(parts) > 1 else reference
 
 
-def _scope_of(tck: TckDefinition, script: ScriptDefinition) -> frozenset[str]:
-    """Every name a reference in *script* may legally resolve to.
+def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
+    """Every name a reference in *test* may legally resolve to.
 
-    Assembled from the manifest's ``env`` block, the script's own step ids, and
+    Assembled from the manifest's ``env`` block, the test's own step ids, and
     the infrastructure binding keys. This is the namespace the runtime will
     actually have, so a name missing from here is a name that will be missing
     from the run.
@@ -108,9 +108,9 @@ def _scope_of(tck: TckDefinition, script: ScriptDefinition) -> frozenset[str]:
             names.add(f"env.schemas.{schema.id}")
 
     for phase, steps in (
-        ("setup", script.setup),
-        ("execution", script.execution),
-        ("teardown", script.teardown),
+        ("setup", test.setup),
+        ("execution", test.execution),
+        ("teardown", test.teardown),
     ):
         for step in steps:
             if step.id:
@@ -129,8 +129,8 @@ def _env_variable_ids(variables: object) -> list[str]:
     return []
 
 
-class ScriptValidator:
-    """Validates a ScriptDefinition for correctness before execution."""
+class TestValidator:
+    """Validates a TestDefinition for correctness before execution."""
 
     def validate_tck(
         self, tck: TckDefinition, base_dir: Path, version: str | None = None
@@ -142,14 +142,14 @@ class ScriptValidator:
             if not test_path.is_file():
                 combined.add_error(f"Referenced test file not found: tests/{entry.id}")
                 continue
-            from tractusx_testlab.scripting.parser import YamlParser
+            from tractusx_testlab.authoring.parser import YamlParser
 
             try:
-                script = YamlParser.parse_script(test_path)
+                test = YamlParser.parse_test(test_path)
             except ValidationError as exc:
                 # One issue per finding, each naming the step, the key and the
                 # line — see :mod:`tractusx_testlab.syntax.diagnostics`.
-                for finding in diagnostics.explain(exc, model=ScriptDefinition, source=test_path):
+                for finding in diagnostics.explain(exc, model=TestDefinition, source=test_path):
                     combined.add_error(f"tests/{entry.id}: {finding}")
                 continue
             except ValueError as exc:
@@ -160,11 +160,11 @@ class ScriptValidator:
             except Exception as exc:
                 combined.add_error(f"tests/{entry.id}: failed to parse — {exc}")
                 continue
-            result = self.validate(script, version=version, scope=_scope_of(tck, script))
+            result = self.validate(test, version=version, scope=_scope_of(tck, test))
             # Validate tck id and test namespace
-            if script.namespace != tck.id:
+            if test.namespace != tck.id:
                 result.add_error(
-                    f"namespace '{script.namespace}' must match the TCK id '{tck.id}'.",
+                    f"namespace '{test.namespace}' must match the TCK id '{tck.id}'.",
                     field="namespace",
                 )
             for issue in result.issues:
@@ -174,15 +174,15 @@ class ScriptValidator:
 
     def validate(
         self,
-        script: ScriptDefinition,
+        test: TestDefinition,
         version: str | None = None,
         scope: frozenset[str] | None = None,
     ) -> ValidationResult:
-        """Check *script*, resolving its references against *scope*.
+        """Check *test*, resolving its references against *scope*.
 
         *scope* is every name the run will be able to supply — the TCK's ``env``
         entries, its steps' ids, and the infrastructure bindings. Passed as
-        ``None`` (a script validated on its own, with no manifest around it),
+        ``None`` (a test validated on its own, with no manifest around it),
         reference checking is skipped rather than guessed at: warning about every
         reference in a file whose namespace is not visible is noise, and noise is
         what got the previous check ignored.
@@ -202,9 +202,9 @@ class ScriptValidator:
         # error in the main phase used to be reported against "main", a word
         # that appears nowhere in the syntax.
         for phase, steps in (
-            ("setup", script.setup),
-            ("execution", script.execution),
-            ("teardown", script.teardown),
+            ("setup", test.setup),
+            ("execution", test.execution),
+            ("teardown", test.teardown),
         ):
             for idx, step_def in enumerate(steps):
                 self._validate_step(step_def, idx, declared, version, result, phase=phase)
@@ -324,7 +324,7 @@ class ScriptValidator:
         """Check that every assertion names a real check and a real input.
 
         ``with.input`` must be a plain string naming something the step
-        publishes — what the *step* declares, not what the script wrote in
+        publishes — what the *step* declares, not what the test wrote in
         ``returns:``, which is optional and left a step without one unchecked
         entirely. The shipped e2e TCK asserted ``input: fetch_data`` on
         ``connector/dataplane/http_request``, a name nothing produces, and the

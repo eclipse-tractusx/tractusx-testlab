@@ -120,7 +120,7 @@ def _manifest() -> dict:
 
 
 def _manifest_variable(variable_id: str) -> Any:
-    """The value a `env.variables` entry publishes, as a script reads it."""
+    """The value a `env.variables` entry publishes, as a test reads it."""
     for entry in _manifest()["env"]["variables"]:
         if entry["id"] == variable_id:
             return entry["with"]["value"]
@@ -128,7 +128,7 @@ def _manifest_variable(variable_id: str) -> Any:
 
 
 class TestTheManifestObligesWhatTheScenariosNeed:
-    """Two ways a script depends on something no operator was asked for.
+    """Two ways a test depends on something no operator was asked for.
 
     `testlab validate` reads each file on its own, so a reference to an
     undeclared variable and a reference to an optional capability both compile.
@@ -236,7 +236,7 @@ class TestEngineToolbox:
         """`discovery_probe` depends on this, and it did not always hold.
 
         The discovery finder answers with a bare JSON array — the shape the
-        step's own comment says a script depends on — and `extract_path` used
+        step's own comment says a test depends on — and `extract_path` used
         to traverse only dicts from the root, handing anything else to
         `getattr`. Every spelling of an index resolved to `None`, so a
         `validate/field` check failed against a correct answer and said
@@ -572,7 +572,7 @@ class TestDtrConsumerDataplane:
     consumer path the scenario exists to exercise; and a twin whose visibility
     names only one spelling of the consumer's identity is readable or not
     depending on what the provider's data plane puts on the `Edc-Bpn` header,
-    which is a deployment detail no script controls.
+    which is a deployment detail no test controls.
     """
 
     _SCENARIO = "dtr_consumer_dataplane.yaml"

@@ -111,7 +111,7 @@ class TestPauseResumeEvents:
 
         with patch(f"{_STREAMING_MODULE}.create_event_queue", return_value=queue):
             response = await client.get(
-                f"/testlab/test-execution/{job.job_id}/stream",
+                f"/testlab/tck-execution/{job.job_id}/stream",
             )
 
         assert "event: job.paused" in response.text
@@ -131,7 +131,7 @@ class TestPauseResumeEvents:
 
         with patch(f"{_STREAMING_MODULE}.create_event_queue", return_value=queue):
             response = await client.get(
-                f"/testlab/test-execution/{job.job_id}/stream",
+                f"/testlab/tck-execution/{job.job_id}/stream",
             )
 
         assert "event: job.resumed" in response.text
@@ -156,7 +156,7 @@ class TestCancelPausedJob:
         mock_player.jobs.pause(job.job_id)
 
         response = await client.post(
-            f"/testlab/test-execution/{job.job_id}/cancel",
+            f"/testlab/tck-execution/{job.job_id}/cancel",
         )
 
         assert response.status_code == 200

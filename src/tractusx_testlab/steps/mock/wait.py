@@ -32,8 +32,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import Listener, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import get_callback_manager
 from tractusx_testlab.steps.mock._models import MockInstance
 from tractusx_testlab.steps.shared_models import StepParams

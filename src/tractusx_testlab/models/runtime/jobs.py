@@ -68,7 +68,7 @@ class JobMemory(BaseModel):
 
 
 class Job(BaseModel):
-    """Runtime representation of a test execution job."""
+    """Runtime representation of a TCK execution job."""
 
     job_id: str
     status: JobStatus = JobStatus.QUEUED
@@ -80,7 +80,7 @@ class Job(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     total_duration_s: float | None = None
-    current_script: str | None = None
+    current_test: str | None = None
     current_step: str | None = None
     waiting_for: str | None = None
     result: TckResult | None = None

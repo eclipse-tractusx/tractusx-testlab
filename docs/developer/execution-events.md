@@ -3,7 +3,7 @@
 <!-- markdownlint-disable MD013 -->
 
 Everything the execution engine does is reported as an event: a job starting, a
-script finishing, a step passing, an assertion failing. Those events are what a
+test finishing, a step passing, an assertion failing. Those events are what a
 live view of a run is built from — the IDE's execution panel, the CLI's progress
 output, a log sink.
 
@@ -34,7 +34,7 @@ second path that could emit a differently-shaped event.
 Events reach a consumer over Server-Sent Events:
 
 ```text
-GET /test-execution/{job_id}/stream
+GET /tck-execution/{job_id}/stream
 ```
 
 Each event is one SSE frame:
@@ -42,7 +42,7 @@ Each event is one SSE frame:
 ```text
 id: 42
 event: step.completed
-data: {"kind":"step_completed","job_id":"…","script":"…","step_id":"…","result":{…}}
+data: {"kind":"step_completed","job_id":"…","test_id":"…","step_id":"…","result":{…}}
 ```
 
 - **`event:`** is the wire name — the `kind` with its first underscore turned
@@ -67,7 +67,7 @@ Its `id` is a **path to where in the run the event happened**, so it is
 deterministic and readable rather than an opaque hash:
 
 ```text
-<tck-id>/<script>/<phase>/<step-id>/<nested…>/<event-name>
+<tck-id>/<test>/<phase>/<step-id>/<nested…>/<event-name>
 ```
 
 ```text
@@ -116,7 +116,7 @@ The operator paused a running job, or resumed a paused one. Both carry only
 
 #### `job_completed`
 
-**Terminal.** Every script completed or was intentionally skipped.
+**Terminal.** Every test completed or was intentionally skipped.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -126,7 +126,7 @@ The operator paused a running job, or resumed a paused one. Both carry only
 
 #### `job_failed`
 
-**Terminal.** At least one script failed, or the run raised.
+**Terminal.** At least one test failed, or the run raised.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -136,7 +136,7 @@ The operator paused a running job, or resumed a paused one. Both carry only
 | `error` | string \| null | Why it failed, when the engine has a reason to give. |
 
 ```json
-{"kind": "job_failed", "job_id": "3f1c…", "status": "FAILED", "error": "One or more scripts failed"}
+{"kind": "job_failed", "job_id": "3f1c…", "status": "FAILED", "error": "One or more tests failed"}
 ```
 
 #### `job_cancelled`
@@ -150,39 +150,39 @@ own.
 | `job_id` | string | |
 | `status` | `"CANCELLED"` | |
 
-### Script lifecycle
+### Test lifecycle
 
-#### `script_started`
+#### `test_started`
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `kind` | `"script_started"` | |
+| `kind` | `"test_started"` | |
 | `job_id` | string | |
-| `script` | string | The script's id. |
+| `test_id` | string | The test's id. |
 | `index` | integer | Its position in the run, from 0. |
 
 ```json
-{"kind": "script_started", "job_id": "3f1c…", "script": "catalog-policy-validation", "index": 2}
+{"kind": "test_started", "job_id": "3f1c…", "test_id": "catalog-policy-validation", "index": 2}
 ```
 
-#### `script_completed`
+#### `test_completed`
 
 Sent whatever the outcome — the outcome is `result.status`, one of `COMPLETED`,
-`FAILED`, `SKIPPED`. There is no separate `script_failed` kind, because a script
+`FAILED`, `SKIPPED`. There is no separate `test_failed` kind, because a test
 result already carries its status and its steps.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `kind` | `"script_completed"` | |
+| `kind` | `"test_completed"` | |
 | `job_id` | string | |
-| `result` | `ScriptResult` | Status, every step result, timing, assertion summary. |
+| `result` | `TestResult` | Status, every step result, timing, assertion summary. |
 
 ```json
 {
-  "kind": "script_completed",
+  "kind": "test_completed",
   "job_id": "3f1c…",
   "result": {
-    "script_name": "catalog-policy-validation",
+    "test_name": "catalog-policy-validation",
     "status": "COMPLETED",
     "execution": [{"step_name": "…", "status": "PASSED", "…": "…"}],
     "total_duration_s": 4.12,
@@ -199,19 +199,19 @@ result already carries its status and its steps.
 |-------|------|-------------|
 | `kind` | `"step_started"` | |
 | `job_id` | string | |
-| `script` | string | The script the step belongs to. |
-| `step_id` | string \| null | The step's own `id:`, when the script gave it one. |
+| `test_id` | string | The test the step belongs to. |
+| `step_id` | string \| null | The step's own `id:`, when the test gave it one. |
 | `step_index` | integer | Its position in the phase, from 0. |
 | `step_type` | string | What the step *is* — `connector/consumer/negotiate`. Never an outcome. |
 | `step_name` | string | Display name the engine composed for it. |
-| `phase` | string | `setup`, `execution` or `teardown` — the script's own three keys. |
+| `phase` | string | `setup`, `execution` or `teardown` — the test's own three keys. |
 | `inputs` | object \| null | The step's `with:` block **resolved** — every `${{ … }}` reference substituted for the value the run seeded or produced. A reference that names nothing in scope leaves the block as written, and the terminal event reports it as the step's failure. |
 
 ```json
 {
   "kind": "step_started",
   "job_id": "3f1c…",
-  "script": "catalog-policy-validation",
+  "test_id": "catalog-policy-validation",
   "step_id": "negotiate_offer",
   "step_index": 1,
   "step_type": "connector/consumer/negotiate",
@@ -238,7 +238,7 @@ none.
 |-------|------|-------------|
 | `kind` | `"step_call"` | |
 | `job_id` | string | |
-| `script` | string | |
+| `test_id` | string | |
 | `step_id` | string \| null | |
 | `step_type` | string | The step's `uses:` value. |
 | `index` | integer | Position of the call within the step, from 1. |
@@ -253,7 +253,7 @@ one the engine made itself. Credential-bearing headers are masked, per
 {
   "kind": "step_call",
   "job_id": "3f1c…",
-  "script": "pull-ccmapi",
+  "test_id": "pull-ccmapi",
   "step_id": "pull_ccmapi_endpoint",
   "step_type": "connector/consumer/pull_data_filtered",
   "index": 3,
@@ -285,7 +285,7 @@ All three share a shape:
 |-------|------|-------------|
 | `kind` | one of the three | |
 | `job_id` | string | |
-| `script` | string | |
+| `test_id` | string | |
 | `step_id` | string \| null | |
 | `result` | `StepResult` | Status, timing, output, request/response, assertion results. |
 
@@ -293,7 +293,7 @@ All three share a shape:
 {
   "kind": "step_failed",
   "job_id": "3f1c…",
-  "script": "catalog-policy-validation",
+  "test_id": "catalog-policy-validation",
   "step_id": "negotiate_offer",
   "result": {
     "step_name": "[2/6] negotiate_offer",
@@ -320,14 +320,14 @@ it back out of `error`. Both are absent when the error has only its sentence.
 `mock/api` has registered an endpoint: from now on the system under test may
 call it. Everything else in a run is testlab calling out; this is the first of
 the three moments the run depends on a call coming *in*, so the event says where
-that call has to go. A call that arrives before the script reaches its wait step
+that call has to go. A call that arrives before the test reaches its wait step
 is held for it.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `kind` | `"step_listening"` | |
 | `job_id` | string | |
-| `script` | string | |
+| `test_id` | string | |
 | `step_id` | string \| null | |
 | `step_type` | string | `mock/api`. |
 | `listener` | `Listener` | `method`, `url` and `path` — where to call. `url` is the address as the engine knows it. |
@@ -336,7 +336,7 @@ is held for it.
 {
   "kind": "step_listening",
   "job_id": "3f1c…",
-  "script": "external-callback",
+  "test_id": "external-callback",
   "step_id": "open_callback",
   "step_type": "mock/api",
   "listener": {"method": "POST", "url": "http://localhost:8100/testlab-e2e/callback", "path": "/testlab-e2e/callback"}
@@ -356,7 +356,7 @@ the call, a person has to, and this is the line that tells them what to type.
 |-------|------|-------------|
 | `kind` | `"step_waiting"` | |
 | `job_id` | string | |
-| `script` | string | |
+| `test_id` | string | |
 | `step_id` | string \| null | |
 | `step_type` | string | `mock/wait/http_request`. |
 | `listener` | `Listener` | The address the step is blocked on. |
@@ -366,7 +366,7 @@ the call, a person has to, and this is the line that tells them what to type.
 {
   "kind": "step_waiting",
   "job_id": "3f1c…",
-  "script": "external-callback",
+  "test_id": "external-callback",
   "step_id": "await_call",
   "step_type": "mock/wait/http_request",
   "listener": {"method": "POST", "url": "http://localhost:8100/testlab-e2e/callback", "path": "/testlab-e2e/callback"},
@@ -387,7 +387,7 @@ same way `step_call` shows the outbound.
 |-------|------|-------------|
 | `kind` | `"step_received"` | |
 | `job_id` | string | |
-| `script` | string | |
+| `test_id` | string | |
 | `step_id` | string \| null | |
 | `step_type` | string | `mock/wait/http_request`. |
 | `listener` | `Listener` | The address that was called. |
@@ -398,7 +398,7 @@ same way `step_call` shows the outbound.
 {
   "kind": "step_received",
   "job_id": "3f1c…",
-  "script": "external-callback",
+  "test_id": "external-callback",
   "step_id": "await_call",
   "step_type": "mock/wait/http_request",
   "listener": {"method": "POST", "url": "http://localhost:8100/testlab-e2e/callback", "path": "/testlab-e2e/callback"},
@@ -427,7 +427,7 @@ assertion-shaped step types.
 |-------|------|-------------|
 | `kind` | `"assertion_result"` | |
 | `job_id` | string | |
-| `script` | string | |
+| `test_id` | string | |
 | `step_id` | string \| null | The step the assertion was evaluated on. |
 | `step_name` | string | |
 | `index` | integer | Position in the step's `validate:` block, from 0. |
@@ -437,7 +437,7 @@ assertion-shaped step types.
 {
   "kind": "assertion_result",
   "job_id": "3f1c…",
-  "script": "catalog-policy-validation",
+  "test_id": "catalog-policy-validation",
   "step_id": "negotiate_offer",
   "step_name": "[2/6] negotiate_offer",
   "index": 0,
@@ -461,11 +461,11 @@ monotonic. The nesting is:
 
 ```text
 job_started
-  script_started
+  test_started
     step_started
       assertion_result        (zero or more)
     step_completed | step_failed | step_skipped
-  script_completed
+  test_completed
 job_completed | job_failed | job_cancelled
 ```
 

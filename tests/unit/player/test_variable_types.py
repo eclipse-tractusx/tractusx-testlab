@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import pytest
 
+from tractusx_testlab.authoring.test import Tck
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.models import Job
 from tractusx_testlab.models.authoring.definitions import TckDefinition, TckMetadataDefinition
@@ -36,7 +37,6 @@ from tractusx_testlab.player.execution._context_seeder import (
     seed_env_variables,
 )
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.scripting.script import Tck
 from tractusx_testlab.services.instances import ServiceManager
 
 _POLICY_JSON = """

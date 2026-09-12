@@ -215,8 +215,8 @@ ERROR [type-check] tests/validate-payload.yaml:42
 
 A `.tckpkg` file is a **ZIP archive** (renamed extension). Packages can be compiled in two modes:
 
-- **Encrypted** (default) — Scripts and assets are encrypted with AES-256-GCM. Only authorized Players holding the correct RSA private key can decrypt and execute.
-- **Plain** (`--plain`) — Scripts and assets are stored as-is. Intended only for local development and debugging.
+- **Encrypted** (default) — Tests and assets are encrypted with AES-256-GCM. Only authorized Players holding the correct RSA private key can decrypt and execute.
+- **Plain** (`--plain`) — Tests and assets are stored as-is. Intended only for local development and debugging.
 
 #### Plain Mode Structure
 
@@ -245,7 +245,7 @@ my-tck.tckpkg (ZIP)
 └── signature.sig                # Ed25519 signature over manifest + payload
 ```
 
-In encrypted mode, scripts and assets are combined into a single encrypted blob (`payload.enc`). The manifest remains unencrypted for metadata inspection. The signature provides authenticity verification.
+In encrypted mode, tests and assets are combined into a single encrypted blob (`payload.enc`). The manifest remains unencrypted for metadata inspection. The signature provides authenticity verification.
 
 ### 4. Manifest
 
@@ -364,7 +364,7 @@ security:
 
 #### Compiler Workflow (Encrypted Mode)
 
-1. Parse and validate all YAML scripts (phases 1–7)
+1. Parse and validate all YAML tests (phases 1–7)
 2. Generate a random 256-bit AES key
 3. Create a tar archive of `tests/` and `assets/`
 4. Encrypt the tar archive with AES-256-GCM → `payload.enc`
@@ -375,7 +375,7 @@ security:
    - Encapsulate the AES key with ML-KEM-768 → `encrypted_key.ml_kem`
    - Record as `{player_id: blake2b_fingerprint, encrypted_key: {rsa: ..., ml_kem: ...}}`
 6. Build `manifest.yaml` with metadata + `security` block (no secret material)
-7. Compute BLAKE2b-512 checksum over the original (unencrypted) scripts and assets
+7. Compute BLAKE2b-512 checksum over the original (unencrypted) tests and assets
 8. Sign (`manifest.yaml` bytes ‖ `payload.enc` bytes) with both Ed25519 AND ML-DSA-65 signing keys → `signature.sig` (contains both signatures)
 9. Package `manifest.yaml`, `payload.enc`, `signature.sig` into ZIP archive
 
@@ -489,7 +489,7 @@ Packages can be:
 | Aspect | Plain Mode | Encrypted Mode |
 |--------|-----------|----------------|
 | Archive contents | `manifest.yaml` + `tests/` + `assets/` | `manifest.yaml` + `payload.enc` + `signature.sig` |
-| Scripts readable by | Anyone with the file | Only authorized Players |
+| Tests readable by | Anyone with the file | Only authorized Players |
 | Integrity check | BLAKE2b-512 checksum | BLAKE2b-512 + hybrid Ed25519/ML-DSA-65 signature |
 | Compiler requirement | None (no key needed) | Ed25519 + ML-DSA-65 signing keys |
 | Player requirement | None | RSA + ML-KEM-768 key pairs + compiler in trust store |

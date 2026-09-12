@@ -73,13 +73,13 @@ def _clip(value: object, limit: int = _MAX_BODY) -> str:
 
 
 def _where(data: dict) -> str:
-    """The script and step a line is about, as one column."""
-    script = data.get("script") or ""
+    """The test and step a line is about, as one column."""
+    test = data.get("test_id") or ""
     step = data.get("step_id") or ""
     result = data.get("result") or {}
     if not step and isinstance(result, dict):
         step = result.get("step_name") or ""
-    return f"[{script}]{' ' + step if step else ''}"
+    return f"[{test}]{' ' + step if step else ''}"
 
 
 def _assertion_line(data: dict) -> str:
@@ -158,11 +158,11 @@ def _step_call_line(base: str, data: dict) -> str:
     call = data.get("call") or {}
     request = call.get("request") or {}
     response = call.get("response") or {}
-    # A step the script did not name falls back to what it is — the same name
+    # A step the test did not name falls back to what it is — the same name
     # the event's own id is built from, so the line and the trace agree.
     step_type = str(data.get("step_type", ""))
     step = data.get("step_id") or step_type.rsplit("/", 1)[-1]
-    parts = [base, f"[{data.get('script', '')}]{' ' + step if step else ''}"]
+    parts = [base, f"[{data.get('test_id', '')}]{' ' + step if step else ''}"]
     parts.append(f"#{data.get('index', 0)}")
     if call.get("context"):
         parts.append(str(call["context"]))
@@ -216,7 +216,7 @@ def render(base_msg: str, extra_data: dict[str, object]) -> str:
     ``response`` keys. Events carry a nested ``result`` (a ``StepResult``)
     and a nested ``assertion`` instead, so none of those keys were ever
     present and every step and assertion line printed as its bare event name
-    and the script it belonged to — ``assertion.result [wiring]``, which
+    and the test it belonged to — ``assertion.result [wiring]``, which
     says neither which check ran nor whether it passed. The JSONL had the
     whole story the entire time; only the console threw it away.
 
@@ -254,7 +254,7 @@ def render(base_msg: str, extra_data: dict[str, object]) -> str:
             extra_data,
         )
 
-    if kind == EventKind.SCRIPT_COMPLETED.value:
+    if kind == EventKind.TEST_COMPLETED.value:
         result = extra_data.get("result")
         if not isinstance(result, dict):
             result = {}
@@ -266,14 +266,14 @@ def render(base_msg: str, extra_data: dict[str, object]) -> str:
         return _traced(
             " ".join(
                 part
-                for part in (base_msg, f"[{result.get('script_name', '')}]", str(status), checks)
+                for part in (base_msg, f"[{result.get('test_name', '')}]", str(status), checks)
                 if part
             ),
             extra_data,
         )
 
     parts: list[str] = [base_msg]
-    for key in ("tck_id", "tck", "script", "package", "checksum", "status", "error"):
+    for key in ("tck_id", "tck", "test_id", "package", "checksum", "status", "error"):
         if extra_data.get(key):
             parts.append(f"[{extra_data[key]}]")
     return _traced(" ".join(parts), extra_data)

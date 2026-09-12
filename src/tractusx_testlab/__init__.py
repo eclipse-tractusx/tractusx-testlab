@@ -24,8 +24,12 @@
 
 """extensions.testlab — automated interoperability testing for Tractus-X dataspaces."""
 
+from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.authoring.registry import StepRegistry, step
+from tractusx_testlab.authoring.test import Tck as Tck  # SDK alias
+from tractusx_testlab.authoring.test import Test
 from tractusx_testlab.compiler.compiler import Compiler
-from tractusx_testlab.compiler.validation.validator import ScriptValidator
+from tractusx_testlab.compiler.validation.validator import TestValidator
 from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.infrastructure import (
@@ -41,10 +45,6 @@ from tractusx_testlab.infrastructure import (
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.player.jobs import JobManager
-from tractusx_testlab.scripting.parser import YamlParser
-from tractusx_testlab.scripting.registry import StepRegistry, step
-from tractusx_testlab.scripting.script import Tck as Tck  # SDK alias
-from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.security.trust.identity import PlayerIdentity
 from tractusx_testlab.server.app import create_app
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput
@@ -66,18 +66,18 @@ __all__ = [
     "JobManager",
     # Security
     "PlayerIdentity",
-    "ScriptValidator",
     "StepContext",
     "StepOutput",
     "StepRegistry",
     "SutBindings",
     "SutConnectorBinding",
     "Tck",
-    "TestScript",
+    "Test",
+    "TestValidator",
     "TestlabConfig",
     # Player
     "TestlabPlayer",
-    # Scripting
+    # Authoring
     "YamlParser",
     # Server
     "create_app",

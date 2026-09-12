@@ -107,7 +107,7 @@ class VariableScope(str, enum.Enum):
 
 ### 3. Parser wires scope from `with.scope`
 
-`scripting/_variable_form.py` — `_build_verb_variable()` reads `with_block.get("scope")`
+`authoring/_variable_form.py` — `_build_verb_variable()` reads `with_block.get("scope")`
 and coerces it via `VariableScope(raw_scope)`. Invalid values raise `ValueError`; the
 compiler pre-validates before this point is reached (§ 4).
 

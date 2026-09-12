@@ -24,7 +24,7 @@
 
 """The whole pipeline, on one TCK: author it, compile it, run combinations of it.
 
-Everything else here starts from step dicts or a parsed script. This starts
+Everything else here starts from step dicts or a parsed test. This starts
 from files on disk and goes through the commands an operator actually runs —
 ``validate``, ``compile``, ``inspect``, ``run`` — because each of those is a
 place a TCK can be lost between being written and being executed, and none of
@@ -51,13 +51,13 @@ from pathlib import Path
 import pytest
 
 from combinations.http_double import HttpDouble
+from tractusx_testlab.authoring import _inspection
 from tractusx_testlab.compiler.compiler import Compiler
 from tractusx_testlab.config.settings import TestlabConfig
-from tractusx_testlab.models import ScriptStatus, StepStatus
+from tractusx_testlab.models import StepStatus, TestStatus
 from tractusx_testlab.models.primitives.exceptions import SkipNotAllowedError
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.player.loading.loader import Loader
-from tractusx_testlab.scripting import _inspection
 
 #: Applied per class: the compile-side checks below are synchronous, and a
 #: module-wide asyncio mark warns on every one of them.
@@ -270,7 +270,7 @@ def package(tmp_path: Path, service: HttpDouble) -> Path:
     from tractusx_testlab.cli.compile import compile as compile_command
 
     compile_command(
-        script=source / "index.yaml",
+        manifest=source / "index.yaml",
         compiler_keys=None,
         player_pub=None,
         output=tmp_path / "dist",
@@ -296,7 +296,7 @@ class TestTheAuthoredTckCompiles:
 
     def test_the_package_carries_every_test_the_manifest_declared(self, package: Path) -> None:
         report = _inspection.build_inspection_result(Loader().load(package))
-        assert {script.test_id for script in report.scripts} == {
+        assert {test.test_id for test in report.tests} == {
             "wiring.yaml",
             "checks.yaml",
             "required.yaml",
@@ -314,8 +314,8 @@ class TestRuntimeWiring:
 
     async def test_the_run_passes(self, package: Path, tmp_path: Path) -> None:
         result = await _run(package, tmp_path)
-        assert result.status == ScriptStatus.COMPLETED, [
-            step.error for script in result.scripts for step in script.execution if step.error
+        assert result.status == TestStatus.COMPLETED, [
+            step.error for test in result.tests for step in test.execution if step.error
         ]
 
     async def test_the_setup_ticket_reaches_the_execution_request(
@@ -350,7 +350,7 @@ class TestRuntimeWiring:
 class TestAssertionsAreRecorded:
     async def test_every_declared_check_was_evaluated(self, package: Path, tmp_path: Path) -> None:
         result = await _run(package, tmp_path)
-        checks = next(s for s in result.scripts if s.script_name == "Checks")
+        checks = next(s for s in result.tests if s.test_name == "Checks")
         assert checks.assertion_summary.declared == checks.assertion_summary.total
         assert checks.assertion_summary.total == 4
 
@@ -358,7 +358,7 @@ class TestAssertionsAreRecorded:
         self, package: Path, tmp_path: Path
     ) -> None:
         result = await _run(package, tmp_path)
-        checks = next(s for s in result.scripts if s.script_name == "Checks")
+        checks = next(s for s in result.tests if s.test_name == "Checks")
         read = next(step for step in checks.execution if "[read]" in step.step_name)
         assert len(read.assertions) == 4
 
@@ -368,7 +368,7 @@ class TestAssertionsAreRecorded:
         """``nickname`` is null in the document; the check is SOFT, so it is
         reported as failed and the step still passes."""
         result = await _run(package, tmp_path)
-        checks = next(s for s in result.scripts if s.script_name == "Checks")
+        checks = next(s for s in result.tests if s.test_name == "Checks")
         read = next(step for step in checks.execution if "[read]" in step.step_name)
         assert read.status == StepStatus.PASSED
         assert checks.assertion_summary.failed_soft == 1
@@ -377,7 +377,7 @@ class TestAssertionsAreRecorded:
     async def test_the_wire_is_recorded_with_the_step(self, package: Path, tmp_path: Path) -> None:
         """The trace carries the request and the response, not just the verdict."""
         result = await _run(package, tmp_path)
-        checks = next(s for s in result.scripts if s.script_name == "Checks")
+        checks = next(s for s in result.tests if s.test_name == "Checks")
         read = next(step for step in checks.execution if "[read]" in step.step_name)
         assert read.request is not None and read.request.method == "GET"
         assert read.response is not None and read.response.status_code == 200
@@ -390,21 +390,21 @@ class TestCombinations:
 
     async def test_the_full_suite_runs_every_test(self, package: Path, tmp_path: Path) -> None:
         result = await _run(package, tmp_path)
-        assert len(result.scripts) == 3
-        assert all(s.status == ScriptStatus.COMPLETED for s in result.scripts)
+        assert len(result.tests) == 3
+        assert all(s.status == TestStatus.COMPLETED for s in result.tests)
 
     async def test_a_selection_runs_only_what_was_asked_for(
         self, package: Path, tmp_path: Path
     ) -> None:
         result = await _run(package, tmp_path, skip_tests=["checks.yaml"])
-        by_name = {s.script_name: s.status for s in result.scripts}
-        assert by_name["Checks"] == ScriptStatus.SKIPPED
-        assert by_name["Wiring"] == ScriptStatus.COMPLETED
+        by_name = {s.test_name: s.status for s in result.tests}
+        assert by_name["Checks"] == TestStatus.SKIPPED
+        assert by_name["Wiring"] == TestStatus.COMPLETED
 
     async def test_skipping_does_not_fail_the_run(self, package: Path, tmp_path: Path) -> None:
         """An omitted test is an operator's choice, not a defect."""
         result = await _run(package, tmp_path, skip_tests=["checks.yaml", "wiring.yaml"])
-        assert result.status == ScriptStatus.COMPLETED
+        assert result.status == TestStatus.COMPLETED
 
     async def test_a_selection_does_not_reach_the_skipped_tests_service(
         self, package: Path, tmp_path: Path, service: HttpDouble

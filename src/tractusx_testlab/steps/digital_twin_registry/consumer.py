@@ -38,8 +38,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client
 from tractusx_testlab.steps.registry_models import (
     DescriptorPayload,
@@ -117,7 +117,7 @@ class PagedDataplaneParams(DataplaneParams):
     )
 
     def page_query(self) -> dict:
-        """The paging parameters, with the ones the script left out omitted."""
+        """The paging parameters, with the ones the test left out omitted."""
         query: dict = {}
         if self.limit is not None:
             query["limit"] = self.limit
@@ -152,7 +152,7 @@ class ShellLookupStep(BaseStep[ShellLookupParams, ShellLookupOutput]):
     thing from ``digital-twin/provider/get_shell_descriptor``: that one reads a
     known shell out of the registry the run was seeded with, this one searches
     somebody else's over a negotiated data plane.  The lookup returns
-    identifiers, so each one is then read back as a descriptor — a script that
+    identifiers, so each one is then read back as a descriptor — a test that
     only needs the identifiers reads ``shell_ids`` and ignores the rest.
     """
 
@@ -214,7 +214,7 @@ class ShellLookupByAssetLinkParams(PagedDataplaneParams):
         return [entry.model_dump(exclude_none=True) for entry in self.specific_asset_ids]
 
     def page_query(self) -> dict:
-        """The paging parameters, with the ones the script left out omitted."""
+        """The paging parameters, with the ones the test left out omitted."""
         query: dict = {}
         if self.limit is not None:
             query["limit"] = self.limit
@@ -227,7 +227,7 @@ class ShellLookupPageOutput(ShellLookupOutput):
     """One page of a shell lookup.
 
     The collection shape every consumer-side read answers with, plus the cursor
-    a paged registry hands back, so a script can ask for the next page without
+    a paged registry hands back, so a test can ask for the next page without
     reaching into the raw response.
     """
 
@@ -373,7 +373,7 @@ class DataplaneGetShellDescriptorStep(
     reached through the data-plane URL and EDR token a transfer published
     instead of the registry the run was seeded with.  A registry that answers
     anything but 200 yields an empty descriptor; the status code stays on the
-    response for a script to assert on.
+    response for a test to assert on.
     """
 
     params_model = DataplaneShellDescriptorRefParams

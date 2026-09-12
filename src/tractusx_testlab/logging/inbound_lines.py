@@ -39,9 +39,9 @@ _MAX_BODY = 80
 
 
 def _where(data: dict) -> str:
-    script = data.get("script") or ""
+    test = data.get("test_id") or ""
     step = data.get("step_id") or ""
-    return f"[{script}]{' ' + step if step else ''}"
+    return f"[{test}]{' ' + step if step else ''}"
 
 
 def _call(data: dict) -> str:

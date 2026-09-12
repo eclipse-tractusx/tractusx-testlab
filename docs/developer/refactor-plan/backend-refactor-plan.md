@@ -155,7 +155,7 @@ core of the deep-modularity goal beyond the oversized-file triggers.
 | `compiler/` | 10 sibling files (orchestrator + IR assembly + lowering + validation + assets + expressions + fingerprint) | `ir/` (builder, helpers, assets, lowering) · `validation/` (validator, rules, expressions) · top-level orchestrator/packager/fingerprint | 6 |
 | `server/` | 9 sibling files (app + routes + compile + callbacks + streaming + buffer + registry + storage) | `routes/` (route groups: compile/run/callback) · `streaming/` (SSE formatter + lifecycle + buffer) · top-level app/storage/registry | 8 |
 | `models/` | 8 flat domain files | keep flat **unless** a file bundles groups: `enums.py` (service/phase/state enum families) and `results.py` (step + assertion + trace results) are the only nest candidates → `enums/`, `results/` | 11 |
-| `scripting/` | script + parser + registry + `_builders` | builders cluster (`_builders.py`) → `_builders/` only if it grows; otherwise leave — **guardrail check** | 10 (watch) |
+| `authoring/` | test + parser + registry + `_builders` | builders cluster (`_builders.py`) → `_builders/` only if it grows; otherwise leave — **guardrail check** | 10 (watch) |
 
 > **Guardrail reminder:** `config/`, `logging/`, `syntax/`, `security/crypto`,
 > `security/trust`, `services/participants.py`, and the already-nested `player/`,
@@ -266,9 +266,9 @@ tractusx_testlab/
     __init__.py                    #   barrel: TestlabPlayer, job API
     jobs.py                        #   in-flight job registry + status tracking
 
-    loading/                       #   run-time YAML/package → executable script
+    loading/                       #   run-time YAML/package → executable test
       __init__.py                  #     barrel: loader public surface
-      loader.py                    #     package/YAML → Script object
+      loader.py                    #     package/YAML → Test object
       _parser.py                   #     (priv) YAML → raw structures   [watch: 267L]
       _constants.py                #     (priv) loader keys/defaults
       ordering.py                  #     phase/step ordering (setup→main→teardown)
@@ -292,10 +292,10 @@ tractusx_testlab/
         main.py                    #       (new) main wrapper: stop-on-fail + gate
         teardown.py                #       (new) teardown wrapper: runs unconditionally
 
-  scripting/                       # script object model + builder DSL (author-facing)
-    __init__.py                    #   barrel: Script, registry, builders
-    script.py                      #   Script aggregate (phases, steps, metadata)
-    parser.py                      #   author YAML → Script
+  authoring/                       # test object model + builder DSL (author-facing)
+    __init__.py                    #   barrel: Test, registry, builders
+    test.py                      #   Test aggregate (phases, steps, metadata)
+    parser.py                      #   author YAML → Test
     registry.py                    #   step-type registry lookup
     _builders.py                   #   (priv) fluent builder helpers
 
@@ -471,7 +471,7 @@ No layer needs to be created, merged, or moved.
 | `server/` (9 flat files) | app + route groups + SSE + storage mixed | `server/routes/` (compile/callbacks/mock) + `server/streaming/` (lifecycle/formatter/buffer); app/storage/registry stay top-level |
 | `player/execution/player.py` (298) | orchestration + trace/result formatting | extract `_trace_formatter.py`; `player.py` keeps orchestration |
 | `models/enums.py`, `models/results.py` | bundled enum/result families | `models/enums/`, `models/results/` **only if** families separate cleanly (guardrail check) |
-| `player/loading/_parser.py` (267), `cli/compile.py` (260), `scripting/_builders.py` | near-limit / cohesive | **Watch only** (Phase 10) — split-first rule on next feature touch; no move now |
+| `player/loading/_parser.py` (267), `cli/compile.py` (260), `authoring/_builders.py` | near-limit / cohesive | **Watch only** (Phase 10) — split-first rule on next feature touch; no move now |
 
 ---
 
@@ -510,7 +510,7 @@ watch-list guard and the conditional model nesting.
 
 ### Phase 2 — `player/execution/_phase_runners.py` (P1, dedup)
 1. Create `player/execution/phases/` with `_run_phase.py` holding one private
-   `async _run_phase(*, script, phase, stop_on_failure, gate_conditions, ...)`.
+   `async _run_phase(*, test, phase, stop_on_failure, gate_conditions, ...)`.
 2. Add thin `setup.py` / `main.py` / `teardown.py` wrappers configuring policy
    (setup & main stop on failure + gate on `if_condition`; teardown unconditional);
    `phases/__init__.py` re-exports `run_setup` / `run_main` / `run_teardown`.
@@ -581,7 +581,7 @@ watch-list guard and the conditional model nesting.
 
 ### Phase 10 — Watch-list guard (P3, no-op unless touched)
 No moves now. Record the watch list (`player/loading/_parser.py` 267,
-`cli/compile.py` 260, `scripting/_builders.py` 208 + §1a) in repo memory so the
+`cli/compile.py` 260, `authoring/_builders.py` 208 + §1a) in repo memory so the
 **next** feature touching any near-limit file triggers a split-first rule rather
 than an overflow.
 

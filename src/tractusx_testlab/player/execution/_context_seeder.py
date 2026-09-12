@@ -36,10 +36,10 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from tractusx_testlab.authoring.test import Tck
 from tractusx_testlab.models.primitives.binding_errors import MissingInputVariableError
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.scripting.script import Tck
 from tractusx_testlab.syntax import keys, variables
 
 logger = logging.getLogger(__name__)

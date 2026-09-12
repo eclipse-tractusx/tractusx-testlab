@@ -69,7 +69,7 @@ setup:
         type: string
 
   # `mock/discovery` and `mock/dtr` publish nothing at all: they attach their
-  # routes to the mock server root and hand back no outputs. A script that
+  # routes to the mock server root and hand back no outputs. A test that
   # needs that root — and both the discovery probe and the registry steps
   # below do — therefore has to learn it from a `mock/api` step, which is the
   # only one that reports `base_mock_url`. This endpoint exists for that, and
@@ -198,7 +198,7 @@ execution:
   # client credentials call above produced. That wiring is the point of the
   # step — a refresh grant spends a token an earlier call earned, and a run in
   # which the first step's output never reached the third one would still hand
-  # this step a plausible-looking string if the script had typed one in.
+  # this step a plausible-looking string if the test had typed one in.
   - id: oauth_refresh
     uses: security/oauth2/refresh_token
     name: Exchange the refresh token the first grant returned
@@ -227,7 +227,7 @@ execution:
 
   # Nothing in testlab consumes a discovery finder: a connector resolves a BPN
   # to a DSP address by itself, and no step here ever asks it to. What a
-  # script that stands this mock up depends on is the answer shape — a bare
+  # test that stands this mock up depends on is the answer shape — a bare
   # JSON array, each entry carrying `bpn` and a list-valued
   # `connectorEndpoint` — so that shape is what is asserted, read off the wire
   # with a plain HTTP request rather than through a step that would hide it.
@@ -264,7 +264,7 @@ execution:
   # The two lookup endpoints exist for different reasons. `/lookup/shells`
   # carries its criteria in the query string, which has a length limit no
   # standard fixes, and `/lookup/shellsByAssetLink` carries the same criteria
-  # in a request body, which has none. A script picks between them, so both
+  # in a request body, which has none. A test picks between them, so both
   # are asserted here.
   - id: lookup_by_asset_ids
     uses: digital-twin-registry/consumer/dataplane/lookup_shell
@@ -454,7 +454,7 @@ execution:
         with: { input: value, operator: equals, value: "toolboxTwinOne" }
 
   # The predicate form selects a list element by a field of its own rather
-  # than by position, which is what a script wants whenever the registry's
+  # than by position, which is what a test wants whenever the registry's
   # ordering is not part of the contract — and it is never part of the
   # contract. It needs a key to reach the list through, so the descriptors are
   # carried into one here; `util/log` returns its value unchanged, which makes
@@ -510,7 +510,7 @@ execution:
   # E. The delay.
 
   # Nothing is asserted here, and nothing can be: a delay that quietly slept
-  # for no time at all would satisfy every assertion a script is able to write
+  # for no time at all would satisfy every assertion a test is able to write
   # about it. It is in the file to be executed — a step that raises, or that
   # the runtime no longer knows how to schedule, fails the run on its own.
   - id: short_delay

@@ -32,8 +32,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepValue
 
 if TYPE_CHECKING:

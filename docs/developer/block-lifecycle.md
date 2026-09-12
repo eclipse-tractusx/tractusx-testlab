@@ -33,7 +33,7 @@ connectors, registries, or discovery services.
 Visual authoring happens in the **cx-test-suite IDE** (the separate frontend
 repository): users assemble blocks in a Blockly workspace, and the IDE serializes
 them into exactly the YAML this page describes. From the engine's point of view
-there is no difference between a script the IDE emitted and one written in a text
+there is no difference between a test the IDE emitted and one written in a text
 editor — the YAML is the interface, and everything below this line is this
 repository's code.
 
@@ -43,7 +43,7 @@ A step goes through **five stages** from YAML to execution:
 
 ```mermaid
 flowchart LR
-    A["1. YAML Script<br/><i>uses / with / returns</i>"] --> B["2. Loading &amp; Validation<br/><i>compiler / player</i>"]
+    A["1. YAML Test<br/><i>uses / with / returns</i>"] --> B["2. Loading &amp; Validation<br/><i>compiler / player</i>"]
     B --> C["3. Step Registry<br/><i>Lookup</i>"]
     C --> D["4. Step Executor<br/><i>Python</i>"]
     D --> E["5. SDK Service<br/><i>HTTP Call</i>"]
@@ -51,9 +51,9 @@ flowchart LR
 
 | Stage | Where | Technology |
 |-------|-------|------------|
-| 1. YAML Script | authored (IDE or editor) | `uses:` / `with:` / `returns:` |
+| 1. YAML Test | authored (IDE or editor) | `uses:` / `with:` / `returns:` |
 | 2. Loading & Validation | `compiler/`, `player/loading/` | Pydantic models |
-| 3. Step Registry | `scripting/registry.py` | `@step` decorator |
+| 3. Step Registry | `authoring/registry.py` | `@step` decorator |
 | 4. Step Executor | `steps/` | `BaseStep.invoke()` |
 | 5. SDK Service | `services/` → HTTP | `tractusx-sdk` |
 
@@ -63,7 +63,7 @@ Let's trace a real step — **`connector/consumer/query_catalog`** — through e
 
 ## Stage 1: The YAML Step
 
-A step is one entry in a script's `setup:`, `execution:`, or `teardown:` list:
+A step is one entry in a test's `setup:`, `execution:`, or `teardown:` list:
 
 ```yaml
 execution:
@@ -91,7 +91,7 @@ execution:
 |-----|-------|--------|
 | `uses` | `connector/consumer/query_catalog` | The canonical step id. This exact string links the step to its Python executor. |
 | `with` | parameter map | Validated into the executor's declared `params_model` before any code runs. The connector the step talks to is not among them: services are seeded into the run, not authored. |
-| `returns` | declared output fields | The fields the script reads from the output. Assertions resolve against them, and later steps reference them as `${{ steps.query.datasets }}`. |
+| `returns` | declared output fields | The fields the test reads from the output. Assertions resolve against them, and later steps reference them as `${{ steps.query.datasets }}`. |
 | `validate` | assertion list | Each entry is itself in verb form (`uses: validate/assert`). |
 
 !!! note "The `uses:` id is the bridge"
@@ -104,7 +104,7 @@ execution:
 
 ## Stage 2: Loading and Validation
 
-The document is parsed into the authoring models (`ScriptDefinition`,
+The document is parsed into the authoring models (`TestDefinition`,
 `StepDefinition` — see [Data Models](data-models.md)). The compiler
 (`compiler/`) validates structure, references, and step ids against the registry
 before a package is cut; the player (`player/loading/`) resolves includes and
@@ -118,7 +118,7 @@ ordering when a package is loaded for a run. A misspelled `uses:` id or an unkno
 At run time the engine needs the Python class that implements each step. This is
 the **Step Registry**.
 
-**File:** `src/tractusx_testlab/scripting/registry.py`
+**File:** `src/tractusx_testlab/authoring/registry.py`
 
 ```python
 # The registry maps (step_type, dataspace_version) → BaseStep class
@@ -184,7 +184,7 @@ The step executor is a Python class that implements the actual logic. It declare
 **File:** `src/tractusx_testlab/steps/connector/catalog_query.py`
 
 ```python
-from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.steps._contracts import CatalogOutput, CounterPartyParams
 from tractusx_testlab.steps.base import BaseStep, StepOutput
 
@@ -258,7 +258,7 @@ The step executor doesn't implement HTTP calls directly. It delegates to **tract
 
 ### How services are created
 
-The `ServiceManager` (`src/tractusx_testlab/services/manager.py`) holds the run's service definitions — declared in a script's `services:` block or seeded from the TCK's `infrastructure.*` bindings at runtime — and initialises SDK instances lazily on first access:
+The `ServiceManager` (`src/tractusx_testlab/services/manager.py`) holds the run's service definitions — declared in a test's `services:` block or seeded from the TCK's `infrastructure.*` bindings at runtime — and initialises SDK instances lazily on first access:
 
 ```yaml
 services:
@@ -329,7 +329,7 @@ The step executor then wraps this in a `StepOutput` for the runtime to process.
 ```mermaid
 sequenceDiagram
     actor Author
-    participant YAML as YAML Script
+    participant YAML as YAML Test
     participant Compiler as Compiler
     participant Registry as Step Registry
     participant Executor as QueryCatalogStep
@@ -340,7 +340,7 @@ sequenceDiagram
     Author->>YAML: uses: connector/consumer/query_catalog<br/>(written in the cx-test-suite IDE or by hand)
 
     Note over Author,EDC: Stage 2 — Compilation
-    YAML->>Compiler: Parse → ScriptDefinition
+    YAML->>Compiler: Parse → TestDefinition
     Compiler->>Registry: Validate step ids against registry
 
     Note over Author,EDC: Stage 3 — Lookup
@@ -359,7 +359,7 @@ sequenceDiagram
     Executor-->>Compiler: StepOutput(value=CatalogOutput)
 ```
 
-Here's every file involved when a script runs this step:
+Here's every file involved when a test runs this step:
 
 ### 1. YAML is loaded and validated
 
@@ -377,7 +377,7 @@ src/tractusx_testlab/player/loading/
 ### 2. Registry resolves the executor
 
 ```text
-src/tractusx_testlab/scripting/registry.py
+src/tractusx_testlab/authoring/registry.py
   → StepRegistry.get("connector/consumer/query_catalog", ...) → QueryCatalogStep
 
 src/tractusx_testlab/player/execution/step_runner.py
@@ -477,7 +477,7 @@ Runtime:   context.get_consumer_service()  → SDK connector consumer service
 ```
 
 Connector services are seeded into the run context at runtime — from the TCK's
-`infrastructure.*` bindings or a script `services:` block — and the `StepContext`
+`infrastructure.*` bindings or a test `services:` block — and the `StepContext`
 resolves them to live SDK instances created by the `ServiceManager`.
 
 ### Rule 4: Dataspace version selects the right code path
@@ -513,7 +513,7 @@ steps later.
 flowchart TD
     subgraph AUTH["Authoring"]
         direction LR
-        IDE["cx-test-suite IDE<br/><i>visual blocks (external repo)</i>"] --> YAML["YAML script<br/><i>uses / with / returns</i>"]
+        IDE["cx-test-suite IDE<br/><i>visual blocks (external repo)</i>"] --> YAML["YAML test<br/><i>uses / with / returns</i>"]
         ED["Text editor"] --> YAML
     end
 
@@ -546,9 +546,9 @@ flowchart TD
 | Layer | Technology | Files | What it does |
 |-------|-----------|-------|-------------|
 | Visual authoring | cx-test-suite IDE (external repo) | — | Emits the YAML this engine compiles |
-| Authoring models | Python (Pydantic) | `models/authoring/definitions.py` | The shapes of scripts, steps, TCK manifests |
+| Authoring models | Python (Pydantic) | `models/authoring/definitions.py` | The shapes of tests, steps, TCK manifests |
 | Compiler | Python | `compiler/` | Parses, validates, and packages YAML |
-| Step Registry | Python | `scripting/registry.py` | Maps the `uses:` id → Python class via `@step` decorator |
+| Step Registry | Python | `authoring/registry.py` | Maps the `uses:` id → Python class via `@step` decorator |
 | Step Executor | Python | `steps/connector/*.py`, `steps/industry/*.py`, … | Implements step logic, calls SDK services |
 | Service Manager | Python | `services/manager.py` | Creates SDK service instances from seeded/declared definitions |
 | SDK Services | Python (tractusx-sdk) | `tractusx_sdk.dataspace.services.*`, `tractusx_sdk.industry.services.*` | Handles HTTP communication with connectors, DTR, discovery |

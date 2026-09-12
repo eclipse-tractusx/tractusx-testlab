@@ -216,8 +216,8 @@ The `TckResult` object contains the full execution tree:
 ```text
 TckResult
 ├── status: COMPLETED | FAILED
-├── scripts: list[ScriptResult]
-│   ├── script_name: "request-certificate"
+├── tests: list[TestResult]
+│   ├── test_name: "request-certificate"
 │   ├── status: COMPLETED | FAILED
 │   ├── assertion_summary: {total, passed, failed_hard, failed_soft}
 │   └── execution: list[StepResult]
@@ -263,14 +263,14 @@ async def run_ccm_tests():
     print(f"Status: {result.status}")
     print(f"Steps passed: {result.passed}/{result.total}")
 
-    # Inspect individual scripts
-    for script in result.scripts:
-        summary = script.assertion_summary
-        print(f"  {script.script_name}: {script.status}")
+    # Inspect individual tests
+    for test in result.tests:
+        summary = test.assertion_summary
+        print(f"  {test.test_name}: {test.status}")
         print(f"    Assertions: {summary.passed}/{summary.total} passed")
 
         # Show failures
-        for step in script.execution:
+        for step in test.execution:
             if step.error:
                 print(f"    FAILED: {step.step_name} — {step.error}")
 

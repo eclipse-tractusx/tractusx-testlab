@@ -20,7 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-"""Execution sub-module — core test execution engine, context, and monitoring."""
+"""Execution sub-module — core TCK execution engine, context, and monitoring."""
 
 from tractusx_testlab.player.execution._step_outputs import store_step_outputs
 from tractusx_testlab.player.execution.context import StepContext
@@ -32,17 +32,17 @@ from tractusx_testlab.player.execution.phase import (
     run_teardown,
 )
 from tractusx_testlab.player.execution.player import TestlabPlayer
-from tractusx_testlab.player.execution.step_runner import run_script, run_step
+from tractusx_testlab.player.execution.step_runner import run_step, run_test
 
 __all__ = [
     "ExecutionMonitor",
     "StepContext",
     "TestlabPlayer",
     "run_execution",
-    "run_script",
     "run_setup",
     "run_step",
     "run_teardown",
+    "run_test",
     "seed_infrastructure_services",
     "store_step_outputs",
 ]

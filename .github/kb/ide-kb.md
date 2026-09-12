@@ -58,7 +58,7 @@ _No entries yet. Append reusable fixes here as they are discovered._
 <!-- Format: ### API-{n}: {Title} -->
 
 ### API-1: Backend execution API path migration
-The backend migrated from `/testlab/run/` and `/testlab/jobs/` to `/testlab/test-execution/`. Key endpoints: `POST .../run/yaml` (submit), `GET .../{id}/stream` (SSE), `POST .../{id}/cancel|pause|resume`. Health stays at `/testlab/health`. SSE stream now includes `id:` lines for Last-Event-ID replay.
+The backend migrated from `/testlab/run/` and `/testlab/jobs/` to `/testlab/tck-execution/`. Key endpoints: `POST .../run/yaml` (submit), `GET .../{id}/stream` (SSE), `POST .../{id}/cancel|pause|resume`. Health stays at `/testlab/health`. SSE stream now includes `id:` lines for Last-Event-ID replay.
 
 <!--
  Eclipse Tractus-X - Tractus-X TestLab

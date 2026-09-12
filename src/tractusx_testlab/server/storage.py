@@ -35,7 +35,7 @@ from tractusx_testlab.models import PackageFormat, UploadedPackage
 
 
 class PackageStorage:
-    """Stores and retrieves uploaded test packages on the local filesystem."""
+    """Stores and retrieves uploaded TCK packages on the local filesystem."""
 
     __slots__ = ("_base_dir",)
 

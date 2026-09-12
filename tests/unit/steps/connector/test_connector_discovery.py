@@ -30,8 +30,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.models import StepDefinition, StepExecutionError
-from tractusx_testlab.scripting.registry import StepRegistry
 from tractusx_testlab.steps.connector.discover_connector import (
     EDC_NAMESPACE,
     DiscoverConnectorStep,
@@ -78,10 +78,10 @@ def _consumer(document: object) -> MagicMock:
 
 
 class TestSaturnOnlyRegistration:
-    def test_a_saturn_script_resolves_the_step(self) -> None:
+    def test_a_saturn_test_resolves_the_step(self) -> None:
         assert StepRegistry.get(_STEP, "saturn") is DiscoverConnectorStep
 
-    def test_a_jupiter_script_does_not(self) -> None:
+    def test_a_jupiter_test_does_not(self) -> None:
         """Jupiter connectors have no discovery endpoint, so the step is not offered."""
         assert StepRegistry.get(_STEP, "jupiter") is None
 

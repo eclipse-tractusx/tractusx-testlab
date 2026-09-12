@@ -25,7 +25,7 @@
 """Turning the engine's typed events into the ADR-0016 trace vocabulary.
 
 The engine's own events are named for what the runtime does — a *job* runs
-*scripts* made of *steps*. The trace is named for what a reader is looking at —
+*tests* made of *steps*. The trace is named for what a reader is looking at —
 a *TCK* runs *tests* made of *steps*. This module is the single place the two
 vocabularies meet, so neither has to be renamed to satisfy the other and the
 mapping is one file to read rather than a rule to infer from call sites.
@@ -39,12 +39,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from tractusx_testlab.models.primitives.enums import ScriptStatus, StepStatus
+from tractusx_testlab.models.primitives.enums import StepStatus, TestStatus
 from tractusx_testlab.models.runtime.results import (
     ENGINE_FAULT_PREFIX,
     AssertionResult,
-    ScriptResult,
     StepResult,
+    TestResult,
 )
 
 #: Step outcome -> trace event type.
@@ -55,11 +55,11 @@ _STEP_TYPES: dict[StepStatus, str] = {
 }
 
 #: Test outcome -> trace event type.
-_TEST_TYPES: dict[ScriptStatus, str] = {
-    ScriptStatus.COMPLETED: "tck.test.passed",
-    ScriptStatus.FAILED: "tck.test.failed",
-    ScriptStatus.SKIPPED: "tck.test.skipped",
-    ScriptStatus.CANCELLED: "tck.test.skipped",
+_TEST_TYPES: dict[TestStatus, str] = {
+    TestStatus.COMPLETED: "tck.test.passed",
+    TestStatus.FAILED: "tck.test.failed",
+    TestStatus.SKIPPED: "tck.test.skipped",
+    TestStatus.CANCELLED: "tck.test.skipped",
 }
 
 
@@ -68,7 +68,7 @@ def step_event_type(status: StepStatus) -> str:
     return _STEP_TYPES.get(status, "tck.test.step.failed")
 
 
-def test_event_type(status: ScriptStatus) -> str:
+def test_event_type(status: TestStatus) -> str:
     """The trace type a test outcome is published under."""
     return _TEST_TYPES.get(status, "tck.test.failed")
 
@@ -78,7 +78,7 @@ def validation_of(result: AssertionResult) -> dict[str, Any]:
 
     ``field`` names what was checked rather than repeating the whole assertion:
     the reader wants to know which output disagreed, and ``input`` plus ``path``
-    is where a script says so.
+    is where a test says so.
     """
     declared = result.assertion
     params = declared.with_ or {}
@@ -143,7 +143,7 @@ def _errors_of(result: StepResult) -> list[dict[str, Any]]:
     return errors
 
 
-#: What a script calls a step's whole output when the step publishes one bare
+#: What a test calls a step's whole output when the step publishes one bare
 #: value instead of named fields. ``util/base64`` and ``util/json_path_extract``
 #: are read as ``${{ execution.<step>.value }}`` and declare ``returns: value:``,
 #: so ``value`` is the name that output already has everywhere else — it is in
@@ -152,7 +152,7 @@ _BARE_OUTPUT_NAME = "value"
 
 
 def _outputs_of(result: StepResult) -> Any:
-    """What the step published, under the names a script reads it by.
+    """What the step published, under the names a test reads it by.
 
     A step with named outputs publishes a mapping — ``dataplane_url``,
     ``edr_token`` — and the trace carried it as one. A step whose whole output
@@ -160,7 +160,7 @@ def _outputs_of(result: StepResult) -> Any:
     with nothing saying which output it was: readable only for a step that has
     exactly one, and unreadable next to a step that has several. The bare value
     is named here, so ``data.outputs`` is a mapping of output name to value for
-    every step, and the name is the same one the script wrote in ``returns:``.
+    every step, and the name is the same one the test wrote in ``returns:``.
 
     ``None`` stays ``None``: a step that produced nothing published no name
     either, and ``{"value": null}`` would claim one.
@@ -217,11 +217,11 @@ def call_data(index: int, call: Any) -> dict[str, Any]:
     return data
 
 
-def test_data(result: ScriptResult) -> dict[str, Any]:
+def test_data(result: TestResult) -> dict[str, Any]:
     """The ``data`` of a terminal test event."""
     summary = result.assertion_summary
     data: dict[str, Any] = {
-        "test_id": result.script_id or result.script_name,
+        "test_id": result.test_id or result.test_name,
         "duration_ms": round((result.total_duration_s or 0.0) * 1000, 3),
         "assertions": {
             "declared": summary.declared,

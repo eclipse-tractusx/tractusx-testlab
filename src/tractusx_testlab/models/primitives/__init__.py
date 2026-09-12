@@ -26,15 +26,15 @@
 
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
+    DefinitionKind,
     JobStatus,
     PackageFormat,
-    ScriptKind,
-    ScriptStatus,
     SdkCallMode,
     ServiceState,
     ServiceType,
     StepPhase,
     StepStatus,
+    TestStatus,
     ValueSource,
 )
 from tractusx_testlab.models.primitives.exceptions import (
@@ -50,11 +50,10 @@ from tractusx_testlab.models.primitives.service_errors import (
 
 __all__ = [
     "AssertionSeverity",
+    "DefinitionKind",
     "DuplicateServiceError",
     "JobStatus",
     "PackageFormat",
-    "ScriptKind",
-    "ScriptStatus",
     "SdkCallMode",
     "ServiceInitError",
     "ServiceNotFoundError",
@@ -65,5 +64,6 @@ __all__ = [
     "StepConfigError",
     "StepPhase",
     "StepStatus",
+    "TestStatus",
     "ValueSource",
 ]

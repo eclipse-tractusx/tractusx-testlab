@@ -29,12 +29,12 @@ import pytest
 import yaml
 
 from tests.paths import CCM_RAW_DIR
+from tractusx_testlab.authoring import StepRegistry
+from tractusx_testlab.authoring.parser import YamlParser
 from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.models.authoring.definitions import Assertion, ServiceDefinition
 from tractusx_testlab.models.authoring.infrastructure import DataspaceContext
 from tractusx_testlab.models.primitives.enums import ServiceType
-from tractusx_testlab.scripting import StepRegistry
-from tractusx_testlab.scripting.parser import YamlParser
 from tractusx_testlab.syntax import defaults
 
 CCM_TESTS_DIR = CCM_RAW_DIR / "tests"
@@ -62,9 +62,9 @@ _CCM_STEP_TYPES = [
 _CCM_STEP_TYPES_UNREGISTERED: list[str] = []
 
 
-def _release(script) -> str:
-    """The release a parsed script targets, from its ``dataspace`` block."""
-    return script.dataspace.version if script.dataspace else defaults.DATASPACE_VERSION
+def _release(test) -> str:
+    """The release a parsed test targets, from its ``dataspace`` block."""
+    return test.dataspace.version if test.dataspace else defaults.DATASPACE_VERSION
 
 
 class TestCcmYamlParsing:
@@ -84,25 +84,25 @@ class TestCcmYamlParsing:
             assert "uses" in step_raw, f"Step {i} in {filename} must declare a 'uses' verb"
 
     @pytest.mark.parametrize("filename", _CCM_TEST_FILES)
-    def test_ccm_yaml_parses_into_script_definition(self, filename: str) -> None:
+    def test_ccm_yaml_parses_into_test_definition(self, filename: str) -> None:
 
-        script = YamlParser.parse_script(CCM_TESTS_DIR / filename)
+        test = YamlParser.parse_test(CCM_TESTS_DIR / filename)
         raw = yaml.safe_load((CCM_TESTS_DIR / filename).read_text(encoding="utf-8"))
 
-        assert script is not None, f"{filename} did not parse into a ScriptDefinition"
-        assert len(script.execution) == len(raw["execution"]), (
+        assert test is not None, f"{filename} did not parse into a TestDefinition"
+        assert len(test.execution) == len(raw["execution"]), (
             f"{filename}: the parser dropped steps the file declares"
         )
 
     @pytest.mark.parametrize("filename", _CCM_TEST_FILES)
     def test_every_step_the_example_uses_is_registered(self, filename: str) -> None:
         """The shipped example must not name a step the engine no longer has."""
-        script = YamlParser.parse_script(CCM_TESTS_DIR / filename)
+        test = YamlParser.parse_test(CCM_TESTS_DIR / filename)
 
         unregistered = [
             step.uses
-            for step in (*script.setup, *script.execution, *script.teardown)
-            if StepRegistry.get(step.uses, _release(script)) is None
+            for step in (*test.setup, *test.execution, *test.teardown)
+            if StepRegistry.get(step.uses, _release(test)) is None
         ]
         assert unregistered == []
 
