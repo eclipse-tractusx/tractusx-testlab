@@ -97,20 +97,21 @@ without having been run once against something real.
   takes no connector, no registry and no operator input, so it runs unchanged
   in any deployment.
 
-The workflow runs the package five ways from one compile, plus a selection the
-manifest does not permit, which must be refused. Pull requests get a reduced
-suite (`connector_negotiation`, `dtr_roundtrip`, `inbound_call`,
-`external_callback`, `engine_toolbox`); everything else runs on pushes: the
-full suite, the registry alone, the three tests where the dataspace calls
-testlab (`inbound_call`, `external_callback`, `notification_roundtrip`), and
-`engine_toolbox.yaml` on its own. The inbound combination also reads the run's
-trace back and fails unless every `tck.test.step.received` event is there, the
-external one shows the wait step blocked for the stub's delay, and both
-notifications arrived with their headers intact and with different sender and
-receiver partners. The engine-only combination is worth its minute because it
-runs against a fully deployed dataspace it never addresses: a step that had
-quietly grown a dependency on a seeded service would pass in the offline suite
-and fail there.
+The workflow runs the full suite, every test, on every event — pull requests
+included. The cluster bring-up is where the job's minutes go and a run takes
+seconds, so nothing is trimmed for a pull request. After the run, a step reads
+the trace back and fails unless every `tck.test.step.received` event is there
+(`inbound_call`, `external_callback`, `notification_roundtrip`,
+`push_transfer`), the external one shows the wait step blocked for the stub's
+delay, and both notifications arrived with their headers intact and with
+different sender and receiver partners. Two subset runs of the same compiled
+package follow — the registry alone, and `engine_toolbox.yaml` alone — plus a
+selection the manifest does not permit, which must be refused. The subsets add
+no coverage; they check that a test needing no connector journey runs without
+one having happened first, and that runtime selection works against a real
+SUT. The engine-only run is worth its seconds because it runs against a fully
+deployed dataspace it never addresses: a step that had quietly grown a
+dependency on a seeded service would pass in the offline suite and fail there.
 
 They bind through the `infrastructure.engine.connector` / `sut.connector` /
 `sut.dtr` / `engine.dtr` capabilities (ADR-0019); `ci/umbrella.vars.yaml`
