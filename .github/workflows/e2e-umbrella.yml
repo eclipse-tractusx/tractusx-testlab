@@ -1177,7 +1177,7 @@ jobs:
               "notification_roundtrip.yaml",
               "push_transfer.yaml",
           }
-          found = {script["test_id"] for script in report["scripts"]}
+          found = {test["test_id"] for test in report["tests"]}
           if found != expected:
               sys.exit(f"package carries {sorted(found)}, manifest declared {sorted(expected)}")
           print(f"package carries all {len(found)} tests, {report['total_steps']} steps, "
