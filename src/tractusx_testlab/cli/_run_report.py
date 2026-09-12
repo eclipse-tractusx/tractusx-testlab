@@ -33,6 +33,7 @@ it shows once the run is over, the result tables, is :mod:`_run_summary`.
 from __future__ import annotations
 
 import asyncio
+import sys
 from pathlib import Path
 
 import typer
@@ -81,10 +82,27 @@ def execute_with_progress(
         BarColumn(),
         TaskProgressColumn(),
         TimeElapsedColumn(),
+        console=progress_console(),
     ) as progress:
         task_id = progress.add_task("Starting...", total=total_steps)
         player.monitor.add_callback(_make_progress_callback(progress, task_id))
         return asyncio.run(player.run_tck(tck, runtime_vars=runtime_vars or None, job_id=run_id))
+
+
+def progress_console():
+    """The console the live progress bar draws on: a terminal only when there is one.
+
+    ``rich`` reads ``FORCE_COLOR`` as "treat stdout as a terminal", which is
+    the wrong reading for a live display. The e2e workflow sets it so the
+    result tables keep their colour in the Actions log, and with the default
+    console that also switched on the live rendering: the spinner redrawn
+    between every log line, the cursor hidden, and every line of the run's
+    log routed through the display and wrapped at 80 columns. Whether the
+    bar animates is decided by the real terminal, so the log stays a log.
+    """
+    from rich.console import Console
+
+    return Console(force_terminal=sys.stdout.isatty())
 
 
 def _make_progress_callback(progress, task_id):
