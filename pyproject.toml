@@ -73,8 +73,13 @@ requires-poetry = ">=2.0"
 [tool.poetry.group.dev.dependencies]
 build = "^1.2.2"
 setuptools = "^78.1.1"
-ruff = "^0.16.3"
-mypy = "^2.3.1"
+# ruff, mypy and mypy's runtime librt are held at the newest versions the
+# Eclipse IP team has approved (Dash tickets #26742, #26728 and #26735). Every
+# ruff 0.16 release and every mypy 2.x release is under review in IPLab
+# (#31049, #31051 and #31050); lift the pins once those are approved.
+ruff = "~0.15.22"
+mypy = "~1.19.1"
+librt = "~0.8.1"
 # Without the stubs mypy reports `import-untyped` for every `import yaml` —
 # nineteen files, all of them false. It passed on developer machines only
 # because the package happened to be sitting in their virtualenv already.
@@ -88,6 +93,9 @@ pytest-asyncio = "^0.25.0"
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
 mkdocs-material = "^9.6.21"
+# Transitive dependency of mkdocs-material, pinned below 7 because backrefs 7.0
+# is under IP review (#31059) while 6.2 is approved (#26729).
+backrefs = "<7"
 mkdocs-material-extensions = "^1.3.1"
 pymdown-extensions = "^10.16.1"
 mkdocstrings = { extras = ["python"], version = "^0.30.1" }
