@@ -5,7 +5,20 @@ Further information can be found on the [README.md](README.md) file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [v1-alpha]
+## [Unreleased]
+
+## [1.0.0a3] - 2026-09-12
+
+### Changed
+
+- Dependencies are pinned to the versions cleared by the Eclipse Dash IP check,
+  `DEPENDENCIES` records that tree, and the check runs in CI
+- The package version is a PEP 440 release number (`1.0.0a3`, tagged
+  `v1.0.0a3`), independent of the TCK syntax version (`v1-alpha`), which
+  changes only when the format does. Earlier releases are superseded: their
+  dependency trees predate the IP check
+- The publish workflow skips distributions PyPI already holds instead of
+  failing, since PyPI never overwrites a published file
 
 ### Added
 

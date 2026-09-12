@@ -25,7 +25,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "tractusx-testlab"
-version = "1.0.0a"  # PEP 440. "v1-alpha2" normalised to "1a2" in the wheel.
+version = "1.0.0a3"  # PEP 440. Release tags are "v<this>", e.g. v1.0.0a3; the TCK syntax version is a separate contract.
 description = "Library with tools for authoring TCKs for Dataspaces which use Eclipse Tractus-X technology"
 license = { text = "Apache-2.0" }
 readme = "README.md"
