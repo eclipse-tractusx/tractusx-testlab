@@ -35,29 +35,19 @@ keeps the colour where there is no terminal but the reader renders escape
 codes anyway (a GitHub Actions log); ``NO_COLOR`` drops it everywhere.
 
 One table per test, each followed by the failures it had and its assertion
-notes, then a closing table with one row per test and the run's verdict.
-Every box in a report is the same width: the SDK's 80 columns, or wider when a
-step's name needs more, so a name is never cut short.
+notes, then a closing table with one row per test and the run's verdict. The
+frame itself is drawn by :mod:`_result_box`; this module decides what goes in
+it.
 """
 
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 
 import typer
 
+from tractusx_testlab.cli._result_box import NAME_WIDTH, Row, Table, box
 from tractusx_testlab.models.primitives.enums import StepStatus, TestStatus
-
-#: The SDK summary box is 80 columns, with a 43-column name; the same here
-#: unless a name is longer, in which case the name column and the box grow.
-_WIDTH = 80
-_COL_NAME = 43
-_COL_RESULT = 6
-_COL_TIME = 8
-#: Everything in a row that is not the name: the indent, the icon, the gaps,
-#: the RESULT and TIME columns.
-_ROW_FIXED = 2 + 1 + 1 + 1 + _COL_RESULT + 2 + _COL_TIME
 
 #: How each outcome is drawn: icon, the word in the RESULT column, its colour.
 _STEP_LOOK: dict[StepStatus, tuple[str, str, str]] = {
@@ -100,26 +90,6 @@ def _colour_wanted() -> bool | None:
     return None
 
 
-@dataclass(frozen=True)
-class _Row:
-    """One table row before it is laid out: what it is and how it is drawn."""
-
-    icon: str
-    label: str
-    colour: str
-    name: str
-    duration_s: float | None
-
-
-@dataclass(frozen=True)
-class _Table:
-    title: str
-    first_column: str
-    rows: list[_Row]
-    verdict: tuple[str, str, str]
-    duration_s: float | None
-
-
 def render_run_results(result) -> list[str]:
     """The lines of the end-of-run report, styled for a terminal.
 
@@ -129,10 +99,10 @@ def render_run_results(result) -> list[str]:
     tables = [*(_test_table(test) for test in result.tests), _run_table(result)]
     # One width for the whole report, so the boxes line up under each other:
     # the SDK's, or as wide as the longest name in any of them needs.
-    name_width = max([_COL_NAME, *(len(row.name) for table in tables for row in table.rows)])
+    name_width = max([NAME_WIDTH, *(len(row.name) for table in tables for row in table.rows)])
     lines: list[str] = []
     for table, test in zip(tables, [*result.tests, None], strict=True):
-        lines += _box(table, name_width)
+        lines += box(table, name_width)
         if test is not None:
             lines += _test_failures(test)
             lines += _assertion_notes(test)
@@ -140,13 +110,13 @@ def render_run_results(result) -> list[str]:
     return lines
 
 
-def _test_table(test) -> _Table:
+def _test_table(test) -> Table:
     """One box per test: its steps in execution order, its verdict below."""
-    return _Table(
+    return Table(
         title=f"Test: {test.test_name or test.test_id}",
         first_column="STEP",
         rows=[
-            _Row(*_look(_STEP_LOOK, step.status), step.step_name or step.step_type, step.duration_s)
+            Row(*_look(_STEP_LOOK, step.status), step.step_name or step.step_type, step.duration_s)
             for step in test.execution
         ],
         verdict=_look(_TEST_LOOK, test.status),
@@ -154,13 +124,13 @@ def _test_table(test) -> _Table:
     )
 
 
-def _run_table(result) -> _Table:
+def _run_table(result) -> Table:
     """The closing box: one row per test, the run's verdict and test tally."""
-    return _Table(
+    return Table(
         title="TCK RUN SUMMARY",
         first_column="TEST",
         rows=[
-            _Row(
+            Row(
                 *_look(_TEST_LOOK, test.status),
                 test.test_name or test.test_id,
                 test.total_duration_s,
@@ -175,68 +145,6 @@ def _run_table(result) -> _Table:
 def _look(table: dict, status) -> tuple[str, str, str]:
     icon, label, colour = table.get(status, _UNKNOWN_LOOK)
     return icon, label or str(getattr(status, "value", status)), colour
-
-
-def _box(table: _Table, name_width: int) -> list[str]:
-    """Frame the table the way the SDK's ``print_summary`` frames its steps."""
-    inner = max(_WIDTH - 2, name_width + _ROW_FIXED)
-    header = (
-        f"  {table.first_column:<{name_width + 2}} {'RESULT':>{_COL_RESULT}}  {'TIME':>{_COL_TIME}}"
-    )
-    return [
-        "",
-        "╔" + "=" * inner + "╗",
-        "║" + f"  {table.title}".center(inner) + "║",
-        "╠" + "=" * inner + "╣",
-        "║" + header.ljust(inner) + "║",
-        "║" + ("  " + "-" * (inner - 4)).ljust(inner) + "║",
-        *(_row(row, name_width, inner) for row in table.rows),
-        "╠" + "=" * inner + "╣",
-        _verdict(table, inner),
-        "╚" + "=" * inner + "╝",
-    ]
-
-
-def _row(row: _Row, name_width: int, inner: int) -> str:
-    """One table row: coloured icon and RESULT word, plain name and time.
-
-    The padding is measured on the uncoloured text — the escape codes take no
-    columns, and measuring them would leave every coloured row short of the
-    right border.
-    """
-    time = f"{row.duration_s:.1f}s" if row.duration_s is not None else "-"
-    plain = f"  {row.icon} {row.name:<{name_width}} {row.label:>{_COL_RESULT}}  {time:>{_COL_TIME}}"
-    styled = (
-        "  "
-        + typer.style(row.icon, fg=row.colour)
-        + f" {row.name:<{name_width}} "
-        + typer.style(f"{row.label:>{_COL_RESULT}}", fg=row.colour)
-        + f"  {time:>{_COL_TIME}}"
-    )
-    return "║" + styled + " " * max(0, inner - len(plain)) + "║"
-
-
-def _verdict(table: _Table, inner: int) -> str:
-    """The footer line: ``RESULT: <word>``, the tally of the rows above, the total time.
-
-    The tally counts the table's own rows by outcome — steps under a test,
-    tests under the run summary — so a run that skipped eight tests says so
-    rather than counting the steps those tests never ran. Counting rather than
-    subtracting passed from total is what stops a skip being reported as a
-    failure, which the old summary line did.
-    """
-    _, label, colour = table.verdict
-    counts = {word: 0 for word in ("PASS", "FAIL", "SKIP")}
-    for row in table.rows:
-        if row.label in counts:
-            counts[row.label] += 1
-    tally = f"{counts['PASS']} passed  {counts['FAIL']} failed  {counts['SKIP']} skipped"
-    total = f"Total: {table.duration_s:.1f}s" if table.duration_s is not None else "Total: -"
-    plain = f"  RESULT: {label}  |  {tally}  |  {total}"
-    styled = (
-        "  " + typer.style(f"RESULT: {label}", fg=colour, bold=True) + f"  |  {tally}  |  {total}"
-    )
-    return "║" + styled + " " * max(0, inner - len(plain)) + "║"
 
 
 def _test_failures(test) -> list[str]:
