@@ -82,11 +82,22 @@ jobs:
             | grep -Ev "^(pip|setuptools|wheel|virtualenv|distlib|pkg_resources)==" \
             | awk -F'==' '{print "pypi/pypi/-/" $1 "/" $2}' \
             | awk '!seen[$0]++' > PACKAGE
+          echo "Packages resolved from poetry.lock on this runner:"
+          cat PACKAGE
 
       - name: Generate dependencies file
         run: |
           curl -L --output ./dash.jar 'https://repo.eclipse.org/service/rest/v1/search/assets/download?repository=dash-maven2-releases&maven.groupId=org.eclipse.dash&maven.artifactId=org.eclipse.dash.licenses&maven.baseVersion=1.1.0&maven.extension=jar'
-          java -jar ./dash.jar PACKAGE -project automotive.tractusx -summary $DEP_FILE || true
+          # Dash exits non-zero when any entry is restricted, which the next
+          # steps report far more readably, so its exit status is ignored here.
+          # An empty summary means the license lookup itself failed (the
+          # ClearlyDefined query has been seen to time out silently), and that
+          # must not be mistaken for "the file drifted".
+          java -jar ./dash.jar PACKAGE -project automotive.tractusx -timeout 300 -summary $DEP_FILE || true
+          if [ ! -s "$DEP_FILE" ]; then
+            echo "Dash wrote no summary; the license lookup failed. Re-run the job."
+            exit 1
+          fi
 
       - name: Check if dependencies were changed
         run: |

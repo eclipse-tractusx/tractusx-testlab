@@ -55,6 +55,10 @@ dependencies = [
     # Slated for removal in P4, which standardises every step on httpx; declared
     # meanwhile so the dependency set describes the code as it actually is.
     "requests (>=2.31.0,<3.0.0)",
+    # Transitive dependency of SQLAlchemy (via tractusx-sdk) on x86_64 and
+    # aarch64 hosts. Held at the newest release the Eclipse IP team has approved
+    # (Dash ticket #26712); 3.4 and 3.5 are not yet mapped in ClearlyDefined.
+    "greenlet (>=3.3.2,<3.4)",
 ]
 
 [project.scripts]
