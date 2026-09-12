@@ -63,8 +63,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Pinned and wheel-only so the resolver step itself is reproducible and
+      # never runs a setup script (SonarCloud S8541, S8544).
       - name: Install Poetry
-        run: pip install poetry
+        run: "pip install --only-binary :all: poetry==2.1.2"
 
       # `sync` rather than `install` so the environment is exactly the lock
       # file, and `--no-root` so the package under test is not listed itself.
@@ -87,7 +89,7 @@ jobs:
 
       - name: Generate dependencies file
         run: |
-          curl -L --output ./dash.jar 'https://repo.eclipse.org/service/rest/v1/search/assets/download?repository=dash-maven2-releases&maven.groupId=org.eclipse.dash&maven.artifactId=org.eclipse.dash.licenses&maven.baseVersion=1.1.0&maven.extension=jar'
+          curl --proto '=https' --tlsv1.2 -L --output ./dash.jar 'https://repo.eclipse.org/service/rest/v1/search/assets/download?repository=dash-maven2-releases&maven.groupId=org.eclipse.dash&maven.artifactId=org.eclipse.dash.licenses&maven.baseVersion=1.1.0&maven.extension=jar'
           # Dash exits non-zero when any entry is restricted, which the next
           # steps report far more readably, so its exit status is ignored here.
           # An empty summary means the license lookup itself failed (the
