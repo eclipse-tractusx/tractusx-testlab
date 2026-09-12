@@ -71,7 +71,7 @@ class StepEvents:
     def on_step_started(
         self,
         job_id: str,
-        script: str,
+        test: str,
         step_id: str | None,
         step_index: int,
         step_type: str,
@@ -84,11 +84,11 @@ class StepEvents:
         *inputs* is the step's ``with:`` block with its references resolved —
         the values the step is about to be given, not the template naming them.
         """
-        event_id = self._trace.step_started(script, step_id, step_index, step_type, phase, inputs)
+        event_id = self._trace.step_started(test, step_id, step_index, step_type, phase, inputs)
         self._publish(
             StepStartedEvent(
                 job_id=job_id,
-                script=script,
+                test_id=test,
                 step_id=step_id,
                 step_index=step_index,
                 step_type=step_type,
@@ -102,7 +102,7 @@ class StepEvents:
     def on_step_call(
         self,
         job_id: str,
-        script: str,
+        test: str,
         step_id: str | None,
         step_type: str,
         phase: str,
@@ -115,11 +115,11 @@ class StepEvents:
         negotiation for a minute, and the polls are what somebody watching needs
         to see (:class:`~tractusx_testlab.models.runtime.events.StepCallEvent`).
         """
-        event_id = self._trace.step_call(script, step_id, step_type, phase, index, call)
+        event_id = self._trace.step_call(test, step_id, step_type, phase, index, call)
         self._publish(
             StepCallEvent(
                 job_id=job_id,
-                script=script,
+                test_id=test,
                 step_id=step_id,
                 step_type=step_type,
                 index=index,
@@ -131,7 +131,7 @@ class StepEvents:
     def on_step_completed(
         self,
         job_id: str,
-        script: str,
+        test: str,
         step_id: str | None,
         result: StepResult,
     ) -> None:
@@ -149,13 +149,13 @@ class StepEvents:
         # The assertion lines are given the step's id on purpose: they have no
         # event of their own — ADR-0016 nests them in the terminal event, which
         # is where a reader following the id finds them.
-        event_id = self._trace.step_ended(script, step_id, record)
+        event_id = self._trace.step_ended(test, step_id, record)
 
         for index, assertion_result in enumerate(result.assertions):
             self._publish(
                 AssertionResultEvent(
                     job_id=job_id,
-                    script=script,
+                    test_id=test,
                     step_id=step_id,
                     step_name=result.step_name,
                     index=index,
@@ -168,13 +168,13 @@ class StepEvents:
             result.status, StepCompletedEvent
         )
         self._publish(
-            outcome(job_id=job_id, script=script, step_id=step_id, result=record), event_id
+            outcome(job_id=job_id, test_id=test, step_id=step_id, result=record), event_id
         )
 
     def on_step_listening(
         self,
         job_id: str,
-        script: str,
+        test: str,
         step_id: str | None,
         step_type: str,
         phase: str,
@@ -188,15 +188,15 @@ class StepEvents:
         (:class:`~tractusx_testlab.models.runtime.events.StepListeningEvent`).
         """
         event = StepListeningEvent(
-            job_id=job_id, script=script, step_id=step_id, step_type=step_type, listener=listener
+            job_id=job_id, test_id=test, step_id=step_id, step_type=step_type, listener=listener
         )
-        event_id = self._trace.step_listening(script, step_id, step_type, phase, event.listener)
+        event_id = self._trace.step_listening(test, step_id, step_type, phase, event.listener)
         self._publish(event, event_id)
 
     def on_step_waiting(
         self,
         job_id: str,
-        script: str,
+        test: str,
         step_id: str | None,
         step_type: str,
         phase: str,
@@ -206,21 +206,21 @@ class StepEvents:
         """Publish that the run is now blocked on that address, for at most *timeout_s*."""
         event = StepWaitingEvent(
             job_id=job_id,
-            script=script,
+            test_id=test,
             step_id=step_id,
             step_type=step_type,
             listener=listener,
             timeout_s=timeout_s,
         )
         event_id = self._trace.step_waiting(
-            script, step_id, step_type, phase, event.listener, timeout_s
+            test, step_id, step_type, phase, event.listener, timeout_s
         )
         self._publish(event, event_id)
 
     def on_step_received(
         self,
         job_id: str,
-        script: str,
+        test: str,
         step_id: str | None,
         step_type: str,
         phase: str,
@@ -231,7 +231,7 @@ class StepEvents:
         """Publish that the call a step was waiting for has arrived."""
         event = StepReceivedEvent(
             job_id=job_id,
-            script=script,
+            test_id=test,
             step_id=step_id,
             step_type=step_type,
             listener=listener,
@@ -239,6 +239,6 @@ class StepEvents:
             waited_ms=waited_ms,
         )
         event_id = self._trace.step_received(
-            script, step_id, step_type, phase, event.listener, request, waited_ms
+            test, step_id, step_type, phase, event.listener, request, waited_ms
         )
         self._publish(event, event_id)

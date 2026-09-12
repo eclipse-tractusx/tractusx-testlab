@@ -25,12 +25,12 @@
 """The external-callback e2e scenario, executed here — stub included.
 
 ``tests/e2e/connector-dtr-smoke/tests/external_callback.yaml`` is the scenario
-where the script blocks on ``mock/wait/http_request`` and something else, from
+where the test blocks on ``mock/wait/http_request`` and something else, from
 its own process, calls the mock while it waits. In the cluster that something
 is ``ci/stub_caller.py`` running as a pod. Here it is the same file, run as a
 subprocess — a different process on this machine, which is the property the
 scenario is about. The mock server is the real one on a free port, and the
-script's steps are read out of the shipped YAML.
+test's steps are read out of the shipped YAML.
 """
 
 from __future__ import annotations
@@ -129,7 +129,7 @@ class TestTheScenarioRuns:
 
 
 class TestTheWaitWaited:
-    """The call arrived while the script was blocked, not before it got there."""
+    """The call arrived while the test was blocked, not before it got there."""
 
     async def test_the_wait_blocked_for_the_delay_the_stub_was_given(self, outcome) -> None:
         asked = _phase("execution")[0]["with"]["body"]["delay_s"]

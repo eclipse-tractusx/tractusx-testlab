@@ -25,7 +25,7 @@
 """security/oauth2/* — obtain a token from an OAuth2 authorization server.
 
 Many services under test sit behind an identity provider (typically Keycloak in
-Tractus-X deployments), so a script needs a bearer token before it can call
+Tractus-X deployments), so a test needs a bearer token before it can call
 them.  These steps perform the RFC 6749 token request against a configurable
 token endpoint and publish the response, so a later step reads
 ``@access_token`` — or asserts that a deliberately wrong credential is refused.
@@ -43,8 +43,8 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client
 from tractusx_testlab.steps.shared_models import HttpTransportParams, StepParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
@@ -125,7 +125,7 @@ class OAuth2TokenPayload(StepPayload):
     """A token endpoint's response, per RFC 6749 §5.1.
 
     The response is defined by the authorization server rather than by testlab,
-    so the well-known keys scripts read are named here and anything else the
+    so the well-known keys tests read are named here and anything else the
     server sends — Keycloak's ``refresh_expires_in``, an ``id_token`` — rounds
     through untouched.
     """
@@ -154,7 +154,7 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
     is the same for every grant, only the credentials differ.  On success the
     token response is published, so a later step reads ``@access_token``; on a
     refusal the step returns no value and records the server's response, so a
-    script asserts on the status code instead of crashing — a wrong secret
+    test asserts on the status code instead of crashing — a wrong secret
     being rejected is a test result, not an execution error.  Credential values
     never appear in the recorded request.
     """
@@ -220,7 +220,7 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
 #
 # Each grant is its own step name, matching the IDE's one-block-per-grant
 # catalog.  Each pins ``grant_type`` as a class attribute — not an input, so a
-# script cannot name the ``client_credentials`` step and then ask it for a
+# test cannot name the ``client_credentials`` step and then ask it for a
 # password grant — and declares only the credential fields its grant reads.
 
 

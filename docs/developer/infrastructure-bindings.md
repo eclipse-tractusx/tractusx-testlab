@@ -231,7 +231,7 @@ a CLI or server run needs no code at all.
    against through its own connector, not a client it can drive.
 
 A step reads engine-side infrastructure from `context.infrastructure` rather
-than from a variable a script supplied, because where the engine's own backend
+than from a variable a test supplied, because where the engine's own backend
 lives is the operator's decision and not the test's.
 
 ## Reading the requirements off a package

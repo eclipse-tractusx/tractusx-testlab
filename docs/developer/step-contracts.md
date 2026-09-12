@@ -23,7 +23,7 @@
 
 Every step in TestLab has exactly **one canonical contract**: one step id, one set of
 parameter names, one output shape. The IDE blocks,
-the YAML scripts, the Python executors, the generated reference documentation and the
+the YAML tests, the Python executors, the generated reference documentation and the
 assertion system all read that same contract — none of them keeps its own copy of it.
 
 This page explains where the contract lives, how it is enforced, and the patterns that
@@ -38,7 +38,7 @@ is deliberately blunt:
 
 > A step accepts each parameter under exactly one name, produces its output in exactly one
 > shape, and is addressed by exactly one id. **No aliases, no backward-compat shims** —
-> when a name changes, every script, block and document is migrated to the new one.
+> when a name changes, every test, block and document is migrated to the new one.
 
 Why so strict? Aliases are how the drift started. Back when a parameter answered to
 `provider_url` *and* `counter_party_address`, the IDE picked one spelling, the engine
@@ -142,14 +142,14 @@ Per-step models live beside their executor (`steps/connector/provision.py`,
 `steps/industry/dtr.py`, …). A model earns a place in `_contracts.py` only once a second
 step needs it.
 
-### `MockInstance`: a contract that crosses the script
+### `MockInstance`: a contract that crosses the test
 
 `mock/api` returns a `MockInstance` object (`endpoint_id`, `path`, `method`,
 `base_mock_url`, `full_mock_url`); `mock/wait/http_request` takes that same object as its
-only way to identify the endpoint. One typed value flows *step → script variable → step*,
+only way to identify the endpoint. One typed value flows *step → test variable → step*,
 replacing the old guessing between a bare URL, an id or a path. Note the separation of
 layers: `server/mock_registry.py` (plain dataclasses, HTTP routing) describes what the
-mock server *serves*; `MockInstance` describes what a *script* holds. They meet only in
+mock server *serves*; `MockInstance` describes what a *test* holds. They meet only in
 the `mock/*` steps.
 
 ## Step ids
@@ -176,7 +176,7 @@ into the run context at runtime, and data-plane steps take exactly `dataplane_ur
 ## Guided siblings (`wizard/` steps)
 
 Some resources can sensibly be created two ways: by handing over the whole document
-(scripts driven by `env.variables`), or field by field (scripts built in the IDE form).
+(tests driven by `env.variables`), or field by field (tests built in the IDE form).
 One step accepting both shapes would violate the one-shape rule, so each of the four
 creation steps has a **guided sibling** under a `wizard/` module:
 
@@ -191,7 +191,7 @@ The anti-drift mechanism is structural, not disciplinary: each pair funnels into
 module-level helper (e.g. `_register_asset` in `steps/connector/provision.py`) — the raw
 step hands over the document it was given, the wizard hands over the document it
 assembled, and both get the same call and the same error handling. Both siblings also
-share the **same output model**, so `returns:` is identical whichever one a script uses.
+share the **same output model**, so `returns:` is identical whichever one a test uses.
 
 ## Keeping it from drifting
 
@@ -205,7 +205,7 @@ Three mechanisms guard the contract, in decreasing order of strength:
 3. **Generated artefacts with `--check`**:
     - `poetry run testlab docs --check` regenerates the step reference
       (`docs/specification/reference/steps.md`) from the registry and fails if the
-      committed page differs (renderer: `scripting/step_docs.py`).
+      committed page differs (renderer: `authoring/step_docs.py`).
     - `poetry run python tools/compare_ide_parity.py --ide <path-to-ide-repo> --check`
       diffs the engine registry against the IDE repository's (cx-test-suite) block
       catalog field by field (it reads `model_fields`, not JSON Schema, so an alias cannot hide) and exits

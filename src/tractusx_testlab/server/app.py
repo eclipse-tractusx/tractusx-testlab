@@ -77,7 +77,7 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
     app = FastAPI(
         title="Tractus-X Testlab Player",
         version=_version(),
-        description="Automated test execution for Tractus-X dataspace interoperability.",
+        description="Automated TCK execution for Tractus-X dataspace interoperability.",
     )
 
     # Shared instances — stored on app.state for FastAPI dependency injection
@@ -131,9 +131,9 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
 
         # A path no step opened is refused. `resolve` buffers a call nothing is
         # waiting for and reports success for it — right when the SUT beats the
-        # script to its own wait step, wrong for an address that was never
+        # test to its own wait step, wrong for an address that was never
         # registered: the SUT is told 200 for a call that reached nobody, and
-        # the script then waits out its timeout on the address it did open.
+        # the test then waits out its timeout on the address it did open.
         if mock is None and not callbacks.has_listener(full_path, method):
             raise HTTPException(404, f"No mock or listener for {method} {full_path}")
 

@@ -170,7 +170,7 @@ class UnresolvedReferenceError(AuthoringError):
 
     The variables in scope are listed because the usual cause is a name that
     exists under a different spelling, and the author cannot see the namespace
-    from the script.
+    from the test.
 
     When the reference reaches *into* something that is in scope, the message
     says so and names the fix. A reference is a name, not a path: the walk into
@@ -249,7 +249,7 @@ class StepExecutionError(ExecutionError):
 
 
 class NoAssertionsExecutedError(ExecutionError):
-    """Raised when a script declared checks and ran none of them.
+    """Raised when a test declared checks and ran none of them.
 
     Not "a TCK with no assertions is invalid" — a provisioning-only TCK is
     legitimate. This is the narrower and unambiguous case: the author wrote
@@ -257,10 +257,10 @@ class NoAssertionsExecutedError(ExecutionError):
     on a SUT it never actually checked.
     """
 
-    def __init__(self, script: str, declared: int) -> None:
-        self.script = script
+    def __init__(self, test: str, declared: int) -> None:
+        self.test = test
         self.declared = declared
         super().__init__(
-            f"Script '{script}' declared {declared} assertion(s) and executed none. "
+            f"Test '{test}' declared {declared} assertion(s) and executed none. "
             f"The run cannot certify anything it did not check."
         )

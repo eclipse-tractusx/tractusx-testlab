@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Tests for Pydantic definition models (StepDefinition, ScriptDefinition, etc.)."""
+"""Tests for Pydantic definition models (StepDefinition, TestDefinition, etc.)."""
 
 from __future__ import annotations
 
@@ -32,12 +32,12 @@ from pydantic import ValidationError
 from tractusx_testlab.models.authoring.definitions import (
     Assertion,
     MetadataDefinition,
-    ScriptDefinition,
     ServiceDefinition,
     StepDefinition,
     TckDefinition,
     TckMetadataDefinition,
     TckTestEntry,
+    TestDefinition,
 )
 from tractusx_testlab.models.primitives.enums import (
     ServiceType,
@@ -81,32 +81,32 @@ class TestStepDefinition:
         assert step.assertions[0].uses == "validate/assert/equals"
 
 
-class TestScriptDefinition:
-    """Tests for ScriptDefinition model validation."""
+class TestTestDefinition:
+    """Tests for TestDefinition model validation."""
 
-    def test_minimal_script(self) -> None:
-        script = ScriptDefinition(
+    def test_minimal_test(self) -> None:
+        test = TestDefinition(
             syntax="v1-alpha",
             id="my-test-id",
             namespace="my-ns",
             metadata=MetadataDefinition(name="My Test"),
             execution=[],
         )
-        assert script.metadata.name == "My Test"
-        assert script.syntax == "v1-alpha"
+        assert test.metadata.name == "My Test"
+        assert test.syntax == "v1-alpha"
 
-    def test_script_with_steps(self) -> None:
-        script = ScriptDefinition(
+    def test_with_steps(self) -> None:
+        test = TestDefinition(
             syntax="v1-alpha",
             id="s1",
             namespace="ns",
             metadata=MetadataDefinition(name="With Steps"),
             execution=[StepDefinition(uses="connector/provider/create_asset")],
         )
-        assert len(script.execution) == 1
+        assert len(test.execution) == 1
 
-    def test_script_all_phases(self) -> None:
-        script = ScriptDefinition(
+    def test_all_phases(self) -> None:
+        test = TestDefinition(
             syntax="v1-alpha",
             id="full",
             namespace="ns",
@@ -115,13 +115,13 @@ class TestScriptDefinition:
             execution=[StepDefinition(uses="http/http_request")],
             teardown=[StepDefinition(uses="connector/provider/delete_asset")],
         )
-        assert len(script.setup) == 1
-        assert len(script.execution) == 1
-        assert len(script.teardown) == 1
+        assert len(test.setup) == 1
+        assert len(test.execution) == 1
+        assert len(test.teardown) == 1
 
-    def test_script_missing_metadata_raises(self) -> None:
+    def test_missing_metadata_raises(self) -> None:
         with pytest.raises(ValidationError):
-            ScriptDefinition(syntax="v1-alpha", id="x", namespace="ns")  # type: ignore[call-arg]
+            TestDefinition(syntax="v1-alpha", id="x", namespace="ns")  # type: ignore[call-arg]
 
 
 class TestServiceDefinition:

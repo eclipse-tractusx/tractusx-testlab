@@ -22,12 +22,12 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""Why no offer in the catalog was accepted, in the terms the script was written in.
+"""Why no offer in the catalog was accepted, in the terms the test was written in.
 
 The SDK decides whether an offer's policy is acceptable, and when none is it
 says so with a verdict: *no valid policy was found for any item in the list*.
 That sentence is true and unusable — it names neither the offers the provider
-made nor the condition that separated them from the policy the script asked for,
+made nor the condition that separated them from the policy the test asked for,
 leaving the reader to diff two JSON-LD trees by eye, in a document they must fetch.
 
 The comparison is **not** repeated here. The SDK matches; this module explains a
@@ -40,7 +40,7 @@ carry, and what the expected policy requires that the offer does not.
 That difference is what the flat message hid. An offer is accepted only when its
 policy matches an expected one in full, so a condition the provider *adds*
 rejects it exactly as one it omits does — and a provider offering
-``FrameworkAgreement`` **and** ``Membership`` **and** ``UsagePurpose`` to a script
+``FrameworkAgreement`` **and** ``Membership`` **and** ``UsagePurpose`` to a test
 expecting the first and the third is the common case. It now reads as one line
 naming ``Membership``, in the console and under the step error's ``context``
 (ADR-0016) for the IDE to render.
@@ -113,7 +113,7 @@ class PolicyMismatchError(ExecutionError):
     A result about the counter-party, not a fault of the engine: the provider
     published offers, the engine read them, and they are not the ones the TCK
     requires. Which of the two is wrong — the deployment or the policy the
-    script expects — is the reader's call, and the comparison is what lets them
+    test expects — is the reader's call, and the comparison is what lets them
     make it.
     """
 
@@ -147,7 +147,7 @@ def compare(catalog: dict | None, expected: list[Any]) -> list[OfferComparison]:
     """Measure every offer in the catalog against every expected policy.
 
     Each offer is reported against the expected policy it is *closest* to: a
-    script naming three alternatives is not asking for three failures, it is
+    test naming three alternatives is not asking for three failures, it is
     asking which of them the provider came nearest to satisfying.
     """
     expectations = [constraints_of(policy) for policy in expected]

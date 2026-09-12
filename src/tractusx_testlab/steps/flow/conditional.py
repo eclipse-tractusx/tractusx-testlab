@@ -30,10 +30,10 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from tractusx_testlab.authoring.registry import StepRegistry, step
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
-from tractusx_testlab.scripting.registry import StepRegistry, step
 from tractusx_testlab.steps._checks.extraction import extract_path
 from tractusx_testlab.steps.assertions import AssertOperator, apply_operator
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepPayload
@@ -51,7 +51,7 @@ class Condition(BaseModel):
     """One comparison the branch is decided on.
 
     Deliberately the same shape a ``validate:`` entry has — a value, an optional
-    path into it, an operator and something to compare against — so a script
+    path into it, an operator and something to compare against — so a test
     author moves between asserting on a fact and branching on it without
     learning a second way to state one.
     """
@@ -87,7 +87,7 @@ class IfParams(StepParams):
     be a field name: the attribute has to be called something else.  Leaving the
     attribute name bindable would make ``otherwise:`` a second accepted spelling
     of ``else:``, which is the one thing this contract does not allow.  ``else``
-    is the script keyword; ``otherwise`` is only how Python spells the field.
+    is the test keyword; ``otherwise`` is only how Python spells the field.
     """
 
     model_config = ConfigDict(extra="forbid", validate_by_name=False)
@@ -104,7 +104,7 @@ class IfParams(StepParams):
         min_length=1,
         description=(
             "Nested step definitions run when the condition holds — the same "
-            "shape used at the top level of a script."
+            "shape used at the top level of a test."
         ),
     )
     otherwise: list[StepDefinition] = Field(
@@ -136,7 +136,7 @@ class IfStep(BaseStep[IfParams, IfOutput]):
     """Run one of two nested sequences depending on a set of conditions.
 
     A step's own ``if:`` decides whether that one step runs; this decides
-    between two sequences, and says afterwards which one it picked — a script
+    between two sequences, and says afterwards which one it picked — a test
     asserting on ``branch_taken`` can prove the flow went the way it meant to,
     which "the steps in the other branch were skipped" never quite shows.
 
@@ -156,7 +156,7 @@ class IfStep(BaseStep[IfParams, IfOutput]):
 
         if not branch:
             # ``outputs`` is set even though it is empty: "nothing ran" is a
-            # result, and a script reading it should not find the key missing.
+            # result, and a test reading it should not find the key missing.
             return StepOutput(
                 value=IfOutput(condition_result=condition_result, branch_taken="none", outputs=[])
             )
@@ -188,7 +188,7 @@ async def _run_sequence(
     for idx, nested_def in enumerate(nested_defs):
         step_name = f"if.{label}[{idx}]:{nested_def.uses}"
         # A nested step is resolved by name alone: only the phase runner holds
-        # the script's dataspace_version, so a version-specific step is looked
+        # the test's dataspace_version, so a version-specific step is looked
         # up by what it declares rather than skipped for want of a version.
         step_cls = StepRegistry.get_any(nested_def.uses)
         if step_cls is None:

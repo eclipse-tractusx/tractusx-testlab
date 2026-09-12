@@ -44,7 +44,7 @@ unit/compiler/     ← src/tractusx_testlab/compiler/
 unit/models/       ← src/tractusx_testlab/models/
 unit/player/       ← src/tractusx_testlab/player/
 unit/player/loading/
-unit/scripting/    ← src/tractusx_testlab/scripting/
+unit/authoring/    ← src/tractusx_testlab/authoring/
 unit/server/       ← src/tractusx_testlab/server/
 unit/services/     ← src/tractusx_testlab/services/
 unit/steps/        ← src/tractusx_testlab/steps/

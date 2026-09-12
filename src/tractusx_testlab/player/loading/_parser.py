@@ -38,13 +38,13 @@ import yaml
 from pydantic import TypeAdapter
 
 from tractusx_testlab.models.authoring.definitions import (
-    ScriptDefinition,
     TckDefinition,
+    TestDefinition,
 )
 
 logger = logging.getLogger(__name__)
 
-_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinition] = TypeAdapter(ScriptDefinition)
+_TEST_ADAPTER: TypeAdapter[TestDefinition] = TypeAdapter(TestDefinition)
 _TCK_ADAPTER: TypeAdapter[TckDefinition] = TypeAdapter(TckDefinition)
 
 
@@ -66,11 +66,11 @@ def _normalize_discriminator(data: dict, path: Path) -> dict:
     return data
 
 
-def parse_script_file(path: Path) -> ScriptDefinition:
-    """Load and parse a single script YAML file using strict syntax routing."""
+def parse_test_file(path: Path) -> TestDefinition:
+    """Load and parse a single test YAML file using strict syntax routing."""
     data = _load_yaml(path)
     normalized = _normalize_discriminator(data, path)
-    return _SCRIPT_ADAPTER.validate_python(normalized)
+    return _TEST_ADAPTER.validate_python(normalized)
 
 
 def parse_tck_file(path: Path) -> TckDefinition:

@@ -59,8 +59,8 @@ class MockRequest:
     (``?assetIds=<a>&assetIds=<b>``). A mock that cannot see the second one
     answers a question it was not asked.
 
-    This is deliberately not the shape a *script* reads: ``mock/wait`` publishes
-    ``request_query_params`` as one value per name, because a script asserting on
+    This is deliberately not the shape a *test* reads: ``mock/wait`` publishes
+    ``request_query_params`` as one value per name, because a test asserting on
     a callback's ``state`` wants the value and not a list holding it. A handler
     is a server and has to see the request; a result is a value and has to be
     readable.

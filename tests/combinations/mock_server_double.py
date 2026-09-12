@@ -108,7 +108,7 @@ class MockServer:
     def call_soon(self, url: str, delay_s: float = 0.2, **kwargs: Any) -> _LateCall:
         """Call the mock from another thread after *delay_s*.
 
-        The point of these steps is that the call arrives while the script is
+        The point of these steps is that the call arrives while the test is
         already blocked, so the call has to come from somewhere other than the
         awaiting coroutine.
         """

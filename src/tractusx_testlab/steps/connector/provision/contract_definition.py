@@ -33,8 +33,8 @@ from typing import TYPE_CHECKING, Any
 from pydantic import Field, field_validator
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.connector.provision._shared import (
     _as_id,
     _create_or_conflict,

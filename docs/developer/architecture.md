@@ -25,9 +25,9 @@
 
 ## Overview
 
-This repository contains the **TestLab engine**: the Python library, CLI, and server that compile YAML test scripts into executable packages and run them against a system under test. The engine has three run-time roles:
+This repository contains the **TestLab engine**: the Python library, CLI, and server that compile YAML tests into executable packages and run them against a system under test. The engine has three run-time roles:
 
-1. **Compiler** — validates YAML scripts and TCK manifests and packages them
+1. **Compiler** — validates YAML tests and TCK manifests and packages them
 2. **Player** — loads a package and executes its steps against the SUT
 3. **Server** — hosts mock endpoints, callbacks, and streams execution events (SSE)
 
@@ -106,7 +106,7 @@ src/tractusx_testlab/
   logging/    structured logging, transcript and wire recording — cross-cutting
   models/     Pydantic data only — no behavior, no I/O
   player/     run-time: load (loading/) → execute (execution/) → track jobs
-  scripting/  script object model + builder DSL (author-facing)
+  authoring/  test object model + builder DSL (author-facing)
   security/   crypto (crypto/) + identity & trust (trust/)
   server/     FastAPI mock server: routes (routes/) + SSE streaming (streaming/)
   services/   SDK service wiring + lifecycle (no protocol reimplementation)
@@ -130,7 +130,7 @@ flowchart TD
         YAMLED["YAML editor"]
     end
 
-    IDE -->|"YAML scripts + TCK manifests<br/>(server API / packages)"| COMP
+    IDE -->|"YAML tests + TCK manifests<br/>(server API / packages)"| COMP
 
     subgraph ENGINE["tractusx-testlab engine — this repository"]
         direction TB

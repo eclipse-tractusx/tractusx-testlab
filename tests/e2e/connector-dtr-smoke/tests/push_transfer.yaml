@@ -149,7 +149,7 @@ execution:
 
   # The destination is written as an EDC data address because that is what the
   # provider is being handed — it is the provider's data plane that dials it,
-  # not the script's, so the address has to be one a pod can reach. The step
+  # not the test's, so the address has to be one a pod can reach. The step
   # then waits for the transfer to settle rather than reporting that the
   # request was accepted, which for a push is the only interesting outcome.
   - id: push

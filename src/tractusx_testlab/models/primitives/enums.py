@@ -40,9 +40,10 @@ class StepStatus(str, enum.Enum):
     SKIPPED = "SKIPPED"
 
 
-class ScriptStatus(str, enum.Enum):
-    """Execution status of a test script."""
+class TestStatus(str, enum.Enum):
+    """Execution status of a test."""
 
+    __test__ = False  # a TestLab test, not a pytest one
     IDLE = "IDLE"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
@@ -52,7 +53,7 @@ class ScriptStatus(str, enum.Enum):
 
 
 class JobStatus(str, enum.Enum):
-    """Overall status of a test execution job."""
+    """Overall status of a TCK execution job."""
 
     QUEUED = "QUEUED"
     RUNNING = "RUNNING"
@@ -127,7 +128,7 @@ class ServiceType(str, enum.Enum):
 
 
 class PackageFormat(str, enum.Enum):
-    """Format used for compiled test packages."""
+    """Format used for compiled TCK packages."""
 
     PLAIN = "PLAIN"
     ENCRYPTED = "ENCRYPTED"
@@ -153,7 +154,7 @@ class StepPhase(str, enum.Enum):
     TEARDOWN = "TEARDOWN"
 
 
-class ScriptKind(str, enum.Enum):
+class DefinitionKind(str, enum.Enum):
     """Explicit type discriminator for YAML files, following the Kubernetes ``kind:`` convention."""
 
     TEST = "test"
@@ -177,8 +178,8 @@ class EventKind(str, enum.Enum):
     JOB_COMPLETED = "job_completed"
     JOB_FAILED = "job_failed"
     JOB_CANCELLED = "job_cancelled"
-    SCRIPT_STARTED = "script_started"
-    SCRIPT_COMPLETED = "script_completed"
+    TEST_STARTED = "test_started"
+    TEST_COMPLETED = "test_completed"
     STEP_STARTED = "step_started"
     STEP_CALL = "step_call"
     STEP_COMPLETED = "step_completed"

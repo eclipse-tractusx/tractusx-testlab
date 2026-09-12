@@ -91,7 +91,7 @@ class StepRegistry:
     def get_any(step_type: str) -> type[BaseStep] | None:
         """Look up a step class by type alone, whatever version registered it.
 
-        :meth:`get` answers "may this script run this step", and a step
+        :meth:`get` answers "may this test run this step", and a step
         registered for one dataspace version must not resolve for another — that
         restriction is the point of the version key.  This answers the different
         question "what does this step declare", which the documentation

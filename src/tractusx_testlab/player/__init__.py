@@ -20,7 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-"""Player module — test execution engine.
+"""Player module — TCK execution engine.
 
 Sub-modules:
     execution — core player, step context, and execution monitor

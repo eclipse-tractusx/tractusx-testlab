@@ -67,7 +67,7 @@ class DescriptorPayload(StepPayload):
     the two keys every descriptor carries are named and the rest of the
     document round-trips untouched.
 
-    ``idShort`` is the AAS spelling and ``id_short`` is the script spelling, so
+    ``idShort`` is the AAS spelling and ``id_short`` is the test spelling, so
     both must populate the same field.  A workflow validating a shell lookup can
     hand the serializer a snake_case dict after a previous step already rewrote it,
     and the value still needs to resolve as the same descriptor.
@@ -76,7 +76,7 @@ class DescriptorPayload(StepPayload):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
     id: str | None = Field(default=None, description="Identifier of the descriptor.")
-    # The AAS API spells it ``idShort`` and our scripts read ``id_short``. Some
+    # The AAS API spells it ``idShort`` and our tests read ``id_short``. Some
     # registry responses come back in the canonical snake_case form instead, so
     # both spellings are accepted and the field remains populated whichever one it
     # arrived as.
@@ -88,7 +88,7 @@ class DescriptorPayload(StepPayload):
 
 
 def _as_document(result: Any) -> Any:
-    """Render an SDK descriptor object as the plain document a script reads."""
+    """Render an SDK descriptor object as the plain document a test reads."""
     return result.to_dict() if hasattr(result, "to_dict") else result
 
 
@@ -157,7 +157,7 @@ class ShellLookupOutput(StepPayload):
     """Shells a registry read returned.
 
     The one output shape of every step that answers with a collection of shells,
-    so a script reads ``shell_ids`` and ``shell_descriptors`` the same way
+    so a test reads ``shell_ids`` and ``shell_descriptors`` the same way
     whether the shells were searched for or listed, and whether the registry
     searched was the run's own or a counterparty's.
     """

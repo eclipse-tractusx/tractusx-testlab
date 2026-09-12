@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""SSE streaming routes for live test execution events."""
+"""SSE streaming routes for live TCK execution events."""
 
 from __future__ import annotations
 
@@ -35,10 +35,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.responses import StreamingResponse
 
-from tractusx_testlab.models.primitives.enums import ScriptKind
+from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.authoring.test import Tck
+from tractusx_testlab.models.primitives.enums import DefinitionKind
 from tractusx_testlab.player.execution.player import TestlabPlayer
-from tractusx_testlab.scripting.parser import YamlParser
-from tractusx_testlab.scripting.script import Tck
 from tractusx_testlab.server.streaming._event_buffer import EventBuffer
 from tractusx_testlab.server.streaming.lifecycle import create_event_queue, sse_event_generator
 
@@ -61,7 +61,7 @@ def _on_task_done(task: asyncio.Task) -> None:
         _logger.exception("Background task failed: %s", exc, exc_info=exc)
 
 
-streaming_router = APIRouter(prefix="/test-execution", tags=["streaming"])
+streaming_router = APIRouter(prefix="/tck-execution", tags=["streaming"])
 
 
 def _get_player(request: Request) -> TestlabPlayer:
@@ -103,19 +103,19 @@ async def _parse_and_execute_yaml(request: Request, player: TestlabPlayer) -> JS
     kind_value = data.get("kind")
     has_tests = "tests" in data
     if kind_value:
-        kind = ScriptKind(kind_value)
+        kind = DefinitionKind(kind_value)
     elif has_tests:
-        kind = ScriptKind.TCK
+        kind = DefinitionKind.TCK
     else:
-        kind = ScriptKind.TEST
+        kind = DefinitionKind.TEST
 
     try:
-        if kind == ScriptKind.TCK:
+        if kind == DefinitionKind.TCK:
             tck_def = parser.parse_tck_from_dict(data)
             tck = Tck(tck_def)
         else:
-            script_def = parser.parse_script_from_dict(data)
-            tck = Tck.from_single_script(script_def)
+            test_def = parser.parse_test_from_dict(data)
+            tck = Tck.from_single_test(test_def)
     except (ValueError, KeyError, TypeError) as exc:
         raise HTTPException(422, f"Failed to parse YAML definition: {exc}") from exc
 

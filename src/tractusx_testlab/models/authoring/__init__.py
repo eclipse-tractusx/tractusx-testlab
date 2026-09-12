@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Authoring-time structures: script, step, service and TCK definitions."""
+"""Authoring-time structures: test, step, service and TCK definitions."""
 
 from tractusx_testlab.models.authoring.definitions import (
     Assertion,
@@ -31,12 +31,12 @@ from tractusx_testlab.models.authoring.definitions import (
     MetadataDefinition,
     ReturnFieldDefinition,
     SchemaDefinition,
-    ScriptDefinition,
     ServiceDefinition,
     StepDefinition,
     TckDefinition,
     TckMetadataDefinition,
     TestDataDefinition,
+    TestDefinition,
     VariableDefinition,
 )
 from tractusx_testlab.models.authoring.infrastructure import (
@@ -56,12 +56,12 @@ __all__ = [
     "MetadataDefinition",
     "ReturnFieldDefinition",
     "SchemaDefinition",
-    "ScriptDefinition",
     "ServiceDefinition",
     "Standard",
     "StepDefinition",
     "TckDefinition",
     "TckMetadataDefinition",
     "TestDataDefinition",
+    "TestDefinition",
     "VariableDefinition",
 ]

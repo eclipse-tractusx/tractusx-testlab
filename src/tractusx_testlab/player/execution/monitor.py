@@ -59,10 +59,10 @@ from tractusx_testlab.models.runtime.events import (
     JobPausedEvent,
     JobResumedEvent,
     JobStartedEvent,
-    ScriptCompletedEvent,
-    ScriptStartedEvent,
+    TestCompletedEvent,
+    TestStartedEvent,
 )
-from tractusx_testlab.models.runtime.results import ScriptResult
+from tractusx_testlab.models.runtime.results import TestResult
 from tractusx_testlab.player.execution._monitor_steps import StepEvents
 from tractusx_testlab.player.execution._trace_publisher import TracePublisher
 
@@ -74,7 +74,7 @@ class ExecutionMonitor(StepEvents):
     """Publishes typed execution events, logs them, traces them, fires callbacks.
 
     The step lifecycle — the events published while a step runs — is
-    :class:`StepEvents`, in its own module; the job and script lifecycle, the
+    :class:`StepEvents`, in its own module; the job and test lifecycle, the
     package verification and the publishing itself are here.
     """
 
@@ -129,22 +129,22 @@ class ExecutionMonitor(StepEvents):
         self._publish(JobCancelledEvent(job_id=job_id), event_id)
 
     # ------------------------------------------------------------------
-    # Script lifecycle
+    # Test lifecycle
     # ------------------------------------------------------------------
 
-    def on_script_started(self, job_id: str, script: str, index: int) -> None:
-        event_id = self._trace.test_started(script, index)
-        self._publish(ScriptStartedEvent(job_id=job_id, script=script, index=index), event_id)
+    def on_test_started(self, job_id: str, test: str, index: int) -> None:
+        event_id = self._trace.test_started(test, index)
+        self._publish(TestStartedEvent(job_id=job_id, test_id=test, index=index), event_id)
 
-    def on_script_completed(self, job_id: str, result: ScriptResult) -> None:
-        """Publish a script_completed event; ``result.status`` carries the outcome."""
+    def on_test_completed(self, job_id: str, result: TestResult) -> None:
+        """Publish a test_completed event; ``result.status`` carries the outcome."""
         # The event repeats every step, so it repeats them as they were written
         # down: the real calls, masked.
         record = result.model_copy(
             update={"execution": [wire.as_recorded(step) for step in result.execution]}
         )
         event_id = self._trace.test_ended(result)
-        self._publish(ScriptCompletedEvent(job_id=job_id, result=record), event_id)
+        self._publish(TestCompletedEvent(job_id=job_id, result=record), event_id)
 
     # ------------------------------------------------------------------
     # Package verification (pre-execution — no job exists yet)

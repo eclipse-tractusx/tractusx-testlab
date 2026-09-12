@@ -183,9 +183,9 @@ flowchart TD
 
 See the **[Architecture Guide](ccm-architecture-guide.md)** for the full internal sequence. In summary:
 
-1. The IDE (cx-test-suite) converts the workspace to YAML and sends `POST /testlab/test-execution/run`
-2. The backend parses YAML into a `Tck` object and topologically sorts scripts by dependencies
-3. For each script: resolve `${{ }}` references → execute steps → evaluate `validate:` assertions → publish declared `returns:` outputs
+1. The IDE (cx-test-suite) converts the workspace to YAML and sends `POST /testlab/tck-execution/run`
+2. The backend parses YAML into a `Tck` object and topologically sorts tests by dependencies
+3. For each test: resolve `${{ }}` references → execute steps → evaluate `validate:` assertions → publish declared `returns:` outputs
 4. The IDE receives real-time SSE events (`step.started`, `step.completed`, `step.failed`)
 
 ## Deep Dive: request_certificate

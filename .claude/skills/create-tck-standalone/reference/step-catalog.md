@@ -200,7 +200,7 @@ Fetch data from a data-plane endpoint using an EDR token.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `method`: string (default: `"GET"`) — HTTP method.
 - `body`: any — Request body; dicts are sent as JSON.
 - `dataplane_url`: any — Data-plane URL, or a data address object to read it from; falls back to the 'dataplane_url' context variable.
@@ -300,7 +300,7 @@ Retrieve one of a counterparty's shell descriptors by ID.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `dataplane_url`: string (default: `""`) — Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable.
 - `edr_token`: string (default: `""`) — EDR authorization token; falls back to the 'edr_token' context variable.
 - `aas_identifier`: string **(required)** — Identifier of the AAS shell descriptor.
@@ -313,7 +313,7 @@ List a counterparty's shell descriptors over a negotiated data plane.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `dataplane_url`: string (default: `""`) — Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable.
 - `edr_token`: string (default: `""`) — EDR authorization token; falls back to the 'edr_token' context variable.
 - `limit`: integer — Maximum number of entries the registry may return in one page; its own default applies when omitted.
@@ -328,7 +328,7 @@ Search a counterparty's registry for shells matching specific asset IDs.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `dataplane_url`: string (default: `""`) — Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable.
 - `edr_token`: string (default: `""`) — EDR authorization token; falls back to the 'edr_token' context variable.
 - `specific_asset_ids`: array[SpecificAssetId] **(required)** — Criteria the shell must match; all of them have to.
@@ -341,7 +341,7 @@ Search a counterparty's registry through `POST /lookup/shellsByAssetLink`.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `dataplane_url`: string (default: `""`) — Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable.
 - `edr_token`: string (default: `""`) — EDR authorization token; falls back to the 'edr_token' context variable.
 - `limit`: integer — Maximum number of entries the registry may return in one page; its own default applies when omitted.
@@ -438,7 +438,7 @@ Delete one submodel from the engine's submodel server.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `path`: string **(required)** — Path of the submodel to delete under the submodel server, relative to it — the 'path' the upload published.
 Outputs:
 - `status_code`: integer — HTTP status the delete was answered with.
@@ -448,7 +448,7 @@ Upload sample data to the engine's submodel server, under its aspect and its id.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `data`: any **(required)** — Payload to upload, sent as JSON. Required: an upload with no payload of its own would store a placeholder the test then asserts against.
 - `semantic_id`: string — URN of the aspect model the payload follows, e.g. 'urn:samm:io.catenax.serial_part:3.0.0#SerialPart'. Percent-encoded into the storage path when given; the submodel is stored directly under the server when omitted.
 - `submodel_id`: string — Id to store the submodel under; a unique 'urn:uuid:<uuid4>' is generated when omitted.
@@ -472,7 +472,7 @@ Run one of two nested sequences depending on a set of conditions.
 Params:
 - `conditions`: array[Condition] **(required)** — Comparisons evaluated before a branch is chosen.
 - `match`: string (default: `"all"`) — Whether every condition must hold ('all') or just one ('any').
-- `then`: array[StepDefinition] **(required)** — Nested step definitions run when the condition holds — the same shape used at the top level of a script.
+- `then`: array[StepDefinition] **(required)** — Nested step definitions run when the condition holds — the same shape used at the top level of a test.
 - `else`: array[StepDefinition] — Nested step definitions run when it does not; omitted means the step does nothing in that case.
 Outputs:
 - `condition_result`: boolean — How the condition evaluated.
@@ -483,7 +483,7 @@ Outputs:
 Run a nested list of steps, retrying the whole sequence on failure.
 
 Params:
-- `steps`: array[StepDefinition] **(required)** — Nested step definitions ('uses', 'with', 'validate', …) — the same shape used at the top level of a script. A nested step may itself be 'flow/retry'.
+- `steps`: array[StepDefinition] **(required)** — Nested step definitions ('uses', 'with', 'validate', …) — the same shape used at the top level of a test. A nested step may itself be 'flow/retry'.
 - `max_attempts`: integer (default: `3`) — Maximum number of attempts.
 - `delay_s`: number (default: `1`) — Seconds to wait between attempts.
 
@@ -492,7 +492,7 @@ Execute a plain HTTP request.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `method`: string (default: `"GET"`) — HTTP method.
 - `body`: any — Request body; dicts are sent as JSON.
 - `url`: string **(required)** — Target URL.
@@ -571,7 +571,7 @@ Obtain a token as the client itself — the machine-to-machine grant.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `token_url`: string **(required)** — Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'.
 - `client_id`: string (default: `""`) — OAuth2 client identifier.
 - `client_secret`: string (default: `""`) — OAuth2 client secret; omit for a public client.
@@ -590,7 +590,7 @@ Obtain a token on behalf of a resource owner by username and password.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `token_url`: string **(required)** — Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'.
 - `client_id`: string (default: `""`) — OAuth2 client identifier.
 - `client_secret`: string (default: `""`) — OAuth2 client secret; omit for a public client.
@@ -611,7 +611,7 @@ Exchange a refresh token for a fresh access token.
 
 Params:
 - `headers`: object — Extra HTTP headers merged into the request.
-- `timeout`: number — Request timeout in seconds; the script's default is used when omitted.
+- `timeout`: number — Request timeout in seconds; the test's default is used when omitted.
 - `token_url`: string **(required)** — Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'.
 - `client_id`: string (default: `""`) — OAuth2 client identifier.
 - `client_secret`: string (default: `""`) — OAuth2 client secret; omit for a public client.

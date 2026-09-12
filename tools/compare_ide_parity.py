@@ -33,7 +33,7 @@ a step whose every parameter the engine throws away.
 This tool compares the two contracts key by key and classifies each divergence
 by how it fails at runtime:
 
-``A`` — ``uses:`` does not resolve; the compiler rejects the script.
+``A`` — ``uses:`` does not resolve; the compiler rejects the test.
 ``B`` — an IDE parameter no engine field accepts.  ``StepParams`` is
         ``extra="allow"``, so the value is *dropped without an error*.
 ``C`` — an IDE ``returns:`` name nothing in the output resolves; the variable
@@ -45,7 +45,7 @@ by how it fails at runtime:
 ``G`` — an IDE parameter that binds only through a ``validation_alias``.  It
         runs today; it is still two spellings of one field.
 ``H`` — the two sides disagree on which dataspace release the step runs on.
-        The engine's registration decides whether a script resolves the step at
+        The engine's registration decides whether a test resolves the step at
         all; the block's ``dataspace_version`` decides whether the toolbox
         offers it and whether the block badges itself.  A block that omits a
         restriction the engine enforces keeps offering a step to tests that
@@ -81,7 +81,7 @@ warnings.filterwarnings("ignore")
 from pydantic import BaseModel
 from pydantic.aliases import AliasChoices, AliasPath
 
-from tractusx_testlab.scripting.registry import StepRegistry
+from tractusx_testlab.authoring.registry import StepRegistry
 
 # -- Known name drift ---------------------------------------------------------
 # The IDE spelling on the left is what the exporter writes; the engine name on

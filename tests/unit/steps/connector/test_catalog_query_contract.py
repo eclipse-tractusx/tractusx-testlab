@@ -51,7 +51,7 @@ from tractusx_testlab.syntax.context_vars import (
 #: context variable it is published as.
 _DATASETS = "datasets"
 
-#: A protocol a script pins explicitly, distinct from either release default.
+#: A protocol a test pins explicitly, distinct from either release default.
 _PROTOCOL = "dataspace-protocol-http:2025-1"
 
 _DATASET = {"@id": "offer-abc", "odrl:hasPolicy": {"@id": "policy-1"}}
@@ -121,7 +121,7 @@ class TestQueryCatalogParams:
 
 
 class TestDspProtocolOverride:
-    """The release decides the protocol; a script may still pin one.
+    """The release decides the protocol; a test may still pin one.
 
     The SDK's consumer service carries the default for its own release —
     ``dataspace-protocol-http:2025-1`` on Saturn, ``dataspace-protocol-http`` on

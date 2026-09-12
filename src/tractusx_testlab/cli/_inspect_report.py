@@ -66,18 +66,16 @@ def print_inspection(package: Path, result: object) -> None:
     typer.echo(f"  Name             : {r.name}")
     typer.echo(f"  Total Steps      : {r.total_steps}")
     typer.echo(f"  Total Validations: {r.total_validations}")
-    typer.echo(f"  Scripts          : {len(r.scripts)}")
+    typer.echo(f"  Tests            : {len(r.tests)}")
     typer.echo()
 
-    for script in r.scripts:
-        skippable_label = "Yes" if script.skippable else "No"
-        typer.echo(
-            f"  Script: {script.name}  |  ID: {script.test_id}  |  Skippable: {skippable_label}"
-        )
+    for test in r.tests:
+        skippable_label = "Yes" if test.skippable else "No"
+        typer.echo(f"  Test: {test.name}  |  ID: {test.test_id}  |  Skippable: {skippable_label}")
         typer.echo(f"  {'Step Name':<40} {'Uses':<35} {'Phase':<10} {'Validations'}")
         typer.echo(f"  {'-' * 40} {'-' * 35} {'-' * 10} {'-' * 11}")
 
-        for step in script.steps:
+        for step in test.steps:
             phase_label = step.phase.value.title()
             name_col = step.step_name[:39]
             uses_col = step.uses[:34]

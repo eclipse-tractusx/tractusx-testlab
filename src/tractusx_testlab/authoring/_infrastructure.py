@@ -52,7 +52,7 @@ def as_requirements(declared: dict, source: str) -> InfrastructureConfig:
 
 
 def merge_requirements(configs: Iterable[InfrastructureConfig]) -> InfrastructureConfig:
-    """Merge per-script requirement blocks into the one a run is checked against.
+    """Merge per-test requirement blocks into the one a run is checked against.
 
     ``required=True`` wins over ``required=False`` for the same capability, and
     the first non-``None`` ``standard`` wins: a TCK whose second test certifies
@@ -78,15 +78,15 @@ def collect_infrastructure_requirements(tck: object) -> InfrastructureConfig:
     Priority rules:
 
     1. If a TCK-level ``infrastructure:`` block is declared it is returned as-is —
-       per-script blocks are ignored.
-    2. Otherwise each script's ``infrastructure:`` block is merged using:
+       per-test blocks are ignored.
+    2. Otherwise each test's ``infrastructure:`` block is merged using:
        - ``required=True`` wins over ``required=False`` for the same capability key.
        - The first non-``None`` ``standard`` wins.
     3. When no blocks are declared at any level, an empty
        :class:`InfrastructureConfig` is returned.
 
     Args:
-        tck: A :class:`~tractusx_testlab.scripting.script.Tck` instance.
+        tck: A :class:`~tractusx_testlab.authoring.test.Tck` instance.
 
     Returns:
         The merged or directly declared :class:`InfrastructureConfig`.
@@ -97,12 +97,11 @@ def collect_infrastructure_requirements(tck: object) -> InfrastructureConfig:
         if tck_infra is not None:
             return tck_infra
 
-    scripts = getattr(tck, "scripts", None) or []
+    tests = getattr(tck, "tests", None) or []
     declared = [
         infrastructure
         for infrastructure in (
-            getattr(getattr(script, "definition", None), "infrastructure", None)
-            for script in scripts
+            getattr(getattr(test, "definition", None), "infrastructure", None) for test in tests
         )
         if infrastructure is not None
     ]

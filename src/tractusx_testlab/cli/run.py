@@ -174,13 +174,13 @@ def _compile_target_for_run(target: Path, build_dir: Path) -> Path:
     if target.suffix == ".tck":
         return target
 
-    _reject_bare_test_script(target)
+    _reject_bare_test(target)
 
     from tractusx_testlab.cli.compile import compile as compile_command
 
     typer.echo(f"Preparing run package from {target} ...")
     compile_command(
-        script=target,
+        manifest=target,
         compiler_keys=None,
         player_pub=None,
         output=build_dir,
@@ -194,8 +194,8 @@ def _compile_target_for_run(target: Path, build_dir: Path) -> Path:
     return built[0]
 
 
-def _reject_bare_test_script(target: Path) -> None:
-    """Refuse a lone test script, naming the manifest it needs.
+def _reject_bare_test(target: Path) -> None:
+    """Refuse a lone test, naming the manifest it needs.
 
     The compiler's unit is a TCK: it validates the manifest's env, resolves the
     services and assets the tests reference, and seals them into the package.
@@ -219,7 +219,7 @@ def _reject_bare_test_script(target: Path) -> None:
 
     if isinstance(data, dict) and "tests" not in data:
         typer.echo(
-            f"Error: {target.name} is a single test script, not a TCK manifest.\n"
+            f"Error: {target.name} is a single test, not a TCK manifest.\n"
             f"  'run' executes compiled packages, and the compiler's unit is a TCK.\n"
             f"  List it in an index.yaml alongside a 'tests:' entry and run that.",
             err=True,

@@ -276,11 +276,11 @@ class TestDtrRoundTripSchema:
 
     dtr_roundtrip.yaml needs a live registry, which no double here stands in
     for. What can be settled offline is the contract between the scenario's
-    two halves: the descriptor the script registers, once the SDK has rendered
+    two halves: the descriptor the test registers, once the SDK has rendered
     it the way the registry answers (``_as_document``), must satisfy the schema
-    the same script then validates the answer against — and the field paths
-    the script reads inside that answer must land on the values it registered.
-    A schema that rejects the script's own document would fail every CI run;
+    the same test then validates the answer against — and the field paths
+    the test reads inside that answer must land on the values it registered.
+    A schema that rejects the test's own document would fail every CI run;
     one that accepts a gutted document would never fail any.
     """
 
@@ -328,7 +328,7 @@ class TestDtrRoundTripSchema:
                 # The registry's own document, not the step's typed payload.
                 assert check["input"] == "body"
 
-    async def test_the_schema_accepts_the_document_the_script_registers(
+    async def test_the_schema_accepts_the_document_the_test_registers(
         self, schema, answered
     ) -> None:
         from tractusx_testlab.steps._checks import check_schema_validation

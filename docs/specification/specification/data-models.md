@@ -24,7 +24,7 @@ SPDX-License-Identifier: CC-BY-4.0
 | Enum | Values | Description |
 |------|--------|-------------|
 | `StepStatus` | `PENDING`, `RUNNING`, `WAITING`, `PASSED`, `FAILED`, `SKIPPED` | Lifecycle state of a single step |
-| `ScriptStatus` | `IDLE`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `SKIPPED` | Lifecycle state of a script run |
+| `TestStatus` | `IDLE`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `SKIPPED` | Lifecycle state of a test run |
 | `JobStatus` | `QUEUED`, `RUNNING`, `WAITING`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT` | Lifecycle state of a job (test execution) |
 | `AssertionType` | `EXACT`, `SCHEMA`, `CONTAINS`, `REGEX`, `STATUS_CODE` | Type of assertion check |
 | `AssertionSeverity` | `HARD`, `SOFT` | Whether assertion failure fails the step or is a warning |
@@ -67,7 +67,7 @@ classDiagram
         +list~Assertion~ validate?
     }
 
-    class ScriptDefinition {
+    class TestDefinition {
         +str name
         +str version
         +str dataspace_version
@@ -112,7 +112,7 @@ classDiagram
         +str sdk_version
         +datetime compiled_at
         +list~str~ dataspace_versions
-        +list~str~ scripts
+        +list~str~ tests
         +str checksum
         +SecurityBlock security?
     }
@@ -142,10 +142,10 @@ classDiagram
     SecurityBlock --> "*" EncryptedKeyBlock : authorized_players
     PackageManifest --> "0..1" SecurityBlock : security
 
-    ScriptDefinition --> "*" VariableDefinition : variables
-    ScriptDefinition --> "*" StepDefinition : steps
-    ScriptDefinition --> "*" StepDefinition : cleanup
-    ScriptDefinition --> "*" ServiceDefinition : services
+    TestDefinition --> "*" VariableDefinition : variables
+    TestDefinition --> "*" StepDefinition : steps
+    TestDefinition --> "*" StepDefinition : cleanup
+    TestDefinition --> "*" ServiceDefinition : services
     StepDefinition --> "*" Assertion : validate
     TckDefinition --> "*" TckTestEntry : tests
     TckDefinition --> "*" VariableDefinition : shared_variables
@@ -194,7 +194,7 @@ classDiagram
 
 ## Job Models (Execution-time)
 
-Every test execution is modeled as a **Job** — a stateful, persistent entity that tracks the full lifecycle of a run. Jobs can pause (enter `WAITING` state) when a step needs to listen for an external callback, maintain in-memory state ("memory") across steps, and automatically resume when the expected response arrives.
+Every TCK execution is modeled as a **Job** — a stateful, persistent entity that tracks the full lifecycle of a run. Jobs can pause (enter `WAITING` state) when a step needs to listen for an external callback, maintain in-memory state ("memory") across steps, and automatically resume when the expected response arrives.
 
 ```mermaid
 classDiagram
@@ -209,7 +209,7 @@ classDiagram
         +datetime started_at?
         +datetime finished_at?
         +float total_duration_s?
-        +str current_script?
+        +str current_test?
         +str current_step?
         +str waiting_for?
         +TckResult result?
@@ -250,7 +250,7 @@ classDiagram
 | `created_at` | `datetime` | When the job was created (enqueued) |
 | `started_at` | `datetime?` | When execution began |
 | `finished_at` | `datetime?` | When execution completed (success, failure, or timeout) |
-| `current_script` | `str?` | Name of the script currently executing (null when waiting or finished) |
+| `current_test` | `str?` | Name of the test currently executing (null when waiting or finished) |
 | `current_step` | `str?` | Name of the step currently executing or waiting on |
 | `waiting_for` | `str?` | Description of what the job is waiting for (e.g., `"callback: /callbacks/notif-ack"`, `"poll: transfer state=COMPLETED"`) |
 | `result` | `TckResult?` | Final result — populated when job completes |
@@ -267,7 +267,7 @@ The `JobMemory` provides a persistent key-value store and event log that survive
 | `has` | `has(key: str) -> bool` | Check if a key exists |
 | `log_event` | `log_event(event: JobEvent)` | Append a timestamped event to the history |
 
-Steps can write to job memory via `context.job.memory.set(key, value)`. Unlike step context variables (which are scoped to a single script), job memory persists across all scripts in a TCK and survives wait/resume cycles.
+Steps can write to job memory via `context.job.memory.set(key, value)`. Unlike step context variables (which are scoped to a single test), job memory persists across all tests in a TCK and survives wait/resume cycles.
 
 ---
 
@@ -325,11 +325,11 @@ classDiagram
         +bool timed_out
     }
 
-    class ScriptResult {
-        +str script_id
-        +str script_name
+    class TestResult {
+        +str test_id
+        +str test_name
         +str dataspace_version
-        +ScriptStatus status
+        +TestStatus status
         +list~StepResult~ steps
         +datetime started_at?
         +datetime finished_at?
@@ -348,19 +348,19 @@ classDiagram
     class TckResult {
         +str tck_id
         +str package_name
-        +ScriptStatus status
-        +list~ScriptResult~ scripts
+        +TestStatus status
+        +list~TestResult~ tests
         +datetime started_at?
         +datetime finished_at?
     }
 
-    ScriptResult --> "*" StepResult : steps
-    ScriptResult --> "1" AssertionSummary : assertion_summary
-    ScriptResult --> "*" CallbackResult : callback_results
+    TestResult --> "*" StepResult : steps
+    TestResult --> "1" AssertionSummary : assertion_summary
+    TestResult --> "*" CallbackResult : callback_results
     StepResult --> "0..1" HttpRequest : request
     StepResult --> "0..1" HttpResponse : response
     StepResult --> "*" AssertionResult : assertions
-    TckResult --> "*" ScriptResult : scripts
+    TckResult --> "*" TestResult : tests
     AssertionResult --> "1" Assertion : assertion
 ```
 
@@ -430,11 +430,11 @@ stateDiagram-v2
     SKIPPED --> [*]
 ```
 
-### Script Status
+### Test Status
 
 ```mermaid
 stateDiagram-v2
-    [*] --> IDLE : Script loaded
+    [*] --> IDLE : Test loaded
     IDLE --> RUNNING : Player starts execution
     RUNNING --> COMPLETED : All steps finished (pass or soft fail)
     RUNNING --> FAILED : Step failed with abort policy
@@ -458,8 +458,8 @@ stateDiagram-v2
     INITIALIZING --> FAILED : Init error
     READY --> ACTIVE : Steps using service
     ACTIVE --> READY : Step completes
-    READY --> STOPPING : Script ends or stop_service
-    ACTIVE --> STOPPING : Script ends or stop_service
+    READY --> STOPPING : Test ends or stop_service
+    ACTIVE --> STOPPING : Test ends or stop_service
     STOPPING --> STOPPED : Connections closed
     FAILED --> [*]
     STOPPED --> [*]

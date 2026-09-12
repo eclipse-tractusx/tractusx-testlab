@@ -85,7 +85,7 @@ Already implemented; recorded here for context:
   `operandLeft`/`operandRight` remain **serialization-only**
   (`serialization_alias`), used by `to_sdk()`.
 - C25: `validate/schema` (`steps/utility/validate.py`) — field `json_schema`
-  now has `validation_alias="schema"` only; scripts write `schema:`, the
+  now has `validation_alias="schema"` only; tests write `schema:`, the
   `json_schema:` spelling is dead.
 - C19 (shared-model half): `FilterExpressionParams.filter_expression` renamed
   to `filters` (no alias); `CatalogFilter` (the nested `filter:` block dual
@@ -177,7 +177,7 @@ Files: `steps/connector/negotiate.py`, `transfer.py`, `dataplane.py`,
    `"endpoint"`/`"token"` raw-param keys in tests
    (`tests/test_transfer_and_dataplane.py`, `test_connector_negotiate*.py` if
    present — discover with grep), e2e yaml under `tests/e2e/`, and
-   `docs/examples/**` and `stubs/**` scripts.
+   `docs/examples/**` and `stubs/**` tests.
 
 Test: `poetry run pytest tests -k "negotiate or transfer or dataplane or edr" -q`.
 
@@ -192,7 +192,7 @@ Files: `steps/connector/provision.py`, `pull_data/_executor.py`,
    `pull_data_filtered_by_policy` params, `query_catalog_by_asset_id` params
    (`catalog_query.py`), and `do_dsp`/`do_dsp_with_bpnl` params (`do_dsp.py`).
    The kwarg passed INTO the SDK (`consumer.do_dsp(policies=…)`) keeps the
-   SDK's name — only the script-facing param renames.
+   SDK's name — only the test-facing param renames.
 2. **C14** `create_contract_definition` (`provision.py`): param
    `contract_id` → `contract_definition_id`; output field `contract_def_id` →
    `contract_definition_id`. One name both directions.
@@ -222,7 +222,7 @@ Files: `steps/connector/provision.py`, `pull_data/_executor.py`,
    the same way its `_by_policy` sibling publishes it.
 
 Update callers/tests: grep `contract_id`, `contract_def_id`,
-`usage_policy_id`, `"policies"` (script-facing), plus e2e/docs/stubs.
+`usage_policy_id`, `"policies"` (test-facing), plus e2e/docs/stubs.
 
 Test: `poetry run pytest tests -k "provision or contract or pull_data or catalog" -q`.
 
@@ -377,13 +377,13 @@ Test: `poetry run pytest tests -k "mock or wait or http" -q`.
    - Implementation: thread the resolving step's `output_model` (or its
      `model_fields` name-set) into `extract_path` from the call site (find
      callers: grep `extract_path(` — resolver lives around
-     `player/execution/_helpers.py` / `scripting` expression resolution).
+     `player/execution/_helpers.py` / `authoring` expression resolution).
      When the first segment is NOT in the declared field set (and not a key
      of a dict `value`), return `None` instead of falling through to
      response internals. Delete `_fallback_resolution` if nothing legitimate
      remains, or gate it on the declared-field check.
    - Fix tests that relied on blanket fallbacks (`status_code`, `body`,
-     `duration_ms`, `response_body` references in test scripts) to use
+     `duration_ms`, `response_body` references in tests) to use
      declared outputs. `validate/assert`-family steps that deliberately read
      `input:` values are unaffected (they receive values, not paths into
      other steps).
@@ -614,7 +614,7 @@ Test: `npx vitest run src/features/ide` then `npm test`.
 ### I6 — Docs regen
 
 - Regenerate/update `AVAILABLE_STEPS.md` from the final catalog (check
-  `package.json` scripts for a generator; if hand-maintained, update the
+  `package.json` tests for a generator; if hand-maintained, update the
   step tables to the final ids/params/outputs — cross-check against
   `public/blocks/index.json`).
 - `CHANGELOG.md` entry for the contract migration.

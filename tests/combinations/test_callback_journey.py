@@ -24,15 +24,15 @@
 """``mock/api`` and ``mock/wait/http_request`` — the inbound half of a TCK.
 
 Every other step in the catalogue makes a call and reads the answer. This pair
-inverts that: the script hands the system under test an address, the SUT calls
-it whenever it is ready, and the script blocks until it does. That is the shape
+inverts that: the test hands the system under test an address, the SUT calls
+it whenever it is ready, and the test blocks until it does. That is the shape
 of every asynchronous Catena-X flow — a notification, a certificate callback,
 an EDR push.
 
 Three things have to line up and none of them show in either step's contract:
 the URL handed out has to be one the server actually routes, the request has to
-resolve the listener the script is waiting on, and the future being resolved
-belongs to the script's event loop while the request arrives on uvicorn's. So
+resolve the listener the test is waiting on, and the future being resolved
+belongs to the test's event loop while the request arrives on uvicorn's. So
 the server here is the real one, on a real port, and the SUT is a real client
 on another thread.
 """
@@ -126,7 +126,7 @@ class TestThePairWorks:
     async def test_the_url_handed_out_is_one_the_server_routes(
         self, sut_harness: Harness, server: MockServer
     ) -> None:
-        """The failure this guards against is a 404 the script never sees."""
+        """The failure this guards against is a 404 the test never sees."""
         opened = await sut_harness.run(_endpoint("/certificate/request"))
 
         response = server.call(opened.variables["full_mock_url"], json={"cert": "ISO9001"})
@@ -167,16 +167,16 @@ class TestThePairWorks:
 
 
 class TestTheOrderTheyHappenIn:
-    """The SUT does not wait for the script to be ready, so neither can this."""
+    """The SUT does not wait for the test to be ready, so neither can this."""
 
     async def test_a_call_that_arrives_before_the_wait_starts_is_not_lost(
         self, sut_harness: Harness, server: MockServer
     ) -> None:
         """``mock/api`` registers the listener, which is what makes this safe.
 
-        A fast SUT answers before the script reaches its wait step. Were the
+        A fast SUT answers before the test reaches its wait step. Were the
         listener only created by the wait, the call would land on nothing and
-        the script would then block for the full timeout waiting for a call
+        the test would then block for the full timeout waiting for a call
         that already happened.
         """
         opened = await sut_harness.run(_endpoint("/certificate/request"))
@@ -248,7 +248,7 @@ class TestWhenNothingCalls:
         assert response.status_code == 404
 
 
-class TestTheCallbackDrivesTheRestOfTheScript:
+class TestTheCallbackDrivesTheRestOfTheTest:
     """What arrives is an ordinary step output — assertable, and readable on."""
 
     async def test_the_inbound_body_can_be_asserted_on_where_it_lands(
@@ -350,7 +350,7 @@ class TestWithoutTheServer:
         """The plain ``harness`` fixture has no server behind it.
 
         ``mock/api`` still registers — the registry is module state — so the
-        script gets a URL that nothing serves. The wait is where that surfaces,
+        test gets a URL that nothing serves. The wait is where that surfaces,
         and it names the missing piece rather than timing out on it.
         """
         clear_callback_manager()
@@ -420,11 +420,11 @@ class TestWhatTheRunSaysWhileItWaits:
         assert listening[3] == waiting[3] == received[3]
         assert listening[3].url == opened.variables["full_mock_url"]
         assert listening[3].method == "POST"
-        assert waiting[4] == 5.0, "the wait step's own timeout, as the script wrote it"
+        assert waiting[4] == 5.0, "the wait step's own timeout, as the test wrote it"
         assert received[4].payload == {"cert": "ISO9001"}
         assert received[5] >= 200, "the wait was blocked for the delay before the call"
 
-    async def test_a_call_that_beat_the_script_is_reported_with_no_wait(
+    async def test_a_call_that_beat_the_test_is_reported_with_no_wait(
         self, sut_harness: Harness, server: MockServer
     ) -> None:
         reports = self._Reports()

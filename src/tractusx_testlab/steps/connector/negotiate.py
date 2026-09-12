@@ -30,8 +30,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector._polling import (
     DEFAULT_MAX_WAIT,
@@ -60,7 +60,7 @@ class NegotiateParams(CounterPartyParams):
     """Input contract of ``connector/consumer/negotiate``.
 
     Every field falls back to what an earlier catalog step published, so a
-    script that ran ``query_catalog_by_asset_id`` first can leave them all out.
+    test that ran ``query_catalog_by_asset_id`` first can leave them all out.
     """
 
     asset_id: Any | None = Field(

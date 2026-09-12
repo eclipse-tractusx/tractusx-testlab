@@ -35,8 +35,8 @@ from tractusx_testlab.player.execution.player import TestlabPlayer
 
 
 def _write_tck(tmp_path: Path) -> Path:
-    """Write a minimal TCK + script YAML for loading."""
-    script = {
+    """Write a minimal TCK + test YAML for loading."""
+    test = {
         "kind": "test",
         "name": "Smoke Test",
         "version": "1.0",
@@ -46,7 +46,7 @@ def _write_tck(tmp_path: Path) -> Path:
         "kind": "tck",
         "name": "Minimal TCK",
         "version": "1.0",
-        "tests": [script],
+        "tests": [test],
     }
     p = tmp_path / "tck.yaml"
     p.write_text(yaml.dump(tck, default_flow_style=False))

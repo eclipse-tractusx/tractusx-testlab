@@ -1,5 +1,5 @@
 {
-  "$comment": "Generated from ScriptDefinition by `testlab schema`. Do not edit: the models in tractusx_testlab.models.authoring.definitions are the source of truth, and `testlab schema --check` fails the build if this file no longer matches them.",
+  "$comment": "Generated from TestDefinition by `testlab schema`. Do not edit: the models in tractusx_testlab.models.authoring.definitions are the source of truth, and `testlab schema --check` fails the build if this file no longer matches them.",
   "$defs": {
     "Assertion": {
       "additionalProperties": false,
@@ -109,7 +109,7 @@
     },
     "MetadataDefinition": {
       "additionalProperties": false,
-      "description": "Metadata block common to scripts and TCK manifests.",
+      "description": "Metadata block common to tests and TCK manifests.",
       "properties": {
         "description": {
           "anyOf": [
@@ -322,7 +322,7 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Top-level test script definition.",
+  "description": "Top-level test definition.",
   "properties": {
     "dataspace": {
       "anyOf": [
@@ -397,6 +397,6 @@
     "namespace",
     "metadata"
   ],
-  "title": "ScriptDefinition",
+  "title": "TestDefinition",
   "type": "object"
 }

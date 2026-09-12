@@ -410,7 +410,7 @@ exception to the category/module/function convention:
 
   
 
-### C32 — validate/semantic_schema (no block, no script uses it, weaker than validate/schema)
+### C32 — validate/semantic_schema (no block, no test uses it, weaker than validate/schema)
 
 - [x] Delete from the engine *(on record)*
 

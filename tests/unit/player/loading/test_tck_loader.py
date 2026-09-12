@@ -46,7 +46,7 @@ tests:
     name: Inlined test one
 """
 
-_TEST_SCRIPT_YAML = """\
+_TEST_TEST_YAML = """\
 syntax: v1-alpha
 kind: test
 id: inline-test-one
@@ -54,7 +54,7 @@ namespace: testlab.test
 metadata:
   name: inline-test-one
   version: "1.0"
-  description: Inlined test script
+  description: Inlined test
 execution:
   - id: step_one
     uses: precondition/provide
@@ -86,7 +86,7 @@ def tck_archive(tmp_path: Path) -> Path:
         archive_path,
         {
             _TCK_BUNDLE_ENTRY: _TCK_MANIFEST_YAML.encode(),
-            "tests/inline-test-one.yaml": _TEST_SCRIPT_YAML.encode(),
+            "tests/inline-test-one.yaml": _TEST_TEST_YAML.encode(),
         },
     )
     return archive_path
@@ -102,17 +102,17 @@ class TestTckLoading:
         tck = loader.load(tck_archive)
 
         assert tck.name == "tck-smoke-test"
-        assert tck.script_count() == 1
+        assert tck.test_count() == 1
 
     def test_load_tck_preserves_step_definitions(self, tck_archive: Path) -> None:
         """Steps declared in the bundled YAML survive the ZIP round-trip."""
         loader = Loader()
 
         tck = loader.load(tck_archive)
-        script = tck.scripts[0]
+        test = tck.tests[0]
 
-        assert script.step_count() == 1
-        assert script.steps[0].uses == "precondition/provide"
+        assert test.step_count() == 1
+        assert test.steps[0].uses == "precondition/provide"
 
     def test_load_tck_rejects_non_zip_file(self, tmp_path: Path) -> None:
         """A non-ZIP file with .tck extension raises ValueError (not UnicodeDecodeError)."""

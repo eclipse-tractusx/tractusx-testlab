@@ -176,8 +176,8 @@ testlab inspect connector_e2e-1.0.tck
 Each test in the output shows its **ID** and whether it is skippable:
 
 ```
-  Script: Validate catalog policy  |  ID: catalog_policy_validation.yaml  |  Skippable: Yes
-  Script: Request certificate       |  ID: request_certificate.yaml        |  Skippable: No
+  Test: Validate catalog policy  |  ID: catalog_policy_validation.yaml  |  Skippable: Yes
+  Test: Request certificate       |  ID: request_certificate.yaml        |  Skippable: No
 ```
 
 The **ID** (e.g. `catalog_policy_validation.yaml`) is what you pass to `skip_tests`.
@@ -261,7 +261,7 @@ The Player automatically:
 1. Verifies the `signature.sig` using the trusted Compiler key
 2. Finds its own entry in `authorized_players` by fingerprint
 3. Unwraps the AES key using its RSA private key
-4. Decrypts `payload.enc` to recover scripts and assets
+4. Decrypts `payload.enc` to recover tests and assets
 5. Executes in-memory (decrypted content is never written to disk)
 
 **Expected output:**
@@ -408,7 +408,7 @@ One CloudEvent per line. Each is self-contained: it says which TCK, which test, 
 
 `errors[].origin` tells you who to go to: `sut` means the system under test answered wrongly, `engine` means TestLab itself broke and the run says nothing about the SUT.
 
-**A step that failed on the policy** — a DSP step turns down every offer whose policy is not one the script named, and says which condition turned them down. `context` carries the same comparison structurally, so the IDE renders it:
+**A step that failed on the policy** — a DSP step turns down every offer whose policy is not one the test named, and says which condition turned them down. `context` carries the same comparison structurally, so the IDE renders it:
 
 ```json
 {"specversion":"1.0",
@@ -427,7 +427,7 @@ One CloudEvent per line. Each is self-contained: it says which TCK, which test, 
                "expected_not_offered":[]}]}}]}}
 ```
 
-Read it as a set difference. `offered_not_expected` is what the provider requires and your `expected_policies` does not carry — the offer is refused for it just as surely as for something missing, so a deployment that added `Membership` to its policy fails a TCK that never listed it. `expected_not_offered` is the other direction: what the script requires and the provider does not offer.
+Read it as a set difference. `offered_not_expected` is what the provider requires and your `expected_policies` does not carry — the offer is refused for it just as surely as for something missing, so a deployment that added `Membership` to its policy fails a TCK that never listed it. `expected_not_offered` is the other direction: what the test requires and the provider does not offer.
 
 #### Reading a trace
 
@@ -476,7 +476,7 @@ testlab run connector_e2e-1.0.tck \
 |--------|-------|
 | Started | 2026-03-30T14:30:00Z |
 | Duration | 22.1s |
-| Scripts | 2 |
+| Tests | 2 |
 | Steps | 9 passed, 0 failed, 0 skipped |
 | Assertions | 9 passed, 0 failed |
 | Result | PASSED |
@@ -510,7 +510,7 @@ testlab run connector_e2e-1.0.tck \
 |--------|-------|
 | Started | 2026-03-30T14:30:00Z |
 | Duration | 38.5s |
-| Scripts | 2 |
+| Tests | 2 |
 | Steps | 4 passed, 1 failed, 1 stopped |
 | Assertions | 5 passed, 1 failed |
 | Result | FAILED |
@@ -560,8 +560,8 @@ async def run_tests():
     print(f"Duration: {result.duration_ms}ms")
     print(f"Steps: {result.passed}/{result.total}")
 
-    for script_result in result.scripts:
-        for step in script_result.steps:
+    for test_result in result.tests:
+        for step in test_result.steps:
             print(f"  [{step.status}] {step.name} ({step.duration_ms}ms)")
 
             # Access the full HTTP request/response
@@ -713,7 +713,7 @@ curl -X POST http://localhost:8100/api/v1/run \
   "duration_ms": 22100,
   "current_step": null,
   "waiting_for": null,
-  "scripts": [
+  "tests": [
     {
       "name": "provision_and_consume",
       "status": "PASSED",
@@ -857,7 +857,7 @@ curl -X POST http://localhost:8100/api/v1/run \
   "started_at": "2026-03-30T15:00:00Z",
   "finished_at": null,
   "duration_ms": null,
-  "current_script": "send_and_acknowledge",
+  "current_test": "send_and_acknowledge",
   "current_step": "wait_for_ack",
   "waiting_for": "callback: /callbacks/notif-ack-xyz",
   "memory": {
@@ -975,7 +975,7 @@ curl -X POST http://localhost:8100/api/v1/jobs/f9e8d7c6-b5a4-3210-fedc-ba9876543
 | `DELETE` | `/api/v1/packages/{package_id}` | Delete an uploaded package |
 | `POST` | `/api/v1/run` | Execute a package (creates a Job) |
 | `GET` | `/api/v1/jobs` | List all jobs (supports `?status=` filter) |
-| `GET` | `/api/v1/jobs/{job_id}` | Get job detail (status, memory, scripts, events) |
+| `GET` | `/api/v1/jobs/{job_id}` | Get job detail (status, memory, tests, events) |
 | `POST` | `/api/v1/jobs/{job_id}/cancel` | Cancel a running or waiting job |
 | `GET` | `/api/v1/jobs/{job_id}/memory` | Get job memory key-value store |
 | `GET` | `/api/v1/jobs/{job_id}/events` | Get job lifecycle event log |
@@ -985,7 +985,7 @@ curl -X POST http://localhost:8100/api/v1/jobs/f9e8d7c6-b5a4-3210-fedc-ba9876543
 ## Next Steps
 
 - Return to the [Walkthrough Overview](index.md) for a summary
-- Review the [YAML Script Format](../reference/yaml-format.md) reference for all step types
+- Review the [YAML Test Format](../reference/yaml-format.md) reference for all step types
 - See the [Package Format](../reference/package-format.md) specification for archive internals
 - Consult [Functional Requirements](../specification/functional-requirements.md) for full requirement traceability
 

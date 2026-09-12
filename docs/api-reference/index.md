@@ -34,7 +34,7 @@ A standard TCK test suite has three block tiers plus one configuration layer:
 ```mermaid
 graph TB
     subgraph TCK["Standard TCK"]
-        subgraph Scripts["Test Scripts"]
+        subgraph Tests["Tests"]
             direction TB
             V["🔴 Validation Blocks<br/>validate/assert · validate/field<br/>validate/object · validate/schema"]
             M["🔵 Main Blocks<br/>connector/ · dtr/ · mock/"]
@@ -45,7 +45,7 @@ graph TB
 
     M -->|"returns:"| V
     O -->|"supports"| M
-    C -->|"provides env"| Scripts
+    C -->|"provides env"| Tests
 
     style V fill:#8B1A4A,color:#fff
     style M fill:#0EA5E9,color:#fff
@@ -58,7 +58,7 @@ graph TB
 - **Main Blocks** (blue) are domain-specific. They understand Tractus-X protocols (DSP, EDC Management API, AAS). They interact with connectors, registries, and mock services.
 - **Operator Blocks** (green) are generic utilities. They handle HTTP, JSON extraction, flow control, and filtering. They support main blocks without knowing about Tractus-X.
 - **Validation Blocks** (red) check results. They receive return variables from steps and assert conditions. They never execute actions — only verify.
-- **Environment Configuration** (orange) is defined in the TCK manifest. Services, variables, and schemas provide the runtime context for all test scripts.
+- **Environment Configuration** (orange) is defined in the TCK manifest. Services, variables, and schemas provide the runtime context for all tests.
 
 Data flows: Main blocks `returns:` values → Validation blocks check them. Operator blocks support main blocks (HTTP calls, retries, UUID generation). Environment config provides services and variables to all blocks via `${{ env.x }}` interpolation.
 
@@ -132,14 +132,14 @@ TCK: Certificate Management Conformity
   Total Steps       : 12
   Total Validations : 8
 
-  Script: request-certificate  |  ID: request_certificate.yaml  |  Skippable: No
+  Test: request-certificate  |  ID: request_certificate.yaml  |  Skippable: No
   ┌────────────────────────────────────────────────┬────────────────────────────────────────────────┬───────────┬─────────────┐
   │ Step Name                                      │ Uses                                           │ Phase     │ Validations │
   ├────────────────────────────────────────────────┼────────────────────────────────────────────────┼───────────┼─────────────┤
   │ Request certificate                            │ connector/consumer/request_certificate         │ Execution │ 2           │
   └────────────────────────────────────────────────┴────────────────────────────────────────────────┴───────────┴─────────────┘
 
-  Script: catalog_policy_validation  |  ID: catalog_policy_validation.yaml  |  Skippable: Yes
+  Test: catalog_policy_validation  |  ID: catalog_policy_validation.yaml  |  Skippable: Yes
   ┌────────────────────────────────────────────────┬────────────────────────────────────────────────┬───────────┬─────────────┐
   │ Step Name                                      │ Uses                                           │ Phase     │ Validations │
   ├────────────────────────────────────────────────┼────────────────────────────────────────────────┼───────────┼─────────────┤
@@ -155,7 +155,7 @@ TCK: Certificate Management Conformity
     "name": "Certificate Management Conformity",
     "total_steps": 12,
     "total_validations": 8,
-    "scripts": [
+    "tests": [
       {
         "name": "request-certificate",
         "test_id": "request_certificate.yaml",
@@ -204,10 +204,10 @@ models directly from the library:
 
 ```python
 from tractusx_testlab.models import (
-    TckInspectionResult, ScriptInspection, StepMeta,   # inspection
+    TckInspectionResult, TestInspection, StepMeta,   # inspection
     VariableDefinition, VariableScope, VariableSource,  # variables
     InfrastructureConfig, CapabilityRequirement,        # infrastructure
-    ScriptStatus, SkipNotAllowedError,                  # skip configuration
+    TestStatus, SkipNotAllowedError,                  # skip configuration
 )
 ```
 

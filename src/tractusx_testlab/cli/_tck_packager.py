@@ -159,7 +159,7 @@ def write_encrypted_tck(
 
 
 def compile_encrypted_plain(
-    script: Path,
+    manifest: Path,
     compiler_keys: Path,
     player_pub: list[Path],
     out: Path,
@@ -193,14 +193,14 @@ def compile_encrypted_plain(
         tmp_path = Path(tmp)
         try:
             manifest_dict, _ = compiler.compile_plain(
-                manifest_path=script,
+                manifest_path=manifest,
                 output_path=tmp_path,
                 version=version,
             )
         except (ValueError, FileNotFoundError) as exc:
             typer.echo(f"Compilation failed: {exc}", err=True)
             raise typer.Exit(1) from exc
-        embed_bundle_yaml(script, tmp_path)
+        embed_bundle_yaml(manifest, tmp_path)
         tar_bytes = create_tar_bytes(tmp_path)
 
     signature = sign_bytes(tar_bytes, compiler_identity.signing.private_bytes)
@@ -229,7 +229,7 @@ def compile_encrypted_plain(
 
 
 def resolve_tck_output_path(
-    script: Path,
+    manifest: Path,
     manifest_dict: dict,
     output: Path | None,
 ) -> Path:
@@ -240,11 +240,11 @@ def resolve_tck_output_path(
             output.mkdir(parents=True, exist_ok=True)
             return output / f"{tck_id}.tck"
         return output if output.suffix == ".tck" else output.with_suffix(".tck")
-    return script.parent / f"{tck_id}.tck"
+    return manifest.parent / f"{tck_id}.tck"
 
 
 def compile_encrypted_tck(
-    script: Path,
+    manifest: Path,
     compiler_keys: Path,
     player_pub: list[Path],
     output: Path | None,
@@ -277,14 +277,14 @@ def compile_encrypted_tck(
         tmp_path = Path(tmp)
         try:
             manifest_dict, _ = compiler.compile_plain(
-                manifest_path=script,
+                manifest_path=manifest,
                 output_path=tmp_path,
                 version=version,
             )
         except (ValueError, FileNotFoundError) as exc:
             typer.echo(f"Compilation failed: {exc}", err=True)
             raise typer.Exit(1) from exc
-        embed_bundle_yaml(script, tmp_path)
+        embed_bundle_yaml(manifest, tmp_path)
         tar_bytes = create_tar_bytes(tmp_path)
 
     signature = sign_bytes(tar_bytes, compiler_identity.signing.private_bytes)
@@ -296,7 +296,7 @@ def compile_encrypted_tck(
         authorized_players,
         sig_b64,
     )
-    tck_path = resolve_tck_output_path(script, manifest_dict, output)
+    tck_path = resolve_tck_output_path(manifest, manifest_dict, output)
     write_encrypted_tck(tck_path, redacted, payload_b64, sig_b64)
 
     typer.echo(f"\nCompiled (encrypted .tck) → {tck_path}")

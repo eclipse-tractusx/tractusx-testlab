@@ -88,7 +88,7 @@ async def _get_shell_descriptor(
 ) -> tuple[str, Any]:
     """GET one shell descriptor by identifier, base64url-encoded as the AAS API expects.
 
-    The one place any consumer-side step reads a descriptor, whether a script
+    The one place any consumer-side step reads a descriptor, whether a test
     asked for it by identifier or a lookup surfaced it.
     """
     url = f"{base}/shell-descriptors/{encode_as_base64_url_safe(shell_id)}"
@@ -100,7 +100,7 @@ async def _shell_descriptor(base: str, shell_id: str, headers: dict, timeout: fl
 
     A shell the lookup named but the registry will not hand over is reported by
     its absence from ``shell_descriptors``; the identifier is still in
-    ``shell_ids``, so a script can assert on the difference.
+    ``shell_ids``, so a test can assert on the difference.
     """
     _, response = await _get_shell_descriptor(base, shell_id, headers, timeout)
     if response.status_code != 200:

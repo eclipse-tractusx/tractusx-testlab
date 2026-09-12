@@ -111,7 +111,7 @@ setup:
   # The visibility rules are the substance of this block, not decoration. A
   # Tractus-X registry answers a request as the partner the `Edc-Bpn` header
   # names — set by the provider's data plane from the token, never by the
-  # script — and it shows a twin only to a partner named in one of the twin's
+  # test — and it shows a twin only to a partner named in one of the twin's
   # specific asset IDs. `PUBLIC_READABLE` is the registry's wildcard, honoured
   # for the identifier types its configuration allows (manufacturerPartId and
   # digitalTwinType by default), which is what makes the twin findable at all.
@@ -214,7 +214,7 @@ execution:
 
   # The unfiltered read: every twin this consumer is allowed to see, one page
   # at a time. It is the only registry step that takes a page size, and the
-  # cursor it returns is the only way a script reads the page after it.
+  # cursor it returns is the only way a test reads the page after it.
   - id: list_shells
     uses: digital-twin-registry/consumer/dataplane/get_shell_descriptors
     name: List the twins the consumer may see
@@ -236,7 +236,7 @@ execution:
   # The search a consumer actually performs: it does not know the twin's id,
   # it knows a part number. The criteria go out base64url-encoded, one query
   # value each, which is the encoding the registry demands and the step is
-  # what saves a script from having to know that.
+  # what saves a test from having to know that.
   - id: lookup_by_part
     uses: digital-twin-registry/consumer/dataplane/lookup_shell
     name: Find the twin by its manufacturer part ID
@@ -328,7 +328,7 @@ execution:
         with: { input: shell_ids, operator: contains, value: "${{ setup.create_shell.id }}" }
 
   # An AAS identifier goes into a request path base64url-encoded, and this is
-  # the step that does that encoding when a script builds the call itself
+  # the step that does that encoding when a test builds the call itself
   # rather than letting a registry step build it. Asserting the padding is
   # gone is not cosmetic: an unencoded '=' in a path is a different address.
   - id: encode_twin_id

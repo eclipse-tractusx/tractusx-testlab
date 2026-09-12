@@ -31,8 +31,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.dsp_keys import (
     ASSET_ID_KEYS,
     ID_KEY,

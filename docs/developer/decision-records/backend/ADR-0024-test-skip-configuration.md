@@ -101,9 +101,9 @@ Before any test executes, the player calls `resolve_skip_ids(tck, runtime_vars)`
 Validation happens once before the first test runs. Mid-run partial failures are not
 possible.
 
-### 4. `ScriptStatus.SKIPPED`
+### 4. `TestStatus.SKIPPED`
 
-A new value on the `ScriptStatus` enum. Used exclusively for tests that were
+A new value on the `TestStatus` enum. Used exclusively for tests that were
 intentionally skipped by the operator. It is semantically distinct from:
 
 - `FAILED` — test ran and did not pass.
@@ -111,7 +111,7 @@ intentionally skipped by the operator. It is semantically distinct from:
 - `COMPLETED` — test ran and passed.
 
 `build_tck_result` treats `SKIPPED` as non-failing: an overall TCK is `COMPLETED`
-when all scripts are either `COMPLETED` or `SKIPPED`. A single `FAILED` script makes
+when all tests are either `COMPLETED` or `SKIPPED`. A single `FAILED` test makes
 the entire TCK `FAILED`.
 
 ### 5. `SkipNotAllowedError` domain exception
@@ -121,9 +121,9 @@ Includes the list of invalid IDs and the reason (unknown vs. not skippable).
 
 ### 6. Visibility in `testlab inspect`
 
-`ScriptInspection` gains a `skippable: bool = False` field.  `testlab inspect` shows a
+`TestInspection` gains a `skippable: bool = False` field.  `testlab inspect` shows a
 `Skippable: Yes / No` column for each test. The `--json` envelope includes
-`"skippable": true/false` per script entry.
+`"skippable": true/false` per test entry.
 
 ## Consequences
 
@@ -147,5 +147,5 @@ Includes the list of invalid IDs and the reason (unknown vs. not skippable).
 
 ## Related
 
-- [ADR-0022: TCK Static Inspection](ADR-0022-tck-static-inspection.md) — `ScriptInspection.skippable` field added.
-- [ADR-0016: Execution Trace Format](ADR-0016-execution-trace-format.md) — `ScriptStatus.SKIPPED` added.
+- [ADR-0022: TCK Static Inspection](ADR-0022-tck-static-inspection.md) — `TestInspection.skippable` field added.
+- [ADR-0016: Execution Trace Format](ADR-0016-execution-trace-format.md) — `TestStatus.SKIPPED` added.

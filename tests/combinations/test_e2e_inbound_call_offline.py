@@ -34,9 +34,9 @@ The asset's ``base_url`` is an operator input read *inside* an inline asset
 document, and a reference that stopped resolving there would register an asset
 whose backend is the literal text ``${{ env.… }}`` — which the data plane
 would then fail to fetch, twenty minutes into a job. And the path is the
-script's to choose: the asset points at the mock server's root with
+test's to choose: the asset points at the mock server's root with
 ``proxyPath`` on, and the pull names the mock's path, so the path has to travel
-from the script through the data plane to the mock.
+from the test through the data plane to the mock.
 
 So the data plane here is not a canned route. It is a server that fetches
 whatever ``base_url`` the provider double was given, with the caller's path
@@ -274,7 +274,7 @@ class TestTheWaitReadsTheDataPlanesRequest:
         assert read["request_path"] == _BACKEND_PATH
 
     async def test_the_posted_payload_is_what_the_mock_received(self, outcome) -> None:
-        """Field for field: what the script sent is what arrived, two hops later."""
+        """Field for field: what the test sent is what arrived, two hops later."""
         sent = next(s for s in _phase("execution") if s["id"] == "notify_through_sut")["with"][
             "body"
         ]

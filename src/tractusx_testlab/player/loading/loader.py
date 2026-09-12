@@ -34,17 +34,17 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
+from tractusx_testlab.authoring.test import Tck as Tck
+from tractusx_testlab.authoring.test import Test
 from tractusx_testlab.compiler import package_digest
-from tractusx_testlab.models.authoring.definitions import ScriptDefinition
-from tractusx_testlab.models.primitives.enums import ScriptKind
+from tractusx_testlab.models.authoring.definitions import TestDefinition
+from tractusx_testlab.models.primitives.enums import DefinitionKind
 from tractusx_testlab.player.loading._parser import (
-    _SCRIPT_ADAPTER,
     _TCK_ADAPTER,
+    _TEST_ADAPTER,
     _normalize_discriminator,
-    parse_script_file,
+    parse_test_file,
 )
-from tractusx_testlab.scripting.script import Tck as Tck
-from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.syntax import diagnostics
 
 # Entry name for the bundled authoring YAML inside .tck ZIP archives
@@ -53,27 +53,27 @@ _TCK_BUNDLE_ENTRY = "tck-bundle.yaml"
 logger = logging.getLogger(__name__)
 
 
-def _load_test_scripts(tests: list, base_dir: Path) -> list[TestScript]:
-    """Resolve TCK ``tests:`` entries into TestScript objects.
+def _load_tests(entries: list, base_dir: Path) -> list[Test]:
+    """Resolve TCK ``tests:`` entries into Test objects.
 
     Each entry is a ``TckTestEntry`` with an ``id`` filename relative to
     ``<base_dir>/tests/``.  The ``skippable`` flag from the manifest entry is
-    forwarded to the ``TestScript`` so the player can enforce skip rules.
+    forwarded to the ``Test`` so the player can enforce skip rules.
     """
-    scripts: list[TestScript] = []
+    tests: list[Test] = []
     tests_dir = base_dir / "tests"
     validation_errors = []
-    for entry in tests:
+    for entry in entries:
         test_path = tests_dir / entry.id
         if not test_path.exists():
             logger.warning("Test file not found, skipping: %s", test_path)
             continue
         try:
-            script_def = parse_script_file(test_path)
-            scripts.append(TestScript(script_def, skippable=entry.skippable, test_id=entry.id))
+            test_def = parse_test_file(test_path)
+            tests.append(Test(test_def, skippable=entry.skippable, test_id=entry.id))
         except ValidationError as exc:
             # 3. if Pydantic fails, capture exception to add filename
-            findings = diagnostics.render(exc, model=ScriptDefinition, source=test_path)
+            findings = diagnostics.render(exc, model=TestDefinition, source=test_path)
             validation_errors.append(f"File: {entry.id}\n{findings}")
     if validation_errors:
         separator = "\n" + "-" * 80 + "\n"
@@ -81,10 +81,10 @@ def _load_test_scripts(tests: list, base_dir: Path) -> list[TestScript]:
             f"Can't run. Validation failure in {len(validation_errors)} test(s):"
             f"{separator}{separator.join(validation_errors)}"
         )
-    return scripts
+    return tests
 
 
-def _detect_kind(data: dict) -> ScriptKind:
+def _detect_kind(data: dict) -> DefinitionKind:
     """Detect the kind of a YAML document.
 
     Priority: explicit ``kind`` field → structural heuristic (``tests`` key).
@@ -94,20 +94,20 @@ def _detect_kind(data: dict) -> ScriptKind:
     has_tests_key = "tests" in data
 
     if explicit is not None:
-        kind = ScriptKind(explicit)
-        if kind == ScriptKind.TEST and has_tests_key:
+        kind = DefinitionKind(explicit)
+        if kind == DefinitionKind.TEST and has_tests_key:
             raise ValueError(
                 "YAML declares kind: test but contains a 'tests' key. "
                 "Use kind: tck for manifests that group multiple tests."
             )
-        if kind == ScriptKind.TCK and not has_tests_key:
+        if kind == DefinitionKind.TCK and not has_tests_key:
             raise ValueError(
                 "YAML declares kind: tck but is missing the 'tests' key. "
                 "A TCK must list its tests under the 'tests' key."
             )
         return kind
 
-    return ScriptKind.TCK if has_tests_key else ScriptKind.TEST
+    return DefinitionKind.TCK if has_tests_key else DefinitionKind.TEST
 
 
 class Loader:
@@ -272,14 +272,14 @@ class Loader:
         kind = _detect_kind(data)
         normalized = _normalize_discriminator(data, source_path)
 
-        if kind == ScriptKind.TCK:
+        if kind == DefinitionKind.TCK:
             tck_def = _TCK_ADAPTER.validate_python(normalized)
             tck = Tck(tck_def, base_dir=base_dir)
-            tck._scripts = _load_test_scripts(tck_def.tests, base_dir)
+            tck._tests = _load_tests(tck_def.tests, base_dir)
             return tck
         else:
-            script_def = _SCRIPT_ADAPTER.validate_python(normalized)
-            return Tck.from_single_script(script_def, base_dir=base_dir)
+            test_def = _TEST_ADAPTER.validate_python(normalized)
+            return Tck.from_single_test(test_def, base_dir=base_dir)
 
 
 def _verify_tck_integrity(entries: dict[str, bytes]) -> None:

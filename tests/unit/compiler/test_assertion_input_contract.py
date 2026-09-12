@@ -35,8 +35,8 @@ stay nameable.
 
 from __future__ import annotations
 
-from tractusx_testlab.compiler.validation.validator import ScriptValidator
-from tractusx_testlab.models import ScriptDefinition, StepDefinition
+from tractusx_testlab.compiler.validation.validator import TestValidator
+from tractusx_testlab.models import StepDefinition, TestDefinition
 
 
 def _errors_for(uses: str, input_name: str, returns: dict | None = None) -> list[str]:
@@ -48,7 +48,7 @@ def _errors_for(uses: str, input_name: str, returns: dict | None = None) -> list
             {"uses": "validate/assert", "with": {"input": input_name, "operator": "not_null"}}
         ],
     )
-    script = ScriptDefinition(
+    test = TestDefinition(
         syntax="v1-alpha",
         kind="test",
         id="t",
@@ -56,7 +56,7 @@ def _errors_for(uses: str, input_name: str, returns: dict | None = None) -> list
         metadata={"name": "t"},
         execution=[step],
     )
-    result = ScriptValidator().validate(script)
+    result = TestValidator().validate(test)
     return [issue.message for issue in result.issues if issue.level == "error"]
 
 
@@ -80,7 +80,7 @@ class TestAssertionInputsAreChecked:
         assert _errors_for("connector/consumer/get_edr", "data_address.endpoint") == []
 
     def test_an_output_outside_a_narrower_returns_block_is_still_accepted(self) -> None:
-        # `returns:` names what the script wants to reuse later. It does not
+        # `returns:` names what the test wants to reuse later. It does not
         # narrow what the engine can extract, so it must not narrow what an
         # assertion may name either.
         assert (

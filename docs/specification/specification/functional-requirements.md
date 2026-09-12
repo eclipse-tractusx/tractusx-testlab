@@ -19,19 +19,19 @@ SPDX-License-Identifier: CC-BY-4.0
 
 # Functional Requirements
 
-## Script Authoring (FR-AUTH)
+## Test Authoring (FR-AUTH)
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-AUTH-01 | Scripts SHALL be authored in YAML format. | Must |
-| FR-AUTH-02 | Each script SHALL declare a `dataspace_version` field specifying the target connector protocol version (e.g., `"saturn"`, `"jupiter"`). If omitted, it defaults to `"saturn"`. | Must |
-| FR-AUTH-03 | Scripts SHALL declare variables in a `variables` block. Each variable SHALL specify a `type` and optionally a `default` value, a `runtime: true` flag, and a `description`. | Must |
+| FR-AUTH-01 | Tests SHALL be authored in YAML format. | Must |
+| FR-AUTH-02 | Each test SHALL declare a `dataspace_version` field specifying the target connector protocol version (e.g., `"saturn"`, `"jupiter"`). If omitted, it defaults to `"saturn"`. | Must |
+| FR-AUTH-03 | Tests SHALL declare variables in a `variables` block. Each variable SHALL specify a `type` and optionally a `default` value, a `runtime: true` flag, and a `description`. | Must |
 | FR-AUTH-04 | Step parameters SHALL support `${variable_name}` template syntax. These references are resolved at execution time from the `StepContext`. | Must |
 | FR-AUTH-05 | Variables marked `runtime: true` SHALL NOT require a default value. Their values MUST be provided at execution time via `runtime_vars`. | Must |
 | FR-AUTH-06 | Steps SHALL declare a `uses:` field naming a registered step id in the Step Registry (e.g., `connector/provider/create_asset`). Parameters are passed via `with:` and declared outputs via `returns:`. | Must |
 | FR-AUTH-07 | Steps SHALL NOT declare per-step failure handling. A failing step fails the test: execution stops and cleanup runs. Failed validations (hard assertions) fail their step. | Must |
 | FR-AUTH-08 | Each step MAY specify a `timeout_s` value. If the step exceeds this timeout, it SHALL be treated as a failure. | Should |
-| FR-AUTH-09 | Scripts SHALL define an optional `cleanup` block — a list of steps that always execute regardless of prior step failures. | Must |
+| FR-AUTH-09 | Tests SHALL define an optional `cleanup` block — a list of steps that always execute regardless of prior step failures. | Must |
 | FR-AUTH-10 | Test cases SHALL be authored as YAML files (`tck.yaml`) containing an ordered `tests` list and optionally `shared_variables` available to all tests. Test cases SHALL support importing predefined tests via `import:` with optional `override:` blocks. | Must |
 
 ## Expected Results / Assertions (FR-ASSERT)
@@ -44,7 +44,7 @@ SPDX-License-Identifier: CC-BY-4.0
 | FR-ASSERT-04 | Expected values SHALL be sourceable from three origins via the `source` field: `inline` (value embedded directly in YAML), `file` (loaded from a file path, resolved relative to `.tck` assets or local filesystem), `variable` (value is a `${var}` reference resolved from context). Default: `inline`. | Must |
 | FR-ASSERT-05 | Inline values SHALL accept both native YAML structures and raw JSON strings. When a string value is valid JSON, the assertion engine SHALL auto-parse it before comparison. | Must |
 | FR-ASSERT-06 | Each assertion MAY specify a `field` property (dot-notation path with bracket indexing, e.g., `response.submodels[0].payload.catenaXId`) to target a specific field in the step output. When omitted, the assertion evaluates against the entire output. | Should |
-| FR-ASSERT-07 | Assertion results SHALL be recorded per step in `StepResult.assertions` and summarized per script in `ScriptResult.assertion_summary` (total, passed, failed_hard, failed_soft). | Must |
+| FR-ASSERT-07 | Assertion results SHALL be recorded per step in `StepResult.assertions` and summarized per test in `TestResult.assertion_summary` (total, passed, failed_hard, failed_soft). | Must |
 
 ## Compilation (FR-COMP)
 
@@ -52,7 +52,7 @@ SPDX-License-Identifier: CC-BY-4.0
 |----|-------------|----------|
 | FR-COMP-01 | The Compiler SHALL accept YAML source as a file path, string, or dict (for programmatic/API input). | Must |
 | FR-COMP-02 | Compilation SHALL validate all `${var}` references in step parameters. Every reference MUST match a declared variable or a `shared_variable` (in TCKs). Unresolved references that are not declared `runtime: true` SHALL cause compilation failure. | Must |
-| FR-COMP-03 | Compilation SHALL validate every step's `uses:` id exists in the Step Registry for the script's declared `dataspace_version`. Unknown step ids SHALL cause compilation failure. | Must |
+| FR-COMP-03 | Compilation SHALL validate every step's `uses:` id exists in the Step Registry for the test's declared `dataspace_version`. Unknown step ids SHALL cause compilation failure. | Must |
 | FR-COMP-04 | Compilation SHALL stamp metadata: SDK version, compilation timestamp, SHA-256 checksum. | Must |
 | FR-COMP-05 | Compilation failures SHALL produce a `ValidationResult` containing a list of errors and warnings with clear, actionable messages. | Must |
 | FR-COMP-06 | For TCKs, the Compiler SHALL perform cross-test validation: shared variables must be consistent, and all tests must be individually valid. The Compiler SHALL resolve `import:` references from the library path and merge `override:` blocks. | Must |
@@ -61,8 +61,8 @@ SPDX-License-Identifier: CC-BY-4.0
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-PKG-01 | The Packager SHALL produce a `.tck` file — a ZIP archive containing: `manifest.yaml`, `scripts/` directory with compiled script YAML files, and an optional `assets/` directory with bundled files (schemas, sample data). | Must |
-| FR-PKG-02 | The `manifest.yaml` SHALL contain: package name, version, SDK version, compilation timestamp, list of dataspace versions used across scripts, list of script names, and SHA-256 checksum. | Must |
+| FR-PKG-01 | The Packager SHALL produce a `.tck` file — a ZIP archive containing: `manifest.yaml`, `tests/` directory with compiled test YAML files, and an optional `assets/` directory with bundled files (schemas, sample data). | Must |
+| FR-PKG-02 | The `manifest.yaml` SHALL contain: package name, version, SDK version, compilation timestamp, list of dataspace versions used across tests, list of test names, and SHA-256 checksum. | Must |
 | FR-PKG-03 | The Packager SHALL support unpacking: `unpack(path) -> CompiledTck`. On unpack, the SHA-256 checksum SHALL be verified. Tampered packages SHALL be rejected. | Must |
 | FR-PKG-04 | A single `.tck` SHALL support bundling multiple tests (a TCK). | Must |
 | FR-PKG-05 | File-sourced assertion values (schemas, expected payloads) SHALL be bundled in the `assets/` directory of the `.tck` and resolved at execution time via `StepContext.resolve_asset_path()`. | Must |
@@ -72,12 +72,12 @@ SPDX-License-Identifier: CC-BY-4.0
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | FR-PLAY-01 | The Player SHALL be a singleton instance (module-level), accessible as `testlab.player`. | Must |
-| FR-PLAY-02 | The Player SHALL load test packages from: `.tck` file path, raw YAML file/string (compile-on-load), or pre-compiled dict. | Must |
+| FR-PLAY-02 | The Player SHALL load TCK packages from: `.tck` file path, raw YAML file/string (compile-on-load), or pre-compiled dict. | Must |
 | FR-PLAY-03 | On loading a `.tck`, the Player SHALL verify the SHA-256 checksum and emit a warning if the SDK version in the manifest differs from the running SDK version. It SHALL NOT hard-fail on SDK version mismatch. | Must |
-| FR-PLAY-04 | The Player SHALL execute scripts asynchronously using `asyncio`. | Must |
-| FR-PLAY-05 | For each script, the Player SHALL create an isolated `StepContext` initialized with the script's `dataspace_version`, declared variable defaults, and any provided `runtime_vars`. The context SHALL also hold a reference to the parent `Job`. | Must |
+| FR-PLAY-04 | The Player SHALL execute tests asynchronously using `asyncio`. | Must |
+| FR-PLAY-05 | For each test, the Player SHALL create an isolated `StepContext` initialized with the test's `dataspace_version`, declared variable defaults, and any provided `runtime_vars`. The context SHALL also hold a reference to the parent `Job`. | Must |
 | FR-PLAY-06 | Steps SHALL be executed sequentially in declared order. For each step, the Player SHALL: (1) resolve `${var}` references from the context, (2) look up the step implementation from the registry by `(uses id, dataspace_version)`, (3) execute with `asyncio.wait_for(timeout)`, (4) evaluate assertions from the `validate` block, (5) record the `StepResult` in the Monitor. | Must |
-| FR-PLAY-07 | Step implementations SHALL publish all of their return outputs into the `StepContext` after execution: every top-level field of the declared output becomes a context variable of the same name, and a `None` value leaves the variable unset. These variables become available to subsequent steps via variable references; explicit capture into a named variable uses `store_in_variable` on the utility steps that offer it. Steps MAY also write to job memory via `context.job.memory.set(key, value)` for cross-script persistence. | Must |
+| FR-PLAY-07 | Step implementations SHALL publish all of their return outputs into the `StepContext` after execution: every top-level field of the declared output becomes a context variable of the same name, and a `None` value leaves the variable unset. These variables become available to subsequent steps via variable references; explicit capture into a named variable uses `store_in_variable` on the utility steps that offer it. Steps MAY also write to job memory via `context.job.memory.set(key, value)` for cross-test persistence. | Must |
 | FR-PLAY-08 | On step failure, the Player SHALL stop execution immediately, mark the remaining steps as skipped, run cleanup, and fail the test. Cleanup steps SHALL keep executing even when one of them fails. | Must |
 | FR-PLAY-09 | Cleanup steps SHALL always execute regardless of prior step outcomes. | Must |
 | FR-PLAY-10 | The Player SHALL support running multiple jobs concurrently (each in a separate `asyncio.Task` with an isolated `StepContext` and independent `Job` instance). | Should |
@@ -88,13 +88,13 @@ SPDX-License-Identifier: CC-BY-4.0
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-JOB-01 | Every test execution (CLI, API, or Python) SHALL create a `Job` entity with a unique `job_id`, status `QUEUED`, an empty `JobMemory`, and a creation timestamp. | Must |
+| FR-JOB-01 | Every TCK execution (CLI, API, or Python) SHALL create a `Job` entity with a unique `job_id`, status `QUEUED`, an empty `JobMemory`, and a creation timestamp. | Must |
 | FR-JOB-02 | The Job SHALL transition through defined lifecycle states: `QUEUED` → `RUNNING` → (`WAITING` ↔ `RUNNING`)* → `COMPLETED` / `FAILED` / `CANCELLED` / `TIMED_OUT`. Invalid transitions SHALL be rejected. | Must |
 | FR-JOB-03 | When a step enters a wait state (e.g., `mock/wait/http_request`, polling for a state transition), the Job SHALL transition to `WAITING`. The `waiting_for` field SHALL describe the pending condition (e.g., `"callback: /callbacks/notif-ack"`, `"poll: transfer state=COMPLETED"`). | Must |
 | FR-JOB-04 | When the awaited condition is met (callback received, poll condition satisfied), the Job SHALL automatically transition back to `RUNNING` and resume execution from the waiting step. | Must |
-| FR-JOB-05 | The `JobMemory` SHALL provide a persistent key-value store (`set`, `get`, `has`) and an event log (`log_event`). Memory SHALL persist across all steps, scripts, wait/resume cycles, and cleanup phases within the same job. | Must |
+| FR-JOB-05 | The `JobMemory` SHALL provide a persistent key-value store (`set`, `get`, `has`) and an event log (`log_event`). Memory SHALL persist across all steps, tests, wait/resume cycles, and cleanup phases within the same job. | Must |
 | FR-JOB-06 | Steps SHALL publish every top-level field of their declared output as a context variable after execution; utility steps that offer `store_in_variable` SHALL store their result under the given variable name. Step implementations MAY additionally write to job memory programmatically via `context.job.memory.set(key, value)`. Published variables SHALL be accessible in subsequent steps via variable references. | Must |
-| FR-JOB-07 | The Player SHALL record `JobEvent` entries for significant lifecycle transitions: job created, script started/completed, step started/completed/failed, job entered/exited waiting state, job completed/failed/cancelled. | Must |
+| FR-JOB-07 | The Player SHALL record `JobEvent` entries for significant lifecycle transitions: job created, test started/completed, step started/completed/failed, job entered/exited waiting state, job completed/failed/cancelled. | Must |
 | FR-JOB-08 | If a job remains in `WAITING` state beyond the step's configured `timeout_s`, the job SHALL transition to `TIMED_OUT` with an error message identifying the unmet wait condition. Cleanup steps SHALL still execute. | Must |
 | FR-JOB-09 | The `Job` entity SHALL be queryable at any time: `get_job(job_id) -> Job`, `list_jobs(status?) -> list[Job]`. The query SHALL return current status, memory contents, event log, and result (if completed). | Must |
 
@@ -103,8 +103,8 @@ SPDX-License-Identifier: CC-BY-4.0
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | FR-MON-01 | The Monitor SHALL maintain in-memory state for all active and completed jobs, tests, and TCK runs. | Must |
-| FR-MON-02 | The Monitor SHALL be queryable at any time: `get_job(job_id) -> Job`, `get_status(script_id) -> ScriptResult`, `get_current_step(script_id) -> StepResult`, `get_tck_status(tck_id) -> TckResult`, `list_jobs(status?) -> list[Job]`, `list_runs() -> list`. | Must |
-| FR-MON-03 | The Monitor SHALL support event callbacks: `on_step_start`, `on_step_complete`, `on_script_complete`, `on_tck_complete`, `on_failure`, `on_job_waiting`, `on_job_resumed`. Users SHALL be able to register async callbacks. | Should |
+| FR-MON-02 | The Monitor SHALL be queryable at any time: `get_job(job_id) -> Job`, `get_status(test_id) -> TestResult`, `get_current_step(test_id) -> StepResult`, `get_tck_status(tck_id) -> TckResult`, `list_jobs(status?) -> list[Job]`, `list_runs() -> list`. | Must |
+| FR-MON-03 | The Monitor SHALL support event callbacks: `on_step_start`, `on_step_complete`, `on_test_complete`, `on_tck_complete`, `on_failure`, `on_job_waiting`, `on_job_resumed`. Users SHALL be able to register async callbacks. | Should |
 | FR-MON-04 | The Monitor SHALL be thread-safe (protected by `asyncio.Lock`). | Must |
 | FR-MON-05 | The Monitor SHALL expose a `SyncBackend` protocol interface for future persistence backends (e.g., PostgreSQL) to persist job state and memory across restarts. | Should |
 
@@ -113,7 +113,7 @@ SPDX-License-Identifier: CC-BY-4.0
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | FR-LOG-01 | The logging system SHALL produce structured JSON-lines (`.jsonl`) log files. | Must |
-| FR-LOG-02 | Each log entry SHALL contain: `timestamp`, `level`, `tck_id`, `script_id`, `script_name`, `dataspace_version`, `step_name`, `step_type`, `status`, `duration_ms`, `request`, `response`, `assertions`, `error`, `message`, `data`. | Must |
+| FR-LOG-02 | Each log entry SHALL contain: `timestamp`, `level`, `tck_id`, `test_id`, `test_name`, `dataspace_version`, `step_name`, `step_type`, `status`, `duration_ms`, `request`, `response`, `assertions`, `error`, `message`, `data`. | Must |
 | FR-LOG-03 | Log files SHALL be organized as: `logs/testlab/{tck_name}/{YYYY-MM-DD}/{HH-MM-SS}_{tck_id}.jsonl`. | Must |
 | FR-LOG-04 | On completion, the log file SHALL be renamed with a `_PASS` or `_FAIL` suffix. | Should |
 | FR-LOG-05 | Console output SHALL provide a human-readable summary table (formatted like the existing TCK `print_summary` output). | Must |
@@ -177,11 +177,11 @@ SPDX-License-Identifier: CC-BY-4.0
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-SVC-01 | Scripts MAY declare a `services` block listing SDK services to be initialized before step execution begins. Each service declaration SHALL specify: a `name` (unique identifier for `context.get_service()`), a `type` (one of `connector_consumer`, `connector_provider`, `dtr`), and connection parameters (`base_url`, `auth`). | Must |
+| FR-SVC-01 | Tests MAY declare a `services` block listing SDK services to be initialized before step execution begins. Each service declaration SHALL specify: a `name` (unique identifier for `context.get_service()`), a `type` (one of `connector_consumer`, `connector_provider`, `dtr`), and connection parameters (`base_url`, `auth`). | Must |
 | FR-SVC-02 | The Service Manager SHALL initialize all declared services before the first step executes. Initialization includes creating the SDK service instance via `ServiceFactory` (for connector services) or direct instantiation (for DTR/AAS), and performing authentication (e.g., OAuth2 token acquisition). | Must |
-| FR-SVC-03 | Initialized services SHALL be accessible from steps via `context.get_service("service_name")`. The returned instance SHALL be the same (cached) object for the lifetime of the script, avoiding repeated initialization. | Must |
-| FR-SVC-04 | All managed services SHALL be torn down (connections closed, resources released) after script execution completes, regardless of success or failure. Teardown SHALL occur after cleanup steps. | Must |
-| FR-SVC-05 | The `init_service` step type SHALL allow initializing a new service or replacing an existing service during step execution. The `stop_service` step type SHALL allow explicitly tearing down a service before script completion. | Should |
+| FR-SVC-03 | Initialized services SHALL be accessible from steps via `context.get_service("service_name")`. The returned instance SHALL be the same (cached) object for the lifetime of the test, avoiding repeated initialization. | Must |
+| FR-SVC-04 | All managed services SHALL be torn down (connections closed, resources released) after test execution completes, regardless of success or failure. Teardown SHALL occur after cleanup steps. | Must |
+| FR-SVC-05 | The `init_service` step type SHALL allow initializing a new service or replacing an existing service during step execution. The `stop_service` step type SHALL allow explicitly tearing down a service before test completion. | Should |
 | FR-SVC-06 | Steps SHALL NOT name their service in their parameters. Connector services are seeded into the run at startup from the declared `services` block; each step resolves the service for its role (provider, consumer, DTR) from the `StepContext` (e.g., `context.get_provider_service()`). | Must |
 | FR-SVC-07 | Each predefined step SHALL resolve the service type its role requires (e.g., `connector_provider`, `connector_consumer`, `dtr`). When no seeded service satisfies the step's role, execution SHALL fail with a clear error identifying the step and the missing service type. | Must |
 | FR-SVC-08 | Service resolution SHALL come exclusively from the services seeded into the run context — steps SHALL NOT construct one-off services from inline connection parameters. | Must |
@@ -193,7 +193,7 @@ SPDX-License-Identifier: CC-BY-4.0
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-CB-01 | Scripts MAY register a callback endpoint on the TestLab mock server via the `mock/api` step, declaring a `path` (e.g., `/callbacks/notification-ack`), an HTTP `method` (default: `POST`), and the canned response (`response_status`, `response_body`, `response_headers`). The step SHALL output the registered `mock` and its `full_mock_url` — the address a script hands to the system under test. | Must |
+| FR-CB-01 | Tests MAY register a callback endpoint on the TestLab mock server via the `mock/api` step, declaring a `path` (e.g., `/callbacks/notification-ack`), an HTTP `method` (default: `POST`), and the canned response (`response_status`, `response_body`, `response_headers`). The step SHALL output the registered `mock` and its `full_mock_url` — the address a test hands to the system under test. | Must |
 | FR-CB-02 | Registering a mock endpoint SHALL also register a callback listener for that `(path, method)` pair, so a later wait step can block on inbound requests to it. Inbound requests SHALL be answered with the canned response and signalled to the waiting step via an `asyncio.Event`. | Must |
 | FR-CB-03 | The `mock/wait/http_request` step SHALL transition the parent Job to `WAITING` state, then block until an inbound request arrives on the referenced `mock`, up to `timeout_s`. On receipt, the request (`request_method`, `request_path`, `request_headers`, `request_query_params`, `request_body`) SHALL be exposed as the step's output for `returns:` and assertions. On timeout, the Job SHALL transition to `TIMED_OUT` and the step SHALL fail, failing the test. | Must |
 | FR-CB-04 | Mock endpoint registrations SHALL live for the duration of the run; the mock server (and all registrations with it) SHALL be torn down when the run finishes. No mock state SHALL persist between runs. | Must |

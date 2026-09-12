@@ -45,13 +45,13 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import (
     HttpRequest,
     HttpResponse,
     StepDefinition,
     StepExecutionError,
 )
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.shared_models import StepParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
@@ -75,13 +75,13 @@ _DSP_VERSION_SEGMENT = re.compile(r"/\d{4}-\d+/?$")
 
 
 def discovery_address(address: str | None) -> str | None:
-    """The address discovery is pointed at, from the one a script holds.
+    """The address discovery is pointed at, from the one a test holds.
 
     Discovery takes the *root* of a connector's DSP endpoints and appends
     ``/.well-known/dspace-version`` to it; what it answers with is that root
     plus the version path the counter-party speaks, and that — the versioned
     endpoint — is what every other DSP step, and the SUT binding, carries. A
-    script that hands the binding straight to discovery therefore asks for
+    test that hands the binding straight to discovery therefore asks for
     ``…/2025-1/.well-known/dspace-version``, which no connector serves (E2E run
     34633071862, 2026-09-11). The version segment is dropped here, since it is
     exactly what the connector puts back; a root, or a full well-known URL,
@@ -147,7 +147,7 @@ class DiscoverConnectorStep(BaseStep[DiscoverConnectorParams, DiscoverConnectorO
 
     **Saturn only.** The endpoint this calls is a Saturn addition and the SDK
     exposes it on the Saturn consumer service alone, so the step is registered
-    for that release and a script on any other cannot resolve it.
+    for that release and a test on any other cannot resolve it.
     """
 
     params_model = DiscoverConnectorParams

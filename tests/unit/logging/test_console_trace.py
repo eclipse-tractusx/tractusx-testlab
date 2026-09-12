@@ -28,7 +28,7 @@ The JSONL carries every field of every event. The console line is a rendering
 of the same data for someone reading it go by, and it used to render almost
 none of it: `_build_inline_message` looked for flat ``status`` / ``duration_s``
 / ``request`` / ``response`` keys that the typed events never carried, so every
-step and assertion printed as its bare event name and the script it was in.
+step and assertion printed as its bare event name and the test it was in.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from tractusx_testlab.logging.console import render
 
 _ASSERTION_PASSED = {
     "kind": "assertion_result",
-    "script": "wiring",
+    "test_id": "wiring",
     "step_id": "call",
     "step_name": "wiring[call]:http/http_request",
     "index": 1,
@@ -56,7 +56,7 @@ _ASSERTION_PASSED = {
 
 _STEP_WITH_EXCHANGE = {
     "kind": "step_completed",
-    "script": "wiring",
+    "test_id": "wiring",
     "step_id": "call",
     "result": {
         "step_name": "wiring[call]:http/http_request",
@@ -165,7 +165,7 @@ class TestAStepOutcomeLine:
 
 _STEP_CALL = {
     "kind": "step_call",
-    "script": "dtr-filterability",
+    "test_id": "dtr-filterability",
     "step_id": "pull_dtr",
     "step_type": "connector/consumer/pull_data_filtered",
     "index": 3,
@@ -188,7 +188,7 @@ class TestACallLine:
         assert "→ POST http://edc/management/v3/catalog/request" in line
         assert "← 200 in 1373ms" in line
 
-    def test_a_step_the_script_did_not_name_falls_back_to_what_it_is(self) -> None:
+    def test_a_step_the_test_did_not_name_falls_back_to_what_it_is(self) -> None:
         """The same name the event's own id is built from, so the two agree."""
         line = render("step.call", {**_STEP_CALL, "step_id": None})
         assert "pull_data_filtered" in line
@@ -247,7 +247,7 @@ class TestTheOtherLines:
             "step.started",
             {
                 "kind": "step_started",
-                "script": "wiring",
+                "test_id": "wiring",
                 "step_id": "call",
                 "step_type": "http/http_request",
                 "phase": "execution",
@@ -255,13 +255,13 @@ class TestTheOtherLines:
         )
         assert "call" in line and "http/http_request" in line and "(execution)" in line
 
-    def test_a_finished_script_reports_its_check_tally(self) -> None:
+    def test_a_finished_test_reports_its_check_tally(self) -> None:
         line = render(
-            "script.completed",
+            "test.completed",
             {
-                "kind": "script_completed",
+                "kind": "test_completed",
                 "result": {
-                    "script_name": "Wiring",
+                    "test_name": "Wiring",
                     "status": "COMPLETED",
                     "assertion_summary": {"total": 4, "passed": 4},
                 },
@@ -277,7 +277,7 @@ class TestTheOtherLines:
 
 _STEP_WAITING = {
     "kind": "step_waiting",
-    "script": "external-callback",
+    "test_id": "external-callback",
     "step_id": "await_call",
     "step_type": "mock/wait/http_request",
     "listener": {
@@ -290,7 +290,7 @@ _STEP_WAITING = {
 
 _STEP_RECEIVED = {
     "kind": "step_received",
-    "script": "external-callback",
+    "test_id": "external-callback",
     "step_id": "await_call",
     "step_type": "mock/wait/http_request",
     "listener": _STEP_WAITING["listener"],
@@ -323,7 +323,7 @@ class TestAWaitingLine:
     def test_an_opened_endpoint_says_where_to_call_and_nothing_about_a_budget(self) -> None:
         opened = {
             "kind": "step_listening",
-            "script": "external-callback",
+            "test_id": "external-callback",
             "step_id": "open_callback",
             "step_type": "mock/api",
             "listener": _STEP_WAITING["listener"],

@@ -106,7 +106,7 @@ execution:
         type: object
 ```
 
-TestLab runs a local HTTP server for the mocks; `full_mock_url` is the address a script hands to the system under test. A protocol-aware Digital Twin Registry mock is available as `mock/dtr`, and twin registration against a real registry uses `digital-twin/provider/create_shell_descriptor`.
+TestLab runs a local HTTP server for the mocks; `full_mock_url` is the address a test hands to the system under test. A protocol-aware Digital Twin Registry mock is available as `mock/dtr`, and twin registration against a real registry uses `digital-twin/provider/create_shell_descriptor`.
 
 ## All Tutorials
 

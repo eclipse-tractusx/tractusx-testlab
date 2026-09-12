@@ -53,14 +53,14 @@ Three models describe a step, and each answers a different question:
 
 | Model | Base class | Answers |
 |---|---|---|
-| `params_model` | `StepParams` | What keys does the script write under `with:`? |
+| `params_model` | `StepParams` | What keys does the test write under `with:`? |
 | `output_model` | `StepPayload` or `StepValue` | What does `returns:` and `validate:` read — and therefore which context variables do later steps get? |
 
 Both are required. There is no separate export channel: every top-level output field is published as a context variable after the step runs, so later steps read your output under exactly the field names you declare.
 
 Pick the output base class by shape:
 
-- **`StepPayload`** — the output is an object with named fields. Every field is public surface: renaming one breaks the scripts that read it.
+- **`StepPayload`** — the output is an object with named fields. Every field is public surface: renaming one breaks the tests that read it.
 - **`StepValue[T]`** — the output *is* a bare value (a string, a list, whatever a JSON path pointed at). It has no fields, so its docstring is the description.
 - **`NoOutput`** — the step acts and returns nothing. Declaring it is the point: "produces nothing" and "not declared" must not look the same.
 
@@ -100,7 +100,7 @@ import httpx
 from pydantic import Field
 
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.steps._contracts import StepParams
 from tractusx_testlab.steps.base import BaseStep, StepOutput, StepPayload
 
@@ -269,7 +269,7 @@ Version-specific registrations take priority over global ones at runtime.
 
 ## Step 6 — Write a test
 
-Tests call `invoke()`, not `execute()`. `invoke()` is the entry point the runner uses: it validates the raw `with:` mapping into `params_model`, runs `execute`, serialises the output back to plain data, and publishes the output fields — so a test that calls it exercises the same path a script does.
+Tests call `invoke()`, not `execute()`. `invoke()` is the entry point the runner uses: it validates the raw `with:` mapping into `params_model`, runs `execute`, serialises the output back to plain data, and publishes the output fields — so a test that calls it exercises the same path a test does.
 
 Create `tests/test_check_health.py`:
 
@@ -311,7 +311,7 @@ async def test_check_health_rejects_a_missing_url():
         await CheckHealthStep().invoke({}, MagicMock(), MagicMock())
 ```
 
-Note the shape of the assertion on `result.value`: because the step declared its output, `invoke()` hands back plain JSON data carrying exactly the fields the step set — the same thing a script's `returns:` and `validate:` blocks navigate.
+Note the shape of the assertion on `result.value`: because the step declared its output, `invoke()` hands back plain JSON data carrying exactly the fields the step set — the same thing a test's `returns:` and `validate:` blocks navigate.
 
 ## Step 7 — Run the test and regenerate the reference
 

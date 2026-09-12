@@ -19,7 +19,7 @@ SPDX-License-Identifier: CC-BY-4.0
 <!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
 <!-- It was reviewed and tested by a human committer. -->
 
-# Writing Test Scripts
+# Writing Tests
 
 This walkthrough guides you through creating a TCK project from scratch using the TestLab v1-alpha YAML syntax.
 

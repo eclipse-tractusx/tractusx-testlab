@@ -55,7 +55,7 @@ class MockIdParams(StepParams):
     """Names the mock a step registers.
 
     The ID doubles as a context variable name for steps that publish a URL, so
-    what it stands for comes from the script rather than from the step — which
+    what it stands for comes from the test rather than from the step — which
     is why it cannot be a declared output field.
     """
 

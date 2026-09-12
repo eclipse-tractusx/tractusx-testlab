@@ -25,7 +25,7 @@
 """What a phase binds on the context so a step can report while it runs.
 
 A step knows what it did — the call it made, the address it opened, the
-request that arrived; the phase runner knows the job, the script and the phase
+request that arrived; the phase runner knows the job, the test and the phase
 it belongs to. These carry the second half to the monitor on the step's behalf
 (contracts.CallReporter, contracts.ListenerReporter), and a step nested inside
 a flow step reports through the same ones, because it runs on the same context.
@@ -40,36 +40,36 @@ from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 
 
 def bind_reporters(
-    context: StepContext, monitor: ExecutionMonitor, job_id: str, script: str, phase: str
+    context: StepContext, monitor: ExecutionMonitor, job_id: str, test: str, phase: str
 ) -> None:
     """Bind both directions of traffic — calls out, calls in — for one phase."""
     context.bind_call_reporter(
         lambda step_type, step_id, index, call: monitor.on_step_call(
-            job_id, script, step_id, step_type, phase, index, call
+            job_id, test, step_id, step_type, phase, index, call
         )
     )
-    context.bind_listener_reporter(ListenerReports(monitor, job_id, script, phase))
+    context.bind_listener_reporter(ListenerReports(monitor, job_id, test, phase))
 
 
 class ListenerReports:
     """The inbound half of what a phase publishes for its steps."""
 
-    __slots__ = ("_job_id", "_monitor", "_phase", "_script")
+    __slots__ = ("_job_id", "_monitor", "_phase", "_test")
 
-    def __init__(self, monitor: ExecutionMonitor, job_id: str, script: str, phase: str) -> None:
+    def __init__(self, monitor: ExecutionMonitor, job_id: str, test: str, phase: str) -> None:
         self._monitor = monitor
         self._job_id = job_id
-        self._script = script
+        self._test = test
         self._phase = phase
 
     def listening(self, step_type: str, step_id: str | None, listener: Any) -> None:
         self._monitor.on_step_listening(
-            self._job_id, self._script, step_id, step_type, self._phase, listener
+            self._job_id, self._test, step_id, step_type, self._phase, listener
         )
 
     def waiting(self, step_type: str, step_id: str | None, listener: Any, timeout_s: float) -> None:
         self._monitor.on_step_waiting(
-            self._job_id, self._script, step_id, step_type, self._phase, listener, timeout_s
+            self._job_id, self._test, step_id, step_type, self._phase, listener, timeout_s
         )
 
     def received(
@@ -82,7 +82,7 @@ class ListenerReports:
     ) -> None:
         self._monitor.on_step_received(
             self._job_id,
-            self._script,
+            self._test,
             step_id,
             step_type,
             self._phase,

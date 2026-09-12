@@ -132,7 +132,7 @@ class TestEveryStepThatFiltersByPolicy:
     def test_a_catalog_query_does_not_filter_by_policy_at_all(self) -> None:
         """Querying a catalog and choosing an offer from it are two different steps.
 
-        The key is rejected rather than ignored, so a script carrying it from
+        The key is rejected rather than ignored, so a test carrying it from
         before the split is corrected instead of quietly losing the filter it
         thinks it still has.
         """

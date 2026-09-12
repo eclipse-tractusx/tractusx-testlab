@@ -30,8 +30,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector import policy_mismatch
 from tractusx_testlab.steps.connector.discover_connector import discovery_address
@@ -54,7 +54,7 @@ class DspFlowOutput(StepPayload):
     """What every DSP flow step hands back: where the data is, and the token for it.
 
     Both fields are ``None`` when the flow did not complete — the step reports
-    that as a 500 rather than raising, so a script can assert on it.
+    that as a 500 rather than raising, so a test can assert on it.
     """
 
     dataplane_url: str | None = Field(

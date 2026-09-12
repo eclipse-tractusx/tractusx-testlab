@@ -264,7 +264,7 @@ class TestDeleteStepsPublishStatusCode:
     A teardown asserts that the resource was really there (204) rather than
     already gone (404), so the code has to be a *declared* output — readable
     through ``returns:`` and published as a context variable — and not only a
-    field of the HTTP record a script cannot name.
+    field of the HTTP record a test cannot name.
     """
 
     @pytest.mark.asyncio

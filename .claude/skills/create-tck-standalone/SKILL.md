@@ -1,6 +1,6 @@
 ---
 name: create-tck-standalone
-description: Author a Tractus-X TestLab TCK (Test Case Kit) — an index.yaml manifest plus test-case YAML scripts in the harmonized v1-alpha dialect — without access to the testlab or cx-test-suite repositories. Fully self-contained; includes the complete step catalog (reference/step-catalog.md), all syntax rules, and how the result is validated in the cx-test-suite IDE. Use whenever creating or editing a TCK, test-case YAML, or TestLab env variables/testdata/schemas.
+description: Author a Tractus-X TestLab TCK (Test Case Kit) — an index.yaml manifest plus test-case YAML tests in the harmonized v1-alpha dialect — without access to the testlab or cx-test-suite repositories. Fully self-contained; includes the complete step catalog (reference/step-catalog.md), all syntax rules, and how the result is validated in the cx-test-suite IDE. Use whenever creating or editing a TCK, test-case YAML, or TestLab env variables/testdata/schemas.
 ---
 
 # Creating a TCK (Test Case Kit) — standalone reference
@@ -146,7 +146,7 @@ Rules: tests run sequentially but **independently** — a test must never read a
 test's outputs; anything shared belongs in `env`. Connector/DTR service endpoints are
 never named in steps — the engine binds them from `infrastructure` at runtime.
 
-## Test scripts (`kind: test`)
+## Tests (`kind: test`)
 
 ```yaml
 kind: test

@@ -73,8 +73,8 @@ class CallbackManager:
 
         Asked by the inbound routes before they accept a request: ``resolve``
         buffers a call nothing is waiting for and reports success for it, which
-        is right for a race between the SUT and the script but wrong for an
-        address the script never opened.
+        is right for a race between the SUT and the test but wrong for an
+        address the test never opened.
         """
         return self._key(path, method) in self._listeners
 

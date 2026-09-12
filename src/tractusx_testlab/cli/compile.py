@@ -76,7 +76,7 @@ def _create_tck_archive(source_dir: Path, archive_path: Path) -> str:
 
 @app.command()
 def compile(
-    script: Path = typer.Argument(..., help="Path to the YAML test script to compile."),
+    manifest: Path = typer.Argument(..., help="Path to the TCK manifest (index.yaml) to compile."),
     compiler_keys: Path | None = typer.Option(
         None,
         "--compiler-keys",
@@ -107,7 +107,7 @@ def compile(
         help="Write loose files to a directory instead of a .tck archive.",
     ),
 ) -> None:
-    """Compile a YAML test script into a ``.tck`` package.
+    """Compile a TCK manifest into a ``.tck`` package.
 
     Two independent choices, and no third way to spell either:
 
@@ -134,13 +134,13 @@ def compile(
     compiler = Compiler()
 
     if plain:
-        out = output or script.parent / "plain"
+        out = output or manifest.parent / "plain"
         if compiler_keys and player_pub:
-            compile_encrypted_plain(script, compiler_keys, player_pub, out, version, compiler)
+            compile_encrypted_plain(manifest, compiler_keys, player_pub, out, version, compiler)
         else:
             try:
                 manifest_dict, _ = compiler.compile_plain(
-                    manifest_path=script, output_path=out, version=version
+                    manifest_path=manifest, output_path=out, version=version
                 )
             except (ValueError, FileNotFoundError) as exc:
                 typer.echo(f"Compilation failed: {exc}", err=True)
@@ -157,7 +157,7 @@ def compile(
 
     # Both keys, or neither — checked above.
     if compiler_keys and player_pub:
-        compile_encrypted_tck(script, compiler_keys, player_pub, output, version, compiler)
+        compile_encrypted_tck(manifest, compiler_keys, player_pub, output, version, compiler)
         return
 
     # Default: unencrypted .tck ZIP archive
@@ -165,13 +165,13 @@ def compile(
         tmp_path = Path(tmp)
         try:
             manifest_dict, _ = compiler.compile_plain(
-                manifest_path=script, output_path=tmp_path, version=version
+                manifest_path=manifest, output_path=tmp_path, version=version
             )
         except (ValueError, FileNotFoundError) as exc:
             typer.echo(f"Compilation failed: {exc}", err=True)
             raise typer.Exit(1) from exc
 
-        embed_bundle_yaml(script, tmp_path)
+        embed_bundle_yaml(manifest, tmp_path)
 
         tck_id = manifest_dict["tck"]["id"]
         if output:
@@ -181,7 +181,7 @@ def compile(
             else:
                 tck_path = output if output.suffix == ".tck" else output.with_suffix(".tck")
         else:
-            tck_path = script.parent / f"{tck_id}.tck"
+            tck_path = manifest.parent / f"{tck_id}.tck"
         tck_path.parent.mkdir(parents=True, exist_ok=True)
         checksum = _create_tck_archive(tmp_path, tck_path)
 

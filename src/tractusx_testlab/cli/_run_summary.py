@@ -32,15 +32,15 @@ both tools sees one report. Colour is added on top — green for a pass, red for
 a failure, yellow for a skip — and stripped by ``typer.echo`` when stdout is
 not a terminal, so a transcript or a CI log keeps the words.
 
-One table per script, each followed by the failures it had and its assertion
-notes, then a closing table with one row per script and the run's verdict.
+One table per test, each followed by the failures it had and its assertion
+notes, then a closing table with one row per test and the run's verdict.
 """
 
 from __future__ import annotations
 
 import typer
 
-from tractusx_testlab.models.primitives.enums import ScriptStatus, StepStatus
+from tractusx_testlab.models.primitives.enums import StepStatus, TestStatus
 
 #: The SDK summary box is 80 columns; the same here.
 _WIDTH = 80
@@ -55,22 +55,22 @@ _STEP_LOOK: dict[StepStatus, tuple[str, str, str]] = {
     StepStatus.FAILED: ("✗", "FAIL", "red"),
     StepStatus.SKIPPED: ("-", "SKIP", "yellow"),
 }
-_SCRIPT_LOOK: dict[ScriptStatus, tuple[str, str, str]] = {
-    ScriptStatus.COMPLETED: ("✓", "PASS", "green"),
-    ScriptStatus.FAILED: ("✗", "FAIL", "red"),
-    ScriptStatus.SKIPPED: ("-", "SKIP", "yellow"),
-    ScriptStatus.CANCELLED: ("✗", "CANCEL", "red"),
+_TEST_LOOK: dict[TestStatus, tuple[str, str, str]] = {
+    TestStatus.COMPLETED: ("✓", "PASS", "green"),
+    TestStatus.FAILED: ("✗", "FAIL", "red"),
+    TestStatus.SKIPPED: ("-", "SKIP", "yellow"),
+    TestStatus.CANCELLED: ("✗", "CANCEL", "red"),
 }
-#: A step or script that ended in a state the table has no row style for
+#: A step or test that ended in a state the table has no row style for
 #: (still PENDING because the run was cut short, say) is drawn as what it is.
 _UNKNOWN_LOOK = ("?", "", "white")
 
 
 def print_run_results(result) -> None:
-    """Print one result table per script, the run summary, and exit accordingly."""
+    """Print one result table per test, the run summary, and exit accordingly."""
     for line in render_run_results(result):
         typer.echo(line)
-    raise typer.Exit(0 if result.status == ScriptStatus.COMPLETED else 1)
+    raise typer.Exit(0 if result.status == TestStatus.COMPLETED else 1)
 
 
 def render_run_results(result) -> list[str]:
@@ -80,42 +80,42 @@ def render_run_results(result) -> list[str]:
     without capturing a terminal: ``typer.unstyle`` on a line gives the text.
     """
     lines: list[str] = []
-    for script in result.scripts:
-        lines += _script_table(script)
-        lines += _script_failures(script)
-        lines += _assertion_notes(script)
+    for test in result.tests:
+        lines += _test_table(test)
+        lines += _test_failures(test)
+        lines += _assertion_notes(test)
     lines += _run_table(result)
     lines.append("")
     return lines
 
 
-def _script_table(script) -> list[str]:
-    """One box per script: its steps in execution order, its verdict below."""
+def _test_table(test) -> list[str]:
+    """One box per test: its steps in execution order, its verdict below."""
     rows = [
         _row(*_look(_STEP_LOOK, step.status), step.step_name or step.step_type, step.duration_s)
-        for step in script.execution
+        for step in test.execution
     ]
     verdict = _verdict(
-        _look(_SCRIPT_LOOK, script.status),
-        [step.status for step in script.execution],
-        script.total_duration_s,
+        _look(_TEST_LOOK, test.status),
+        [step.status for step in test.execution],
+        test.total_duration_s,
     )
-    return _box(f"Test: {script.script_name or script.script_id}", "STEP", rows, verdict)
+    return _box(f"Test: {test.test_name or test.test_id}", "STEP", rows, verdict)
 
 
 def _run_table(result) -> list[str]:
-    """The closing box: one row per script, the run's verdict and step tally."""
+    """The closing box: one row per test, the run's verdict and step tally."""
     rows = [
         _row(
-            *_look(_SCRIPT_LOOK, script.status),
-            script.script_name or script.script_id,
-            script.total_duration_s,
+            *_look(_TEST_LOOK, test.status),
+            test.test_name or test.test_id,
+            test.total_duration_s,
         )
-        for script in result.scripts
+        for test in result.tests
     ]
     verdict = _verdict(
-        _look(_SCRIPT_LOOK, result.status),
-        [step.status for script in result.scripts for step in script.execution],
+        _look(_TEST_LOOK, result.status),
+        [step.status for test in result.tests for step in test.execution],
         result.duration_ms / 1000 if result.duration_ms else None,
     )
     return _box("TCK RUN SUMMARY", "TEST", rows, verdict)
@@ -189,10 +189,10 @@ def _fit(text: str, width: int) -> str:
     return text if len(text) <= width else text[: width - 1] + "…"
 
 
-def _script_failures(script) -> list[str]:
+def _test_failures(test) -> list[str]:
     """What went wrong, listed under the table so the table stays one row a step."""
     lines: list[str] = []
-    for step in script.execution:
+    for step in test.execution:
         failed_checks = [check for check in step.assertions if not check.passed]
         if not step.error and not failed_checks:
             continue
@@ -204,12 +204,12 @@ def _script_failures(script) -> list[str]:
     return lines
 
 
-def _assertion_notes(script) -> list[str]:
-    if not script.execution:
-        # A script that never ran (skipped by the operator) checked nothing by
+def _assertion_notes(test) -> list[str]:
+    if not test.execution:
+        # A test that never ran (skipped by the operator) checked nothing by
         # design; saying so would read as a finding.
         return []
-    s = script.assertion_summary
+    s = test.assertion_summary
     lines = [
         "",
         f"  Assertions: {s.total} total, {s.passed} passed, "
@@ -218,11 +218,11 @@ def _assertion_notes(script) -> list[str]:
     if s.unevaluated:
         lines.append(
             f"  WARNING: {s.unevaluated} declared assertion(s) were never "
-            "evaluated — this result describes less than the script asked for."
+            "evaluated — this result describes less than the test asked for."
         )
     elif s.verified_nothing:
         lines.append(
-            "  NOTE: this script evaluated no assertions. It exercised the "
+            "  NOTE: this test evaluated no assertions. It exercised the "
             "steps but verified nothing about the system under test."
         )
     return lines
@@ -238,7 +238,7 @@ def _error_lines(error: str) -> list[str]:
     """A step's failure, keeping an explanation that runs to several lines.
 
     A message is not always a sentence. A failure that compared two documents —
-    the offers a provider made against the policy a script expects — says which
+    the offers a provider made against the policy a test expects — says which
     offers and which constraints, one per line, and printing that after a
     ``Error:`` label left every line but the first hanging at column zero,
     reading as unrelated output. The continuation is indented under the label

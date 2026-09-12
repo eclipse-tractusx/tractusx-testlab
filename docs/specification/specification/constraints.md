@@ -27,11 +27,11 @@ SPDX-License-Identifier: CC-BY-4.0
 | TC-02 | Async execution via native `asyncio` (no external task broker) |
 | TC-03 | Pydantic 2.6+ for model validation |
 | TC-04 | PyYAML 6.0+ for YAML parsing |
-| TC-05 | No `eval()` or dynamic code execution from YAML scripts — variable resolution limited to `${var_name}` lookups |
+| TC-05 | No `eval()` or dynamic code execution from YAML tests — variable resolution limited to `${var_name}` lookups |
 | TC-06 | Connector steps SHALL reuse existing `tractusx_sdk.dataspace` services via `ServiceFactory` — no duplication of connector logic |
 | TC-07 | `sdk_call` step operates in allowlist mode by default — only curated SDK functions may be invoked unless `allow_sdk_calls: open` is declared |
 | TC-08 | FastAPI required for callback server and Player deployment modes (already an SDK dependency) |
-| TC-09 | Callback routes are ephemeral — mounted on demand and unmounted after use. No persistent route state between script executions |
+| TC-09 | Callback routes are ephemeral — mounted on demand and unmounted after use. No persistent route state between test executions |
 | TC-10 | Managed services SHALL use `ServiceFactory` for connector services and direct instantiation for DTR/AAS services — no custom service constructors |
 | TC-11 | Python `cryptography` library required for all cryptographic operations (AES-256-GCM, RSA-OAEP, Ed25519). No custom cryptographic implementations permitted |
 | TC-12 | Player keys SHALL be stored in `~/.testlab/keys/` with `0600` file permissions (private key). Trust store keys in `~/.testlab/trusted_compilers/`. Key directories SHALL be created automatically on first use |
@@ -43,8 +43,8 @@ SPDX-License-Identifier: CC-BY-4.0
 | **Portability** | `.tck` artifacts must be self-contained and executable on any machine with a compatible SDK version installed |
 | **Extensibility** | Custom step types must be registrable without modifying SDK source code |
 | **Observability** | Execution state must be queryable in real-time at step granularity; structured logs must be machine-parseable |
-| **Safety** | Scripts parsed from untrusted sources (API, filesystem) must not allow arbitrary code execution. `sdk_call` in allowlist mode prevents access to internal SDK functions |
-| **Reliability** | Cleanup steps must execute regardless of prior failures; resource leaks are unacceptable. Managed services must be torn down even on script failure |
+| **Safety** | Tests parsed from untrusted sources (API, filesystem) must not allow arbitrary code execution. `sdk_call` in allowlist mode prevents access to internal SDK functions |
+| **Reliability** | Cleanup steps must execute regardless of prior failures; resource leaks are unacceptable. Managed services must be torn down even on test failure |
 | **Confidentiality** | Encrypted `.tck` packages must be readable only by authorized Player instances. AES content keys must never be stored in plaintext. Private keys must be protected with appropriate file permissions |
 
 ---
@@ -53,9 +53,9 @@ SPDX-License-Identifier: CC-BY-4.0
 
 | ID | Verification | Type |
 |----|-------------|------|
-| V-01 | YAML parsing accepts valid scripts and rejects scripts missing `dataspace_version` | Unit |
+| V-01 | YAML parsing accepts valid tests and rejects tests missing `dataspace_version` | Unit |
 | V-02 | Compiler fails on undeclared `${var}` references (not marked `runtime: true`) | Unit |
-| V-03 | Compiler fails when step type doesn't exist in registry for the script's dataspace version | Unit |
+| V-03 | Compiler fails when step type doesn't exist in registry for the test's dataspace version | Unit |
 | V-04 | Compile → package → unpack round-trip produces identical `CompiledTck` | Integration |
 | V-05 | `.tck` checksum is verified on load; tampered packages are rejected | Unit |
 | V-06 | SDK version mismatch emits warning but does not block execution | Unit |
@@ -69,13 +69,13 @@ SPDX-License-Identifier: CC-BY-4.0
 | V-14 | `${var}` references are resolved correctly across steps (output of step N used by step N+1) | Integration |
 | V-15 | Runtime variables override defaults at execution time | Unit |
 | V-16 | Two TCKs running concurrently have isolated contexts and no variable leakage | Integration |
-| V-17 | Script cancellation stops after current step and runs cleanup | Integration |
+| V-17 | Test cancellation stops after current step and runs cleanup | Integration |
 | V-18 | Monitor returns correct current step, status, and assertion results during execution | Integration |
-| V-19 | JSON-lines log file contains correct entries with script_id, dataspace_version, step names | Integration |
+| V-19 | JSON-lines log file contains correct entries with test_id, dataspace_version, step names | Integration |
 | V-20 | Log file is renamed with `_PASS`/`_FAIL` suffix on completion | Integration |
 | V-21 | `dataplane_call` step supports GET/POST/PUT/DELETE with custom headers, query params, and body | Integration |
 | V-22 | `dataplane_call` step auto-injects EDR authorization header | Unit |
-| V-23 | Custom step registered at runtime via `registry.register()` is available to scripts | Unit |
+| V-23 | Custom step registered at runtime via `registry.register()` is available to tests | Unit |
 | V-24 | `sdk_call` in allowlist mode rejects functions not in the allowlist | Unit |
 | V-25 | `sdk_call` in open mode (`allow_sdk_calls: open`) allows any `tractusx_sdk` function | Unit |
 | V-26 | `sdk_call` correctly invokes an SDK function and stores the return value in context | Integration |
@@ -101,7 +101,7 @@ The following diagram maps verification items to functional requirement areas:
 
 ```mermaid
 graph LR
-    subgraph "Script Authoring"
+    subgraph "Test Authoring"
         V01[V-01]
     end
 

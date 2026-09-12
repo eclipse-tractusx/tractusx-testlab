@@ -66,7 +66,7 @@ src/tractusx_testlab/
 ├── player/           ← Test execution engine
 │   ├── execution/    ← Player + step runner
 │   └── jobs.py       ← Job management
-├── scripting/        ← YAML parser + builders + dependencies
+├── authoring/        ← YAML parser + builders + dependencies
 ├── security/         ← Crypto key generation, trust identity
 ├── server/           ← Mock server (FastAPI routes, callback manager)
 ├── services/         ← Service manager
@@ -85,7 +85,7 @@ src/tractusx_testlab/
 
 ### Fixtures & Factories
 - Use `@pytest.fixture` for shared setup — never copy-paste setup code
-- Create factory functions for complex test objects: `create_test_script()`, `create_step_definition()`
+- Create factory functions for complex test objects: `create_test()`, `create_step_definition()`
 - Use `conftest.py` for fixtures shared across multiple test files
 - Parametrize with `@pytest.mark.parametrize` for testing multiple input/output pairs
 

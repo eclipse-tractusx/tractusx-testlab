@@ -99,7 +99,7 @@ def client(app: FastAPI) -> TestClient:
 
 
 # ---------------------------------------------------------------------------
-# Minimal valid YAML for a test script
+# Minimal valid YAML for a test
 # ---------------------------------------------------------------------------
 
 _VALID_YAML = """\

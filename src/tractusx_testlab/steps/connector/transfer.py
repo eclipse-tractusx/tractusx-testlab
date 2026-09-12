@@ -32,8 +32,8 @@ from typing import TYPE_CHECKING, Any
 from pydantic import Field, model_validator
 from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.connector._polling import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-#: The transfer the connector performs when the script does not ask for another.
+#: The transfer the connector performs when the test does not ask for another.
 PULL_TRANSFER_TYPE = "HttpData-PULL"
 
 
@@ -180,7 +180,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
     lookup rather than each fetching the data address their own way.
 
     A PUSH transfer instead asks the connector to deliver the data to a
-    destination of the script's choosing, and waits for that transfer to settle.
+    destination of the test's choosing, and waits for that transfer to settle.
     """
 
     params_model = InitiateTransferParams
@@ -237,7 +237,7 @@ class InitiateTransferStep(BaseStep[InitiateTransferParams, InitiateTransferOutp
     async def _push(
         self, params: InitiateTransferParams, context: StepContext
     ) -> StepOutput[InitiateTransferOutput]:
-        """Ask the connector to deliver the data to the destination the script named."""
+        """Ask the connector to deliver the data to the destination the test named."""
         consumer = context.dataspace.consumer()
         url = context.dataspace.consumer_endpoint_url("transfer_processes")
         request_model = ModelFactory.get_transfer_process_model(

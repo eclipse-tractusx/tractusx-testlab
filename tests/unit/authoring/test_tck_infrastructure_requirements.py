@@ -27,18 +27,18 @@
 from __future__ import annotations
 
 from tests.paths import CCM_RAW_DIR
+from tractusx_testlab.authoring.test import Tck, Test
 from tractusx_testlab.models.authoring.definitions import (
     MetadataDefinition,
-    ScriptDefinition,
     TckDefinition,
     TckMetadataDefinition,
+    TestDefinition,
 )
 from tractusx_testlab.models.authoring.infrastructure import (
     CapabilityRequirement,
     InfrastructureConfig,
     Standard,
 )
-from tractusx_testlab.scripting.script import Tck, TestScript
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,15 +56,15 @@ def _make_tck(infrastructure: InfrastructureConfig | None = None) -> Tck:
     return Tck(tck_def)
 
 
-def _make_script(infrastructure: InfrastructureConfig | None = None) -> TestScript:
-    script_def = ScriptDefinition(
+def _make_test(infrastructure: InfrastructureConfig | None = None) -> Test:
+    test_def = TestDefinition(
         syntax="v1-alpha",
-        id="test-script",
+        id="test",
         namespace="test.ns",
-        metadata=MetadataDefinition(name="Test Script"),
+        metadata=MetadataDefinition(name="Test Test"),
         infrastructure=infrastructure,
     )
-    return TestScript(script_def)
+    return Test(test_def)
 
 
 def _req(required: bool, standard: Standard | None = None) -> CapabilityRequirement:
@@ -88,11 +88,11 @@ class TestInfrastructureRequirementsTckLevel:
 
         assert result is infra
 
-    def test_tck_level_takes_priority_over_script_level(self) -> None:
+    def test_tck_level_takes_priority_over_test_level(self) -> None:
         tck_infra = InfrastructureConfig(engine={"connector": _req(True)})
         tck = _make_tck(infrastructure=tck_infra)
-        script = _make_script(infrastructure=InfrastructureConfig(sut={"dtr": _req(True)}))
-        tck._scripts = [script]
+        test = _make_test(infrastructure=InfrastructureConfig(sut={"dtr": _req(True)}))
+        tck._tests = [test]
 
         result = tck.infrastructure_requirements()
 
@@ -110,9 +110,9 @@ class TestInfrastructureRequirementsEmpty:
         assert result.engine == {}
         assert result.sut == {}
 
-    def test_script_with_no_infrastructure_produces_empty_config(self) -> None:
+    def test_with_no_infrastructure_produces_empty_config(self) -> None:
         tck = _make_tck()
-        tck._scripts = [_make_script()]
+        tck._tests = [_make_test()]
 
         result = tck.infrastructure_requirements()
 
@@ -120,16 +120,16 @@ class TestInfrastructureRequirementsEmpty:
         assert result.sut == {}
 
 
-class TestInfrastructureRequirementsScriptMerge:
-    def test_single_script_infrastructure_is_returned(self) -> None:
-        script = _make_script(
+class TestInfrastructureRequirementsTestMerge:
+    def test_single_test_infrastructure_is_returned(self) -> None:
+        test = _make_test(
             infrastructure=InfrastructureConfig(
                 engine={"connector": _req(True)},
                 sut={"connector": _req(True)},
             )
         )
         tck = _make_tck()
-        tck._scripts = [script]
+        tck._tests = [test]
 
         result = tck.infrastructure_requirements()
 
@@ -137,12 +137,10 @@ class TestInfrastructureRequirementsScriptMerge:
         assert result.sut["connector"].required is True
 
     def test_merge_unions_distinct_capability_keys(self) -> None:
-        script_a = _make_script(
-            infrastructure=InfrastructureConfig(engine={"connector": _req(True)})
-        )
-        script_b = _make_script(infrastructure=InfrastructureConfig(sut={"dtr": _req(True)}))
+        test_a = _make_test(infrastructure=InfrastructureConfig(engine={"connector": _req(True)}))
+        test_b = _make_test(infrastructure=InfrastructureConfig(sut={"dtr": _req(True)}))
         tck = _make_tck()
-        tck._scripts = [script_a, script_b]
+        tck._tests = [test_a, test_b]
 
         result = tck.infrastructure_requirements()
 
@@ -150,20 +148,20 @@ class TestInfrastructureRequirementsScriptMerge:
         assert "dtr" in result.sut
 
     def test_merge_required_true_wins_over_false(self) -> None:
-        script_a = _make_script(infrastructure=InfrastructureConfig(engine={"dtr": _req(False)}))
-        script_b = _make_script(infrastructure=InfrastructureConfig(engine={"dtr": _req(True)}))
+        test_a = _make_test(infrastructure=InfrastructureConfig(engine={"dtr": _req(False)}))
+        test_b = _make_test(infrastructure=InfrastructureConfig(engine={"dtr": _req(True)}))
         tck = _make_tck()
-        tck._scripts = [script_a, script_b]
+        tck._tests = [test_a, test_b]
 
         result = tck.infrastructure_requirements()
 
         assert result.engine["dtr"].required is True
 
     def test_merge_required_false_stays_false_when_both_false(self) -> None:
-        script_a = _make_script(infrastructure=InfrastructureConfig(sut={"connector": _req(False)}))
-        script_b = _make_script(infrastructure=InfrastructureConfig(sut={"connector": _req(False)}))
+        test_a = _make_test(infrastructure=InfrastructureConfig(sut={"connector": _req(False)}))
+        test_b = _make_test(infrastructure=InfrastructureConfig(sut={"connector": _req(False)}))
         tck = _make_tck()
-        tck._scripts = [script_a, script_b]
+        tck._tests = [test_a, test_b]
 
         result = tck.infrastructure_requirements()
 
@@ -171,14 +169,12 @@ class TestInfrastructureRequirementsScriptMerge:
 
     def test_merge_first_non_none_standard_wins(self) -> None:
         std = Standard(id="CX-0135", version="v3.1.0")
-        script_a = _make_script(
+        test_a = _make_test(
             infrastructure=InfrastructureConfig(engine={"connector": _req(True, standard=std)})
         )
-        script_b = _make_script(
-            infrastructure=InfrastructureConfig(engine={"connector": _req(True)})
-        )
+        test_b = _make_test(infrastructure=InfrastructureConfig(engine={"connector": _req(True)}))
         tck = _make_tck()
-        tck._scripts = [script_a, script_b]
+        tck._tests = [test_a, test_b]
 
         result = tck.infrastructure_requirements()
 
@@ -186,12 +182,12 @@ class TestInfrastructureRequirementsScriptMerge:
 
     def test_merge_none_standard_inherits_later_non_none(self) -> None:
         std = Standard(id="CX-0018", version="v1.0")
-        script_a = _make_script(infrastructure=InfrastructureConfig(sut={"connector": _req(True)}))
-        script_b = _make_script(
+        test_a = _make_test(infrastructure=InfrastructureConfig(sut={"connector": _req(True)}))
+        test_b = _make_test(
             infrastructure=InfrastructureConfig(sut={"connector": _req(True, standard=std)})
         )
         tck = _make_tck()
-        tck._scripts = [script_a, script_b]
+        tck._tests = [test_a, test_b]
 
         result = tck.infrastructure_requirements()
 
@@ -200,7 +196,7 @@ class TestInfrastructureRequirementsScriptMerge:
 
 class TestInfrastructureRequirementsCcm:
     def test_ccm_tck_declares_engine_and_sut_connector(self) -> None:
-        from tractusx_testlab.scripting.parser import YamlParser
+        from tractusx_testlab.authoring.parser import YamlParser
 
         tck_def = YamlParser.parse_tck(CCM_RAW_DIR / "index.yaml")
         tck = Tck(tck_def)

@@ -68,8 +68,8 @@ sequenceDiagram
     IDE->>API: GET /stream/{job_id} (SSE)
     API->>Parser: parse(yaml) → Tck
     Parser->>Player: run_test_case(tck)
-    Player->>Player: topological_sort(scripts)
-    loop Each script in order
+    Player->>Player: topological_sort(tests)
+    loop Each test in order
         Player->>Step: execute(step, context)
         Step->>SUT: DSP / HTTP call
         SUT-->>Step: Response
@@ -85,25 +85,25 @@ sequenceDiagram
 The IDE frontend lives in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository; this engine repository exposes the HTTP API it talks to.
 
 1. `ExecuteButton.handleExecute()` converts the Blockly workspace to YAML via `modelToYaml()`
-2. `useExecutionStore.execute(yaml)` sends `POST /testlab/test-execution/run`
+2. `useExecutionStore.execute(yaml)` sends `POST /testlab/tck-execution/run`
 3. The backend returns HTTP 202 with a `job_id`
-4. The IDE opens an SSE stream at `GET /testlab/test-execution/{job_id}/stream`
+4. The IDE opens an SSE stream at `GET /testlab/tck-execution/{job_id}/stream`
 5. The backend emits `step.started`, `step.completed`, and `step.failed` events
 6. The `ExecutionPanel` renders results as they arrive
 
 ### Backend orchestration
 
 1. `YamlParser` deserializes the YAML into a `Tck` model (metadata + variables + test references)
-2. Each test reference resolves to a `Script` (setup steps + main steps + teardown steps)
-3. The `Player` calls `topological_sort(scripts)` to order scripts by `depends_on` edges
-4. For each script: run setup → run main steps → run teardown (even if main steps fail)
+2. Each test reference resolves to a `Test` (setup steps + main steps + teardown steps)
+3. The `Player` calls `topological_sort(tests)` to order tests by `depends_on` edges
+4. For each test: run setup → run main steps → run teardown (even if main steps fail)
 5. Per step: resolve `${{ }}` references → execute the step → evaluate `validate:` assertions → publish the step's declared `returns:` outputs into the run context
 
 ## Test Orchestration Design
 
 ### Why topological sorting?
 
-Tests declare dependencies via `depends_on`. For example, `validate_payload` depends on `request_certificate` and reads the `document_id` output it publishes. The player builds a dependency graph and runs scripts in an order that satisfies all dependencies.
+Tests declare dependencies via `depends_on`. For example, `validate_payload` depends on `request_certificate` and reads the `document_id` output it publishes. The player builds a dependency graph and runs tests in an order that satisfies all dependencies.
 
 ```mermaid
 flowchart TD
@@ -118,7 +118,7 @@ flowchart TD
     ERR[error_handling]
 ```
 
-Independent scripts (no inbound edges) can run in any order. The player preserves declaration order for independent scripts.
+Independent tests (no inbound edges) can run in any order. The player preserves declaration order for independent tests.
 
 ### Variable flow
 
@@ -128,7 +128,7 @@ Variables propagate through three mechanisms:
 |-----------|-------|---------|
 | Declared `returns:` outputs | Published automatically to the run context after each step | `connector/dataplane/http_request` publishes `status_code` and `response_body`; later steps read `${{ execution.<step_id>.<output> }}` |
 | `store_in_variable` parameter | Explicit capture into a named context variable (on util steps such as `util/json_path_extract`, `util/base64`, `util/parse_kv`) | `util/json_path_extract` stores `ccmapi_asset_id` |
-| Script output promotion | Across scripts | When a script completes, the player promotes its declared output variables into the shared run context for downstream scripts (`depends_on` ordering guarantees they exist) |
+| Test output promotion | Across tests | When a test completes, the player promotes its declared output variables into the shared run context for downstream tests (`depends_on` ordering guarantees they exist) |
 
 Steps reference variables with `${{ }}` interpolation (e.g. `${{ env.sut_counter_party_address }}` or `${{ execution.pull_ccmapi_endpoint.edr_token }}`). The step runner resolves them from the execution context before calling the step executor.
 
@@ -287,7 +287,7 @@ Run the test suite headless via CLI:
 testlab run index.yaml --config run-config.yaml
 ```
 
-The command prints per-script and per-step results to stdout and exits non-zero on failure; detailed logs (including the execution trace) are written to the `--logs-dir` directory (default `./logs`). Use the exit code for pass/fail status in your CI pipeline.
+The command prints per-test and per-step results to stdout and exits non-zero on failure; detailed logs (including the execution trace) are written to the `--logs-dir` directory (default `./logs`). Use the exit code for pass/fail status in your CI pipeline.
 
 ## Design Decisions
 

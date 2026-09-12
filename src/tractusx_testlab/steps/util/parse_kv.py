@@ -37,8 +37,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.shared_models import StoreInVariableParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepValue
 

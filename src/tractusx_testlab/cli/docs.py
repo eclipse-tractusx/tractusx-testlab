@@ -29,9 +29,9 @@ from pathlib import Path
 
 import typer
 
+from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.authoring.step_docs import render_catalog
 from tractusx_testlab.cli import app
-from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.scripting.step_docs import render_catalog
 
 _DEFAULT_OUTPUT = Path("docs/specification/reference/steps.md")
 

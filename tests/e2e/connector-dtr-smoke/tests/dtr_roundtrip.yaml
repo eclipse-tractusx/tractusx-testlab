@@ -77,7 +77,7 @@ execution:
                   endpointProtocol: "HTTP"
                   endpointProtocolVersion: ["1.1"]
                   subprotocol: "DSP"
-                  # This script exercises the DTR API surface in isolation from
+                  # This test exercises the DTR API surface in isolation from
                   # connector_negotiation.yaml, so the referenced asset id is a
                   # placeholder rather than a real EDC asset — it does not need
                   # to resolve for create/get/delete to round-trip correctly.

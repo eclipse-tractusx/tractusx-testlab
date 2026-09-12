@@ -25,7 +25,7 @@
 
 Everything a TCK must satisfy beyond its JSON schema is a rule returning the
 errors it found, and the rules that repeat over a vocabulary — the ``uses:``
-prefixes a script may no longer name, the ``env:`` collections whose entries
+prefixes a test may no longer name, the ``env:`` collections whose entries
 name a file — are tables walked once rather than a loop written per entry.
 Every rule runs; nothing short-circuits, so an author sees every problem in the
 TCK at once instead of one per compile.
@@ -199,7 +199,7 @@ def _validate_scoped_sides_are_declared(
     unambiguous case, and it is the one that actually gets authored.
 
     Skipped entirely when no TCK-level ``infrastructure:`` block is present AND
-    no variable is scoped, since per-script blocks then govern the run.
+    no variable is scoped, since per-test blocks then govern the run.
     """
     scoped = _scoped_input_variables(env_data)
     if not scoped:
@@ -265,7 +265,7 @@ def _validate_file_refs(
 
 @dataclass(frozen=True, slots=True)
 class BannedStep:
-    """A ``uses:`` prefix no script may name, and what the author should write instead.
+    """A ``uses:`` prefix no test may name, and what the author should write instead.
 
     *reason* completes the sentence "'<uses>' …", so it reads as one message
     however many prefixes the table grows.

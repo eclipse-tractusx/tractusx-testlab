@@ -31,7 +31,7 @@ import pytest
 import yaml
 
 from tests.paths import CCM_RAW_DIR
-from tractusx_testlab.scripting.parser import YamlParser
+from tractusx_testlab.authoring.parser import YamlParser
 
 CCM_TESTS_DIR = CCM_RAW_DIR / "tests"
 
@@ -44,17 +44,17 @@ _CCM_YAML_FILES = sorted(CCM_TESTS_DIR.glob("*.yaml"))
     ids=[p.name for p in _CCM_YAML_FILES],
 )
 class TestCcmCompileAll:
-    """Each CCM YAML file must parse into a valid ScriptDefinition."""
+    """Each CCM YAML file must parse into a valid TestDefinition."""
 
     def test_parses_without_error(self, yaml_path: Path) -> None:
-        script = YamlParser.parse_script(yaml_path)
+        test = YamlParser.parse_test(yaml_path)
 
-        assert script is not None, f"Failed to parse {yaml_path.name}"
+        assert test is not None, f"Failed to parse {yaml_path.name}"
 
     def test_has_steps(self, yaml_path: Path) -> None:
-        script = YamlParser.parse_script(yaml_path)
+        test = YamlParser.parse_test(yaml_path)
 
-        assert len(script.execution) > 0, f"{yaml_path.name} must have at least one step"
+        assert len(test.execution) > 0, f"{yaml_path.name} must have at least one step"
 
     def test_has_name(self, yaml_path: Path) -> None:
         with open(yaml_path, encoding="utf-8") as f:

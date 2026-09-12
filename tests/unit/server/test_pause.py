@@ -94,7 +94,7 @@ def _make_event_queue(
 
 
 class TestPauseEndpoint:
-    """POST /testlab/test-execution/{job_id}/pause tests."""
+    """POST /testlab/tck-execution/{job_id}/pause tests."""
 
     @pytest.mark.asyncio
     async def test_pause_running_job_returns_200(
@@ -106,7 +106,7 @@ class TestPauseEndpoint:
         mock_player.jobs.start(job.job_id)
 
         response = await client.post(
-            f"/testlab/test-execution/{job.job_id}/pause",
+            f"/testlab/tck-execution/{job.job_id}/pause",
         )
 
         assert response.status_code == 200
@@ -123,7 +123,7 @@ class TestPauseEndpoint:
         job = mock_player.jobs.create("tck-1")
         mock_player.jobs.start(job.job_id)
 
-        await client.post(f"/testlab/test-execution/{job.job_id}/pause")
+        await client.post(f"/testlab/tck-execution/{job.job_id}/pause")
 
         updated = mock_player.jobs.get(job.job_id)
         assert updated.status == JobStatus.PAUSED
@@ -137,7 +137,7 @@ class TestPauseEndpoint:
         job = mock_player.jobs.create("tck-1")
 
         response = await client.post(
-            f"/testlab/test-execution/{job.job_id}/pause",
+            f"/testlab/tck-execution/{job.job_id}/pause",
         )
 
         assert response.status_code == 409
@@ -153,7 +153,7 @@ class TestPauseEndpoint:
         mock_player.jobs.complete(job.job_id)
 
         response = await client.post(
-            f"/testlab/test-execution/{job.job_id}/pause",
+            f"/testlab/tck-execution/{job.job_id}/pause",
         )
 
         assert response.status_code == 409
@@ -164,7 +164,7 @@ class TestPauseEndpoint:
         client: AsyncClient,
     ) -> None:
         response = await client.post(
-            "/testlab/test-execution/nonexistent/pause",
+            "/testlab/tck-execution/nonexistent/pause",
         )
 
         assert response.status_code == 404
@@ -193,7 +193,7 @@ class TestPauseEvent:
 
         with patch(f"{_STREAMING_MODULE}.create_event_queue", return_value=queue):
             response = await client.get(
-                f"/testlab/test-execution/{job.job_id}/stream",
+                f"/testlab/tck-execution/{job.job_id}/stream",
             )
 
         assert "event: job.paused" in response.text
@@ -218,7 +218,7 @@ class TestCancelPausedJob:
         mock_player.jobs.pause(job.job_id)
 
         response = await client.post(
-            f"/testlab/test-execution/{job.job_id}/cancel",
+            f"/testlab/tck-execution/{job.job_id}/cancel",
         )
 
         assert response.status_code == 200

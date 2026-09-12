@@ -29,12 +29,12 @@ from __future__ import annotations
 import pytest
 
 from tests.paths import CCM_RAW_DIR
+from tractusx_testlab.authoring._variable_form import parse_variables_block
 from tractusx_testlab.compiler.validation._manifest_validation import (
     _validate_scoped_sides_are_declared,
     _validate_variable_scopes,
 )
 from tractusx_testlab.models.primitives.enums import VariableScope, VariableSource
-from tractusx_testlab.scripting._variable_form import parse_variables_block
 
 
 class TestVariableScopeEnum:
@@ -209,8 +209,8 @@ class TestValidateVariableScopes:
 
 class TestCcmVariableScopes:
     def _load_ccm_tck(self) -> object:
-        from tractusx_testlab.scripting.parser import YamlParser
-        from tractusx_testlab.scripting.script import Tck
+        from tractusx_testlab.authoring.parser import YamlParser
+        from tractusx_testlab.authoring.test import Tck
 
         tck_def = YamlParser.parse_tck(CCM_RAW_DIR / "index.yaml")
         return Tck(tck_def)

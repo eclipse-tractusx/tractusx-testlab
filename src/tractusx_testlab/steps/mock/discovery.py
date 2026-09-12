@@ -34,8 +34,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import MockRequest, MockResponse, register_mock
 from tractusx_testlab.steps.mock._models import RequiredMockIdParams
 from tractusx_testlab.steps.shared_models import NoOutput
@@ -52,7 +52,7 @@ _DISCOVERY_PATH = "/api/administration/connectors/discovery"
 class MockDiscoveryParams(RequiredMockIdParams):
     """Input contract of ``mock/discovery``.
 
-    ``mappings`` accepts either spelling scripts already use: a plain
+    ``mappings`` accepts either spelling tests already use: a plain
     BPN-to-endpoint object, or a list of ``{bpn, endpoint}`` entries.
     """
 

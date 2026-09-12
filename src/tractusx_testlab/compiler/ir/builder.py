@@ -36,6 +36,7 @@ from typing import Any
 
 import yaml
 
+from tractusx_testlab.authoring._infrastructure import as_requirements, merge_requirements
 from tractusx_testlab.compiler._fingerprint import build_fingerprint
 from tractusx_testlab.compiler.ir._assets import build_asset_entries
 from tractusx_testlab.compiler.ir._compilation import build_compiled_tests, iter_test_entries
@@ -51,7 +52,6 @@ from tractusx_testlab.models.authoring.infrastructure import (
     DataspaceContext,
     InfrastructureConfig,
 )
-from tractusx_testlab.scripting._infrastructure import as_requirements, merge_requirements
 
 logger = logging.getLogger(__name__)
 

@@ -71,6 +71,6 @@ class PackageManifest(BaseModel):
     sdk_version: str = ""
     compiled_at: datetime | None = None
     dataspace_versions: list[str] = Field(default_factory=list)
-    scripts: list[str] = Field(default_factory=list)
+    tests: list[str] = Field(default_factory=list)
     checksum: str = ""
     security: SecurityBlock | None = None

@@ -21,7 +21,7 @@ SPDX-License-Identifier: CC-BY-4.0
 
 ## Motivation
 
-Test scripts frequently contain sensitive material: OAuth2 client credentials, service URLs, Business Partner Numbers, and endpoint data that describe the internal topology of a dataspace deployment. If a compiled `.tck` is exfiltrated — through a compromised CI runner, a leaked artifact store, or accidental public upload — all embedded secrets are exposed.
+Tests frequently contain sensitive material: OAuth2 client credentials, service URLs, Business Partner Numbers, and endpoint data that describe the internal topology of a dataspace deployment. If a compiled `.tck` is exfiltrated — through a compromised CI runner, a leaked artifact store, or accidental public upload — all embedded secrets are exposed.
 
 To mitigate this risk, **Testlab encrypts packages by default**. Every compiled `.tck` is a non-human-readable, encrypted artifact. Only Players that hold a valid private key and are explicitly authorized by the Compiler can decrypt and execute the package. A plain-text (unencrypted) mode is available as an explicit opt-in for local development only.
 
@@ -45,7 +45,7 @@ To mitigate this risk, **Testlab encrypts packages by default**. Every compiled 
 | Threat | Scenario | Mitigation |
 |--------|----------|------------|
 | **Package theft** | An attacker obtains a `.tck` file from CI artifacts, an S3 bucket, or a shared drive. | The `payload.enc` blob is encrypted with AES-256-GCM. Without an authorized Player's RSA private key, the content is indecipherable. |
-| **Credential extraction** | An attacker attempts to read OAuth2 secrets, service URLs, or BPN values from the YAML scripts inside the package. | Scripts are never stored in plaintext inside a default-compiled package. All script and asset content is inside the encrypted `payload.enc`. |
+| **Credential extraction** | An attacker attempts to read OAuth2 secrets, service URLs, or BPN values from the YAML tests inside the package. | Tests are never stored in plaintext inside a default-compiled package. All test and asset content is inside the encrypted `payload.enc`. |
 | **Package tampering** | An attacker modifies the manifest or payload to inject malicious steps or alter assertions. | The Ed25519 signature covers both manifest and payload. Any modification invalidates the signature. Players reject packages with invalid or missing signatures. |
 | **Unauthorized execution** | An attacker attempts to run a stolen package on their own Player instance. | The AES content key is wrapped individually for each authorized Player's RSA public key. An unauthorized Player's fingerprint will not appear in `authorized_players`, and it cannot unwrap the AES key. |
 | **Compiler impersonation** | An attacker creates a fake Compiler identity and signs a malicious package. | Players only accept packages signed by Compilers whose Ed25519 public keys are present in the Player's trust store (`~/.testlab/trusted_compilers/`). An unknown Compiler is rejected. |
@@ -60,7 +60,7 @@ To mitigate this risk, **Testlab encrypts packages by default**. Every compiled 
 
 Testlab uses a **hybrid encryption** scheme:
 
-1. **Content encryption** — AES-256-GCM (symmetric) encrypts the actual test scripts and assets into `payload.enc`.
+1. **Content encryption** — AES-256-GCM (symmetric) encrypts the actual tests and assets into `payload.enc`.
 2. **Key wrapping** — RSA-OAEP with SHA-256 (asymmetric) wraps the AES key individually for each authorized Player.
 3. **Package signing** — Ed25519 (asymmetric) provides authenticity and tamper detection.
 
@@ -82,9 +82,9 @@ sequenceDiagram
 
     Note over C: Default behavior — encryption is automatic
 
-    C->>C: Parse and validate YAML scripts
+    C->>C: Parse and validate YAML tests
     C->>C: Generate random AES-256 key (32 bytes)
-    C->>C: Encrypt scripts/ + assets/ with AES-256-GCM<br/>produces payload.enc
+    C->>C: Encrypt tests/ + assets/ with AES-256-GCM<br/>produces payload.enc
 
     loop For each authorized Player
         C->>C: Load Player public key (RSA-2048+)
@@ -125,7 +125,7 @@ sequenceDiagram
 
     P->>P: RSA-OAEP decrypt encrypted_key<br/>recovers AES-256 key
     P->>PKG: Read payload.enc
-    P->>P: AES-256-GCM decrypt payload.enc<br/>recovers scripts/ + assets/ in memory
+    P->>P: AES-256-GCM decrypt payload.enc<br/>recovers tests/ + assets/ in memory
 
     Note over P: Decrypted content is NEVER written to disk
 
@@ -135,7 +135,7 @@ sequenceDiagram
 
 ### Extraction
 
-Extracting a package — writing its scripts and assets back out in readable form — requires an authorized Player's private key **and** the Compiler's public signing key (for signature verification):
+Extracting a package — writing its tests and assets back out in readable form — requires an authorized Player's private key **and** the Compiler's public signing key (for signature verification):
 
 | Actor | Can extract? | How |
 |-------|---------------|-----|
@@ -363,28 +363,28 @@ testlab compile tck.yaml --plain --output my_tck-1.0.tck
 
 When `--plain` is used:
 
-- No encryption is applied — scripts and assets are stored as-is in the ZIP.
+- No encryption is applied — tests and assets are stored as-is in the ZIP.
 - No `--authorize-player` or `--signing-key` is required.
 - A warning is emitted:
 
 ```
-WARNING: Package compiled in plain mode. Scripts and assets are NOT encrypted.
+WARNING: Package compiled in plain mode. Tests and assets are NOT encrypted.
          Do not distribute plain packages — they may contain secrets.
          Use encrypted mode (default) for any shared or production package.
 ```
 
 - The `manifest.yaml` will NOT contain a `security` block.
-- The archive contains `manifest.yaml`, `scripts/`, and `assets/` in the clear.
+- The archive contains `manifest.yaml`, `tests/`, and `assets/` in the clear.
 
 ### Mode Comparison
 
 | Aspect | Encrypted (default) | Plain (`--plain`) |
 |--------|:-------------------:|:-----------------:|
-| Scripts readable? | No | Yes |
+| Tests readable? | No | Yes |
 | Assets readable? | No | Yes |
 | Requires Player key? | Yes | No |
 | Requires Compiler key? | Yes | No |
-| Archive structure | `manifest.yaml` + `payload.enc` + `signature.sig` | `manifest.yaml` + `scripts/` + `assets/` |
+| Archive structure | `manifest.yaml` + `payload.enc` + `signature.sig` | `manifest.yaml` + `tests/` + `assets/` |
 | Suitable for distribution? | Yes | No |
 | Suitable for CI/CD? | Yes | No (secrets exposed) |
 | Extractable? | Only with Compiler or Player key | Anyone with `unzip` |
@@ -421,7 +421,7 @@ WARNING: Package compiled in plain mode. Scripts and assets are NOT encrypted.
 |---------|-------------|
 | `testlab inspect <package>` | Report the tests, steps and validations a package declares |
 | `testlab inspect <package> --manifest` | Show manifest metadata (works on both plain and encrypted) |
-| `testlab inspect <package> --extract <dir>` | Write the verified scripts and assets to a directory |
+| `testlab inspect <package> --extract <dir>` | Write the verified tests and assets to a directory |
 
 ---
 

@@ -75,8 +75,8 @@ _MANIFEST: dict = {
 }
 
 
-def _test_script(*steps: dict) -> dict:
-    """A schema-valid test script wrapping *steps* as its execution phase."""
+def _test(*steps: dict) -> dict:
+    """A schema-valid test wrapping *steps* as its execution phase."""
     return {
         "syntax": "v1-alpha",
         "kind": "test",
@@ -99,7 +99,7 @@ def _write_tck(root: Path, *steps: dict) -> Path:
     (root / "tests").mkdir(parents=True, exist_ok=True)
     manifest_path = root / "index.yaml"
     manifest_path.write_text(yaml.dump(_MANIFEST), encoding="utf-8")
-    (root / "tests" / "probe.yaml").write_text(yaml.dump(_test_script(*steps)), encoding="utf-8")
+    (root / "tests" / "probe.yaml").write_text(yaml.dump(_test(*steps)), encoding="utf-8")
     return manifest_path
 
 
@@ -113,7 +113,7 @@ def _compile(manifest_path: Path, out_dir: Path) -> Path:
     from tractusx_testlab.cli.compile import compile as compile_command
 
     compile_command(
-        script=manifest_path,
+        manifest=manifest_path,
         compiler_keys=None,
         player_pub=None,
         output=out_dir,
@@ -300,10 +300,10 @@ async def test_a_run_that_executed_no_declared_assertion_fails(tmp_path: Path) -
     player = TestlabPlayer()
     result = await player.run(_compile(manifest_path, tmp_path / "dist"))
 
-    summary = result.scripts[0].assertion_summary
-    assert summary is not None, "The script produced no assertion summary at all."
+    summary = result.tests[0].assertion_summary
+    assert summary is not None, "The test produced no assertion summary at all."
     assert summary.total > 0, (
-        "The script declared an assertion and executed none, yet the run "
+        "The test declared an assertion and executed none, yet the run "
         f"reported {result.status.value}."
     )
 
@@ -357,8 +357,8 @@ def test_a_tampered_test_file_is_refused(tmp_path: Path) -> None:
     with zipfile.ZipFile(archive) as zf:
         entries = {name: zf.read(name) for name in zf.namelist()}
 
-    script = yaml.safe_load(entries["tests/probe.yaml"])
-    script["execution"].append(
+    test = yaml.safe_load(entries["tests/probe.yaml"])
+    test["execution"].append(
         {
             "id": "injected",
             "name": "Injected",
@@ -366,7 +366,7 @@ def test_a_tampered_test_file_is_refused(tmp_path: Path) -> None:
             "with": {"message": "not authored, not signed"},
         }
     )
-    entries["tests/probe.yaml"] = yaml.dump(script).encode("utf-8")
+    entries["tests/probe.yaml"] = yaml.dump(test).encode("utf-8")
 
     tampered = tmp_path / "tampered.tck"
     with zipfile.ZipFile(tampered, "w", zipfile.ZIP_DEFLATED) as zf:

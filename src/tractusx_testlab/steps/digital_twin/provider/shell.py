@@ -38,8 +38,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client, sdk_call
 from tractusx_testlab.steps.registry_models import (
     DescriptorPayload,
@@ -246,7 +246,7 @@ class ProviderShellLookupParams(DtrParams):
     """Input contract of ``digital-twin/provider/lookup_shells``.
 
     Only the criteria: the registry is the one the run was seeded with, so its
-    address is the service's, not the script's — which is the whole difference
+    address is the service's, not the test's — which is the whole difference
     from the consumer lookup, where the address is a data plane a transfer
     produced.
     """
@@ -269,7 +269,7 @@ class ProviderShellLookupStep(BaseStep[ProviderShellLookupParams, ShellLookupOut
     registry it operates.
 
     The lookup answers with identifiers, so each is read back as a descriptor
-    from the registry API; a script that only needs the identifiers reads
+    from the registry API; a test that only needs the identifiers reads
     ``shell_ids`` and ignores the rest.
     """
 

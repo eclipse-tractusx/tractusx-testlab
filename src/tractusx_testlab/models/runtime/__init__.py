@@ -25,9 +25,9 @@
 """Execution-time structures: results and jobs."""
 
 from tractusx_testlab.models.runtime.inspection import (
-    ScriptInspection,
     StepMeta,
     TckInspectionResult,
+    TestInspection,
 )
 from tractusx_testlab.models.runtime.jobs import (
     Job,
@@ -41,9 +41,9 @@ from tractusx_testlab.models.runtime.results import (
     HttpExchange,
     HttpRequest,
     HttpResponse,
-    ScriptResult,
     StepResult,
     TckResult,
+    TestResult,
 )
 
 __all__ = [
@@ -56,10 +56,10 @@ __all__ = [
     "Job",
     "JobEvent",
     "JobMemory",
-    "ScriptInspection",
-    "ScriptResult",
     "StepMeta",
     "StepResult",
     "TckInspectionResult",
     "TckResult",
+    "TestInspection",
+    "TestResult",
 ]

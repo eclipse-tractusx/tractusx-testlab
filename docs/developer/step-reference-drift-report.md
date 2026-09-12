@@ -118,7 +118,7 @@ seven steps whose `output_model` is `NoOutput`:
 `NoOutput` is declared as `StepValue[None]` in
 [`steps/_contracts.py:55`](../../src/tractusx_testlab/steps/_contracts.py#L55), so the
 generic argument the renderer receives is `type(None)` — the *class* — not the literal
-`None`. The guard in [`step_docs.py:83`](../../src/tractusx_testlab/scripting/step_docs.py#L83)
+`None`. The guard in [`step_docs.py:83`](../../src/tractusx_testlab/authoring/step_docs.py#L83)
 only catches the literal:
 
 ```python
@@ -127,12 +127,12 @@ if annotation is Any or annotation is None:
 ```
 
 `type(None)` is neither, so it falls through to the `isinstance(annotation, type)`
-branch at [line 101](../../src/tractusx_testlab/scripting/step_docs.py#L101) and is
+branch at [line 101](../../src/tractusx_testlab/authoring/step_docs.py#L101) and is
 rendered by `_PRIMITIVES.get(annotation, annotation.__name__)`. `NoneType` is absent
 from `_PRIMITIVES`, so the raw Python class name leaks into the page.
 
 Note the module already binds `_NONE_TYPE = type(None)`
-([line 58](../../src/tractusx_testlab/scripting/step_docs.py#L58)) and uses it to strip
+([line 58](../../src/tractusx_testlab/authoring/step_docs.py#L58)) and uses it to strip
 `None` out of `Optional[...]` unions — the sentinel exists, it is just not consulted
 on the bare-`NoneType` path.
 
@@ -142,10 +142,10 @@ Neither, and that is the point.
 
 - **`any`** (on disk) actively misleads: it reads as "any value at all", which is
   what an *undeclared* output looks like. The `NoOutput` docstring names this exact
-  hazard — *"'no output' and 'output not declared yet' look the same to a script
+  hazard — *"'no output' and 'output not declared yet' look the same to a test
   author unless one of them says so"* — and `any` reintroduces it.
 - **`NoneType`** (generated) is correct but is Python jargon in a page written for
-  script authors, who write YAML and never see a Python type.
+  test authors, who write YAML and never see a Python type.
 
 The description line directly above already carries the meaning — *"This step
 produces no value — it acts, and there is nothing to read back."* — so the `Type:`
@@ -183,7 +183,7 @@ Error: Got unexpected extra argument (steps)
 The `-s/--step` option is presumably what the string was reaching for, but it is
 repeatable and *filters* the output to named steps — `testlab docs` with no arguments
 is what regenerates the whole page. The string is emitted from
-[`step_docs.py:294`](../../src/tractusx_testlab/scripting/step_docs.py#L294) and should
+[`step_docs.py:294`](../../src/tractusx_testlab/authoring/step_docs.py#L294) and should
 read `testlab docs`.
 
 Minor on its own; it compounds with D3, because the header is currently the only

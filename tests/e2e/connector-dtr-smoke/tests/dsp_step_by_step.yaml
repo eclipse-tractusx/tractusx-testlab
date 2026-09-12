@@ -138,7 +138,7 @@ execution:
         with: { input: catalog_policy, operator: not_null }
 
   # 3. Negotiate for that offer. The policy comes from the catalog, not from
-  #    the script — negotiating under a policy the provider did not offer is
+  #    the test — negotiating under a policy the provider did not offer is
   #    the mistake this step exists to make impossible.
   - id: negotiation
     uses: connector/consumer/negotiate

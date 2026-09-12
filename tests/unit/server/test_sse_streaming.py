@@ -99,7 +99,7 @@ def _make_event_queue(
 
 
 class TestYamlSubmission:
-    """POST /testlab/test-execution/run endpoint tests."""
+    """POST /testlab/tck-execution/run endpoint tests."""
 
     @pytest.mark.asyncio
     async def test_run_yaml_returns_job_id(
@@ -116,11 +116,11 @@ class TestYamlSubmission:
             patch(f"{_STREAMING_MODULE}.YamlParser") as parser_cls,
             patch(f"{_STREAMING_MODULE}.Tck") as tck_cls,
         ):
-            parser_cls.return_value.parse_script_from_dict.return_value = mock_def
-            tck_cls.from_single_script.return_value = mock_tc
+            parser_cls.return_value.parse_test_from_dict.return_value = mock_def
+            tck_cls.from_single_test.return_value = mock_tc
             tck_cls.return_value = mock_tc
             response = await client.post(
-                "/testlab/test-execution/run",
+                "/testlab/tck-execution/run",
                 content=b"name: my-test\nsteps: []",
             )
 
@@ -135,7 +135,7 @@ class TestYamlSubmission:
         client: AsyncClient,
     ) -> None:
         response = await client.post(
-            "/testlab/test-execution/run",
+            "/testlab/tck-execution/run",
             content=b"{{invalid: yaml: : :",
         )
         assert response.status_code == 400
@@ -145,7 +145,7 @@ class TestYamlSubmission:
         self,
         client: AsyncClient,
     ) -> None:
-        response = await client.post("/testlab/test-execution/run", content=b"")
+        response = await client.post("/testlab/tck-execution/run", content=b"")
         assert response.status_code == 400
 
 
@@ -155,7 +155,7 @@ class TestYamlSubmission:
 
 
 class TestSseStreaming:
-    """GET /testlab/test-execution/{job_id}/stream endpoint tests."""
+    """GET /testlab/tck-execution/{job_id}/stream endpoint tests."""
 
     @pytest.mark.asyncio
     async def test_stream_returns_event_stream_content_type(
@@ -167,7 +167,7 @@ class TestSseStreaming:
         queue = _make_event_queue(("job.completed", {"status": "completed"}))
 
         with patch(f"{_STREAMING_MODULE}.create_event_queue", return_value=queue):
-            response = await client.get(f"/testlab/test-execution/{job.job_id}/stream")
+            response = await client.get(f"/testlab/tck-execution/{job.job_id}/stream")
 
         assert "text/event-stream" in response.headers["content-type"]
 
@@ -176,7 +176,7 @@ class TestSseStreaming:
         self,
         client: AsyncClient,
     ) -> None:
-        response = await client.get("/testlab/test-execution/nonexistent/stream")
+        response = await client.get("/testlab/tck-execution/nonexistent/stream")
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -196,7 +196,7 @@ class TestSseStreaming:
         )
 
         with patch(f"{_STREAMING_MODULE}.create_event_queue", return_value=queue):
-            response = await client.get(f"/testlab/test-execution/{job.job_id}/stream")
+            response = await client.get(f"/testlab/tck-execution/{job.job_id}/stream")
 
         body = response.text
         assert "event: step.started" in body
@@ -214,7 +214,7 @@ class TestSseStreaming:
         )
 
         with patch(f"{_STREAMING_MODULE}.create_event_queue", return_value=queue):
-            response = await client.get(f"/testlab/test-execution/{job.job_id}/stream")
+            response = await client.get(f"/testlab/tck-execution/{job.job_id}/stream")
 
         body = response.text
         assert "event: job.completed" in body
@@ -233,7 +233,7 @@ class TestSseStreaming:
         )
 
         with patch(f"{_STREAMING_MODULE}.create_event_queue", return_value=queue):
-            response = await client.get(f"/testlab/test-execution/{job.job_id}/stream")
+            response = await client.get(f"/testlab/tck-execution/{job.job_id}/stream")
 
         messages = response.text.strip().split("\n\n")
         for msg in messages:
@@ -260,7 +260,7 @@ class TestCorsMiddleware:
         client: AsyncClient,
     ) -> None:
         response = await client.get(
-            "/testlab/test-execution/nonexistent/stream",
+            "/testlab/tck-execution/nonexistent/stream",
             headers={"Origin": "http://localhost:3000"},
         )
         assert response.headers.get("access-control-allow-origin") == "*"

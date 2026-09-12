@@ -12,7 +12,7 @@ Every step declares its interface as Pydantic models, and this page is generated
 
 Discover a counter-party's DSP endpoint, ID and protocol from its BPN.
 
-**Saturn only.** The endpoint this calls is a Saturn addition and the SDK exposes it on the Saturn consumer service alone, so the step is registered for that release and a script on any other cannot resolve it.
+**Saturn only.** The endpoint this calls is a Saturn addition and the SDK exposes it on the Saturn consumer service alone, so the step is registered for that release and a test on any other cannot resolve it.
 
 **Inputs**
 
@@ -130,7 +130,7 @@ _Output contract of `connector/consumer/get_edr`._
 
 Start a data transfer for a contract that has already been negotiated.
 
-A PULL transfer turns a finished negotiation into something `connector/dataplane/http_request` can call: it resolves `negotiation_id` down to a `transfer_id`, then does exactly what `connector/consumer/get_edr` does with one — the two steps share that lookup rather than each fetching the data address their own way. A PUSH transfer instead asks the connector to deliver the data to a destination of the script's choosing, and waits for that transfer to settle.
+A PULL transfer turns a finished negotiation into something `connector/dataplane/http_request` can call: it resolves `negotiation_id` down to a `transfer_id`, then does exactly what `connector/consumer/get_edr` does with one — the two steps share that lookup rather than each fetching the data address their own way. A PUSH transfer instead asks the connector to deliver the data to a destination of the test's choosing, and waits for that transfer to settle.
 
 **Inputs**
 
@@ -189,7 +189,7 @@ _Output contract of `connector/consumer/negotiate`._
 
 Run the full DSP flow in one step, optionally constrained to one policy.
 
-`expected_policies` reaches the SDK as the raw ODRL policies its offer comparison takes, whichever way the script wrote them — see `tractusx_testlab.steps.connector.policies.as_policy_list`. With no policy the SDK takes the first offer.
+`expected_policies` reaches the SDK as the raw ODRL policies its offer comparison takes, whichever way the test wrote them — see `tractusx_testlab.steps.connector.policies.as_policy_list`. With no policy the SDK takes the first offer.
 
 **Inputs**
 
@@ -359,7 +359,7 @@ This is the far end of the DSP flow: `do_dsp` or `initiate_transfer` returns whe
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `method` | string | no | `'GET'` | — | HTTP method. |
 | `body` | any | no | `None` | — | Request body; dicts are sent as JSON. |
 | `dataplane_url` | any | no | `None` | — | Data-plane URL, or a data address object to read it from; falls back to the 'dataplane_url' context variable. |
@@ -400,7 +400,7 @@ _What every DSP flow step hands back: where the data is, and the token for it._
 
 Register an asset at the provider connector.
 
-What the asset *is* is not written into the step: it is configured once in the manifest's `env.variables` and handed to the step as a single `asset` input, so the same asset can be reused across tests. An asset that already exists is not an error: the connector answers 409 and the step reports the ID it would have created, so a script can be re-run against a provider it has already provisioned.
+What the asset *is* is not written into the step: it is configured once in the manifest's `env.variables` and handed to the step as a single `asset` input, so the same asset can be reused across tests. An asset that already exists is not an error: the connector answers 409 and the step reports the ID it would have created, so a test can be re-run against a provider it has already provisioned.
 
 **Inputs**
 
@@ -568,14 +568,14 @@ _Output contract of `connector/provider/create_policy`._
 
 Retrieve one of a counterparty's shell descriptors by ID.
 
-The consumer-side reading of `digital-twin/provider/get_shell_descriptor`: the same registry document, reached through the data-plane URL and EDR token a transfer published instead of the registry the run was seeded with. A registry that answers anything but 200 yields an empty descriptor; the status code stays on the response for a script to assert on.
+The consumer-side reading of `digital-twin/provider/get_shell_descriptor`: the same registry document, reached through the data-plane URL and EDR token a transfer published instead of the registry the run was seeded with. A registry that answers anything but 200 yields an empty descriptor; the status code stays on the response for a test to assert on.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
 | `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
 | `aas_identifier` | string | yes | — | — | Identifier of the AAS shell descriptor. |
@@ -602,7 +602,7 @@ The consumer-side reading of the registry's `GET /shell-descriptors` — the sam
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
 | `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
 | `limit` | integer | no | `None` | — | Maximum number of entries the registry may return in one page; its own default applies when omitted. |
@@ -622,14 +622,14 @@ _One page of a shell lookup._
 
 Search a counterparty's registry for shells matching specific asset IDs.
 
-This is the consumer's half of the DTR contract, and it is a different thing from `digital-twin/provider/get_shell_descriptor`: that one reads a known shell out of the registry the run was seeded with, this one searches somebody else's over a negotiated data plane. The lookup returns identifiers, so each one is then read back as a descriptor — a script that only needs the identifiers reads `shell_ids` and ignores the rest.
+This is the consumer's half of the DTR contract, and it is a different thing from `digital-twin/provider/get_shell_descriptor`: that one reads a known shell out of the registry the run was seeded with, this one searches somebody else's over a negotiated data plane. The lookup returns identifiers, so each one is then read back as a descriptor — a test that only needs the identifiers reads `shell_ids` and ignores the rest.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
 | `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
 | `specific_asset_ids` | list of [SpecificAssetId](#specificassetid) | yes | — | — | Criteria the shell must match; all of them have to. |
@@ -654,7 +654,7 @@ The same search `digital-twin-registry/consumer/dataplane/lookup_shell` performs
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
 | `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
 | `limit` | integer | no | `None` | — | Maximum number of entries the registry may return in one page; its own default applies when omitted. |
@@ -763,7 +763,7 @@ Additional keys sent by the counterpart are passed through unchanged.
 
 Search the run's own registry for shells matching specific asset IDs.
 
-`digital-twin-registry/consumer/dataplane/lookup_shell` re-addressed at the registry the engine is seeded with: the same `GET /lookup/shells`, the same base64url-encoded criteria, the same answer, reached over the service's own lookup URL rather than through a data plane. That is what a setup phase needs — it has no EDR token, and no reason to obtain one to search a registry it operates. The lookup answers with identifiers, so each is read back as a descriptor from the registry API; a script that only needs the identifiers reads `shell_ids` and ignores the rest.
+`digital-twin-registry/consumer/dataplane/lookup_shell` re-addressed at the registry the engine is seeded with: the same `GET /lookup/shells`, the same base64url-encoded criteria, the same answer, reached over the service's own lookup URL rather than through a data plane. That is what a setup phase needs — it has no EDR token, and no reason to obtain one to search a registry it operates. The lookup answers with identifiers, so each is read back as a descriptor from the registry API; a test that only needs the identifiers reads `shell_ids` and ignores the rest.
 
 **Inputs**
 
@@ -851,7 +851,7 @@ The teardown half of `digital-twin/submodel/upload`: it removes the resource tha
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `path` | string | yes | — | — | Path of the submodel to delete under the submodel server, relative to it — the 'path' the upload published. |
 
 **Output** — the value assertions and `returns:` read
@@ -866,14 +866,14 @@ _What a delete step publishes: the status the server answered it with._
 
 Upload sample data to the engine's submodel server, under its aspect and its id.
 
-The address is the Industry Core one — `<server>/<encoded semantic_id>/<submodel_id>`, and `<server>/<submodel_id>` when the payload names no aspect. A script that gives no `submodel_id` gets a fresh `urn:uuid:<uuid4>` — exactly like the TCK does — so repeated runs never collide. One that gives an id decides where the data lands, which is what a submodel descriptor written ahead of the upload, or a second run overwriting the first, needs. The address is published in its pieces, because a test needs them apart: `source_url` is the server an EDC asset is created against, `path` is what a data plane appends to it, and `backend_url` is the two joined — the endpoint a submodel descriptor points at. `submodel_id` comes back beside them rather than only inside the path, so a descriptor, a lookup or a delete can name the submodel without cutting the id back out of a URL, and `semantic_id` comes back so the descriptor step is wired from this step's outputs rather than from a URN retyped beside them. The server it posts to comes from the engine configuration (`engine.dtr.submodel_base_url`); an engine without one cannot run this step, and says so rather than posting nowhere.
+The address is the Industry Core one — `<server>/<encoded semantic_id>/<submodel_id>`, and `<server>/<submodel_id>` when the payload names no aspect. A test that gives no `submodel_id` gets a fresh `urn:uuid:<uuid4>` — exactly like the TCK does — so repeated runs never collide. One that gives an id decides where the data lands, which is what a submodel descriptor written ahead of the upload, or a second run overwriting the first, needs. The address is published in its pieces, because a test needs them apart: `source_url` is the server an EDC asset is created against, `path` is what a data plane appends to it, and `backend_url` is the two joined — the endpoint a submodel descriptor points at. `submodel_id` comes back beside them rather than only inside the path, so a descriptor, a lookup or a delete can name the submodel without cutting the id back out of a URL, and `semantic_id` comes back so the descriptor step is wired from this step's outputs rather than from a URN retyped beside them. The server it posts to comes from the engine configuration (`engine.dtr.submodel_base_url`); an engine without one cannot run this step, and says so rather than posting nowhere.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `data` | any | yes | — | — | Payload to upload, sent as JSON. Required: an upload with no payload of its own would store a placeholder the test then asserts against. |
 | `semantic_id` | string | no | `None` | — | URN of the aspect model the payload follows, e.g. 'urn:samm:io.catenax.serial_part:3.0.0#SerialPart'. Percent-encoded into the storage path when given; the submodel is stored directly under the server when omitted. |
 | `submodel_id` | string | no | `None` | — | Id to store the submodel under; a unique 'urn:uuid:<uuid4>' is generated when omitted. |
@@ -913,7 +913,7 @@ Type: NoneType
 
 Run one of two nested sequences depending on a set of conditions.
 
-A step's own `if:` decides whether that one step runs; this decides between two sequences, and says afterwards which one it picked — a script asserting on `branch_taken` can prove the flow went the way it meant to, which "the steps in the other branch were skipped" never quite shows. The conditions are evaluated once, before either branch starts, using the same comparisons a `validate:` block asserts with.
+A step's own `if:` decides whether that one step runs; this decides between two sequences, and says afterwards which one it picked — a test asserting on `branch_taken` can prove the flow went the way it meant to, which "the steps in the other branch were skipped" never quite shows. The conditions are evaluated once, before either branch starts, using the same comparisons a `validate:` block asserts with.
 
 **Inputs**
 
@@ -921,7 +921,7 @@ A step's own `if:` decides whether that one step runs; this decides between two 
 |---|---|---|---|---|---|
 | `conditions` | list of [Condition](#condition) | yes | — | — | Comparisons evaluated before a branch is chosen. |
 | `match` | `all` \| `any` | no | `'all'` | — | Whether every condition must hold ('all') or just one ('any'). |
-| `then` | list of [StepDefinition](#stepdefinition) | yes | — | — | Nested step definitions run when the condition holds — the same shape used at the top level of a script. |
+| `then` | list of [StepDefinition](#stepdefinition) | yes | — | — | Nested step definitions run when the condition holds — the same shape used at the top level of a test. |
 | `else` | list of [StepDefinition](#stepdefinition) | no | `[]` | — | Nested step definitions run when it does not; omitted means the step does nothing in that case. |
 
 **Output** — the value assertions and `returns:` read
@@ -944,7 +944,7 @@ The sequence stops at the first nested failure and the whole sequence is re-run,
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `steps` | list of [StepDefinition](#stepdefinition) | yes | — | — | Nested step definitions ('uses', 'with', 'validate', …) — the same shape used at the top level of a script. A nested step may itself be 'flow/retry'. |
+| `steps` | list of [StepDefinition](#stepdefinition) | yes | — | — | Nested step definitions ('uses', 'with', 'validate', …) — the same shape used at the top level of a test. A nested step may itself be 'flow/retry'. |
 | `max_attempts` | integer | no | `3` | — | Maximum number of attempts. |
 | `delay_s` | number | no | `1` | — | Seconds to wait between attempts. |
 
@@ -965,7 +965,7 @@ Useful for backend data upload/delete or any ad-hoc HTTP call during a test flow
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `method` | string | no | `'GET'` | — | HTTP method. |
 | `body` | any | no | `None` | — | Request body; dicts are sent as JSON. |
 | `url` | string | yes | — | — | Target URL. |
@@ -981,7 +981,7 @@ Type: any
 
 Register a mock HTTP endpoint that returns a canned response.
 
-`full_mock_url` is what a script hands to the system under test as its callback address; `mock` is what it hands to `mock/wait/http_request`, which then blocks until the SUT calls it.
+`full_mock_url` is what a test hands to the system under test as its callback address; `mock` is what it hands to `mock/wait/http_request`, which then blocks until the SUT calls it.
 
 **Inputs**
 
@@ -996,7 +996,7 @@ Register a mock HTTP endpoint that returns a canned response.
 
 **Output** — the value assertions and `returns:` read
 
-_The mock that now exists, and the two URLs a script needs from it._
+_The mock that now exists, and the two URLs a test needs from it._
 
 | Field | Type | Description |
 |---|---|---|
@@ -1027,7 +1027,7 @@ Type: NoneType
 
 Register a protocol-aware AAS Digital Twin Registry mock.
 
-Shells registered through the mock's own `POST /shell-descriptors` become retrievable the same way the pre-configured ones are, so a script can exercise the write path and the read path against one registry. It answers the AAS v3 API as a real registry does, which is what makes it worth testing against: `GET /lookup/shells` takes one `assetIds` value per criterion, each a base64url-encoded `SpecificAssetId` object, and a value holding the whole list is refused with a 400 that says so. The consumer-side steps already send it that way, so a script that uses them needs to know none of this.
+Shells registered through the mock's own `POST /shell-descriptors` become retrievable the same way the pre-configured ones are, so a test can exercise the write path and the read path against one registry. It answers the AAS v3 API as a real registry does, which is what makes it worth testing against: `GET /lookup/shells` takes one `assetIds` value per criterion, each a base64url-encoded `SpecificAssetId` object, and a value holding the whole list is refused with a 400 that says so. The consumer-side steps already send it that way, so a test that uses them needs to know none of this.
 
 **Inputs**
 
@@ -1128,7 +1128,7 @@ The token request with the `client_credentials` grant pinned: the client id and 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `token_url` | string | yes | — | — | Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'. |
 | `client_id` | string | no | `''` | — | OAuth2 client identifier. |
 | `client_secret` | string | no | `''` | — | OAuth2 client secret; omit for a public client. |
@@ -1161,7 +1161,7 @@ The token request with the `password` grant pinned; `username` and `password` ar
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `token_url` | string | yes | — | — | Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'. |
 | `client_id` | string | no | `''` | — | OAuth2 client identifier. |
 | `client_secret` | string | no | `''` | — | OAuth2 client secret; omit for a public client. |
@@ -1196,7 +1196,7 @@ The token request with the `refresh_token` grant pinned; `refresh_token` is a re
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the script's default is used when omitted. |
+| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `token_url` | string | yes | — | — | Token endpoint URL of the authorization server, e.g. 'https://idp.example/realms/CX/protocol/openid-connect/token'. |
 | `client_id` | string | no | `''` | — | OAuth2 client identifier. |
 | `client_secret` | string | no | `''` | — | OAuth2 client secret; omit for a public client. |

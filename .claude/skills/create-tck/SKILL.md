@@ -1,6 +1,6 @@
 ---
 name: create-tck
-description: Author a Tractus-X TestLab TCK (Test Case Kit) — an index.yaml manifest plus test scripts in the harmonized v1-alpha engine dialect — and validate it with the testlab CLI and the cx-test-suite IDE checks. Use whenever creating or editing a TCK, a test case YAML, env variables/testdata/schemas, or when validating/compiling TestLab YAML.
+description: Author a Tractus-X TestLab TCK (Test Case Kit) — an index.yaml manifest plus tests in the harmonized v1-alpha engine dialect — and validate it with the testlab CLI and the cx-test-suite IDE checks. Use whenever creating or editing a TCK, a test case YAML, env variables/testdata/schemas, or when validating/compiling TestLab YAML.
 ---
 
 # Creating a TCK (Test Case Kit)
@@ -20,7 +20,7 @@ Author **only** against the engine dialect. Ground truth, in priority order:
 5. `docs/examples/certificate-management-v2/raw/` — the shipped reference TCK
 
 **Do not follow** `docs/specification/reference/syntax/cheat-sheet.md`,
-`docs/specification/walkthrough/writing-test-scripts.md`,
+`docs/specification/walkthrough/writing-tests.md`,
 `docs/specification/walkthrough/compiling-packages.md`, or
 `docs/specification/schemas/*-v2.schema.json`. They document a stale dialect
 (`testlab:` header key, `steps:` phase, flat `env.variables` map, `env.services:`,
@@ -115,7 +115,7 @@ deployment optional, and leave it off for anything normative. The player refuses
 the whole run if `skip_tests` names a test that is not marked, so a mandatory test
 can never be skipped.
 
-## Test scripts (`kind: test`)
+## Tests (`kind: test`)
 
 ```yaml
 kind: test

@@ -40,7 +40,7 @@ from tractusx_testlab.services.instances import ServiceManager
 
 
 class StepContext:
-    """Mutable execution context shared across steps within a single script run."""
+    """Mutable execution context shared across steps within a single test run."""
 
     __slots__ = (
         "_config",
@@ -82,7 +82,7 @@ class StepContext:
         """The deployment this run targets, after the run's own overrides.
 
         A step reads an engine-side address from here rather than from a
-        variable a script supplied, because where the engine's own
+        variable a test supplied, because where the engine's own
         infrastructure lives is the operator's decision and not the test's.
         """
         return self._infrastructure
@@ -194,7 +194,7 @@ class StepContext:
         return self._job
 
     # ------------------------------------------------------------------
-    # Variables (script-scoped, resolved from step params with ${...})
+    # Variables (test-scoped, resolved from step params with ${...})
     # ------------------------------------------------------------------
 
     def set_variable(self, name: str, value: object) -> None:

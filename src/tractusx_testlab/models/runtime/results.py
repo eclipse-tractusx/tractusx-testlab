@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Result models — execution-time structures for steps, scripts, and TCKs."""
+"""Result models — execution-time structures for steps, tests, and TCKs."""
 
 from __future__ import annotations
 
@@ -34,9 +34,9 @@ from pydantic import BaseModel, Field
 from tractusx_testlab.models.authoring.definitions import Assertion
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
-    ScriptStatus,
     StepPhase,
     StepStatus,
+    TestStatus,
 )
 
 #: Marks a ``StepResult.error`` whose failure came from TestLab, not from the SUT.
@@ -121,10 +121,10 @@ class StepResult(BaseModel):
     duration_s: float | None = None
     #: What the step was actually given — its ``with:`` block after every
     #: ``${{ ... }}`` reference was resolved. Recorded because a step that failed
-    #: on the value a reference resolved to cannot be debugged from the script,
+    #: on the value a reference resolved to cannot be debugged from the test,
     #: which only says which reference it wrote.
     inputs: dict | None = None
-    #: The exchange the step is *about* — what a script asserts on and what the
+    #: The exchange the step is *about* — what a test asserts on and what the
     #: console prints. Set by the step itself; when the step did not name one,
     #: the runner fills it from the last recorded exchange so a step that raised
     #: before returning still reports what it sent.
@@ -170,9 +170,9 @@ class CallbackResult(BaseModel):
 
 
 class AssertionSummary(BaseModel):
-    """Aggregated assertion pass/fail counts for a script run."""
+    """Aggregated assertion pass/fail counts for a test run."""
 
-    #: Assertions the script's executed steps declared. Recorded separately from
+    #: Assertions the test's executed steps declared. Recorded separately from
     #: :attr:`total` so "checked nothing" is never indistinguishable from
     #: "checked everything and it passed" — the two used to produce the same
     #: ``RESULT: PASS`` with nothing to tell them apart.
@@ -197,20 +197,24 @@ class AssertionSummary(BaseModel):
         """Assertions a step declared and the engine did not evaluate.
 
         Always zero if the engine is behaving: assertions are evaluated one for
-        one. A non-zero value means checks went missing between the script and
+        one. A non-zero value means checks went missing between the test and
         the result, which is the shape of the defect this whole review began
         with, so it is measured rather than assumed.
         """
         return max(0, self.declared - self.total)
 
 
-class ScriptResult(BaseModel):
-    """Execution result for a complete test script."""
+class TestResult(BaseModel):
+    """Execution result for a complete test."""
 
-    script_id: str = ""
-    script_name: str = ""
+    __test__ = False  # a TestLab test, not a pytest one
+    #: The ``id:`` the test document declares — what the trace and the
+    #: events name a test by. The manifest entry filename the operator
+    #: skips by lives on :attr:`~tractusx_testlab.authoring.test.Test.test_id`.
+    test_id: str = ""
+    test_name: str = ""
     dataspace_version: str = ""
-    status: ScriptStatus = ScriptStatus.IDLE
+    status: TestStatus = TestStatus.IDLE
     execution: list[StepResult] = Field(default_factory=list)
     started_at: datetime | None = None
     finished_at: datetime | None = None
@@ -226,8 +230,8 @@ class TckResult(BaseModel):
 
     tck_id: str = ""
     package_name: str = ""
-    status: ScriptStatus = ScriptStatus.IDLE
-    scripts: list[ScriptResult] = Field(default_factory=list)
+    status: TestStatus = TestStatus.IDLE
+    tests: list[TestResult] = Field(default_factory=list)
     started_at: datetime | None = None
     finished_at: datetime | None = None
 
@@ -240,7 +244,7 @@ class TckResult(BaseModel):
 
     @property
     def steps_passed(self) -> int:
-        """Count of steps with PASSED status across all scripts.
+        """Count of steps with PASSED status across all tests.
 
         Named for what it is. It was ``passed``, which reads as a verdict, and
         one caller used it as one: ``if result.passed:`` decided whether to
@@ -251,16 +255,13 @@ class TckResult(BaseModel):
         verdict; ask this for the tally.
         """
         return sum(
-            1
-            for script in self.scripts
-            for step in script.execution
-            if step.status == StepStatus.PASSED
+            1 for test in self.tests for step in test.execution if step.status == StepStatus.PASSED
         )
 
     @property
     def steps_total(self) -> int:
-        """Total number of steps across all scripts."""
-        return sum(len(script.execution) for script in self.scripts)
+        """Total number of steps across all tests."""
+        return sum(len(test.execution) for test in self.tests)
 
     @property
     def tck_name(self) -> str:

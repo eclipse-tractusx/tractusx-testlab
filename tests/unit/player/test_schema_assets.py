@@ -32,6 +32,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tractusx_testlab.authoring.test import Tck
+
 # Ensure all built-in steps are registered
 from tractusx_testlab.models.authoring.definitions import (
     EnvDefinition,
@@ -45,7 +47,6 @@ from tractusx_testlab.models.authoring.definitions import (
 from tractusx_testlab.player.execution._context_seeder import seed_context_variables
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.loading.resolver import resolve_params
-from tractusx_testlab.scripting.script import Tck
 from tractusx_testlab.steps._checks.schema import check_schema_validation
 
 _SCHEMA = {

@@ -35,11 +35,11 @@ from tractusx_testlab.models.authoring.definitions import (
     ImportDefinition,
     MetadataDefinition,
     ReturnFieldDefinition,
-    ScriptDefinition,
     ServiceDefinition,
     StepDefinition,
     TckDefinition,
     TckMetadataDefinition,
+    TestDefinition,
     VariableDefinition,
 )
 from tractusx_testlab.models.authoring.infrastructure import (
@@ -77,16 +77,16 @@ from tractusx_testlab.models.primitives.binding_errors import (
 )
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
+    DefinitionKind,  # local override — adds TCK
     EventKind,
     JobStatus,
     PackageFormat,
-    ScriptKind,  # local override — adds TCK
-    ScriptStatus,
     SdkCallMode,
     ServiceState,
     ServiceType,  # local override — adds EDC connector types
     StepPhase,
     StepStatus,
+    TestStatus,
     ValueSource,
     VariableScope,  # verb-form variable scope
     VariableSource,  # verb-form variable source
@@ -122,8 +122,6 @@ from tractusx_testlab.models.runtime.events import (
     JobResumedEvent,
     JobStartedEvent,
     Listener,
-    ScriptCompletedEvent,
-    ScriptStartedEvent,
     StepCallEvent,
     StepCompletedEvent,
     StepFailedEvent,
@@ -132,11 +130,13 @@ from tractusx_testlab.models.runtime.events import (
     StepSkippedEvent,
     StepStartedEvent,
     StepWaitingEvent,
+    TestCompletedEvent,
+    TestStartedEvent,
 )
 from tractusx_testlab.models.runtime.inspection import (
-    ScriptInspection,
     StepMeta,
     TckInspectionResult,
+    TestInspection,
 )
 from tractusx_testlab.models.runtime.jobs import (
     Job,
@@ -150,9 +150,9 @@ from tractusx_testlab.models.runtime.results import (
     HttpExchange,
     HttpRequest,
     HttpResponse,
-    ScriptResult,
     StepResult,
     TckResult,
+    TestResult,
 )
 
 __all__ = [
@@ -178,6 +178,7 @@ __all__ = [
     "ConnectorBinding",
     "ConnectorError",
     "DataspaceContext",
+    "DefinitionKind",
     "DtrBinding",
     "DuplicateServiceError",
     "EncryptedKeyBlock",
@@ -214,14 +215,6 @@ __all__ = [
     "PackageFormat",
     "PackageManifest",
     "ReturnFieldDefinition",
-    "ScriptCompletedEvent",
-    "ScriptDefinition",
-    # inspection
-    "ScriptInspection",
-    "ScriptKind",
-    "ScriptResult",
-    "ScriptStartedEvent",
-    "ScriptStatus",
     "SdkCallMode",
     "SecurityBlock",
     "ServiceDefinition",
@@ -255,7 +248,14 @@ __all__ = [
     "TckInspectionResult",
     "TckMetadataDefinition",
     "TckResult",
+    "TestCompletedEvent",
+    "TestDefinition",
+    # inspection
+    "TestInspection",
     "TestLabError",
+    "TestResult",
+    "TestStartedEvent",
+    "TestStatus",
     "UnknownBindingKeyError",
     "UnresolvedReferenceError",
     # server

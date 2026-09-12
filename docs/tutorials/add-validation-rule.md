@@ -25,12 +25,12 @@
 
 Static validation runs in the compiler, before anything executes. It lives in `src/tractusx_testlab/compiler/validation/` and has two layers:
 
-- **`validator.py`** — `ScriptValidator` walks the parsed `ScriptDefinition` step by step: unknown `uses:` ids, unresolved `${var}` references, inline `validate.with.input` values that are not declared in `returns:`, and so on.
+- **`validator.py`** — `TestValidator` walks the parsed `TestDefinition` step by step: unknown `uses:` ids, unresolved `${var}` references, inline `validate.with.input` values that are not declared in `returns:`, and so on.
 - **`_rules.py`** — JSON-Schema validation of the raw TCK manifest and test files, plus rule functions that reject shapes the schema cannot express.
 
-## Adding a script-level rule
+## Adding a test-level rule
 
-Open `src/tractusx_testlab/compiler/validation/validator.py` and extend `_validate_step()` (or `validate()` for script-wide rules). Findings are reported through the `ValidationResult`:
+Open `src/tractusx_testlab/compiler/validation/validator.py` and extend `_validate_step()` (or `validate()` for test-wide rules). Findings are reported through the `ValidationResult`:
 
 ```python
 # Example: warn when a step declares returns but never validates them
@@ -43,7 +43,7 @@ if step_def.returns and not step_def.validate:
     )
 ```
 
-`add_error()` makes the script invalid (`ValidationResult.valid` becomes `False`); `add_warning()` is reported but does not block. `step_index`, `field`, and `phase` locate the finding for the CLI output.
+`add_error()` makes the test invalid (`ValidationResult.valid` becomes `False`); `add_warning()` is reported but does not block. `step_index`, `field`, and `phase` locate the finding for the CLI output.
 
 ## Adding a manifest-level rule
 

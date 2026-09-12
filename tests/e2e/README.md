@@ -26,7 +26,7 @@ cluster is created and destroyed within the job.
 
 `tests/e2e/connector-dtr-smoke/` is a small TCK, purpose-built as testlab's
 own CI signal (not a published certification TCK). Between them its thirteen
-scripts use every one of the 55 steps in the engine's catalogue
+tests use every one of the 55 steps in the engine's catalogue
 (`docs/specification/reference/steps.md`) and all three validation kinds —
 `validate/assert`, `validate/field` and `validate/schema` — so no step ships
 without having been run once against something real.
@@ -48,18 +48,18 @@ without having been run once against something real.
   the mock server's root (with `proxyPath` on), pulls the mock's path through
   the SUT's data plane, and then reads the data plane's request back with
   `mock/wait/http_request`. The body the consumer receives must be the mock's
-  canned answer and the path the mock saw must be the one the script sent, so
+  canned answer and the path the mock saw must be the one the test sent, so
   the call provably came from the provider's data plane pod and not from the
-  script. A second mock takes a POST: the script's JSON body goes through both
+  test. A second mock takes a POST: the test's JSON body goes through both
   data planes (`proxyMethod`, `proxyBody`) and the wait step checks the payload
   the mock received field by field.
 - `external_callback.yaml` — the wait step, actually waiting. The call in
-  `inbound_call.yaml` is a consequence of the script's own pull and has
-  already arrived when the wait step runs. Here the script tells a stand-in
+  `inbound_call.yaml` is a consequence of the test's own pull and has
+  already arrived when the wait step runs. Here the test tells a stand-in
   SUT in the cluster (`ci/stub_caller.py`, deployed by the workflow behind
   `tck-stub.local`) to call the mock in three seconds, is acknowledged at
   once, and blocks on `mock/wait/http_request`. The call arrives from the
-  stub's pod while the script is blocked, and `elapsed_ms` must show the wait
+  stub's pod while the test is blocked, and `elapsed_ms` must show the wait
   lasted the delay.
 - `catalog_variants.yaml` — the consumer catalogue the two DSP tests leave
   untouched: the unfiltered query, the query filtered by asset id, the
@@ -309,7 +309,7 @@ it starts failing as a timeout rather than as whatever actually broke.
 Tractus-X registry decides who may see a twin: a twin is shown only to a
 partner named in one of its specific asset IDs, and the `Edc-Bpn` header the
 registry reads that name against is set by the provider's data plane from the
-token, never by the script. Which spelling of the consumer's identity ends up
+token, never by the test. Which spelling of the consumer's identity ends up
 on that header depends on the deployment, so the twin names the consumer under
 both its DID and its BPN and also carries the `PUBLIC_READABLE` wildcard. If
 that test starts coming back with an empty lookup rather than an error, those

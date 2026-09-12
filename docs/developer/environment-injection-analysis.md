@@ -93,8 +93,8 @@ several layers later as a connector or HTTP failure.
 | 5 | `player/execution/_context_seeder.py:94-97` | `env.variables` with `source: value` → `<id>` and `<id>.<field>` |
 | 6 | `player/execution/_context_seeder.py:72-73` | `runtime_vars` verbatim, overwriting everything |
 | 7 | `player/execution/infrastructure_seeder.py:158` | scrapes `infrastructure.*` string keys → `ServiceDefinition`s; writes back `infrastructure.engine.connector` as a *service-name string* |
-| 8 | `player/execution/_helpers.py:34` | per-script `variables:` defaults |
-| 9 | `player/execution/step_runner.py:117-119`, `steps/base.py:302-304`, `player/execution/player.py:261-262` | step returns (`<field>` **and** `steps.<id>.<field>`), step exports, script outputs (`<name>` **and** `!<script>:<name>`) |
+| 8 | `player/execution/_helpers.py:34` | per-test `variables:` defaults |
+| 9 | `player/execution/step_runner.py:117-119`, `steps/base.py:302-304`, `player/execution/player.py:261-262` | step returns (`<field>` **and** `steps.<id>.<field>`), step exports, test outputs (`<name>` **and** `!<test>:<name>`) |
 
 Everything lands in the same `dict[str, object]` at `player/execution/context.py:54`.
 There is no schema, no namespace object, no provenance, and no type information.
@@ -141,7 +141,7 @@ literally named `${{ env.… }}`, and the failure surfaces several layers away a
 connector error.
 
 There is a naming trap on top of it: the operator writes `sut_counter_party_id: BPNL0001`
-in the run-config, but the script reads `.value`. Nothing bridges the two, and nothing
+in the run-config, but the test reads `.value`. Nothing bridges the two, and nothing
 warns.
 
 ### F4 — Two expression resolvers with different rules, only one of which runs
@@ -194,7 +194,7 @@ hand-assembles a `ServiceDefinition`. Consequences:
 
 `_first_service_of_type` (`player/execution/context.py:122`) iterates `service_names`
 and returns the first match. Registration order is: infrastructure seeder (engine, then
-engine-alias, then SUT) → per-script `services:`. **Which connector a step talks to is
+engine-alias, then SUT) → per-test `services:`. **Which connector a step talks to is
 therefore a function of seeding order, not of anything declared.**
 
 `context.py:133` additionally reaches into `self._services._definitions` — a private
@@ -228,7 +228,7 @@ Coexisting inside `_variables`, with no separator discipline:
 
 `_tck_root` · `testdata.<id>` · `env.testdata.<id>` · `<var_id>` · `<var_id>.<field>` ·
 `infrastructure.<side>.<cap>` · `infrastructure.<side>.<cap>.<field>` ·
-`steps.<id>.<field>` · `<field>` (same value, flat) · `!<script>:<export>` · plus the
+`steps.<id>.<field>` · `<field>` (same value, flat) · `!<test>:<export>` · plus the
 `syntax/context_vars.py` constants (`catalog_target`, `datasets`, `edr_token`, …).
 
 A step export named `datasets` collides with a user variable named `datasets`; last

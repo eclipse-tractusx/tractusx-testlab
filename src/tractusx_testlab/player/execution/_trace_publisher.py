@@ -43,7 +43,7 @@ from __future__ import annotations
 from typing import Any
 
 from tractusx_testlab.logging.trace import SOURCE_LIFECYCLE, ExecutionTrace
-from tractusx_testlab.models.runtime.results import ScriptResult, StepResult
+from tractusx_testlab.models.runtime.results import StepResult, TestResult
 from tractusx_testlab.player.execution._trace_events import (
     call_data,
     step_data,
@@ -97,16 +97,16 @@ class TracePublisher:
             data["errors"] = [{"code": "RUN_FAILED", "message": error, "retryable": False}]
         return self.emit("tck.end", data)
 
-    def test_started(self, script: str, index: int) -> str | None:
-        return self.emit("tck.test.start", {"test_id": script, "index": index}, scope=(script,))
+    def test_started(self, test: str, index: int) -> str | None:
+        return self.emit("tck.test.start", {"test_id": test, "index": index}, scope=(test,))
 
-    def test_ended(self, result: ScriptResult) -> str | None:
-        test_id = result.script_id or result.script_name
+    def test_ended(self, result: TestResult) -> str | None:
+        test_id = result.test_id or result.test_name
         return self.emit(test_event_type(result.status), test_data(result), scope=(test_id,))
 
     def step_started(
         self,
-        script: str,
+        test: str,
         step_id: str | None,
         step_index: int,
         step_type: str,
@@ -129,12 +129,12 @@ class TracePublisher:
             "tck.test.step.start",
             data,
             source=step_type,
-            scope=(script, phase, step_id or str(step_index)),
+            scope=(test, phase, step_id or str(step_index)),
         )
 
     def step_call(
         self,
-        script: str,
+        test: str,
         step_id: str | None,
         step_type: str,
         phase: str,
@@ -145,17 +145,17 @@ class TracePublisher:
 
         Its path is the step's path plus which call it was, so dropping a phase
         from a trace with a prefix match drops its calls with it — and a step the
-        script did not name falls back to what it *is*, which is the only thing
+        test did not name falls back to what it *is*, which is the only thing
         left to name it by.
         """
         return self.emit(
             "tck.test.step.call",
             call_data(index, call),
             source=step_type,
-            scope=(script, phase, step_id or step_type.rsplit("/", 1)[-1], "calls", str(index)),
+            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1], "calls", str(index)),
         )
 
-    def step_ended(self, script: str, step_id: str | None, result: StepResult) -> str | None:
+    def step_ended(self, test: str, step_id: str | None, result: StepResult) -> str | None:
         """One terminal event carrying the checks, the wire, and the error.
 
         No separate assertion events: ADR-0016 nests them in ``validations``.
@@ -164,12 +164,12 @@ class TracePublisher:
             step_event_type(result.status),
             step_data(result),
             source=result.step_type,
-            scope=(script, result.phase.value.lower(), step_id or result.step_name),
+            scope=(test, result.phase.value.lower(), step_id or result.step_name),
         )
 
     def step_listening(
         self,
-        script: str,
+        test: str,
         step_id: str | None,
         step_type: str,
         phase: str,
@@ -180,12 +180,12 @@ class TracePublisher:
             "tck.test.step.listening",
             {"attempt": 1, "listener": listener.model_dump(mode="json")},
             source=step_type,
-            scope=(script, phase, step_id or step_type.rsplit("/", 1)[-1]),
+            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
         )
 
     def step_waiting(
         self,
-        script: str,
+        test: str,
         step_id: str | None,
         step_type: str,
         phase: str,
@@ -197,12 +197,12 @@ class TracePublisher:
             "tck.test.step.waiting",
             {"attempt": 1, "listener": listener.model_dump(mode="json"), "timeout_s": timeout_s},
             source=step_type,
-            scope=(script, phase, step_id or step_type.rsplit("/", 1)[-1]),
+            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
         )
 
     def step_received(
         self,
-        script: str,
+        test: str,
         step_id: str | None,
         step_type: str,
         phase: str,
@@ -228,5 +228,5 @@ class TracePublisher:
             "tck.test.step.received",
             data,
             source=step_type,
-            scope=(script, phase, step_id or step_type.rsplit("/", 1)[-1]),
+            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
         )

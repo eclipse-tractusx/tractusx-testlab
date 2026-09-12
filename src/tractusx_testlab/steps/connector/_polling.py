@@ -75,7 +75,7 @@ def read_entity(controller: Any, oid: str, verify: Any = None) -> dict | None:
 
     An unreachable connector is reported as "no entity" rather than raised: the
     caller still has the ID it started from, and the step's own response status
-    is how a script asserts on the failure.
+    is how a test asserts on the failure.
     """
     if not oid:
         return None
@@ -116,7 +116,7 @@ async def poll_until_terminal(
     conformance run cannot report on a state machine that never settled.
 
     *allow_timeout* is the escape hatch for the case where not settling is the
-    thing under test — it has to be asked for, in the script, in writing.
+    thing under test — it has to be asked for, in the test, in writing.
 
     The connector answers a create request only once the entity is persisted, so
     a first read that fails means the entity cannot be observed at all — polling

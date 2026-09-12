@@ -29,7 +29,7 @@ parameter that is renamed in code cannot go stale in the docs.
 Fields are read from ``model_fields`` rather than ``model_json_schema()``
 because JSON Schema drops alias information, and the exact spelling a step
 accepts (``schema:`` for the field declared as ``json_schema``) is exactly
-what a script author needs to see.
+what a test author needs to see.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
-from tractusx_testlab.scripting.registry import StepRegistry
+from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.steps.step_contract import BaseStep, StepValue
 
 _PRIMITIVES: dict[type, str] = {
@@ -80,7 +80,7 @@ def to_markdown(text: str) -> str:
 
 
 def type_name(annotation: Any) -> str:
-    """Render a type annotation the way a script author would recognise it."""
+    """Render a type annotation the way a test author would recognise it."""
     if annotation is Any or annotation is None:
         return "any"
 

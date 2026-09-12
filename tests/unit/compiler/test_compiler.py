@@ -44,15 +44,15 @@ from tractusx_testlab.compiler.validation.validator import ValidationResult
 # ---------------------------------------------------------------------------
 
 
-def _write_yaml(tmp_path: Path, content: dict, name: str = "script.yaml") -> Path:
+def _write_yaml(tmp_path: Path, content: dict, name: str = "test.yaml") -> Path:
     """Write a YAML dict to a temp file and return the path."""
     p = tmp_path / name
     p.write_text(yaml.dump(content, default_flow_style=False))
     return p
 
 
-def _test_script(execution_steps: list | None = None) -> dict:
-    """Return a minimal valid test script dict."""
+def _test(execution_steps: list | None = None) -> dict:
+    """Return a minimal valid test dict."""
     return {
         "syntax": "v1-alpha",
         "kind": "test",
@@ -61,7 +61,7 @@ def _test_script(execution_steps: list | None = None) -> dict:
         "metadata": {
             "name": "Minimal Test",
             "version": "1.0",
-            "description": "A minimal test script.",
+            "description": "A minimal test.",
         },
         "execution": execution_steps
         if execution_steps is not None
@@ -93,7 +93,7 @@ def _write_tck(tmp_path: Path, execution_steps: list | None = None) -> Path:
     """Write a TCK manifest + test file into tmp_path, return the manifest path."""
     tests_dir = tmp_path / "tests"
     tests_dir.mkdir()
-    _write_yaml(tests_dir, _test_script(execution_steps), "minimal-test.yaml")
+    _write_yaml(tests_dir, _test(execution_steps), "minimal-test.yaml")
     return _write_yaml(tmp_path, _tck_manifest("minimal-test.yaml"), "tck.yaml")
 
 
@@ -107,11 +107,11 @@ class TestCompilerValidation:
 
     def test_validate_minimal_valid_tck(self, tmp_path: Path) -> None:
         # Arrange
-        script_path = _write_tck(tmp_path)
+        manifest_path = _write_tck(tmp_path)
         compiler = Compiler()
 
         # Act
-        result = compiler.validate(script_path)
+        result = compiler.validate(manifest_path)
 
         # Assert
         assert isinstance(result, ValidationResult)
@@ -119,26 +119,26 @@ class TestCompilerValidation:
 
     def test_validate_tck_with_steps(self, tmp_path: Path) -> None:
         # Arrange
-        script_path = _write_tck(
+        manifest_path = _write_tck(
             tmp_path, [{"id": "gen_id", "uses": "util/generate_uuid", "name": "gen"}]
         )
         compiler = Compiler()
 
         # Act
-        result = compiler.validate(script_path)
+        result = compiler.validate(manifest_path)
 
         # Assert
         assert result.valid is True
 
     def test_validate_rejects_unknown_step_type(self, tmp_path: Path) -> None:
         # Arrange
-        script_path = _write_tck(
+        manifest_path = _write_tck(
             tmp_path, [{"id": "bad", "uses": "nonexistent_step_type_xyz", "name": "bad"}]
         )
         compiler = Compiler()
 
         # Act
-        result = compiler.validate(script_path)
+        result = compiler.validate(manifest_path)
 
         # Assert
         assert result.valid is False
@@ -146,7 +146,7 @@ class TestCompilerValidation:
 
     def test_validate_returns_issues_for_multiple_bad_steps(self, tmp_path: Path) -> None:
         # Arrange
-        script_path = _write_tck(
+        manifest_path = _write_tck(
             tmp_path,
             [
                 {"id": "a", "uses": "unknown_a", "name": "a"},
@@ -156,18 +156,18 @@ class TestCompilerValidation:
         compiler = Compiler()
 
         # Act
-        result = compiler.validate(script_path)
+        result = compiler.validate(manifest_path)
 
         # Assert
         assert len(result.issues) >= 2
 
-    def test_compile_raises_on_invalid_script(self, tmp_path: Path) -> None:
+    def test_compile_raises_on_invalid_test(self, tmp_path: Path) -> None:
         # Arrange
-        script_path = _write_tck(
+        manifest_path = _write_tck(
             tmp_path, [{"id": "bogus", "uses": "totally_bogus_step", "name": "bogus"}]
         )
         compiler = Compiler()
 
         # Act & Assert
         with pytest.raises(ValueError, match="[Vv]alidation failed"):
-            compiler.compile_plain(script_path, output_path=tmp_path / "out")
+            compiler.compile_plain(manifest_path, output_path=tmp_path / "out")

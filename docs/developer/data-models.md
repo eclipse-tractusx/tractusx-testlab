@@ -28,7 +28,7 @@ organized into four sub-packages:
 
 | Sub-package | Contains |
 |-------------|----------|
-| `authoring/` | the shapes of the YAML documents an author writes (scripts, TCK manifests, steps, variables, services) |
+| `authoring/` | the shapes of the YAML documents an author writes (tests, TCK manifests, steps, variables, services) |
 | `runtime/` | what execution produces (results, events, jobs, inspection metadata) |
 | `primitives/` | enums and exceptions shared by everything else |
 | `domain/` | feature-specific domain models: package security and server state |
@@ -45,9 +45,9 @@ serialization; those types are documented in that repository.
 The engine compiles two document kinds, discriminated by an explicit `kind:` field
 (the Kubernetes convention) and pinned to the single syntax version `v1-alpha`.
 
-### Test scripts (`kind: test`)
+### Tests (`kind: test`)
 
-A script is the executable authoring unit. Its steps are grouped into three phases —
+A test is the executable authoring unit. Its steps are grouped into three phases —
 `setup:`, `execution:`, `teardown:` — and every step uses the verb-form keys
 `uses:` / `with:` / `returns:`:
 
@@ -76,7 +76,7 @@ execution:
         with: { input: datasets, operator: not_empty }
 ```
 
-This maps onto `ScriptDefinition` and `StepDefinition`
+This maps onto `TestDefinition` and `StepDefinition`
 (`models/authoring/definitions.py`):
 
 ```python
@@ -97,7 +97,7 @@ class StepDefinition(BaseModel):
   [step registry](block-lifecycle.md) resolves to a Python executor class.
 - **`with`** carries the parameters, validated into the executor's declared
   `params_model` before it runs.
-- **`returns`** declares the output fields the script reads; each entry is a
+- **`returns`** declares the output fields the test reads; each entry is a
   `ReturnFieldDefinition` (`type`, optional `class`). Assertions resolve against
   these declared returns, and later steps reference them as
   `${{ steps.<id>.<field> }}`.
@@ -117,7 +117,7 @@ wherever it is caught.
 
 ### TCK manifests (`kind: tck`)
 
-A TCK groups scripts into a certification package. `TckDefinition` carries
+A TCK groups tests into a certification package. `TckDefinition` carries
 certification metadata (`authors`, `standards`, `license`, `dataspace_version`),
 an `env:` block, and the ordered `tests:` list:
 
@@ -131,7 +131,7 @@ class TckDefinition(BaseModel):
     tests: list[TckTestEntry] = Field(default_factory=list)
 ```
 
-Each `TckTestEntry` names a script file relative to the package's `tests/` folder,
+Each `TckTestEntry` names a test file relative to the package's `tests/` folder,
 with an optional human-readable `name` and a `skippable` flag the operator can act
 on at runtime.
 
@@ -173,7 +173,7 @@ as `uuid`). For `source: input` the `scope` (`VariableScope`) is **required** an
 names the participant responsible for the value — `engine` or `sut` — enforced by
 the compiler per
 [ADR-0023](decision-records/backend/ADR-0023-variable-scope-annotation.md).
-Scripts reference variables as `${{ env.<id> }}`, step outputs as
+Tests reference variables as `${{ env.<id> }}`, step outputs as
 `${{ steps.<id>.<field> }}`, and deployment facts as `${{ infrastructure.* }}`.
 
 ### Services
@@ -201,12 +201,12 @@ The primitives every other model shares. The most load-bearing ones:
 |------|--------|----------|
 | `StepPhase` | `SETUP`, `EXECUTION`, `TEARDOWN` | which phase a step belongs to |
 | `StepStatus` | `PENDING`, `RUNNING`, `WAITING`, `PASSED`, `FAILED`, `SKIPPED` | per-step execution status |
-| `ScriptStatus` | `IDLE`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `SKIPPED` | per-script and per-TCK status |
+| `TestStatus` | `IDLE`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `SKIPPED` | per-test and per-TCK status |
 | `JobStatus` | `QUEUED`, `RUNNING`, `WAITING`, `PAUSED`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT` | overall job lifecycle |
 | `AssertionSeverity` | `HARD`, `SOFT` | whether a failed assertion aborts or warns |
 | `VariableSource` | `value`, `input`, `generated` | how a declared variable obtains its value |
 | `VariableScope` | `engine`, `sut` | who provides a `source: input` variable |
-| `ScriptKind` | `test`, `tck` | the document `kind:` discriminator |
+| `DefinitionKind` | `test`, `tck` | the document `kind:` discriminator |
 | `EventKind` | `job_started`, `step_completed`, … | discriminator on every execution event |
 
 ## Runtime results (`models/runtime/results.py`)
@@ -215,7 +215,7 @@ What a run produces, nested top-down:
 
 ```text
 TckResult
-└── scripts: list[ScriptResult]
+└── tests: list[TestResult]
     ├── execution: list[StepResult]
     │   ├── request / response: HttpRequest / HttpResponse
     │   ├── exchanges: list[HttpExchange]
@@ -230,14 +230,14 @@ captured `request` / `response`, the serialised `output`, an optional
 `error` / `error_traceback`, and the evaluated `assertions`. `exchanges` holds
 *every* call the step made - both the engine's own `httpx` calls and the ones
 `tractusx-sdk` made on its behalf, each naming in `context` the method that sent
-it - while `request` / `response` name the one the script is about
+it - while `request` / `response` name the one the test is about
 ([ADR-0016](decision-records/backend/ADR-0016-execution-trace-format.md)). `CallbackResult`
 records a callback received (or timed out) on a mock listener.
 
 ## Execution events (`models/runtime/events.py`)
 
 Frozen event models the execution monitor publishes while a job runs —
-`JobStartedEvent`, `ScriptStartedEvent`, `StepCompletedEvent`,
+`JobStartedEvent`, `TestStartedEvent`, `StepCompletedEvent`,
 `AssertionResultEvent`, and so on — each carrying its `EventKind` so consumers
 (CLI, server SSE stream, the IDE) can dispatch on `kind` directly. The SSE wire
 name is derived from the kind by turning its underscore into a dot
@@ -247,7 +247,7 @@ name is derived from the kind by turning its underscore into a dot
 ## Jobs (`models/runtime/jobs.py`)
 
 `Job` tracks one submitted execution (`job_id`, `status`, timing, the current
-script and step), with `JobMemory` as its mutable key-value store and `JobEvent`
+test and step), with `JobMemory` as its mutable key-value store and `JobEvent`
 entries as its event log.
 
 ## Inspection models (`models/runtime/inspection.py`)
@@ -268,12 +268,12 @@ class StepMeta(BaseModel):
     validation_count: int  # number of validate: entries on this step
 ```
 
-### `ScriptInspection`
+### `TestInspection`
 
-Metadata for one test script within a TCK.
+Metadata for one test within a TCK.
 
 ```python
-class ScriptInspection(BaseModel):
+class TestInspection(BaseModel):
     model_config = ConfigDict(frozen=True)
     name: str
     steps: tuple[StepMeta, ...]
@@ -289,13 +289,13 @@ class TckInspectionResult(BaseModel):
     name: str
     total_steps: int
     total_validations: int
-    scripts: tuple[ScriptInspection, ...]
+    tests: tuple[TestInspection, ...]
 ```
 
 ### Usage
 
 ```python
-from tractusx_testlab.scripting import Loader
+from tractusx_testlab.authoring import Loader
 
 loader = Loader()
 tck = loader.load("my-test.tck")
@@ -305,8 +305,8 @@ print(result.name)              # "Certificate Management Conformity"
 print(result.total_steps)       # 12
 print(result.total_validations) # 8
 
-for script in result.scripts:
-    for step in script.steps:
+for test in result.tests:
+    for step in test.steps:
         print(step.uses, step.phase.value)  # "connector/consumer/query_catalog" "EXECUTION"
 ```
 
@@ -324,7 +324,7 @@ A step's declared contract is the only channel data moves through:
    top-level output field becomes a context variable of the same name —
    `negotiate` returns `negotiation_id`, `do_dsp` returns the `dataplane_url` /
    `edr_token` pair, and downstream steps read exactly those.
-3. **Explicit capture.** When a script needs a value under a name of its own
+3. **Explicit capture.** When a test needs a value under a name of its own
    choosing, the util steps (`util/json_path_extract`, `util/base64`,
    `util/parse_kv`) accept a `store_in_variable` parameter naming the context
    variable to write.

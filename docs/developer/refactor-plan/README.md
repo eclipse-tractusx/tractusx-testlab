@@ -154,7 +154,7 @@ lockstep across both codebases with coordinated review.
 
 | Contract | Frontend touch point | Backend touch point | Rule |
 |----------|----------------------|---------------------|------|
-| **YAML v2 syntax** (`@variable`, step shape, phases) | `services/yaml/` (`modelToYaml`, `yamlToModel`) | `scripting/`, `compiler/` parser | Field names, ordering semantics, and variable syntax are frozen. Refactors may relocate the mapping code but must emit byte-identical YAML. |
+| **YAML v2 syntax** (`@variable`, step shape, phases) | `services/yaml/` (`modelToYaml`, `yamlToModel`) | `authoring/`, `compiler/` parser | Field names, ordering semantics, and variable syntax are frozen. Refactors may relocate the mapping code but must emit byte-identical YAML. |
 | **Block catalog schema + `classes.json` taxonomy** | `public/blocks/**`, `blocks/registration/`, `toolbox/` | catalog consumed during compile validation | Block JSON shape, category taxonomy, and param-type names are frozen. Reorganizing loaders/registration must not alter the manifest contract. |
 | **TCK env / services manifest model** | `features/environment-editor/`, `store/environment/`, `models/environment.ts` | env/services manifest reader | The manifest field model is frozen. Both sides serialize/deserialize the same shape. |
 | **Compiled `.stck` package format** | export feature / compile API client | `compiler/` packager | The package layout and contents are frozen. The frontend only triggers and consumes it. |

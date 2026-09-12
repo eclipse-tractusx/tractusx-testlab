@@ -42,13 +42,13 @@ import yaml
 
 from combinations.harness import Harness
 from combinations.http_double import HttpDouble
-from tractusx_testlab.compiler.validation.validator import ScriptValidator
-from tractusx_testlab.scripting.parser import YamlParser
+from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.compiler.validation.validator import TestValidator
 
 pytestmark = pytest.mark.asyncio
 
 
-def _script(base_url: str) -> str:
+def _test(base_url: str) -> str:
     """A test document in the syntax an authored TCK is written in."""
     return textwrap.dedent(
         f"""
@@ -146,21 +146,21 @@ class TestTheDocumentIsAccepted:
 
     async def test_the_document_parses(self, parts_api: HttpDouble) -> None:
         base = parts_api.start()
-        script = YamlParser.parse_script_from_dict(yaml.safe_load(_script(base)))
+        test = YamlParser.parse_test_from_dict(yaml.safe_load(_test(base)))
 
-        assert [step.id for step in script.execution] == [
+        assert [step.id for step in test.execution] == [
             "register",
             "part_id",
             "read_back",
         ]
-        assert [step.id for step in script.setup] == ["seed_id"]
-        assert [step.id for step in script.teardown] == ["drop"]
+        assert [step.id for step in test.setup] == ["seed_id"]
+        assert [step.id for step in test.teardown] == ["drop"]
 
     async def test_the_validator_reports_nothing(self, parts_api: HttpDouble) -> None:
         base = parts_api.start()
-        script = YamlParser.parse_script_from_dict(yaml.safe_load(_script(base)))
+        test = YamlParser.parse_test_from_dict(yaml.safe_load(_test(base)))
 
-        result = ScriptValidator().validate(script)
+        result = TestValidator().validate(test)
 
         assert result.valid, [i.message for i in result.issues if i.level == "error"]
 
@@ -169,10 +169,10 @@ class TestTheDocumentIsAccepted:
     ) -> None:
         """The check that turns a typo into a compile error, on a real document."""
         base = parts_api.start()
-        raw = yaml.safe_load(_script(base))
+        raw = yaml.safe_load(_test(base))
         raw["execution"][0]["returns"]["statuscode"] = {"type": "integer"}
 
-        result = ScriptValidator().validate(YamlParser.parse_script_from_dict(raw))
+        result = TestValidator().validate(YamlParser.parse_test_from_dict(raw))
 
         errors = [i.message for i in result.issues if i.level == "error"]
         assert any("statuscode" in message for message in errors)
@@ -181,10 +181,10 @@ class TestTheDocumentIsAccepted:
         self, parts_api: HttpDouble
     ) -> None:
         base = parts_api.start()
-        raw = yaml.safe_load(_script(base))
+        raw = yaml.safe_load(_test(base))
         raw["execution"][0]["validate"][0]["uses"] = "assert/status_code"
 
-        result = ScriptValidator().validate(YamlParser.parse_script_from_dict(raw))
+        result = TestValidator().validate(YamlParser.parse_test_from_dict(raw))
 
         errors = [i.message for i in result.issues if i.level == "error"]
         assert any("validate/assert" in message for message in errors)
@@ -195,12 +195,12 @@ class TestTheDocumentRuns:
 
     @staticmethod
     async def _run(harness: Harness, base: str) -> dict:
-        script = YamlParser.parse_script_from_dict(yaml.safe_load(_script(base)))
+        test = YamlParser.parse_test_from_dict(yaml.safe_load(_test(base)))
         outcomes = {}
         for phase, steps in (
-            ("setup", script.setup),
-            ("execution", script.execution),
-            ("teardown", script.teardown),
+            ("setup", test.setup),
+            ("execution", test.execution),
+            ("teardown", test.teardown),
         ):
             outcomes[phase] = await harness.run(
                 *[step.model_dump(by_alias=True, exclude_none=True) for step in steps],

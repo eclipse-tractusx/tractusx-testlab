@@ -63,7 +63,7 @@ async def callback_webhook(
         body = await request.json()
 
     # Two readings of one query string, for two audiences: a handler is a server
-    # and sees every value it was sent, a callback result is what a script reads
+    # and sees every value it was sent, a callback result is what a test reads
     # and carries one value per name (mock_registry.MockRequest).
     query_params = dict(request.query_params)
     mock = resolve_mock(

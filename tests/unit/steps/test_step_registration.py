@@ -38,7 +38,7 @@ import re
 from pathlib import Path
 
 import tractusx_testlab.steps
-from tractusx_testlab.scripting.registry import StepRegistry
+from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.steps.step_contract import BaseStep
 
 _STEPS_DIR = Path(tractusx_testlab.steps.__file__).parent

@@ -32,13 +32,13 @@ from typing import TYPE_CHECKING, Any
 from pydantic import Field
 from tractusx_sdk.dataspace.tools import DspTools
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import (
     HttpRequest,
     HttpResponse,
     StepDefinition,
     StepExecutionError,
 )
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector.discover_connector import discovery_address
 from tractusx_testlab.steps.counter_party import CounterPartyParams
@@ -143,7 +143,7 @@ class QueryCatalogByAssetIdParams(CounterPartyParams, DspProtocolParams):
     The asset ID is the whole filter.  Narrowing the result further by policy is
     what ``pull_data_filtered_by_policy`` and ``do_dsp`` are for; a catalog query
     that also picked its offer by policy was two steps wearing one name, and the
-    policy half of it silently selected nothing whenever a script left it out.
+    policy half of it silently selected nothing whenever a test left it out.
     """
 
     asset_id: str = Field(description="Asset ID the catalog is filtered by.")
@@ -153,7 +153,7 @@ class CatalogOfferOutput(CatalogOutput):
     """Output contract of ``connector/consumer/query_catalog_by_asset_id``.
 
     Extends the catalog document with the first offer it carries, which is what
-    ``negotiate`` reads back when a script does not name an offer itself.  Both
+    ``negotiate`` reads back when a test does not name an offer itself.  Both
     fields stay unset when the catalog carries no offer at all — selection is
     best-effort here and ``negotiate`` is what reports the failure.
     """
@@ -216,7 +216,7 @@ def _first_offer(catalog: Any) -> tuple[Any, Any] | None:
 
     ``allowed_policies=None`` is the SDK's "accept any policy"; ``[]`` is its
     "accept none", and passing the latter is how this step used to select
-    nothing at all whenever a script named no policies — the empty default of a
+    nothing at all whenever a test named no policies — the empty default of a
     filter that has now been removed.
     """
     if not catalog:

@@ -29,7 +29,7 @@ a ``validate:`` block can assert on it.
 
 from __future__ import annotations
 
-from tractusx_testlab.scripting.registry import step
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.steps.util.json_extract import JsonPathExtractStep
 
 

@@ -31,13 +31,14 @@ from datetime import UTC, datetime
 from itertools import count
 from typing import Any
 
+from tractusx_testlab.authoring.test import Test
 from tractusx_testlab.logging import wire
-from tractusx_testlab.models import EngineError, ScriptStatus, StepStatus, TestLabError
+from tractusx_testlab.models import EngineError, StepStatus, TestLabError, TestStatus
 from tractusx_testlab.models.runtime.results import (
     ENGINE_FAULT_PREFIX,
     AssertionResult,
-    ScriptResult,
     StepResult,
+    TestResult,
 )
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
@@ -48,7 +49,6 @@ from tractusx_testlab.player.execution.phase import (
 )
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
-from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps._checks.published_names import publishes
 from tractusx_testlab.steps.assertions import AssertionEngine
 
@@ -146,7 +146,7 @@ async def _run_step_guarded(
             params = resolve_params(step_def.with_ or {}, context)
         # What the step was actually given, once every ``${{ ... }}`` was
         # resolved. A step that failed on what a reference resolved to cannot be
-        # debugged from the script, which only says which reference was written.
+        # debugged from the test, which only says which reference was written.
         inputs = dict(params)
 
         output = await step_instance.invoke(params, context, step_def)
@@ -211,29 +211,29 @@ async def _run_step_guarded(
         )
 
 
-async def run_script(
-    script: TestScript,
+async def run_test(
+    test: Test,
     context: StepContext,
     job_id: str,
     monitor: ExecutionMonitor,
     jobs: JobManager,
-) -> ScriptResult:
-    """Execute all steps in a script sequentially (setup → main → teardown)."""
-    script_start = datetime.now(UTC)
+) -> TestResult:
+    """Execute all steps in a test sequentially (setup → main → teardown)."""
+    test_start = datetime.now(UTC)
 
     step_results: list[StepResult] = []
     setup_results, setup_status = await run_setup(
-        script,
+        test,
         context,
         job_id,
         monitor,
         jobs,
     )
-    if setup_status == ScriptStatus.FAILED:
-        script_status = ScriptStatus.FAILED
+    if setup_status == TestStatus.FAILED:
+        test_status = TestStatus.FAILED
     else:
-        step_results, script_status = await run_execution(
-            script,
+        step_results, test_status = await run_execution(
+            test,
             context,
             job_id,
             monitor,
@@ -241,41 +241,41 @@ async def run_script(
         )
 
     teardown_results = await run_teardown(
-        script,
+        test,
         context,
         job_id,
         monitor,
     )
 
-    script_end = datetime.now(UTC)
+    test_end = datetime.now(UTC)
     all_step_results = setup_results + step_results + teardown_results
 
     summary = AssertionEngine.build_summary(
-        all_step_results, declared=_declared_assertions(script, all_step_results)
+        all_step_results, declared=_declared_assertions(test, all_step_results)
     )
 
     # Checks that were asked for and did not run mean the result describes less
-    # than the script claimed to verify. The engine evaluates assertions one for
+    # than the test claimed to verify. The engine evaluates assertions one for
     # one, so this should be unreachable — which is exactly why it is measured
     # rather than trusted: the defect this whole review started from was
-    # assertions going missing between the script and the result.
+    # assertions going missing between the test and the result.
     if summary.unevaluated:
-        script_status = ScriptStatus.FAILED
+        test_status = TestStatus.FAILED
 
-    return ScriptResult(
-        script_id=script.definition.id,
-        script_name=script.name,
-        dataspace_version=script.dataspace_version,
-        status=script_status,
+    return TestResult(
+        test_id=test.definition.id,
+        test_name=test.name,
+        dataspace_version=test.dataspace_version,
+        status=test_status,
         execution=all_step_results,
-        started_at=script_start,
-        finished_at=script_end,
-        total_duration_s=(script_end - script_start).total_seconds(),
+        started_at=test_start,
+        finished_at=test_end,
+        total_duration_s=(test_end - test_start).total_seconds(),
         assertion_summary=summary,
     )
 
 
-def _declared_assertions(script: TestScript, results: list[StepResult]) -> int:
+def _declared_assertions(test: Test, results: list[StepResult]) -> int:
     """Count the assertions the steps that actually ran had asked for.
 
     Steps skipped by ``if:`` are excluded: a check that was never reached was
@@ -285,9 +285,9 @@ def _declared_assertions(script: TestScript, results: list[StepResult]) -> int:
     return sum(
         len(step.assertions or [])
         for phase in (
-            script.definition.setup,
-            script.definition.execution,
-            script.definition.teardown,
+            test.definition.setup,
+            test.definition.execution,
+            test.definition.teardown,
         )
         for step in phase
         if step.uses in ran

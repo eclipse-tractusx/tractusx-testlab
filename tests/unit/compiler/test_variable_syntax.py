@@ -28,9 +28,9 @@ from __future__ import annotations
 
 import yaml
 
+from tractusx_testlab.authoring._builders import parse_variables
 from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.models import VariableSource
-from tractusx_testlab.scripting._builders import parse_variables
 
 # A variables block in YAML can be a verb-form LIST (id-keyed) or a legacy MAP.
 _PROVIDE_NOW = """

@@ -31,8 +31,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps.connector.provision._shared import (
     _config_object,
     _create_or_conflict,
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 
-#: The JSON-LD context the SDK gives an asset when the script declares none,
+#: The JSON-LD context the SDK gives an asset when the test declares none,
 #: repeated here because adding a prefix to it means sending the whole of it.
 _DEFAULT_ASSET_CONTEXT: dict[str, str] = {
     "edc": "https://w3id.org/edc/v0.0.1/ns/",
@@ -173,7 +173,7 @@ class CreateAssetStep(BaseStep[CreateAssetParams, CreateAssetOutput]):
     ``asset`` input, so the same asset can be reused across tests.
 
     An asset that already exists is not an error: the connector answers 409 and
-    the step reports the ID it would have created, so a script can be re-run
+    the step reports the ID it would have created, so a test can be re-run
     against a provider it has already provisioned.
     """
 
@@ -197,7 +197,7 @@ class WizardCreateAssetParams(StepParams):
     """Input contract of ``connector/provider/wizard/create_asset``.
 
     The same asset as ``connector/provider/create_asset`` registers, described
-    field by field instead of as one document — for a script written by hand or
+    field by field instead of as one document — for a test written by hand or
     by the IDE's form, where there is no reusable asset config to point at.
     """
 

@@ -74,7 +74,7 @@ class TestlabConfig(BaseSettings):
     default_timeout_s: float = Field(default=600.0, gt=0)
     #: The deployment this engine drives — its own connector, registry and
     #: submodel server, and the system under test it talks to. Held here so an
-    #: engine is configured once, at startup, rather than per script.
+    #: engine is configured once, at startup, rather than per test.
     infrastructure: Infrastructure = Field(default_factory=Infrastructure)
     vault: VaultConfig | None = None
     library_path: Path | None = None

@@ -25,7 +25,7 @@
 """Provisioning what a provider connector offers: assets, policies, contracts.
 
 One module per resource family rather than one 561-line file, because that
-is how the connector's management API is divided and how a script uses
+is how the connector's management API is divided and how a test uses
 them: register the asset, register the policy, bind the two.
 """
 

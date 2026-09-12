@@ -47,7 +47,7 @@ quietly dropped between sessions.
 
 | # | Question | Answer |
 | --- | --- | --- |
-| Q1 | Are inter-script `depends_on` dependencies a v1 feature? | **No — delete the machinery.** |
+| Q1 | Are inter-test `depends_on` dependencies a v1 feature? | **No — delete the machinery.** |
 | Q2 | Is an unsigned `.tck` a supported distribution format? | **`.tck` is the one distribution *and* execution format.** The separate package format is wrong and goes. |
 | Q3 | Does the IDE consume `tck-execution.json`? | **No — and that is not what it is for.** It is the compiled, machine-readable form *the player is meant to execute*. The IDE only authors declarative YAML and, at run time, renders the trace by parsing CloudEvents. |
 | Q4 | Is the AI-provenance subtitle a compliance artefact? | **No.** Keep it in file headers; do not enforce it in CI. |
@@ -171,7 +171,7 @@ That is the concrete cost of F-F02's defensive `getattr` style, in one place.
 | F-B01 | High | JSON Schema and Pydantic model disagree on 6 required fields | P3 | **done** — schemas generated from the models; `testlab schema --check` in CI |
 | F-B02 | High | `validate/*` registered as steps but forbidden by the validator | P1 | **done** — module deleted; its stronger schema check ported into the reachable path |
 | F-B03 | High | Three variable syntaxes live against a rule permitting one | P1 | **done** — `${var}`, `@var`, `source: VARIABLE` all removed |
-| F-B04 | Medium | Undeclared-variable check greps a syntax no script uses | P2 | **done** — scope-aware, now an error; 23 spurious warnings → 0 |
+| F-B04 | Medium | Undeclared-variable check greps a syntax no test uses | P2 | **done** — scope-aware, now an error; 23 spurious warnings → 0 |
 | F-B05 | Medium | Two accepted shapes for `env.schemas` / `env.testdata` | P3 | **done** — the generated schema describes the list form the models declare |
 | F-B06 | Medium | Three version numbers for one artefact; `v1-alpha2` is not PEP 440 | P3 | **done** — `1.0.0a2`, read from package metadata everywhere |
 | F-B07 | Low | Docstrings promise `.tck`, code writes `.stck`; "inlining" does not inline | P3 | **done** — `.stck` deleted; `.tck` is the one format, plain or encrypted |
@@ -371,7 +371,7 @@ the author to find which step and which key in a file of dozens.
 
 Fixing the regex (P1) made this check run for the first time, and it immediately
 produced **23 warnings against the shipped example** — every one spurious. It
-compared references against `getattr(script, "variables", {})`, one of the
+compared references against `getattr(test, "variables", {})`, one of the
 phantom properties deleted in P1, so the set it checked against was always empty
 and the message said so:
 
@@ -381,7 +381,7 @@ That was true of every reference in every TCK, so the warning carried no
 information and was correctly ignored by everyone.
 
 It now resolves against the namespace the run will actually have — the manifest's
-`env` variables, testdata and schemas, the script's own step ids per phase, and
+`env` variables, testdata and schemas, the test's own step ids per phase, and
 the generated infrastructure binding keys — and is an **error**, because at run
 time an unresolved reference is now fatal (F-A02).
 
@@ -395,7 +395,7 @@ with the available names listed beside it:
 
 Only the *root* of a reference is checked — `env.sut_bpn` out of
 `env.sut_bpn.value`. How deep a declared output can be walked is the step's
-business, not the manifest's, and checking further would reject valid scripts.
+business, not the manifest's, and checking further would reject valid tests.
 
 ---
 
@@ -415,9 +415,9 @@ to measure the case that would be a defect:
 - `AssertionSummary.declared` records what the executed steps asked for, beside
   `total` for what ran. Steps skipped by `if:` are excluded — a check never
   reached was not dropped.
-- `unevaluated` (declared − total) fails the script. It should be unreachable,
+- `unevaluated` (declared − total) fails the test. It should be unreachable,
   which is why it is measured rather than trusted: assertions going missing
-  between the script and the result is the defect this review began with.
+  between the test and the result is the defect this review began with.
 - A run that evaluated nothing now says so in the report instead of printing an
   unqualified PASS.
 
@@ -468,7 +468,7 @@ It was not. Compiled against the models, the IR dropped seven declarations:
 Wiring the player to the IR in that state would have introduced five regressions
 at once, each silent. **The IR is now lossless**, and
 `tests/unit/compiler/test_ir_is_lossless.py` compares the compiled output against
-`ScriptDefinition` and `StepDefinition` themselves — so a field added to a model
+`TestDefinition` and `StepDefinition` themselves — so a field added to a model
 without the builder learning to carry it fails the build rather than going
 missing at run time.
 
@@ -536,7 +536,7 @@ negative tests. The inversion is gone.
 
 ### `dataspace_version` is deprecated
 
-Removed from `ScriptDefinition` and `TckMetadataDefinition`. The `dataspace:`
+Removed from `TestDefinition` and `TckMetadataDefinition`. The `dataspace:`
 block is now the only place a release is stated.
 
 This supersedes part of the F-A10 fix: that fix corrected the player to read the
@@ -614,7 +614,7 @@ route is now unreachable.
 ## P3, part 3 — the schemas are generated
 
 `compiler/schema_export.py` renders `tck_index.schema.json` and
-`tck_test.schema.json` from `TckDefinition` and `ScriptDefinition`.
+`tck_test.schema.json` from `TckDefinition` and `TestDefinition`.
 `testlab schema` writes them, `testlab schema --check` fails the build when the
 committed files no longer match, and CI runs it beside `testlab docs --check`.
 
@@ -628,7 +628,7 @@ What the hand-written schemas had drifted into:
 | absent | `syntax`, `dataspace`, `infrastructure`, `expects`, `if`, `timeout_s` | declared |
 | unknown keys | `additionalProperties: true` | `false` |
 
-`by_alias=True` matters in the renderer: scripts write `with:` and `if:` while
+`by_alias=True` matters in the renderer: tests write `with:` and `if:` while
 the fields are `with_` and `if_condition`, because those spellings are not legal
 Python. The schema has to describe the YAML, not the Python.
 
@@ -658,7 +658,7 @@ and the OpenAPI document reads it from package metadata rather than hardcoding
 `StepDefinition.validate` shadowed `BaseModel.validate`, so Pydantic warned on
 every import of the library — including every `testlab` command — and mypy
 reported the override as a type error. The field is now `assertions`, with
-`validation_alias` and `serialization_alias` both `validate`: scripts, the IR and
+`validation_alias` and `serialization_alias` both `validate`: tests, the IR and
 the published JSON Schema are unchanged, and the shadowing is gone.
 
 Renaming it immediately found a reader I had missed. `validator.py` still said
@@ -749,13 +749,13 @@ the service Protocols beside it.
 The harm was concrete: the event loop those calls blocked is the same one running
 the in-process callback server. A step waiting on a slow registry stopped the
 SUT's callbacks from being answered — with a 600-second step timeout, the server
-could be unreachable for ten minutes while the script sat waiting for a callback
+could be unreachable for ten minutes while the test sat waiting for a callback
 that could not arrive.
 
 ### Two behaviours that had to be preserved deliberately
 
 **Header casing.** `dict(httpx_response.headers)` lower-cases every name, because
-httpx's own lookups are case-insensitive and it normalises for them. A script
+httpx's own lookups are case-insensitive and it normalises for them. A test
 gets no such courtesy: a TCK reading `response_headers.X-Next-Cursor` finds
 nothing once the key is `x-next-cursor`. `requests` preserved the wire casing, so
 `headers_of()` rebuilds from the raw pairs. Caught by an existing combination
@@ -812,7 +812,7 @@ should say so in its signature.
 
 `_dict_get` tried the written key and then silently retried its camelCase form,
 so `header.message_id` found `messageId`. A second spelling for one field,
-undocumented and unbounded, and no way to say from a script why a path resolved.
+undocumented and unbounded, and no way to say from a test why a path resolved.
 
 Nothing real depended on it: every path in the shipped TCKs, and every other path
 in the extraction tests, already writes the actual key. One test read
@@ -919,7 +919,7 @@ reads `get_variable`, because `""` would say a target was named.
 Also typed properly rather than ignored: `StepPayload.of` returns `Self`, so
 `DataAddressPayload.of(...)` is a data address and not a bare payload; the
 `Controller` Protocol declares `create`, which half its callers use; and
-`_parse_script` returns the definition it parses instead of `object`.
+`_parse_test` returns the definition it parses instead of `object`.
 
 ### F-D05 — the file-size ratchet, tightened
 
@@ -932,7 +932,7 @@ Three splits, each on a seam the code already had:
 * `steps/connector/provision.py` (561) → a package with one module per resource
   family — `asset`, `policy`, `contract_definition` — plus `_shared` for the
   read-an-id and create-or-409 helpers. That is how the connector's management
-  API is divided and how a script uses them.
+  API is divided and how a test uses them.
 * `steps/digital_twin/provider.py` (638) → `provider/shell.py` and
   `provider/submodel_descriptor.py`. A submodel descriptor is addressed through
   the shell that holds it, which is the one import between them.
@@ -974,7 +974,7 @@ four-of-five reproduction.
 `_build_inline_message` looked for flat `status` / `duration_s` / `request` /
 `response` keys. The typed events carry a nested `result` and a nested
 `assertion`, so none of those keys were ever present and every line printed as
-its event name and its script: `assertion.result [wiring]`. The JSONL had the
+its event name and its test: `assertion.result [wiring]`. The JSONL had the
 whole story the entire time.
 
 `logging/console.py` renders the real shapes — which check ran, what it asked
@@ -1000,7 +1000,7 @@ teardown step 0 all printed as `(step 0)`. And the main phase is labelled
 
 ### `Steps: N` counted one phase of three
 
-`TestScript.step_count` returned `len(definition.execution)`. `testlab run`
+`Test.step_count` returned `len(definition.execution)`. `testlab run`
 announced "Steps: 2" for a run that executed five, and gave the progress bar a
 total it went past. `testlab inspect` had always counted all three, so the two
 commands disagreed about the same package.

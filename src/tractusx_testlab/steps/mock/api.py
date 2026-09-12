@@ -31,8 +31,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import Listener, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.server.mock_registry import (
     MockResponse,
     get_callback_manager,
@@ -78,7 +78,7 @@ class MockEndpointParams(MockIdParams):
 
 
 class MockEndpointOutput(StepPayload):
-    """The mock that now exists, and the two URLs a script needs from it."""
+    """The mock that now exists, and the two URLs a test needs from it."""
 
     mock: MockInstance = Field(
         description="The registered mock, as 'mock/wait/http_request' takes it."
@@ -93,7 +93,7 @@ class MockEndpointOutput(StepPayload):
 class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
     """Register a mock HTTP endpoint that returns a canned response.
 
-    ``full_mock_url`` is what a script hands to the system under test as its
+    ``full_mock_url`` is what a test hands to the system under test as its
     callback address; ``mock`` is what it hands to
     ``mock/wait/http_request``, which then blocks until the SUT calls it.
     """

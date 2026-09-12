@@ -29,7 +29,7 @@ Two steps never execute and both still have to appear in the run: the one whose
 ``if:`` said no, and the one whose ``uses:`` names something the registry does
 not have. Neither can report a wire or an output, so what they report is a
 status and — for the missing one — why nothing could be run at all. A phase that
-silently omitted them would produce a result shorter than the script.
+silently omitted them would produce a result shorter than the test.
 """
 
 from __future__ import annotations

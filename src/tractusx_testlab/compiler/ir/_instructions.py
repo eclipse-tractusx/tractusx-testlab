@@ -136,7 +136,7 @@ def _build_instruction(
     }
 
     # Carried only when the author wrote them, so the compiled form stays the
-    # shape of the script rather than the shape of the model's defaults. Absent
+    # shape of the test rather than the shape of the model's defaults. Absent
     # entirely before this, which meant a conditional step ran unconditionally, a
     # negative test ran as a positive one, and a timeout was never applied — the
     # run did something other than what the TCK said, in silence.

@@ -31,8 +31,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
 from tractusx_testlab.steps import http_client, sdk_call
 from tractusx_testlab.steps.shared_models import (
     DataAddressPayload,
@@ -87,10 +87,10 @@ class DataplaneCallParams(HttpCallParams):
     )
 
     def resolved_token(self, fallback: str) -> str:
-        """The token to send, or '' if the script explicitly asked for none.
+        """The token to send, or '' if the test explicitly asked for none.
 
-        ``None`` means the script left the field out, so the context variable a
-        prior transfer published is used. An explicit ``''`` is a script asking
+        ``None`` means the test left the field out, so the context variable a
+        prior transfer published is used. An explicit ``''`` is a test asking
         for the call to carry no token — the negative-path case a `falsy or
         fallback` read would silently defeat by substituting a stale token from
         an earlier step in the same run.
@@ -171,7 +171,7 @@ async def fetch_data_address(
     and ``connector/consumer/initiate_transfer`` both resolve a ``transfer_id``
     and then call this. An unreachable connector is reported as "no data address"
     rather than raised: the caller still has whatever else it resolved (an EDR
-    entry, a negotiation), and a 404/500 in the step's response is how a script
+    entry, a negotiation), and a 404/500 in the step's response is how a test
     asserts on the failure.
     """
     if not transfer_id:

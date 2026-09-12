@@ -197,7 +197,7 @@ class TestAttaching:
         assert result.response.status_code == 403
 
     def test_the_step_keeps_the_exchange_it_chose(self) -> None:
-        """A step that named its subject knows which call the script is about."""
+        """A step that named its subject knows which call the test is about."""
         with wire.recording("catalog") as recorder:
             _sdk_call("https://incidental")
         result = StepResult(

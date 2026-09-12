@@ -23,7 +23,7 @@
 ## It was reviewed and tested by a human committer.
 
 
-"""Running a script's steps, one phase at a time.
+"""Running a test's steps, one phase at a time.
 
 Setup, execution and teardown differ in four decisions — whether a failure
 stops the phase, whether ``if:`` conditions are honoured, whether the pause
@@ -39,7 +39,9 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
-from tractusx_testlab.models import ScriptStatus, StepStatus
+from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.authoring.test import Test
+from tractusx_testlab.models import StepStatus, TestStatus
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.player.execution._not_run import missing_step_result, skipped_result
@@ -48,8 +50,6 @@ from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import try_resolve_params
-from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.scripting.script import TestScript
 from tractusx_testlab.steps.conditions import ConditionEvaluator
 
 # Maps a phase label to the expression namespace (e.g. "execution.ID.field").
@@ -88,28 +88,28 @@ class PhaseConfig:
 
 
 async def run_phase(
-    script: TestScript,
+    test: Test,
     context: StepContext,
     job_id: str,
     monitor: ExecutionMonitor,
     jobs: JobManager | None,
     config: PhaseConfig,
-) -> tuple[list[StepResult], ScriptStatus]:
+) -> tuple[list[StepResult], TestStatus]:
     """Execute a sequence of steps according to the given phase configuration."""
-    steps_source = _get_steps_for_phase(script, config.phase)
+    steps_source = _get_steps_for_phase(test, config.phase)
     results: list[StepResult] = []
 
     # A call is published while the step that made it is still running, and this
-    # is the layer that knows which job and which script it belongs to. The step
+    # is the layer that knows which job and which test it belongs to. The step
     # runner adds the step, including for the steps nested inside a flow step,
     # which run on this same context (_reporters).
-    bind_reporters(context, monitor, job_id, script.definition.id, config.phase_label)
+    bind_reporters(context, monitor, job_id, test.definition.id, config.phase_label)
 
     for step_idx, step_def in enumerate(steps_source):
         await _handle_pause_gate(jobs, job_id, config)
 
         step_name = _format_step_name(
-            script.definition.id, step_idx, step_def.uses, config.phase_label, step_def.id
+            test.definition.id, step_idx, step_def.uses, config.phase_label, step_def.id
         )
         # Resolved before the event rather than inside the runner: what the
         # step is about to be given is what ``step.start`` has to report, and a
@@ -121,7 +121,7 @@ async def run_phase(
         params = try_resolve_params(step_def.with_ or {}, context)
         monitor.on_step_started(
             job_id,
-            script.definition.id,
+            test.definition.id,
             step_def.id,
             step_idx,
             step_def.uses,
@@ -140,13 +140,13 @@ async def run_phase(
         ):
             skipped = skipped_result(step_name, step_def.uses, config.phase)
             results.append(skipped)
-            monitor.on_step_completed(job_id, script.definition.id, step_def.id, skipped)
+            monitor.on_step_completed(job_id, test.definition.id, step_def.id, skipped)
             # A step whose `if:` said no must not then run: recording SKIPPED and
             # executing it anyway is the one outcome the condition rules out.
             continue
 
         failed = await _resolve_and_run_step(
-            script,
+            test,
             step_def,
             step_name,
             context,
@@ -157,9 +157,9 @@ async def run_phase(
             params,
         )
         if failed:
-            return results, ScriptStatus.FAILED
+            return results, TestStatus.FAILED
 
-    return results, ScriptStatus.COMPLETED
+    return results, TestStatus.COMPLETED
 
 
 async def _handle_pause_gate(
@@ -173,7 +173,7 @@ async def _handle_pause_gate(
 
 
 async def _resolve_and_run_step(
-    script: TestScript,
+    test: Test,
     step_def: Any,
     step_name: str,
     context: StepContext,
@@ -187,17 +187,17 @@ async def _resolve_and_run_step(
     from tractusx_testlab.player.execution._step_outputs import store_step_outputs
     from tractusx_testlab.player.execution.step_runner import run_step
 
-    step_cls = StepRegistry.get(step_def.uses, script.dataspace_version)
+    step_cls = StepRegistry.get(step_def.uses, test.dataspace_version)
     if step_cls is None:
         missing = missing_step_result(step_name, step_def.uses, config.phase)
         results.append(missing)
-        monitor.on_step_completed(job_id, script.definition.id, step_def.id, missing)
+        monitor.on_step_completed(job_id, test.definition.id, step_def.id, missing)
         return config.failure_policy == FailurePolicy.STOP
 
     step_result = await run_step(step_cls, step_def, step_name, context, params)
     step_result.phase = config.phase
     results.append(step_result)
-    monitor.on_step_completed(job_id, script.definition.id, step_def.id, step_result)
+    monitor.on_step_completed(job_id, test.definition.id, step_def.id, step_result)
 
     if config.store_outputs:
         step_namespace = _PHASE_TO_NAMESPACE.get(config.phase_label)
@@ -206,23 +206,23 @@ async def _resolve_and_run_step(
     return step_result.status == StepStatus.FAILED and config.failure_policy == FailurePolicy.STOP
 
 
-def _get_steps_for_phase(script: TestScript, phase: StepPhase) -> list:
+def _get_steps_for_phase(test: Test, phase: StepPhase) -> list:
     """Return the step definitions list for the given phase."""
     if phase == StepPhase.SETUP:
-        return script.definition.setup
+        return test.definition.setup
     if phase == StepPhase.TEARDOWN:
-        return script.definition.teardown
-    return script.definition.execution
+        return test.definition.teardown
+    return test.definition.execution
 
 
 def _format_step_name(
-    script_name: str, idx: int, step_type: str, phase_label: str, step_id: str | None = None
+    test_name: str, idx: int, step_type: str, phase_label: str, step_id: str | None = None
 ) -> str:
     """Format a step identifier using step id when available, index otherwise."""
     step_ref = step_id if step_id else f"{idx}"
     if phase_label == "execution":
-        return f"{script_name}[{step_ref}]:{step_type}"
-    return f"{script_name}[{phase_label}:{step_ref}]:{step_type}"
+        return f"{test_name}[{step_ref}]:{step_type}"
+    return f"{test_name}[{phase_label}:{step_ref}]:{step_type}"
 
 
 # ---------------------------------------------------------------------------
@@ -264,34 +264,34 @@ TEARDOWN = PhaseConfig(
 
 
 async def run_setup(
-    script: TestScript,
+    test: Test,
     context: StepContext,
     job_id: str,
     monitor: ExecutionMonitor,
     jobs: JobManager,
-) -> tuple[list[StepResult], ScriptStatus]:
-    """Run the script's setup steps, stopping at the first failure."""
-    return await run_phase(script, context, job_id, monitor, jobs, SETUP)
+) -> tuple[list[StepResult], TestStatus]:
+    """Run the test's setup steps, stopping at the first failure."""
+    return await run_phase(test, context, job_id, monitor, jobs, SETUP)
 
 
 async def run_execution(
-    script: TestScript,
+    test: Test,
     context: StepContext,
     job_id: str,
     monitor: ExecutionMonitor,
     jobs: JobManager,
-) -> tuple[list[StepResult], ScriptStatus]:
-    """Run the script's main steps, stopping at the first failure."""
-    return await run_phase(script, context, job_id, monitor, jobs, EXECUTION)
+) -> tuple[list[StepResult], TestStatus]:
+    """Run the test's main steps, stopping at the first failure."""
+    return await run_phase(test, context, job_id, monitor, jobs, EXECUTION)
 
 
 async def run_teardown(
-    script: TestScript,
+    test: Test,
     context: StepContext,
     job_id: str,
     monitor: ExecutionMonitor,
     jobs: JobManager | None = None,
 ) -> list[StepResult]:
-    """Run the script's teardown steps, whatever happened before them."""
-    results, _ = await run_phase(script, context, job_id, monitor, jobs, TEARDOWN)
+    """Run the test's teardown steps, whatever happened before them."""
+    results, _ = await run_phase(test, context, job_id, monitor, jobs, TEARDOWN)
     return results
