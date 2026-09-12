@@ -38,18 +38,19 @@ theme:
   logo: assets/images/logo_tractus-x.svg
   custom_dir: docs/overrides
   palette:
-    - scheme: default
-      primary: custom
-      accent: orange
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
+    # The first scheme is the default: dark, with a toggle to light.
     - scheme: slate
       primary: custom
       accent: orange
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+    - scheme: default
+      primary: custom
+      accent: orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
   features:
     - navigation.tabs
     - navigation.sections
@@ -120,6 +121,7 @@ nav:
   - Home:
     - Welcome: index.md
     - Overview: home/overview.md
+    - Documentation Map: home/documentation-map.md
   - Specification:
     - Overview: specification/index.md
     - Installation: specification/installation.md
@@ -134,10 +136,29 @@ nav:
       - Writing Tests: specification/walkthrough/writing-tests.md
       - Compiling Packages: specification/walkthrough/compiling-packages.md
       - Executing Tests: specification/walkthrough/executing-tests.md
-    - Reference:
-      - Step Reference: specification/reference/steps.md
-      - Syntax Cheat Sheet: specification/reference/syntax/cheat-sheet.md
-      - TCK Syntax: specification/syntax/tck-syntax.md
+  - TCK Syntax:
+    - Overview: tck-syntax/index.md
+    - Package:
+      - Package Layout: tck-syntax/package/layout.md
+      - Common Header: tck-syntax/package/common-header.md
+    - Manifest (index.yaml):
+      - Header & Metadata: tck-syntax/manifest/index.md
+      - Dataspace & Infrastructure: tck-syntax/manifest/dataspace-infrastructure.md
+      - Environment (env): tck-syntax/manifest/env.md
+      - Test Order (tests): tck-syntax/manifest/tests.md
+    - Tests & Steps:
+      - Test Files: tck-syntax/tests/test-files.md
+      - Step Anatomy: tck-syntax/steps/index.md
+      - Expressions & References: tck-syntax/steps/expressions.md
+      - Capability Naming: tck-syntax/steps/capabilities.md
+      - Validation Functions: tck-syntax/steps/validations.md
+    - Authoring:
+      - Mapping CACs to Syntax: tck-syntax/authoring/cac-mapping.md
+      - Complete Worked Example: tck-syntax/authoring/worked-example.md
+      - Authoring Checklist: tck-syntax/authoring/checklist.md
+    - Execution Logs: tck-syntax/execution-logs.md
+    - Proposed Extensions: tck-syntax/extensions.md
+    - Cheat Sheet: tck-syntax/cheat-sheet.md
   - Tutorials:
     - Getting Started: tutorials/index.md
     - Create a Step Executor: tutorials/create-step-executor.md
@@ -154,6 +175,7 @@ nav:
       - Architecture Guide: tutorials/ccm-architecture-guide.md
   - API Reference:
     - Overview: api-reference/index.md
+    - Steps: api-reference/steps.md
   - Developer:
     - Overview: developer/index.md
     - Product Scope: developer/product-scope.md

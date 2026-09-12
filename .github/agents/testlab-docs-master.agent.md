@@ -32,10 +32,11 @@ You are working on `tractusx-testlab` documentation:
 - **Structure**:
     - `docs/home/` — Landing pages
     - `docs/ide/` — IDE user manual (visual editor)
-    - `docs/specification/` — YAML format specification
+    - `docs/specification/` — Specification, installation and walkthrough
+    - `docs/tck-syntax/` — TCK syntax reference and cheat sheet
     - `docs/tutorials/` — Step-by-step guides for common tasks
     - `docs/developer/` — Architecture, internals, handover docs
-    - `docs/api-reference/` — Python API reference
+    - `docs/api-reference/` — CLI overview and the generated step reference (`steps.md`)
     - `docs/contributing/` — Contribution guidelines
 - **Two codebases** to document:
     - `ide/` — React/TypeScript/Blockly visual editor

@@ -27,7 +27,7 @@ For issues in the visual IDE (blocks, toolbox, YAML sync), see the separate [cx-
 
 ## "Unknown step type" at validation or runtime
 
-1. Check the `uses:` id against the generated [step reference](../specification/reference/steps.md), or ask the CLI directly:
+1. Check the `uses:` id against the generated [step reference](../api-reference/steps.md), or ask the CLI directly:
 
     ```bash
     poetry run testlab docs --step connector/consumer/negotiate --json

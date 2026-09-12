@@ -297,7 +297,7 @@ The command prints per-test and per-step results to stdout and exits non-zero on
 | YAML over JSON for tests | Human-readable, supports comments, familiar to DevOps | Project convention |
 | Topological sort over linear | Enables parallel-safe independent tests, enforces dependencies | Player design |
 | `asyncio.Future` for callbacks | Native async/await integration, no polling, timeout support | Mock server design |
-| `${{ }}` interpolation | GitHub-Actions-style references, explicit about their source (`env.`, `execution.`) | [Specification](../specification/syntax/tck-syntax.md) |
+| `${{ }}` interpolation | GitHub-Actions-style references, explicit about their source (`env.`, `execution.`) | [Specification](../tck-syntax/index.md) |
 
 ## Next Steps
 

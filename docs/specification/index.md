@@ -128,9 +128,9 @@ This specification is organized into the following sections:
 
 | Document | Description |
 |----------|-------------|
-| [YAML Format Reference](reference/yaml-format.md) | Test and TCK authoring examples, assertion formats |
-| [Package Format](reference/package-format.md) | `.tck` archive structure and manifest specification |
-| [Module Structure](reference/module-structure.md) | Source code layout and component responsibilities |
+| [TCK Syntax](../tck-syntax/index.md) | The `v1-alpha` manifest, test, step and validation syntax |
+| [Cheat Sheet](../tck-syntax/cheat-sheet.md) | Quick reference for the YAML authoring format |
+| [Step Reference](../api-reference/steps.md) | Every step with its inputs, outputs and the validation operators |
 
 ### Walkthrough
 

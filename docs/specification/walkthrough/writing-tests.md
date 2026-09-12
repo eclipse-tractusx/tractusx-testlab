@@ -318,7 +318,7 @@ steps:
 - `util/parse_kv` splits each pair on the first `=` only, so a `dspEndpoint`
   value containing its own query string survives intact.
 
-See the [Cheat Sheet](../reference/syntax/cheat-sheet.md#extracting-values-json_path_extract)
+See the [Cheat Sheet](../../tck-syntax/cheat-sheet.md#extracting-values-json_path_extract)
 for the full predicate syntax and utility-step options.
 
 ## Key Differences from v0

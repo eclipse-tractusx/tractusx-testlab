@@ -234,10 +234,11 @@ grep -rn "time.sleep\|asyncio.sleep" tests/ --include="*.py"               # Sho
 
 ### Structure
 - `docs/home/` — Landing pages
-- `docs/specification/` — YAML format specification
+- `docs/specification/` — Specification, installation and walkthrough
+- `docs/tck-syntax/` — TCK syntax reference and cheat sheet
 - `docs/tutorials/` — Step-by-step guides
 - `docs/developer/` — Architecture and internals
-- `docs/api-reference/` — Python API reference
+- `docs/api-reference/` — CLI overview and the generated step reference (`steps.md`, regenerate with `testlab docs`)
 
 ### Principles
 - Verify all claims against actual code before writing

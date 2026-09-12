@@ -30,10 +30,10 @@ from pathlib import Path
 import typer
 
 from tractusx_testlab.authoring.registry import StepRegistry
-from tractusx_testlab.authoring.step_docs import render_catalog
+from tractusx_testlab.authoring.step_catalog import render_catalog
 from tractusx_testlab.cli import app
 
-_DEFAULT_OUTPUT = Path("docs/specification/reference/steps.md")
+_DEFAULT_OUTPUT = Path("docs/api-reference/steps.md")
 
 
 @app.command("docs")

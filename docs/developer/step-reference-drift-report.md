@@ -24,7 +24,7 @@
 # Step Reference vs. Implementation — Drift Report
 
 > Date: 2026-08-07 | Branch: `feat/run_security_consitency`
-> Scope: [`docs/specification/reference/steps.md`](../specification/reference/steps.md)
+> Scope: [`docs/api-reference/steps.md`](../api-reference/steps.md)
 > compared against the live step registry it is generated from.
 > Status: **analysis** — one incidental fix applied (D0), the rest is unimplemented.
 
@@ -194,7 +194,7 @@ instruction a contributor has for how to refresh the page, and following it fail
 ## D3 — No CI gate runs the check
 
 `--check` works correctly — it prints
-`Error: docs/specification/reference/steps.md is out of date; run 'testlab docs'.`
+`Error: docs/api-reference/steps.md is out of date; run 'testlab docs'.`
 and exits 1. Nothing under [`.github/`](../../.github/) invokes it, and there is no
 `Makefile` target for it either.
 

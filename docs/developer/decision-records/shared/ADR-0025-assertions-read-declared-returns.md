@@ -246,7 +246,7 @@ family's own keys. No test uses it. What goes with it: the module
 [`industry/semantic.py`](../../../../src/tractusx_testlab/steps/industry/semantic.py),
 the seven unit tests in `tests/test_ccm_steps.py` and
 `tests/test_ccm_integration_steps.py`, its entry in the generated
-`docs/specification/reference/steps.md`, and the row naming it in
+`docs/api-reference/steps.md`, and the row naming it in
 `docs/tutorials/ccm-conformity-testing.md`.
 
 ### 7. The family harmonised, end to end

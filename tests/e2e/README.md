@@ -27,7 +27,7 @@ cluster is created and destroyed within the job.
 `tests/e2e/connector-dtr-smoke/` is a small TCK, purpose-built as testlab's
 own CI signal (not a published certification TCK). Between them its thirteen
 tests use every one of the 55 steps in the engine's catalogue
-(`docs/specification/reference/steps.md`) and all three validation kinds —
+(`docs/api-reference/steps.md`) and all three validation kinds —
 `validate/assert`, `validate/field` and `validate/schema` — so no step ships
 without having been run once against something real.
 

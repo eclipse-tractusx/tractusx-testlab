@@ -330,7 +330,7 @@ changes are made deliberately and can be coordinated with the IDE.
 `extra="forbid"` (F-A01) immediately rejected a key in the certificate-management
 example: `expects: fail`.
 
-It is documented syntax — [syntax spec §9.3](../../specification/syntax/tck-syntax.md),
+It is documented syntax — [syntax spec §9.3](../../tck-syntax/index.md),
 marked *(P3)* as planned — and `StepDefinition` had no such field, so Pydantic
 dropped it. The example's `send_unknown_cert_type` step declares that the SUT
 **must reject** an unknown certificate type. It ran as an ordinary step, so a SUT
@@ -949,7 +949,7 @@ live in `steps/registry_models.py` now, beside the readers in
 `registry_reading.py`.
 
 The duplication was visible in the shipped documentation the whole time —
-`docs/specification/reference/steps.md` documented `SpecificAssetId` twice,
+`docs/api-reference/steps.md` documented `SpecificAssetId` twice,
 because it existed twice. Deduplicating the code removed the doubled entry.
 
 ## Pipeline verification — 2026-08-18

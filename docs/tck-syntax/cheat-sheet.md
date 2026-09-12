@@ -146,7 +146,6 @@ teardown: []
 | `${{ steps.step_id.output_name }}` | Output from a step in `steps:` |
 | `${{ setup.step_id.output_name }}` | Output from a step in `setup:` |
 | `${{ metadata.dataspace_version }}` | Metadata field value |
-| `${{ testdata.data_name }}` | Shorthand for testdata reference |
 
 ---
 

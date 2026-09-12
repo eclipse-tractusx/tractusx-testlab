@@ -89,8 +89,8 @@ For detailed rationale: [ADR-0010: YAML Syntax v2](../developer/decision-records
 
 | Section | Description |
 |---------|-------------|
-| [Block & Assertion Reference](blocks.md) | Full catalog of all blocks by category |
-| [TCK Manifest](blocks/manifest.md) | Environment configuration format |
+| [Steps](steps.md) | Every step per category and module — inputs, outputs, the validation kinds and operators. Generated from the step contracts |
+| [TCK Syntax](../tck-syntax/index.md) | Manifest, test, phase and step syntax the steps are written in |
 
 ---
 

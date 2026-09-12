@@ -58,7 +58,6 @@ OVERSIZED: dict[str, int] = {
     "compiler/validation/_manifest_validation.py": 337,
     "steps/_checks/extraction.py": 330,
     "infrastructure/profiles.py": 329,
-    "authoring/step_docs.py": 314,
     "cli/_tck_packager.py": 305,
     # One class doing one thing — publishing every transition to the log, the
     # stream and the trace. Splitting it by event family would scatter that

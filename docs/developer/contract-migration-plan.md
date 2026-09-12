@@ -438,7 +438,7 @@ MUST run last on the engine side.
    the generator is `cli/docs.py` — run
    `poetry run python -m tractusx_testlab docs` (check `cli/docs.py` for the
    exact subcommand/output path; the committed page is
-   `docs/specification/reference/steps.md`).
+   `docs/api-reference/steps.md`).
 4. Update `docs/developer/ide-engine-contract-parity.md` to describe the
    post-migration contract (final names), keeping the reproduce instructions.
 5. Run the parity checker; capture output in the commit message. Engine-side

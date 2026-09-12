@@ -204,8 +204,8 @@ Three mechanisms guard the contract, in decreasing order of strength:
    retired parameter spellings), `tests/test_catalog_query_contract.py`.
 3. **Generated artefacts with `--check`**:
     - `poetry run testlab docs --check` regenerates the step reference
-      (`docs/specification/reference/steps.md`) from the registry and fails if the
-      committed page differs (renderer: `authoring/step_docs.py`).
+      (`docs/api-reference/steps.md`) from the registry and fails if the
+      committed page differs (renderer: `authoring/step_catalog.py` lays out the page, `authoring/step_docs.py` renders each step).
     - `poetry run python tools/compare_ide_parity.py --ide <path-to-ide-repo> --check`
       diffs the engine registry against the IDE repository's (cx-test-suite) block
       catalog field by field (it reads `model_fields`, not JSON Schema, so an alias cannot hide) and exits

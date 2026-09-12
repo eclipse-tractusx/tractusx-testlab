@@ -439,7 +439,7 @@ Every step id maps to an SDK capability through this chain (a selection):
 | `digital-twin-registry/consumer/dataplane/lookup_shell` | `LookupShellStep` | `lookup_shells()` |
 
 The authoritative catalogue is the generated
-[Step Reference](../specification/reference/steps.md) — regenerated from the
+[Step Reference](../api-reference/steps.md) — regenerated from the
 registry by `testlab docs`, so it cannot go stale.
 
 ---

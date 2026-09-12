@@ -92,7 +92,7 @@ poetry run pytest -k validate
 
 ## Step 4 — Regenerate the step reference
 
-The step reference is generated from the parameter models. `poetry run testlab docs --check` fails when `docs/specification/reference/steps.md` is stale; regenerate it:
+The step reference is generated from the parameter models. `poetry run testlab docs --check` fails when `docs/api-reference/steps.md` is stale; regenerate it:
 
 ```bash
 poetry run testlab docs

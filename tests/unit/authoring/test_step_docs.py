@@ -31,16 +31,19 @@ from pydantic import BaseModel, Field
 
 from tests.paths import DOCS_DIR
 from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.authoring.step_catalog import render_catalog, step_module
 from tractusx_testlab.authoring.step_docs import (
     accepted_names,
     default_repr,
     nested_models,
-    render_catalog,
+    step_anchor,
     to_markdown,
     type_name,
 )
+from tractusx_testlab.steps.assertions.operators import OPERATORS
+from tractusx_testlab.steps.assertions.vocabulary import AssertionKind
 
-_GENERATED_PAGE = DOCS_DIR / "specification" / "reference" / "steps.md"
+_GENERATED_PAGE = DOCS_DIR / "api-reference" / "steps.md"
 
 
 class _Nested(BaseModel):
@@ -140,10 +143,41 @@ class TestRenderCatalog:
             assert f"### `{step_type}`" in page
 
 
+class TestPageStructure:
+    def test_anchor_keeps_the_id_segments_apart(self) -> None:
+        assert step_anchor("connector/consumer/do_dsp") == "connector-consumer-do_dsp"
+
+    def test_module_is_the_segments_between_category_and_function(self) -> None:
+        assert step_module("connector/provider/wizard/create_asset") == "provider/wizard"
+
+    def test_a_category_without_sub_division_has_no_module(self) -> None:
+        assert step_module("util/base64") == ""
+
+    def test_overview_has_one_row_per_module(self) -> None:
+        page = render_catalog(["util/base64", "security/oauth2/password"])
+        assert "| `security` | `oauth2` | [`password`](#security-oauth2-password) |" in page
+        assert "| `util` | — | [`base64`](#util-base64) |" in page
+
+    def test_steps_are_grouped_under_their_category(self) -> None:
+        page = render_catalog(["util/base64", "security/oauth2/password"])
+        assert page.index("## `security`") < page.index("### `security/oauth2/password`")
+        assert page.index("## `util`") < page.index("### `util/base64`")
+
+    def test_every_operator_is_documented(self) -> None:
+        page = render_catalog(["util/base64"])
+        for operator in OPERATORS:
+            assert f"| `{operator}` |" in page
+
+    def test_every_assertion_kind_is_documented(self) -> None:
+        page = render_catalog(["util/base64"])
+        for kind in AssertionKind:
+            assert f"| `validate/{kind.value}` |" in page
+
+
 class TestGeneratedPage:
     def test_committed_page_matches_the_code(self) -> None:
         """The reference page is generated; regenerate it with ``testlab docs``."""
         assert _GENERATED_PAGE.exists(), f"{_GENERATED_PAGE} is missing; run 'testlab docs'"
         assert _GENERATED_PAGE.read_text(encoding="utf-8") == render_catalog(), (
-            "docs/specification/reference/steps.md is out of date; run 'testlab docs'"
+            "docs/api-reference/steps.md is out of date; run 'testlab docs'"
         )
