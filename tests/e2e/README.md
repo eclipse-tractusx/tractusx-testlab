@@ -189,6 +189,32 @@ never reaches `AGREED` or a DTR call answers 404.
    ship as a Bruno collection for humans; `ci/issue_credentials.py` is the same
    flow, executed non-interactively.
 
+## A runtime that boots but never reports ready
+
+The release converges in under three minutes, every time, except when one of
+its EDC-based runtimes (an IdentityHub, the IssuerService) comes up wedged: the
+JVM logs `57 service extensions started` and `Runtime <id> ready`, every Jetty
+context is bound, and from then on the readiness probe on
+`/api/check/readiness` answers 404 while the liveness probe on the same port
+passes. The container never crashes, so nothing restarts it, and
+`helm install --wait` sits out its full 25-minute budget. Seen twice in forty
+runs, on two different images (`issuerservice-memory:0.3.2` on 2026-09-10,
+`identityhub-memory:0.4.0-SNAPSHOT` on 2026-09-12); the same image and
+configuration boots cleanly outside the cluster, and a fresh boot inside it has
+so far always come up clean.
+
+The deploy watcher runs `ci/restart_wedged_runtimes.py` once every 30 seconds.
+A pod that has been running for two minutes with its runtime logged ready and
+its container still not ready is deleted, and its Deployment brings up a new
+one in about forty seconds; the run gets a warning annotation naming the pod.
+Before deleting, the script fetches the readiness and liveness paths from a
+pod inside the cluster and prints status and body, which is the evidence an
+upstream issue needs and which no probe event carries. A runtime that has not
+logged ready is still booting or has crashed and is left alone, a Helm hook's
+pod is never touched, and each owner is restarted at most twice, so a runtime
+that is broken rather than wedged still ends in the helm timeout and the
+diagnostics artifact.
+
 ## Reproducing locally
 
 ```bash

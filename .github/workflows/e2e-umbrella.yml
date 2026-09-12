@@ -140,6 +140,9 @@ env:
   # Fetches a URL from a pod and prints the status; see the script for why
   # this is not `kubectl run --rm -i`.
   PROBE_SCRIPT: tests/e2e/connector-dtr-smoke/ci/probe_from_pod.sh
+  # Restarts an EDC runtime that logged ready but whose readiness probe never
+  # passes; see the script for the failure it exists for.
+  WEDGE_SCRIPT: tests/e2e/connector-dtr-smoke/ci/restart_wedged_runtimes.py
   TCK_OUT: dist/testlab-e2e-connector-dtr-smoke.tck
   # Single source of truth for the dataspace hostnames, used for both the
   # runner's /etc/hosts and the cluster's CoreDNS. All of these are fixed by
@@ -779,6 +782,19 @@ jobs:
                         --no-headers 2>/dev/null | tail -2
                     done
               fi
+              # One failure is not a slow start but a wedge, and waiting does
+              # not cure it: an IdentityHub or IssuerService whose JVM logged
+              # "Runtime ... ready" and whose readiness probe answers 404 from
+              # then on, liveness passing, container never restarting. Two of
+              # the last forty runs; both sat out the 25 minutes. A pod in
+              # that state two minutes after its container started is deleted
+              # here, after its probe paths are fetched from inside the
+              # cluster for the record, and its Deployment replaces it in
+              # under a minute. The rule and its limits are in the script.
+              python3 "${WEDGE_SCRIPT}" \
+                --namespace "${UMBRELLA_NAMESPACE}" \
+                --state-dir "${RUNNER_TEMP}/wedged-runtimes" \
+                --grace-seconds 120 --max-restarts 2 2>&1 || true
             done
           ) &
           watcher=$!

@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- The E2E deploy watcher restarts an EDC runtime that logged ready but whose
+  readiness probe never passes (`ci/restart_wedged_runtimes.py`), after
+  fetching the probe paths from inside the cluster for the record. Two of the
+  last forty runs sat out the 25-minute helm timeout on exactly that; the
+  replacement pod is ready in under a minute
 - `testlab run` ends with one result table per script and a run summary table,
   drawn in the same 80-column box the Tractus-X SDK's TCK runners print
   (`✓`/`✗`/`-` icons, RESULT and TIME columns, the verdict and step tally in
