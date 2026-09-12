@@ -28,7 +28,7 @@
 Registering a shell, reading one back, looking shells up by their
 ``specificAssetIds``, and removing one — the descriptor's own lifecycle. The
 submodel descriptors that hang off a shell are next door in
-:mod:`~tractusx_testlab.steps.digital_twin.provider.submodel_descriptor`.
+:mod:`~tractusx_testlab.steps.digital_twin_registry.provider.submodel_descriptor`.
 """
 
 from __future__ import annotations
@@ -84,12 +84,12 @@ def _answered_status(result: Any, accepted: int, unreadable: int) -> int:
 
 
 class CreateShellDescriptorParams(DtrParams):
-    """Input contract of ``digital-twin/provider/create_shell_descriptor``."""
+    """Input contract of ``digital-twin-registry/provider/create_shell_descriptor``."""
 
     shell_descriptor: dict = Field(description="The AAS shell descriptor document to register.")
 
 
-@step("digital-twin/provider/create_shell_descriptor")
+@step("digital-twin-registry/provider/create_shell_descriptor")
 class CreateShellDescriptorStep(BaseStep[CreateShellDescriptorParams, DescriptorPayload]):
     """Create an AAS shell descriptor in the Digital Twin Registry."""
 
@@ -132,14 +132,14 @@ async def _register_shell(
 
 
 # ---------------------------------------------------------------------------
-# digital-twin/provider/wizard/create_shell_descriptor
+# digital-twin-registry/provider/wizard/create_shell_descriptor
 # ---------------------------------------------------------------------------
 
 
 class WizardCreateShellDescriptorParams(DtrParams):
-    """Input contract of ``digital-twin/provider/wizard/create_shell_descriptor``.
+    """Input contract of ``digital-twin-registry/provider/wizard/create_shell_descriptor``.
 
-    The same shell as ``digital-twin/provider/create_shell_descriptor``
+    The same shell as ``digital-twin-registry/provider/create_shell_descriptor``
     registers, described field by field instead of as one AAS document.
     """
 
@@ -172,13 +172,13 @@ class WizardCreateShellDescriptorParams(DtrParams):
         return document
 
 
-@step("digital-twin/provider/wizard/create_shell_descriptor")
+@step("digital-twin-registry/provider/wizard/create_shell_descriptor")
 class WizardCreateShellDescriptorStep(
     BaseStep[WizardCreateShellDescriptorParams, DescriptorPayload]
 ):
     """Register a shell descriptor described field by field.
 
-    The guided sibling of ``digital-twin/provider/create_shell_descriptor``,
+    The guided sibling of ``digital-twin-registry/provider/create_shell_descriptor``,
     registering through the same call.
     """
 
@@ -195,7 +195,7 @@ class WizardCreateShellDescriptorStep(
 
 
 # ---------------------------------------------------------------------------
-# digital-twin/provider/get_shell_descriptor
+# digital-twin-registry/provider/get_shell_descriptor
 # ---------------------------------------------------------------------------
 
 
@@ -205,7 +205,7 @@ class ShellDescriptorRefParams(DtrParams):
     aas_identifier: str = Field(description="Identifier of the AAS shell descriptor.")
 
 
-@step("digital-twin/provider/get_shell_descriptor")
+@step("digital-twin-registry/provider/get_shell_descriptor")
 class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayload]):
     """Retrieve an AAS shell descriptor by ID."""
 
@@ -238,12 +238,12 @@ class GetShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DescriptorPayloa
 
 
 # ---------------------------------------------------------------------------
-# digital-twin/provider/lookup_shells
+# digital-twin-registry/provider/lookup_shells
 # ---------------------------------------------------------------------------
 
 
 class ProviderShellLookupParams(DtrParams):
-    """Input contract of ``digital-twin/provider/lookup_shells``.
+    """Input contract of ``digital-twin-registry/provider/lookup_shells``.
 
     Only the criteria: the registry is the one the run was seeded with, so its
     address is the service's, not the test's — which is the whole difference
@@ -257,7 +257,7 @@ class ProviderShellLookupParams(DtrParams):
     )
 
 
-@step("digital-twin/provider/lookup_shells")
+@step("digital-twin-registry/provider/lookup_shells")
 class ProviderShellLookupStep(BaseStep[ProviderShellLookupParams, ShellLookupOutput]):
     """Search the run's own registry for shells matching specific asset IDs.
 
@@ -318,7 +318,7 @@ class ProviderShellLookupStep(BaseStep[ProviderShellLookupParams, ShellLookupOut
 
 
 # ---------------------------------------------------------------------------
-# digital-twin/provider/delete_shell_descriptor
+# digital-twin-registry/provider/delete_shell_descriptor
 # ---------------------------------------------------------------------------
 
 
@@ -331,7 +331,7 @@ _DELETED = 204
 _DELETE_REFUSED = 400
 
 
-@step("digital-twin/provider/delete_shell_descriptor")
+@step("digital-twin-registry/provider/delete_shell_descriptor")
 class DeleteShellDescriptorStep(BaseStep[ShellDescriptorRefParams, DeletionOutput]):
     """Delete an AAS shell descriptor.
 

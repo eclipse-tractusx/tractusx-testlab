@@ -29,7 +29,7 @@ Proposed
 
 ## Context
 
-ADR-0016 defines `tck.variable.input.required` and `tck.variable.input.received` CloudEvents for interactive variable inputs (the `request`-disposition path of the [Unified Variables Model](../shared/ADR-0018-unified-variables-model.md); the precondition concept was removed in [ADR-0021](../shared/ADR-0021-remove-precondition-concept.md)). The SSE stream is unidirectional (server→client); a client→server channel is needed for the IDE to submit values back.
+ADR-0016 defines `tck.variable.input.required` and `tck.variable.input.received` CloudEvents for interactive variable inputs (the `request`-disposition path of the [Unified Variables Model](../shared/ADR-0018-unified-variables-model.md); the precondition concept was removed in [ADR-0021](../shared/ADR-0021-remove-precondition-concept.md)). The SSE stream is unidirectional (server→client); a client→server channel is needed for a client to submit values back.
 
 Requirements: no external infrastructure, in-process signaling via `asyncio.Future`, field validation, anti-replay protection, and support for partial submissions. The previous correlation_id approach is replaced by a JWT-based callback token that bundles correlation, authorization, and integrity into a single artifact.
 
@@ -128,14 +128,14 @@ Each field in the `input.required` event carries metadata for automatic form gen
 }
 ```
 
-The IDE maps this to form controls:
+A client can map this to form controls:
 
 | `type` | Control |
 |--------|--------|
 | `string` | Text input |
 | `integer` | Number input |
 | `boolean` | Toggle |
-| `json` | Code editor (Monaco) |
+| `json` | Code editor |
 
 The `class` adds validation and formatting hints:
 
@@ -209,26 +209,26 @@ class InputManager:
 
 ```mermaid
 sequenceDiagram
-    participant IDE as IDE (Browser)
+    participant Client as Client
     participant API as Backend (FastAPI)
     participant Player as Player (async)
 
     Player->>Player: generate nonce + sign JWT
     Player->>API: emit(input.required, callback_token)
-    API-->>IDE: SSE: input.required {fields, token}
+    API-->>Client: SSE: input.required {fields, token}
     Note over Player: await Future (blocked)
-    Note over IDE: User fills partial form
-    IDE->>API: POST /runs/{id}/inputs [X-Callback-Token]
+    Note over Client: User fills partial form
+    Client->>API: POST /runs/{id}/inputs [X-Callback-Token]
     API->>API: verify JWT + lookup nonce
     API->>Player: submit(run_id, nonce, partial values)
-    API-->>IDE: 202 {received: [a], pending: [b]}
-    Note over IDE: User fills remaining
-    IDE->>API: POST /runs/{id}/inputs [same JWT]
+    API-->>Client: 202 {received: [a], pending: [b]}
+    Note over Client: User fills remaining
+    Client->>API: POST /runs/{id}/inputs [same JWT]
     API->>Player: submit(run_id, nonce, remaining values)
     Note over Player: all fields → Future resolves
     Player->>API: emit(input.received)
-    API-->>IDE: SSE: input.received {all values}
-    API-->>IDE: 202 {received: [a,b], pending: []}
+    API-->>Client: SSE: input.received {all values}
+    API-->>Client: 202 {received: [a,b], pending: []}
 ```
 
 ### Trace Log Example
@@ -258,7 +258,7 @@ How the input callback flow appears in the CloudEvents JSONL execution trace:
 
 | Case | Behavior |
 |------|----------|
-| IDE disconnects | SSE reconnects; `input.required` re-sent; same JWT still valid |
+| Client disconnects | SSE reconnects; `input.required` re-sent; same JWT still valid |
 | Double-submit after completion | 409 (nonce consumed) |
 | Invalid values | 422; player stays blocked; user retries with same token |
 | Run cancelled while waiting | `cancel_all()` cancels Futures |

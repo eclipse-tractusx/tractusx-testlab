@@ -84,6 +84,9 @@ def type_name(annotation: Any) -> str:
         return "any"
 
     origin = get_origin(annotation)
+    if origin is typing.Annotated:
+        # The metadata is validation, not type; its repr carries a memory address.
+        return type_name(get_args(annotation)[0])
     if origin is typing.Literal:
         return " \\| ".join(f"`{arg}`" for arg in get_args(annotation))
     if origin in (Union, types.UnionType):
@@ -208,11 +211,11 @@ def step_anchor(step_type: str) -> str:
     return step_type.replace("/", "-")
 
 
-def render_step(step_cls: type[BaseStep]) -> list[str]:
-    """Render one step's interface as Markdown."""
+def render_step(step_cls: type[BaseStep], *, level: int = 3) -> list[str]:
+    """Render one step's interface as Markdown, its heading at *level*."""
     summary, body = summary_and_body(step_cls)
     lines = [
-        f"### `{step_cls.step_type}` {{ #{step_anchor(step_cls.step_type)} }}",
+        f"{'#' * level} `{step_cls.step_type}` {{ #{step_anchor(step_cls.step_type)} }}",
         "",
         summary,
         "",

@@ -1,6 +1,6 @@
 <!--
 
-Eclipse Tractus-X - Software Development KIT
+Eclipse Tractus-X - Tractus-X TestLab
 
 Copyright (c) 2026 Contributors to the Eclipse Foundation
 
@@ -18,7 +18,7 @@ SPDX-License-Identifier: CC-BY-4.0
 
 # Installation Guide
 
-This guide covers all the ways to install the Tractus-X SDK and the `testlab` CLI tool.
+This guide covers installing the `tractusx-testlab` package and its `testlab` CLI.
 
 ---
 
@@ -27,91 +27,43 @@ This guide covers all the ways to install the Tractus-X SDK and the `testlab` CL
 | Requirement | Minimum Version |
 |-------------|-----------------|
 | Python      | 3.12+           |
-| pip         | latest           |
+| pip         | latest          |
 | OS          | Linux, macOS, Windows |
 
 ---
 
 ## Quick Install (PyPI)
 
-Install the latest release from PyPI:
+TestLab is published on PyPI as pre-releases, so pip needs `--pre`:
 
 ```bash
-pip install tractusx-sdk
+pip install --pre tractusx-testlab
 ```
 
-This installs the SDK library **and** the `testlab` CLI tool.
+This installs the library **and** the `testlab` CLI. The [Tractus-X SDK](https://github.com/eclipse-tractusx/tractusx-sdk)
+comes with it as a dependency.
 
-Verify the installation:
-
-```bash
-testlab --help
-```
-
----
-
-## Install Script
-
-The repository includes an install script that automates environment setup:
+To install one specific release:
 
 ```bash
-git clone https://github.com/eclipse-tractusx/tractusx-sdk.git
-cd tractusx-sdk
-./install.sh
-```
-
-The script will:
-
-1. Check that Python 3.12+ is available
-2. Create a virtual environment (`.venv/` by default)
-3. Upgrade pip
-4. Install the SDK from PyPI
-5. Verify the `testlab` CLI is available
-
-### Script Options
-
-| Flag | Description |
-|------|-------------|
-| `--dev` | Install from local source in editable mode (for development) |
-| `--venv DIR` | Use a custom virtual environment directory (default: `.venv`) |
-| `--no-venv` | Skip virtual environment creation, install into the active environment |
-| `--help` | Show usage information |
-
-### Examples
-
-```bash
-# Standard install (PyPI + virtual environment)
-./install.sh
-
-# Development install from source
-./install.sh --dev
-
-# Custom virtual environment location
-./install.sh --venv myenv
-
-# Install into an already-active environment
-./install.sh --no-venv
+pip install tractusx-testlab==1.0.0a3
 ```
 
 ---
 
 ## Development Install (from source)
 
-For contributors or anyone working on the SDK itself:
+The project is managed with [Poetry](https://python-poetry.org/) (>= 2.0):
 
 ```bash
-git clone https://github.com/eclipse-tractusx/tractusx-sdk.git
-cd tractusx-sdk
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev,test,docs]"
+git clone https://github.com/eclipse-tractusx/tractusx-testlab.git
+cd tractusx-testlab
+poetry install
+poetry run testlab --help
 ```
 
-Or use the install script shorthand:
-
-```bash
-./install.sh --dev
-```
+`poetry install` installs the `dev`, `test` and `docs` dependency groups as well.
+See [Development Workflow](../tutorials/development-workflow.md) for running the tests and the docs site.
 
 ---
 
@@ -148,40 +100,43 @@ deactivate
 After installation, confirm everything is working:
 
 ```bash
-# Check SDK version
-python -c "import tractusx_sdk; print(tractusx_sdk.__version__)"
+# Check the installed version
+python -c "import importlib.metadata as m; print(m.version('tractusx-testlab'))"
 
-# Check testlab CLI
+# Check the testlab CLI
 testlab --help
 ```
 
-Expected output from `testlab --help`:
+`testlab --help` lists these commands:
 
-```
-Usage: testlab [OPTIONS] COMMAND [ARGS]...
+| Command | Purpose |
+|---------|---------|
+| `compile` | Compile a TCK manifest into a `.tck` package |
+| `config` | Show the settings this engine resolved, and which of them came from the environment |
+| `docs` | Generate the step reference from the steps' declared input/output models |
+| `inspect` | Report what a `.tck` package contains, without executing it |
+| `keygen` | Generate RSA (encryption) + Ed25519 (signing) key pairs for a player identity |
+| `run` | Load and execute a TCK, printing results to stdout |
+| `schema` | Generate the TCK JSON Schemas from the authoring models |
+| `serve` | Start the TestLab FastAPI server via uvicorn |
+| `validate` | Validate a TCK manifest and its tests without compiling |
 
-  Tractus-X Testlab CLI — compile, encrypt, validate, and run TCKs.
+---
 
-Commands:
-  compile     Compile a TCK manifest into a .tck package.
-  config      Show the resolved configuration.
-  docs        Generate the step reference from the step catalog.
-  inspect     Report what a .tck package contains, without executing it.
-  keygen      Generate RSA (encryption) + Ed25519 (signing) key pairs.
-  run         Load and execute a TCK, printing results to stdout.
-  schema      Write the JSON Schemas for the authoring format.
-  serve       Run the TestLab HTTP server.
-  validate    Validate a TCK manifest without compiling.
-```
+## Configuration
+
+Every setting has a default, so no configuration file is needed to validate or compile.
+To *run* a TCK against a dataspace, bind the connectors and registries it requires —
+see `testlab.config.example.yaml` in the repository and
+[Executing Tests](../specification/walkthrough/executing-tests.md#step-1--bind-the-infrastructure).
+`testlab config` prints what resolved and where each value came from.
 
 ---
 
 ## Upgrade
 
-To upgrade to the latest version:
-
 ```bash
-pip install --upgrade tractusx-sdk
+pip install --upgrade --pre tractusx-testlab
 ```
 
 ---
@@ -189,7 +144,7 @@ pip install --upgrade tractusx-sdk
 ## Uninstall
 
 ```bash
-pip uninstall tractusx-sdk
+pip uninstall tractusx-testlab
 ```
 
 ---
@@ -202,21 +157,18 @@ If `testlab` is not found after installation, ensure:
 
 1. The virtual environment is activated (if using one)
 2. The install location is on your `PATH`
-3. Try running via Python module: `python -m tractusx_sdk.extensions.testlab.cli`
+3. From a source checkout, run it through Poetry: `poetry run testlab --help`
+
+### `No matching distribution found for tractusx-testlab`
+
+Only pre-releases are published so far. Add `--pre`, or pin a version such as `tractusx-testlab==1.0.0a3`.
 
 ### Python version too old
 
-The SDK requires Python 3.12+. Check your version:
+TestLab requires Python 3.12+. Check your version:
 
 ```bash
 python3 --version
 ```
 
 If you need to install a newer version, use [pyenv](https://github.com/pyenv/pyenv) or your system package manager.
-
-### Permission denied on install.sh
-
-```bash
-chmod +x install.sh
-./install.sh
-```

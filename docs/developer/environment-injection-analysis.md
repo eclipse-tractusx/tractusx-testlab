@@ -488,7 +488,7 @@ engine:
       value: ""
 ```
 
-The same registry drives the IDE form and the `tck.boot.requirements` event that ADR-0019 §3
+The same registry drives the `tck.boot.requirements` event that ADR-0019 §3
 already specifies but that nothing emits today.
 
 #### E.6 What this fixes

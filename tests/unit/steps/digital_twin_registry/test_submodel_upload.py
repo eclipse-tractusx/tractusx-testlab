@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""Contract tests for ``digital-twin/submodel/upload`` and ``digital-twin/submodel/delete``.
+"""Contract tests for ``digital-twin-registry/submodel/upload`` and ``digital-twin-registry/submodel/delete``.
 
 The submodel server is the engine's, not the test's: what these tests hold to
 is that the steps read it from the engine configuration and refuse to run when
@@ -49,15 +49,15 @@ from tractusx_testlab.models.domain.infrastructure import (
     Infrastructure,
 )
 from tractusx_testlab.steps import http_client
-from tractusx_testlab.steps.digital_twin.submodel import (
+from tractusx_testlab.steps.digital_twin_registry.submodel import (
     DeleteBackendDataParams,
     DeleteBackendDataStep,
     UploadBackendDataParams,
     UploadBackendDataStep,
 )
 
-_USES = "digital-twin/submodel/upload"
-_DELETE_USES = "digital-twin/submodel/delete"
+_USES = "digital-twin-registry/submodel/upload"
+_DELETE_USES = "digital-twin-registry/submodel/delete"
 _SEMANTIC_ID = "urn:samm:io.catenax.serial_part:3.0.0#SerialPart"
 _ENCODED_SEMANTIC_ID = "urn%3Asamm%3Aio.catenax.serial_part%3A3.0.0%23SerialPart"
 

@@ -17,65 +17,37 @@ SPDX-License-Identifier: CC-BY-4.0
 
 -->
 
-<p align="center">
-  <img src="../assets/images/test-lab-app-logo-white-claim.png#only-light" alt="Tractus-X TestLab" width="380"/>
-  <img src="../assets/images/test-lab-app-logo-black-claim.png#only-dark" alt="Tractus-X TestLab" width="380"/>
-</p>
+# Introduction
 
-# Testlab Extension Module — Requirements Specification
+This section is the requirements specification for TestLab: what the engine must do,
+the models it works with, and the constraints it must satisfy.
 
-**Module:** `tractusx_sdk.extensions.testlab`
 **Version:** 2.0
 **Date:** 2026-03-30
 **Status:** Draft
+
+!!! info "Looking for the YAML syntax?"
+    The specification describes behaviour, not the authoring format. The `v1-alpha`
+    manifest, test, step and validation syntax is defined in [TCK Syntax](../tck-syntax/index.md),
+    and every step with its inputs and outputs is listed in the
+    [Step Reference](../api-reference/steps/index.md). To install TestLab, see
+    [Installation](../home/installation.md).
 
 ---
 
 ## Executive Summary
 
-**TestLab** is the testing framework built into the [Tractus-X SDK](https://github.com/eclipse-tractusx/tractusx-sdk). It enables you to author, compile, distribute, and execute automated TCKs against dataspace connectors and industry services — without writing any Python code.
+**TestLab** is the testing framework built on the [Tractus-X SDK](https://github.com/eclipse-tractusx/tractusx-sdk). It ships as a Python library, the `testlab` CLI and a FastAPI server. It enables you to author, compile, distribute, and execute automated TCKs against dataspace connectors and industry services — without writing any Python code.
 
 Test authors write **declarative YAML tests** describing the steps to execute, the services to connect to, the assertions to evaluate, and the cleanup to perform. TestLab takes care of the rest: validation, encryption, packaging, execution, and structured reporting.
 
 - **Tests** — YAML-defined test sequences composed of reusable, predefined steps
 - **Compiler** — Validates tests at compile time and packages them into portable, encrypted-by-default `.tck` artifacts
-- **Player** — An async executor deployable as standalone CLI or embeddable in an existing application, with cryptographic identity for package authorization
-- **Services** — Managed SDK service lifecycle for connector, provider, and DTR instances with automatic initialization and reuse across steps
-- **Server** — FastAPI-based callback/webhook engine with dynamically mounted routes for async request/response patterns
+- **Player** — An async executor run from the CLI, started by the server, or embedded in an existing application, with cryptographic identity for package authorization
+- **Services** — Managed SDK service lifecycle for connector, provider, and DTR instances, seeded at runtime from the bound infrastructure and reused across steps
+- **Server** — FastAPI app hosting the HTTP API (compile, package storage, runs, job control, SSE event stream), the callback endpoints, and the mock endpoints tests open for the SUT; run standalone with `testlab serve` or started by the player during `testlab run`
 
-Tests can declare long-lived services that persist for the test duration (avoiding repeated initialization), configure callback endpoints to receive async responses, and leverage runtime variable resolution. These tests are compiled with strict validation, packaged into distributable artifacts, and executed by the Player — which resolves runtime variables, manages step sequencing, evaluates assertions, orchestrates managed services, and provides live execution status.
-
-Tests with steps like (e.g., `connector/provider/create_asset`, `connector/consumer/negotiate`, `validate/schema`) can be included inside of TCKs, which enable reusability and personalized configurations for different scenarios.
-
-Example:
-
-```yaml
-# A minimal test — provision an asset and verify it was created
-kind: test
-testlab: v1-alpha
-id: my-first-test
-metadata:
-  name: "My First Test"
-  version: "1.0"
-  dataspace_version: saturn
-
-steps:
-  - id: create_asset
-    uses: connector/provider/create_asset
-    with:
-      asset_id: "test-asset-001"
-    returns:
-      asset_id:
-        type: string
-        class: AssetId
-    validate:
-      - uses: validate/assert
-        with: { input: asset_id, operator: equals, value: "test-asset-001" }
-```
-
-
-
----
+Tests declare the infrastructure they require, whose SDK services the Player initializes once and reuses (avoiding repeated initialization), configure callback endpoints to receive async responses, and leverage runtime variable resolution. These tests are compiled with strict validation, packaged into distributable artifacts, and executed by the Player — which resolves runtime variables, manages step sequencing, evaluates assertions, orchestrates managed services, and provides live execution status.
 
 ## Goals
 
@@ -92,11 +64,11 @@ steps:
 | G-9 | Ship a predefined step library covering Connector capabilities (provision, negotiate, transfer, consume, cleanup) and Industry capabilities (submodel consumption, aspect model validation, schema comparison) |
 | G-10 | Support arbitrary dataplane API calls (GET/POST/PUT/DELETE) authenticated via EDR tokens from prior steps |
 | G-11 | Ship every step as a typed executor with a declared input and output contract, so YAML never invokes arbitrary SDK functions and every parameter is validated at compile time |
-| G-12 | Provide managed service lifecycle — tests declare required SDK services (connector consumer, connector provider, DTR) that are initialized once and reused across steps |
+| G-12 | Provide managed service lifecycle — the SDK services a test's required infrastructure needs (connector consumer, connector provider, DTR) are initialized once and reused across steps |
 | G-13 | Support async callback/webhook patterns — tests can start a lightweight listener on an ephemeral endpoint, send a request, and await a response via `asyncio.Event` with configurable timeout |
-| G-14 | Support dual deployment modes for the Player — standalone CLI (`testlab serve`) and embeddable library API (`TestlabPlayer.from_app(app)`) |
+| G-14 | Support dual deployment modes for the Player — standalone CLI (`testlab run`, `testlab serve`) and embeddable library API (`TestlabPlayer`) |
 | G-15 | Secure `.tck` artifacts via hybrid encryption (AES-256-GCM + RSA-OAEP) and Ed25519 signing, ensuring compiled packages can only be decrypted and executed by authorized Player instances |
-| G-16 | Provide transparent service-step binding — steps reference managed services by name and the Player guarantees that the correct, pre-initialized SDK service instance is injected into each step |
+| G-16 | Provide transparent service-step binding — no step names its service; the Player seeds the SDK services at runtime from the bound infrastructure and injects the correct, pre-initialized instance into each step |
 
 ## Non-Goals (Future Scope)
 
@@ -112,10 +84,6 @@ steps:
 
 ## Document Structure
 
-This specification is organized into the following sections:
-
-### Specification
-
 | Document | Description |
 |----------|-------------|
 | [Concepts & Terminology](specification/concepts.md) | Conceptual model, lifecycle flow, and glossary |
@@ -123,23 +91,7 @@ This specification is organized into the following sections:
 | [Data Models](specification/data-models.md) | Enumerations, definition models, and result models |
 | [Constraints & Verification](specification/constraints.md) | Technical constraints, quality attributes, and verification matrix |
 | [Package Security](specification/security.md) | Threat model, encrypt-by-default architecture, key management, HashiCorp Vault integration, and decompilation |
-
-### Reference
-
-| Document | Description |
-|----------|-------------|
-| [TCK Syntax](../tck-syntax/index.md) | The `v1-alpha` manifest, test, step and validation syntax |
-| [Cheat Sheet](../tck-syntax/cheat-sheet.md) | Quick reference for the YAML authoring format |
-| [Step Reference](../api-reference/steps.md) | Every step with its inputs, outputs and the validation operators |
-
-### Walkthrough
-
-| Document | Description |
-|----------|-------------|
-| [Overview](walkthrough/index.md) | End-to-end walkthrough introduction and prerequisites |
-| [Writing Tests](walkthrough/writing-tests.md) | Step-by-step guide to authoring YAML tests and TCKs |
-| [Compiling Packages](walkthrough/compiling-packages.md) | Validating, compiling, and encrypting `.tck` packages |
-| [Executing Tests](walkthrough/executing-tests.md) | Running packages via CLI, vars files, Python API, and server mode |
+| [Walkthrough](walkthrough/index.md) | The full lifecycle — writing, compiling and executing tests — end to end |
 
 !!! info "Implementation Detail Level"
     This specification includes detailed pseudocode, resolution algorithms, and API signatures

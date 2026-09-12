@@ -21,7 +21,7 @@
 <!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
 <!-- It was reviewed and tested by a human committer. -->
 
-# ADR-0003: SSE for Live IDE Execution
+# ADR-0003: SSE for Live Execution
 
 ## Status
 
@@ -33,25 +33,25 @@ Accepted
 
 ## Context
 
-The IDE needs real-time step execution visualization. The backend `ExecutionMonitor` already emits granular events (step start, step complete, assertion result, error). Three transport options were evaluated:
+Clients of the server need to follow a test run as it executes, step by step. The backend `ExecutionMonitor` already emits granular events (step start, step complete, assertion result, error). Three transport options were evaluated:
 
 1. **WebSocket**: bidirectional, complex setup, requires connection management.
 2. **SSE (Server-Sent Events)**: unidirectional server→client, simple, auto-reconnect.
 3. **REST polling**: simple but introduces latency and unnecessary load.
 
-The IDE only needs to receive events — it never sends data back during execution.
+A client watching a run only needs to receive events — it never sends data back during execution.
 
 ## Decision
 
-Use Server-Sent Events via FastAPI `StreamingResponse` on the backend and browser `fetch` with `ReadableStream` on the frontend. Event types map directly to `ExecutionMonitor` event kinds.
+Use Server-Sent Events via FastAPI `StreamingResponse` on the server. Clients consume the stream with any SSE-capable HTTP client (for example browser `EventSource`, or `fetch` with `ReadableStream`). Event types map directly to `ExecutionMonitor` event kinds.
 
 ## Consequences
 
 ### Positive
 
 - Simpler than WebSocket — no bidirectional connection management needed.
-- Native browser `EventSource` provides auto-reconnect.
-- No additional dependencies on either side.
+- Standard SSE clients such as browser `EventSource` provide auto-reconnect.
+- No additional dependencies on the server or its clients.
 - Works through HTTP proxies and CDNs without special configuration.
 
 ### Negative

@@ -89,7 +89,7 @@ For detailed rationale: [ADR-0010: YAML Syntax v2](../developer/decision-records
 
 | Section | Description |
 |---------|-------------|
-| [Steps](steps.md) | Every step per category and module — inputs, outputs, the validation kinds and operators. Generated from the step contracts |
+| [Steps](steps/index.md) | Every step per category and module — inputs, outputs, the validation kinds and operators. Generated from the step contracts |
 | [TCK Syntax](../tck-syntax/index.md) | Manifest, test, phase and step syntax the steps are written in |
 
 ---

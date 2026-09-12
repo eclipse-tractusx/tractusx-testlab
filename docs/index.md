@@ -1,3 +1,10 @@
+<div align="center" markdown>
+
+![Eclipse Tractus-X SDK TestLab](media/test-lab-app-logo-white-claim.png#only-light){ width="260" }
+![Eclipse Tractus-X SDK TestLab](media/test-lab-app-logo-black-claim.png#only-dark){ width="260" }
+
+</div>
+
 # Welcome to Tractus-X TestLab
 
 **TestLab** is the test authoring and execution engine for Eclipse Tractus-X dataspaces.
@@ -103,7 +110,7 @@ execution:
         with: { input: status_code, operator: equals, value: 200 }
 ```
 
-1. `uses` picks a step from the [Step Reference](api-reference/steps.md).
+1. `uses` picks a step from the [Step Reference](api-reference/steps/index.md).
 2. Checks read the values the step declares under `returns`.
 
 ### 3. Validate it
@@ -159,15 +166,15 @@ testlab run hello.tck
 
 ## Explore the documentation
 
+The most common starting points are below. For every page, grouped by what you want
+to do, see the [Documentation Map](home/documentation-map.md).
+
 | If you want to…                              | Read                                                          |
 |----------------------------------------------|---------------------------------------------------------------|
 | Understand what TestLab is and how it works  | [Overview](home/overview.md)                                  |
 | Learn the YAML test format                   | [TCK Syntax](tck-syntax/index.md)                             |
 | Read the requirements specification          | [Specification](specification/index.md)                       |
-| Look up a step and its inputs and outputs    | [Step Reference](api-reference/steps.md)                      |
+| Look up a step and its inputs and outputs    | [Step Reference](api-reference/steps/index.md)                      |
 | Follow a guided scenario                     | [Tutorials](tutorials/index.md)                               |
 | Use TestLab as a Python library              | [API Reference](api-reference/index.md)                       |
 | Extend the engine or contribute              | [Developer](developer/index.md) · [Contributing](contributing/index.md) |
-
-Prefer a visual editor? The block-based IDE for authoring TCKs lives in the
-[cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository.

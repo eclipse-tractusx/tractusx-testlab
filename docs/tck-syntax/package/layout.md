@@ -1,6 +1,6 @@
 # 1. Package Layout
 
-**[SPEC]** An uncompiled TCK is a directory. The Test Suite Frontend generates it when building a TCK; it can
+**[SPEC]** An uncompiled TCK is a directory. An authoring tool can generate it when building a TCK; it can
 also be written by hand.
 
 ```

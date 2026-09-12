@@ -50,4 +50,4 @@ validate:
 | `has_key` / `not_has_key` | object | Key presence at `path` |
 | `length_equals` / `length_gt` / `length_lt` | string, array | Size |
 
-The operators the engine implements, with the operands each one reads, are generated into the [Step Reference](../../api-reference/steps.md#validations).
+The operators the engine implements, with the operands each one reads, are generated into the [Step Reference](../../api-reference/steps/validations.md).

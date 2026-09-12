@@ -15,5 +15,5 @@ Before submitting a TCK for compilation:
 - [ ] `teardown` removes everything `setup` and `execution` created in the live dataspace.
 - [ ] Versions and numeric-looking strings are quoted (`version: "1.0"`, not `version: 1.0`).
 - [ ] No secrets are hard-coded; credentials come from `source: input` variables.
-- [ ] *(On ratification of P1)* Every validation carries a `cac:` reference, and coverage of the standard's CAC
-      set is complete.
+- [ ] Every step or validation that verifies a CAC carries a `cac:` reference naming a standard listed in
+      `metadata.standards`, and coverage of the standard's CAC set is complete.

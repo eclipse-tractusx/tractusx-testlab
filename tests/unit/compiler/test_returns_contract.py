@@ -89,7 +89,7 @@ class TestDeletedOutputNamesAreCaught:
     def test_delete_shell_descriptor_now_publishes_a_status_code(self) -> None:
         assert (
             _errors_for(
-                "digital-twin/provider/delete_shell_descriptor",
+                "digital-twin-registry/provider/delete_shell_descriptor",
                 {"status_code": {"type": "integer"}},
             )
             == []

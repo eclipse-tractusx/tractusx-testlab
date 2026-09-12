@@ -49,12 +49,12 @@ from tractusx_testlab.steps.connector.provision.policy import (
     WizardCreatePolicyParams,
     WizardCreatePolicyStep,
 )
-from tractusx_testlab.steps.digital_twin.provider.shell import (
+from tractusx_testlab.steps.digital_twin_registry.provider.shell import (
     CreateShellDescriptorStep,
     WizardCreateShellDescriptorParams,
     WizardCreateShellDescriptorStep,
 )
-from tractusx_testlab.steps.digital_twin.provider.submodel_descriptor import (
+from tractusx_testlab.steps.digital_twin_registry.provider.submodel_descriptor import (
     CreateSubmodelDescriptorStep,
     WizardCreateSubmodelDescriptorParams,
     WizardCreateSubmodelDescriptorStep,
@@ -272,14 +272,14 @@ class TestWizardCreateShellDescriptor:
         await WizardCreateShellDescriptorStep().invoke(
             {"id": "urn:uuid:1", "id_short": "twin-a"},
             dtr_context,
-            _definition("digital-twin/provider/wizard/create_shell_descriptor"),
+            _definition("digital-twin-registry/provider/wizard/create_shell_descriptor"),
         )
         from_wizard = _shell_sent(aas)
 
         await CreateShellDescriptorStep().invoke(
             {"shell_descriptor": document},
             dtr_context,
-            _definition("digital-twin/provider/create_shell_descriptor"),
+            _definition("digital-twin-registry/provider/create_shell_descriptor"),
         )
 
         assert from_wizard == _shell_sent(aas)
@@ -420,7 +420,7 @@ class TestWizardCreateSubmodelDescriptor:
                 "interface": "SUBMODEL-VALUE-3.2",
             },
             dtr_context,
-            _definition("digital-twin/provider/wizard/create_submodel_descriptor"),
+            _definition("digital-twin-registry/provider/wizard/create_submodel_descriptor"),
         )
 
         sent = output.request.body
@@ -442,7 +442,7 @@ class TestWizardCreateSubmodelDescriptor:
                 "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
             },
             dtr_context,
-            _definition("digital-twin/provider/wizard/create_submodel_descriptor"),
+            _definition("digital-twin-registry/provider/wizard/create_submodel_descriptor"),
         )
 
         sent = output.request.body
@@ -464,7 +464,7 @@ class TestWizardCreateSubmodelDescriptor:
                 "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
             },
             dtr_context,
-            _definition("digital-twin/provider/wizard/create_submodel_descriptor"),
+            _definition("digital-twin-registry/provider/wizard/create_submodel_descriptor"),
         )
         assert aas.create_submodel_descriptor.call_args.args[0] == "urn:uuid:shell"
 
@@ -499,7 +499,7 @@ class TestARefusalFailsTheStep:
         )
         step = WizardCreateShellDescriptorStep()
         fields = {"id_short": "twin", "global_asset_id": "urn:uuid:1"}
-        definition = _definition("digital-twin/provider/wizard/create_shell_descriptor")
+        definition = _definition("digital-twin-registry/provider/wizard/create_shell_descriptor")
         with pytest.raises(StepExecutionError, match="refused the shell descriptor.*400.*empty"):
             await step.invoke(fields, dtr_context, definition)
 
@@ -516,7 +516,7 @@ class TestARefusalFailsTheStep:
             "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
         }
         wizard = WizardCreateSubmodelDescriptorStep()
-        wizard_definition = _definition("digital-twin/provider/wizard/create_submodel_descriptor")
+        wizard_definition = _definition("digital-twin-registry/provider/wizard/create_submodel_descriptor")
         with pytest.raises(StepExecutionError, match="refused the submodel descriptor.*409"):
             await wizard.invoke(fields, dtr_context, wizard_definition)
         raw = CreateSubmodelDescriptorStep()
@@ -526,7 +526,7 @@ class TestARefusalFailsTheStep:
                 **fields
             ).submodel_document(),
         }
-        raw_definition = _definition("digital-twin/provider/create_submodel_descriptor")
+        raw_definition = _definition("digital-twin-registry/provider/create_submodel_descriptor")
         with pytest.raises(StepExecutionError, match="refused the submodel descriptor.*409"):
             await raw.invoke(raw_fields, dtr_context, raw_definition)
 
@@ -548,7 +548,7 @@ class TestARefusalFailsTheStep:
             "asset_id": "urn:uuid:asset",
             "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
         }
-        definition = _definition("digital-twin/provider/wizard/create_submodel_descriptor")
+        definition = _definition("digital-twin-registry/provider/wizard/create_submodel_descriptor")
         with pytest.raises(StepExecutionError, match="no AAS messages"):
             await step.invoke(fields, dtr_context, definition)
 

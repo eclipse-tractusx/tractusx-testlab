@@ -26,12 +26,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from pathlib import Path
 
 from pydantic import ValidationError
 
 from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.compiler.validation._cac_standards import uncertified_cac
+from tractusx_testlab.compiler.validation.issues import ValidationResult
 from tractusx_testlab.infrastructure.mapping import known_keys
 from tractusx_testlab.models import StepDefinition, TckDefinition, TestDefinition
 from tractusx_testlab.steps._checks.extraction import declared_names
@@ -39,34 +40,6 @@ from tractusx_testlab.steps._checks.published_names import names_a_published_out
 from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
 from tractusx_testlab.syntax import defaults, diagnostics, patterns
-
-
-@dataclass(slots=True)
-class ValidationIssue:
-    """A single validation finding."""
-
-    level: str  # "error" | "warning"
-    message: str
-    step_index: int | None = None
-    field: str | None = None
-    phase: str | None = None
-
-
-@dataclass(slots=True)
-class ValidationResult:
-    """Aggregated validation outcome."""
-
-    issues: list[ValidationIssue] = field(default_factory=list)
-
-    @property
-    def valid(self) -> bool:
-        return not any(issue.level == "error" for issue in self.issues)
-
-    def add_error(self, msg: str, **kw) -> None:
-        self.issues.append(ValidationIssue(level="error", message=msg, **kw))
-
-    def add_warning(self, msg: str, **kw) -> None:
-        self.issues.append(ValidationIssue(level="warning", message=msg, **kw))
 
 
 def _root_of(reference: str) -> str:
@@ -167,6 +140,7 @@ class TestValidator:
                     f"namespace '{test.namespace}' must match the TCK id '{tck.id}'.",
                     field="namespace",
                 )
+            result.issues.extend(uncertified_cac(tck, test))
             for issue in result.issues:
                 issue.message = f"tests/{entry.id}: {issue.message}"
                 combined.issues.append(issue)

@@ -67,5 +67,4 @@ Specific changes:
 **Negative**:
 
 - Breaking change for existing YAML files (must update `kind:` field)
-- localStorage saved projects in the IDE are invalidated
 - All documentation, examples, and tutorials must be updated

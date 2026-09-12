@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""Contract tests for ``digital-twin/provider/delete_shell_descriptor``.
+"""Contract tests for ``digital-twin-registry/provider/delete_shell_descriptor``.
 
 The step's whole output is the status the registry answered the delete with, so
 these tests are about one question: can a TCK tell 204 from 404 by reading a
@@ -38,14 +38,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.steps.digital_twin.provider.shell import DeleteShellDescriptorStep
+from tractusx_testlab.steps.digital_twin_registry.provider.shell import DeleteShellDescriptorStep
 
 _AAS_URL = "https://dtr.example.com/api/v3"
 _SHELL_ID = "urn:uuid:11111111-2222-3333-4444-555555555555"
 
 
 def _definition() -> StepDefinition:
-    return StepDefinition(id="delete_twin", uses="digital-twin/provider/delete_shell_descriptor")
+    return StepDefinition(id="delete_twin", uses="digital-twin-registry/provider/delete_shell_descriptor")
 
 
 def _refusal(*codes: str | None) -> SimpleNamespace:

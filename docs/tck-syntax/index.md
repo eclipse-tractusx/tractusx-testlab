@@ -25,7 +25,7 @@ Field tables use: `R` = required, `O` = optional.
 | [8. Execution Logs](execution-logs.md) | The CloudEvents / JSONL log a run produces |
 | [9. Proposed Extensions](extensions.md) | Unratified additions: `cac:`, conditionals, negative tests, digests |
 
-Every step a test can name in `uses:`, with its inputs and outputs, is listed in the [Step Reference](../api-reference/steps.md).
+Every step a test can name in `uses:`, with its inputs and outputs, is listed in the [Step Reference](../api-reference/steps/index.md).
 
 ## Source
 

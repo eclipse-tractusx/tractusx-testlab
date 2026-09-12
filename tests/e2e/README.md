@@ -27,7 +27,7 @@ cluster is created and destroyed within the job.
 `tests/e2e/connector-dtr-smoke/` is a small TCK, purpose-built as testlab's
 own CI signal (not a published certification TCK). Between them its thirteen
 tests use every one of the 55 steps in the engine's catalogue
-(`docs/api-reference/steps.md`) and all three validation kinds —
+(`docs/api-reference/steps/`) and all three validation kinds —
 `validate/assert`, `validate/field` and `validate/schema` — so no step ships
 without having been run once against something real.
 
@@ -149,7 +149,7 @@ The submodel server is `ci/submodel_server.py`, a standard-library payload
 store the workflow deploys as a pod behind `tck-submodel.local`. It exists
 because the Umbrella profile switches off both `simple-data-backend` bundles:
 nothing in the release serves a submodel payload, and
-`digital-twin/submodel/upload` / `delete` plus the whole Industry Core journey
+`digital-twin-registry/submodel/upload` / `delete` plus the whole Industry Core journey
 would have no backend to address. A shell descriptor is only a pointer, and
 something has to serve what it points at. The property that makes one server
 serve both roles is its hostname: `tck-submodel.local` is in the workflow's

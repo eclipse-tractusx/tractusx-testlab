@@ -30,12 +30,9 @@ connectors, registries, or discovery services.
 
 ## Where the YAML comes from
 
-Visual authoring happens in the **cx-test-suite IDE** (the separate frontend
-repository): users assemble blocks in a Blockly workspace, and the IDE serializes
-them into exactly the YAML this page describes. From the engine's point of view
-there is no difference between a test the IDE emitted and one written in a text
-editor — the YAML is the interface, and everything below this line is this
-repository's code.
+Tests are written as YAML — in any text editor, or produced by any tool that
+emits the same document. This repository has no user interface: the YAML is the
+interface, and everything below this line is this repository's code.
 
 ## The Big Picture
 
@@ -51,7 +48,7 @@ flowchart LR
 
 | Stage | Where | Technology |
 |-------|-------|------------|
-| 1. YAML Test | authored (IDE or editor) | `uses:` / `with:` / `returns:` |
+| 1. YAML Test | authored as a TCK file | `uses:` / `with:` / `returns:` |
 | 2. Loading & Validation | `compiler/`, `player/loading/` | Pydantic models |
 | 3. Step Registry | `authoring/registry.py` | `@step` decorator |
 | 4. Step Executor | `steps/` | `BaseStep.invoke()` |
@@ -97,8 +94,7 @@ execution:
 !!! note "The `uses:` id is the bridge"
     The `uses: connector/consumer/query_catalog` in the YAML is the same string as
     the `@step("connector/consumer/query_catalog")` decorator in Python. This is how
-    the two layers connect — and it is also the id under which the cx-test-suite
-    IDE registers the corresponding block.
+    the two layers connect.
 
 ---
 
@@ -258,7 +254,7 @@ The step executor doesn't implement HTTP calls directly. It delegates to **tract
 
 ### How services are created
 
-The `ServiceManager` (`src/tractusx_testlab/services/manager.py`) holds the run's service definitions — declared in a test's `services:` block or seeded from the TCK's `infrastructure.*` bindings at runtime — and initialises SDK instances lazily on first access:
+The `ServiceManager` (`src/tractusx_testlab/services/instances.py`) holds the run's service definitions — declared in a test's `services:` block or seeded from the TCK's `infrastructure.*` bindings at runtime — and initialises SDK instances lazily on first access:
 
 ```yaml
 services:
@@ -269,7 +265,7 @@ services:
       dma_path: "/management"
 ```
 
-This translates to (`src/tractusx_testlab/services/_factory.py`):
+This translates to (`src/tractusx_testlab/services/_sdk_services.py`):
 
 ```python
 from tractusx_sdk.dataspace.services.connector.service_factory import ServiceFactory
@@ -337,7 +333,7 @@ sequenceDiagram
     participant EDC as EDC Connector
 
     Note over Author,EDC: Stage 1 — Authoring
-    Author->>YAML: uses: connector/consumer/query_catalog<br/>(written in the cx-test-suite IDE or by hand)
+    Author->>YAML: uses: connector/consumer/query_catalog<br/>(written in the TCK's test YAML)
 
     Note over Author,EDC: Stage 2 — Compilation
     YAML->>Compiler: Parse → TestDefinition
@@ -387,7 +383,7 @@ src/tractusx_testlab/player/execution/step_runner.py
 ### 3. Step executor runs
 
 ```text
-src/tractusx_testlab/services/manager.py
+src/tractusx_testlab/services/instances.py
   → holds seeded/declared service definitions, initialises SDK services lazily
 
 src/tractusx_testlab/steps/connector/catalog_query.py
@@ -434,12 +430,12 @@ Every step id maps to an SDK capability through this chain (a selection):
 
 | Step id | Step Executor | SDK Method |
 |---------|---------------|------------|
-| `digital-twin/provider/create_shell_descriptor` | `CreateShellDescriptorStep` | `create_asset_administration_shell_descriptor()` |
-| `digital-twin/provider/get_shell_descriptor` | `GetShellDescriptorStep` | `get_asset_administration_shell_descriptor_by_id()` |
+| `digital-twin-registry/provider/create_shell_descriptor` | `CreateShellDescriptorStep` | `create_asset_administration_shell_descriptor()` |
+| `digital-twin-registry/provider/get_shell_descriptor` | `GetShellDescriptorStep` | `get_asset_administration_shell_descriptor_by_id()` |
 | `digital-twin-registry/consumer/dataplane/lookup_shell` | `LookupShellStep` | `lookup_shells()` |
 
 The authoritative catalogue is the generated
-[Step Reference](../api-reference/steps.md) — regenerated from the
+[Step Reference](../api-reference/steps/index.md) — regenerated from the
 registry by `testlab docs`, so it cannot go stale.
 
 ---
@@ -455,8 +451,7 @@ YAML:      uses: connector/consumer/query_catalog
 Python:    @step("connector/consumer/query_catalog")
 ```
 
-Both must use the **exact same string** — and the cx-test-suite IDE registers its
-block under the same id. A mismatch fails validation ("unknown step id").
+Both must use the **exact same string**. A mismatch fails validation ("unknown step id").
 
 ### Rule 2: Output fields become runtime variables
 
@@ -511,19 +506,16 @@ steps later.
 
 ```mermaid
 flowchart TD
-    subgraph AUTH["Authoring"]
-        direction LR
-        IDE["cx-test-suite IDE<br/><i>visual blocks (external repo)</i>"] --> YAML["YAML test<br/><i>uses / with / returns</i>"]
-        ED["Text editor"] --> YAML
-    end
-
-    YAML -->|"compile / run"| COMP
+    YAML["YAML test<br/><i>uses / with / returns</i>"] -->|"testlab compile"| COMP
 
     subgraph RT["Engine — Python (this repo)"]
         direction TB
-        COMP["Compiler<br/><i>parse · validate · package</i>"] --> REG["Step Registry<br/><i>@step decorator lookup</i>"]
-        COMP --> SM["Service Manager<br/><i>SDK service factory</i>"]
+        COMP["Compiler<br/><i>parse · validate · package</i>"] -->|"validate step ids + contracts"| REG["Step Registry<br/><i>@step decorator lookup</i>"]
+        COMP -->|".tck package"| PLAYER["Player<br/><i>load · bind · run</i>"]
+        PLAYER -->|"resolve uses:"| REG
+        PLAYER -->|"seeds"| SM["Service Manager<br/><i>SDK service instances</i>"]
         REG --> EXEC["Step Executor<br/><i>invoke → execute(params, context, def)</i>"]
+        PLAYER -->|"invoke"| EXEC
         SM --> EXEC
     end
 
@@ -545,12 +537,12 @@ flowchart TD
 
 | Layer | Technology | Files | What it does |
 |-------|-----------|-------|-------------|
-| Visual authoring | cx-test-suite IDE (external repo) | — | Emits the YAML this engine compiles |
 | Authoring models | Python (Pydantic) | `models/authoring/definitions.py` | The shapes of tests, steps, TCK manifests |
 | Compiler | Python | `compiler/` | Parses, validates, and packages YAML |
 | Step Registry | Python | `authoring/registry.py` | Maps the `uses:` id → Python class via `@step` decorator |
 | Step Executor | Python | `steps/connector/*.py`, `steps/industry/*.py`, … | Implements step logic, calls SDK services |
-| Service Manager | Python | `services/manager.py` | Creates SDK service instances from seeded/declared definitions |
+| Player | Python | `player/` | Loads the package, seeds services, runs the steps, writes the trace |
+| Service Manager | Python | `services/instances.py` | Creates SDK service instances from seeded/declared definitions |
 | SDK Services | Python (tractusx-sdk) | `tractusx_sdk.dataspace.services.*`, `tractusx_sdk.industry.services.*` | Handles HTTP communication with connectors, DTR, discovery |
 
 The `uses:` id is the universal key that ties everything together. If you remember one thing from this guide: **the `uses:` id in YAML = `@step("id")` in Python — one universal key.**

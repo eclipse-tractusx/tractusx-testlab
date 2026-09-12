@@ -23,7 +23,7 @@
 ## It was reviewed and tested by a human committer.
 
 
-"""Provider-side Digital Twin Registry steps — ``digital-twin/provider/*``.
+"""Provider-side Digital Twin Registry steps — ``digital-twin-registry/provider/*``.
 
 Registering twins at a registry the engine operates, through the SDK's AAS
 service. Split by what is being registered: a shell descriptor has its own
@@ -34,7 +34,7 @@ The consumer-side steps live in
 registry over a data plane and share none of this package's SDK surface.
 """
 
-from tractusx_testlab.steps.digital_twin.provider import (
+from tractusx_testlab.steps.digital_twin_registry.provider import (
     shell,
     submodel_descriptor,
 )

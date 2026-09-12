@@ -14,8 +14,8 @@ compile it into a `.tck` artifact with the `testlab` CLI.
 Author **only** against the engine dialect. Ground truth, in priority order:
 
 1. `src/tractusx_testlab/models/authoring/definitions.py` — the Pydantic models the compiler enforces
-2. `docs/tck-syntax/index.md` — the harmonized syntax spec
-3. `docs/api-reference/steps.md` — the generated step catalog (57 steps; regenerate with `testlab docs`, never hand-edit)
+2. `docs/tck-syntax/` — the harmonized syntax spec, one page per section (start at `index.md`)
+3. `docs/api-reference/steps/` — the generated step catalog, one page per category and module (57 steps; regenerate with `testlab docs`, never hand-edit)
 4. `docs/developer/ide-engine-contract-parity.md` + `docs/developer/contract-conflict-decisions.md` (C01–C47) — the canonical engine↔IDE contract; the decisions file wins on conflict
 5. `docs/examples/certificate-management-v2/raw/` — the shipped reference TCK
 
@@ -223,8 +223,8 @@ teardown still runs). There are no soft assertions or per-step failure policies.
 - `with:` is strictly typed (`extra="forbid"`): an undeclared key is a compile error.
   Discover each step's exact params/outputs with
   `poetry run testlab docs --json -o -` (or `--step <uses-id> --json -o -`), or read
-  `docs/api-reference/steps.md`. **Always pass `-o -`** — without it the
-  command overwrites the repo's generated `steps.md` (filtered to your `--step`
+  `docs/api-reference/steps/`. **Always pass `-o -`** — without it the
+  command overwrites the repo's generated `steps/` pages (filtered to your `--step`
   selection); if that happens, restore it with a plain `poetry run testlab docs`.
 - Step ids are `<category>/<module>/<function>`; module omitted only when the category
   has no sub-division (`util/log`, `flow/delay`, `validate/assert`). Always write ids in full.

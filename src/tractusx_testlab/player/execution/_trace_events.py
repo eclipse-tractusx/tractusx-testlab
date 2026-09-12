@@ -73,12 +73,16 @@ def test_event_type(status: TestStatus) -> str:
     return _TEST_TYPES.get(status, "tck.test.failed")
 
 
-def validation_of(result: AssertionResult) -> dict[str, Any]:
+def validation_of(result: AssertionResult, step_cac: list[str] | None = None) -> dict[str, Any]:
     """One evaluated check, in the nested shape ADR-0016 defines.
 
     ``field`` names what was checked rather than repeating the whole assertion:
     the reader wants to know which output disagreed, and ``input`` plus ``path``
     is where a test says so.
+
+    ``cac`` is the check's own when it names one and the step's otherwise
+    (syntax spec §9.1), resolved here so a report counting coverage reads one
+    key per check instead of re-implementing the fallback.
     """
     declared = result.assertion
     params = declared.with_ or {}
@@ -98,6 +102,9 @@ def validation_of(result: AssertionResult) -> dict[str, Any]:
         "inputs": inputs,
         "outputs": {"actual": result.actual, "passed": result.passed},
     }
+    cac = declared.cac or step_cac
+    if cac:
+        validation["cac"] = list(cac)
     if not result.passed:
         validation["errors"] = [
             {
@@ -186,8 +193,10 @@ def step_data(result: StepResult, *, attempt: int = 1) -> dict[str, Any]:
         "attempt": attempt,
         "duration_ms": round((result.duration_s or 0.0) * 1000, 3),
         "outputs": _outputs_of(result),
-        "validations": [validation_of(item) for item in result.assertions],
+        "validations": [validation_of(item, result.cac) for item in result.assertions],
     }
+    if result.cac:
+        data["cac"] = result.cac
     if result.inputs:
         data["inputs"] = result.inputs
     errors = _errors_of(result)

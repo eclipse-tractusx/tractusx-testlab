@@ -31,9 +31,9 @@ For documentation on the Certificate Management (CX-0135) test suite, see the au
 
 For the detailed test reference, see [CCM Conformity Testing](ccm-conformity-testing.md).
 
-## Where is the IDE?
+## Running the suite from the CLI
 
-The visual TestLab IDE (Blockly-based authoring and execution monitoring) lives in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository. This repository contains the TestLab **engine**: the `tractusx_testlab` Python package, the `testlab` CLI, and the backend server the IDE connects to (`testlab serve`).
+This repository contains the TestLab **engine**: the `tractusx_testlab` Python package, the `testlab` CLI, and the HTTP server (`testlab serve`).
 
 To run the shipped Certificate Management suite from the engine CLI:
 

@@ -28,7 +28,7 @@
 A submodel descriptor says where a submodel's data can be fetched and under
 which semantic id. It is addressed through the shell that holds it, which is
 why :class:`ShellDescriptorRefParams` comes from
-:mod:`~tractusx_testlab.steps.digital_twin.provider.shell`.
+:mod:`~tractusx_testlab.steps.digital_twin_registry.provider.shell`.
 """
 
 from __future__ import annotations
@@ -54,22 +54,22 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-from tractusx_testlab.steps.digital_twin.provider.shell import ShellDescriptorRefParams
+from tractusx_testlab.steps.digital_twin_registry.provider.shell import ShellDescriptorRefParams
 
 # ---------------------------------------------------------------------------
-# digital-twin/provider/create_submodel_descriptor
+# digital-twin-registry/provider/create_submodel_descriptor
 # ---------------------------------------------------------------------------
 
 
 class CreateSubmodelDescriptorParams(ShellDescriptorRefParams):
-    """Input contract of ``digital-twin/provider/create_submodel_descriptor``."""
+    """Input contract of ``digital-twin-registry/provider/create_submodel_descriptor``."""
 
     submodel_descriptor: dict = Field(
         description="The submodel descriptor document to register under the shell."
     )
 
 
-@step("digital-twin/provider/create_submodel_descriptor")
+@step("digital-twin-registry/provider/create_submodel_descriptor")
 class CreateSubmodelDescriptorStep(BaseStep[CreateSubmodelDescriptorParams, DescriptorPayload]):
     """Create a submodel descriptor under an AAS shell."""
 
@@ -118,7 +118,7 @@ async def _register_submodel(
 
 
 # ---------------------------------------------------------------------------
-# digital-twin/provider/wizard/create_submodel_descriptor
+# digital-twin-registry/provider/wizard/create_submodel_descriptor
 # ---------------------------------------------------------------------------
 
 #: Endpoint values CX-0002 fixes outright. They are written, never asked for:
@@ -135,7 +135,7 @@ _SECURITY_ATTRIBUTES = [{"type": "NONE", "key": "NONE", "value": "NONE"}]
 
 
 class WizardCreateSubmodelDescriptorParams(ShellDescriptorRefParams):
-    """Input contract of ``digital-twin/provider/wizard/create_submodel_descriptor``.
+    """Input contract of ``digital-twin-registry/provider/wizard/create_submodel_descriptor``.
 
     A submodel descriptor is mostly boilerplate around a few facts: what the
     submodel is called, which aspect model it follows, where its data can be
@@ -227,13 +227,13 @@ class WizardCreateSubmodelDescriptorParams(ShellDescriptorRefParams):
         return document
 
 
-@step("digital-twin/provider/wizard/create_submodel_descriptor")
+@step("digital-twin-registry/provider/wizard/create_submodel_descriptor")
 class WizardCreateSubmodelDescriptorStep(
     BaseStep[WizardCreateSubmodelDescriptorParams, DescriptorPayload]
 ):
     """Attach a submodel descriptor described field by field.
 
-    The guided sibling of ``digital-twin/provider/create_submodel_descriptor``,
+    The guided sibling of ``digital-twin-registry/provider/create_submodel_descriptor``,
     registering through the same call.
     """
 

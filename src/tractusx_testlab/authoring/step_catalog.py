@@ -20,15 +20,21 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-"""Assemble the step reference page from the rendered step contracts.
+"""Assemble the step reference from the rendered step contracts.
 
 :mod:`~tractusx_testlab.authoring.step_docs` renders one step at a time; this
-module lays the page out around them — the per-module overview, the steps
-grouped by category, and the ``validate:`` vocabulary the steps' outputs are
-checked with.
+module lays the reference out around them — the per-module overview, the steps
+grouped by category and module, and the ``validate:`` vocabulary the steps'
+outputs are checked with.
+
+:func:`render_catalog` renders the reference as a single document, for reading
+on stdout; :mod:`~tractusx_testlab.authoring.step_pages` publishes the same
+pieces as one page per module.
 """
 
 from __future__ import annotations
+
+import posixpath
 
 from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.authoring.step_docs import (
@@ -56,8 +62,29 @@ def step_module(step_type: str) -> str:
     return "/".join(segments[1:-1])
 
 
-def _step_link(step_type: str, text: str | None = None) -> str:
-    return f"[`{text or step_type}`](#{step_anchor(step_type)})"
+def step_page(step_type: str) -> str:
+    """The page a step is documented on, relative to the reference root.
+
+    ``connector/provider/wizard/create_asset`` lives on
+    ``connector/provider-wizard.md``; a step without a module lives on its
+    category's ``index.md``. Every step page is one directory deep, so the
+    pages link to each other the same way wherever they sit.
+    """
+    module = step_module(step_type)
+    page = module.replace("/", "-") if module else "index"
+    return f"{step_category(step_type)}/{page}.md"
+
+
+def page_href(target: str, anchor: str, page: str | None) -> str:
+    """Link to *anchor* on *target*, as seen from *page* (``None``: one document)."""
+    if page is None or page == target:
+        return f"#{anchor}"
+    return f"{posixpath.relpath(target, posixpath.dirname(page) or '.')}#{anchor}"
+
+
+def step_link(step_type: str, text: str | None = None, *, page: str | None = None) -> str:
+    href = page_href(step_page(step_type), step_anchor(step_type), page)
+    return f"[`{text or step_type}`]({href})"
 
 
 def _modules(step_classes: list[type[BaseStep]]) -> dict[tuple[str, str], list[type[BaseStep]]]:
@@ -69,31 +96,34 @@ def _modules(step_classes: list[type[BaseStep]]) -> dict[tuple[str, str], list[t
     return grouped
 
 
-def render_overview(step_classes: list[type[BaseStep]]) -> list[str]:
+def render_overview(
+    step_classes: list[type[BaseStep]], *, page: str | None = None, title: str = "Overview"
+) -> list[str]:
     """Render what is available per module, one row per ``category/module``."""
     lines = [
-        "## Overview",
+        f"## {title}",
         "",
         "| Category | Module | Steps |",
         "|---|---|---|",
     ]
     for (category, module), members in _modules(step_classes).items():
         steps = ", ".join(
-            _step_link(cls.step_type, cls.step_type.rsplit("/", 1)[-1]) for cls in members
+            step_link(cls.step_type, cls.step_type.rsplit("/", 1)[-1], page=page) for cls in members
         )
         lines.append(f"| `{category}` | {f'`{module}`' if module else '—'} | {steps} |")
     return [*lines, ""]
 
 
-def render_module_table(step_classes: list[type[BaseStep]]) -> list[str]:
+def render_module_table(
+    step_classes: list[type[BaseStep]], *, page: str | None = None
+) -> list[str]:
     """Render one category's steps with their module and summary."""
     lines = ["| Module | Step | Summary |", "|---|---|---|"]
     for step_cls in step_classes:
         module = step_module(step_cls.step_type)
         summary, _ = summary_and_body(step_cls)
-        lines.append(
-            f"| {f'`{module}`' if module else '—'} | {_step_link(step_cls.step_type)} | {summary} |"
-        )
+        link = step_link(step_cls.step_type, page=page)
+        lines.append(f"| {f'`{module}`' if module else '—'} | {link} | {summary} |")
     return [*lines, ""]
 
 
@@ -136,10 +166,15 @@ def _failure_message(template: str) -> str:
     return f"`{template}`"
 
 
-def render_validations() -> list[str]:
-    """Render the ``validate:`` vocabulary: the assertion kinds and their operators."""
+def render_validations(*, level: int = 2, condition_href: str = "#condition") -> list[str]:
+    """Render the ``validate:`` vocabulary: the assertion kinds and their operators.
+
+    *level* is the heading level of the section; *condition_href* is where the
+    `flow/if` Condition model is documented, relative to the page rendered.
+    """
+    sub = "#" * (level + 1)
     lines = [
-        "## Validations",
+        f"{'#' * level} Validations",
         "",
         "A step's `validate:` entries check the outputs it published. `input` names one of "
         "the step's output fields — a dotted name reaches inside it. The operator is given "
@@ -147,7 +182,7 @@ def render_validations() -> list[str]:
         f"(`validate/assert/equals`); when neither names one, `{DEFAULT_OPERATOR}` applies. "
         "`severity` is `HARD` (default, fails the step) or `SOFT` (reported as a warning).",
         "",
-        "### Assertion kinds",
+        f"{sub} Assertion kinds",
         "",
         "| `uses` | Checks | Reads from `with:` |",
         "|---|---|---|",
@@ -158,10 +193,10 @@ def render_validations() -> list[str]:
 
     lines += [
         "",
-        "### Operators",
+        f"{sub} Operators",
         "",
         "The same operators are used by `validate/assert`, `validate/field` and the "
-        "[Condition](#condition) of `flow/if`. An operand the operator does not read is "
+        f"[Condition]({condition_href}) of `flow/if`. An operand the operator does not read is "
         "rejected rather than ignored.",
         "",
         "| Operator | Operands | Fails with |",
@@ -175,6 +210,24 @@ def render_validations() -> list[str]:
     return [*lines, ""]
 
 
+GENERATED_NOTICE = "<!-- Generated by `testlab docs`. Do not edit by hand. -->"
+
+
+def intro(tck_syntax_href: str) -> str:
+    return (
+        "Every step a test can name in `uses:`, with the parameters it accepts under `with:` "
+        "and the output fields it publishes — the names `returns:`, `validate:` and later "
+        "steps read. The reference is generated from the steps' declared Pydantic models, so "
+        "it cannot drift from the implementation. For where these blocks sit in a test file, "
+        f"see the [TCK syntax]({tck_syntax_href})."
+    )
+
+
+def step_classes_for(step_types: list[str] | None) -> list[type[BaseStep]]:
+    names = sorted(step_types or StepRegistry.list_step_types())
+    return [cls for cls in (StepRegistry.get_any(name) for name in names) if cls]
+
+
 def render_catalog(step_types: list[str] | None = None) -> str:
     """Render the full step reference page.
 
@@ -184,19 +237,14 @@ def render_catalog(step_types: list[str] | None = None) -> str:
     grouped by category, then the ``validate:`` vocabulary and nested objects.
     """
 
-    names = sorted(step_types or StepRegistry.list_step_types())
-    step_classes = [cls for cls in (StepRegistry.get_any(name) for name in names) if cls]
+    step_classes = step_classes_for(step_types)
 
     lines = [
         "# Step reference",
         "",
-        "<!-- Generated by `testlab docs`. Do not edit by hand. -->",
+        GENERATED_NOTICE,
         "",
-        "Every step a test can name in `uses:`, with the parameters it accepts under `with:` "
-        "and the output fields it publishes — the names `returns:`, `validate:` and later "
-        "steps read. The page is generated from the steps' declared Pydantic models, so it "
-        "cannot drift from the implementation. For where these blocks sit in a test file, "
-        "see the [TCK syntax](../tck-syntax/index.md).",
+        intro("../tck-syntax/index.md"),
         "",
         f"{len(step_classes)} steps.",
         "",

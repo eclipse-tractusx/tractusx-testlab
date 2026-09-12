@@ -28,7 +28,7 @@
 Reading a counterpart's registry across a data plane: the URL and token come
 from an EDR the connector negotiated, not from a service the engine holds. The
 provider-side steps are in
-:mod:`tractusx_testlab.steps.digital_twin.provider`.
+:mod:`tractusx_testlab.steps.digital_twin_registry.provider`.
 """
 
 from __future__ import annotations
@@ -149,7 +149,7 @@ class ShellLookupStep(BaseStep[ShellLookupParams, ShellLookupOutput]):
     """Search a counterparty's registry for shells matching specific asset IDs.
 
     This is the consumer's half of the DTR contract, and it is a different
-    thing from ``digital-twin/provider/get_shell_descriptor``: that one reads a
+    thing from ``digital-twin-registry/provider/get_shell_descriptor``: that one reads a
     known shell out of the registry the run was seeded with, this one searches
     somebody else's over a negotiated data plane.  The lookup returns
     identifiers, so each one is then read back as a descriptor — a test that
@@ -304,7 +304,7 @@ class DataplaneGetShellDescriptorsStep(BaseStep[PagedDataplaneParams, ShellLooku
 
     The consumer-side reading of the registry's ``GET /shell-descriptors`` —
     the same collection a provider populates with
-    ``digital-twin/provider/create_shell_descriptor``, reached through the
+    ``digital-twin-registry/provider/create_shell_descriptor``, reached through the
     data-plane URL and EDR token a transfer published.  The registry answers
     with whatever the counterparty's access rules let this consumer see; the
     answer is paged, so the cursor is returned alongside the descriptors.
@@ -369,7 +369,7 @@ class DataplaneGetShellDescriptorStep(
     """Retrieve one of a counterparty's shell descriptors by ID.
 
     The consumer-side reading of
-    ``digital-twin/provider/get_shell_descriptor``: the same registry document,
+    ``digital-twin-registry/provider/get_shell_descriptor``: the same registry document,
     reached through the data-plane URL and EDR token a transfer published
     instead of the registry the run was seeded with.  A registry that answers
     anything but 200 yields an empty descriptor; the status code stays on the

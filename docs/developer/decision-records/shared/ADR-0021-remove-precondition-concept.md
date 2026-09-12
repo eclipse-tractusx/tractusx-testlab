@@ -51,7 +51,7 @@ kept a backward-compatible precondition path. For the production release we want
 
 The unified-variables approach has been proven end to end: the
 `certificate-management-v2.0` example
-(`ide/public/examples/certificate-management-v2.0/`) was migrated so that every
+was migrated so that every
 test pulls its access policy from a single env variable. Zero preconditions
 remain in that example.
 
@@ -67,7 +67,7 @@ Removed:
   and any other `precondition/*` verb.
 - The `preconditions:` manifest block.
 - The `PRECONDITION` execution phase and its runner.
-- All related models, schema, IDE blocks/UI, and documentation.
+- All related models, schema, and documentation.
 
 Legacy `precondition/*` YAML is **no longer accepted**. The compiler rejects it
 rather than translating it.

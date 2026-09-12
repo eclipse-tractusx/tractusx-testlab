@@ -66,3 +66,11 @@ class TrustStore:
     def is_trusted(self, public_pem: bytes) -> bool:
         """Check whether a public key is in the store (by content comparison)."""
         return any(path.read_bytes() == public_pem for path in self._dir.glob("*.pub"))
+
+    def find(self, fingerprint: str) -> bytes | None:
+        """Return the trusted key whose fingerprint is *fingerprint*, if any."""
+        for path in sorted(self._dir.glob("*.pub")):
+            public_pem = path.read_bytes()
+            if hashlib.sha256(public_pem).hexdigest() == fingerprint:
+                return public_pem
+        return None

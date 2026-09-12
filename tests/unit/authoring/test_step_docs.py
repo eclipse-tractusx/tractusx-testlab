@@ -31,7 +31,7 @@ from pydantic import BaseModel, Field
 
 from tests.paths import DOCS_DIR
 from tractusx_testlab.authoring.registry import StepRegistry
-from tractusx_testlab.authoring.step_catalog import render_catalog, step_module
+from tractusx_testlab.authoring.step_catalog import render_catalog, step_module, step_page
 from tractusx_testlab.authoring.step_docs import (
     accepted_names,
     default_repr,
@@ -40,10 +40,11 @@ from tractusx_testlab.authoring.step_docs import (
     to_markdown,
     type_name,
 )
+from tractusx_testlab.authoring.step_pages import render_nav, render_pages
 from tractusx_testlab.steps.assertions.operators import OPERATORS
 from tractusx_testlab.steps.assertions.vocabulary import AssertionKind
 
-_GENERATED_PAGE = DOCS_DIR / "api-reference" / "steps.md"
+_GENERATED_DIR = DOCS_DIR / "api-reference" / "steps"
 
 
 class _Nested(BaseModel):
@@ -174,10 +175,54 @@ class TestPageStructure:
             assert f"| `validate/{kind.value}` |" in page
 
 
-class TestGeneratedPage:
-    def test_committed_page_matches_the_code(self) -> None:
-        """The reference page is generated; regenerate it with ``testlab docs``."""
-        assert _GENERATED_PAGE.exists(), f"{_GENERATED_PAGE} is missing; run 'testlab docs'"
-        assert _GENERATED_PAGE.read_text(encoding="utf-8") == render_catalog(), (
-            "docs/api-reference/steps.md is out of date; run 'testlab docs'"
+class TestPages:
+    def test_a_step_lives_on_its_module_page(self) -> None:
+        assert step_page("connector/provider/wizard/create_asset") == "connector/provider-wizard.md"
+
+    def test_a_step_without_a_module_lives_on_its_category_index(self) -> None:
+        assert step_page("util/base64") == "util/index.md"
+
+    def test_one_page_per_module_plus_the_category_indexes(self) -> None:
+        pages = render_pages(["util/base64", "security/oauth2/password"])
+        assert sorted(pages) == [
+            "index.md",
+            "security/index.md",
+            "security/oauth2.md",
+            "util/index.md",
+            "validations.md",
+        ]
+
+    def test_steps_are_documented_on_their_own_page_only(self) -> None:
+        pages = render_pages(["util/base64", "security/oauth2/password"])
+        heading = "## `security/oauth2/password`"
+        assert [page for page, text in pages.items() if heading in text] == ["security/oauth2.md"]
+
+    def test_links_are_relative_to_the_page_they_are_on(self) -> None:
+        pages = render_pages(["util/base64", "security/oauth2/password"])
+        target = "oauth2.md#security-oauth2-password"
+        assert f"(security/{target})" in pages["index.md"]
+        assert f"({target})" in pages["security/index.md"]
+        assert "(#security-oauth2-password)" in pages["security/oauth2.md"]
+
+    def test_nav_lists_every_category_and_module(self) -> None:
+        nav = render_nav(["util/base64", "security/oauth2/password"], root="steps")
+        assert nav == [
+            "- Overview: steps/index.md",
+            "- Validations: steps/validations.md",
+            "- security:",
+            "  - Overview: steps/security/index.md",
+            "  - oauth2: steps/security/oauth2.md",
+            "- util: steps/util/index.md",
+        ]
+
+
+class TestGeneratedPages:
+    def test_committed_pages_match_the_code(self) -> None:
+        """The reference pages are generated; regenerate them with ``testlab docs``."""
+        on_disk = {
+            path.relative_to(_GENERATED_DIR).as_posix(): path.read_text(encoding="utf-8")
+            for path in _GENERATED_DIR.rglob("*.md")
+        }
+        assert on_disk == render_pages(), (
+            "docs/api-reference/steps/ is out of date; run 'testlab docs'"
         )

@@ -4,8 +4,8 @@
 
 One syntax, two purposes:
 
-- **Live Execution Tracking** — streaming events from Backend to Frontend during execution, over **SSE**
-  (Server-Sent Events, normal HTTP/1.1, fragmented/chunked response). The Frontend opens the connection by
+- **Live Execution Tracking** — streaming events from the server to a client during execution, over **SSE**
+  (Server-Sent Events, normal HTTP/1.1, fragmented/chunked response). The client opens the connection by
   calling `/tck/execute` and can call another API to close it (stop/pause). On error, events may carry
   recommendations, error traces and information about what was tested.
 - **Execution Tracing & Debug** — the same structure, stored, containing the HTTP requests and responses sent
@@ -63,7 +63,7 @@ omitted from the `id` (lifecycle events have no `<step-id>`).
 | `tck.boot.failed` **[PROP]** | Boot preconditions not met | `testlab/player/boot` |
 | `tck.test.teardown.start` / `.passed` / `.failed` **[PROP]** | Teardown phase | `testlab/player/lifecycle` |
 
-**[PROP]** Adding an event type is a `syntax` version bump, because the Frontend, report generator and CAB
+**[PROP]** Adding an event type is a `syntax` version bump, because clients, the report generator and CAB
 tooling all parse `type`.
 
 ## 8.4 `data` payload **[PROP]**

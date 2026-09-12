@@ -22,28 +22,26 @@
 # Step Contracts — the Single Source of Truth
 
 Every step in TestLab has exactly **one canonical contract**: one step id, one set of
-parameter names, one output shape. The IDE blocks,
-the YAML tests, the Python executors, the generated reference documentation and the
+parameter names, one output shape. The YAML tests, the Python executors, the compiler's
+contract checks, the generated reference documentation and JSON schemas, and the
 assertion system all read that same contract — none of them keeps its own copy of it.
 
 This page explains where the contract lives, how it is enforced, and the patterns that
 keep the different layers from drifting apart. It is the conceptual layer above
 [Block Lifecycle](block-lifecycle.md), which traces a single step through the pipeline.
-The IDE/Blockly side of the contract lives in the separate cx-test-suite repository.
 
 ## The rule: one name, one shape
 
-The rule, established in the [IDE↔Engine contract parity analysis](ide-engine-contract-parity.md),
-is deliberately blunt:
+The rule is deliberately blunt:
 
 > A step accepts each parameter under exactly one name, produces its output in exactly one
 > shape, and is addressed by exactly one id. **No aliases, no backward-compat shims** —
-> when a name changes, every test, block and document is migrated to the new one.
+> when a name changes, every test and document is migrated to the new one.
 
 Why so strict? Aliases are how the drift started. Back when a parameter answered to
-`provider_url` *and* `counter_party_address`, the IDE picked one spelling, the engine
-documented another, the JSON Schema rendered a third, and the parity checker could no
-longer tell a typo from a valid alternative — which is exactly why the rule exists.
+`provider_url` *and* `counter_party_address`, tests wrote one spelling, the engine
+documented another, the JSON Schema rendered a third, and no check could any longer
+tell a typo from a valid alternative — which is exactly why the rule exists.
 The historical record of every conflict this caused
 and how each was resolved lives in the
 [contract conflict decision sheet](contract-conflict-decisions.md) (C01–C47), executed via
@@ -55,13 +53,13 @@ Three practical consequences of the rule:
    `with:` key must fail the step, not no-op.
 2. The JSON Schema produced from a step is faithful: what `describe()` says is exactly
    what the executor accepts.
-3. The IDE's block catalog is *generable* from the engine registry, because there is
-   nothing block-specific left to hand-maintain about names and shapes.
+3. The step reference and the JSON schemas are *generated* from the engine registry,
+   because there is nothing left to hand-maintain about names and shapes.
 
 ## Where the contract lives
 
 The contract is declared in Python, next to the executor, using three Pydantic base
-classes from `src/tractusx_testlab/steps/base.py`:
+classes from `src/tractusx_testlab/steps/step_contract.py`:
 
 | Base class | Declares | Notes |
 |------------|----------|-------|
@@ -95,8 +93,8 @@ class ExtractDatasetStep(BaseStep[ExtractDatasetParams, ExtractDatasetOutput]):
 
 `BaseStep.describe()` projects these models into a machine-readable `StepContract`
 (`step_type`, `description`, `params_schema`, `output_schema` — all
-JSON Schema). Everything downstream — the generated step reference, the IDE catalog, the
-parity checker, assertion resolution — is derived from `describe()` or from the models
+JSON Schema). Everything downstream — the generated step reference, the compiler's
+contract checks, assertion resolution — is derived from `describe()` or from the models
 behind it.
 
 ### Enforcement is at import time
@@ -127,20 +125,21 @@ field.
 ## Shared contract modules
 
 When two steps talk about the same thing, they share one model instead of re-declaring
-it. Exactly two shared modules exist:
+it. The shared models live in three places:
 
-- `steps/_contracts.py` — cross-step
-  models: parameter mixins (`CounterPartyParams`, `FilterExpressionParams`,
+- `steps/shared_models.py` — cross-step
+  models: parameter mixins (`FilterExpressionParams`,
   `HttpTransportParams`, `HttpCallParams`), the `FilterExpression` shape (snake_case in,
   camelCase only on serialisation), the unified `CatalogOutput` (`catalog` + `datasets`,
   shared by every `query_catalog*` step), `DataAddressPayload` (an EDR data address
   document) and `NoOutput` for steps that deliberately return nothing.
-- `steps/server/_contracts.py` —
-  mock-server models, most importantly `MockInstance` (see below).
+- `steps/counter_party.py` — `CounterPartyParams`, the counter-party of a DSP request.
+- `steps/mock/_models.py` —
+  mock models shared by the `mock/*` steps, most importantly `MockInstance` (see below).
 
-Per-step models live beside their executor (`steps/connector/provision.py`,
-`steps/industry/dtr.py`, …). A model earns a place in `_contracts.py` only once a second
-step needs it.
+Per-step models live beside their executor (`steps/connector/provision/asset.py`,
+`steps/digital_twin_registry/provider/shell.py`, …). A model earns a place in `shared_models.py`
+only once a second step needs it.
 
 ### `MockInstance`: a contract that crosses the test
 
@@ -166,7 +165,7 @@ The module segment is omitted only when the category has no sub-division (`util/
 `flow/delay`, `validate/assert`) — and once a category grows one, every id in it carries
 one. A fourth segment is allowed when the access path is itself what distinguishes the
 step: `digital-twin-registry/consumer/dataplane/lookup_shell` is a different step from
-`digital-twin/provider/get_shell_descriptor` precisely because of *how* the registry is
+`digital-twin-registry/provider/get_shell_descriptor` precisely because of *how* the registry is
 reached.
 
 Note that steps never name the service they run against — connector services are seeded
@@ -176,19 +175,19 @@ into the run context at runtime, and data-plane steps take exactly `dataplane_ur
 ## Guided siblings (`wizard/` steps)
 
 Some resources can sensibly be created two ways: by handing over the whole document
-(tests driven by `env.variables`), or field by field (tests built in the IDE form).
+(tests driven by `env.variables`), or field by field (tests that spell out each field).
 One step accepting both shapes would violate the one-shape rule, so each of the four
 creation steps has a **guided sibling** under a `wizard/` module:
 
 ```text
 connector/provider/create_asset                 ⇄  connector/provider/wizard/create_asset
 connector/provider/create_policy                ⇄  connector/provider/wizard/create_policy
-digital-twin/provider/create_shell_descriptor   ⇄  digital-twin/provider/wizard/create_shell_descriptor
-digital-twin/provider/create_submodel_descriptor⇄  digital-twin/provider/wizard/create_submodel_descriptor
+digital-twin-registry/provider/create_shell_descriptor   ⇄  digital-twin-registry/provider/wizard/create_shell_descriptor
+digital-twin-registry/provider/create_submodel_descriptor⇄  digital-twin-registry/provider/wizard/create_submodel_descriptor
 ```
 
 The anti-drift mechanism is structural, not disciplinary: each pair funnels into a single
-module-level helper (e.g. `_register_asset` in `steps/connector/provision.py`) — the raw
+module-level helper (e.g. `_register_asset` in `steps/connector/provision/asset.py`) — the raw
 step hands over the document it was given, the wizard hands over the document it
 assembled, and both get the same call and the same error handling. Both siblings also
 share the **same output model**, so `returns:` is identical whichever one a test uses.
@@ -199,19 +198,16 @@ Three mechanisms guard the contract, in decreasing order of strength:
 
 1. **Import-time enforcement** — a step without declared models cannot exist (see above).
 2. **Contract tests** — tests that assert on the declared models themselves, not just on
-   behaviour: `tests/test_step_contracts.py` (drives `describe()`),
-   `tests/test_mock_and_http_contract.py` (including tests that assert the *absence* of
-   retired parameter spellings), `tests/test_catalog_query_contract.py`.
-3. **Generated artefacts with `--check`**:
-    - `poetry run testlab docs --check` regenerates the step reference
-      (`docs/api-reference/steps.md`) from the registry and fails if the
-      committed page differs (renderer: `authoring/step_catalog.py` lays out the page, `authoring/step_docs.py` renders each step).
-    - `poetry run python tools/compare_ide_parity.py --ide <path-to-ide-repo> --check`
-      diffs the engine registry against the IDE repository's (cx-test-suite) block
-      catalog field by field (it reads `model_fields`, not JSON Schema, so an alias cannot hide) and exits
-      non-zero on any breaking divergence class.
+   behaviour: `tests/unit/steps/test_step_contracts.py` (drives `describe()`),
+   `tests/unit/steps/mock/test_mock_and_http_contract.py` (including tests that assert the
+   *absence* of retired parameter spellings),
+   `tests/unit/steps/connector/test_catalog_query_contract.py`.
+3. **Generated artefacts with `--check`** — `poetry run testlab docs --check` regenerates
+   the step reference (`docs/api-reference/steps/`) from the registry and fails if the
+   committed pages or the `mkdocs.yml` step navigation differ (renderer:
+   `authoring/step_catalog.py` lays out the page, `authoring/step_docs.py` renders each step).
 
-The checkers are the weaker guard: they catch drift after the fact. The point of the
+The `--check` gate is the weaker guard: they catch drift after the fact. The point of the
 architecture is that most drift is impossible to *express* — there is only one place to
 write a name down.
 
@@ -219,9 +215,8 @@ write a name down.
 
 | Document | What it covers |
 |----------|----------------|
-| [IDE↔Engine Contract Parity](ide-engine-contract-parity.md) | The full analysis that motivated the rule, divergence classes A–G, the parity tool |
 | [Contract Conflict Decisions](contract-conflict-decisions.md) | The decision sheet: every conflict C01–C47 and its resolution |
-| [Contract Migration Plan](contract-migration-plan.md) | The executed migration, cluster by cluster (E1–E9 / I1–I6) |
+| [Contract Migration Plan](contract-migration-plan.md) | The executed migration, cluster by cluster (E1–E9) |
 | [Block Lifecycle](block-lifecycle.md) | End-to-end trace of one step: YAML → registry → executor → SDK |
 | [Creating a Step](creating-a-step.md) | How-to for adding a new step (and therefore a new contract) |
 | ADR-0025 (decision records) | Assertions read the declared `returns:` of the referenced step |

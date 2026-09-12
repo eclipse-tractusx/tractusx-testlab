@@ -12,7 +12,6 @@
 - Chief Architect (Customer-facing decision owner)
 - testlab-ai-master (Facilitator)
 - testlab-architect (Architecture)
-- testlab-ide-master (Frontend UX and block system)
 - testlab-master (Backend and SDK alignment)
 - testlab-test-master (Execution reliability and quality)
 
@@ -34,7 +33,7 @@
 
 ### 1) UX and Template Complexity
 - Current flow exposes technical primitives too early.
-- Users think in workflows (for example, negotiate contract and transfer), but UI presents tool-level blocks.
+- Users think in workflows (for example, negotiate contract and transfer), but authoring presents tool-level steps.
 - Required versus optional inputs are not obvious, increasing cognitive load.
 
 ### 2) Predefined Capabilities Direction
@@ -75,7 +74,6 @@
 ## Action Items
 - **Chief Architect:** confirm MVP scope and first 3 capabilities.
 - **testlab-architect:** propose capability contract (inputs, outputs, defaults, assertions).
-- **testlab-ide-master:** propose UX surface for capability selection and simplified input forms.
 - **testlab-master:** draft backend mapping from capability definitions to executable steps.
 - **testlab-test-master:** define integration test matrix for each capability (happy path + failure path + cleanup).
 - **testlab-ai-master:** coordinate work packages after scope confirmation.

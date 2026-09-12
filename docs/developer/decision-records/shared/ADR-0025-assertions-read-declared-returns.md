@@ -109,9 +109,8 @@ meaning and gains a single owner (decision 3).
 `input` wins for two reasons. It is what every assertion in the repository
 already writes, so the harmonisation costs nothing at the call sites that are
 already right. And `source` is not available: it already means *where a value
-comes from* in three places — `source: INLINE | VARIABLE` in the expected-value
-resolution being deleted here, `ValueSource` (`INLINE` / `FILE` / `VARIABLE`) in
-the frontend's [`schema.ts`](../../../../ide/src/models/schema.ts), and
+comes from* in two places — `source: INLINE | VARIABLE` in the expected-value
+resolution being deleted here, and
 `source: value | input | generated` on a variable declaration
 ([ADR-0018](ADR-0018-unified-variables-model.md)). Using it for "the value being
 checked" would make it the third meaning of one word, in a record whose purpose
@@ -121,15 +120,13 @@ The consequence runs the other way too: `util/json_path_extract` and
 `util/validate_path` currently spell this key `source` — the deleted
 `validate/semantic_schema` documented it as "name of the context variable
 holding the JSON data", the right idea under the wrong name. They move to
-`input`, and the
-[parity analysis](../../ide-engine-contract-parity.md) records the same
-direction.
+`input`.
 
 **An `input` that is not a declared return is a compile error.** This is the
 change that gives the rest its value — it converts the whole class of silent
 `None` assertions into a message naming the step, the assertion and the
-undeclared name. Asserting on something means declaring it, which is also what
-lets the IDE offer the exact set of input names a validate block may use.
+undeclared name. Asserting on something means declaring it, which also makes the
+exact set of names a `validate/*` step may read known before the test runs.
 
 ### 3. The `validate/*` family, one member per kind of check
 
@@ -156,8 +153,7 @@ rest of the syntax.
 `validate/field` its place: there is exactly one way to reach a nested field, and
 the block that does it says so in its name. A dotted `input` would be a second
 way to write what `path` already writes — the kind of duplicate spelling this
-whole record exists to remove — and it would cost the IDE the ability to render
-`input` as a dropdown of the preceding step's returns.
+whole record exists to remove.
 
 | `operator` | Uses `value` | Checks |
 | --- | --- | --- |
@@ -190,13 +186,13 @@ second operand is a document rather than a value the input is compared against:
 The operator being a parameter of `validate/assert` rather than a block of its
 own (`assert/equals`, `assert/not_null`, …) is a deliberate trade. The
 per-operator form would give each block exactly the fields its action needs,
-which is the shape rule [the parity analysis](../../ide-engine-contract-parity.md)
+which is what the [one-name, one-shape rule](../../step-contracts.md#the-rule-one-name-one-shape)
 argues for elsewhere. Against that: `validate/assert` is what all 98 assertion
-blocks in the repository already write, the operator list is a closed enum the
-IDE can render as a dropdown, and `value` is the only conditional field — shown
-for the ten operators that take an operand, hidden for the three that do not.
+blocks in the repository already write, the operator list is a closed enum, and
+`value` is the only conditional field — meaningful for the ten operators that
+take an operand, ignored by the three that do not.
 One conditional field driven by a closed enum is a bounded cost; fourteen
-near-identical toolbox entries is a permanent one.
+near-identical steps is a permanent one.
 
 ### 4. `${{ }}` is the only interpolation
 
@@ -214,8 +210,8 @@ assertion engine calls. There is one implementation of `equals`.
 ### 6. An assertion is a step, wherever it is written
 
 The `validate/*` family stays in the step registry. A validation is a step like
-any other: it has a params model, it is documented by `testlab docs`, it appears
-in the IDE toolbox, and it can stand on its own in `execution:` when a test
+any other: it has a params model, it is documented by `testlab docs`, and it can
+stand on its own in `execution:` when a test
 needs to check something no immediately preceding step produced.
 
 Writing one inside a step's `validate:` list runs *the same step*, with the
@@ -251,7 +247,7 @@ the seven unit tests in `tests/test_ccm_steps.py` and
 
 ### 7. The family harmonised, end to end
 
-Four loose ends that are part of the same harmonisation and would otherwise
+Three loose ends that are part of the same harmonisation and would otherwise
 survive it:
 
 - **`util/json_path_extract` and `util/validate_path` follow the family.** Their
@@ -263,19 +259,9 @@ survive it:
   declares it, so as a step it is silently swallowed by `extra="allow"`. All
   three models declare it.
 - **`schema` loses its alias.** `validate/schema` accepts `schema` and
-  `json_schema` today ([parity analysis](../../ide-engine-contract-parity.md#aliases-already-in-the-engine));
+  `json_schema` today;
   `schema` is the survivor, and with `schema_ref` gone from the registry it is
   the only key in the syntax that carries a schema.
-- **The frontend's operator list is rewritten to match.**
-  [`AssertionOperator`](../../../../ide/src/models/schema.ts) is upper-case
-  (`EQUALS`, `NOT_NULL`) where tests write lower-case, spells the regex check
-  `REGEX`, has no `null`, and carries four entries — `SCHEMA`,
-  `SCHEMA_VALIDATION`, `ASSERT_FIELD`, `JSON_PATH_EXTRACT` — that are not
-  operators at all under this record: two are `validate/schema`, one is
-  `validate/field`, and one is a `util/` step. It becomes the thirteen
-  lower-case operators from decision 3, and nothing else.
-  `InlineValidation { uses, with }` needs no change — it never constrained the
-  keys.
 
 Applied to [`request_certificate.yaml`](../../../examples/certificate-management-v2/raw/tests/request_certificate.yaml),
 the whole `validate:` surface of a test reads the same way in every block:
@@ -343,9 +329,9 @@ for it in the same commit.
   instead of passing an equality check against `None`.
 - What a test asserts on and what a later step consumes are the same resolved
   value, produced once.
-- `returns:` becomes a real interface: the IDE can populate a validate block's
-  input list from the preceding step instead of asking the author to type a
-  name that nothing checks.
+- `returns:` becomes a real interface: a validate block's `input` is checked
+  against the preceding step's declared returns instead of being a name that
+  nothing checks.
 - One operator implementation, so `equals` cannot mean two things — and one
   implementation of each check, whether it is written inline or as a step.
 - The assertion catalog is describable in two tables — the `_USES_TO_TYPE` map,
@@ -364,26 +350,24 @@ for it in the same commit.
   line in the cases where a test wants a single ad-hoc check on, say,
   `status_code`.
 - `value` is a conditional field: meaningful for ten operators, meaningless for
-  three. The IDE has to drive its visibility from the operator dropdown, and a
-  hand-written test can still set it where it is ignored. This is the price of
+  three. A test can still set it where it is ignored. This is the price of
   an operator parameter instead of fourteen blocks, and it is accepted
   knowingly.
 - Reaching a nested field costs two keys (`input` plus `path`) where a dotted
-  `input` would have cost one. In exchange `input` stays a name the IDE can
-  offer from a list and the compiler can check.
+  `input` would have cost one. In exchange `input` stays a plain name the
+  compiler can check.
 
 ### Neutral
 
-- Nothing is aliased and nothing is kept for compatibility, per the rule the
-  [parity analysis](../../ide-engine-contract-parity.md) sets out. At
+- Nothing is aliased and nothing is kept for compatibility, per the
+  [one-name, one-shape rule](../../step-contracts.md#the-rule-one-name-one-shape). At
   `0.0.6-alpha` there is no published contract to hold to.
 - `severity` keeps both its levels and its default (`hard`); only its casing
   changes.
 
 ## Implementation status
 
-Landed 2026-08-13, alongside the IDE-side decisions recorded in
-`ide-backend-drift-decisions.md`. What this record specified and what shipped
+Landed 2026-08-13. What this record specified and what shipped
 differ in three places, all deliberate.
 
 ### What landed
@@ -414,17 +398,16 @@ differ in three places, all deliberate.
 
 1. **The operator names are the ratified §5.4 set, not the list in decision 3.**
    `is_null` rather than `null`, and `gt`/`gte`/`lt`/`lte` rather than
-   `greater_than`/`less_than`/`greater_or_equal`/`less_or_equal`. The IDE had
-   already ratified those spellings and its blocks emit them; matching the
-   engine to the authoring tool was the cheaper correction. The set is also
+   `greater_than`/`less_than`/`greater_or_equal`/`less_or_equal`. Those
+   spellings had already been ratified and were in use; matching the engine
+   to them was the cheaper correction. The set is also
    wider than the thirteen listed here — it adds `one_of`, `none_of`,
    `has_key`, `not_has_key`, `length_equals`, `length_gt` and `length_lt`,
-   which the engine already implemented and the IDE already offered.
+   which the engine already implemented.
 
 2. **`validate/assert/<operator>` is accepted as well as
    `validate/assert` + `operator:`.** Decision 3 argues against per-operator
-   blocks and that argument still holds for the *toolbox* — the IDE emits the
-   parameter form and only the parameter form. The suffix form exists so that
+   blocks and the parameter form remains the one it recommends. The suffix form exists so that
    the deleted `assert/<operator>` names have a home in the surviving namespace
    for hand-written tests; both spellings resolve through the same table to
    the same check, so there is one implementation, not two.

@@ -188,7 +188,7 @@ testlab compile my-tck/ --plain --output my-tck.tckpkg
 testlab validate my-tck/
 ```
 
-This runs phases 1–7 without producing a `.tckpkg` file. Useful for CI checks and IDE integration.
+This runs phases 1–7 without producing a `.tckpkg` file. Useful for CI checks and editor integration.
 
 #### Error reporting
 
@@ -514,6 +514,6 @@ Packages can be:
 ### Negative
 
 - **Key management overhead**: Players and Compilers must generate and exchange both classical and post-quantum keys (mitigated by `testlab keygen` and `testlab keygen --pq` CLI).
-- **Two-step workflow**: Authors must compile before running (`testlab compile my-tck/ && testlab run my-tck.tckpkg`). The IDE provides one-click compile+run for convenience.
+- **Two-step workflow**: Authors must compile before running (`testlab compile my-tck/ && testlab run my-tck.tckpkg`). Over HTTP, `POST /testlab/tck-execution/run` starts a run from a TCK sent in the request.
 - **Compiler version coupling**: Packages may not load on significantly newer/older runners (mitigated by compatibility warnings).
 - **No partial execution**: Cannot run a single test from an encrypted package without decrypting all (acceptable — packages are small).

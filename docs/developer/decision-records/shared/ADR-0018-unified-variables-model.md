@@ -29,7 +29,6 @@ Accepted (finalized by [ADR-0021](ADR-0021-remove-precondition-concept.md))
 
 ## Context Reference
 
-- Branch: `feat/refactor/ide_backend`
 - Pull Request: #16
 - Builds on: ADR-0004 — Precondition as Distinct Step Phase (superseded, not published),
   ADR-0007 — Precondition Execution Logs Model (superseded, not published),
@@ -57,10 +56,9 @@ before steps run:
    digital-twin artifacts the SUT operator must provide or that TestLab must generate, and they are
    executed as a distinct phase (ADR-0004) producing `PreconditionLog` entries (ADR-0007). The
    step executors live in `src/tractusx_testlab/steps/precondition/` (e.g. `asset_config.py`,
-   `policy_config.py`). On the frontend, the dedicated authoring experience is the preconditions
-   editor POC (`ide/src/poc/pocs/preconditions-editor/`).
+   `policy_config.py`).
 
-These two surfaces overlap conceptually but diverge in code, model and UI. A user must learn that a
+These two surfaces overlap conceptually but diverge in code and model. A user must learn that a
 "UUID I need before the run" is a *variable*, while a "policy JSON I need before the run" is a
 *precondition* — even though both answer the same question: **what does this test need to know
 before it starts, and where does that value come from?**
@@ -88,13 +86,12 @@ We unify both concepts under a single user-facing concept: **Variables**. A *pre
 
 ### The Variable discriminated union
 
-A `Variable` is a discriminated union on `kind ∈ { simple, complex }`, mirrored 1:1 between the
-backend (Pydantic v2 models) and the frontend (TypeScript discriminated unions). Both definitions are
-authoritative for their runtime; the backend remains the source of truth for shape and validation.
+A `Variable` is a discriminated union on `kind ∈ { simple, complex }`, modelled in the backend as
+Pydantic v2 models. The backend is the source of truth for shape and validation.
 
 !!! note "In-memory model vs. on-disk serialization"
     The `kind`-tagged discriminated union below is the **authoring / in-memory model** only — it is
-    how the IDE and backend reason about a variable while it is being edited and classified. It is
+    how authoring tools and the backend reason about a variable while it is being edited and classified. It is
     **not** the persisted format. When a variable is written to YAML it **serializes to the canonical
     TCK step schema** (`id` / `uses` / `name` / `with` / `returns`) — the *same* schema every other
     TCK constraint uses. There is **no** bespoke `kind:`-tagged YAML block. The `kind: complex`
@@ -166,22 +163,6 @@ Every variable resolves to exactly one of three runtime dispositions, computed f
 Complex variables only support `value` (KNOWN) and `input` (REQUEST); generation of full artifacts is
 out of scope for the POC.
 
-### Type-driven value editor (selected by primitive type)
-
-For simple variables the UI renders a value widget chosen **by the primitive `type`** — a single
-`valueFieldFor(type)` mapping owns this selection:
-
-| `type`  | Value widget                |
-|---------|-----------------------------|
-| `str`   | text input                  |
-| `int`   | integer number input        |
-| `float` | decimal number input        |
-| `bool`  | true/false toggle           |
-
-Because the widget depends only on the primitive `type`, `format` never affects which editor is
-shown — a `str` with `format: uuid` is still edited as text. `format` only drives validation and
-generator matching.
-
 ### New resolution phase (seed-before-steps)
 
 A **variable resolution phase** runs at the very start of a run, *before* preconditions/setup and
@@ -203,8 +184,7 @@ simply seeds the context the resolver already reads. The step runner integration
 ## Generators subsystem
 
 Generators are the GENERATE backend. The backend `tractusx_testlab` is the **single source of truth**;
-the IDE consumes a catalog and never hardcodes generator logic (mirrors ADR-0001 block catalog
-principle).
+clients consume a catalog and never hardcode generator logic.
 
 ### Backend registry
 
@@ -225,7 +205,7 @@ both the legacy step and the generator, with no duplication (AD-4 modularity dir
 
 ### Catalog contract: `GET /generators`
 
-A new read-only endpoint returns a manifest analogous to `ide/public/blocks/index.json`:
+A new read-only endpoint returns a manifest:
 
 ```json
 {
@@ -249,12 +229,6 @@ A new read-only endpoint returns a manifest analogous to `ide/public/blocks/inde
 }
 ```
 
-### UI consumption
-
-The IDE adds a `useGeneratorCatalog()` hook (static stub now, HTTP fetch later) and a
-`GeneratorPicker` that filters generators by `output_type`/`format` so a user only sees generators
-compatible with the variable they are configuring.
-
 ### Format catalog contract: `GET /formats`
 
 The `format` vocabulary (Option D) is a closed, backend-owned catalog exposed the same way as
@@ -269,9 +243,7 @@ FormatMeta
 └── default_generator_id?: str # optional generator pre-selected for this format
 ```
 
-The IDE consumes it via a `useFormatCatalog()` hook (static stub now, HTTP fetch later) feeding a
-**format dropdown** on the simple-variable editor. The advanced `pattern` field remains a free regex
-override; effective validation is `pattern ?? formatCatalog[format].validation_regex`.
+The advanced `pattern` field remains a free regex override; effective validation is `pattern ?? formatCatalog[format].validation_regex`.
 
 ---
 
@@ -342,15 +314,6 @@ A serialized `connector_policy` access policy therefore looks like:
       type: object
       class: Policy
 ```
-
-The authoring experience reuses the existing preconditions editor POC
-(`ide/src/poc/pocs/preconditions-editor/`): a **left formula / right JSON** type. The left pane is
-a guided formula/templates lens (`editors/PolicyEditor.tsx`, `editors/templates/`,
-`editors/SimpleEditors.tsx`); the right pane is the canonical JSON (`configuration/*`, `jsonCodec`).
-The `value` field stores the right-hand JSON; `formula` stores the left-hand authoring state.
-
-This means **no new type UI is invented** — the precondition editor is promoted to the complex
-variable editor.
 
 ---
 
@@ -448,7 +411,7 @@ The `kind: complex` union is in-memory only; it serializes to a canonical `uses:
 ```mermaid
 flowchart LR
     A[Legacy manifest] --> B{Field type?}
-    B -->|preconditions[]| C[to_variable converter]
+    B -->|"preconditions[]"| C[to_variable converter]
     B -->|scalar/dict var def| D[ValueVariable]
     C --> E[ComplexVariable<br/>type=category]
     D --> F[Unified Variables list]
@@ -479,9 +442,9 @@ Legacy TCK *manifests* continue to load, but the serialized step capability chan
   `definitions.py` L42-48 → `ValueVariable`). The unified list is what the resolution phase consumes
   and what the serializer writes back as `connector/*` steps.
 - **Phased rollout**:
-  1. **Phase 1 (this ADR)** — model + converter + generators registry + `GET /generators`, no UI change.
-  2. **Phase 2 (POC)** — Variables manager UI; legacy manifests load and re-serialize to `connector/*`.
-  3. **Phase 3** — IDE authors emit unified Variables serialized as `connector/*` steps.
+  1. **Phase 1 (this ADR)** — model + converter + generators registry + `GET /generators`.
+  2. **Phase 2 (POC)** — legacy manifests load and re-serialize to `connector/*`.
+  3. **Phase 3** — authoring tools emit unified Variables serialized as `connector/*` steps.
   4. **Phase 4 (future ADR)** — drop load-time acceptance of the legacy `preconditions` field.
 
 ---
@@ -499,15 +462,15 @@ Legacy TCK *manifests* continue to load, but the serialized step capability chan
    `outputKey = format ?? type`. A variable computes its output key as its `format` when present,
    otherwise its primitive `type`, and matches generators whose `output_type` equals that key.
    Examples: a `str` with `format: uuid` matches the `uuid` generator; an `int` with no format
-   matches an `int` generator. The `GET /generators` manifest carries `output_type`, so the
-   `GeneratorPicker` filters trivially on `format ?? type`. The advanced `pattern` field is
+   matches an `int` generator. The `GET /generators` manifest carries `output_type`, so a
+   client filters generators trivially on `format ?? type`. The advanced `pattern` field is
    **explicitly excluded** from matching — it is validation-only and never affects which generator a
    variable can select.
 
 3. **`format` catalog.** Closed backend enum mirroring generators, or free string?
    **Recommendation:** a closed, backend-owned catalog (e.g. `bpn`, `did`, `url`, `uuid`) exposed the
    same way as generators via `GET /formats`. Each catalog entry carries a `validation_regex`, so
-   validation stays deterministic and the UI stays discoverable; free strings would reintroduce the
+   validation stays deterministic and the vocabulary stays discoverable; free strings would reintroduce the
    stringly-typing this ADR rejects. The advanced `pattern` field is the escape hatch when a one-off
    regex is needed without minting a new catalog format.
 
@@ -543,11 +506,11 @@ Rejected. Loses the typed class system (ADR-0009), prevents compile-time validat
 represent complex artifacts (policy/asset JSON) without ad-hoc encoding. The discriminated union keeps
 contracts explicit.
 
-### C. UI-only generators (generator logic lives in the IDE)
+### C. Client-side generators (generator logic lives in an authoring tool)
 
-Rejected. Generators must run at execution time on the backend (the IDE is not present during a
-headless run). A frontend-only generator could not seed context during CLI/server execution and would
-duplicate logic. The backend registry + catalog keeps a single source of truth (mirrors AD-1/AD-2).
+Rejected. Generators must run at execution time on the backend (no authoring tool is present during a
+headless run). A client-side generator could not seed context during CLI/server execution and would
+duplicate logic. The backend registry + catalog keeps a single source of truth.
 
 ---
 
@@ -557,8 +520,7 @@ duplicate logic. The backend registry + catalog keeps a single source of truth (
 
 - **One concept** ("Variables") for everything a test needs before it runs.
 - **One runtime phase** seeds context; the existing resolver is reused unchanged.
-- **Discoverable generators** via a catalog, mirroring the proven block-catalog pattern.
-- **Reuse-first**: the precondition editor becomes the complex-variable editor; no new type UI.
+- **Discoverable generators** via a catalog.
 - **Backward compatible**: legacy `preconditions` manifests still load (and re-serialize to
   `connector/*` steps); `PreconditionLog` keeps working.
 
@@ -570,7 +532,7 @@ duplicate logic. The backend registry + catalog keeps a single source of truth (
 
 ### Risks
 
-- **Formula/value drift** if the UI ever writes `formula` without regenerating `value`. Mitigation:
+- **Formula/value drift** if an authoring tool ever writes `formula` without regenerating `value`. Mitigation:
   `value` is canonical; `formula` is advisory and never read at runtime.
 - **REQUEST transport coupling** to ADR-0017 — if run-start collection diverges from pause/resume,
   rework is needed (Open Question 1).
@@ -582,14 +544,12 @@ duplicate logic. The backend registry + catalog keeps a single source of truth (
 
 The POC validates the model end-to-end on a thin slice:
 
-1. **Variables manager** — list + detail view (new `VariablesManager`, `RunConfiguration` view).
-2. **Simple variables** — all three sources: `value`, `input`, `generated` (with `GeneratorPicker`
-   driven by `useGeneratorCatalog()`). Example: a UUID variable is modelled as `type: str` with
-   `format: uuid` and typically `source: generated` (uuid generator) — **NOT** `type: uuid`. The
-   value widget is a text input (driven by the `str` primitive type).
-3. **Complex variables** — reuse the existing precondition JSON editor
-   (`ide/src/poc/pocs/preconditions-editor/`) as the left-formula / right-JSON type.
-4. **Backend** — Variable models + `to_variable()` converter + generators registry +
+1. **Simple variables** — all three sources: `value`, `input`, `generated`. Example: a UUID
+   variable is modelled as `type: str` with `format: uuid` and typically `source: generated` (uuid
+   generator) — **NOT** `type: uuid`.
+2. **Complex variables** — `value` (KNOWN) and `input` (REQUEST) sources, serialized to
+   `connector/*` steps.
+3. **Backend** — Variable models + `to_variable()` converter + generators registry +
    `GET /generators` (static manifest), with `uuid_v4` re-exposing the existing UUID logic.
 
 The POC starts only after the Chief Architect approves this ADR.

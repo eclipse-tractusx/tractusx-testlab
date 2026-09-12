@@ -27,98 +27,79 @@ This guide explains the system architecture, execution design, and extension poi
 
 ## System Architecture
 
-Four components collaborate during a test run:
+Three components collaborate during a test run:
 
 ```mermaid
 flowchart LR
-    IDE[IDE<br/>React / Blockly] <--> Backend[Backend<br/>Python / FastAPI]
-    Backend <--> Mock[Mock Server<br/>FastAPI]
-    Backend <--> SUT[SUT<br/>CCMAPI Implementation]
-    SUT --> Mock
+    Client[CLI or HTTP client] --> Engine[TestLab engine<br/>Python / FastAPI]
+    Engine <--> SUT[SUT<br/>CCMAPI Implementation]
+    SUT --> Mock[Mock and callback endpoints<br/>served by the engine]
+    Mock --> Engine
 
-    style IDE fill:#1565c0,stroke:#333,color:#fff
-    style Backend fill:#2e7d32,stroke:#333,color:#fff
+    style Client fill:#1565c0,stroke:#333,color:#fff
+    style Engine fill:#2e7d32,stroke:#333,color:#fff
     style Mock fill:#6a1b9a,stroke:#333,color:#fff
     style SUT fill:#e65100,stroke:#333,color:#fff
 ```
 
 | Component | Technology | Role |
 |-----------|-----------|------|
-| **IDE** | React 19, Blockly 12, TypeScript (separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository) | Visual test authoring and real-time execution monitoring |
-| **Backend** | Python 3.12, FastAPI | YAML parsing, test orchestration, step execution |
-| **Mock Server** | Embedded FastAPI | Callback endpoints, canned responses for inbound SUT calls |
+| **TestLab engine** | Python 3.12, FastAPI (this repository) | The `testlab` CLI and server: compiling and validating TCKs, running tests, executing steps, streaming execution events over SSE |
+| **Mock and callback endpoints** | The engine's FastAPI server | Callback endpoints and canned responses for inbound SUT calls — started in a background thread during `testlab run`, or hosted by `testlab serve` |
 | **SUT** | Any CX-0135 implementation | The system being validated |
+
+For the engine's full package layout and import graph, see [Architecture](../developer/architecture.md).
 
 ## Execution Architecture
 
-When a user clicks Execute in the IDE (or runs `testlab run` from the CLI), this sequence runs:
+A run starts either from the CLI (`testlab run`, which compiles the manifest into a `.tck` package and executes it) or from an HTTP client of the server. Over HTTP, this sequence runs:
 
 ```mermaid
 sequenceDiagram
-    participant IDE as IDE
-    participant API as Backend API
+    participant Client as HTTP client
+    participant API as Server API
     participant Parser as YamlParser
-    participant Player as Player
-    participant Step as StepRunner
+    participant Player as TestlabPlayer
+    participant Step as Step runner
     participant SUT as SUT
-    participant Mock as Mock Server
+    participant Mock as Mock endpoints
 
-    IDE->>API: POST /run/yaml (YAML body)
-    API-->>IDE: 202 (job_id)
-    IDE->>API: GET /stream/{job_id} (SSE)
-    API->>Parser: parse(yaml) → Tck
-    Parser->>Player: run_test_case(tck)
-    Player->>Player: topological_sort(tests)
-    loop Each test in order
-        Player->>Step: execute(step, context)
+    Client->>API: POST /testlab/tck-execution/run/yaml (YAML body)
+    API->>Parser: parse → Tck
+    API-->>Client: 202 (job_id)
+    Client->>API: GET /testlab/tck-execution/{job_id}/stream (SSE)
+    API->>Player: run_tck(tck)
+    loop Each test in manifest order
+        Player->>Step: run test phases
         Step->>SUT: DSP / HTTP call
         SUT-->>Step: Response
         SUT->>Mock: Async callback
-        Mock-->>Step: Resolve future
+        Mock-->>Step: Resolve waiting listener
         Step-->>Player: StepResult
-        Player-->>IDE: SSE event
+        Player-->>Client: SSE event
     end
 ```
 
-### IDE → Backend handoff
+### Client → Server handoff
 
-The IDE frontend lives in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository; this engine repository exposes the HTTP API it talks to.
+1. The client sends the TCK as YAML to `POST /testlab/tck-execution/run` (or `/run/yaml`), or uploads a compiled package to `POST /testlab/run/package`
+2. The server returns HTTP 202 with a `job_id`
+3. The client opens an SSE stream at `GET /testlab/tck-execution/{job_id}/stream` (resumable via `Last-Event-ID`)
+4. The server emits execution events such as `step.started`, `step.completed`, and `step.failed` as they happen
 
-1. `ExecuteButton.handleExecute()` converts the Blockly workspace to YAML via `modelToYaml()`
-2. `useExecutionStore.execute(yaml)` sends `POST /testlab/tck-execution/run`
-3. The backend returns HTTP 202 with a `job_id`
-4. The IDE opens an SSE stream at `GET /testlab/tck-execution/{job_id}/stream`
-5. The backend emits `step.started`, `step.completed`, and `step.failed` events
-6. The `ExecutionPanel` renders results as they arrive
+### Engine orchestration
 
-### Backend orchestration
-
-1. `YamlParser` deserializes the YAML into a `Tck` model (metadata + variables + test references)
-2. Each test reference resolves to a `Test` (setup steps + main steps + teardown steps)
-3. The `Player` calls `topological_sort(tests)` to order tests by `depends_on` edges
-4. For each test: run setup → run main steps → run teardown (even if main steps fail)
+1. `YamlParser` deserializes the YAML into a `Tck` object (metadata + variables + test references)
+2. Each test reference resolves to a `Test` (setup, test and cleanup phases)
+3. The `TestlabPlayer` binds the configured infrastructure, seeds the SDK services, and runs the tests in the order the manifest lists them
+4. For each test: run setup → run the test's steps → run cleanup (even if the test's steps fail)
 5. Per step: resolve `${{ }}` references → execute the step → evaluate `validate:` assertions → publish the step's declared `returns:` outputs into the run context
 
 ## Test Orchestration Design
 
-### Why topological sorting?
+### Test order
 
-Tests declare dependencies via `depends_on`. For example, `validate_payload` depends on `request_certificate` and reads the `document_id` output it publishes. The player builds a dependency graph and runs tests in an order that satisfies all dependencies.
-
-```mermaid
-flowchart TD
-    REQ[request_certificate] --> VAL[validate_payload]
-    REQ --> AWAIT[await_feedback_callback]
-    REQ --> SEND[send_feedback]
-    VAL --> SEND
-    AWAIT --> SEND
-    PUSH[push_certificate]
-    AVAIL[available_notification]
-    EXPOSE[expose_testlab_asset]
-    ERR[error_handling]
-```
-
-Independent tests (no inbound edges) can run in any order. The player preserves declaration order for independent tests.
+Tests run in the order the manifest lists them. There is no inter-test dependency declaration in `v1-alpha`: a test says what it needs through the infrastructure it requires and the variables it reads, not by naming another test. An operator can skip individual tests; the remaining tests keep their manifest order.
 
 ### Variable flow
 
@@ -128,7 +109,7 @@ Variables propagate through three mechanisms:
 |-----------|-------|---------|
 | Declared `returns:` outputs | Published automatically to the run context after each step | `connector/dataplane/http_request` publishes `status_code` and `response_body`; later steps read `${{ execution.<step_id>.<output> }}` |
 | `store_in_variable` parameter | Explicit capture into a named context variable (on util steps such as `util/json_path_extract`, `util/base64`, `util/parse_kv`) | `util/json_path_extract` stores `ccmapi_asset_id` |
-| Test output promotion | Across tests | When a test completes, the player promotes its declared output variables into the shared run context for downstream tests (`depends_on` ordering guarantees they exist) |
+| Shared run context | Across tests | Tests run in manifest order against one run context, so a later test can read what an earlier test stored |
 
 Steps reference variables with `${{ }}` interpolation (e.g. `${{ env.sut_counter_party_address }}` or `${{ execution.pull_ccmapi_endpoint.edr_token }}`). The step runner resolves them from the execution context before calling the step executor.
 
@@ -143,11 +124,11 @@ sequenceDiagram
     participant Mock as Mock Server
     participant SUT as SUT
 
-    Step->>CM: register_future("/companycertificate/status")
-    Step->>CM: register_mock(path, canned_response)
-    Note right of Step: Step blocks on future.await()
+    Step->>Mock: register_mock(path, method, canned_response)
+    Step->>CM: register(path, method)
+    Note right of Step: mock/wait/http_request blocks on wait(path, method, timeout)
     SUT->>Mock: POST /companycertificate/status
-    Mock->>CM: resolve_future(path, body)
+    Mock->>CM: resolve(path, method, headers, payload)
     Mock-->>SUT: canned_response
     CM-->>Step: callback body (future resolved)
 ```
@@ -156,7 +137,7 @@ sequenceDiagram
 2. A subsequent `mock/wait/http_request` step blocks waiting for the future to resolve
 3. When the SUT sends an HTTP request to the mock server at that path, the mock server resolves the future
 4. The mock server also returns a canned response to the SUT
-5. The original step unblocks with the received callback body
+5. The waiting `mock/wait/http_request` step unblocks with the received callback body
 
 ## CX-0135 Compliance Mapping
 
@@ -195,9 +176,9 @@ The embedded mock server serves two purposes: it provides canned responses to th
 The `mock/api` step type registers both a canned response and a callback future:
 
 ```python
-# Simplified — actual implementation in step executors
-mock_server.register_mock(path="/companycertificate/status", response=canned_body)
-future = callback_manager.register_future(path="/companycertificate/status")
+# Simplified — actual implementation in steps/mock/api.py
+register_mock(path="/companycertificate/status", method="POST", response=canned_body)
+callback_manager.register("/companycertificate/status", "POST")
 ```
 
 When the SUT hits the mock path, the server:
@@ -269,7 +250,7 @@ Add routes in `app.py`, response builders in `responses.py`. See `stubs/ccm-sut/
 1. Create a directory for the suite — the shipped reference lives at `docs/examples/certificate-management-v2/raw/` in this repository
 2. Write an `index.yaml` with `kind: tck`, metadata, variables, and test references
 3. Write individual test YAML files with `kind: test`
-4. To surface it in the visual IDE, add it to the example project list in the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository
+4. Run `testlab validate` on the directory to check it against the schemas and the step registry before compiling it
 
 ### Creating custom step executors
 
@@ -287,15 +268,15 @@ Run the test suite headless via CLI:
 testlab run index.yaml --config run-config.yaml
 ```
 
-The command prints per-test and per-step results to stdout and exits non-zero on failure; detailed logs (including the execution trace) are written to the `--logs-dir` directory (default `./logs`). Use the exit code for pass/fail status in your CI pipeline.
+The command prints per-test and per-step results to stdout and exits non-zero on failure; the console transcript is written to the `--logs-dir` directory (default `./logs`), and the CloudEvents execution trace to the configured `data_dir`. Use the exit code for pass/fail status in your CI pipeline.
 
 ## Design Decisions
 
 | Decision | Rationale | Reference |
 |----------|-----------|-----------|
-| SSE over WebSocket | Simpler server push, no bidirectional channel needed | [ADR-0003](../developer/decision-records/shared/ADR-0003-sse-for-live-ide-execution.md) |
+| SSE over WebSocket | Simpler server push, no bidirectional channel needed | [ADR-0003](../developer/decision-records/shared/ADR-0003-sse-for-live-execution.md) |
 | YAML over JSON for tests | Human-readable, supports comments, familiar to DevOps | Project convention |
-| Topological sort over linear | Enables parallel-safe independent tests, enforces dependencies | Player design |
+| Manifest order, no inter-test dependencies | A test states what it needs through required infrastructure and the variables it reads, not by naming another test | Player design |
 | `asyncio.Future` for callbacks | Native async/await integration, no polling, timeout support | Mock server design |
 | `${{ }}` interpolation | GitHub-Actions-style references, explicit about their source (`env.`, `execution.`) | [Specification](../tck-syntax/index.md) |
 

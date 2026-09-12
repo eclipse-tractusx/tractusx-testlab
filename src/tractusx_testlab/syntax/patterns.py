@@ -46,3 +46,11 @@ the capture excludes the surrounding spaces, so ``${{ env.x }}`` and
 
 EXPR_REF_FULL = re.compile(r"^\$\{\{\s*((?:[^}]|\}(?!\}))+?)\s*\}\}$")
 """Matches a string that is nothing but a single ``${{ expr }}``."""
+
+CAC_REF = re.compile(r"^(?P<standard>[^:\s]+):(?P<version>[^:\s]+):(?P<cac>[^:\s]+)$")
+"""Matches a ``cac:`` entry — ``<standard-id>:<standard-version>:<cac-id>``.
+
+Three segments, none empty, no whitespace, e.g. ``CX-0135:v3.1.0:CAC-014``. The
+standard and version are named so the compiler can hold them to the manifest's
+``metadata.standards``; what a CAC id looks like is the Expert Group's business.
+"""

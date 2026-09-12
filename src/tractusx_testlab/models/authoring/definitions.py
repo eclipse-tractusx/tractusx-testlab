@@ -34,6 +34,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from tractusx_testlab.models.authoring.cac import CacReferences
 from tractusx_testlab.models.authoring.infrastructure import (
     DataspaceContext,
     InfrastructureConfig,
@@ -131,6 +132,9 @@ class Assertion(BaseModel):
     #: which is exactly what a certification result has to say. Nothing in the
     #: engine reads it — the check itself is entirely in ``uses`` and ``with``.
     name: str | None = None
+    #: The CACs this one check verifies. Overrides the step's ``cac`` for this
+    #: check when reported; absent, the check reports under the step's.
+    cac: CacReferences | None = None
     with_: dict[str, Any] | None = Field(default=None, alias="with")
 
 
@@ -142,6 +146,9 @@ class StepDefinition(BaseModel):
     id: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]{0,49}$")
     uses: str
     name: str | None = None
+    #: The CACs this step verifies; each of its checks reports under them unless
+    #: the check names its own.
+    cac: CacReferences | None = None
     with_: dict[str, Any] | None = Field(default=None, alias="with")
     returns: dict[str, ReturnFieldDefinition] | None = None
     #: The step's checks. Named ``assertions`` in Python because a field called

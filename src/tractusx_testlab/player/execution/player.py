@@ -60,7 +60,10 @@ from tractusx_testlab.player.execution.infrastructure_seeder import seed_infrast
 from tractusx_testlab.player.execution.mock_server import _BackgroundMockServer
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
-from tractusx_testlab.player.loading._parser import is_encrypted_package
+from tractusx_testlab.player.loading._parser import (
+    encrypted_package_compiler_id,
+    is_encrypted_package,
+)
 from tractusx_testlab.player.loading.loader import Loader
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import get_callback_manager, set_callback_manager
@@ -136,16 +139,49 @@ class TestlabPlayer:
     ) -> TckResult:
         """Verify and execute the ``.tck`` package at *path* — packages only."""
         resolved = Path(path)
-        self._monitor.on_package_verify_start(
-            resolved.name, encrypted=is_encrypted_package(resolved)
-        )
+        encrypted = is_encrypted_package(resolved)
+        self._monitor.on_package_verify_start(resolved.name, encrypted=encrypted)
         try:
-            tck = self._loader.load(resolved)
+            keys = self._package_keys(resolved) if encrypted else {}
+            tck = self._loader.load(resolved, **keys)
         except ValueError as exc:
             self._monitor.on_package_verify_failed(resolved.name, str(exc))
             raise
         self._monitor.on_package_verify_passed(resolved.name, checksum="")
         return await self.run_tck(tck, runtime_vars=runtime_vars, job_id=job_id)
+
+    def _package_keys(self, package: Path) -> dict[str, bytes]:
+        """Resolve the keys an encrypted *package* needs from this engine's config.
+
+        A server cannot be handed a player's private key per request, and should
+        not be: the engine *is* the player, so its identity lives in ``keys_dir``
+        and the compilers it accepts in ``trust_store_dir``. The CLI passes the
+        same two keys explicitly with ``--player-keys`` and ``--compiler-pub``.
+        """
+        from tractusx_testlab.security.trust.trust_store import TrustStore
+
+        private_key = self._config.keys_dir / "encryption.pem"
+        if not private_key.is_file():
+            raise ValueError(
+                f"Package {package.name!r} is encrypted, and this engine has no player "
+                f"identity: {private_key} does not exist. Generate one with "
+                f"`testlab keygen` and point TESTLAB_KEYS_DIR at the directory holding "
+                f"its encryption.pem."
+            )
+
+        compiler_id = encrypted_package_compiler_id(package)
+        compiler_key = TrustStore(self._config.trust_store_dir).find(compiler_id)
+        if compiler_key is None:
+            raise ValueError(
+                f"Package {package.name!r} is signed by compiler {compiler_id[:16]}, "
+                f"which this engine does not trust. Copy that compiler's signing.pub "
+                f"into {self._config.trust_store_dir}."
+            )
+
+        return {
+            "player_private_key": private_key.read_bytes(),
+            "compiler_public_key": compiler_key,
+        }
 
     async def run_tck(
         self,

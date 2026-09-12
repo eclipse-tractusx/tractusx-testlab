@@ -31,12 +31,12 @@ Agreed
 
 The TestLab player emits execution traces for:
 
-- **Observability**: streaming progress to the IDE via SSE
+- **Observability**: streaming progress to server clients via SSE
 - **Debugging**: inspecting step-level inputs, outputs, and validation results
 - **Audit**: immutable record of what ran, what passed, and what failed
 - **Tooling**: log aggregator ingestion (ELK, Loki, Datadog) without custom transformers
 
-Traces are delivered to the IDE frontend over Server-Sent Events (SSE) and persisted as JSONL files. The format must be self-contained, streamable, and interoperable with existing observability infrastructure.
+Traces are delivered to the server's clients over Server-Sent Events (SSE) and persisted as JSONL files. The format must be self-contained, streamable, and interoperable with existing observability infrastructure.
 
 The previous v2 format (flat JSONL with a header line) coupled trace identity to file-level context, making it unsuitable for single-stream TCK runs where multiple tests and lifecycle phases interleave. A CloudEvents-based envelope provides per-event identity, standard typing, and ecosystem compatibility.
 
@@ -47,7 +47,7 @@ A run leaves **two** artifacts, and they are not two formats of one thing:
 | Artifact | Location | Format | Audience |
 |----------|----------|--------|----------|
 | **Transcript** | `logs_dir` - `<date>/<time>_<job_id>.log` | Plain text, identical to the console | A person watching or reviewing the run |
-| **Trace** | `data_dir` - `<date>/<time>_<job_id>.jsonl` | CloudEvents JSONL (this ADR) | The IDE, the report, log aggregators, anyone debugging the wire |
+| **Trace** | `data_dir` - `<date>/<time>_<job_id>.jsonl` | CloudEvents JSONL (this ADR) | Server clients, the report, log aggregators, anyone debugging the wire |
 
 They are configured separately (`TESTLAB_LOGS_DIR` / `TESTLAB_DATA_DIR`, or `--logs-dir` / `--data-dir`) because they are read for different reasons. The engine previously wrote JSONL to `logs_dir` and text only to the console, which produced a log file that was neither: too verbose to read, and not the trace either.
 
@@ -131,7 +131,7 @@ The trailing `<hash>` is a 12-character hex string (blake2b of `data`) that disa
 #### Boot Requirements Event
 
 `tck.boot.requirements` is emitted once, right after `tck.boot.start`, before any binding or
-service. It publishes the resolved topology (ADR-0019) so the operator and the IDE know up front
+service. It publishes the resolved topology (ADR-0019) so the operator and any client know up front
 what each side must provide — e.g. that the SUT must expose **both** a connector and a DTR. Each
 capability carries its `required` flag: `true` is **enabled** (the run needs it), `false` is
 **disabled** (declared but not exercised this run). The shape mirrors the manifest `infrastructure:`
@@ -216,7 +216,7 @@ A variable bound to a **config capability** that publishes a config schema carri
 reference in its resolution events. Today this is `config/connector/policy`: the policy a test
 must configure (e.g. the SUT access/usage policy) is a complex variable
 ([ADR-0018](../shared/ADR-0018-unified-variables-model.md)) whose value validates against the Catena-X policy
-JSON Schema shipped in `ide/schemas/policies/`, selected by the run's `dataspace_version`:
+JSON Schema shipped in `src/tractusx_testlab/schemas/policies/`, selected by the run's `dataspace_version`:
 
 | `dataspace_version` | Config schema `$id` |
 |---------------------|---------------------|
@@ -225,7 +225,7 @@ JSON Schema shipped in `ide/schemas/policies/`, selected by the run's `dataspace
 
 The `schema` field is always a JSON-Schema **reference** — `{"$ref": "<config schema $id>"}` — never
 an inline ad-hoc copy. Author, operator, and trace therefore validate the policy against one source
-of truth (the same variables config schema the IDE authoring uses). It maps by disposition:
+of truth (the same variables config schema used when authoring). It maps by disposition:
 
 - `known` / `generate` — `tck.variable.resolve.start` carries `schema`, declaring the config schema
   the provided or generated `value` validates against.
@@ -340,7 +340,7 @@ Validations are **nested inside the terminal step event** in `data.validations[]
 | `outputs` | `object` | Actual value + `passed` boolean |
 | `errors` | `array` | Present only on validation failure (with recommendations) |
 
-**Rationale**: Validations are semantically part of the step result, not independent events. Nesting reduces event count and keeps the step result self-contained for IDE rendering.
+**Rationale**: Validations are semantically part of the step result, not independent events. Nesting reduces event count and keeps the step result self-contained for rendering.
 
 ### Retry Handling
 
@@ -430,7 +430,7 @@ looking rather than who to blame.
 `POLICY_MISMATCH` is the first of them. The SDK reports a catalog whose offers
 were all refused as "no valid policy was found", which names neither the offers
 nor the condition that refused them; the engine reads both sides down to their
-atomic ODRL conditions and publishes the difference as a set, so the IDE renders
+atomic ODRL conditions and publishes the difference as a set, so a client renders
 the comparison instead of parsing it back out of a sentence:
 
 ```json
@@ -491,7 +491,7 @@ When a `request`-disposition variable needs operator input:
 
 1. Player emits `tck.variable.input.required` with `correlation_id`, `schema`, `prompt`, and `input_prompts`
 2. SSE stream **pauses server-side** — no further events until input arrives
-3. IDE renders a form from `input_prompts`; user submits via REST endpoint (out of scope — see ADR-0017)
+3. A client renders a form from `input_prompts`; user submits via REST endpoint (out of scope — see ADR-0017)
 4. Player emits `tck.variable.input.received` echoing `correlation_id` + `outputs`
 5. Player emits `tck.variable.resolved` and streaming resumes
 
@@ -503,11 +503,11 @@ Each JSONL line maps to one SSE frame:
 
 | SSE field | Source | Purpose |
 |-----------|--------|---------|
-| `event:` | `type` value | Routes to IDE event handler |
+| `event:` | `type` value | Routes to the client's event handler |
 | `id:` | `sequence` (string) | Enables `Last-Event-ID` reconnection |
 | `data:` | Full CE JSON (one line) | Self-contained event payload |
 
-**Reconnection**: IDE sends `Last-Event-ID: <sequence>` on reconnect. Backend resumes from `sequence + 1`. The `tck.start` event is re-sent on every new connection so late joiners have run context.
+**Reconnection**: The client sends `Last-Event-ID: <sequence>` on reconnect. Backend resumes from `sequence + 1`. The `tck.start` event is re-sent on every new connection so late joiners have run context.
 
 ## Concrete Example
 
@@ -679,7 +679,7 @@ so they are the next increments rather than silent omissions:
 | `[REDACTED]` redaction strategy | Irreversibly discards debug-valuable data; JWE encryption protects secrets while remaining recoverable with the key |
 | OpenTelemetry spans | Requires OTel collector infrastructure; overkill for file-based traces |
 | Protobuf encoding | Not human-readable; cannot `cat` or `jq` the trace |
-| Two-file split (TCK + per-test) | Adds complexity; single-stream is simpler for IDE consumption and SSE delivery |
+| Two-file split (TCK + per-test) | Adds complexity; single-stream is simpler for client consumption and SSE delivery |
 
 ## Consequences
 
@@ -688,7 +688,7 @@ so they are the next increments rather than silent omissions:
 - Standard CloudEvents envelope enables integration with any CE-compatible tooling
 - Structured `id` enables filtering by TCK, test, step, or event type via simple string prefix
 - Self-contained events — no header dependency; any line is independently meaningful
-- Nested validations keep step results atomic for IDE rendering
+- Nested validations keep step results atomic for rendering
 - `sequence` provides total ordering and SSE reconnection support
 - Standard JWE (RFC 7516) encryption is the single mechanism for secret protection; `kid`-based JWK rotation keeps old traces decryptable
 - Recommendation resolution order provides increasingly specific fix suggestions

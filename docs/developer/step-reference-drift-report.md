@@ -24,7 +24,7 @@
 # Step Reference vs. Implementation — Drift Report
 
 > Date: 2026-08-07 | Branch: `feat/run_security_consitency`
-> Scope: [`docs/api-reference/steps.md`](../api-reference/steps.md)
+> Scope: [`docs/api-reference/steps.md`](../api-reference/steps/index.md)
 > compared against the live step registry it is generated from.
 > Status: **analysis** — one incidental fix applied (D0), the rest is unimplemented.
 
@@ -108,7 +108,7 @@ seven steps whose `output_model` is `NoOutput`:
 | `connector/provider/delete_asset` | 561 | `Type: any` | `Type: NoneType` |
 | `connector/provider/delete_contract_definition` | 583 | `Type: any` | `Type: NoneType` |
 | `connector/provider/delete_policy` | 603 | `Type: any` | `Type: NoneType` |
-| `digital-twin/provider/delete_shell_descriptor` | 677 | `Type: any` | `Type: NoneType` |
+| `digital-twin-registry/provider/delete_shell_descriptor` | 677 | `Type: any` | `Type: NoneType` |
 | `flow/delay` | 725 | `Type: any` | `Type: NoneType` |
 | `mock/discovery` | 828 | `Type: any` | `Type: NoneType` |
 | `mock/dtr` | 851 | `Type: any` | `Type: NoneType` |

@@ -31,9 +31,8 @@ This guide covers setting up, running, and debugging the CX-0135 certificate man
 
 - Python 3.12+
 - A running CCMAPI-compliant SUT (or use the provided stub)
-- Optionally the visual IDE from the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository (requires Node.js 20+)
 
-### Four steps to your first test run
+### Three steps to your first test run
 
 ```bash
 # 1. Clone and install
@@ -47,10 +46,9 @@ cd ../..
 
 # 3. Run the Certificate Management suite from the CLI
 testlab run docs/examples/certificate-management-v2/raw/index.yaml --config run-config.yaml
-
-# 4. (Optional) For visual authoring and execution monitoring, start the
-#    TestLab backend with `testlab serve` and connect the cx-test-suite IDE to it.
 ```
+
+To drive runs over HTTP instead, start the server with `testlab serve` and follow a job's execution events over SSE.
 
 ## Running with the SUT Stub
 
@@ -67,12 +65,12 @@ The stub at `stubs/ccm-sut/` replaces two real components:
 
 ```mermaid
 sequenceDiagram
-    participant User as User (IDE)
-    participant TL as TestLab Backend
+    participant User as User (CLI)
+    participant TL as TestLab Engine
     participant Stub as SUT Stub :8090
     participant Mock as Mock Server :8100
 
-    User->>TL: Execute test suite
+    User->>TL: testlab run
     TL->>Stub: POST /dsp/catalog/request
     Stub-->>TL: Catalog (CCMAPI + Submodel datasets)
     TL->>Stub: POST /dsp/negotiations/initial
@@ -142,7 +140,7 @@ tests:
 
 ### Test files and dependencies
 
-The full suite described in this guide contains 8 test files; the engine repository ships a four-test version at `docs/examples/certificate-management-v2/raw/tests/`. Some tests depend on outputs from earlier tests:
+The full suite described in this guide contains 8 test files; the engine repository ships a four-test version at `docs/examples/certificate-management-v2/raw/tests/`. Some tests read outputs that earlier tests publish, so the manifest lists those tests first:
 
 ```mermaid
 flowchart TD
@@ -166,7 +164,7 @@ flowchart TD
     style ERR fill:#2e7d32,stroke:#333,color:#fff
 ```
 
-**Blue tests** form a dependency chain (must run in order). **Green tests** are independent and can run in parallel.
+**Blue tests** form a data-dependency chain. **Green tests** are independent of each other. The engine runs every test sequentially, in the order the manifest lists them; `v1-alpha` has no inter-test dependency declaration.
 
 | Test | CX-0135 Section | Dependencies |
 |------|-----------------|--------------|
@@ -183,10 +181,10 @@ flowchart TD
 
 See the **[Architecture Guide](ccm-architecture-guide.md)** for the full internal sequence. In summary:
 
-1. The IDE (cx-test-suite) converts the workspace to YAML and sends `POST /testlab/tck-execution/run`
-2. The backend parses YAML into a `Tck` object and topologically sorts tests by dependencies
+1. `testlab run` compiles the manifest into a `.tck` package (validating it first), or an HTTP client sends the YAML to `POST /testlab/tck-execution/run`
+2. The player loads the TCK, binds the configured infrastructure, seeds the SDK services, and runs the tests in manifest order
 3. For each test: resolve `${{ }}` references → execute steps → evaluate `validate:` assertions → publish declared `returns:` outputs
-4. The IDE receives real-time SSE events (`step.started`, `step.completed`, `step.failed`)
+4. The CLI prints results as they arrive; an HTTP client follows the same execution events (`step.started`, `step.completed`, `step.failed`) over SSE at `GET /testlab/tck-execution/{job_id}/stream`
 
 ## Deep Dive: request_certificate
 

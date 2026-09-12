@@ -112,7 +112,7 @@ def _storage_path(semantic_id: str | None, submodel_id: str) -> str:
 
 
 class UploadBackendDataParams(HttpTransportParams):
-    """Input contract of ``digital-twin/submodel/upload``.
+    """Input contract of ``digital-twin-registry/submodel/upload``.
 
     Only the transport half of an HTTP call: the step always POSTs, so a
     ``method`` input would be a knob that does nothing, and the submodel server
@@ -196,7 +196,7 @@ class UploadBackendDataParams(HttpTransportParams):
 
 
 class UploadBackendDataOutput(StepPayload):
-    """Output contract of ``digital-twin/submodel/upload``."""
+    """Output contract of ``digital-twin-registry/submodel/upload``."""
 
     backend_url: str = Field(
         description="Full backend URL the data was uploaded to — server and path together."
@@ -231,7 +231,7 @@ class UploadBackendDataOutput(StepPayload):
     )
 
 
-@step("digital-twin/submodel/upload")
+@step("digital-twin-registry/submodel/upload")
 class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataOutput]):
     """Upload sample data to the engine's submodel server, under its aspect and its id.
 
@@ -300,12 +300,12 @@ class UploadBackendDataStep(BaseStep[UploadBackendDataParams, UploadBackendDataO
 
 
 # ---------------------------------------------------------------------------
-# digital-twin/submodel/delete
+# digital-twin-registry/submodel/delete
 # ---------------------------------------------------------------------------
 
 
 class DeleteBackendDataParams(HttpTransportParams):
-    """Input contract of ``digital-twin/submodel/delete``.
+    """Input contract of ``digital-twin-registry/submodel/delete``.
 
     The server is the engine's, as it is for the upload; what a delete has to be
     told is which resource under it to remove, and that is the ``path`` the
@@ -335,23 +335,23 @@ class DeleteBackendDataParams(HttpTransportParams):
         if path is None:
             raise ValueError(
                 "'path' is required: name the submodel to delete, e.g. the 'path' "
-                "output of 'digital-twin/submodel/upload'"
+                "output of 'digital-twin-registry/submodel/upload'"
             )
         return path
 
 
-@step("digital-twin/submodel/delete")
+@step("digital-twin-registry/submodel/delete")
 class DeleteBackendDataStep(BaseStep[DeleteBackendDataParams, DeletionOutput]):
     """Delete one submodel from the engine's submodel server.
 
-    The teardown half of ``digital-twin/submodel/upload``: it removes the
+    The teardown half of ``digital-twin-registry/submodel/upload``: it removes the
     resource that upload's ``path`` names, on the server the engine is seeded
     with (``engine.dtr.submodel_base_url``).
 
     The status the server answered with is published as ``status_code``, so a
     teardown can assert that the data was really there (200/204) rather than
     already gone (404) — the same distinction
-    ``digital-twin/provider/delete_shell_descriptor`` publishes.
+    ``digital-twin-registry/provider/delete_shell_descriptor`` publishes.
     """
 
     params_model = DeleteBackendDataParams

@@ -33,21 +33,20 @@ Accepted
 
 ## Context
 
-Blocks in the TestLab IDE produce output variables that downstream blocks consume as inputs. Currently, input dropdowns display **all** available variables in the workspace with no type filtering. Users must memorize which variable belongs to which semantic category (e.g., an EDR token vs. an asset ID vs. a policy ID). This makes test authoring error-prone, especially for non-technical certification testers who lack deep knowledge of block internals.
+Steps in a TestLab test produce output variables that downstream steps consume as inputs. Nothing states which outputs a given input can meaningfully consume: every available variable is an equally valid candidate. Authors must memorize which variable belongs to which semantic category (e.g., an EDR token vs. an asset ID vs. a policy ID). This makes test authoring error-prone, especially for non-technical certification testers who lack deep knowledge of step internals.
 
-The auto-link system (PAT-2) partially mitigates this by pre-filling the nearest compatible output, but when users manually select a variable they still see the full unfiltered list. As the block catalog grows, the problem worsens — a workspace with 15+ steps can easily have 30+ variables in the dropdown.
+As the step set grows, the problem worsens — a test with 15+ steps can easily have 30+ variables in scope.
 
 ### Forces
 
 - Non-technical users are the primary audience — they cannot distinguish `agreement_id` from `negotiation_id` by name alone.
-- The block catalog is JSON-driven (AD-1) — any typing system must be expressed in JSON, not in TypeScript code.
-- Backward compatibility is mandatory — existing block definitions without type annotations must continue to work.
-- The class taxonomy must be extensible without code changes as new blocks and protocols are added.
-- The IDE must remain responsive — filtering logic runs on every dropdown open.
+- Step input and output definitions are declarative data — any typing system must be expressed as metadata on those definitions, not in code.
+- Backward compatibility is mandatory — existing step definitions without type annotations must continue to work.
+- The class taxonomy must be extensible without code changes as new steps and protocols are added.
 
 ## Decision
 
-We introduce a **typed variable class system** with two new optional fields in the block JSON schema:
+We introduce a **typed variable class system** with two new optional fields on step input and output definitions:
 
 1. **`class`** on outputs — declares the semantic type of the produced variable.
 2. **`accepts`** on input params — declares which classes the input can consume.
@@ -79,14 +78,13 @@ We introduce a **typed variable class system** with two new optional fields in t
 
 ### Rules
 
-1. `class` is a PascalCase string identifier — maps directly to Python/TypeScript class names. No dots, no hierarchy. Pattern: `^[A-Z][a-zA-Z0-9]*$`.
+1. `class` is a PascalCase string identifier — maps directly to Python class names. No dots, no hierarchy. Pattern: `^[A-Z][a-zA-Z0-9]*$`.
 2. `accepts` is an array of class strings. An input accepts a variable if the variable's class appears in the array.
-3. If `accepts` is omitted, the input shows all variables (backward compatible).
-4. If `class` is omitted on an output, the variable has **no class constraint** — it appears in all input dropdowns regardless of `accepts` filters. This is the default for outputs that don't need type routing.
+3. If `accepts` is omitted, the input accepts all variables (backward compatible).
+4. If `class` is omitted on an output, the variable has **no class constraint** — it is compatible with every input regardless of `accepts` filters. This is the default for outputs that don't need type routing.
 5. `Uuid` class is **not** universally compatible. Inputs that should accept UUIDs must explicitly list `"Uuid"` in their `accepts` array alongside their primary class (e.g., `"accepts": ["AssetId", "Uuid"]`). This keeps the system predictable — no hidden wildcard rules.
-6. New classes can be added by editing the class registry JSON — no TypeScript or Python code changes required.
-7. The IDE dropdown provides a "Show all variables" toggle for advanced users who need to bypass filtering.
-8. `class` is **optional** on `returns` declarations. Not every output needs a class. Use `class` only when you want to enforce that the output is routed to specific inputs via `accepts` filtering. Outputs without `class` appear in all dropdowns and have no routing constraint. Example — a step that returns a plain description string doesn't need a class:
+6. New classes can be added by editing the class registry JSON — no Python code changes required.
+7. `class` is **optional** on `returns` declarations. Not every output needs a class. Use `class` only when you want to enforce that the output is routed to specific inputs via `accepts` filtering. Outputs without `class` are compatible with every input and have no routing constraint. Example — a step that returns a plain description string doesn't need a class:
    ```yaml
    returns:
      description:
@@ -134,7 +132,7 @@ The class taxonomy is flat (no inheritance). Classes are semantic, not structura
 | `NegotiationId` | Contract negotiation process identifier | `negotiate` |
 | `AgreementId` | Contract agreement identifier | `negotiate`, `pull_data_filtered` |
 | `TransferId` | Transfer process identifier | `initiate_transfer` |
-| `EndpointId` | Mock endpoint identifier (for wait blocks) | `mock_endpoint` |
+| `EndpointId` | Mock endpoint identifier (for wait steps) | `mock_endpoint` |
 | `ShellId` | AAS shell descriptor identifier | `register_aas_shell` |
 | `SubmodelId` | Submodel descriptor identifier | `create_submodel` |
 | `Uuid` | Generated UUID v4 string | `generate_uuid` |
@@ -193,7 +191,7 @@ The class taxonomy is flat (no inheritance). Classes are semantic, not structura
 |-------|-----------|-------------------|
 | `String` | Generic untyped string (fallback when no class applies) | any output without explicit `class` |
 
-> **Note:** When `class` is `null` on a symbol table entry, the variable has no semantic type constraint. It will appear in all dropdowns regardless of `accepts` filters (backward-compatible behavior). When `type` is `"class"`, the `class` field doubles as the factory registry key (see ADR-0014 §3.4.6).
+> **Note:** When `class` is `null` on a symbol table entry, the variable has no semantic type constraint. It is compatible with every input regardless of `accepts` filters (backward-compatible behavior). When `type` is `"class"`, the `class` field doubles as the factory registry key (see ADR-0014 §3.4.6).
 
 ### Class Naming Convention
 
@@ -212,7 +210,7 @@ Class identifiers use **PascalCase** — identical to their corresponding Python
 
 ### Class Registry
 
-The canonical class registry lives at **`ide/public/blocks/classes.json`**. Format:
+The canonical class registry is a single JSON file listing every class. Format:
 
 ```json
 {
@@ -227,47 +225,43 @@ The canonical class registry lives at **`ide/public/blocks/classes.json`**. Form
 }
 ```
 
-This file serves as documentation, IDE color-coding source, and validation reference. The IDE loads it alongside `index.json` at startup.
+This file serves as documentation and validation reference for any tool that reads step definitions.
 
 ### Composite Outputs
 
-Blocks that produce structured objects (e.g., a data address with `.endpoint` and `.authorization`) declare **multiple named outputs**, each with its own class. The block JSON already supports an `outputs` array — each entry gets its own `class`. There is no "dot-path" accessor; the block must explicitly decompose its result into individually typed outputs.
+Steps that produce structured objects (e.g., a data address with `.endpoint` and `.authorization`) declare **multiple named outputs**, each with its own class. Each output entry gets its own `class`. There is no "dot-path" accessor; the step must explicitly decompose its result into individually typed outputs.
 
 ### Compiler/YAML Validation
 
-The YAML compiler SHOULD validate class compatibility when `accepts` metadata is available. This is a **warning**, not an error — the user may intentionally pass a mismatched type for advanced use cases. The IDE filtering is the primary enforcement mechanism.
+The YAML compiler SHOULD validate class compatibility when `accepts` metadata is available. This is a **warning**, not an error — the author may intentionally pass a mismatched type for advanced use cases.
 
 ## Consequences
 
 ### Positive
 
-- Drastically reduces user errors — dropdowns show only contextually relevant variables.
-- Makes block authoring self-documenting — `accepts` declares the contract explicitly.
-- Enables future features: enhanced auto-link scoring, type-aware validation markers, visual type indicators (colored variable chips).
+- Drastically reduces author errors — each input declares which variables are contextually relevant.
+- Makes step definitions self-documenting — `accepts` declares the contract explicitly.
+- Enables future features such as type-aware validation.
 - Zero breaking changes — both fields are optional with sensible defaults.
 - Extensible without code changes — new classes are a JSON edit.
 
 ### Negative
 
-- Every block JSON file in `public/blocks/` must be updated to add `class` and `accepts` fields (one-time migration effort).
-- The class taxonomy must be maintained as new blocks are added — risk of inconsistency if contributors forget.
-- The class registry adds one more file to keep in sync with the block catalog.
+- Every step definition must be updated to add `class` and `accepts` fields (one-time migration effort).
+- The class taxonomy must be maintained as new steps are added — risk of inconsistency if contributors forget.
+- The class registry adds one more file to keep in sync with the step definitions.
 
 ### Risks
 
-- Over-constraining classes could make the system too rigid for edge cases. Mitigated by the "Show all" override and the explicit `uuid`/`string` escape hatches.
+- Over-constraining classes could make the system too rigid for edge cases. Mitigated by class checks being warnings rather than errors, and by the explicit `uuid`/`string` escape hatches.
 - Contributors may assign incorrect classes. Mitigated by CI validation that checks all outputs have a `class` from the registry and all `accepts` entries reference valid classes.
 
 ## Implementation Plan
 
-| Step | Description | Agent |
-|------|-------------|-------|
-| 1 | Create `ide/public/blocks/classes.json` with the full taxonomy | `testlab-ide-master` |
-| 2 | Add `class` to all output definitions in `public/blocks/` | `testlab-ide-master` |
-| 3 | Add `accepts` to all input params that consume variables | `testlab-ide-master` |
-| 4 | Update TypeScript types (`BlockOutput`, `BlockParam`) | `testlab-ide-master` |
-| 5 | Implement `collectTypedVariables()` in the variable system | `testlab-ide-master` |
-| 6 | Update `dynamicDropdown()` to filter by `accepts` | `testlab-ide-master` |
-| 7 | Add "Show all" toggle to the dropdown UI | `testlab-ide-master` |
-| 8 | Add compiler warning for class mismatches | `testlab-master` |
-| 9 | Update documentation (block-system, block-lifecycle) | `testlab-docs-master` |
+| Step | Description |
+|------|-------------|
+| 1 | Create the class registry with the full taxonomy |
+| 2 | Add `class` to all step output definitions |
+| 3 | Add `accepts` to all input params that consume variables |
+| 4 | Add compiler warning for class mismatches |
+| 5 | Update documentation (block-lifecycle) |
