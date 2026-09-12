@@ -1,0 +1,127 @@
+# Copyright (c) 2026 Catena-X Automotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## It was reviewed and tested by a human committer.
+
+# Adapted from eclipse-tractusx/tractusx-sdk's `dependencies.yml`. The Python
+# dependency tree is resolved from poetry.lock, checked against the Eclipse
+# Dash license tool and compared with the committed DEPENDENCIES file, so a
+# change to the lock file that is not reflected in DEPENDENCIES fails CI.
+
+name: "Eclipse DASH IP Check"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - poetry.lock
+      - pyproject.toml
+      - DEPENDENCIES
+      - .github/workflows/dependencies.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - poetry.lock
+      - pyproject.toml
+      - DEPENDENCIES
+      - .github/workflows/dependencies.yml
+  workflow_dispatch:
+
+env:
+  DEP_FILE: DEPENDENCIES
+
+jobs:
+  check-dependencies:
+    name: Dash license check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Pinned and wheel-only so the resolver step itself is reproducible and
+      # never runs a setup script (SonarCloud S8541, S8544).
+      - name: Install Poetry
+        run: "pip install --only-binary :all: poetry==2.1.2"
+
+      # `sync` rather than `install` so the environment is exactly the lock
+      # file, and `--no-root` so the package under test is not listed itself.
+      - name: Install dependencies
+        run: |
+          if [ ! -f poetry.lock ]; then
+            echo "The project must have a poetry.lock file"
+            exit 1
+          fi
+          poetry sync --no-root --no-interaction
+
+      - name: List packages
+        run: |
+          poetry run pip list --format=freeze \
+            | grep -Ev "^(pip|setuptools|wheel|virtualenv|distlib|pkg_resources)==" \
+            | awk -F'==' '{print "pypi/pypi/-/" $1 "/" $2}' \
+            | awk '!seen[$0]++' > PACKAGE
+          echo "Packages resolved from poetry.lock on this runner:"
+          cat PACKAGE
+
+      - name: Generate dependencies file
+        run: |
+          curl --proto '=https' --tlsv1.2 -L --output ./dash.jar 'https://repo.eclipse.org/service/rest/v1/search/assets/download?repository=dash-maven2-releases&maven.groupId=org.eclipse.dash&maven.artifactId=org.eclipse.dash.licenses&maven.baseVersion=1.1.0&maven.extension=jar'
+          # Dash exits non-zero when any entry is restricted, which the next
+          # steps report far more readably, so its exit status is ignored here.
+          # An empty summary means the license lookup itself failed (the
+          # ClearlyDefined query has been seen to time out silently), and that
+          # must not be mistaken for "the file drifted".
+          java -jar ./dash.jar PACKAGE -project automotive.tractusx -timeout 300 -summary $DEP_FILE || true
+          if [ ! -s "$DEP_FILE" ]; then
+            echo "Dash wrote no summary; the license lookup failed. Re-run the job."
+            exit 1
+          fi
+
+      - name: Check if dependencies were changed
+        run: |
+          if git diff --exit-code $DEP_FILE; then
+            echo "$DEP_FILE is up to date"
+          else
+            echo "$DEP_FILE is out of date. Replace it with the following content:"
+            cat $DEP_FILE
+            exit 1
+          fi
+
+      - name: Check for restricted dependencies
+        run: |
+          restricted=$(grep 'restricted' $DEP_FILE || true)
+          if [[ -n "$restricted" ]]; then
+            echo "The following dependencies are restricted and need an IP review:"
+            echo "$restricted"
+            exit 1
+          fi
+
+      - name: Upload dependencies file
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEPENDENCIES
+          path: ${{ env.DEP_FILE }}
