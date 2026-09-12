@@ -339,7 +339,7 @@ ConnectionError: [Connector Service]: It was not possible to get the catalog…
 ...
 
 ╔==============================================================================╗
-║                           Script: dtr-filterability                          ║
+║                            Test: dtr-filterability                           ║
 ╠==============================================================================╣
 ║  STEP                                          RESULT      TIME              ║
 ║  --------------------------------------------------------------------------  ║
@@ -355,9 +355,9 @@ ConnectionError: [Connector Service]: It was not possible to get the catalog…
   Assertions: 1 total, 1 passed, 0 hard-failed, 0 soft-failed
 
 ╔==============================================================================╗
-║                                TEST RUN SUMMARY                              ║
+║                                TCK RUN SUMMARY                               ║
 ╠==============================================================================╣
-║  SCRIPT                                        RESULT      TIME              ║
+║  TEST                                          RESULT      TIME              ║
 ║  --------------------------------------------------------------------------  ║
 ║  ✗ dtr-filterability                             FAIL      0.5s              ║
 ╠==============================================================================╣

@@ -112,12 +112,13 @@ class TestLayout:
             if line.startswith(("║", "╔", "╠", "╚")):
                 assert len(line) == 80, repr(line)
 
-    def test_one_table_per_script_then_the_run_summary(self) -> None:
-        text = "\n".join(_plain(render_run_results(_result())))
-        assert text.index("Script: provision") < text.index("Script: consume")
-        assert text.index("Script: consume") < text.index("TEST RUN SUMMARY")
-        assert text.count("STEP") == 2
-        assert text.count("SCRIPT") == 1
+    def test_one_table_per_test_then_the_tck_summary(self) -> None:
+        plain = _plain(render_run_results(_result()))
+        text = "\n".join(plain)
+        assert text.index("Test: provision") < text.index("Test: consume")
+        assert text.index("Test: consume") < text.index("TCK RUN SUMMARY")
+        headers = [line for line in plain if line.startswith(("║  STEP ", "║  TEST "))]
+        assert [h[3:7] for h in headers] == ["STEP", "STEP", "TEST"]
 
     def test_a_step_row_has_icon_name_result_and_time(self) -> None:
         rows = [line for line in _plain(render_run_results(_result())) if "pull_dtr" in line]
@@ -144,7 +145,7 @@ class TestLayout:
 
     def test_the_run_summary_lists_scripts(self) -> None:
         plain = _plain(render_run_results(_result()))
-        start = next(i for i, line in enumerate(plain) if "TEST RUN SUMMARY" in line)
+        start = next(i for i, line in enumerate(plain) if "TCK RUN SUMMARY" in line)
         summary = "\n".join(plain[start:])
         assert "✓ provision" in summary
         assert "✗ consume" in summary

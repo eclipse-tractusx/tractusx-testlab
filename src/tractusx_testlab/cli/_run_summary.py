@@ -100,7 +100,7 @@ def _script_table(script) -> list[str]:
         [step.status for step in script.execution],
         script.total_duration_s,
     )
-    return _box(f"Script: {script.script_name or script.script_id}", "STEP", rows, verdict)
+    return _box(f"Test: {script.script_name or script.script_id}", "STEP", rows, verdict)
 
 
 def _run_table(result) -> list[str]:
@@ -118,7 +118,7 @@ def _run_table(result) -> list[str]:
         [step.status for script in result.scripts for step in script.execution],
         result.duration_ms / 1000 if result.duration_ms else None,
     )
-    return _box("TEST RUN SUMMARY", "SCRIPT", rows, verdict)
+    return _box("TCK RUN SUMMARY", "TEST", rows, verdict)
 
 
 def _look(table: dict, status) -> tuple[str, str, str]:
