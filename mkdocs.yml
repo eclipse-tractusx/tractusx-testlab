@@ -192,8 +192,6 @@ nav:
       - digital-twin-registry:
         - Overview: api-reference/steps/digital-twin-registry/index.md
         - consumer/dataplane: api-reference/steps/digital-twin-registry/consumer-dataplane.md
-      - digital-twin:
-        - Overview: api-reference/steps/digital-twin-registry/index.md
         - provider: api-reference/steps/digital-twin-registry/provider.md
         - provider/wizard: api-reference/steps/digital-twin-registry/provider-wizard.md
         - submodel: api-reference/steps/digital-twin-registry/submodel.md
