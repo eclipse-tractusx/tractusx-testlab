@@ -6,7 +6,7 @@ else is optional. Every output listed is published as a context variable under i
 own name when the step runs.
 
 Every step below has a visual block in the cx-test-suite IDE **except
-`digital-twin/submodel/delete`**; there are no IDE-only steps.
+`digital-twin-registry/submodel/delete`**; there are no IDE-only steps.
 
 ## Shared parameter types
 
@@ -352,7 +352,7 @@ Outputs:
 - `shell_descriptors`: array[object] — The descriptor document of each matching shell.
 - `cursor`: string — Cursor of the next page, or null when this was the last one.
 
-### `digital-twin/provider/create_shell_descriptor`
+### `digital-twin-registry/provider/create_shell_descriptor`
 Create an AAS shell descriptor in the Digital Twin Registry.
 
 Params:
@@ -362,7 +362,7 @@ Outputs:
 - `id`: string — Identifier of the descriptor.
 - `idShort`: string — Short, human-readable name.
 
-### `digital-twin/provider/create_submodel_descriptor`
+### `digital-twin-registry/provider/create_submodel_descriptor`
 Create a submodel descriptor under an AAS shell.
 
 Params:
@@ -373,7 +373,7 @@ Outputs:
 - `id`: string — Identifier of the descriptor.
 - `idShort`: string — Short, human-readable name.
 
-### `digital-twin/provider/delete_shell_descriptor`
+### `digital-twin-registry/provider/delete_shell_descriptor`
 Delete an AAS shell descriptor.
 
 Params:
@@ -382,7 +382,7 @@ Params:
 Outputs:
 - `status_code`: integer — HTTP status the delete was answered with.
 
-### `digital-twin/provider/get_shell_descriptor`
+### `digital-twin-registry/provider/get_shell_descriptor`
 Retrieve an AAS shell descriptor by ID.
 
 Params:
@@ -392,7 +392,7 @@ Outputs:
 - `id`: string — Identifier of the descriptor.
 - `idShort`: string — Short, human-readable name.
 
-### `digital-twin/provider/lookup_shells`
+### `digital-twin-registry/provider/lookup_shells`
 Search the run's own registry for shells matching specific asset IDs.
 
 Params:
@@ -402,7 +402,7 @@ Outputs:
 - `shell_ids`: array[string] — Identifiers of the shells that matched.
 - `shell_descriptors`: array[object] — The descriptor document of each matching shell.
 
-### `digital-twin/provider/wizard/create_shell_descriptor`
+### `digital-twin-registry/provider/wizard/create_shell_descriptor`
 Register a shell descriptor described field by field.
 
 Params:
@@ -416,7 +416,7 @@ Outputs:
 - `id`: string — Identifier of the descriptor.
 - `idShort`: string — Short, human-readable name.
 
-### `digital-twin/provider/wizard/create_submodel_descriptor`
+### `digital-twin-registry/provider/wizard/create_submodel_descriptor`
 Attach a submodel descriptor described field by field.
 
 Params:
@@ -433,7 +433,7 @@ Outputs:
 - `id`: string — Identifier of the descriptor.
 - `idShort`: string — Short, human-readable name.
 
-### `digital-twin/submodel/delete`
+### `digital-twin-registry/submodel/delete`
 Delete one submodel from the engine's submodel server.
 
 Params:
@@ -443,7 +443,7 @@ Params:
 Outputs:
 - `status_code`: integer — HTTP status the delete was answered with.
 
-### `digital-twin/submodel/upload`
+### `digital-twin-registry/submodel/upload`
 Upload sample data to the engine's submodel server, under its aspect and its id.
 
 Params:

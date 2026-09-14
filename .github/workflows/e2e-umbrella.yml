@@ -886,7 +886,7 @@ jobs:
           # The payload store behind the engine's registry entries (see
           # ci/submodel_server.py). The Umbrella profile switches off both
           # `simple-data-backend` bundles, so nothing in the release serves a
-          # submodel, and `digital-twin/submodel/*` plus the whole Industry
+          # submodel, and `digital-twin-registry/submodel/*` plus the whole Industry
           # Core journey would have no backend to address.
           #
           # It is the one component both sides dial: the engine uploads to it
@@ -1175,6 +1175,7 @@ jobs:
               "dtr_consumer_dataplane.yaml",
               "dtr_roundtrip.yaml",
               "engine_toolbox.yaml",
+              "experimental_extensions.yaml",
               "external_callback.yaml",
               "inbound_call.yaml",
               "industry_core_journey.yaml",
@@ -1290,6 +1291,59 @@ jobs:
           print("push-transfer: received the provider's POST at the sink")
           PY
 
+      # The experimental extensions the manifest enables (`extensions: [cac,
+      # labs]`) pass behind the same banner too, and a green step cannot say
+      # whether an extension ran or was silently dropped. The trace can: the
+      # `labs` retry parameter must have made exactly two calls through the
+      # SUT's data plane for its one step, and the `cac:` references must be on
+      # the terminal event — on the step and, resolved, on each of its checks.
+      - name: Verify the experimental extensions in the execution trace
+        run: |
+          poetry run python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          events = [
+              json.loads(line)
+              for trace in sorted(pathlib.Path("/data").rglob("*.jsonl"))
+              for line in trace.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+
+          def of_step(step, *types):
+              return [
+                  event
+                  for event in events
+                  if event["type"] in types
+                  and event["id"].split("/")[1] == "experimental-extensions"
+                  and event["id"].split("/")[3] == step
+              ]
+
+          calls = of_step("fetch_with_retry", "tck.test.step.call")
+          if len(calls) != 2:
+              sys.exit(f"experimental-extensions: retry_on made {len(calls)} data-plane calls, expected 2")
+          statuses = [(call["data"].get("response") or {}).get("status_code") for call in calls]
+          if statuses != [200, 200]:
+              sys.exit(f"experimental-extensions: the two calls answered {statuses}, expected [200, 200]")
+
+          (fetched,) = of_step("fetch_with_retry", "tck.test.step.passed", "tck.test.step.failed")
+          if fetched["type"] != "tck.test.step.passed":
+              sys.exit(f"experimental-extensions: fetch_with_retry did not pass: {fetched['data']}")
+
+          (pulled,) = of_step("pull_data", "tck.test.step.passed", "tck.test.step.failed")
+          step_cac = ["TESTLAB-INTERNAL:v1.0.0:EXT-CAC-01"]
+          if pulled["data"].get("cac") != step_cac:
+              sys.exit(f"experimental-extensions: pull_data carries cac {pulled['data'].get('cac')}, expected {step_cac}")
+          check_cac = [validation.get("cac") for validation in pulled["data"]["validations"]]
+          expected = [step_cac, ["TESTLAB-INTERNAL:v1.0.0:EXT-CAC-02"]]
+          if check_cac != expected:
+              sys.exit(f"experimental-extensions: the checks carry cac {check_cac}, expected {expected}")
+
+          print("experimental-extensions: retry_on made 2 calls through the SUT's data plane")
+          print("experimental-extensions: cac is on the step event and resolved on each check")
+          PY
+
       # The two runs below re-execute a subset of the same package. They add
       # nothing to test coverage — the full suite already ran every test —
       # but they check two things the full suite cannot: that a test needing
@@ -1305,7 +1359,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,experimental_extensions.yaml" \
             --logs-dir logs/e2e/registry \
             --data-dir /data
 
@@ -1322,7 +1376,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,experimental_extensions.yaml" \
             --logs-dir logs/e2e/engine-only \
             --data-dir /data
 

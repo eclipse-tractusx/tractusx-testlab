@@ -114,6 +114,9 @@ class StepResult(BaseModel):
 
     step_name: str
     step_type: str = ""
+    #: The CACs the step declared it verifies — copied from the definition so the
+    #: terminal event can say which criteria this verdict is evidence for.
+    cac: list[str] = Field(default_factory=list)
     phase: StepPhase = StepPhase.EXECUTION
     status: StepStatus = StepStatus.PENDING
     started_at: datetime | None = None

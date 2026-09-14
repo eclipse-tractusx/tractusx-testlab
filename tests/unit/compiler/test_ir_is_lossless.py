@@ -98,8 +98,9 @@ def _manifest() -> dict:
             "version": "1.0",
             "authors": [],
             "license": "Apache-2.0",
-            "standards": [],
+            "standards": [{"id": "CX-0135", "version": "v3.1.0"}],
         },
+        "extensions": ["cac"],
         "env": {
             "variables": [
                 {
@@ -137,6 +138,7 @@ def _test() -> dict:
                 "id": "act",
                 "name": "Act",
                 "uses": "util/log",
+                "cac": ["CX-0135:v3.1.0:CAC-014"],
                 "with": {"message": "${{ env.sut_bpn }}"},
                 "returns": {"value": {"type": "string"}},
                 "if": "success()",
@@ -146,6 +148,7 @@ def _test() -> dict:
                     {
                         "uses": "validate/assert/not_null",
                         "name": "the step produced a value",
+                        "cac": ["CX-0135:v3.1.0:CAC-015"],
                         "with": {"input": "value"},
                     }
                 ],
@@ -265,6 +268,13 @@ class TestEveryStepFieldSurvives:
         instruction = next(i for i in compiled[0]["instructions"] if i["id"] == "act")
         assert instruction["validate"][0]["name"] == "the step produced a value"
 
+    def test_an_assertion_keeps_the_cac_it_verifies(self, tmp_path) -> None:
+        """It is what the coverage matrix counts the check under."""
+        _, compiled = _compile(tmp_path)
+        instruction = next(i for i in compiled[0]["instructions"] if i["id"] == "act")
+        assert instruction["cac"] == ["CX-0135:v3.1.0:CAC-014"]
+        assert instruction["validate"][0]["cac"] == ["CX-0135:v3.1.0:CAC-015"]
+
 
 class TestEveryTestFieldSurvives:
     """A test's own declarations reach the compiled test."""
@@ -345,6 +355,11 @@ class TestEveryManifestEntryFieldSurvives:
         """``manifest.yaml`` is the section read without unpacking the IR."""
         manifest, execution = _compile_package(tmp_path)
         assert manifest["tests"] == execution["tests"]
+
+    def test_the_manifest_names_the_experimental_extensions_used(self, tmp_path) -> None:
+        """A package built on experimental syntax says so where a reviewer looks first."""
+        manifest, _ = _compile_package(tmp_path)
+        assert manifest["tck"]["extensions"] == ["cac"]
 
     def test_a_test_no_one_marked_is_not_skippable(self, tmp_path) -> None:
         """The default travels too — silence means the test must run."""

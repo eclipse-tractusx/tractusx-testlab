@@ -39,6 +39,7 @@ from tractusx_testlab.authoring.test import Test
 from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.models.authoring.definitions import TestDefinition
 from tractusx_testlab.models.primitives.enums import DefinitionKind
+from tractusx_testlab.player.loading._encrypted import PAYLOAD_ENTRY, open_encrypted_package
 from tractusx_testlab.player.loading._parser import (
     _TCK_ADAPTER,
     _TEST_ADAPTER,
@@ -152,9 +153,10 @@ class Loader:
     ) -> Tck:
         """Load a .tck ZIP archive — plain or encrypted (payload.enc format).
 
-        Extracts ``tck-bundle.yaml`` from the archive and parses it
-        using the standard YAML pipeline.  The archive is extracted to
-        a temporary directory so that relative asset paths resolve.
+        Both shapes arrive at the same entries: read straight from a plain
+        archive, or verified and decrypted from an encrypted one. Those are
+        checked, extracted to a temporary directory so relative asset paths
+        resolve, and ``tck-bundle.yaml`` is parsed.
         """
         if not zipfile.is_zipfile(path):
             raise ValueError(f"File has .tck extension but is not a valid ZIP archive: {path}")
@@ -162,11 +164,11 @@ class Loader:
         with zipfile.ZipFile(path, "r") as zf:
             names = zf.namelist()
 
-        if "payload.enc" in names:
-            return self._load_encrypted_tck_package(path, player_private_key, compiler_public_key)
-
-        with zipfile.ZipFile(path, "r") as zf:
-            entries = {name: zf.read(name) for name in zf.namelist()}
+        if PAYLOAD_ENTRY in names:
+            entries = open_encrypted_package(path, player_private_key, compiler_public_key)
+        else:
+            with zipfile.ZipFile(path, "r") as zf:
+                entries = {name: zf.read(name) for name in names}
 
         if _TCK_BUNDLE_ENTRY not in entries:
             raise ValueError(
@@ -180,81 +182,6 @@ class Loader:
         _verify_tck_integrity(entries)
 
         extract_dir = Path(tempfile.mkdtemp(prefix="tck_"))
-        for name, blob in entries.items():
-            target = extract_dir / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(blob)
-
-        data = yaml.safe_load(entries[_TCK_BUNDLE_ENTRY].decode("utf-8"))
-        return self._parse_data(data, source_path=path, base_dir=extract_dir)
-
-    def _load_encrypted_tck_package(
-        self,
-        path: Path,
-        player_private_key: bytes | None,
-        compiler_public_key: bytes | None,
-    ) -> Tck:
-        """Decrypt payload.enc, extract the TAR, and load tck-bundle.yaml."""
-        import base64
-        import io as _io
-        import tarfile
-
-        from tractusx_testlab.security.crypto.encryption import decrypt_package
-        from tractusx_testlab.security.crypto.signing import verify_signature
-
-        if player_private_key is None:
-            raise ValueError(
-                f"Package {path.name!r} is encrypted — provide --player-keys to load it."
-            )
-
-        with zipfile.ZipFile(path, "r") as zf:
-            names = zf.namelist()
-            manifest_raw = zf.read("manifest.yaml")
-            payload_raw = zf.read("payload.enc")
-            sig_raw = zf.read("signature.sig") if "signature.sig" in names else None
-
-        manifest = yaml.safe_load(manifest_raw)
-        players = manifest.get("security", {}).get("authorized_players", [])
-        if not players:
-            raise ValueError("Encrypted .tck has no authorized_players in manifest.")
-
-        enc_key = base64.b64decode(players[0]["encrypted_key"])
-        blob = base64.b64decode(payload_raw)
-        tar_bytes = decrypt_package(enc_key, blob[:12], blob[12:], player_private_key)
-
-        # A signed package is verified or refused; there is no third outcome.
-        # This used to be `if compiler_public_key and sig_raw:`, so a caller that
-        # supplied no key simply skipped the check — and `testlab run` only
-        # required one for the since-deleted `.stck`, which meant an encrypted
-        # `.tck` decrypted and ran with its signature unexamined.
-        if sig_raw is None:
-            raise ValueError(
-                f"Encrypted package {path.name!r} carries no signature. It cannot "
-                f"be shown to come from the compiler it claims."
-            )
-        if compiler_public_key is None:
-            raise ValueError(
-                f"Encrypted package {path.name!r} is signed, but no compiler public "
-                f"key was supplied to check it against. Pass --compiler-pub."
-            )
-        if not verify_signature(tar_bytes, base64.b64decode(sig_raw), compiler_public_key):
-            raise ValueError("Package signature verification failed — untrusted source.")
-
-        with tarfile.open(fileobj=_io.BytesIO(tar_bytes), mode="r:gz") as tf:
-            entries = {
-                member.name: (tf.extractfile(member) or _io.BytesIO()).read()
-                for member in tf.getmembers()
-                if member.isfile()
-            }
-
-        if _TCK_BUNDLE_ENTRY not in entries:
-            raise ValueError(
-                f"Decrypted package is missing {_TCK_BUNDLE_ENTRY}. "
-                "Re-compile with the latest testlab compiler."
-            )
-        _verify_tck_integrity(entries)
-
-        extract_dir = Path(tempfile.mkdtemp(prefix="tck_enc_"))
         for name, blob in entries.items():
             target = extract_dir / name
             target.parent.mkdir(parents=True, exist_ok=True)

@@ -147,7 +147,7 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
 
     Supports two modes:
     - **Dataplane-direct mode**: ``dataplane_url``, ``edr_token``, ``endpoint_path``,
-      ``notification`` — what the IDE's Send Notification block emits
+      ``notification``
     - **SDK mode**: ``notification``, ``counter_party_id``, ``counter_party_address``
     """
 

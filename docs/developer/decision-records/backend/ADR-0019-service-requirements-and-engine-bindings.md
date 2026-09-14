@@ -120,7 +120,7 @@ transfer). Many TCKs certify capabilities that authorize and operate **without**
 example Discovery Finder, BPN/EDC discovery, or shared services such as BPDM — where access is
 governed by IAM (OAuth2/OIDC token) rather than connector contract authorization. Such a TCK marks
 `connector: { required: false }` (or omits it) and the engine neither demands a connector binding
-nor offers connector blocks, while still requiring the capabilities those tests do exercise.
+nor accepts connector steps, while still requiring the capabilities those tests do exercise.
 
 Capability keys come from a registry. Per side:
 
@@ -160,7 +160,7 @@ variables for the operator to fill (ADR-0021), not configuration errors.
 
 At boot the engine announces this resolved topology once via `tck.boot.requirements` (ADR-0016) \u2014
 each side's capabilities with their `required` flag (`true` = enabled, `false` = declared but not
-exercised) \u2014 so the operator and IDE know up front what each side, especially the SUT, must
+exercised) \u2014 so the operator and any client know up front what each side, especially the SUT, must
 provide. Engine-operated components it then starts (the connector service client, the built-in mock
 server) are logged via `tck.boot.service.*`, distinct from the endpoint validation of
 `tck.boot.binding.*`.
@@ -184,27 +184,27 @@ engine-internal. The two sides surface to authoring differently:
   in the step. The injection happens once at boot and is recorded there (`tck.boot.binding.*`,
   ADR-0016): non-secret config (urls, paths, bpn, version) in the event `outputs`, secret fields
   (`auth`, credentials) JWE-encrypted. This honours "hide plumbing" — authors never wire the
-  engine's own connector or DTR into a block, and the concrete EDC/DTR config enters the run in
+  engine's own connector or DTR into a step, and the concrete EDC/DTR config enters the run in
   exactly one place.
 - **SUT side surfaces as a variable.** Each required `infrastructure.sut.<capability>` resolves to a
   variable: `known` when the operator pre-supplied a binding, `request` when unbound (the operator
   fills it at run start). A step targets the SUT by referencing that variable's fields, e.g.
   `${{ env.sut_connector.counter_party_address }}`.
 
-Class-based IDE filtering (ADR-0009) still keys off the capability to decide *which* blocks are
-offered; what a block *references* is always a variable, never the capability handle.
+What a step *references* is always a variable, never the capability handle.
 
-A capability gates its own blocks. A block may only be used when its capability is declared
-`required: true` on the relevant side. If a TCK references a block whose capability is missing or
-`required: false`, the compiler aborts with a typed error naming the block and the capability it
-needs — the same error in the IDE (the block is offered but flagged) and at compile time. There is
-no implicit enablement: using a block is the contract that its capability must be required.
+A capability gates its own steps. A step may only be used when its capability is declared
+`required: true` on the relevant side. If a TCK uses a step whose capability is missing or
+`required: false`, the compiler aborts with a typed error naming the step and the capability it
+needs. There is no implicit enablement: using a step is the contract that its capability must be
+required.
 
 ## Consequences
 
 - TCKs become portable: the same TCK runs against any deployment by swapping the binding profile.
-- A capability gates its blocks: a block whose capability is not `required: true` cannot be used,
-  failing fast in the IDE and at compile time with a typed error — no silent no-ops at runtime.- Test authors never touch URLs or secrets; operators own all deployment configuration.
+- A capability gates its steps: a step whose capability is not `required: true` cannot be used,
+  failing fast at compile time with a typed error — no silent no-ops at runtime.
+- Test authors never touch URLs or secrets; operators own all deployment configuration.
 - The keyed form is minimal — a typical TCK nests `connector: { required: true }` under
   `infrastructure.engine` and `infrastructure.sut`; the `standard` constraint is an object
   (`id`, `version`) whose `version` inherits from `dataspace.version` and is spelled out only when

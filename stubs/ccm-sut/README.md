@@ -160,7 +160,7 @@ The `run-config.yaml` file supplies runtime variables to the test suite:
 Run the test suite with:
 
 ```bash
-testlab run ide/public/examples/certificate-management-v1.0/index.yaml \
+testlab run docs/examples/certificate-management-v2/raw/index.yaml \
   --config stubs/ccm-sut/run-config.yaml
 ```
 

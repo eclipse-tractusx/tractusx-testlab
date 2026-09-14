@@ -29,3 +29,5 @@ implemented here, so an id locates its code without a grep.
 """
 
 import tractusx_testlab.steps.digital_twin_registry.consumer
+import tractusx_testlab.steps.digital_twin_registry.provider
+import tractusx_testlab.steps.digital_twin_registry.submodel

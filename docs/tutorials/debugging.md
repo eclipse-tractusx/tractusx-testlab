@@ -18,88 +18,120 @@
 
  SPDX-License-Identifier: Apache-2.0
 -->
-<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
-# How to Debug Common Issues
+# Debugging
 
-For issues in the visual IDE (blocks, toolbox, YAML sync), see the separate [cx-test-suite](https://github.com/eclipse-tractusx/cx-test-suite) repository — this page covers the engine.
+Problems show up at three moments. **Validation** means the TCK itself is wrong. **Run start** means something the TCK needs wasn't supplied. **During the run** means a step or a check failed. Each section below starts from the message you actually see.
 
-## "Unknown step type" at validation or runtime
+## Validation: `testlab validate` reports errors
 
-1. Check the `uses:` id against the generated [step reference](../specification/reference/steps.md), or ask the CLI directly:
+`testlab validate <index.yaml>` checks the whole TCK and lists every finding at once. `testlab compile` and `testlab run` run the same checks first.
 
-    ```bash
-    poetry run testlab docs --step connector/consumer/negotiate --json
-    ```
+| Message (abridged) | Cause and fix |
+|---|---|
+| `Unknown step type 'digital-twin/provider/create_shell_descriptor'` | The id doesn't exist. Ids are renamed without aliases, so an older TCK may name one that has moved (here, to `digital-twin-registry/provider/create_shell_descriptor`). Look it up in the [step reference](../api-reference/steps/index.md) or with `testlab docs --step <id> --json`. |
+| `'${{ steps.fetch.status_code }}' in param 'url' names nothing this TCK supplies. Available: …` | The reference's root is unknown. Step outputs are addressed by phase, `${{ execution.<step-id>.<output> }}` or `${{ setup.<step-id>.<output> }}`, never `steps.`. Variables are `${{ env.<id> }}` and must be declared under `env.variables`. Bindings are `${{ infrastructure.<side>.<capability>.<field> }}`. The message lists what is available. |
+| `'returns' name 'x' is not produced by step '…'. It publishes: …` | `returns:` may only name the step's declared outputs or the universal fields (`status_code`, `headers`, `body`, `response_body`, `response_headers`, `duration_ms`, `value`, `request`, `response`). Fix the name; the message lists the valid ones. |
+| `Operator 'not_null' does not read 'value'` | The operand doesn't belong to that operator. Unary operators take none; `between` takes `min` and `max`. See [Validations](../api-reference/steps/validations.md). |
+| `'validate/assert' cannot be used as a standalone step` | Assertions go in the `validate:` block of the step whose output they check. |
+| `Variable 'x' has source: input but no scope declared` | Say who supplies the input: `scope: engine` (whoever runs TestLab) or `scope: sut` (the party under test). |
+| `Variable 'x' is scoped to 'sut', but the infrastructure block requires no sut capability` | Declare what the run needs, for example `infrastructure.sut.connector.required: true`, or drop the variable. |
+| `namespace '…' must match the TCK id '…'` | Every test's `namespace:` is the manifest's `id:`. |
 
-    An unknown id makes the command exit with an error listing it.
+For version-specific steps, pass the dataspace generation: `testlab validate index.yaml --version saturn`.
 
-2. If you are writing a new step, check the `@step("...")` decorator — the registered id must match `uses:` exactly, and the step's module must be imported (directly or via its package) in `src/tractusx_testlab/steps/__init__.py`, which is what registers everything.
-3. For version-specific steps, `@step` takes a `dataspace_version`; a step registered only for one version produces a warning when validating with another. Pass the version explicitly:
+## Run start: `Cannot run index.yaml`
 
-    ```bash
-    poetry run testlab validate my_test.yaml --version saturn
-    ```
+The run refuses to start when something the TCK declares as required wasn't supplied. The message names every missing item and where to set it:
 
-## Contract validation errors
+```text
+Cannot run index.yaml:
+  This TCK requires infrastructure that is not fully bound: sut.connector
+  sut.connector — set:
+      infrastructure.sut.connector.participant_id   (or TESTLAB_SUT_CONNECTOR_PARTICIPANT_ID)
+      infrastructure.sut.connector.dsp_url   (or TESTLAB_SUT_CONNECTOR_DSP_URL)
+```
 
-`testlab validate` (and `testlab run`, before executing) reports every finding with its step index and field:
+```text
+Cannot run index.yaml:
+  This TCK needs 4 input variable(s) that were not supplied:
+      token_url
+      ...
+  Set them under 'variables:' in the run config, or pass --var name=value.
+```
 
-- **`Unknown step type '...'`** — see above.
-- **`Variable '${...}' referenced ... is not declared`** — a warning: the variable is not in the test's own declarations, but may still arrive via shared variables, runtime overrides (`--var KEY=VALUE`), or a previous step's `returns:`.
-- **`'validate.with.input' value '...' is not produced by step '...'`** — an inline assertion may name any output the step publishes, plus the universal response fields; the message lists them. A `returns:` block is not required for an assertion, and does not narrow what one may name — so fix the typo rather than adding the name to `returns:`.
-- **Schema errors like `... is not valid under any of the given schemas (at 'steps.0' in tests/x.yaml)`** — the raw YAML violates `tck_index.schema.json` / `tck_test.schema.json`; the location in parentheses points at the offending key.
+Bindings go in `testlab.config.yaml`, in `TESTLAB_*` environment variables, or in `--var` for one run ([Infrastructure Bindings](../developer/infrastructure-bindings.md)). To see what the engine actually resolved, and from which source, run `testlab config`. To see what a compiled package requires, run `testlab inspect <package.tck> --variables --infrastructure`.
 
-## A `returns:` value comes back empty
+## During the run: a step or a check failed
 
-A `returns:` name must be one the step declares — its output fields, its published context variables, or the universal response fields (`status_code`, `headers`, `body`, `response_body`, `response_headers`, `duration_ms`, `value`, `request`, `response`, `exports`). An undeclared name fails at extraction rather than resolving to `None`. Check what a step actually declares:
+### Read the two records
+
+Every `testlab run` leaves two files:
+
+- **The transcript**, `./logs/<date>/<time>_<job>.log` (`--logs-dir`). It is byte-for-byte what the console showed.
+- **The execution trace**, `./data/<date>/<time>_<job>.jsonl` (`--data-dir`). It is CloudEvents, one per line, holding every step's inputs, outputs, checks and HTTP exchanges. That includes the calls the SDK made on the engine's behalf, which is where a 403 three calls into a DSP negotiation becomes visible ([ADR-0016](../developer/decision-records/backend/ADR-0016-execution-trace-format.md)).
+
+Each transcript line ends in `id=…`, the id of the event it reports. Use it to pull the whole event from the trace:
 
 ```bash
-poetry run testlab docs --step http/http_request --json
+jq -c 'select(.id == "<id from the transcript>")' data/*/*.jsonl
 ```
 
-To capture a derived value under a name of your own, use the util steps that take `store_in_variable` (`util/json_path_extract`, `util/base64`, `util/parse_kv`).
+### A check failed
 
-## A mock endpoint is never hit
+A failed assertion is a result, not an error. The trace records it under the step's `validations`:
 
-1. `mock/api` returns `full_mock_url` — that is the address to hand to the system under test; `base_mock_url` is only the server root.
-2. `mock/wait/http_request` needs the `mock` object returned by the registering step, and fails after `timeout_s` (default 30s) — raise it if the SUT is slow to call back.
-3. The mock server binds locally; make sure the SUT can actually reach the engine's host and port.
-
-## No offer is made under a policy the step accepts
-
-A consumer-side DSP step (`connector/consumer/pull_data_filtered`, `pull_data_filtered_by_policy`, `do_dsp`, `do_dsp_with_bpnl`, `connector/discover/digital-twin-registry/auth`) accepts an offer only when its policy matches one of the `expected_policies` **in full**. When none does, the step reports the comparison rather than the verdict alone:
-
-```
-[FAIL] dtr-filterability[pull_dtr]:connector/consumer/pull_data_filtered 2.36s
-       Error: no offer from https://sut.example/api/v1/dsp/2025-1 is made under a policy this step accepts
-                2 offers compared, none matched:
-                  offer 'aWNodWI6Y29udHJhY3Q6T0Js…' on asset 'ichub:asset:dtr:9foUM7pm…':
-                    the provider also requires: 'Membership eq active'
-                expected: 'FrameworkAgreement eq DataExchangeGovernance:1.0', 'UsagePurpose isAnyOf cx.core.digitalTwinRegistry:1'
+```bash
+jq -c 'select(.type == "tck.test.step.failed") | .data.validations[] | select(.outputs.passed == false)' data/*/*.jsonl
 ```
 
-- **"the provider also requires"** — the deployment's policy carries a condition your `expected_policies` does not. Matching is exact, so an *extra* condition refuses the offer just as a missing one does. Add it to the policy variable the test uses, or accept that the deployment is not offering what the TCK requires.
-- **"the provider does not offer"** — the other direction: the test asks for a condition the offers do not carry.
-- **"the same conditions on both sides"** — the conditions agree and the policy documents still differ (an action, a rule kind, an operand spelled with a namespace prefix on one side only). Compare the two documents in the trace.
-- **`'expected_policies' is an empty list`** — an empty list accepts nothing at all. Name the policies, or omit the key to take any offer.
+```json
+{"source":"validate/assert/equals","field":"status_code","inputs":{"assertion":"equals","expected":201},"outputs":{"actual":202,"passed":false},"errors":[{"code":"ASSERTION_FAILED","message":"Expected 201, got 202","severity":"HARD"}]}
+```
 
-The same comparison is in the trace under `data.errors[0].context`, with the full offer and asset ids:
+`SOFT` checks are reported as warnings and don't fail the step.
+
+### A step raised
+
+When a step fails rather than a check, the failure is in `data.errors`. `origin` says whose fault it was: `sut` when the system under test answered wrongly, `engine` when TestLab itself broke.
+
+```bash
+jq -c 'select(.type == "tck.test.step.failed") | .data.errors[]?' data/*/*.jsonl
+```
+
+### No offer is made under a policy the step accepts
+
+Consumer-side DSP steps accept an offer only when its policy matches one of the `expected_policies` **exactly**. That applies to `connector/consumer/pull_data_filtered`, `connector/consumer/pull_data_filtered_by_policy`, `connector/consumer/do_dsp`, `connector/consumer/do_dsp_with_bpnl` and `connector/discover/digital-twin-registry/auth`. When none matches, the step reports the comparison:
+
+```text
+Error: no offer from https://sut.example/api/v1/dsp/2025-1 is made under a policy this step accepts
+         2 offers compared, none matched:
+           offer 'aWNodWI6Y29udHJhY3Q6T0Js…' on asset 'ichub:asset:dtr:9foUM7pm…':
+             the provider also requires: 'Membership eq active'
+         expected: 'FrameworkAgreement eq DataExchangeGovernance:1.0', 'UsagePurpose isAnyOf cx.core.digitalTwinRegistry:1'
+```
+
+- **"the provider also requires"**: the offer carries a condition you didn't expect. An extra condition refuses the offer just as a missing one does.
+- **"the provider does not offer"**: you require a condition the offers don't carry.
+- **"the same conditions on both sides"**: the conditions agree, but the policy documents still differ (an action, a rule kind, a prefixed operand). Compare the two documents in the trace.
+- **`'expected_policies' is an empty list`**: an empty list accepts nothing. Name the policies, or omit the key to take any offer.
+
+The full comparison, with offer and asset ids, is in the trace:
 
 ```bash
 jq -c '.data.errors[]? | select(.code == "POLICY_MISMATCH") | .context.offers[]' data/*/*.jsonl
 ```
 
-## Where to look at runtime
+### A mock endpoint is never called
 
-- `testlab run` leaves two records. The **transcript** (`./logs/<date>/<time>_<job>.log`, `--logs-dir`) is byte-for-byte what the console showed - compile output, run header, tracebacks, result banner and all. The **execution trace** (`./data/<date>/<time>_<job>.jsonl`, `--data-dir`) is CloudEvents JSON-lines, and it holds every request a step sent and every answer it got — including the calls the SDK made on the engine's behalf, which is where a 403 three calls into a DSP flow becomes visible. See [ADR-0016](../developer/decision-records/backend/ADR-0016-execution-trace-format.md).
-- Every transcript line ends with `id=` and the id of the CloudEvent it reports, which is the way from one to the other. A line reading `step.call [dtr-filterability] pull_dtr #3 CatalogController.get_catalog → POST …/catalog/request ← 200 in 1373ms id=ic-tck/dtr-filterability/execution/pull_dtr/calls/3/tck.test.step.call/2229712…` says which call of which step it was and who made it; the id fetches the whole exchange, headers and bodies included:
+1. Hand the system under test `full_mock_url` from `mock/api`. `base_mock_url` is only the server root.
+2. `mock/wait/http_request` takes the `mock` output of the step that registered it (`${{ setup.<id>.mock }}`), and fails after `timeout_s` (default 30 seconds).
+3. The mock server listens on the engine's host. A system under test running elsewhere must be able to reach that address. `localhost` from inside another container is not the engine.
 
-  ```bash
-  jq -c 'select(.id == "ic-tck/dtr-filterability/execution/pull_dtr/calls/3/tck.test.step.call/2229712…")' data/*/*.jsonl
-  ```
+## Working on a step: it isn't found or behaves oddly
 
-- To find why a step failed: `jq -c 'select(.type == "tck.test.step.failed")' data/*/*.jsonl`. `data.errors[0].origin` says whether the SUT answered wrongly (`sut`) or TestLab itself broke (`engine`).
-- `testlab inspect <package>` shows what a compiled `.tck` actually contains (`--show-variables`, `--show-infrastructure`, `--json`).
-- Every failed step reports the step id, the exception, and — for `validate/*` steps — the operator and the compared values in its error message.
+- **`Unknown step type` for a step you just wrote.** Check that `@step("…")` matches the id exactly and that the module is imported from its category's `__init__.py`. `tests/unit/steps/test_step_registration.py` catches both. See [Create a Step](create-a-step.md).
+- **A published output is missing.** An output field left at its default is not serialised. Pass every field you mean to publish explicitly, and a `None` value leaves the context variable unset.
+- **An SDK call hangs the run or fails without saying which service.** Call the SDK through `sdk_call.run` and HTTP through `steps.http_client.request`. A blocking call made directly inside `execute` also stalls the mock server.

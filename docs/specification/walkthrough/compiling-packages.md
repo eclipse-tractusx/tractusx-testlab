@@ -1,6 +1,6 @@
 <!--
 
-Eclipse Tractus-X - Software Development KIT
+Eclipse Tractus-X - Tractus-X TestLab
 
 Copyright (c) 2026 Catena-X Automotive Network e.V.
 Copyright (c) 2026 Contributors to the Eclipse Foundation
@@ -19,300 +19,251 @@ SPDX-License-Identifier: CC-BY-4.0
 
 # Compiling Packages
 
-This section shows how to validate your tests and compile them into a portable `.tck` package.
+This section shows how to validate a TCK and compile it into a portable `.tck` package — readable, or signed and
+encrypted for specific Players.
 
 ## Prerequisites
 
 You've completed [Writing Tests](writing-tests.md) and have:
 
 ```
-my-connector-tests/
+my-certificate-tck/
+├── index.yaml
 ├── tests/
-│   ├── provision_and_consume.yaml
-│   └── submodel_validation.yaml
-├── assets/
-│   └── schemas/
-│       └── serial-part-3.0.json
-└── tck.yaml
+│   ├── ping_catalog.yaml
+│   └── request_certificate.yaml
+├── schemas/
+│   └── certificate_schema.json
+└── testdata/
+    └── request_body.json
 ```
 
 ---
 
 ## Step 1 — Validate Without Packaging
 
-Before packaging, you can validate that your YAML tests are correct — all `${var}` references resolve, step types exist in the registry, and the dataspace version is supported:
+`testlab validate` checks the manifest and every test it lists against the syntax — JSON Schema, known step types,
+declared variables, references that resolve, test files and assets that exist — without writing anything:
 
 ```bash
-testlab validate tck.yaml
+testlab validate my-certificate-tck/index.yaml
 ```
 
-**Expected output (success):**
-
-```
-Test case "connector_e2e" validated successfully
-
-  Tests: 2
-    provision_and_consume (saturn) — 6 steps, 1 cleanup
-    submodel_validation (saturn)  — 3 steps
-
-  Variables: 8 declared (7 runtime, 1 with default)
-  Services: 3 declared (CONNECTOR_PROVIDER, CONNECTOR_CONSUMER ×2)
-  Assertions: 9 total (7 hard, 2 soft)
-  Assets: 1 file (schemas/serial-part-3.0.json)
-
-  No errors. No warnings.
+```text
+OK — index.yaml is valid (no issues)
 ```
 
-**Example output (with errors):**
+With errors, each is printed with the file it is in, and the command exits `1`:
 
+```text
+  [ERROR] (execution step 0) tests/ping_catalog.yaml: Unknown step type 'connector/consumer/query_catalogue'
+  [ERROR] (step 1) tests/request_certificate.yaml: '${{ execution.pull_endpont.edr_token }}' in param 'edr_token' names nothing this TCK supplies. Available: env.callback_timeout_s, env.ccm_usage_policy, …
+
+Invalid — 2 error(s)
 ```
-Test case "connector_e2e" validation failed
 
-  Errors (2):
-    x provision_and_consume.yaml:42 — Undefined variable "${provider_bpnn}" (did you mean "${provider_bpn}"?)
-    x submodel_validation.yaml:18 — Unknown step type "consume_submodell" for dataspace version "saturn"
-
-  Warnings (1):
-    provision_and_consume.yaml:87 — Asset file "schemas/serial-part-3.1.json" not found in assets/
-```
+`--version <dataspace-version>` validates against a specific dataspace release.
 
 ---
 
-## Step 2 — Generate Keys (One-time Setup)
-
-Packages are **encrypted by default** to protect secrets embedded in tests. Before compiling, you need cryptographic keys for both the Compiler and the Player(s) that will run the tests.
-
-### Player Key (on the machine that will execute tests)
+## Step 2 — Compile
 
 ```bash
-testlab keygen
+testlab compile my-certificate-tck/index.yaml -o dist/
 ```
 
-```
-Generated Player key pair
-   Private key: ~/.testlab/keys/player.pem (permissions: 0600)
-   Public key:  ~/.testlab/keys/player.pub
-   Fingerprint: player:sha256:d4e5f6a1b2c3...
-
-   Share player.pub with the Compiler to authorize this Player.
+```text
+Compiled → dist/my-certificate-tck.tck
+  Package checksum : blake2b:0fbeddc9f130b975e6d4a6b84b4145b95c9d023fc44625bcb8f5e6d4939431a5
+  Fingerprint digest: blake2b:b5b6209acfaaf378ea38812f5aa1c2c4fb682d7233f2bb25ae0d09ad53430727
 ```
 
-### Compiler Key (on the machine that will compile packages)
+`compile` re-runs the validation first and stops on any error. `-o` takes a directory (the file is named
+`<tck-id>.tck`) or a file path; without it, the package is written next to the manifest.
+
+A `.tck` is a ZIP archive:
 
 ```bash
-testlab keygen --compiler
+unzip -l dist/my-certificate-tck.tck
 ```
 
-```
-Generated Compiler signing key pair
-   Signing key:      ./compiler_signing.pem (permissions: 0600)
-   Verification key: ./compiler_signing.pub
-   Fingerprint:      compiler:sha256:a1b2c3d4e5f6...
-
-   Share compiler_signing.pub with Players so they can verify your packages.
-```
-
-### Trust Store Setup (Player-side)
-
-Copy the Compiler's verification key to the Player's trust store so it accepts packages from this Compiler:
-
-```bash
-cp compiler_signing.pub ~/.testlab/trusted_compilers/
-```
-
----
-
-## Step 3 — Compile (Encrypted by Default)
-
-Compile and package the TCK. Encryption is automatic — you provide the Player public keys and the Compiler signing key:
-
-```bash
-testlab compile tck.yaml \
-  --authorize-player ~/.testlab/keys/player1.pub \
-  --authorize-player ~/.testlab/keys/player2.pub \
-  --signing-key ./compiler_signing.pem \
-  --output connector_e2e-1.0.tck
-```
-
-**Expected output:**
-
-```
-Validating TCK "connector_e2e"...
-Validation passed (2 tests, 9 steps, 9 assertions)
-
-Encrypting package...
-   Content encryption: AES-256-GCM (256-bit random key)
-   Wrapping key for player:sha256:d4e5f6a1... (RSA-OAEP-SHA256)
-   Wrapping key for player:sha256:f6a1b2c3... (RSA-OAEP-SHA256)
-   Signing with compiler:sha256:a1b2c3d4... (Ed25519)
-
-Packaging...
-   Writing manifest.yaml (unencrypted metadata + security block)
-   Writing payload.enc (encrypted tests + assets)
-   Writing signature.sig (Ed25519 signature)
-
-Encrypted package created: connector_e2e-1.0.tck (14.1 KB)
-   Authorized players: 2
-```
-
-**If you forget the keys:**
-
-```bash
-testlab compile tck.yaml --output connector_e2e-1.0.tck
-```
-
-```
-Error: Encryption is enabled by default. You must provide:
-  --authorize-player <player.pub>   (at least one authorized Player)
-  --signing-key <compiler.pem>      (Compiler signing key)
-
-To compile without encryption (development only), use --plain.
-```
-
----
-
-## Step 4 — Inspect the Compiled Package
-
-The compiled `.tck` is **not human-readable**. Tests and assets are encrypted inside `payload.enc`:
-
-```bash
-unzip -l connector_e2e-1.0.tck
-```
-
-```
-Archive:  connector_e2e-1.0.tck
+```text
   Length      Date    Time    Name
 ---------  ---------- -----   ----
-      892  2026-03-30 14:25   manifest.yaml
-     5520  2026-03-30 14:25   payload.enc
-       64  2026-03-30 14:25   signature.sig
+      107  09-12-2026 23:54   assets/schemas/certificate_schema.json
+      113  09-12-2026 23:54   assets/testdata/request_body.json
+     1996  09-12-2026 23:54   manifest.yaml
+     1450  09-12-2026 23:54   tck-bundle.yaml
+     8880  09-12-2026 23:54   tck-execution.json
+      693  09-12-2026 23:54   tests/ping_catalog.yaml
+     2412  09-12-2026 23:54   tests/request_certificate.yaml
 ---------                     -------
-     6476                     3 files
+    15651                     7 files
 ```
 
-Only the `manifest.yaml` is readable — it contains metadata and the security block, but **no secrets**:
+| Entry | Contents |
+|-------|----------|
+| `manifest.yaml` | Package identity: format, checksum, TCK id and metadata, dataspace, infrastructure, compilation fingerprint, the test list and the asset digests |
+| `tck-bundle.yaml` | The manifest as authored, which the Player loads |
+| `tck-execution.json` | The compiled, flat intermediate representation of every step |
+| `tests/` | The test files as authored |
+| `assets/` | The declared schemas and testdata |
+
+The package `checksum` covers every entry. A Player refuses a package whose contents differ from the ones it was sealed with.
+
+`--plain` writes the compiled files to a directory instead of an archive (default `<manifest dir>/plain`), which is
+convenient for looking at `tck-execution.json` while developing.
+
+---
+
+## Step 3 — Inspect the Compiled Package
+
+`testlab inspect` reports what a package contains without executing it:
 
 ```bash
-unzip -p connector_e2e-1.0.tck manifest.yaml
+testlab inspect dist/my-certificate-tck.tck --variables --infrastructure --manifest
 ```
 
-```yaml
-# ── Auto-generated by testlab compiler ── DO NOT EDIT ──
-name: "connector_e2e"
-version: "1.0"
-sdk_version: "0.5.0"
-compiled_at: "2026-03-30T14:25:00Z"
-dataspace_versions:
-  - "saturn"
-tests:
-  - "provision_and_consume"
-  - "submodel_validation"
-checksum: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+```text
+========================================================================
+  Testlab Inspect — my-certificate-tck.tck
+========================================================================
+  Name             : Certificate Verification TCK
+  Total Steps      : 5
+  Total Validations: 5
+  Tests            : 2
 
-security:
-  format: "encrypted-v1"
-  algorithm: "AES-256-GCM"
-  key_derivation: "RSA-OAEP-SHA256"
-  compiler_id: "compiler:sha256:a1b2c3d4e5f6..."
-  authorized_players:
-    - player_id: "player:sha256:d4e5f6a1b2c3..."
-      encrypted_key: "base64:YWVzLWtleS1lbmNyeXB0ZWQtd2l0aC1wbGF5ZXIxLXJzYS1wdWJsaWMta2V5..."
-    - player_id: "player:sha256:f6a1b2c3d4e5..."
-      encrypted_key: "base64:YWVzLWtleS1lbmNyeXB0ZWQtd2l0aC1wbGF5ZXIyLXJzYS1wdWJsaWMta2V5..."
+  Test: Ping Catalog  |  ID: ping_catalog.yaml  |  Skippable: No
+  Step Name                                Uses                                Phase      Validations
+  ---------------------------------------- ----------------------------------- ---------- -----------
+  Query SUT catalog                        connector/consumer/query_catalog    Execution  1
+
+  Test: Request Certificate  |  ID: request_certificate.yaml  |  Skippable: No
+  Step Name                                Uses                                Phase      Validations
+  ---------------------------------------- ----------------------------------- ---------- -----------
+  Expose the callback endpoint the SUT an  mock/api                            Setup      0
+  Negotiate access to the CCMAPI offer     connector/consumer/pull_data_filte  Execution  1
+  Send the certificate request through th  connector/dataplane/http_request    Execution  2
+  Wait for the SUT to call back            mock/wait/http_request              Execution  1
+
+========================================================================
+
+  VARIABLES
+  ID                             Source       Scope      Type
+  ------------------------------ ------------ ---------- ----------
+  callback_timeout_s             input        sut        number
+  ccm_usage_policy               value        —          object
+
+========================================================================
+
+  INFRASTRUCTURE
+  Capability                Required   Standard
+  ------------------------- ---------- --------------------
+  engine.connector          True       —
+  sut.connector             True       —
+
+========================================================================
+
+  MANIFEST
+  TCK                  my-certificate-tck
+  Checksum             blake2b:0fbeddc9f130b975e6d4a6b84b4145b95c9d023fc44625bcb8f5e6d4939431a5
+  Encrypted            no
+
+========================================================================
 ```
 
-| Field | Value | Purpose |
-|-------|-------|---------|
-| `name` | `connector_e2e` | Test case name from `tck.yaml` |
-| `version` | `1.0` | Test case version from `tck.yaml` |
-| `sdk_version` | `0.5.0` | SDK version used to compile — Player warns on mismatch |
-| `compiled_at` | ISO 8601 timestamp | Compilation timestamp |
-| `dataspace_versions` | `["saturn"]` | All dataspace versions referenced across tests |
-| `tests` | List of names | Execution order |
-| `checksum` | `sha256:<hex>` | Integrity hash — Player rejects tampered packages |
-| `security` | Block | Encryption metadata — algorithm, compiler ID, authorized Players |
+`--variables` shows what the operator will have to supply, `--infrastructure` what must be bound, and `--json`
+combines every requested section into one JSON object.
 
 ### Extracting a Package
 
-An authorized Player can write a package's contents back out — the manifest, the
-compiled instructions, the tests and the bundled assets — with
-`testlab inspect --extract`. For an encrypted package this needs the Player's
-private key (to decrypt) and the Compiler's public key (to verify the signature):
+`--extract` writes the verified contents of a package to a directory:
 
 ```bash
-testlab inspect connector_e2e-1.0.tck \
-  --player-keys .keys/player \
-  --compiler-pub .keys/compiler/signing.pub \
-  --extract ./extracted
+testlab inspect dist/my-certificate-tck.tck --extract extracted
 ```
 
-```
-Extracted connector_e2e-1.0.tck -> ./extracted/
+```text
+Extracted my-certificate-tck.tck -> extracted/
+  assets/schemas/certificate_schema.json
+  assets/testdata/request_body.json
   manifest.yaml
   tck-bundle.yaml
   tck-execution.json
-  tests/negotiate-and-transfer.yaml
+  tests/ping_catalog.yaml
+  tests/request_certificate.yaml
 ```
 
-What lands on disk is what was verified: the package is checked before anything
-is written, and the bytes written are the checked ones. There used to be a
-separate `testlab decompile` that wrote out only the authoring YAML, and only
-for encrypted packages.
-
-!!! note "Extraction requires authorization"
-    The Player's key must be listed in the package's `authorized_players` block.
-    Unauthorized Players cannot unwrap the AES content key and will receive an error.
+The package is checked before anything is written, and the bytes written are the checked ones.
 
 ---
 
-## Step 5 — Plain Mode (Development Only)
+## Step 4 — Sign and Encrypt for a Player (Optional)
 
-For local development and debugging, you can opt out of encryption with `--plain`:
+To restrict a package to specific Players, give `compile` a Compiler identity and each Player's public key.
+See [Package Security](../specification/security.md) for the design.
 
-```bash
-testlab compile tck.yaml --plain --output connector_e2e-1.0.tck
-```
+### Generate identities (one-time setup)
 
-```
-WARNING: Package compiled in plain mode. Tests and assets are NOT encrypted.
-         Do not distribute plain packages — they may contain secrets.
-         Use encrypted mode (default) for any shared or production package.
-
-Validating TCK "connector_e2e"...
-Validation passed (2 tests, 9 steps, 9 assertions)
-
-Packaging...
-   Bundling tests/provision_and_consume.yaml
-   Bundling tests/submodel_validation.yaml
-   Bundling assets/schemas/serial-part-3.0.json
-   Stamping metadata (SDK v0.5.0, 2026-03-30T14:22:00Z)
-   Computing SHA-256 checksum
-
-Package created: connector_e2e-1.0.tck (12.4 KB)
-```
-
-Plain packages store tests as-is — human-readable, no encryption, no keys needed:
+Each identity is an RSA-4096 encryption pair plus an Ed25519 signing pair:
 
 ```bash
-unzip -l connector_e2e-1.0.tck
+testlab keygen -o .keys -l compiler     # on the compiling machine
+testlab keygen -o .keys -l player       # on each Player machine
 ```
 
+```text
+Keys saved to .keys/player/
+  encryption.pem / encryption.pub  (RSA-4096)
+  signing.pem    / signing.pub     (Ed25519)
+  Encryption fingerprint: 78caa839aede1dab4880e0c3c9c1b74d...
+  Signing    fingerprint: a3b14f337356d32eda6a2196a517e7e1...
 ```
-Archive:  connector_e2e-1.0.tck
+
+Share each Player's `encryption.pub` with the Compiler, and the Compiler's `signing.pub` with the Players. Keys that
+already exist are reused unless you pass `--override-keys`.
+
+### Compile encrypted
+
+```bash
+testlab compile my-certificate-tck/index.yaml \
+  --compiler-keys .keys/compiler \
+  --player-pub .keys/player/encryption.pub \
+  -o dist/my-certificate-tck-encrypted.tck
+```
+
+```text
+  Authorized player: encryption.pub (78caa839aede1dab...)
+
+Compiled (encrypted .tck) → dist/my-certificate-tck-encrypted.tck
+  Checksum : blake2b:365287b57cd5fe2f0e916133...
+  Signed by: 2320064d0401fea99abba121e9c3d448...
+  Players  : 1
+```
+
+Repeat `--player-pub` to authorize several Players. The archive now holds only the redacted manifest, the encrypted
+payload and the signature:
+
+```text
   Length      Date    Time    Name
 ---------  ---------- -----   ----
-      487  2026-03-30 14:22   manifest.yaml
-     2841  2026-03-30 14:22   tests/provision_and_consume.yaml
-     1203  2026-03-30 14:22   tests/submodel_validation.yaml
-      892  2026-03-30 14:22   assets/schemas/serial-part-3.0.json
----------                     -------
-     5423                     4 files
+     2141  09-12-2026 23:54   manifest.yaml
+     5556  09-12-2026 23:54   payload.enc
+       88  09-12-2026 23:54   signature.sig
 ```
 
-!!! warning "Never distribute plain packages"
-    Plain packages contain secrets (OAuth2 credentials, service URLs, BPNs) in cleartext.
-    Use plain mode only during local test development. Always compile with encryption
-    (the default) before sharing, uploading to CI, or distributing to other teams.
+`--compiler-keys` and `--player-pub` go together:
+
+```text
+Error: --player-pub is required to encrypt a package. Supply both --compiler-keys and --player-pub, or neither.
+```
+
+An encrypted package is inspected and extracted with the Player's identity and the Compiler's public key:
+
+```bash
+testlab inspect dist/my-certificate-tck-encrypted.tck \
+  --player-keys .keys/player --compiler-pub .keys/compiler/signing.pub
+```
 
 ---
 
@@ -320,20 +271,16 @@ Archive:  connector_e2e-1.0.tck
 
 | Command | Description |
 |---------|-------------|
-| `testlab validate <tck.yaml>` | Validate tests without packaging |
-| `testlab compile <tck.yaml> --authorize-player <key.pub> --signing-key <key.pem>` | Compile into encrypted `.tck` (default) |
-| `testlab compile <tck.yaml> --plain` | Compile without encryption (development only) |
-| `testlab compile <tck.yaml> --output <file>` | Specify output filename |
-| `testlab compile <tck.yaml> --library-path <dir>` | Set path for resolving imported tests |
-| `testlab keygen` | Generate Player RSA key pair |
-| `testlab keygen --compiler` | Generate Compiler Ed25519 signing key pair |
-| `testlab keygen --force` | Overwrite existing keys (key rotation) |
-| `testlab export-key --player` | Print Player public key to stdout |
-| `testlab export-key --fingerprint` | Print Player fingerprint |
-| `testlab inspect <package>` | Show what a package contains, without running it |
-| `testlab inspect <package> --manifest` | Show manifest metadata |
-| `testlab inspect <package> --extract <dir>` | Write the verified contents out (needs `--player-keys`/`--compiler-pub` if encrypted) |
+| `testlab validate <index.yaml> [-v <dataspace-version>]` | Validate a TCK without packaging |
+| `testlab compile <index.yaml> [-o <dir or file>]` | Compile into a readable `.tck` |
+| `testlab compile <index.yaml> --plain [-o <dir>]` | Write the compiled files to a directory |
+| `testlab compile <index.yaml> -c <compiler-dir> -p <player.pub> [-p …]` | Compile a signed, encrypted `.tck` |
+| `testlab keygen [-o <dir>] [-l <label>] [--override-keys]` | Generate an identity in `<dir>/<label>/` |
+| `testlab inspect <package>` | Show the tests, steps and validations a package contains |
+| `testlab inspect <package> --variables --infrastructure --manifest` | Add the variables, infrastructure requirements and manifest |
 | `testlab inspect <package> --json` | One JSON object with every requested section |
+| `testlab inspect <package> --extract <dir>` | Write the verified contents out |
+| `testlab inspect <package> -k <player-dir> -c <signing.pub>` | Inspect an encrypted package |
 
 ---
 
@@ -348,4 +295,4 @@ This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses
 - SPDX-License-Identifier: CC-BY-4.0
 - SPDX-FileCopyrightText: 2025, 2026 Contributors to the Eclipse Foundation
 - SPDX-FileCopyrightText: 2025, 2026 Catena-X Automotive Network e.V.
-- Source URL: [https://github.com/eclipse-tractusx/tractusx-sdk](https://github.com/eclipse-tractusx/tractusx-sdk)
+- Source URL: [https://github.com/eclipse-tractusx/tractusx-testlab](https://github.com/eclipse-tractusx/tractusx-testlab)

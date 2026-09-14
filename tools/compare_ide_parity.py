@@ -88,9 +88,9 @@ from tractusx_testlab.authoring.registry import StepRegistry
 # the right is what actually resolves.  An entry here is a class-A finding that
 # the tool follows through so the fields underneath it can still be compared.
 NAME_MAP = {
-    "digital-twin-registry/register_shell": "digital-twin/provider/create_shell_descriptor",
-    "digital-twin-registry/add_submodel": "digital-twin/provider/create_submodel_descriptor",
-    "digital-twin-registry/lookup_shell": "digital-twin/provider/get_shell_descriptor",
+    "digital-twin-registry/register_shell": "digital-twin-registry/provider/create_shell_descriptor",
+    "digital-twin-registry/add_submodel": "digital-twin-registry/provider/create_submodel_descriptor",
+    "digital-twin-registry/lookup_shell": "digital-twin-registry/provider/get_shell_descriptor",
 }
 
 # Return names the runtime resolves no matter what the step declares:

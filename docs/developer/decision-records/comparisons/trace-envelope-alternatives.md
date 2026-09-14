@@ -78,7 +78,7 @@ All examples below encode **the same step-level event**: the failing `assert_sta
 - Two-level envelope (`data` vs top-level) complicates JSONL grep/jq queries the team already uses.
 
 ### Fit for TestLab
-**Mid.** Great if we expect external consumers (third-party dashboards, brokers) to consume TestLab events. Overkill for the current "IDE talks to player over SSE" use case, where every byte of envelope overhead is paid on every step event and the IDE never federates with another event source.
+**Mid.** Great if we expect external consumers (third-party dashboards, brokers) to consume TestLab events. Overkill for the current "a client reads the server's SSE stream" use case, where every byte of envelope overhead is paid on every step event and the client never federates with another event source.
 
 ---
 
@@ -135,13 +135,13 @@ The [OTel Logs Data Model](https://opentelemetry.io/docs/specs/otel/logs/data-mo
 
 ### Weaknesses
 - Flat `attributes` map loses the typed `inputs`/`outputs` structure — assertion semantics get smeared into a dotted bag.
-- Designed for **logs**, not for **structured domain events**: the `body` is opaque, the IDE has to learn the attribute schema.
-- `time_unix_nano` strings are unfriendly for jq/IDE consumers — humans want ISO 8601.
+- Designed for **logs**, not for **structured domain events**: the `body` is opaque, every client has to learn the attribute schema.
+- `time_unix_nano` strings are unfriendly for jq and client consumers — humans want ISO 8601.
 - Heavy SDK footprint (OTel collector, exporters) if we want end-to-end OTLP — the testlab today writes JSONL files.
 - Streaming via SSE is non-standard for OTel — OTLP wants gRPC or HTTP push.
 
 ### Fit for TestLab
-**Mid-low.** Excellent destination format (we should probably **export to** OTel from our envelope), but a poor primary envelope. Forces the IDE to navigate a flat attribute bag instead of a typed domain object, and the JSONL ergonomics are worse than what we have today.
+**Mid-low.** Excellent destination format (we should probably **export to** OTel from our envelope), but a poor primary envelope. Forces clients to navigate a flat attribute bag instead of a typed domain object, and the JSONL ergonomics are worse than what we have today.
 
 ---
 
@@ -196,11 +196,11 @@ The [OTel Logs Data Model](https://opentelemetry.io/docs/specs/otel/logs/data-mo
 - Optimised for Elasticsearch indexing, not for structured domain events — nested `inputs`/`outputs` get flattened into `labels` and lose their typing.
 - ECS `labels` values must be **scalar strings**, so numeric `expected`/`actual` must be stringified, breaking type fidelity.
 - Verbose field names (`event.dataset`, `service.environment`, `event.duration`) bloat every event.
-- Tightly couples us to Elastic mental model — non-ELK consumers (the IDE) gain nothing.
+- Tightly couples us to Elastic mental model — non-ELK consumers (SSE clients) gain nothing.
 - No native SSE binding — ECS is a document shape, not a transport.
 
 ### Fit for TestLab
-**Low.** Right destination format if we ship to ELK in the future, wrong primary envelope. The lossy `inputs`/`outputs` flattening hurts the IDE far more than ELK helps anyone today.
+**Low.** Right destination format if we ship to ELK in the future, wrong primary envelope. The lossy `inputs`/`outputs` flattening hurts clients far more than ELK helps anyone today.
 
 ---
 
@@ -240,7 +240,7 @@ Our own header-once JSONL envelope. First line is `type: "header"` with run-scop
 - Minimal overhead — no nested `data` block, no `specversion`, no `attributes` map.
 - Header-once design saves ~80 bytes per event at scale; matches the existing implementation.
 - Domain-typed: `inputs`/`outputs` preserve full structure including numeric `expected`/`actual`.
-- Plain JSONL maps one-line-one-event to SSE frames without translation; existing IDE handlers stay simple.
+- Plain JSONL maps one-line-one-event to SSE frames without translation; existing client handlers stay simple.
 - Fully under our control — no upstream spec to track, no breaking changes from third parties.
 
 ### Weaknesses
@@ -251,7 +251,7 @@ Our own header-once JSONL envelope. First line is `type: "header"` with run-scop
 - Header-once means a line read in isolation is missing context — consumers must replay from the header.
 
 ### Fit for TestLab
-**High.** This is the status quo, and the design directly mirrors what the IDE and CLI need today. The cost is lifetime ownership of the schema; the win is zero envelope tax and perfect domain fit.
+**High.** This is the status quo, and the design directly mirrors what SSE clients and the CLI need today. The cost is lifetime ownership of the schema; the win is zero envelope tax and perfect domain fit.
 
 ---
 
@@ -333,7 +333,7 @@ data: {"phase":"steps","id":"assert_status_200","uses":"validate/assert","ref":"
 
 ### Strengths
 - Smallest possible payload — `type` and `sequence` live in SSE metadata.
-- IDE `EventSource` API routes by `event` natively — `source.addEventListener("tck.test.validation.end", ...)`.
+- The browser `EventSource` API routes by `event` natively — `source.addEventListener("tck.test.validation.end", ...)`.
 - Reconnection via `Last-Event-ID` is the spec's built-in primitive.
 
 ### Weaknesses
@@ -352,7 +352,7 @@ data: {"phase":"steps","id":"assert_status_200","uses":"validate/assert","ref":"
 |---|---|---|---|---|---|---|
 | Self-contained events | ⚠️ Yes per event, but verbose | ⚠️ Yes, attribute bag loses typing | ⚠️ Flat fields, lossy nesting | ⚠️ Header-once needed for full context | ✅ Whatever payload we design | ❌ Needs SSE metadata to be complete |
 | `status`-where-meaningful principle | ⚠️ `data.status`, fights with `type` taxonomy | ⚠️ Forced into `severityText` | ✅ `event.outcome` matches exactly | ✅ Native top-level `status` | ✅ Whatever we design | ✅ Whatever we design |
-| IDE consumer simplicity | ⚠️ Two-level envelope (`data` + top) | ❌ Flat attribute bag, opaque body | ⚠️ Stringified scalars in `labels` | ✅ Domain-typed top-level fields | ✅ Codegen TS types | ✅ `EventSource` events |
+| Client consumer simplicity | ⚠️ Two-level envelope (`data` + top) | ❌ Flat attribute bag, opaque body | ⚠️ Stringified scalars in `labels` | ✅ Domain-typed top-level fields | ✅ Codegen TS types | ✅ `EventSource` events |
 | SSE binding maturity | ✅ Spec-defined HTTP binding | ❌ Non-standard for OTLP | ❌ Document shape, no transport | ✅ Trivial line-to-frame | ✅ SSE in spec | ✅ This IS SSE |
 | Ecosystem tooling | ✅ CNCF SDKs, broker integrations | ✅ Loki, Tempo, Grafana, Datadog | ✅ Kibana, Elastic stack | ❌ TestLab-only | ⚠️ Codegen tools young | ⚠️ Browser-only first-class |
 | Schema evolution | ✅ Reverse-DNS `type` + `dataschema` | ✅ Attribute namespaces | ⚠️ Tied to ECS major version | ⚠️ Manual `schema_version` discipline | ✅ Versioned message contracts | ❌ No versioning primitive |
@@ -364,9 +364,9 @@ data: {"phase":"steps","id":"assert_status_200","uses":"validate/assert","ref":"
 
 ## Final Recommendation
 
-**Keep Option 4 (ADR-0016 v2 JSONL) as the primary envelope. Add Option 5 (AsyncAPI 3.0) as the contract layer when the trace stream is exposed beyond the IDE. Treat Option 2 (OTel Logs) as an export destination, not a replacement.**
+**Keep Option 4 (ADR-0016 v2 JSONL) as the primary envelope. Add Option 5 (AsyncAPI 3.0) as the contract layer when the trace stream is exposed beyond its current clients. Treat Option 2 (OTel Logs) as an export destination, not a replacement.**
 
-The reference event makes the verdict clear: every standardised envelope (CloudEvents, OTel, ECS) either bloats the line, flattens the typed `inputs`/`outputs` we depend on, or both — and none of them solve a problem we have today. The IDE talks to a single player over SSE; there are no third-party consumers, no broker federation, and no observability backend pinning our format choice. Option 4 minimises envelope overhead, preserves domain typing end-to-end, and maps one-to-one to SSE frames. The genuine gap it has — a contract/version story — is precisely what AsyncAPI fills additively without changing a single byte on the wire. Adopting CloudEvents or OTel now would be standards-cargo-culting; adopt them later as **gateway translations** if and when an external consumer actually appears.
+The reference event makes the verdict clear: every standardised envelope (CloudEvents, OTel, ECS) either bloats the line, flattens the typed `inputs`/`outputs` we depend on, or both — and none of them solve a problem we have today. A client reads a single server's SSE stream; there are no third-party consumers, no broker federation, and no observability backend pinning our format choice. Option 4 minimises envelope overhead, preserves domain typing end-to-end, and maps one-to-one to SSE frames. The genuine gap it has — a contract/version story — is precisely what AsyncAPI fills additively without changing a single byte on the wire. Adopting CloudEvents or OTel now would be standards-cargo-culting; adopt them later as **gateway translations** if and when an external consumer actually appears.
 
 ---
 

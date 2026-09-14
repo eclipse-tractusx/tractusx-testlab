@@ -140,7 +140,7 @@ def _build_instruction(
     # entirely before this, which meant a conditional step ran unconditionally, a
     # negative test ran as a positive one, and a timeout was never applied — the
     # run did something other than what the TCK said, in silence.
-    for control in ("if", "expects", "timeout_s"):
+    for control in ("cac", "if", "expects", "timeout_s"):
         if step.get(control) is not None:
             instruction[control] = step[control]
 
@@ -153,12 +153,15 @@ def _build_validate_block(step: dict[str, Any]) -> list[dict[str, Any]]:
     An assertion's optional ``name`` is carried through when the author wrote
     one. It is what the run report calls the check, and dropping it here would
     have left every compiled TCK reporting ``validate/assert`` four times over.
+    Its ``cac`` is carried for the same reason: it is what the coverage matrix
+    counts the check under.
     """
     validate_raw = step.get("validate", [])
     validations: list[dict[str, Any]] = [
         {
             "uses": v.get("uses", "validate/assert"),
             **({"name": v["name"]} if v.get("name") else {}),
+            **({"cac": v["cac"]} if v.get("cac") else {}),
             "with": resolve_expression(v.get("with", {})),
         }
         for v in validate_raw

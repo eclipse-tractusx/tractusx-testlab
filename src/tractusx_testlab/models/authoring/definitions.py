@@ -34,6 +34,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from tractusx_testlab.extensions import EXTENSIONS
+from tractusx_testlab.extensions.step_keys import AssertionExtensionKeys, StepExtensionKeys
 from tractusx_testlab.models.authoring.infrastructure import (
     DataspaceContext,
     InfrastructureConfig,
@@ -119,8 +121,11 @@ class ReturnFieldDefinition(BaseModel):
     cls: str | None = Field(default=None, alias="class")
 
 
-class Assertion(BaseModel):
-    """Assertion using ``uses`` / ``with`` verb-form keys."""
+class Assertion(AssertionExtensionKeys):
+    """Assertion using ``uses`` / ``with`` verb-form keys.
+
+    Inherits the keys experimental extensions add (``tractusx_testlab.extensions``).
+    """
 
     model_config = _STRICT
 
@@ -134,8 +139,11 @@ class Assertion(BaseModel):
     with_: dict[str, Any] | None = Field(default=None, alias="with")
 
 
-class StepDefinition(BaseModel):
-    """Step definition using ``uses`` and ``with`` verb-form keys."""
+class StepDefinition(StepExtensionKeys):
+    """Step definition using ``uses`` and ``with`` verb-form keys.
+
+    Inherits the keys experimental extensions add (``tractusx_testlab.extensions``).
+    """
 
     model_config = _STRICT
 
@@ -269,6 +277,9 @@ class TckDefinition(BaseModel):
         pattern=r"^[a-z][a-z0-9_.-]{0,99}$"
     )
     metadata: TckMetadataDefinition
+    #: Experimental extensions this TCK opts into, by name. Keys and steps an
+    #: extension contributes are refused in a TCK that does not list it.
+    extensions: list[Literal[tuple(EXTENSIONS)]] = Field(default_factory=list)  # type: ignore[valid-type]
     env: EnvDefinition | None = None
     tests: list[TckTestEntry] = Field(default_factory=list)
     # Transition fields — kept for compatibility with existing CCM examples.

@@ -48,7 +48,7 @@ execution:
         type: string
 
   - id: create_shell
-    uses: digital-twin/provider/create_shell_descriptor
+    uses: digital-twin-registry/provider/create_shell_descriptor
     name: Register the shell descriptor on the SUT's DTR
     with:
       shell_descriptor:
@@ -105,7 +105,7 @@ execution:
         with: { input: body, schema: "${{ env.schemas.shell_descriptor }}" }
 
   - id: read_back_shell
-    uses: digital-twin/provider/get_shell_descriptor
+    uses: digital-twin-registry/provider/get_shell_descriptor
     name: Read the shell descriptor back from the SUT's DTR
     with:
       aas_identifier: "urn:uuid:${{ execution.new_twin_id.value }}"
@@ -145,7 +145,7 @@ execution:
 
 teardown:
   - id: delete_shell
-    uses: digital-twin/provider/delete_shell_descriptor
+    uses: digital-twin-registry/provider/delete_shell_descriptor
     name: Delete the shell descriptor
     with:
       aas_identifier: "urn:uuid:${{ execution.new_twin_id.value }}"

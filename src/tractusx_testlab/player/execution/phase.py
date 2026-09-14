@@ -139,6 +139,9 @@ async def run_phase(
             context,
         ):
             skipped = skipped_result(step_name, step_def.uses, config.phase)
+            # A CAC whose step was skipped is a CAC this run did not verify, and
+            # the report can only say so if the skip still names it.
+            skipped.cac = list(step_def.cac or [])
             results.append(skipped)
             monitor.on_step_completed(job_id, test.definition.id, step_def.id, skipped)
             # A step whose `if:` said no must not then run: recording SKIPPED and

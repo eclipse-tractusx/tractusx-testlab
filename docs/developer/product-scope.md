@@ -23,16 +23,17 @@
 
 # Product Scope
 
-This page defines what TestLab delivers, what MVP does not cover, and how the IDE and Python runtime work together to validate certification-relevant behavior against a system under test (SUT).
+This page defines what TestLab delivers, what MVP does not cover, and how the TestLab engine validates certification-relevant behavior against a system under test (SUT).
 
 ## Product mission
 
-TestLab enables teams to author, version, compile, and execute certification TCKs for Tractus-X related standards with a visual workflow for domain experts and a deterministic runtime for automation.
+TestLab enables teams to author, version, compile, and execute certification TCKs for Tractus-X related standards with a deterministic runtime for automation.
 
-The product has two integrated components:
+This repository is the **TestLab engine**: a Python library, the `testlab` CLI, and a FastAPI server. It has no user interface — the YAML test files are the interface, and any text editor produces them. The engine:
 
-1. IDE (authoring): users configure tests with reusable blocks and tck structure. The IDE frontend is maintained in the separate cx-test-suite repository.
-2. Python compiler and runner (execution): YAML is validated, compiled, and executed against the SUT with structured feedback. This is what this repository contains.
+1. Validates a TCK (an `index.yaml` manifest and its test YAML) and compiles it into a `.tck` package, optionally signed and encrypted.
+2. Executes the package against the SUT, hosting the mock and callback endpoints the tests need, and records a CloudEvents execution trace.
+3. Exposes the same compile and run flow over an HTTP API, with job control and an SSE stream of execution events.
 
 ## MVP scope
 
@@ -40,13 +41,12 @@ The product has two integrated components:
 
 | Area | In scope definition |
 |---|---|
-| Test authoring | Create and maintain TCKs in the IDE, including setup, execution steps, and teardown. |
-| Domain usability | Support non-technical users through labeled blocks, defaults, and guided structure. |
-| YAML generation | Generate YAML from the IDE model and keep it synchronized with authoring state. |
+| Test authoring | Create and maintain TCKs as YAML, including setup, execution steps, and teardown. |
+| Domain usability | Keep plumbing out of tests through typed step contracts, defaults, and author-facing diagnostics. |
 | Compilation | Validate syntax and structural constraints before execution. |
 | Execution | Run TCKs in defined order with prerequisite-aware workflows. |
 | Validation | Validate inbound and outbound API interactions, payloads, assertions, and process outcomes. |
-| Reuse | Reuse capabilities (blocks/step patterns/templates) across TCKs and standards. |
+| Reuse | Reuse capabilities (steps, step patterns, templates) across TCKs and standards. |
 | Versioning | Support versioned standard profiles and extension via additive capabilities. |
 | Traceability | Provide execution feedback that links outcomes back to tests and steps. |
 | Determinism | Ensure reproducible runs given the same inputs, ordering, and SUT behavior. |
@@ -69,7 +69,7 @@ The product has two integrated components:
 | Test case | Ordered container of tests that defines shared context, prerequisites, and execution intent for one certification scenario. |
 | Test | Executable unit within a TCK, composed of setup, execution steps, assertions, and optional teardown/export logic. |
 | Capability | Reusable functional building block that encodes a repeatable behavior pattern (for example, asset creation or schema validation). |
-| Block | Visual IDE representation of a capability or structural element, mapped to typed step data in YAML. |
+| Step | One `uses:` entry in a test, naming a registered step executor with typed inputs (`with:`) and outputs. |
 | Prerequisite | Condition or upstream output required before a step or test can execute safely and meaningfully. |
 | Setup phase | Preparation segment that prepares the test environment (data, identities, contracts, mocks, or environment state). |
 | Execution phase | Main segment that performs the target interaction flow and validates expected behavior. |
@@ -78,18 +78,16 @@ The product has two integrated components:
 
 ## End-to-end lifecycle
 
-The lifecycle is one continuous chain from visual authoring to actionable feedback:
+The lifecycle is one continuous chain from authoring to actionable feedback:
 
-1. Author in IDE: user assembles TCK/test logic using blocks and explicit ordering.
-2. Produce YAML: IDE serializes the model into YAML for portability and review.
-3. Compile: compiler validates structure, references, and executable consistency.
-4. Execute: runner orchestrates setup, execution, validation, and teardown against the SUT.
-5. Feedback: results return as step-level and test-level outcomes for correction and rerun.
+1. Author YAML: the author writes the TCK manifest and tests, with steps in explicit order.
+2. Compile: compiler validates structure, references, and executable consistency, and writes a `.tck` package.
+3. Execute: runner orchestrates setup, execution, validation, and teardown against the SUT.
+4. Feedback: results return as step-level and test-level outcomes for correction and rerun.
 
 ```mermaid
 flowchart LR
-    A[IDE authoring] --> B[YAML]
-    B --> C[Compile and validate]
+    B[YAML authoring] --> C[Compile and validate]
     C --> D[Run against SUT]
     D --> E[Feedback and iteration]
 ```
@@ -112,7 +110,7 @@ Execution semantics are strict because certification flows depend on prerequisit
 | Prerequisites are explicit | A step/test cannot run if required inputs or upstream outputs are missing. |
 | Setup harmonization is mandatory | Setup semantics must be consistent across reusable capabilities and standards. |
 | Failure handling is deterministic | Hard prerequisite failures stop dependent execution paths and surface clear errors. |
-| Reuse must preserve behavior | Reused capability blocks keep stable contracts across TCKs. |
+| Reuse must preserve behavior | Reused capabilities keep stable contracts across TCKs. |
 
 ## Standard versioning strategy
 
@@ -190,7 +188,7 @@ sequenceDiagram
 
 | Goal | Scope expectation |
 |---|---|
-| Usability for non-technical users | Domain-focused block labels, safe defaults, and minimal plumbing exposure. |
+| Usability for test authors | Domain-focused step names, safe defaults, clear diagnostics, and minimal plumbing exposure. |
 | Traceability | Every failed or passed outcome can be traced to TCK, test, and step intent. |
 | Determinism | Given the same configuration and SUT behavior, runs produce reproducible outcomes. |
 
@@ -198,7 +196,7 @@ sequenceDiagram
 
 Project scope is considered clear when all criteria below are met:
 
-1. Product mission states both components (IDE and Python runtime) and their shared purpose.
+1. Product mission states what the engine delivers and that YAML is its interface.
 2. MVP in-scope and out-of-scope boundaries are explicit and non-overlapping.
 3. Core terminology is defined in one glossary and matches execution behavior.
 4. Lifecycle from authoring to feedback is documented as one end-to-end flow.

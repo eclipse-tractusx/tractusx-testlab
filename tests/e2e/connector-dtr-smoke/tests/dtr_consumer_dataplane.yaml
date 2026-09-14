@@ -121,7 +121,7 @@ setup:
   # only one of the two would be readable or not depending on which the
   # deployment chose.
   - id: create_shell
-    uses: digital-twin/provider/wizard/create_shell_descriptor
+    uses: digital-twin-registry/provider/wizard/create_shell_descriptor
     name: Register a twin the consumer is allowed to see
     with:
       id_short: testlabE2eConsumerTwin
@@ -160,7 +160,7 @@ setup:
   # registry dereferences the set while storing the endpoint and answers 500
   # when it is absent, whatever the AAS specification says.
   - id: create_submodel
-    uses: digital-twin/provider/create_submodel_descriptor
+    uses: digital-twin-registry/provider/create_submodel_descriptor
     name: Attach a submodel descriptor to the twin
     with:
       aas_identifier: "${{ setup.create_shell.id }}"
@@ -313,7 +313,7 @@ execution:
   # difference between this step and the one three above it. The wildcard is
   # what makes the criterion answerable for a partner that owns nothing here.
   - id: provider_lookup
-    uses: digital-twin/provider/lookup_shells
+    uses: digital-twin-registry/provider/lookup_shells
     name: Search the same registry directly, without a data plane
     with:
       bpn: "${{ infrastructure.sut.connector.participant_id }}"
@@ -366,7 +366,7 @@ execution:
 
 teardown:
   - id: delete_shell
-    uses: digital-twin/provider/delete_shell_descriptor
+    uses: digital-twin-registry/provider/delete_shell_descriptor
     name: Remove the twin
     with:
       aas_identifier: "${{ setup.create_shell.id }}"

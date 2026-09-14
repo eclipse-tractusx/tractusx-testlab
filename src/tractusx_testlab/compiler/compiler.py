@@ -31,7 +31,8 @@ from pathlib import Path
 import yaml
 
 from tractusx_testlab.authoring.parser import YamlParser
-from tractusx_testlab.compiler.validation.validator import TestValidator, ValidationResult
+from tractusx_testlab.compiler.validation.issues import ValidationResult
+from tractusx_testlab.compiler.validation.validator import TestValidator
 
 
 class Compiler:

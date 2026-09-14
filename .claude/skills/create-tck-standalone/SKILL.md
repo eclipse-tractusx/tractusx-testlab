@@ -299,7 +299,7 @@ authoring agent should exploit:
   Provider), Digital Twin (Provider/Submodel/Consumer), Notification, HTTP, Security,
   Validation. Block params/outputs mirror the step contracts one-to-one, including
   the `class` tags. The only registered step without a block is
-  `digital-twin/submodel/delete` — prefer alternatives when IDE editability matters.
+  `digital-twin-registry/submodel/delete` — prefer alternatives when IDE editability matters.
 - **Structured values are built with programmatic blocks** (`filter_expression`,
   `filter_expression_custom`, `condition_expression`, `asset_criterion`): in YAML you
   author them as the plain lists/objects shown above (`filters:` items with

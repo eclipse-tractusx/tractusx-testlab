@@ -20,9 +20,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-# Import step subpackages to trigger @step registrations
+# Import step subpackages to trigger @step registrations. Experimental steps
+# and step parameter extensions register from the extensions package.
+import tractusx_testlab.extensions.step_modules
 import tractusx_testlab.steps.connector
-import tractusx_testlab.steps.digital_twin
 import tractusx_testlab.steps.digital_twin_registry
 import tractusx_testlab.steps.flow
 import tractusx_testlab.steps.http

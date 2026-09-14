@@ -34,14 +34,19 @@ from __future__ import annotations
 import base64
 import io
 import tarfile
+import tempfile
 import zipfile
 from pathlib import Path
 
 import typer
 import yaml
 
+from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.compiler.compiler import Compiler
 from tractusx_testlab.security.crypto.encryption import encrypt_for_recipients
+from tractusx_testlab.security.crypto.keygen import _fingerprint
+from tractusx_testlab.security.crypto.signing import package_signing_message, sign_bytes
+from tractusx_testlab.security.trust.identity import PlayerIdentity
 
 # Archive entry name for the bundled authoring YAML
 TCK_BUNDLE_ENTRY = "tck-bundle.yaml"
@@ -79,11 +84,35 @@ def embed_bundle_yaml(manifest_path: Path, output_dir: Path) -> None:
             shutil.copy2(source_file, tests_dir / Path(file_ref).name)
 
 
-def create_tar_bytes(source_dir: Path) -> bytes:
-    """Create a gzip-compressed TAR of *source_dir* in memory."""
+def sealed_entries(source_dir: Path) -> dict[str, bytes]:
+    """Read every file under *source_dir* and seal the manifest over them.
+
+    The one place a compiled directory becomes package entries, for both
+    shapes. Keys are archive paths relative to *source_dir* — ``tests/a.yaml``,
+    never ``./tests/a.yaml`` — so the loader finds ``tck-bundle.yaml`` under
+    the name it looks for and the digest covers the names it verifies.
+    """
+    entries = {
+        path.relative_to(source_dir).as_posix(): path.read_bytes()
+        for path in sorted(source_dir.rglob("*"))
+        if path.is_file()
+    }
+    return package_digest.seal(entries)
+
+
+def create_tar_bytes(entries: dict[str, bytes]) -> bytes:
+    """Pack *entries* into a gzip-compressed TAR in memory, under their own names.
+
+    This used to ``tar.add(source_dir, arcname=".")``, which names every member
+    ``./<path>``; the loader looked each entry up without the prefix and refused
+    every encrypted package as missing ``tck-bundle.yaml``.
+    """
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as tf:
-        tf.add(source_dir, arcname=".")
+        for name in sorted(entries):
+            info = tarfile.TarInfo(name)
+            info.size = len(entries[name])
+            tf.addfile(info, io.BytesIO(entries[name]))
     return buf.getvalue()
 
 
@@ -109,9 +138,12 @@ def build_redacted_manifest(
     manifest_dict: dict,
     compiler_id: str,
     authorized_players: list[dict],
-    signature_b64: str,
 ) -> dict:
-    """Build a manifest that omits test IDs and asset paths but keeps TCK identity metadata."""
+    """Build a manifest that omits test IDs and asset paths but keeps TCK identity metadata.
+
+    It carries no signature: the signature is over this manifest's bytes and
+    lives beside it in ``signature.sig``.
+    """
     result: dict = {
         "kind": "manifest",
         "package": {
@@ -132,7 +164,6 @@ def build_redacted_manifest(
             "algorithm": "AES-256-GCM",
             "key_derivation": "RSA-OAEP-SHA256",
             "compiler_id": compiler_id,
-            "signature": signature_b64,
             "authorized_players": authorized_players,
         },
     }
@@ -141,46 +172,39 @@ def build_redacted_manifest(
 
 def write_encrypted_tck(
     tck_path: Path,
-    redacted_manifest: dict,
+    manifest_bytes: bytes,
     payload_b64: str,
     signature_b64: str,
 ) -> None:
-    """Write the encrypted .tck ZIP archive to *tck_path*."""
+    """Write the encrypted .tck ZIP archive to *tck_path*.
+
+    Takes the manifest as bytes, not a dict: the signature is over these exact
+    bytes, and re-serializing here could write different ones.
+    """
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(
-            "manifest.yaml",
-            yaml.dump(redacted_manifest, default_flow_style=False, sort_keys=False),
-        )
+        zf.writestr("manifest.yaml", manifest_bytes)
         zf.writestr("payload.enc", payload_b64)
         zf.writestr("signature.sig", signature_b64)
     tck_path.parent.mkdir(parents=True, exist_ok=True)
     tck_path.write_bytes(buf.getvalue())
 
 
-def compile_encrypted_plain(
+def _seal_and_encrypt(
     manifest: Path,
     compiler_keys: Path,
     player_pub: list[Path],
-    out: Path,
     version: str | None,
     compiler: Compiler,
-) -> None:
-    """Compile into encrypted loose files (manifest.yaml + payload.enc + signature.sig)."""
-    import base64
-    import tempfile
+) -> tuple[dict, dict, bytes, str, str]:
+    """Compile, seal, encrypt and sign *manifest* for the listed players.
 
-    import yaml as _yaml
-
-    from tractusx_testlab.cli._tck_packager import (
-        build_encrypted_payload,
-        build_redacted_manifest,
-        create_tar_bytes,
-    )
-    from tractusx_testlab.security.crypto.keygen import _fingerprint
-    from tractusx_testlab.security.crypto.signing import sign_bytes
-    from tractusx_testlab.security.trust.identity import PlayerIdentity
-
+    Returns ``(sealed_manifest, redacted_manifest, manifest_bytes, payload_b64,
+    signature_b64)``. The payload is sealed so the loader verifies the decrypted
+    entries exactly as it verifies a readable package. The signature is over the
+    readable manifest *and* the encrypted payload (ADR-0012), so neither half of
+    the archive can change without the other's signature failing.
+    """
     compiler_identity = PlayerIdentity.load(compiler_keys)
     recipient_keys: dict[str, bytes] = {}
     for pub_path in player_pub:
@@ -192,32 +216,44 @@ def compile_encrypted_plain(
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         try:
-            manifest_dict, _ = compiler.compile_plain(
-                manifest_path=manifest,
-                output_path=tmp_path,
-                version=version,
-            )
+            compiler.compile_plain(manifest_path=manifest, output_path=tmp_path, version=version)
         except (ValueError, FileNotFoundError) as exc:
             typer.echo(f"Compilation failed: {exc}", err=True)
             raise typer.Exit(1) from exc
         embed_bundle_yaml(manifest, tmp_path)
-        tar_bytes = create_tar_bytes(tmp_path)
+        entries = sealed_entries(tmp_path)
 
-    signature = sign_bytes(tar_bytes, compiler_identity.signing.private_bytes)
-    sig_b64 = base64.b64encode(signature).decode()
-    payload_b64, authorized_players = build_encrypted_payload(tar_bytes, recipient_keys)
+    sealed_manifest = yaml.safe_load(entries[package_digest.MANIFEST_ENTRY])
+    payload_b64, authorized_players = build_encrypted_payload(
+        create_tar_bytes(entries), recipient_keys
+    )
     redacted = build_redacted_manifest(
-        manifest_dict,
-        compiler_identity.signing.fingerprint,
-        authorized_players,
-        sig_b64,
+        sealed_manifest, compiler_identity.signing.fingerprint, authorized_players
+    )
+    manifest_bytes = yaml.dump(redacted, default_flow_style=False, sort_keys=False).encode()
+    signature = sign_bytes(
+        package_signing_message(manifest_bytes, payload_b64.encode()),
+        compiler_identity.signing.private_bytes,
+    )
+    sig_b64 = base64.b64encode(signature).decode()
+    return sealed_manifest, redacted, manifest_bytes, payload_b64, sig_b64
+
+
+def compile_encrypted_plain(
+    manifest: Path,
+    compiler_keys: Path,
+    player_pub: list[Path],
+    out: Path,
+    version: str | None,
+    compiler: Compiler,
+) -> None:
+    """Compile into encrypted loose files (manifest.yaml + payload.enc + signature.sig)."""
+    _, redacted, manifest_bytes, payload_b64, sig_b64 = _seal_and_encrypt(
+        manifest, compiler_keys, player_pub, version, compiler
     )
 
     out.mkdir(parents=True, exist_ok=True)
-    (out / "manifest.yaml").write_text(
-        _yaml.dump(redacted, default_flow_style=False, sort_keys=False),
-        encoding="utf-8",
-    )
+    (out / "manifest.yaml").write_bytes(manifest_bytes)
     (out / "payload.enc").write_text(payload_b64, encoding="utf-8")
     (out / "signature.sig").write_text(sig_b64, encoding="utf-8")
 
@@ -225,7 +261,7 @@ def compile_encrypted_plain(
     typer.echo(f"                           → {out}/payload.enc")
     typer.echo(f"                           → {out}/signature.sig")
     typer.echo(f"  Checksum : {redacted['package']['checksum'][:32]}...")
-    typer.echo(f"  Players  : {len(authorized_players)}")
+    typer.echo(f"  Players  : {len(redacted['security']['authorized_players'])}")
 
 
 def resolve_tck_output_path(
@@ -252,54 +288,13 @@ def compile_encrypted_tck(
     compiler: Compiler,
 ) -> None:
     """Compile a TCK manifest into a .tck with AES-256-GCM encrypted payload.enc."""
-    import base64
-    import tempfile
-
-    from tractusx_testlab.cli._tck_packager import (
-        build_encrypted_payload,
-        build_redacted_manifest,
-        create_tar_bytes,
-        write_encrypted_tck,
+    sealed_manifest, redacted, manifest_bytes, payload_b64, sig_b64 = _seal_and_encrypt(
+        manifest, compiler_keys, player_pub, version, compiler
     )
-    from tractusx_testlab.security.crypto.keygen import _fingerprint
-    from tractusx_testlab.security.crypto.signing import sign_bytes
-    from tractusx_testlab.security.trust.identity import PlayerIdentity
-
-    compiler_identity = PlayerIdentity.load(compiler_keys)
-    recipient_keys: dict[str, bytes] = {}
-    for pub_path in player_pub:
-        pub_bytes = pub_path.read_bytes()
-        fp = _fingerprint(pub_bytes)
-        recipient_keys[fp] = pub_bytes
-        typer.echo(f"  Authorized player: {pub_path.name} ({fp[:16]}...)")
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
-        try:
-            manifest_dict, _ = compiler.compile_plain(
-                manifest_path=manifest,
-                output_path=tmp_path,
-                version=version,
-            )
-        except (ValueError, FileNotFoundError) as exc:
-            typer.echo(f"Compilation failed: {exc}", err=True)
-            raise typer.Exit(1) from exc
-        embed_bundle_yaml(manifest, tmp_path)
-        tar_bytes = create_tar_bytes(tmp_path)
-
-    signature = sign_bytes(tar_bytes, compiler_identity.signing.private_bytes)
-    sig_b64 = base64.b64encode(signature).decode()
-    payload_b64, authorized_players = build_encrypted_payload(tar_bytes, recipient_keys)
-    redacted = build_redacted_manifest(
-        manifest_dict,
-        compiler_identity.signing.fingerprint,
-        authorized_players,
-        sig_b64,
-    )
-    tck_path = resolve_tck_output_path(manifest, manifest_dict, output)
-    write_encrypted_tck(tck_path, redacted, payload_b64, sig_b64)
+    tck_path = resolve_tck_output_path(manifest, sealed_manifest, output)
+    write_encrypted_tck(tck_path, manifest_bytes, payload_b64, sig_b64)
 
     typer.echo(f"\nCompiled (encrypted .tck) → {tck_path}")
     typer.echo(f"  Checksum : {redacted['package']['checksum'][:32]}...")
-    typer.echo(f"  Signed by: {compiler_identity.signing.fingerprint[:32]}...")
-    typer.echo(f"  Players  : {len(authorized_players)}")
+    typer.echo(f"  Signed by: {redacted['security']['compiler_id'][:32]}...")
+    typer.echo(f"  Players  : {len(redacted['security']['authorized_players'])}")

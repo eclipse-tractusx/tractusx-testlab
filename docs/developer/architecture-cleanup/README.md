@@ -49,7 +49,7 @@ quietly dropped between sessions.
 | --- | --- | --- |
 | Q1 | Are inter-test `depends_on` dependencies a v1 feature? | **No — delete the machinery.** |
 | Q2 | Is an unsigned `.tck` a supported distribution format? | **`.tck` is the one distribution *and* execution format.** The separate package format is wrong and goes. |
-| Q3 | Does the IDE consume `tck-execution.json`? | **No — and that is not what it is for.** It is the compiled, machine-readable form *the player is meant to execute*. The IDE only authors declarative YAML and, at run time, renders the trace by parsing CloudEvents. |
+| Q3 | Is `tck-execution.json` only a by-product of compilation? | **No — that is not what it is for.** It is the compiled, machine-readable form *the player is meant to execute*. |
 | Q4 | Is the AI-provenance subtitle a compliance artefact? | **No.** Keep it in file headers; do not enforce it in CI. |
 
 ### Q3 inverts the largest planned change
@@ -62,7 +62,7 @@ That evidence was right; the conclusion was wrong. **The IR is not dead code,
 it is unwired code.** The intended pipeline is:
 
 ```text
-YAML (authored in the IDE)  →  compile  →  tck-execution.json  →  player executes
+YAML (authored)  →  compile  →  tck-execution.json  →  player executes
 ```
 
 What actually ships today executes the raw YAML carried alongside the IR, and
@@ -311,8 +311,7 @@ Two findings from checking before cutting:
 
 - Nine of the ten candidates have **zero uses** across `docs/examples` and
   `tests` — only `pull_data_filtered` is used (5 times).
-- But the wizard family exists *specifically* for IDE form-based authoring, and
-  the IDE is a separate repository. A TCK authored there could use them and
+- But TCKs authored outside this repository could use the wizard family and
   would not appear in this search.
 
 And the catalog variants are not duplicates in the deletion sense: they call
@@ -321,7 +320,7 @@ three different SDK methods (`get_catalog_with_filter`, `get_catalog_by_asset_id
 a real API design decision, not a cut.
 
 Both belong with the naming and step-path work in P5, where authoring-surface
-changes are made deliberately and can be coordinated with the IDE.
+changes are made deliberately.
 
 ---
 
@@ -330,7 +329,7 @@ changes are made deliberately and can be coordinated with the IDE.
 `extra="forbid"` (F-A01) immediately rejected a key in the certificate-management
 example: `expects: fail`.
 
-It is documented syntax — [syntax spec §9.3](../../specification/syntax/tck-syntax.md),
+It is documented syntax — [syntax spec §9.3](../../tck-syntax/extensions.md#93-negative-tests-expects-and-validateerror-p3),
 marked *(P3)* as planned — and `StepDefinition` had no such field, so Pydantic
 dropped it. The example's `send_unknown_cert_type` step declares that the SUT
 **must reject** an unknown certificate type. It ran as an ordinary step, so a SUT
@@ -531,7 +530,7 @@ before removing it.
 
 `expects` stays **declared** — it is documented syntax, it is in use, and
 `extra="forbid"` would otherwise reject the shipped TCK — but it is descriptive.
-It reaches the compiled IR so the IDE and reporting can see which steps are
+It reaches the compiled IR so reporting can see which steps are
 negative tests. The inversion is gone.
 
 ### `dataspace_version` is deprecated
@@ -933,7 +932,7 @@ Three splits, each on a seam the code already had:
   family — `asset`, `policy`, `contract_definition` — plus `_shared` for the
   read-an-id and create-or-409 helpers. That is how the connector's management
   API is divided and how a test uses them.
-* `steps/digital_twin/provider.py` (638) → `provider/shell.py` and
+* `steps/digital_twin_registry/provider.py` (638) → `provider/shell.py` and
   `provider/submodel_descriptor.py`. A submodel descriptor is addressed through
   the shell that holds it, which is the one import between them.
 * `cli/run.py` and `cli/inspect.py` → `_run_report.py` and `_inspect_report.py`,
@@ -949,7 +948,7 @@ live in `steps/registry_models.py` now, beside the readers in
 `registry_reading.py`.
 
 The duplication was visible in the shipped documentation the whole time —
-`docs/specification/reference/steps.md` documented `SpecificAssetId` twice,
+`docs/api-reference/steps.md` documented `SpecificAssetId` twice,
 because it existed twice. Deduplicating the code removed the doubled entry.
 
 ## Pipeline verification — 2026-08-18
@@ -962,7 +961,7 @@ it. Five defects, each of which had shipped.
 `TckResult.passed` counts steps with `PASSED`. `finalize_job` asked
 `if result.passed:` — and a non-zero count is truthy. **Any run where at least
 one step passed published `job_completed`**, while the CLI printed FAIL from
-`status`. The event stream is what the IDE reads, so a failed TCK showed as a
+`status`. The event stream is what the server's clients read, so a failed TCK showed as a
 green job; only a run where *every* step failed reported failure.
 
 `steps_passed` / `steps_total` are named for what they are and the verdict is

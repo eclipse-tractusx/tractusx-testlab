@@ -18,278 +18,133 @@
 
  SPDX-License-Identifier: CC-BY-4.0
 -->
-<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4). -->
+<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
 # CCM Conformity Testing
 
-Run Certificate Credential Management (CCM) conformity tests against a System Under Test (SUT) to verify compliance with the Catena-X CX-0135 standard.
+This is the test-by-test reference for the Certificate Management TCK, `certificate-management-tck-v0.0.1`, which checks CX-0135 v3.1.0. It lists every step, every check, and every value each test reads. It matches `docs/examples/certificate-management-v2/raw/`.
 
-## What is CCM Conformity Testing?
+For why the suite is built this way, see the [Architecture Guide](ccm-architecture-guide.md). To run it, see the [Developer Guide](ccm-developer-guide.md).
 
-The CX-0135 standard defines how Catena-X participants exchange company certificates (ISO 9001, IATF 16949, etc.) through EDC connectors using the CCMAPI. TestLab provides a ready-made test suite that validates whether your implementation handles the full certificate lifecycle correctly.
+## Summary
 
-**Who should use this guide:**
+The tests run in this order. None is skippable, and none reads another test's outputs.
 
-- Developers implementing a CCMAPI-compliant service
-- Quality engineers validating CX-0135 conformity before release
-- Test architects adapting this suite as a template for other Catena-X standards
+| # | Manifest entry | Test id | Name | Steps | Checks |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `catalog_policy_validation.yaml` | `catalog-policy-validation` | Catalog Policy Validation | 1 | 2 |
+| 2 | `request_certificate.yaml` | `request-certificate` | Request Certificate | 2 | 5 |
+| 3 | `send_feedback_notification.yaml` | `send-feedback-notification` | Send Feedback Notification | 1 setup + 3 | 11 |
+| 4 | `error_handling.yaml` | `error-handling` | Error Handling | 2 | 5 |
 
-## CCM Test Suite Overview
+The first execution step is `pull_ccmapi_endpoint` in all four tests. It is the same [`connector/consumer/pull_data_filtered`](../api-reference/steps/connector/consumer.md#connector-consumer-pull_data_filtered) call each time. Only its `name` differs.
 
-The shipped suite (`docs/examples/certificate-management-v2/` in this repository) contains four independent tests:
+| Input | Value |
+| --- | --- |
+| `counter_party_address` | `${{ env.sut_counter_party_address }}` |
+| `counter_party_id` | `${{ env.sut_counter_party_id }}` |
+| `expected_policies` | `${{ env.ccm_usage_policy }}`: `UsagePurpose isAnyOf cx.ccm.base:1` **and** `FrameworkAgreement eq DataExchangeGovernance:1.0` |
+| `filters` | EDC `type` = taxonomy `CCMAPI`; Dublin Core `subject` = taxonomy `CompanyCertificateManagementNotificationApi`; Catena-X common `version` = `3.0` (full IRIs in the test files) |
 
-| Test | Purpose |
-|------|---------|
-| `catalog_policy_validation` | Discover the CCMAPI offer and validate the CX-0135 catalog policy constraints |
-| `request_certificate` | Query provider catalog, negotiate contract, POST certificate request, validate the payload against the BusinessPartnerCertificate schema |
-| `send_feedback_notification` | Send feedback notification via EDC dataplane; await provider acknowledgment on a mock endpoint |
-| `error_handling` | POST a request with an unknown certificate type and verify the rejection response |
+| Check | Passes when |
+| --- | --- |
+| `validate/assert` `edr_token` `not_null` | An offer matched, negotiation and transfer completed, and a token was issued |
+| `validate/assert` `dataplane_url` `not_null` | The transfer produced a data-plane address |
 
-### Test Flow
+The tables below write it as **pull**. The regex `UUID-URN` stands for `^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`.
 
-```mermaid
-flowchart TD
-    A[catalog_policy_validation]
-    B[request_certificate]
-    C[send_feedback_notification]
-    D[error_handling]
+## 1. Catalog Policy Validation
 
-    A:::step
-    B:::step
-    C:::step
-    D:::step
-    classDef step fill:#f8961e,stroke:#333,color:#000
-```
+`tests/catalog_policy_validation.yaml`: the provider publishes a CCMAPI offer under the CX-0135 usage policy, and TestLab can negotiate it.
 
-The tests are independent — none reads another test's outputs. When a suite does need ordering, tests declare `depends_on` and the player runs them in topological order.
+| Phase | Step id | `uses` | Checks |
+| --- | --- | --- | --- |
+| execution | `pull_ccmapi_endpoint` | `connector/consumer/pull_data_filtered` | **pull** |
 
-## Test Suite Structure
+The test's description says it validates "exactly one CCMAPI asset per BPNL". The step accepts the first offer that matches, and no check counts the offers, so the test does not enforce uniqueness.
 
-### Index file and test references
+## 2. Request Certificate
 
-The suite uses an `index.yaml` file that declares metadata, environment variables, and references individual test files. The shipped suite lives at `docs/examples/certificate-management-v2/raw/` in this repository:
+`tests/request_certificate.yaml`: a CX-0135 certificate request through the provider's data plane is answered.
 
-```yaml
-kind: tck
-syntax: v1-alpha
-id: certificate-management-tck-v0.0.1
+| Phase | Step id | `uses` | Checks |
+| --- | --- | --- | --- |
+| execution | `pull_ccmapi_endpoint` | `connector/consumer/pull_data_filtered` | **pull** |
+| execution | `request_certificate` | `connector/dataplane/http_request` | see below |
 
-metadata:
-  name: "Certificate Management TCK"
-  version: "v0.0.1"
-  standards:
-    - id: CX-0135
-      version: v3.1.0
+`request_certificate` sends `POST {dataplane_url}/companycertificate/request` with `Authorization: {edr_token}` and body `env.testdata.request_certificate_body`.
 
-env:
-  variables:
-    - id: sut_counter_party_address
-      uses: variable/type/string
-      with:
-        source: input   # supplied at execution time
-        scope: sut      # the SUT operator provides it
-      returns:
-        value:
-          type: string
-  # ... schemas and testdata
+| Check | `input` | `path` | Operator | Expected |
+| --- | --- | --- | --- | --- |
+| `validate/field` | `status_code` | — | `equals` | `200` |
+| `validate/field` | `response_body` | `header.messageId` | `matches_regex` | UUID-URN |
+| `validate/schema` | `response_body` | — | — | `env.schemas.certificate_schema` |
 
-tests:
-  - id: request_certificate.yaml
-    name: Request a certificate via CCMAPI
-  - id: send_feedback_notification.yaml
-    name: Send a feedback notification and await acknowledgment
-```
+`certificate_schema` is the Business Partner Certificate data model (`urn:samm:io.catenax.business_partner_certificate:3.1.0`, file name `…-v3.0.1.json`). It requires `businessPartnerNumber` and `certificateType` at the top level, and the check applies it to the whole `{header, content}` answer.
 
-Each `tests:` entry points to a YAML file with `kind: test`. Tests that read outputs published by earlier tests declare `depends_on`.
+**Request body** (`testdata/request_certificate_body.json`): header context `CompanyCertificateManagement-CCMAPI-Request:1.0.0`, version `3.1.0`. It reads `consumer_bpn` (sender), `provider_bpn` (receiver and `certifiedBpn`), `testlab_dsp_url` (`senderFeedbackUrl`), `certificate_type` and `location_bpns`.
 
-### Step types used in CCM
+## 3. Send Feedback Notification
 
-| Step Type | When to Use |
-|-----------|-------------|
-| `connector/consumer/query_catalog` | Discover assets in an EDC connector's catalog |
-| `connector/consumer/extract_dataset` | Extract asset/offer IDs from a catalog response |
-| `connector/consumer/negotiate` | Negotiate an EDC contract for an asset |
-| `connector/consumer/initiate_transfer` | Get dataplane access credentials (EDR token) |
-| `connector/consumer/pull_data_filtered` | Filtered catalog query, policy check, negotiation, and EDR retrieval in one step |
-| `connector/dataplane/http_request` | Make HTTP requests to dataplane endpoints |
-| `util/json_path_extract` | Extract values from JSON using a path expression |
-| `mock/api` | Expose a temporary HTTP endpoint for callbacks |
-| `mock/wait/http_request` | Block until a mock endpoint receives a request |
-| `connector/provider/create_asset` | Register an asset in an EDC connector |
-| `connector/provider/create_policy` | Create an access/contract policy |
-| `connector/provider/create_contract_definition` | Link an asset to policies via a contract definition |
-| `notification/consumer/send` | Send a CX notification through the EDC dataplane |
-| `util/generate_uuid` | Generate a random UUID |
+`tests/send_feedback_notification.yaml`: the provider accepts a CX-0135 status notification through its data plane and acknowledges it to TestLab.
 
-### Variable flow between steps
+| Phase | Step id | `uses` | Checks |
+| --- | --- | --- | --- |
+| setup | `mock_receive_ack` | `mock/api` | none (setup) |
+| execution | `pull_ccmapi_endpoint` | `connector/consumer/pull_data_filtered` | **pull** |
+| execution | `send_status_notification` | `connector/dataplane/http_request` | `status_code` `equals` `200` |
+| execution | `wait_provider_ack` | `mock/wait/http_request` | see below |
 
-Variables flow through three mechanisms:
+- `mock_receive_ack` registers `POST /companycertificate/notification/receive` on the engine's mock server. It answers `200` with `env.testdata.send_feedback_body` and publishes `mock` and `full_mock_url`.
+- `send_status_notification` sends `POST {dataplane_url}/companycertificate/status` with body `env.testdata.send_feedback_body`.
+- `wait_provider_ack` waits up to 60 s for the provider to call the mock (`mock: ${{ setup.mock_receive_ack.mock }}`), then checks the request it received:
 
-1. **Declared `returns:` outputs** — every step declares its outputs, and the engine publishes them into the run context automatically. Later steps reference them with `${{ }}` interpolation:
+| Check | `input` | `path` | Operator | Expected |
+| --- | --- | --- | --- | --- |
+| `validate/assert` | `request_method` | — | `equals` | `POST` |
+| `validate/field` | `request_body` | `header.messageId` | `matches_regex` | UUID-URN |
+| `validate/field` | `request_body` | `header.context` | `equals` | `CompanyCertificateManagement-CCMAPI-Status:1.0.0` |
+| `validate/field` | `request_body` | `header.sentDateTime` | `not_null` | — |
+| `validate/field` | `request_body` | `header.senderBpn` | `matches_regex` | `^BPNL[0-9A-Z]{12}$` |
+| `validate/field` | `request_body` | `header.receiverBpn` | `equals` | `${{ env.consumer_bpn }}` |
+| `validate/field` | `request_body` | `header.version` | `equals` | `3.1.0` |
+| `validate/field` | `request_body` | `content.certificateStatus` | `one_of` | `RECEIVED`, `ACCEPTED`, `REJECTED` |
 
-    ```yaml
-    - id: pull_ccmapi_endpoint
-      uses: connector/consumer/pull_data_filtered
-      # ...
-      returns:
-        edr_token:
-          type: string
-        dataplane_url:
-          type: string
+**Notification body** (`testdata/send_feedback_body.json`): header context `CompanyCertificateManagement-CCMAPI-Status:1.0.0`, `certificateStatus: ACCEPTED`. It reads `consumer_bpn`, `provider_bpn`, `testlab_dsp_url`, `request_id` (as `relatedMessageId`), `document_id` and `location_bpns`.
 
-    - id: request_certificate
-      uses: connector/dataplane/http_request
-      with:
-        dataplane_url: "${{ execution.pull_ccmapi_endpoint.dataplane_url }}"
-        edr_token: "${{ execution.pull_ccmapi_endpoint.edr_token }}"
-    ```
+The body carries `senderFeedbackUrl: ${{ env.testlab_dsp_url }}`, not the mock's `full_mock_url`. The provider must therefore know from elsewhere where to send the acknowledgement. That address must reach this host on `server_port` (default `8100`).
 
-2. **`store_in_variable`** — util steps (`util/json_path_extract`, `util/base64`, `util/parse_kv`) can capture their result into a named context variable for later reference.
+## 4. Error Handling
 
-3. **`depends_on`** — orders tests so that outputs published by a completed test are available in the shared run context when a dependent test runs.
+`tests/error_handling.yaml`: a request for an unknown certificate type gets a well-formed `REJECTED` answer.
 
-### Assertions
+| Phase | Step id | `uses` | Checks |
+| --- | --- | --- | --- |
+| execution | `pull_ccmapi_endpoint` | `connector/consumer/pull_data_filtered` | **pull** |
+| execution | `send_unknown_cert_type` (`expects: fail`) | `connector/dataplane/http_request` | see below |
 
-Each step can include a `validate:` block. Validations are themselves step invocations (`validate/assert`, `validate/field`, `validate/schema`) that read the step's declared `returns:` outputs:
+`send_unknown_cert_type` sends `POST {dataplane_url}/companycertificate/request` with body `env.testdata.error_unknown_cert_type_body`, which asks for `certificateType: NONEXISTENT_CERT_TYPE_XYZ`. `expects: fail` marks the step as a negative test, but it does not invert the result: the step passes when these checks pass.
 
-```yaml
-validate:
-  - uses: validate/field
-    with: { input: status_code, operator: equals, value: 200 }
-  - uses: validate/assert
-    with: { input: edr_token, operator: not_null }
-  - uses: validate/field
-    with:
-      input: response_body
-      path: "header.messageId"
-      operator: matches_regex
-      value: "^urn:uuid:.*$"
-  - uses: validate/schema
-    with:
-      input: response_body
-      schema: "${{ env.schemas.certificate_schema }}"
-```
+| Check | `input` | `path` | Operator | Expected |
+| --- | --- | --- | --- | --- |
+| `validate/field` | `status_code` | — | `equals` | `200` |
+| `validate/field` | `response_body` | `header.messageId` | `matches_regex` | UUID-URN |
+| `validate/field` | `response_body` | `content.requestStatus` | `equals` | `REJECTED` |
 
-### Infrastructure configuration
+**Request body** (`testdata/error_unknown_cert_type_body.json`): same header as the certificate request. It reads `consumer_bpn`, `provider_bpn`, `testlab_dsp_url` and `location_bpns`.
 
-Tests never name their connector services — services are seeded at runtime from the manifest's `infrastructure:` declaration, and counter-party details arrive as `source: input` variables:
+## Values a run reads
 
-```yaml
-infrastructure:
-  engine:
-    connector:
-      required: true
-      standard:
-        id: CX-0018
-        version: v4.2.0
-  sut:
-    connector:
-      required: true
-      standard:
-        id: CX-0018
-        version: v4.2.0
-```
+| Value | Declared in the manifest | Read by |
+| --- | --- | --- |
+| `infrastructure.engine.connector.*` | `infrastructure.engine.connector` (required) | All connector steps, through the services the engine builds |
+| `infrastructure.sut.connector.dsp_url`, `.participant_id` | `infrastructure.sut.connector` (required) | Binding check; default counter-party |
+| `sut_counter_party_id`, `sut_counter_party_address` | `env.variables`, `source: input` | **pull** in all tests |
+| `ccm_usage_policy` | `env.variables`, `source: value` | **pull** in all tests |
+| `certificate_schema` | `env.schemas` (`business_partner_certificate_schema-v3.0.1.json`) | `request_certificate` |
+| `consumer_bpn`, `provider_bpn`, `testlab_dsp_url`, `location_bpns` | not declared | All three test data bodies; `consumer_bpn` also in a `wait_provider_ack` check |
+| `certificate_type` | not declared | `request_certificate_body` |
+| `request_id`, `document_id` | not declared | `send_feedback_body` |
 
-### Adapting for other standards
-
-To create a test suite for a different Catena-X standard:
-
-1. Copy `docs/examples/certificate-management-v2/raw/` (in this repository) to a new directory
-2. Update `index.yaml`: change `name`, `standards`, and `variables`
-3. Replace test files with steps matching your standard's API
-4. Keep the same patterns: catalog query → negotiate → transfer → call → assert
-
-## Understanding Test Results
-
-### Exit codes
-
-| Exit Code | Meaning |
-|-----------|---------|
-| `0` | All tests passed |
-| `1` | One or more assertions failed |
-
-### Reading results programmatically
-
-The `TckResult` object contains the full execution tree:
-
-```text
-TckResult
-├── status: COMPLETED | FAILED
-├── tests: list[TestResult]
-│   ├── test_name: "request-certificate"
-│   ├── status: COMPLETED | FAILED
-│   ├── assertion_summary: {total, passed, failed_hard, failed_soft}
-│   └── execution: list[StepResult]
-│       ├── step_name: "POST certificate request"
-│       ├── status: PASSED | FAILED | SKIPPED
-│       ├── error: "Expected 200, got 403"
-│       └── assertions: list[AssertionResult]
-│           ├── passed: bool
-│           ├── expected: 200
-│           └── actual: 403
-```
-
-### Identifying failures
-
-When a test fails, check these fields on each `StepResult`:
-
-- **`step_name`** — which step failed (matches the `name` in YAML)
-- **`step_type`** — what kind of step it was (`connector/dataplane/http_request`, `connector/consumer/negotiate`, etc.)
-- **`error`** — human-readable error message
-- **`assertions`** — list of individual assertion results with `expected` vs `actual`
-
-## Integrating into Another Application
-
-### Running tests programmatically
-
-```python
-import asyncio
-
-import tractusx_testlab.steps  # registers all step executors
-from tractusx_testlab.player.execution.player import TestlabPlayer
-
-async def run_ccm_tests():
-    player = TestlabPlayer()
-    result = await player.run(
-        "docs/examples/certificate-management-v2/raw/index.yaml",
-        runtime_vars={
-            "sut_counter_party_id": "BPNL000000000001",
-            "sut_counter_party_address": "https://provider-edc.example.com/api/v1/dsp",
-        },
-    )
-
-    # Check overall result
-    print(f"Status: {result.status}")
-    print(f"Steps passed: {result.passed}/{result.total}")
-
-    # Inspect individual tests
-    for test in result.tests:
-        summary = test.assertion_summary
-        print(f"  {test.test_name}: {test.status}")
-        print(f"    Assertions: {summary.passed}/{summary.total} passed")
-
-        # Show failures
-        for step in test.execution:
-            if step.error:
-                print(f"    FAILED: {step.step_name} — {step.error}")
-
-    # CI/CD exit code
-    return 0 if result.status.value == "COMPLETED" else 1
-
-exit_code = asyncio.run(run_ccm_tests())
-raise SystemExit(exit_code)
-```
-
-### Validating without executing
-
-Use the `Compiler` to validate test YAML syntax before running:
-
-```python
-from pathlib import Path
-from tractusx_testlab.compiler.compiler import Compiler
-
-compiler = Compiler()
-result = compiler.validate(Path("docs/examples/certificate-management-v2/raw/index.yaml"))
-print(f"Valid: {result.valid}")
-```
+The run refuses to start without the declared values. An undeclared value fails only at the step that reads it, with `'env.<name>' resolves to nothing`.

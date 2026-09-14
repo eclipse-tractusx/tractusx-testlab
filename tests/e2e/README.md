@@ -25,9 +25,9 @@ cluster is created and destroyed within the job.
 ## What runs
 
 `tests/e2e/connector-dtr-smoke/` is a small TCK, purpose-built as testlab's
-own CI signal (not a published certification TCK). Between them its thirteen
+own CI signal (not a published certification TCK). Between them its fourteen
 tests use every one of the 55 steps in the engine's catalogue
-(`docs/specification/reference/steps.md`) and all three validation kinds —
+(`docs/api-reference/steps/`) and all three validation kinds —
 `validate/assert`, `validate/field` and `validate/schema` — so no step ships
 without having been run once against something real.
 
@@ -96,6 +96,13 @@ without having been run once against something real.
   driven against the mock server the run starts rather than left uncovered. It
   takes no connector, no registry and no operator input, so it runs unchanged
   in any deployment.
+- `experimental_extensions.yaml` — the experimental extensions, which the
+  manifest enables with `extensions: [cac, labs]` (and which the compiler
+  therefore warns about twice). A step and one of its checks carry `cac:`
+  references, and a pull through the SUT's data plane carries `retry_on`, a
+  `labs` parameter the extension adds to `connector/dataplane/http_request`
+  from outside the step. It retries on 200 for two attempts, so the retry
+  always happens and always stops. Every other test uses no extension.
 
 The workflow runs the full suite, every test, on every event — pull requests
 included. The cluster bring-up is where the job's minutes go and a run takes
@@ -104,7 +111,10 @@ the trace back and fails unless every `tck.test.step.received` event is there
 (`inbound_call`, `external_callback`, `notification_roundtrip`,
 `push_transfer`), the external one shows the wait step blocked for the stub's
 delay, and both notifications arrived with their headers intact and with
-different sender and receiver partners. Two subset runs of the same compiled
+different sender and receiver partners. A second trace check covers the
+experimental extensions: `fetch_with_retry` must have published exactly two
+`tck.test.step.call` events, and `pull_data`'s terminal event must carry its
+`cac` on the step and, resolved, on each of its checks. Two subset runs of the same compiled
 package follow — the registry alone, and `engine_toolbox.yaml` alone — plus a
 selection the manifest does not permit, which must be refused. The subsets add
 no coverage; they check that a test needing no connector journey runs without
@@ -149,7 +159,7 @@ The submodel server is `ci/submodel_server.py`, a standard-library payload
 store the workflow deploys as a pod behind `tck-submodel.local`. It exists
 because the Umbrella profile switches off both `simple-data-backend` bundles:
 nothing in the release serves a submodel payload, and
-`digital-twin/submodel/upload` / `delete` plus the whole Industry Core journey
+`digital-twin-registry/submodel/upload` / `delete` plus the whole Industry Core journey
 would have no backend to address. A shell descriptor is only a pointer, and
 something has to serve what it points at. The property that makes one server
 serve both roles is its hostname: `tck-submodel.local` is in the workflow's

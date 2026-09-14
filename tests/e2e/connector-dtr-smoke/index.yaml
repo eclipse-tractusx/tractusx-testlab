@@ -62,6 +62,13 @@ metadata:
     - e2e
     - smoke
 
+# Experimental extensions (src/tractusx_testlab/extensions). This TCK certifies
+# testlab itself, so it runs the experimental ones too: experimental_extensions.yaml
+# writes `cac:` (the `cac` extension) and `retry_on` on a data-plane call (a
+# `labs` step parameter). Every other test is untouched by them. The compiler
+# warns once per entry here; that warning is expected.
+extensions: [cac, labs]
+
 dataspace:
   ecosystem: Catena-X
   version: saturn
@@ -315,4 +322,7 @@ tests:
     skippable: true
   - id: engine_toolbox.yaml
     name: Run the flow, utility, OAuth2 and protocol-mock steps against real endpoints
+    skippable: true
+  - id: experimental_extensions.yaml
+    name: Run the experimental extensions — `cac:` and a `labs` retry parameter — through a live data plane
     skippable: true

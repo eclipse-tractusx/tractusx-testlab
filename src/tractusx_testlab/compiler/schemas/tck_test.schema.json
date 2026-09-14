@@ -3,8 +3,24 @@
   "$defs": {
     "Assertion": {
       "additionalProperties": false,
-      "description": "Assertion using ``uses`` / ``with`` verb-form keys.",
+      "description": "Assertion using ``uses`` / ``with`` verb-form keys.\n\nInherits the keys experimental extensions add (``tractusx_testlab.extensions``).",
       "properties": {
+        "cac": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^([^:\\s]+):([^:\\s]+):([^:\\s]+)$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cac"
+        },
         "name": {
           "anyOf": [
             {
@@ -201,8 +217,24 @@
     },
     "StepDefinition": {
       "additionalProperties": false,
-      "description": "Step definition using ``uses`` and ``with`` verb-form keys.",
+      "description": "Step definition using ``uses`` and ``with`` verb-form keys.\n\nInherits the keys experimental extensions add (``tractusx_testlab.extensions``).",
       "properties": {
+        "cac": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^([^:\\s]+):([^:\\s]+):([^:\\s]+)$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cac"
+        },
         "expects": {
           "anyOf": [
             {

@@ -24,10 +24,7 @@
 
 """Validation sub-package — test validation and schema checking."""
 
-from tractusx_testlab.compiler.validation.validator import (
-    TestValidator,
-    ValidationIssue,
-    ValidationResult,
-)
+from tractusx_testlab.compiler.validation.issues import ValidationIssue, ValidationResult
+from tractusx_testlab.compiler.validation.validator import TestValidator
 
 __all__ = ["TestValidator", "ValidationIssue", "ValidationResult"]

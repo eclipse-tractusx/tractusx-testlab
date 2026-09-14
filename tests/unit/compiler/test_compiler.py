@@ -32,7 +32,7 @@ import pytest
 import yaml
 
 from tractusx_testlab.compiler.compiler import Compiler
-from tractusx_testlab.compiler.validation.validator import ValidationResult
+from tractusx_testlab.compiler.validation.issues import ValidationResult
 
 # ---------------------------------------------------------------------------
 # Helpers

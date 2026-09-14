@@ -92,3 +92,15 @@ def is_encrypted_package(path: Path) -> bool:
             return "payload.enc" in archive.namelist()
     except (OSError, zipfile.BadZipFile):
         return False
+
+
+def encrypted_package_compiler_id(path: Path) -> str:
+    """The signing-key fingerprint the encrypted ``.tck`` at *path* names.
+
+    Read before the signature is checked, so it only chooses which trusted key to
+    check against. The signature covers the manifest: a forged value selects a
+    key the package was not signed with, and verification refuses it.
+    """
+    with zipfile.ZipFile(path, "r") as archive:
+        manifest = yaml.safe_load(archive.read("manifest.yaml")) or {}
+    return str(manifest.get("security", {}).get("compiler_id", ""))

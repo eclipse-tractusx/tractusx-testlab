@@ -53,7 +53,7 @@ Preconditions are **declarative specifications** of what must be true before tes
 3. **Collect inputs** from the SUT operator before execution starts
 4. **Verify readiness** by executing automated checks against configured services
 
-The TestLab IDE displays preconditions as a checklist/configuration panel that the operator completes before running the TCK.
+Preconditions form a checklist that the operator completes before running the TCK.
 
 ### 2. Precondition Categories
 
@@ -512,18 +512,18 @@ steps:
           operand_right: "https://w3id.org/catenax/taxonomy#CCMAPI"
 ```
 
-### 9. IDE Presentation
+### 9. Operator Presentation
 
-The IDE presents preconditions as a **configuration panel** (separate from the block workspace):
+Each category implies how a client presents it to the operator:
 
-| Category | IDE Display |
+| Category | Presentation |
 |----------|-------------|
 | `generate` | Read-only cards with "Copy" buttons — user copies values to configure SUT |
 | `provide` | Expandable template cards with syntax highlighting — user copies entire object |
 | `input` | Form fields with labels, placeholders, and validation — user fills before running |
 | `check` (executable) | Status indicators with pass/fail badges — auto-run after user confirms configuration |
 
-The IDE shows a "Preconditions" checklist that must be fully green before the "Run TCK" button becomes active.
+The run does not start until every precondition in the checklist is satisfied.
 
 ### 10. Variable Seeding (`seed`)
 
@@ -639,7 +639,7 @@ In `global_symbols`, seeded variables include a `seeded_by` field:
 - **Clear separation** between "what TestLab controls" and "what the user must configure"
 - **Immutable contract** — precondition values cannot be accidentally modified during execution
 - **Self-documenting** — the TCK YAML itself describes exactly what the user needs to do
-- **IDE-friendly** — the structured format maps directly to a configuration UI
+- **Client-friendly** — the structured format maps directly to a configuration form
 - **Compiler-verifiable** — all precondition references are validated at compile time
 - **No magic** — every value the test uses has a declared source (generated, provided, or input)
 

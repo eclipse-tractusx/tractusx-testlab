@@ -98,6 +98,8 @@ def build_ir(
     }
     if metadata:
         tck_section["metadata"] = metadata
+    if extensions := manifest_data.get("extensions"):
+        tck_section["extensions"] = extensions
     if dataspace := _build_dataspace(manifest_data):
         tck_section["dataspace"] = dataspace
     if infrastructure := _build_infrastructure(manifest_data, base_dir):

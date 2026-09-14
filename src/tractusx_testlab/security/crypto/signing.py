@@ -30,6 +30,20 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
+#: Prefixes every signed package message, so a signature made for a package cannot
+#: be presented as a signature over anything else the same key signs.
+_PACKAGE_SIGNATURE_CONTEXT = b"tractusx-testlab/tck-signature/v1\x00"
+
+
+def package_signing_message(manifest: bytes, payload: bytes) -> bytes:
+    """The bytes a Compiler signs for an encrypted package: ``manifest.yaml`` ‖ ``payload.enc``.
+
+    The manifest's length is written ahead of it, so the boundary between the
+    two is part of what is signed and no byte can be moved from one entry to the
+    other under the same signature.
+    """
+    return _PACKAGE_SIGNATURE_CONTEXT + len(manifest).to_bytes(8, "big") + manifest + payload
+
 
 def sign_bytes(data: bytes, private_pem: bytes) -> bytes:
     """Sign *data* with an Ed25519 private key and return the 64-byte signature."""

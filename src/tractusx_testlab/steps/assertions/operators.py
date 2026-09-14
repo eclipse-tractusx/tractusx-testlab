@@ -28,7 +28,7 @@ A ``validate:`` assertion and a ``flow/if`` condition ask the same question of a
 value, so they resolve the same operator names here rather than each keeping a
 table that would drift from the other.
 
-An operator is a row in :data:`_TABLE`: a name, the shape of operands it reads,
+An operator is a row in :data:`TABLE`: a name, the shape of operands it reads,
 the comparison itself, and how its failure reads. Applying one is a dictionary
 lookup followed by a single call — a name that is not in the table is the only
 branch, because an unknown operator must never be mistaken for a check that
@@ -207,7 +207,7 @@ class Operator:
     message: str
 
 
-_TABLE: tuple[Operator, ...] = (
+TABLE: tuple[Operator, ...] = (
     Operator(
         "not_null",
         Arity.UNARY,
@@ -330,7 +330,7 @@ _TABLE: tuple[Operator, ...] = (
     ),
 )
 
-_OPERATORS: dict[str, Operator] = {operator.name: operator for operator in _TABLE}
+_OPERATORS: dict[str, Operator] = {operator.name: operator for operator in TABLE}
 
 #: Operators that take no ``value``; giving one is meaningless, not an error.
 UNARY_OPERATORS: frozenset[str] = frozenset(
