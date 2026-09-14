@@ -89,6 +89,6 @@ Every new source file starts with the Apache-2.0 license header. AI-assisted fil
 ## Documentation
 
 ```bash
-poetry run mkdocs serve          # http://localhost:8000
+poetry run mkdocs serve          # http://localhost:8000/tractusx-testlab/
 poetry run mkdocs build --strict # also fails on broken links and pages missing from the nav
 ```

@@ -21,6 +21,9 @@
 
 site_name: Tractus-X TestLab Documentation
 site_description: Authoring, compilation and execution engine for Eclipse Tractus-X conformity tests
+# Pages serves the site from a sub-path; the 404 page needs it to load its assets
+# and to redirect version-prefixed links (overrides/404.html) back to the site root.
+site_url: https://eclipse-tractusx.github.io/tractusx-testlab/
 repo_url: https://github.com/eclipse-tractusx/tractusx-testlab
 repo_name: eclipse-tractusx/tractusx-testlab
 edit_uri: edit/main/docs/
