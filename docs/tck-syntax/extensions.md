@@ -2,9 +2,29 @@
 
 These correspond to ADR-0001 §2 D10 (P1–P7). They are written as they would appear once ratified.
 
+## Enabling an experimental extension
+
+Some proposals below are implemented as **experimental engine extensions**. A TCK can use one only after
+enabling it by name in `index.yaml`:
+
+```yaml
+extensions: [cac]
+```
+
+If a TCK uses an extension's key, `with:` parameter or step without enabling it, the compiler rejects it and names the line to
+add. Enabling one produces a warning that it is experimental, and the compiled package records it under
+`tck.extensions`. An extension can change or be removed before it is ratified.
+
+| Extension | Enables |
+|---|---|
+| `cac` | `cac:` on steps and validations — [§9.1](#91-cac-traceability-cac-p1) |
+| `labs` | Steps under `labs/`, and extra `with:` parameters on core steps, whose contract is still being tested. Ships `retry_on` / `retry_attempts` / `retry_delay_s` on `connector/dataplane/http_request` |
+
+How extensions are built, and how to add one: [Extensions](../developer/extensions.md).
+
 ## 9.1 CAC traceability — `cac:` (P1)
 
-**Implemented in the engine.**
+**Experimental extension `cac`.** Requires `extensions: [cac]` in `index.yaml`.
 
 ```yaml
 - id: send_status_notification

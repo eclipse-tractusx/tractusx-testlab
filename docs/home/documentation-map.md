@@ -82,15 +82,14 @@ lifecycle. The YAML authoring syntax is not part of it — see [TCK Syntax](#tck
 
 | Page | What it covers |
 |------|----------------|
-| [Getting Started](../tutorials/index.md) | Install the package and write your first test |
-| [Create a Step Executor](../tutorials/create-step-executor.md) | Implement a new step in Python |
-| [Add a Service Type](../tutorials/add-service-type.md) | Add a new managed service |
-| [Add an Assertion Type](../tutorials/add-assertion-type.md) | Add a new assertion operator |
-| [Add a Validation Rule](../tutorials/add-validation-rule.md) | Add a new compile-time validation rule |
-| [Development Workflow](../tutorials/development-workflow.md) | Run the full lint, type-check and test workflow |
-| [Debugging](../tutorials/debugging.md) | Diagnose common issues |
-| [CCM Conformity Testing](../tutorials/ccm-conformity-testing.md) | Run Certificate Management conformity tests against a system under test (CX-0135) |
-| [Certificate Management](../tutorials/certificate-management.md) | Entry point to the [business](../tutorials/ccm-business-guide.md), [developer](../tutorials/ccm-developer-guide.md) and [architecture](../tutorials/ccm-architecture-guide.md) guides |
+| [Your First TCK](../tutorials/index.md) | Install the package, write a two-test TCK, validate and run it |
+| [Certificate Management](../tutorials/certificate-management.md) | The shipped CX-0135 suite: [business](../tutorials/ccm-business-guide.md), [developer](../tutorials/ccm-developer-guide.md) and [architecture](../tutorials/ccm-architecture-guide.md) guides and the [test reference](../tutorials/ccm-conformity-testing.md) |
+| [Create a Step](../tutorials/create-a-step.md) | Add a step: its id, the module it lives in, its contract, tests and reference page |
+| [Add an Assertion Operator](../tutorials/add-assertion-operator.md) | Add an operator to the `validate:` vocabulary |
+| [Add an Infrastructure Capability](../tutorials/add-infrastructure-capability.md) | Let a TCK require, and a run bind, a new kind of service |
+| [Add a Validation Rule](../tutorials/add-validation-rule.md) | Catch a TCK mistake at validation time |
+| [Development Workflow](../tutorials/development-workflow.md) | The checks CI runs, and where new tests go |
+| [Debugging](../tutorials/debugging.md) | Validation errors, runs that won't start, failed steps and checks |
 
 ## API Reference
 

@@ -18,268 +18,269 @@
 
  SPDX-License-Identifier: Apache-2.0
 -->
-<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
-# Company Certificate Management — Architecture Guide
+# Certificate Management — Architecture Guide
 
-This guide explains the system architecture, execution design, and extension points of the CX-0135 conformity test suite.
+This page explains how the Certificate Management TCK is built. It covers how the manifest and the tests fit together, what happens to them during a run, and the two interaction patterns the suite uses: a data-plane call through a negotiated connector, and an inbound call caught by a mock. It uses the suite as a template. For the engine's internals, see [Architecture](../developer/architecture.md).
 
-## System Architecture
+## Suite layout
 
-Three components collaborate during a test run:
-
-```mermaid
-flowchart LR
-    Client[CLI or HTTP client] --> Engine[TestLab engine<br/>Python / FastAPI]
-    Engine <--> SUT[SUT<br/>CCMAPI Implementation]
-    SUT --> Mock[Mock and callback endpoints<br/>served by the engine]
-    Mock --> Engine
-
-    style Client fill:#1565c0,stroke:#333,color:#fff
-    style Engine fill:#2e7d32,stroke:#333,color:#fff
-    style Mock fill:#6a1b9a,stroke:#333,color:#fff
-    style SUT fill:#e65100,stroke:#333,color:#fff
+```text
+docs/examples/certificate-management-v2/raw/
+├── index.yaml                                   # the TCK manifest
+├── tests/
+│   ├── catalog_policy_validation.yaml
+│   ├── request_certificate.yaml
+│   ├── send_feedback_notification.yaml
+│   └── error_handling.yaml
+├── schemas/
+│   └── business_partner_certificate_schema-v3.0.1.json
+└── testdata/
+    ├── request_certificate_body.json
+    ├── send_feedback_body.json
+    └── error_unknown_cert_type_body.json
 ```
 
-| Component | Technology | Role |
-|-----------|-----------|------|
-| **TestLab engine** | Python 3.12, FastAPI (this repository) | The `testlab` CLI and server: compiling and validating TCKs, running tests, executing steps, streaming execution events over SSE |
-| **Mock and callback endpoints** | The engine's FastAPI server | Callback endpoints and canned responses for inbound SUT calls — started in a background thread during `testlab run`, or hosted by `testlab serve` |
-| **SUT** | Any CX-0135 implementation | The system being validated |
+The sibling folders `plain/`, `encrypted/` and `execution/` hold sample compiler and player output for the packaging docs. A run does not read them.
 
-For the engine's full package layout and import graph, see [Architecture](../developer/architecture.md).
+## The manifest
 
-## Execution Architecture
+`index.yaml` is the only file that states what the suite needs. Tests have no `env:` of their own. They join the manifest through `namespace: certificate-management-tck-v0.0.1`.
 
-A run starts either from the CLI (`testlab run`, which compiles the manifest into a `.tck` package and executes it) or from an HTTP client of the server. Over HTTP, this sequence runs:
+| Block | Content in this suite | Role |
+| --- | --- | --- |
+| `metadata` | Name, version `v0.0.1`, authors, `standards: [{id: CX-0135, version: v3.1.0}]` | What the report says the run certifies |
+| `dataspace` | `ecosystem: Catena-X`, `version: saturn` | Picks the connector dialect the engine builds its SDK services with |
+| `infrastructure` | `engine.connector` and `sut.connector`, both `required: true`, standard CX-0018 v4.2.0 | The capabilities an operator must bind before the first step |
+| `env.variables` | `sut_counter_party_id`, `sut_counter_party_address` (`source: input`, `scope: sut`), `ccm_usage_policy` (`config/connector/policy`, `source: value`) | Values the tests read as `${{ env.<id> }}` |
+| `env.schemas` | `certificate_schema` | Read as `${{ env.schemas.certificate_schema }}` |
+| `env.testdata` | `request_certificate_body`, `send_feedback_body`, `error_unknown_cert_type_body` | Read as `${{ env.testdata.<id> }}`; references inside a file are resolved when a step reads it |
+| `tests` | Four entries, each `{id: <file name>, name: …}` | The run order |
 
-```mermaid
-sequenceDiagram
-    participant Client as HTTP client
-    participant API as Server API
-    participant Parser as YamlParser
-    participant Player as TestlabPlayer
-    participant Step as Step runner
-    participant SUT as SUT
-    participant Mock as Mock endpoints
+The usage policy is declared once, in the simplified policy form, and each test hands the whole variable to the connector step:
 
-    Client->>API: POST /testlab/tck-execution/run/yaml (YAML body)
-    API->>Parser: parse → Tck
-    API-->>Client: 202 (job_id)
-    Client->>API: GET /testlab/tck-execution/{job_id}/stream (SSE)
-    API->>Player: run_tck(tck)
-    loop Each test in manifest order
-        Player->>Step: run test phases
-        Step->>SUT: DSP / HTTP call
-        SUT-->>Step: Response
-        SUT->>Mock: Async callback
-        Mock-->>Step: Resolve waiting listener
-        Step-->>Player: StepResult
-        Player-->>Client: SSE event
-    end
+```yaml
+- id: ccm_usage_policy
+  uses: config/connector/policy
+  name: Required CCMAPI Usage Policy
+  with:
+    source: value
+    value:
+      permissions:
+        - action: use
+          constraints:
+            and:
+              - left_operand: UsagePurpose
+                operator: isAnyOf
+                right_operand: "cx.ccm.base:1"
+              - left_operand: FrameworkAgreement
+                operator: eq
+                right_operand: "DataExchangeGovernance:1.0"
+  returns:
+    value:
+      type: object
+      class: Policy
 ```
 
-### Client → Server handoff
+A test has two identifiers. The manifest entry id is the file name (`request_certificate.yaml`), which is what `skip_tests` would name. The test document's own `id:` (`request-certificate`) is what the console, the events and the trace carry.
 
-1. The client sends the TCK as YAML to `POST /testlab/tck-execution/run` (or `/run/yaml`), or uploads a compiled package to `POST /testlab/run/package`
-2. The server returns HTTP 202 with a `job_id`
-3. The client opens an SSE stream at `GET /testlab/tck-execution/{job_id}/stream` (resumable via `Last-Event-ID`)
-4. The server emits execution events such as `step.started`, `step.completed`, and `step.failed` as they happen
-
-### Engine orchestration
-
-1. `YamlParser` deserializes the YAML into a `Tck` object (metadata + variables + test references)
-2. Each test reference resolves to a `Test` (setup, test and cleanup phases)
-3. The `TestlabPlayer` binds the configured infrastructure, seeds the SDK services, and runs the tests in the order the manifest lists them
-4. For each test: run setup → run the test's steps → run cleanup (even if the test's steps fail)
-5. Per step: resolve `${{ }}` references → execute the step → evaluate `validate:` assertions → publish the step's declared `returns:` outputs into the run context
-
-## Test Orchestration Design
-
-### Test order
-
-Tests run in the order the manifest lists them. There is no inter-test dependency declaration in `v1-alpha`: a test says what it needs through the infrastructure it requires and the variables it reads, not by naming another test. An operator can skip individual tests; the remaining tests keep their manifest order.
-
-### Variable flow
-
-Variables propagate through three mechanisms:
-
-| Mechanism | Scope | Example |
-|-----------|-------|---------|
-| Declared `returns:` outputs | Published automatically to the run context after each step | `connector/dataplane/http_request` publishes `status_code` and `response_body`; later steps read `${{ execution.<step_id>.<output> }}` |
-| `store_in_variable` parameter | Explicit capture into a named context variable (on util steps such as `util/json_path_extract`, `util/base64`, `util/parse_kv`) | `util/json_path_extract` stores `ccmapi_asset_id` |
-| Shared run context | Across tests | Tests run in manifest order against one run context, so a later test can read what an earlier test stored |
-
-Steps reference variables with `${{ }}` interpolation (e.g. `${{ env.sut_counter_party_address }}` or `${{ execution.pull_ccmapi_endpoint.edr_token }}`). The step runner resolves them from the execution context before calling the step executor.
-
-### Callback handling
-
-The CCM suite uses asynchronous callbacks: the SUT processes a request and later POSTs a status update to a TestLab endpoint. The `CallbackManager` handles this:
+## How a run proceeds
 
 ```mermaid
 sequenceDiagram
-    participant Step as mock/api step
-    participant CM as CallbackManager
-    participant Mock as Mock Server
-    participant SUT as SUT
+    participant Op as Operator
+    participant Eng as TestLab engine
+    participant Mock as Mock server (:8100)
+    participant SUT as Provider (SUT)
 
-    Step->>Mock: register_mock(path, method, canned_response)
-    Step->>CM: register(path, method)
-    Note right of Step: mock/wait/http_request blocks on wait(path, method, timeout)
-    SUT->>Mock: POST /companycertificate/status
-    Mock->>CM: resolve(path, method, headers, payload)
-    Mock-->>SUT: canned_response
-    CM-->>Step: callback body (future resolved)
+    Op->>Eng: testlab run index.yaml --config run-config.yaml
+    Eng->>Eng: compile + validate into a package
+    Eng->>Eng: seed variables, test data, schemas
+    Eng->>Eng: refuse if inputs or bindings are missing
+    Eng->>Mock: start mock server
+    Eng->>Eng: build connector services from the bindings
+    loop each test, in manifest order
+        Eng->>Eng: setup → execution → teardown
+        Eng->>SUT: DSP and data-plane calls
+        SUT-->>Mock: inbound calls (callbacks)
+    end
+    Eng->>Mock: stop
+    Eng-->>Op: summary, exit code, transcript, trace
 ```
 
-1. `mock/api` registers an `asyncio.Future` for a specific HTTP path
-2. A subsequent `mock/wait/http_request` step blocks waiting for the future to resolve
-3. When the SUT sends an HTTP request to the mock server at that path, the mock server resolves the future
-4. The mock server also returns a canned response to the SUT
-5. The waiting `mock/wait/http_request` step unblocks with the received callback body
+Two design rules shape every test:
 
-## CX-0135 Compliance Mapping
+- **No test names a connector service.** The engine builds the consumer and provider services from `infrastructure.engine.connector` when the run starts. A connector step reaches them through the run, not through a `with:` key.
+- **Tests do not depend on each other.** Each test does its own discovery and negotiation. `v1-alpha` has no inter-test dependency, and references resolve backwards within one test only (plus `env`). A test can therefore be read, and fail, on its own.
 
-Each CX-0135 requirement maps to a specific test and step type:
+## Test anatomy
 
-| CX-0135 Requirement | Test | Step Type | What Is Validated |
-|---------------------|------|-----------|-------------------|
-| §2.1.1.1 REQUEST mechanism | `request_certificate` | `connector/dataplane/http_request` | POST with header+content envelope returns 200 |
-| §3.1 Semantic model | `validate_payload` | `validate/schema` | Payload matches BusinessPartnerCertificate v3.1.0 |
-| §2.1.1.3 FEEDBACK inbound | `await_feedback_callback` | `mock/wait/http_request` | SUT sends callback to `/companycertificate/status` |
-| §2.1.1.3 FEEDBACK outbound | `send_feedback` | `connector/dataplane/http_request` | Feedback notification via EDC data plane |
-| §2.1.1.2 PUSH mechanism | `push_certificate` | `connector/dataplane/http_request` | Push via data plane to `/companycertificate/push` |
-| §2.1.1.4 AVAILABLE notification | `available_notification` | `connector/dataplane/http_request` | Notification to `/companycertificate/available` |
-| §2.1.4.1 Provider asset exposure | `expose_testlab_asset` | `connector/provider/create_asset` + `mock/wait/http_request` | SUT discovers and pulls from TestLab EDC |
-| §2.1.1.1.4 Error handling | `error_handling` | `connector/dataplane/http_request` | REJECTED status in response envelope |
+Every test file has the same header and up to three phases:
 
-### Dataspace protocol mapping
-
-Every test that communicates with the SUT follows the standard EDC flow:
-
-| DSP Phase | TestLab Step Type | Purpose |
-|-----------|-------------------|---------|
-| Catalog discovery | `connector/consumer/query_catalog` | Find the CCMAPI asset in the provider's catalog |
-| Contract negotiation | `connector/consumer/negotiate` | Agree on usage policies (e.g., `cx.ccm.base:1`) |
-| Transfer initiation | `connector/consumer/initiate_transfer` | Get an EDR with data plane auth credentials |
-| Data plane call | `connector/dataplane/http_request` | Send the actual CCMAPI message via the EDR |
-
-The `connector/consumer/pull_data_filtered` step bundles the first three phases (filtered catalog query, policy check, negotiation, and EDR retrieval) into a single step — the shipped CCM suite uses it.
-
-## Mock Server Architecture
-
-The embedded mock server serves two purposes: it provides canned responses to the SUT and it captures inbound requests for assertion.
-
-### Registration flow
-
-The `mock/api` step type registers both a canned response and a callback future:
-
-```python
-# Simplified — actual implementation in steps/mock/api.py
-register_mock(path="/companycertificate/status", method="POST", response=canned_body)
-callback_manager.register("/companycertificate/status", "POST")
+```yaml
+kind: test
+syntax: v1-alpha
+namespace: certificate-management-tck-v0.0.1
+id: request-certificate
+metadata:
+  name: "Request Certificate"
+  version: "v1.0.0"
+setup: []       # steps without validate:, e.g. registering a mock
+execution: []   # the steps under test, each with its validate: checks
+teardown: []    # cleanup; runs even when execution failed
 ```
 
-When the SUT hits the mock path, the server:
+Within `execution`, a step runs only if every check before it passed. The first failed hard check aborts the test. Only *Send Feedback Notification* uses `setup`. No test needs `teardown`, because the suite provisions no assets, policies or contract definitions on either connector.
 
-1. Returns the canned response to the SUT (so the SUT sees a valid response)
-2. Resolves the future with the request body (so the test step can assert on it)
+Every step in the suite uses the keys `id`, `uses`, `name`, `with`, `returns` and `validate`. Its outputs are published under `${{ execution.<step-id>.<field> }}` (or `setup.<step-id>.<field>`) for the steps after it. Its checks name those outputs directly with `input:`.
 
-### mock/wait/http_request
+| Check | Used for |
+| --- | --- |
+| `validate/assert` | Compare a whole output: `edr_token` not null, `status_code` equals 200 |
+| `validate/field` | Compare a value at a `path` inside an output: `header.messageId` matches a UUID URN |
+| `validate/schema` | Validate an output against a declared JSON Schema |
 
-The `mock/wait/http_request` step blocks on the registered future with a configurable timeout. If the SUT never calls back, the step fails with a timeout error.
+The operators are listed in [Validations](../api-reference/steps/validations.md).
 
-## SUT Stub Architecture
+## Pattern 1: a call through the connector
 
-The stub at `stubs/ccm-sut/` replaces a real EDC connector and CCMAPI service for local testing.
+Every test starts the same way. It discovers the CCMAPI offer, negotiates it under the usage policy, and obtains data-plane credentials, all in one step:
 
-### What the stub replaces
+```yaml
+- id: pull_ccmapi_endpoint
+  uses: connector/consumer/pull_data_filtered
+  name: Discover CCMAPI offer and obtain dataplane credentials
+  with:
+    counter_party_address: "${{ env.sut_counter_party_address }}"
+    counter_party_id: "${{ env.sut_counter_party_id }}"
+    expected_policies: "${{ env.ccm_usage_policy }}"
+    filters:
+      - operand_left: "https://w3id.org/edc/v0.0.1/ns/type"
+        operator: "="
+        operand_right: "https://w3id.org/catenax/taxonomy#CCMAPI"
+      - operand_left: "http://purl.org/dc/terms/subject"
+        operator: "="
+        operand_right: "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
+      - operand_left: "https://w3id.org/catenax/ontology/common#version"
+        operator: "="
+        operand_right: "3.0"
+  returns:
+    edr_token:
+      type: string
+      class: AuthToken
+    dataplane_url:
+      type: string
+  validate:
+    - uses: validate/assert
+      with: { input: edr_token, operator: not_null }
+    - uses: validate/assert
+      with: { input: dataplane_url, operator: not_null }
+```
+
+The step's reference is [`connector/consumer/pull_data_filtered`](../api-reference/steps/connector/consumer.md#connector-consumer-pull_data_filtered). It requests the provider's catalog with the three filters and compares each offer with `expected_policies`. It accepts an offer only on a full match, then negotiates, transfers and returns the data-plane pair `dataplane_url` / `edr_token`, together with `token_prefix`, `catalog` and `datasets`. When `counter_party_address` and `counter_party_id` are omitted, the step uses `infrastructure.sut.connector.dsp_url` and `.participant_id`. This suite passes them explicitly from its declared inputs.
+
+The CCMAPI call then goes through the provider's data plane with those two outputs:
+
+```yaml
+- id: request_certificate
+  uses: connector/dataplane/http_request
+  name: POST certificate request to CCMAPI endpoint via dataplane
+  with:
+    method: POST
+    dataplane_url: "${{ execution.pull_ccmapi_endpoint.dataplane_url }}"
+    path: "/companycertificate/request"
+    edr_token: "${{ execution.pull_ccmapi_endpoint.edr_token }}"
+    headers:
+      Content-Type: "application/json"
+    body: "${{ env.testdata.request_certificate_body }}"
+  returns:
+    status_code:
+      type: integer
+    response_body:
+      type: object
+      class: ResponseBody
+```
 
 ```mermaid
-flowchart LR
-    TL[TestLab] <--> Stub[SUT Stub :8090]
-    Stub --> Mock[Mock Server :8100]
+sequenceDiagram
+    participant Step as TestLab step
+    participant EC as Engine connector
+    participant SC as Provider connector
+    participant API as Provider CCMAPI
 
-    subgraph Stub
-        DSP[DSP Endpoints]
-        MGMT[Management API]
-        CCMAPI[CCMAPI Endpoints]
-    end
-
-    style TL fill:#2e7d32,stroke:#333,color:#fff
-    style Stub fill:#e65100,stroke:#333,color:#fff
-    style Mock fill:#6a1b9a,stroke:#333,color:#fff
+    Step->>EC: catalog request (filters)
+    EC->>SC: DSP catalog
+    SC-->>EC: offers
+    Step->>Step: match offer policy against ccm_usage_policy
+    Step->>EC: negotiate + transfer
+    EC->>SC: DSP negotiation / transfer
+    EC-->>Step: dataplane_url, edr_token
+    Step->>SC: POST <dataplane_url>/companycertificate/request (Authorization: edr_token)
+    SC->>API: proxied request
+    API-->>Step: {header, content}
 ```
 
-### Endpoint behavior
+`status_code` and `response_body` are response fields that every HTTP-calling step exposes. The CX-0135 message bodies come from `testdata/`, so a test holds only the parts that change the verdict.
 
-| Endpoint | Behavior |
-|----------|----------|
-| `POST /api/v1/dsp/catalog/request` | Returns catalog with 2 datasets: CCMAPI (`ccm-offer-001`) and Submodel (`cert-asset-001`) |
-| `POST /api/v1/dsp/negotiations/initial` | Auto-finalizes, returns agreement ID |
-| `POST /management/v3/transferprocesses` | Returns static transfer ID |
-| `GET /management/v3/edrs/{id}/dataaddress` | Returns EDR: `endpoint=localhost:8090`, `authCode=edr-token-xxx` |
-| `POST /companycertificate/request` | Returns `{requestStatus: COMPLETED}` + schedules 10s callback |
-| `POST /companycertificate/push` | Returns OK + schedules 1s feedback callback |
-| `POST /companycertificate/available` | Returns OK (no callback) |
-| `POST /companycertificate/notification/receive` | Returns OK + schedules 1s ack callback |
+A negative test uses the same two steps. *Error Handling* marks its data-plane step `expects: fail`. The marker is declarative: it records that the provider must refuse this request, and the refusal itself is checked by `validate:` (HTTP 200 with `content.requestStatus` equal to `REJECTED`). A rejection is an application-level answer, not a transport failure, so the step's outcome is not inverted.
 
-### Callback mechanism
+## Pattern 2: an inbound call
 
-The stub sends three types of async callbacks to the TestLab mock server:
+*Send Feedback Notification* checks a message that the provider sends to TestLab, after TestLab has sent one to the provider. Two mock steps handle it:
 
-| Trigger | Callback URL | Delay | Payload |
-|---------|-------------|-------|---------|
-| `/companycertificate/request` | `/companycertificate/status` | 10s | `{certificateStatus: RECEIVED, documentId}` |
-| `/companycertificate/push` | `/companycertificate/status` | 1s | `{certificateStatus: RECEIVED}` |
-| `/companycertificate/notification/receive` | `/companycertificate/notification/receive` | 1s | Notification ack |
+```yaml
+setup:
+  - id: mock_receive_ack
+    uses: mock/api
+    with:
+      method: POST
+      path: "/companycertificate/notification/receive"
+      response_status: 200
+      response_body: "${{ env.testdata.send_feedback_body }}"
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      full_mock_url:
+        type: string
 
-### Startup consumer simulation
-
-On startup, the stub waits 20s then GETs `{TESTLAB_CALLBACK_URL}/api/v1/companycertificate` to simulate a real SUT pulling TestLab's exposed asset (for `expose_testlab_asset`).
-
-### Extending the stub
-
-Add routes in `app.py`, response builders in `responses.py`. See `stubs/ccm-sut/README.md` for details.
-
-## Extension Points
-
-### Adding a new standard's test suite
-
-1. Create a directory for the suite — the shipped reference lives at `docs/examples/certificate-management-v2/raw/` in this repository
-2. Write an `index.yaml` with `kind: tck`, metadata, variables, and test references
-3. Write individual test YAML files with `kind: test`
-4. Run `testlab validate` on the directory to check it against the schemas and the step registry before compiling it
-
-### Creating custom step executors
-
-Implement a new step executor in `src/tractusx_testlab/steps/` and register it with the `@step()` decorator under a unique id following the `<category>/<module>/<function>` scheme. See [Create a Step Executor](create-step-executor.md).
-
-### Adding new assertion types
-
-Assertions are validation steps (`validate/assert`, `validate/field`, `validate/schema`) that read a step's declared `returns:` outputs and evaluate an operator (e.g., `equals`, `not_null`, `matches_regex`). See [Add an Assertion Type](add-assertion-type.md) for extending them.
-
-### CI/CD integration
-
-Run the test suite headless via CLI:
-
-```bash
-testlab run index.yaml --config run-config.yaml
+execution:
+  # … pull_ccmapi_endpoint, send_status_notification …
+  - id: wait_provider_ack
+    uses: mock/wait/http_request
+    with:
+      mock: "${{ setup.mock_receive_ack.mock }}"
+      timeout_s: 60
 ```
 
-The command prints per-test and per-step results to stdout and exits non-zero on failure; the console transcript is written to the `--logs-dir` directory (default `./logs`), and the CloudEvents execution trace to the configured `data_dir`. Use the exit code for pass/fail status in your CI pipeline.
+```mermaid
+sequenceDiagram
+    participant Setup as mock/api (setup)
+    participant Reg as Mock registry + CallbackManager
+    participant Wait as mock/wait/http_request
+    participant SUT as Provider
 
-## Design Decisions
+    Setup->>Reg: register canned 200 response on POST /companycertificate/notification/receive
+    Setup->>Reg: register a listener for that path and method
+    Note over Setup: publishes mock, base_mock_url, full_mock_url
+    Wait->>Reg: wait(path, method, timeout_s=60)
+    SUT->>Reg: POST /companycertificate/notification/receive
+    Reg-->>SUT: canned response
+    Reg-->>Wait: request_method, request_path, request_headers, request_query_params, request_body, elapsed_ms
+```
 
-| Decision | Rationale | Reference |
-|----------|-----------|-----------|
-| SSE over WebSocket | Simpler server push, no bidirectional channel needed | [ADR-0003](../developer/decision-records/shared/ADR-0003-sse-for-live-execution.md) |
-| YAML over JSON for tests | Human-readable, supports comments, familiar to DevOps | Project convention |
-| Manifest order, no inter-test dependencies | A test states what it needs through required infrastructure and the variables it reads, not by naming another test | Player design |
-| `asyncio.Future` for callbacks | Native async/await integration, no polling, timeout support | Mock server design |
-| `${{ }}` interpolation | GitHub-Actions-style references, explicit about their source (`env.`, `execution.`) | [Specification](../tck-syntax/index.md) |
+The mock server is started by the player before the first test. It listens on `server_port` (default `8100`) and is stopped after the last test. [`mock/api`](../api-reference/steps/mock/index.md#mock-api) registers the canned response and a listener, then publishes `full_mock_url`, the address a provider has to call. [`mock/wait/http_request`](../api-reference/steps/mock/wait.md#mock-wait-http_request) blocks until the listener fires or `timeout_s` runs out. Its checks read the inbound request, for example `request_body` fields `header.context`, `header.version` and `content.certificateStatus`.
 
-## Next Steps
+The mock is registered in `setup` so that it exists before the execution step that makes the provider call back.
 
-- **[Developer Guide](ccm-developer-guide.md)** — Setup, running, and debugging
+## Using the suite as a template
+
+1. Copy `raw/` and change `metadata`, `namespace` and every test's `namespace` together.
+2. State the capabilities in `infrastructure:`. Do not declare connector addresses as variables, because the SUT binding already carries them.
+3. Declare policies as `config/connector/policy` variables, and keep message bodies in `testdata/`. Declare every value those bodies reference in `env.variables`, so the run asks for it before it starts.
+4. Keep each test self-contained: discover, negotiate, call, check.
+5. Validate with `testlab validate <dir>/index.yaml`. Before you publish, run the suite once against a real provider: `validate` does not resolve references inside test data files.
+
+Syntax details live in [TCK Syntax](../tck-syntax/index.md), and every step's inputs and outputs in the [Step Reference](../api-reference/steps/index.md).

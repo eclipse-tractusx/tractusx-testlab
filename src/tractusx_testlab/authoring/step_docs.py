@@ -45,6 +45,7 @@ from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
 from tractusx_testlab.steps.step_contract import BaseStep, StepValue
+from tractusx_testlab.steps.step_extension import extensions_for
 
 _PRIMITIVES: dict[type, str] = {
     str: "string",
@@ -224,11 +225,12 @@ def render_step(step_cls: type[BaseStep], *, level: int = 3) -> list[str]:
         lines += [body, ""]
 
     lines += ["**Inputs**", ""]
-    lines += _table(
-        step_cls.params_model,
-        ["Parameter", "Type", "Required", "Default", "Also accepts", "Description"],
-        with_aliases=True,
-    )
+    header = ["Parameter", "Type", "Required", "Default", "Also accepts", "Description"]
+    lines += _table(step_cls.params_model, header, with_aliases=True)
+    for extension_cls in extensions_for(step_cls.step_type):
+        name = extension_cls.extension
+        lines += [f"**Experimental inputs** — extension `{name}`, needs `extensions: [{name}]`", ""]
+        lines += _table(extension_cls.params_model, header, with_aliases=True)
 
     lines += ["**Output** — the value assertions and `returns:` read", ""]
     lines += ["_" + _docstring(step_cls.output_model) + "_", ""]

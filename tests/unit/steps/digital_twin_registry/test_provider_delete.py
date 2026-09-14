@@ -45,7 +45,9 @@ _SHELL_ID = "urn:uuid:11111111-2222-3333-4444-555555555555"
 
 
 def _definition() -> StepDefinition:
-    return StepDefinition(id="delete_twin", uses="digital-twin-registry/provider/delete_shell_descriptor")
+    return StepDefinition(
+        id="delete_twin", uses="digital-twin-registry/provider/delete_shell_descriptor"
+    )
 
 
 def _refusal(*codes: str | None) -> SimpleNamespace:

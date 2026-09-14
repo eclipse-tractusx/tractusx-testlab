@@ -7,6 +7,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Experimental extensions (`tractusx_testlab.extensions`): additions that are
+  not part of `v1-alpha` yet, which a TCK opts into with `extensions: [...]` in
+  `index.yaml`. The compiler rejects an extension's keys, parameters and steps in any TCK
+  that did not enable it, and warns about every one that did. Two ship:
+  `cac` (the `cac:` key) and `labs` (steps under `labs/` still being tested).
+  An extension can also add `with:` parameters to an existing step, declared
+  and implemented in its own package with `@extends`. `labs` ships the first:
+  `retry_on` on `connector/dataplane/http_request`, which calls again while the
+  answer's status is listed. The e2e Umbrella TCK runs `cac` and `retry_on`
+  against the live dataspace (`experimental_extensions.yaml`).
+  See `docs/developer/extensions.md`
+
+### Changed
+
+- **Breaking.** `cac:` is now the experimental `cac` extension: a TCK using it
+  must add `extensions: [cac]` to `index.yaml`
+- **Breaking.** The Digital Twin Registry steps form one category,
+  `digital-twin-registry`. The provider-side steps that were still under
+  `digital-twin/` moved without an alias: `digital-twin/provider/*` is now
+  `digital-twin-registry/provider/*` (including `provider/wizard/*`), and
+  `digital-twin/submodel/{upload,delete}` is now
+  `digital-twin-registry/submodel/{upload,delete}`. Their code lives in
+  `tractusx_testlab.steps.digital_twin_registry` next to the consumer steps
+
 ## [1.0.0a3] - 2026-09-12
 
 ### Changed

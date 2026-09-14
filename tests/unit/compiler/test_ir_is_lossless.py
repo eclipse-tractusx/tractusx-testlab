@@ -100,6 +100,7 @@ def _manifest() -> dict:
             "license": "Apache-2.0",
             "standards": [{"id": "CX-0135", "version": "v3.1.0"}],
         },
+        "extensions": ["cac"],
         "env": {
             "variables": [
                 {
@@ -354,6 +355,11 @@ class TestEveryManifestEntryFieldSurvives:
         """``manifest.yaml`` is the section read without unpacking the IR."""
         manifest, execution = _compile_package(tmp_path)
         assert manifest["tests"] == execution["tests"]
+
+    def test_the_manifest_names_the_experimental_extensions_used(self, tmp_path) -> None:
+        """A package built on experimental syntax says so where a reviewer looks first."""
+        manifest, _ = _compile_package(tmp_path)
+        assert manifest["tck"]["extensions"] == ["cac"]
 
     def test_a_test_no_one_marked_is_not_skippable(self, tmp_path) -> None:
         """The default travels too — silence means the test must run."""

@@ -155,7 +155,7 @@ the `mock/*` steps.
 
 Ids follow `<category>/<module>/<function>`:
 
-- **category** — the domain under test (`connector`, `digital-twin`, `notification`) or
+- **category** — the domain under test (`connector`, `digital-twin-registry`, `notification`) or
   an engine facility (`util`, `flow`, `validate`, `http`, `mock`);
 - **module** — the component or access path within the category (`consumer`, `provider`,
   `dataplane`, `submodel`);

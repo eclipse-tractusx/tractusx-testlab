@@ -21,7 +21,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""``cac:`` names the conformity assessment criteria a step or a check verifies.
+"""The experimental ``cac`` extension: the CACs a step or a check verifies.
 
 Traceability only — it never changes a verdict — but it is only worth writing if
 it is well-formed, names a standard the TCK certifies against, and reaches the
@@ -57,6 +57,7 @@ def _cac_errors(tmp_path: Path, step: dict, standards: list[dict]) -> list[str]:
         "kind": "tck",
         "id": "cac-tck",
         "metadata": {"name": "CAC", "standards": standards},
+        "extensions": ["cac"],
         "tests": [{"id": "t.yaml"}],
     }
     test = {
@@ -70,7 +71,7 @@ def _cac_errors(tmp_path: Path, step: dict, standards: list[dict]) -> list[str]:
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "t.yaml").write_text(yaml.dump(test), encoding="utf-8")
     result = TestValidator().validate_tck(TckDefinition.model_validate(manifest), tmp_path)
-    return [issue.message for issue in result.issues if "cac" in issue.message]
+    return [issue.message for issue in result.issues if issue.level == "error"]
 
 
 CX_0135 = [{"id": "CX-0135", "version": "v3.1.0"}]
@@ -109,7 +110,11 @@ class TestTheStandardIsCertified:
         assert "v3.0.0" in error
 
     def test_a_check_is_held_to_the_same_manifest(self, tmp_path) -> None:
-        check = {"uses": "validate/assert", "cac": ["CX-9999:v1.0.0:CAC-1"], "with": {}}
+        check = {
+            "uses": "validate/assert",
+            "cac": ["CX-9999:v1.0.0:CAC-1"],
+            "with": {"input": "value"},
+        }
         (error,) = _cac_errors(tmp_path, _step(validate=[check]), CX_0135)
         assert "CX-9999" in error
 

@@ -163,19 +163,20 @@ nav:
     - Proposed Extensions: tck-syntax/extensions.md
     - Cheat Sheet: tck-syntax/cheat-sheet.md
   - Tutorials:
-    - Getting Started: tutorials/index.md
-    - Create a Step Executor: tutorials/create-step-executor.md
-    - Add a Service Type: tutorials/add-service-type.md
-    - Add an Assertion Type: tutorials/add-assertion-type.md
-    - Add a Validation Rule: tutorials/add-validation-rule.md
-    - Development Workflow: tutorials/development-workflow.md
-    - Debugging: tutorials/debugging.md
-    - CCM Conformity Testing: tutorials/ccm-conformity-testing.md
+    - Your First TCK: tutorials/index.md
     - Certificate Management:
       - Overview: tutorials/certificate-management.md
       - Business Guide: tutorials/ccm-business-guide.md
       - Developer Guide: tutorials/ccm-developer-guide.md
       - Architecture Guide: tutorials/ccm-architecture-guide.md
+      - Test Reference: tutorials/ccm-conformity-testing.md
+    - Extending the Engine:
+      - Create a Step: tutorials/create-a-step.md
+      - Add an Assertion Operator: tutorials/add-assertion-operator.md
+      - Add an Infrastructure Capability: tutorials/add-infrastructure-capability.md
+      - Add a Validation Rule: tutorials/add-validation-rule.md
+    - Development Workflow: tutorials/development-workflow.md
+    - Debugging: tutorials/debugging.md
   - API Reference:
     - Overview: api-reference/index.md
     - Steps:
@@ -220,6 +221,7 @@ nav:
     - Data Models: developer/data-models.md
     - Block Lifecycle: developer/block-lifecycle.md
     - Creating a Step: developer/creating-a-step.md
+    - Extensions (Experimental): developer/extensions.md
     - Execution Events: developer/execution-events.md
     - Infrastructure Bindings: developer/infrastructure-bindings.md
     - Environment Injection Analysis: developer/environment-injection-analysis.md

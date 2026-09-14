@@ -34,10 +34,16 @@ from __future__ import annotations
 import re
 from typing import Annotated
 
-from pydantic import AfterValidator, WithJsonSchema
+from pydantic import AfterValidator, BaseModel, WithJsonSchema
 from pydantic_core import PydanticCustomError
 
-from tractusx_testlab.syntax.patterns import CAC_REF
+CAC_REF = re.compile(r"^(?P<standard>[^:\s]+):(?P<version>[^:\s]+):(?P<cac>[^:\s]+)$")
+"""Matches a ``cac:`` entry — ``<standard-id>:<standard-version>:<cac-id>``.
+
+Three segments, none empty, no whitespace, e.g. ``CX-0135:v3.1.0:CAC-014``. The
+standard and version are named so the compiler can hold them to the manifest's
+``metadata.standards``; what a CAC id looks like is the Expert Group's business.
+"""
 
 
 def _cac_reference(value: str) -> str:
@@ -68,3 +74,19 @@ CacReferences = list[
     ]
 ]
 """A ``cac:`` list — each entry ``<standard-id>:<standard-version>:<cac-id>``."""
+
+
+class CacStepKeys(BaseModel):
+    """The key this extension adds to a step."""
+
+    #: The CACs this step verifies; each of its checks reports under them unless
+    #: the check names its own.
+    cac: CacReferences | None = None
+
+
+class CacAssertionKeys(BaseModel):
+    """The key this extension adds to a ``validate:`` entry."""
+
+    #: The CACs this one check verifies. Overrides the step's ``cac`` for this
+    #: check when reported; absent, the check reports under the step's.
+    cac: CacReferences | None = None

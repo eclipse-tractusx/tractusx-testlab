@@ -24,6 +24,14 @@ This is the far end of the DSP flow: `do_dsp` or `initiate_transfer` returns whe
 | `path` | string | no | `''` | — | Path appended to the data-plane URL. |
 | `edr_token` | string | no | `None` | — | EDR authorization token; falls back to the 'edr_token' context variable when omitted. An explicit '' asks for the call to be made with no token at all — e.g. a negative-path test proving the endpoint is protected — and is honoured as given rather than falling back. |
 
+**Experimental inputs** — extension `labs`, needs `extensions: [labs]`
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `retry_on` | list of integer | yes | — | — | Status codes that make the call run again, e.g. [404, 503]. |
+| `retry_attempts` | integer | no | `3` | — | Calls in total, the first one included. |
+| `retry_delay_s` | number | no | `1.0` | — | Seconds to wait between two calls. |
+
 **Output** — the value assertions and `returns:` read
 
 _A response body: parsed JSON when the server sent JSON, otherwise the raw text._

@@ -18,256 +18,126 @@
 
  SPDX-License-Identifier: Apache-2.0
 -->
-<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
-# Company Certificate Management — Developer Guide
+# Certificate Management — Developer Guide
 
-This guide covers setting up, running, and debugging the CX-0135 certificate management test suite against your CCMAPI implementation.
+This guide covers running the Certificate Management TCK against a provider: configuring the run, reading the results, and fixing what fails. For how the suite is built, see the [Architecture Guide](ccm-architecture-guide.md). For what each check asserts, see [CCM Conformity Testing](ccm-conformity-testing.md).
 
-## Quick Start
+## Prerequisites
 
-### Prerequisites
+- **Python 3.12+** and the CLI: `pip install --pre tractusx-testlab`. In a checkout of this repository, run `poetry install` and put `poetry run` in front of every `testlab` command below.
+- **An engine-side connector** that TestLab drives through its management API. TestLab uses it to negotiate with the provider.
+- **The provider under test**: its connector's DSP endpoint and participant id, a CCMAPI offer under the CX-0135 usage policy, and the CCMAPI behind it. The [Business Guide](ccm-business-guide.md#what-the-provider-must-have-in-place) has the full list.
+- **Inbound reach.** During a run, TestLab serves mock endpoints on port `8100` (the engine setting `server_port`). *Send Feedback Notification* waits for the provider to call one of them, so the provider must be able to reach this host on that port.
 
-- Python 3.12+
-- A running CCMAPI-compliant SUT (or use the provided stub)
-
-### Three steps to your first test run
+## 1. Check the suite
 
 ```bash
-# 1. Clone and install
-git clone https://github.com/eclipse-tractusx/tractusx-testlab.git
-cd tractusx-testlab
-pip install -e .
+testlab validate docs/examples/certificate-management-v2/raw/index.yaml
+```
 
-# 2. Start the SUT stub
-cd stubs/ccm-sut && uvicorn app:app --port 8090 &
-cd ../..
+`validate` takes the manifest (`index.yaml`), never a single test file. It checks the manifest and all four tests against the `v1-alpha` syntax and the registered steps.
 
-# 3. Run the Certificate Management suite from the CLI
+To see what a run will ask for, compile the suite and inspect the package:
+
+```bash
+testlab compile docs/examples/certificate-management-v2/raw/index.yaml --output ccm.tck
+testlab inspect ccm.tck --variables --infrastructure
+```
+
+```text
+  VARIABLES
+  ID                             Source       Scope      Type
+  sut_counter_party_id           input        sut        string
+  sut_counter_party_address      input        sut        string
+  ccm_usage_policy               value        —          object
+
+  INFRASTRUCTURE
+  Capability                Required   Standard
+  engine.connector          True       CX-0018
+  sut.connector             True       CX-0018
+```
+
+Add `--manifest` for the package identity and checksum, or `--json` for machine-readable output.
+
+## 2. Supply what the run needs
+
+A run needs three groups of values. You can put all of them in one run config:
+
+| Group | Keys | Where the need comes from |
+| --- | --- | --- |
+| Infrastructure bindings | `infrastructure.engine.connector.management_url`, `infrastructure.engine.connector.participant_id` (plus `api_key` if the management API needs one), `infrastructure.sut.connector.dsp_url`, `infrastructure.sut.connector.participant_id` | `infrastructure:` in the manifest: both connectors are required |
+| Declared inputs | `sut_counter_party_id`, `sut_counter_party_address` | `env.variables` with `source: input` |
+| Test data values | `consumer_bpn`, `provider_bpn`, `certificate_type`, `location_bpns`, `testlab_dsp_url`, `request_id`, `document_id` | `${{ env.… }}` references inside the three JSON files in `raw/testdata/` |
+
+```yaml
+# run-config.yaml
+variables:
+  # Engine side: the connector TestLab operates (management_url includes the management path)
+  infrastructure.engine.connector.management_url: https://testlab-edc.example.com/management
+  infrastructure.engine.connector.api_key: <engine-api-key>
+  infrastructure.engine.connector.participant_id: BPNL000000000TLB
+
+  # SUT side: the provider's connector
+  infrastructure.sut.connector.dsp_url: https://provider-edc.example.com/api/v1/dsp
+  infrastructure.sut.connector.participant_id: BPNL000000000001
+
+  # Declared inputs: give the same connector as the SUT binding
+  sut_counter_party_id: BPNL000000000001
+  sut_counter_party_address: https://provider-edc.example.com/api/v1/dsp
+
+  # Values the request and notification bodies read
+  consumer_bpn: BPNL000000000TLB
+  provider_bpn: BPNL000000000001
+  certificate_type: iso9001
+  location_bpns: BPNS000000000001
+  testlab_dsp_url: https://testlab-edc.example.com/api/v1/dsp
+  request_id: 0b133a08-b03a-4f4f-b0f4-55bbbcf088f9
+  document_id: <documentId of an existing certificate at the provider>
+```
+
+The bindings do not have to live in the run config. `testlab.config.yaml` and `TESTLAB_*` environment variables (for example `TESTLAB_SUT_CONNECTOR_DSP_URL`) are also read; see [Infrastructure Bindings](../developer/infrastructure-bindings.md). A `--var KEY=VALUE` flag overrides the file for one value.
+
+!!! note "Two things the run does not check up front"
+    - `sut_counter_party_*` repeats the SUT binding. The connector steps would fall back to `infrastructure.sut.connector.*` without it, but the suite passes it explicitly. Keep the two in agreement.
+    - The test data keys are not declared in the manifest. The run does not ask for them before it starts. If one is missing, the step that reads the body fails with `'env.<key>' resolves to nothing`.
+
+## 3. Run it
+
+```bash
 testlab run docs/examples/certificate-management-v2/raw/index.yaml --config run-config.yaml
 ```
 
-To drive runs over HTTP instead, start the server with `testlab serve` and follow a job's execution events over SSE.
+`run` compiles the manifest into a temporary package and validates it. Before the first step, it refuses to start if any declared input or required binding is missing, and it lists everything that is missing at once. It then starts the mock server and runs the four tests in manifest order. No test is `skippable`, so every test runs.
 
-## Running with the SUT Stub
+## 4. Read the results
 
-The CCM SUT stub simulates an EDC connector and CCMAPI-compliant service in a single FastAPI application. You can run the full test suite locally without any real infrastructure.
+| Output | Where | What it holds |
+| --- | --- | --- |
+| Console | stdout | One box per test with each step's `PASS`/`FAIL` and duration, failed checks with expected against actual, then a TCK run summary |
+| Exit code | shell | `0` when every test passed, `1` otherwise, including a run refused before it started |
+| Transcript | `./logs/<date>/<time>_<run-id>.log` (`--logs-dir`) | The console output of the run, kept verbatim |
+| Execution trace | `./data/<date>/<time>_<run-id>.jsonl` (`--data-dir`) | CloudEvents, one per line: every step's outputs, checks, and the HTTP requests and responses the run made. See [Execution Logs](../tck-syntax/execution-logs.md) |
 
-### What the stub simulates
+Failing lines name the test id, the phase and step id, and the step: `send-feedback-notification[setup:mock_receive_ack]:mock/api`. A test whose checks never ran is reported as `WARNING: N declared assertion(s) were never evaluated`. It is not a pass.
 
-The stub at `stubs/ccm-sut/` replaces two real components:
+## 5. Fix what fails
 
-- **EDC Connector** — DSP catalog, contract negotiation, transfer, and EDR endpoints
-- **CCMAPI Service** — Certificate request, push, available, and notification endpoints
+| Message | Cause | Fix |
+| --- | --- | --- |
+| `This TCK needs 2 input variable(s) that were not supplied` | `sut_counter_party_id` / `sut_counter_party_address` missing | Add them under `variables:` or pass `--var` |
+| `This TCK requires infrastructure that is not fully bound: engine.connector, sut.connector` | A binding key is missing; the message lists each key and its `TESTLAB_*` name | Set the listed keys |
+| `'env.consumer_bpn' resolves to nothing` | A test data value is missing | Add every key from the test data row in step 2 |
+| `It was not possible to get the catalog from the EDC provider! Response code: [404]` | The engine connector's `management_url` is wrong. It must include the management path. | Correct `infrastructure.engine.connector.management_url` |
+| `no offer from <dsp_url> is made under a policy this step accepts` | The provider has no CCMAPI offer matching the filters, or the offer's policy is not exactly the CX-0135 usage policy. The message lists the constraints that differ. | Fix the provider's asset or policy. A subset or superset of the policy does not match. |
+| `Expected 200, got …` on `request_certificate`, `send_status_notification` or `send_unknown_cert_type` | The data-plane call reached the provider's CCMAPI and was refused | Check the provider logs. The request body is in the execution trace. |
+| `Expected 'REJECTED', got …` on `send_unknown_cert_type` | The provider accepted an unknown certificate type | Validate `certificateType` and answer with `requestStatus: REJECTED` |
+| `Timed out after 60.0s waiting for POST /companycertificate/notification/receive` | The provider never sent the acknowledgement, or cannot reach this host on port 8100 | Check the provider's outbound call and the network path to the engine |
 
-### E2E flow with the stub
+Check wording comes from the [validation operators](../api-reference/steps/validations.md). For problems that are not specific to this suite (unknown step ids, empty `returns:`, mocks never hit), see [Debugging](debugging.md).
 
-```mermaid
-sequenceDiagram
-    participant User as User (CLI)
-    participant TL as TestLab Engine
-    participant Stub as SUT Stub :8090
-    participant Mock as Mock Server :8100
+## The local SUT stub
 
-    User->>TL: testlab run
-    TL->>Stub: POST /dsp/catalog/request
-    Stub-->>TL: Catalog (CCMAPI + Submodel datasets)
-    TL->>Stub: POST /dsp/negotiations/initial
-    Stub-->>TL: Agreement (auto-finalized)
-    TL->>Stub: POST /transferprocesses
-    Stub-->>TL: Transfer ID → EDR token
-    TL->>Stub: POST /companycertificate/request
-    Stub-->>TL: {requestStatus: COMPLETED, documentId}
-    Note over Stub,Mock: 10s delay
-    Stub->>Mock: POST /companycertificate/status
-    Mock-->>TL: Callback body (future resolved)
-    TL-->>User: All assertions pass ✓
-```
-
-### Run-config variables
-
-| Variable | Stub Value | Purpose |
-|----------|-----------|--------|
-| `provider_address` | `http://localhost:8090/api/v1/dsp` | Stub's DSP endpoint |
-| `provider_bpn` | `BPNL000000000001` | Stub's BPN |
-| `consumer_bpn` | `BPNL000000000002` | TestLab's BPN |
-| `certificate_type` | `iso9001` | Certificate to request |
-| `location_bpns` | `BPNS000000000001` | Site needing the certificate |
-| `testlab_mock_base_url` | `http://localhost:8100` | Callback target for the stub |
-| `testlab_management_url` | `http://localhost:8090/api/v1/dsp` | TestLab EDC management |
-| `testlab_dsp_url` | `http://localhost:8090/api/v1/dsp` | TestLab DSP endpoint |
-| `sut_response_timeout` | `60` | Seconds to wait for callbacks |
-
-### Switching to a real SUT
-
-Replace `provider_address` with your EDC's DSP URL and update the BPN values. All other test logic remains unchanged — the test suite is SUT-agnostic.
-
-## How the Test Suite Works
-
-### Index file structure
-
-The TCK manifest at `index.yaml` declares metadata, environment variables, and test references (see the shipped suite at `docs/examples/certificate-management-v2/raw/index.yaml`):
-
-```yaml
-kind: tck
-syntax: v1-alpha
-id: certificate-management-tck-v0.0.1
-
-metadata:
-  name: "Certificate Management TCK"
-  version: "v0.0.1"
-  standards:
-    - id: CX-0135
-      version: v3.1.0
-
-env:
-  variables:
-    - id: sut_counter_party_address
-      uses: variable/type/string
-      with:
-        source: input   # supplied at execution time
-        scope: sut      # the SUT operator provides it
-      returns:
-        value:
-          type: string
-
-tests:
-  - id: request_certificate.yaml
-    name: Request a certificate via CCMAPI
-  # ... more tests
-```
-
-### Test files and dependencies
-
-The full suite described in this guide contains 8 test files; the engine repository ships a four-test version at `docs/examples/certificate-management-v2/raw/tests/`. Some tests read outputs that earlier tests publish, so the manifest lists those tests first:
-
-```mermaid
-flowchart TD
-    REQ[request_certificate] --> VAL[validate_payload]
-    REQ --> AWAIT[await_feedback_callback]
-    REQ --> SEND[send_feedback]
-    VAL --> SEND
-    AWAIT --> SEND
-    PUSH[push_certificate]
-    AVAIL[available_notification]
-    EXPOSE[expose_testlab_asset]
-    ERR[error_handling]
-
-    style REQ fill:#1565c0,stroke:#333,color:#fff
-    style VAL fill:#1565c0,stroke:#333,color:#fff
-    style AWAIT fill:#1565c0,stroke:#333,color:#fff
-    style SEND fill:#1565c0,stroke:#333,color:#fff
-    style PUSH fill:#2e7d32,stroke:#333,color:#fff
-    style AVAIL fill:#2e7d32,stroke:#333,color:#fff
-    style EXPOSE fill:#2e7d32,stroke:#333,color:#fff
-    style ERR fill:#2e7d32,stroke:#333,color:#fff
-```
-
-**Blue tests** form a data-dependency chain. **Green tests** are independent of each other. The engine runs every test sequentially, in the order the manifest lists them; `v1-alpha` has no inter-test dependency declaration.
-
-| Test | CX-0135 Section | Dependencies |
-|------|-----------------|--------------|
-| `request_certificate` | §2.1.1.1 | None |
-| `validate_payload` | §3.1 | `request_certificate` (reads its `document_id` output) |
-| `await_feedback_callback` | §2.1.1.3 | `request_certificate` (reads its `request_id` output) |
-| `send_feedback` | §2.1.1.3 | `request_certificate`, `validate_payload`, `await_feedback_callback` |
-| `push_certificate` | §2.1.1.2 | None |
-| `available_notification` | §2.1.1.4 | None |
-| `expose_testlab_asset` | §2.1.4.1 | None |
-| `error_handling` | §2.1.1.1.4 | None |
-
-## Execution Flow
-
-See the **[Architecture Guide](ccm-architecture-guide.md)** for the full internal sequence. In summary:
-
-1. `testlab run` compiles the manifest into a `.tck` package (validating it first), or an HTTP client sends the YAML to `POST /testlab/tck-execution/run`
-2. The player loads the TCK, binds the configured infrastructure, seeds the SDK services, and runs the tests in manifest order
-3. For each test: resolve `${{ }}` references → execute steps → evaluate `validate:` assertions → publish declared `returns:` outputs
-4. The CLI prints results as they arrive; an HTTP client follows the same execution events (`step.started`, `step.completed`, `step.failed`) over SSE at `GET /testlab/tck-execution/{job_id}/stream`
-
-## Deep Dive: request_certificate
-
-This test executes the full DSP + CCMAPI flow in 7 steps:
-
-| Step | Type | What It Does |
-|------|------|-------------|
-| 1 | `connector/consumer/query_catalog` | DSP catalog request filtered for `cx-taxo:CCMAPI` |
-| 2–3 | `util/json_path_extract` | Extract asset ID and offer policy from catalog |
-| 4 | `connector/consumer/negotiate` | DSP contract negotiation for the CCMAPI asset |
-| 5 | `connector/consumer/initiate_transfer` | Get an EDR with data plane auth token |
-| 6 | `util/generate_uuid` | Create a unique `messageId` |
-| 7 | `connector/dataplane/http_request` | POST CX-0135 envelope to `/companycertificate/request` |
-
-Steps 1–5 can also be collapsed into a single `connector/consumer/pull_data_filtered` step, which is what the shipped suite does. The final step sends a CX-0135 `{header, content}` envelope and asserts a 200 response with non-null `requestStatus` and `documentId`. It publishes `request_id` and `document_id` as declared outputs for downstream tests.
-
-## Configuring for Your SUT
-
-Create a `run-config.yaml` with your environment's values:
-
-```yaml
-variables:
-  provider_address: "https://your-edc:8282/api/v1/dsp"
-  provider_bpn: "BPNL00000003AZQP"
-  consumer_bpn: "BPNL00000001SQRN"
-  certificate_type: "iso9001"
-  location_bpns: "BPNS000000000001"
-  testlab_management_url: "https://testlab-edc:8282/management"
-  testlab_dsp_url: "https://testlab-edc:8282/api/v1/dsp"
-  testlab_mock_base_url: "http://testlab-host:8100"
-  sut_response_timeout: 300
-```
-
-Run from CLI:
-
-```bash
-testlab run path/to/index.yaml --config run-config.yaml
-```
-
-## Debugging Failures
-
-### Common failures and fixes
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| "Catalog query returned no datasets" | SUT doesn't advertise a CCMAPI asset | Register an asset with `dct:type = cx-taxo:CCMAPI` in your EDC |
-| "Negotiate returned None" | EDC management API path mismatch | Verify your DSP endpoint path matches `provider_address` |
-| "Schema validation failed" | Certificate payload missing required fields | Compare your response against the BusinessPartnerCertificate v3.1.0 schema |
-| "Timed out waiting for callback" | SUT not sending HTTP callbacks | Verify your system POSTs to the `senderFeedbackUrl` from the request header |
-| "Status code 403" | EDC access policy rejected the consumer BPN | Add the test `consumer_bpn` to your connector's access policies |
-
-### Reading logs
-
-Test execution logs are written to the `logs/` directory with timestamps. Each step logs its request, response, and assertion results.
-
-### Adding debug assertions
-
-Add extra `validate:` entries to any step to inspect intermediate values, or a `util/log` step to print a value to the execution log:
-
-```yaml
-validate:
-  - uses: validate/field
-    with:
-      input: response_body
-      path: "header.messageId"
-      operator: not_null
-```
-
-## Extending the Suite
-
-### Add a new test step
-
-1. Create a new YAML file in the `tests/` directory
-2. Define `kind: test`, metadata, and `execution:` steps (`uses:` / `with:` / `returns:` / `validate:`)
-3. Add a reference in `index.yaml` under `tests:`
-4. Declare `depends_on` if the test reads outputs published by other tests
-
-### Add a new certificate type test
-
-Duplicate `request_certificate.yaml` and change `certificate_type` from `"iso9001"` to your target type (e.g., `"iatf16949"`, `"iso14001"`).
-
-## Next Steps
-
-- **[Business Guide](ccm-business-guide.md)** — Non-technical overview of what the tests validate
-- **[Architecture Guide](ccm-architecture-guide.md)** — System design, callback patterns, and extension points
-- **[CCM Conformity Testing](ccm-conformity-testing.md)** — Detailed test reference
+`stubs/ccm-sut/` holds a FastAPI stub that imitates a connector and a CCMAPI service. **It does not satisfy the current suite.** Its catalog answers when `infrastructure.engine.connector.management_url` is `http://localhost:8090/api/v1/dsp/management`. However, it offers no CCMAPI asset under the CX-0135 usage policy, so all four tests stop at their first step. Its own `run-config.yaml` also uses variable names that the suite no longer declares. Use the stub to check your wiring, not as a conformant provider.

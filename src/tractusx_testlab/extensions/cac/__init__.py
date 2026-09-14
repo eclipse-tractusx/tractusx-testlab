@@ -19,19 +19,26 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
 
-# Import step subpackages to trigger @step registrations. Experimental steps
-# and step parameter extensions register from the extensions package.
-import tractusx_testlab.extensions.step_modules
-import tractusx_testlab.steps.connector
-import tractusx_testlab.steps.digital_twin_registry
-import tractusx_testlab.steps.flow
-import tractusx_testlab.steps.http
-import tractusx_testlab.steps.mock
-import tractusx_testlab.steps.notification
-import tractusx_testlab.steps.security
-import tractusx_testlab.steps.util
-from tractusx_testlab.steps.assertions import AssertionEngine
-from tractusx_testlab.steps.step_contract import BaseStep
+"""``cac`` — conformity assessment criteria traceability. **Experimental.**
 
-__all__ = ["AssertionEngine", "BaseStep"]
+Adds ``cac:`` to steps and ``validate:`` entries (syntax spec §9.1). The compiler
+holds every reference to ``metadata.standards``; the player copies it into the
+terminal step event (``data.cac`` and ``cac`` on each validation).
+"""
+
+from __future__ import annotations
+
+from tractusx_testlab.extensions.cac.certified import uncertified_cac
+from tractusx_testlab.extensions.extension import Extension
+
+EXTENSION = Extension(
+    name="cac",
+    summary="Name the CACs a step or a check verifies with `cac:`.",
+    step_keys=frozenset({"cac"}),
+    validation_keys=frozenset({"cac"}),
+    check=uncertified_cac,
+    docs="tck-syntax/extensions.md#91-cac-traceability-cac-p1",
+)

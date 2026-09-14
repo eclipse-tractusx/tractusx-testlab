@@ -516,7 +516,9 @@ class TestARefusalFailsTheStep:
             "dsp_endpoint": "https://provider.example.com/api/v1/dsp",
         }
         wizard = WizardCreateSubmodelDescriptorStep()
-        wizard_definition = _definition("digital-twin-registry/provider/wizard/create_submodel_descriptor")
+        wizard_definition = _definition(
+            "digital-twin-registry/provider/wizard/create_submodel_descriptor"
+        )
         with pytest.raises(StepExecutionError, match="refused the submodel descriptor.*409"):
             await wizard.invoke(fields, dtr_context, wizard_definition)
         raw = CreateSubmodelDescriptorStep()

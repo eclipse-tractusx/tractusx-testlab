@@ -51,6 +51,7 @@ from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
 from tractusx_testlab.steps._checks.published_names import publishes
 from tractusx_testlab.steps.assertions import AssertionEngine
+from tractusx_testlab.steps.step_extension import invoke_extended
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ async def _run_step_guarded(
         # debugged from the test, which only says which reference was written.
         inputs = dict(params)
 
-        output = await step_instance.invoke(params, context, step_def)
+        output = await invoke_extended(step_instance, params, context, step_def)
 
         assertion_results: list[AssertionResult] = []
         if step_def.assertions:

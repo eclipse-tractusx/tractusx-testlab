@@ -183,6 +183,8 @@ ignore = [
 # `definition` still has to accept them, so an unused one is the interface
 # working, not a defect.
 "src/tractusx_testlab/steps/**" = ["ARG002", "ARG005"]
+# PERMANENT. The same contract, as `StepExtension.around` and the steps under `labs/`.
+"src/tractusx_testlab/extensions/**" = ["ARG002", "ARG005"]
 # PERMANENT. Tests legitimately assert on privates and shadow names in fixtures.
 "tests/**" = ["ARG001", "ARG002", "ARG005", "SIM117"]
 

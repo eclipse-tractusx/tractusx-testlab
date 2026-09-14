@@ -23,7 +23,7 @@
 
 A **step** is one executable action in a test — querying a catalog, registering an asset, waiting for a callback. This page is the reference for writing one: the rules, the choices, and the models you can reuse.
 
-If you would rather follow a single worked example end to end, start with the [Create a Step Executor tutorial](../tutorials/create-step-executor.md) and come back here for the details.
+If you would rather follow a single worked example end to end, start with the [Create a Step tutorial](../tutorials/create-a-step.md) and come back here for the details.
 
 ## The contract
 
@@ -429,6 +429,6 @@ The generator reads `model_fields`, not `model_json_schema()`, because JSON Sche
 
 ## See also
 
-- [Create a Step Executor](../tutorials/create-step-executor.md) — the same material as a worked example
+- [Create a Step](../tutorials/create-a-step.md) — the same material as a worked example
 - [Step Reference](../api-reference/steps/index.md) — the generated catalogue of every step
 - [Block Lifecycle](block-lifecycle.md) — how a step travels from YAML through the registry and executor to an SDK call

@@ -31,7 +31,10 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from tractusx_testlab.authoring.registry import StepRegistry
-from tractusx_testlab.compiler.validation._cac_standards import uncertified_cac
+from tractusx_testlab.compiler.validation._extension_gate import (
+    experimental_warnings,
+    extension_findings,
+)
 from tractusx_testlab.compiler.validation.issues import ValidationResult
 from tractusx_testlab.infrastructure.mapping import known_keys
 from tractusx_testlab.models import StepDefinition, TckDefinition, TestDefinition
@@ -109,7 +112,7 @@ class TestValidator:
         self, tck: TckDefinition, base_dir: Path, version: str | None = None
     ) -> ValidationResult:
         """Validate all test files referenced by a TCK manifest."""
-        combined = ValidationResult()
+        combined = ValidationResult(issues=experimental_warnings(tck))
         for entry in tck.tests:
             test_path = base_dir / "tests" / entry.id
             if not test_path.is_file():
@@ -140,7 +143,7 @@ class TestValidator:
                     f"namespace '{test.namespace}' must match the TCK id '{tck.id}'.",
                     field="namespace",
                 )
-            result.issues.extend(uncertified_cac(tck, test))
+            result.issues.extend(extension_findings(tck, test))
             for issue in result.issues:
                 issue.message = f"tests/{entry.id}: {issue.message}"
                 combined.issues.append(issue)

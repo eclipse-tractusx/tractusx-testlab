@@ -329,6 +329,17 @@
       ],
       "default": null
     },
+    "extensions": {
+      "items": {
+        "enum": [
+          "cac",
+          "labs"
+        ],
+        "type": "string"
+      },
+      "title": "Extensions",
+      "type": "array"
+    },
     "id": {
       "pattern": "^[a-z][a-z0-9_.-]{0,99}$",
       "title": "Id",

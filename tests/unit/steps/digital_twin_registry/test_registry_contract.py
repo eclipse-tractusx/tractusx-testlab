@@ -34,11 +34,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.steps.digital_twin_registry.provider.shell import (
-    GetShellDescriptorStep,
-    ProviderShellLookupParams,
-    ProviderShellLookupStep,
-)
 from tractusx_testlab.steps.digital_twin_registry.consumer import (
     DataplaneGetShellDescriptorsStep,
     DataplaneGetShellDescriptorStep,
@@ -46,6 +41,11 @@ from tractusx_testlab.steps.digital_twin_registry.consumer import (
     ShellLookupByAssetLinkStep,
     ShellLookupParams,
     ShellLookupStep,
+)
+from tractusx_testlab.steps.digital_twin_registry.provider.shell import (
+    GetShellDescriptorStep,
+    ProviderShellLookupParams,
+    ProviderShellLookupStep,
 )
 from tractusx_testlab.steps.registry_models import DescriptorPayload
 from tractusx_testlab.steps.step_contract import StepOutput

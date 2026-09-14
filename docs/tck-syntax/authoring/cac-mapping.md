@@ -40,8 +40,8 @@ CAC as written by the Expert Group:
 > *MUST* conform to the Business Partner Certificate schema v3.0.1. *IF* the provider reports `failed`, the
 > status *MUST* be `503` *OR* the body *MUST* contain an error code of `SERVICE_UNAVAILABLE`.
 
-As YAML. The manifest's `metadata.standards` must list `CX-0135` `v3.1.0`, or the compiler rejects the `cac:`
-entries:
+As YAML. `cac:` is the experimental `cac` extension, so the manifest must enable it with `extensions: [cac]`. Its
+`metadata.standards` must also list `CX-0135` `v3.1.0`, or the compiler rejects the `cac:` entries:
 
 ```yaml
 # WHEN … WITH …

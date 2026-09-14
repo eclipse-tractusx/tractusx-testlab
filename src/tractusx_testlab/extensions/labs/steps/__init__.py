@@ -19,19 +19,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
 
-# Import step subpackages to trigger @step registrations. Experimental steps
-# and step parameter extensions register from the extensions package.
-import tractusx_testlab.extensions.step_modules
-import tractusx_testlab.steps.connector
-import tractusx_testlab.steps.digital_twin_registry
-import tractusx_testlab.steps.flow
-import tractusx_testlab.steps.http
-import tractusx_testlab.steps.mock
-import tractusx_testlab.steps.notification
-import tractusx_testlab.steps.security
-import tractusx_testlab.steps.util
-from tractusx_testlab.steps.assertions import AssertionEngine
-from tractusx_testlab.steps.step_contract import BaseStep
+"""Experimental steps, registered under ``labs/``. **Experimental.**
 
-__all__ = ["AssertionEngine", "BaseStep"]
+Import each step module here: registration happens when the module is imported,
+and this package is imported through :mod:`tractusx_testlab.extensions.step_modules`
+so ``labs/`` steps register with the rest. No step is in labs today.
+"""

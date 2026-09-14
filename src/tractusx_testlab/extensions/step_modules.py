@@ -19,19 +19,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
 
-# Import step subpackages to trigger @step registrations. Experimental steps
-# and step parameter extensions register from the extensions package.
-import tractusx_testlab.extensions.step_modules
-import tractusx_testlab.steps.connector
-import tractusx_testlab.steps.digital_twin_registry
-import tractusx_testlab.steps.flow
-import tractusx_testlab.steps.http
-import tractusx_testlab.steps.mock
-import tractusx_testlab.steps.notification
-import tractusx_testlab.steps.security
-import tractusx_testlab.steps.util
-from tractusx_testlab.steps.assertions import AssertionEngine
-from tractusx_testlab.steps.step_contract import BaseStep
+"""Every extension module that registers something with the step machinery.
 
-__all__ = ["AssertionEngine", "BaseStep"]
+``labs/`` steps (``@step``) and step parameter extensions (``@extends``) register
+when their module is imported. ``tractusx_testlab.steps`` imports this module,
+so they register together with the core steps. Add the import of a new module
+here — a module not imported here is never registered.
+
+Kept apart from ``tractusx_testlab.extensions`` because these modules import the
+step contract, and the step contract's models import that package.
+"""
+
+import tractusx_testlab.extensions.labs.dataplane_retry
+import tractusx_testlab.extensions.labs.steps  # noqa: F401

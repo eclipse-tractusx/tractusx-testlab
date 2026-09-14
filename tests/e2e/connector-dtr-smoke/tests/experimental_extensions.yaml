@@ -1,0 +1,183 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: experimental-extensions
+
+metadata:
+  name: "Experimental Extensions"
+  version: "v1.0.0"
+  description: >
+    The experimental extensions the manifest enables (`extensions: [cac, labs]`),
+    run against the live dataspace rather than a double. `cac:` names the
+    criteria a step and one of its checks verify, and the execution trace must
+    carry them on the terminal step event. `retry_on` is a `labs` parameter
+    added to `connector/dataplane/http_request` from outside the step: the
+    call is told to retry while the answer is 200 — which it always is — for
+    two attempts, so the trace must show exactly two calls through the SUT's
+    data plane for that one step. The workflow reads both back from the trace.
+
+setup:
+  - id: open_backend
+    uses: mock/api
+    name: Open the mock endpoint the SUT's data plane will fetch from
+    with:
+      method: GET
+      path: "/testlab-e2e/extensions"
+      response_status: 200
+      response_body:
+        served_by: testlab-mock
+        extension: labs
+    returns:
+      full_mock_url:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: full_mock_url, operator: not_null }
+
+  - id: create_access_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT catalog access policy
+    with:
+      policy: "${{ env.access_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_usage_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT contract usage policy
+    with:
+      policy: "${{ env.usage_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  # The backend is the mock server's root with `proxyPath` on, the same
+  # arrangement inbound_call.yaml uses: the pull below names the mock's path.
+  - id: create_asset
+    uses: connector/provider/create_asset
+    name: Create an asset on the SUT whose backend is the mock server
+    with:
+      asset:
+        asset_id: testlab-e2e-extensions-asset
+        base_url: "${{ env.mock_server_external_url }}"
+        dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+        version: "1.0"
+        proxy_params:
+          proxyPath: "true"
+    returns:
+      asset_id:
+        type: string
+
+  - id: create_contract
+    uses: connector/provider/create_contract_definition
+    name: Publish the mock-backed asset
+    with:
+      contract_definition_id: testlab-e2e-extensions-contract
+      access_policy_id: "${{ setup.create_access_policy.policy_id }}"
+      contract_policy_id: "${{ setup.create_usage_policy.policy_id }}"
+      asset_id: "${{ setup.create_asset.asset_id }}"
+    returns:
+      contract_definition_id:
+        type: string
+
+execution:
+  # `cac:` on a step: every check below reports under it unless it names its
+  # own. The reference's standard is the one metadata.standards lists — the
+  # compiler refuses any other.
+  - id: pull_data
+    uses: connector/consumer/pull_data_filtered
+    name: Negotiate and open a transfer for the mock-backed asset
+    cac: ["TESTLAB-INTERNAL:v1.0.0:EXT-CAC-01"]
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
+          operator: "="
+          operand_right: "testlab-e2e-extensions-asset"
+      expected_policies: "${{ env.usage_policy }}"
+    returns:
+      asset_id:
+        type: string
+      dataplane_url:
+        type: string
+      edr_token:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: asset_id, operator: equals, value: "testlab-e2e-extensions-asset" }
+      - uses: validate/assert
+        cac: ["TESTLAB-INTERNAL:v1.0.0:EXT-CAC-02"]
+        with: { input: edr_token, operator: not_null }
+
+  # `retry_on` is not a parameter of the step: the `labs` extension adds it,
+  # the runner takes it out before the step binds its own, and the extension
+  # runs the call again while the status is listed. 200 is listed on purpose —
+  # the data plane answers every successful backend call with 200 — so the
+  # retry always happens and stops at the bound. The workflow counts the two
+  # `tck.test.step.call` events this step publishes.
+  - id: fetch_with_retry
+    uses: connector/dataplane/http_request
+    name: Pull the mock's path through the SUT's data plane, retrying on 200 twice
+    with:
+      method: GET
+      path: "/testlab-e2e/extensions"
+      retry_on: [200]
+      retry_attempts: 2
+      retry_delay_s: 0
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/field
+        with: { input: value, path: served_by, operator: equals, value: testlab-mock }
+
+teardown:
+  - id: delete_contract
+    uses: connector/provider/delete_contract_definition
+    name: Remove the mock-backed contract
+    with:
+      contract_definition_id: "${{ setup.create_contract.contract_definition_id }}"
+
+  - id: delete_asset
+    uses: connector/provider/delete_asset
+    name: Remove the mock-backed asset
+    with:
+      asset_id: "${{ setup.create_asset.asset_id }}"
+
+  - id: delete_usage_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT usage policy
+    with:
+      policy_id: "${{ setup.create_usage_policy.policy_id }}"
+
+  - id: delete_access_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT access policy
+    with:
+      policy_id: "${{ setup.create_access_policy.policy_id }}"

@@ -79,9 +79,9 @@ Assertion using `uses` / `with` verb-form keys.
 
 | Field | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
+| `cac` | list of string | no | `None` | — |  |
 | `uses` | string | yes | — | — |  |
 | `name` | string | no | `None` | — |  |
-| `cac` | list of string | no | `None` | — |  |
 | `with` | object | no | `None` | — |  |
 
 ### Condition
@@ -110,10 +110,10 @@ Step definition using `uses` and `with` verb-form keys.
 
 | Field | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
+| `cac` | list of string | no | `None` | — |  |
 | `id` | string | no | `None` | — |  |
 | `uses` | string | yes | — | — |  |
 | `name` | string | no | `None` | — |  |
-| `cac` | list of string | no | `None` | — |  |
 | `with` | object | no | `None` | — |  |
 | `returns` | object | no | `None` | — |  |
 | `validate` | list of [Assertion](#assertion) | no | `None` | — |  |

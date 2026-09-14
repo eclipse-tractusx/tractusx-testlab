@@ -19,30 +19,29 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""The one reference grammar.
+"""The keys extensions add to a step and to a ``validate:`` entry.
 
-Kept as a module so the compiler and the runtime cannot compile ``${{ }}``
-differently — they did, and an expression containing ``}`` validated at
-compile time and matched nothing at run time.
+``StepDefinition`` and ``Assertion`` inherit these, so an extension's key is an
+ordinary, typed field: the JSON Schema the IDE reads describes it, and a typo in
+it is refused like any other. Whether the TCK *may* use it is the compiler's
+check, driven by ``Extension.step_keys`` and ``Extension.validation_keys``.
+
+To add keys, write a model of them in the extension's own package and add it to
+the bases below. Keep the classes free of ``model_config``: the core models set
+the strict config, and a base that set its own would be overridden anyway.
 """
 
 from __future__ import annotations
 
-import re
+from tractusx_testlab.extensions.cac.references import CacAssertionKeys, CacStepKeys
 
-EXPR_REF = re.compile(r"\$\{\{\s*((?:[^}]|\}(?!\}))+?)\s*\}\}")
-"""Matches ``${{ expr }}``, capturing the expression without its padding.
 
-Two things this has to get right, and the two halves used to live in
-different modules getting one each. ``}`` may appear *inside* an expression
-— ``${{ env.obj['a}b'] }}`` — so the terminator is two braces, not one; and
-the capture excludes the surrounding spaces, so ``${{ env.x }}`` and
-``${{env.x}}`` name the same variable rather than one of them naming
-``" env.x "``.
-"""
+class StepExtensionKeys(CacStepKeys):
+    """Every key an extension adds to a step."""
 
-EXPR_REF_FULL = re.compile(r"^\$\{\{\s*((?:[^}]|\}(?!\}))+?)\s*\}\}$")
-"""Matches a string that is nothing but a single ``${{ expr }}``."""
+
+class AssertionExtensionKeys(CacAssertionKeys):
+    """Every key an extension adds to a ``validate:`` entry."""
