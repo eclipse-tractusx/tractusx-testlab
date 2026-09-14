@@ -80,7 +80,7 @@ def docs(
         typer.echo(_as_json(step) if as_json else render_catalog(step), nl=False)
         return
 
-    target = output or _DEFAULT_OUTPUT
+    target = _inside_working_directory(output or _DEFAULT_OUTPUT)
     pages = render_pages(step)
     manages_nav = target == _DEFAULT_OUTPUT and _MKDOCS.exists()
     mkdocs = _with_nav(step, target) if manages_nav else None
@@ -100,6 +100,23 @@ def _reject_unknown_steps(step_types: list[str]) -> None:
     if unknown:
         typer.echo(f"Error: unknown step type(s): {', '.join(unknown)}", err=True)
         raise typer.Exit(1)
+
+
+def _inside_working_directory(output: Path) -> Path:
+    """*output* relative to the working directory, refusing anything outside it.
+
+    Writing prunes every ``*.md`` under the target that is no longer generated, so
+    a target such as ``/`` or ``..`` would delete unrelated files.
+    """
+    root = Path.cwd().resolve()
+    resolved = output.resolve()
+    if not resolved.is_relative_to(root):
+        typer.echo(
+            f"Error: --output must be inside the working directory {root}; got {output}.",
+            err=True,
+        )
+        raise typer.Exit(1)
+    return resolved.relative_to(root)
 
 
 def _as_json(step_types: list[str] | None) -> str:
