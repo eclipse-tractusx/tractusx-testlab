@@ -1,0 +1,183 @@
+################################################################################
+# Catena-X - Test Suite
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are proprietary.
+# All rights reserved. No part of this work may be used, copied,
+# modified, or distributed without the prior written permission of
+# the copyright holder.
+#
+# SPDX-License-Identifier: LicenseRef-All-Rights-Reserved
+################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Sonnet 5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+id: dtr-filterability
+namespace: industry-core-part-type-tck-v2.1.1
+
+metadata:
+  name: "DTR Search Filters by digitalTwinType (TC-16)"
+  version: "1.0"
+  description: >
+    CX-0126 (2.1.4, TC-16): digitalTwinType MUST allow data consumers to
+    search for digital twins of a particular type via the DTR's specific
+    asset ID search, without incidentally returning twins of other types
+    (e.g. filtering by digitalTwinType=PartType must not also return
+    PartInstance twins). A known PartInstance shell id
+    (env.shell_descriptor_id_part_instance) MUST NOT appear in the PartType
+    lookup results. Uses the proven connector dataplane path
+    (pull_data_filtered, then the consumer-side registry steps) against the AAS
+    Registry v3 GET /lookup/shells endpoint.
+
+execution:
+  - id: pull_dtr
+    uses: connector/consumer/pull_data_filtered
+    name: Discover the Digital Twin Registry offer, negotiate, and obtain an EDR
+    with:
+      filters:
+        - operand_left: "'http://purl.org/dc/terms/type'.'@id'"
+          operator: "="
+          operand_right: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
+      expected_policies: "${{ env.usage_policy }}"
+    returns:
+      datasets:
+        type: array
+        class: Datasets
+      edr_token:
+        type: string
+        class: AuthToken
+      dataplane_url:
+        type: string
+        class: DataplaneUrl
+    validate:
+      - uses: validate/assert
+        name: "an EDR token is obtained for the DTR offer"
+        with: { input: edr_token, operator: not_null }
+      - uses: validate/assert
+        name: "a data-plane URL is returned for the DTR"
+        with: { input: dataplane_url, operator: not_null }
+
+  - id: lookup_by_digital_twin_type
+    uses: digital-twin-registry/consumer/dataplane/lookup_shell
+    name: "TC-16: GET /lookup/shells filtered by digitalTwinType=PartType"
+    with:
+      dataplane_url: "${{ execution.pull_dtr.dataplane_url }}"
+      edr_token: "${{ execution.pull_dtr.edr_token }}"
+      specific_asset_ids: "${{ env.digital_twin_type_filter }}"
+      headers:
+        Accept: application/json
+        Edc-Bpn: "${{ env.valid_bpn }}"
+    returns:
+      status_code:
+        type: integer
+        class: StatusCode
+      shell_ids:
+        type: array
+        class: ShellIds
+    validate:
+      - uses: validate/assert
+        name: "TC-16: lookup/shells returns HTTP 200"
+        with:
+          input: status_code
+          operator: equals
+          value: 200
+      - uses: validate/assert
+        name: "TC-16: digitalTwinType=PartType filter returns at least one shell id"
+        with:
+          input: shell_ids
+          operator: length_gt
+          value: 0
+      - uses: validate/assert
+        name: "TC-16: the PartType twin is among the digitalTwinType=PartType results"
+        with:
+          input: shell_ids
+          operator: contains
+          value: "${{ env.shell_descriptor_id }}"
+      - uses: validate/assert
+        name: "TC-16: a known PartInstance twin MUST NOT appear in digitalTwinType=PartType results"
+        with:
+          input: shell_ids
+          operator: not_contains
+          value: "${{ env.shell_descriptor_id_part_instance }}"
+
+  - id: extract_first_shell_id
+    uses: util/json_path_extract
+    name: "extract the first shell id from the filtered lookup results"
+    with:
+      input: "${{ execution.lookup_by_digital_twin_type.shell_ids }}"
+      path: "0"
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_null }
+
+  - id: encode_looked_up_shell_id
+    uses: util/base64
+    name: "base64url-encode the looked-up shell id for the shell-descriptors path"
+    with:
+      input: "${{ execution.extract_first_shell_id.value }}"
+      url_safe: true
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_null }
+
+  - id: fetch_looked_up_shell
+    uses: connector/dataplane/http_request
+    name: "fetch a shell returned by the digitalTwinType filter"
+    with:
+      method: GET
+      dataplane_url: "${{ execution.pull_dtr.dataplane_url }}"
+      path: "/shell-descriptors/${{ execution.encode_looked_up_shell_id.value }}"
+      edr_token: "${{ execution.pull_dtr.edr_token }}"
+      headers:
+        Accept: application/json
+        Edc-Bpn: "${{ env.valid_bpn }}"
+    returns:
+      status_code:
+        type: integer
+        class: StatusCode
+      response_body:
+        type: object
+        class: ResponseBody
+    validate:
+      - uses: validate/assert
+        name: "shell lookup returns HTTP 200"
+        with:
+          input: status_code
+          operator: equals
+          value: 200
+      - uses: validate/schema
+        name: "TC-16: a twin returned by the filter has digitalTwinType=PartType"
+        with:
+          input: response_body
+          schema:
+            type: object
+            required: [specificAssetIds]
+            properties:
+              specificAssetIds:
+                type: array
+                contains:
+                  type: object
+                  required: [name, value]
+                  properties:
+                    name: { const: "digitalTwinType" }
+                    value: { const: "PartType" }
+                not:
+                  contains:
+                    type: object
+                    required: [name, value]
+                    properties:
+                      name: { const: "digitalTwinType" }
+                      value: { const: "PartInstance" }
