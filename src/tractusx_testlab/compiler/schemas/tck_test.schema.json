@@ -356,6 +356,22 @@
   "additionalProperties": false,
   "description": "Top-level test definition.",
   "properties": {
+    "cac": {
+      "anyOf": [
+        {
+          "items": {
+            "pattern": "^([^:\\s]+):([^:\\s]+):([^:\\s]+)$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cac"
+    },
     "dataspace": {
       "anyOf": [
         {

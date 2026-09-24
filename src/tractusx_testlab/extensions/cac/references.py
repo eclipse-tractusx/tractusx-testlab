@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""``cac:`` — the conformity assessment criteria a step or a check verifies.
+"""``cac:`` — the conformity assessment criteria a test, a step or a check verifies.
 
 Syntax spec §9.1. Purely traceability: nothing in a run's outcome depends on it.
 It is carried into the compiled IR and into every terminal step event, which is
@@ -76,11 +76,20 @@ CacReferences = list[
 """A ``cac:`` list — each entry ``<standard-id>:<standard-version>:<cac-id>``."""
 
 
+class CacTestKeys(BaseModel):
+    """The key this extension adds to a test."""
+
+    #: The CACs this test as a whole verifies. Every step without its own
+    #: ``cac`` — nested and skipped ones included — reports under them, and so
+    #: does every check whose step does not name one either.
+    cac: CacReferences | None = None
+
+
 class CacStepKeys(BaseModel):
     """The key this extension adds to a step."""
 
     #: The CACs this step verifies; each of its checks reports under them unless
-    #: the check names its own.
+    #: the check names its own. Overrides the test's ``cac`` for this step.
     cac: CacReferences | None = None
 
 

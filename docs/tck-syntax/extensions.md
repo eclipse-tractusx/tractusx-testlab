@@ -17,7 +17,7 @@ add. Enabling one produces a warning that it is experimental, and the compiled p
 
 | Extension | Enables |
 |---|---|
-| `cac` | `cac:` on steps and validations — [§9.1](#91-cac-traceability-cac-p1) |
+| `cac` | `cac:` on tests, steps and validations — [§9.1](#91-cac-traceability-cac-p1) |
 | `labs` | Steps under `labs/`, and extra `with:` parameters on core steps, whose contract is still being tested. Ships `retry_on` / `retry_attempts` / `retry_delay_s` on `connector/dataplane/http_request` |
 
 How extensions are built, and how to add one: [Extensions](../developer/extensions.md).
@@ -27,29 +27,43 @@ How extensions are built, and how to add one: [Extensions](../developer/extensio
 **Experimental extension `cac`.** Requires `extensions: [cac]` in `index.yaml`.
 
 ```yaml
-- id: send_status_notification
-  uses: connector/dataplane/http_request
-  cac: ["CX-0135:v3.1.0:CAC-014"]
-  returns:
-    status_code: { type: integer, class: StatusCode }
-    value: { type: object, class: ResponseBody }
-  validate:
-    - uses: validate/assert
-      with: { input: status_code, operator: equals, value: 200 }       # reports under CAC-014
-    - uses: validate/schema
-      cac: ["CX-0135:v3.1.0:CAC-016"]                                # reports under CAC-016 only
-      with: { input: value, schema: "${{ env.schemas.certificate_schema }}" }
+kind: test
+syntax: v1-alpha
+namespace: certificate-management-tck-v0.0.1
+id: send-status-notification
+metadata: { name: "Send Status Notification" }
+cac: ["CX-0135:v3.1.0:CAC-012"]                                    # the test as a whole
+
+execution:
+  - id: announce
+    uses: util/log                                                  # reports under CAC-012 (the test's)
+    with: { message: "Sending the status notification" }
+  - id: send_status_notification
+    uses: connector/dataplane/http_request
+    cac: ["CX-0135:v3.1.0:CAC-014"]                                 # replaces the test's for this step
+    returns:
+      status_code: { type: integer, class: StatusCode }
+      value: { type: object, class: ResponseBody }
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }     # reports under CAC-014
+      - uses: validate/schema
+        cac: ["CX-0135:v3.1.0:CAC-016"]                              # reports under CAC-016 only
+        with: { input: value, schema: "${{ env.schemas.certificate_schema }}" }
 ```
 
-- Format: `<standard-id>:<standard-version>:<cac-id>`. A step or validation can list several. The model rejects
-  any entry that is not three colon-separated segments.
-- `cac` can be set on a step and on individual validations. A validation's `cac` replaces the step's for
-  reporting. A validation without one reports under the step's.
+- Format: `<standard-id>:<standard-version>:<cac-id>`. A test, step or validation can list several. The model
+  rejects any entry that is not three colon-separated segments.
+- `cac` can be set at the top level of a test file, on a step and on individual validations. For reporting the
+  most specific one wins: a validation's `cac`, else its step's, else the test's. So a step without `cac`
+  reports under the test's — including steps nested in `flow/if` and `flow/retry`, and skipped steps — and so
+  does each of its validations that names none. Nothing is merged: a step's `cac` replaces the test's, a
+  validation's replaces the step's.
 - Every referenced standard, with that exact version, must appear in `metadata.standards`. The compiler enforces
-  this, including for steps nested in `flow/if` and `flow/retry`.
-- Carried into the compiled IR (on the instruction and on each `validate` entry). It is also copied into the
-  terminal step event: `data.cac` for the step, and `cac` on each entry of `data.validations`, with the
-  step's value filled in where the validation has none. A skipped step still names its CACs.
+  this for the test-level `cac` too, and for steps nested in `flow/if` and `flow/retry`.
+- Carried into the compiled IR as written: on the compiled test (`tests[].cac`), on the instruction and on each
+  `validate` entry. It is also copied, already resolved, into the terminal step event: `data.cac` for the step,
+  and `cac` on each entry of `data.validations`. A skipped step still names its CACs.
 - Traceability only: `cac` never changes a verdict.
 - **Not yet built:** the conformity report's CAC coverage matrix, which would compare the CACs a standard
   declares against the CACs a TCK references.

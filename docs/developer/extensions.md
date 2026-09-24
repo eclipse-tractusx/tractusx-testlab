@@ -63,7 +63,7 @@ of `flow/if` and the `steps` of `flow/retry`.
 
 | Name | Contributes | Documented in |
 |---|---|---|
-| `cac` | `cac:` on steps and `validate:` entries: the CACs a step or check verifies | [§9.1](../tck-syntax/extensions.md#91-cac-traceability-cac-p1) |
+| `cac` | `cac:` on tests, steps and `validate:` entries: the CACs a test, step or check verifies | [§9.1](../tck-syntax/extensions.md#91-cac-traceability-cac-p1) |
 | `labs` | Steps under the `labs/` prefix, and `with:` parameters on core steps, whose contract is still being tested | [Experimental steps](#experimental-steps-labs), [Step parameters](#adding-parameters-to-an-existing-step) |
 
 What ships under `labs` today:
@@ -78,7 +78,7 @@ What ships under `labs` today:
 src/tractusx_testlab/extensions/
 ├── __init__.py          # EXTENSIONS: the registry, one entry per extension
 ├── extension.py         # Extension, ExtensionFinding, written_steps()
-├── step_keys.py         # StepExtensionKeys / AssertionExtensionKeys: keys every extension adds
+├── step_keys.py         # TestExtensionKeys / StepExtensionKeys / AssertionExtensionKeys: keys every extension adds
 ├── step_modules.py      # imports every module that registers a labs/ step or step parameters
 ├── cac/                 # a syntax-key extension
 │   ├── __init__.py      # EXTENSION = Extension(name="cac", …)
@@ -104,7 +104,8 @@ Outside the package:
 ```python
 Extension(
     name="cac",                               # what index.yaml writes under `extensions:`
-    summary="Name the CACs a step or a check verifies with `cac:`.",  # quoted in the warning
+    summary="Name the CACs a test, a step or a check verifies with `cac:`.",  # quoted in the warning
+    test_keys=frozenset({"cac"}),             # keys it adds to the top level of a test file
     step_keys=frozenset({"cac"}),             # keys it adds to a step
     validation_keys=frozenset({"cac"}),       # keys it adds to a validate: entry
     step_prefix=None,                         # a reserved step-id prefix, e.g. "labs/"
@@ -158,7 +159,9 @@ class StepExtensionKeys(CacStepKeys, OwnerStepKeys):
     """Every key an extension adds to a step."""
 ```
 
-For keys on `validate:` entries, do the same with `AssertionExtensionKeys` and set `validation_keys`.
+For keys on `validate:` entries, do the same with `AssertionExtensionKeys` and set `validation_keys`. For keys
+at the top level of a test file, use `TestExtensionKeys` and set `test_keys`; the gate reports those with
+`field` set and no step index or phase.
 
 **5. Register it** in `extensions/__init__.py`:
 
@@ -170,15 +173,16 @@ This also adds `owner` to the values `extensions:` accepts.
 
 **6. Optionally, add a check.** Write a function `(tck, test) -> list[ExtensionFinding]` and pass it as
 `check=`. It runs only for TCKs that enabled the extension. Iterate with `written_steps(test)`, which yields
-every step as written, nested flow steps included, together with its phase and top-level index. See
-`cac/certified.py`.
+every step as written, nested flow steps included, together with its phase and top-level index. A finding
+about a test-level key sets `step_index` and `phase` to `None`. See `cac/certified.py`.
 
 Extension modules must not import `tractusx_testlab.models` or `tractusx_testlab.compiler` at runtime,
 because the models import the extensions. Import them under `TYPE_CHECKING` for type hints only.
 
 **7. If the run should use the key**, read it where it is needed. `cac`, for example, is copied onto
-`StepResult.cac` in `player/execution/step_runner.py` and `phase.py`, and into the trace in
-`player/execution/_trace_events.py`. Keep those reads minimal and point to the extension in a comment.
+`StepResult.cac` in `player/execution/step_runner.py` and `phase.py`, falling back to the test's `cac`,
+which `run_phase` binds on the `StepContext` (`bind_test_cac`) so nested flow steps see it too, and into
+the trace in `player/execution/_trace_events.py`. Keep those reads minimal and point to the extension in a comment.
 
 **8. Regenerate the published files:**
 

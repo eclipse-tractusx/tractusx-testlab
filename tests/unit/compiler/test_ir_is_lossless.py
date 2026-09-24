@@ -125,6 +125,7 @@ def _test() -> dict:
         "metadata": {"name": "Everything", "description": "d", "version": "1.0"},
         "dataspace": {"ecosystem": "Catena-X", "version": "jupiter"},
         "infrastructure": {"sut": {"connector": {"required": True}}},
+        "cac": ["CX-0135:v3.1.0:CAC-012"],
         "setup": [
             {
                 "id": "seed",
@@ -274,6 +275,11 @@ class TestEveryStepFieldSurvives:
         instruction = next(i for i in compiled[0]["instructions"] if i["id"] == "act")
         assert instruction["cac"] == ["CX-0135:v3.1.0:CAC-014"]
         assert instruction["validate"][0]["cac"] == ["CX-0135:v3.1.0:CAC-015"]
+
+    def test_the_test_keeps_the_cac_it_verifies(self, tmp_path) -> None:
+        """What every step and check without its own reports under."""
+        _, compiled = _compile(tmp_path)
+        assert compiled[0]["cac"] == ["CX-0135:v3.1.0:CAC-012"]
 
 
 class TestEveryTestFieldSurvives:

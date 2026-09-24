@@ -28,6 +28,9 @@ logs_dir: ~/.testlab/logs
 
 # -- Server ------------------------------------------------------------------
 server_port: 8100                         # also serves step callbacks
+# mock_public_url: https://testlab.example.com
+#                                         # where the SUT reaches the mock server
+#                                         # (origin only). Unset: localhost:<server_port>
 max_upload_bytes: 52428800                # 50 MB
 default_timeout_s: 600.0                  # per step, unless the step overrides
 

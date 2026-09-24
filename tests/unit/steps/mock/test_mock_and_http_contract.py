@@ -52,6 +52,7 @@ def _definition(uses: str) -> StepDefinition:
 @pytest.fixture()
 def context(mock_context: MagicMock) -> MagicMock:
     mock_context.config.server_port = 8080
+    mock_context.config.mock_public_url = None
     mock_context.config.default_timeout_s = 30
     return mock_context
 
@@ -79,6 +80,33 @@ class TestMockEndpoint:
         assert output.value["full_mock_url"] == f"http://localhost:8080{_PATH}"
         assert output.value["mock"]["path"] == _PATH
         assert output.value["mock"]["method"] == "POST"
+
+    @pytest.mark.asyncio
+    async def test_the_urls_are_published_under_mock_public_url_when_set(
+        self, context: MagicMock
+    ) -> None:
+        # The server binds locally; the SUT dials whatever the operator says.
+        context.config.mock_public_url = "https://testlab.example.com"
+
+        output = await MockEndpointStep().invoke(
+            {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
+        )
+
+        assert output.value["base_mock_url"] == "https://testlab.example.com"
+        assert output.value["full_mock_url"] == f"https://testlab.example.com{_PATH}"
+        assert output.value["mock"]["full_mock_url"] == f"https://testlab.example.com{_PATH}"
+
+    @pytest.mark.asyncio
+    async def test_a_trailing_slash_on_mock_public_url_does_not_double_up(
+        self, context: MagicMock
+    ) -> None:
+        context.config.mock_public_url = "http://engine:8100/"
+
+        output = await MockEndpointStep().invoke(
+            {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
+        )
+
+        assert output.value["full_mock_url"] == f"http://engine:8100{_PATH}"
 
     @pytest.mark.asyncio
     async def test_the_mock_carries_the_id_it_was_registered_under(

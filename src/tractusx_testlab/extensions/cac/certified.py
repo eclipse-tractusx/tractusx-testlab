@@ -51,6 +51,8 @@ def _cac_in(step: dict[str, Any]) -> list[tuple[str, str]]:
 def uncertified_cac(tck: TckDefinition, test: TestDefinition) -> list[ExtensionFinding]:
     """Every ``cac`` in *test* whose standard the manifest does not certify against.
 
+    The test's own ``cac`` is held to it as well as its steps' and checks'.
+
     ``metadata.standards`` is what the conformity report is drawn up for, so a
     CAC of a standard missing from it — or of another version of one listed —
     is coverage the report would attribute to nothing. The usual cause is a
@@ -59,24 +61,29 @@ def uncertified_cac(tck: TckDefinition, test: TestDefinition) -> list[ExtensionF
     certified = {
         f"{standard.get('id')}:{standard.get('version')}" for standard in tck.metadata.standards
     }
+    # The test's own ``cac`` belongs to no step: it is located by field alone.
+    located: list[tuple[str | None, int | None, str, str]] = [
+        (None, None, "cac", reference) for reference in _strings(test.cac)
+    ]
+    for step_phase, step_index, step in written_steps(test):
+        located += [(step_phase, step_index, name, ref) for name, ref in _cac_in(step)]
     findings: list[ExtensionFinding] = []
-    for phase, idx, step in written_steps(test):
-        for field_name, reference in _cac_in(step):
-            match = CAC_REF.match(reference)
-            # A malformed entry was already refused by the model, in the
-            # author's terms; only the standard it names is checked here.
-            if match is None or f"{match['standard']}:{match['version']}" in certified:
-                continue
-            findings.append(
-                ExtensionFinding(
-                    message=(
-                        f"cac '{reference}' belongs to {match['standard']} "
-                        f"{match['version']}, which metadata.standards does not list. "
-                        f"Listed: {', '.join(sorted(certified)) or 'none'}."
-                    ),
-                    step_index=idx,
-                    field=field_name,
-                    phase=phase,
-                )
+    for phase, idx, field_name, reference in located:
+        match = CAC_REF.match(reference)
+        # A malformed entry was already refused by the model, in the
+        # author's terms; only the standard it names is checked here.
+        if match is None or f"{match['standard']}:{match['version']}" in certified:
+            continue
+        findings.append(
+            ExtensionFinding(
+                message=(
+                    f"cac '{reference}' belongs to {match['standard']} "
+                    f"{match['version']}, which metadata.standards does not list. "
+                    f"Listed: {', '.join(sorted(certified)) or 'none'}."
+                ),
+                step_index=idx,
+                field=field_name,
+                phase=phase,
             )
+        )
     return findings

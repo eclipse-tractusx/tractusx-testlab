@@ -104,6 +104,7 @@ async def run_phase(
     # runner adds the step, including for the steps nested inside a flow step,
     # which run on this same context (_reporters).
     bind_reporters(context, monitor, job_id, test.definition.id, config.phase_label)
+    context.bind_test_cac(getattr(test.definition, "cac", None))
 
     for step_idx, step_def in enumerate(steps_source):
         await _handle_pause_gate(jobs, job_id, config)
@@ -139,9 +140,8 @@ async def run_phase(
             context,
         ):
             skipped = skipped_result(step_name, step_def.uses, config.phase)
-            # A CAC whose step was skipped is a CAC this run did not verify, and
-            # the report can only say so if the skip still names it.
-            skipped.cac = list(step_def.cac or [])
+            # A skipped step still names its CACs: ones this run did not verify.
+            skipped.cac = list(step_def.cac or context.test_cac)
             results.append(skipped)
             monitor.on_step_completed(job_id, test.definition.id, step_def.id, skipped)
             # A step whose `if:` said no must not then run: recording SKIPPED and

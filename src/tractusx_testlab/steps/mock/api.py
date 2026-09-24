@@ -47,6 +47,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _published_base_url(context: StepContext) -> str:
+    """The mock server's root as the system under test reaches it.
+
+    ``mock_public_url`` (``TESTLAB_MOCK_PUBLIC_URL``) is the operator's word
+    on the address; without it the server is assumed to share the SUT's host.
+    Read field by field rather than through the config's ``mock_base_url``
+    property so a partial config double still resolves.
+    """
+    public = getattr(context.config, "mock_public_url", None)
+    if isinstance(public, str) and public:
+        return public.rstrip("/")
+    return f"http://localhost:{context.config.server_port}"
+
+
 class MockEndpointParams(MockIdParams):
     """Input contract of ``mock/api``."""
 
@@ -124,7 +138,9 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
         if callback_manager is not None:
             callback_manager.register(params.path, params.method)
 
-        base_url = f"http://localhost:{context.config.server_port}"
+        # Where the SUT dials in, not where the server binds: the operator's
+        # ``mock_public_url`` when the SUT is on another host, else localhost.
+        base_url = _published_base_url(context)
         full_url = f"{base_url}{params.path}"
         params.publish_url(full_url, context)
 

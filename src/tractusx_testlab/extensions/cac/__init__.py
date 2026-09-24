@@ -24,9 +24,10 @@
 
 """``cac`` — conformity assessment criteria traceability. **Experimental.**
 
-Adds ``cac:`` to steps and ``validate:`` entries (syntax spec §9.1). The compiler
-holds every reference to ``metadata.standards``; the player copies it into the
-terminal step event (``data.cac`` and ``cac`` on each validation).
+Adds ``cac:`` to tests, steps and ``validate:`` entries (syntax spec §9.1). The
+compiler holds every reference to ``metadata.standards``; the player copies the
+effective one — the check's, else its step's, else the test's — into the terminal
+step event (``data.cac`` and ``cac`` on each validation).
 """
 
 from __future__ import annotations
@@ -36,7 +37,8 @@ from tractusx_testlab.extensions.extension import Extension
 
 EXTENSION = Extension(
     name="cac",
-    summary="Name the CACs a step or a check verifies with `cac:`.",
+    summary="Name the CACs a test, a step or a check verifies with `cac:`.",
+    test_keys=frozenset({"cac"}),
     step_keys=frozenset({"cac"}),
     validation_keys=frozenset({"cac"}),
     check=uncertified_cac,

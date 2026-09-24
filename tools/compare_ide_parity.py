@@ -44,6 +44,12 @@ by how it fails at runtime:
 ``F`` — a registered step with no IDE block.
 ``G`` — an IDE parameter that binds only through a ``validation_alias``.  It
         runs today; it is still two spellings of one field.
+``I`` — an input the two sides gate differently: the engine accepts it only
+        through an experimental extension the TCK must enable, and the block
+        offers it unconditionally (or marks it with the wrong extension) — or
+        the block hides a core input behind an extension the engine does not
+        require.  The block's ``extension`` marker must name the extension the
+        engine registers the parameter under.
 ``H`` — the two sides disagree on which dataspace release the step runs on.
         The engine's registration decides whether a test resolves the step at
         all; the block's ``dataspace_version`` decides whether the toolbox
@@ -82,6 +88,7 @@ from pydantic import BaseModel
 from pydantic.aliases import AliasChoices, AliasPath
 
 from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.steps.step_extension import extensions_for
 
 # -- Known name drift ---------------------------------------------------------
 # The IDE spelling on the left is what the exporter writes; the engine name on
@@ -155,6 +162,21 @@ def _describe_model(model: type[BaseModel] | None) -> dict:
     }
 
 
+def _extension_params(step_type: str) -> dict:
+    """The ``with:`` keys parameter extensions add to *step_type*, tagged by extension.
+
+    An extension's keys are refused by the compiler unless the TCK enables the
+    extension, so a block may offer them only behind the same switch — which
+    is what the ``extension`` marker on a block param declares.
+    """
+    fields: dict[str, dict] = {}
+    for extension in extensions_for(step_type):
+        described = _describe_model(extension.params_model)
+        for name, field in described["fields"].items():
+            fields[name] = {**field, "extension": extension.extension}
+    return fields
+
+
 def read_engine() -> dict:
     """The registry's real input and output surface, aliases resolved."""
     engine: dict[str, dict] = {}
@@ -162,8 +184,10 @@ def read_engine() -> dict:
         cls = StepRegistry.get_any(step_type)
         if cls is None:
             continue
+        params = _describe_model(getattr(cls, "params_model", None))
+        params["fields"].update(_extension_params(step_type))
         engine[step_type] = {
-            "params": _describe_model(getattr(cls, "params_model", None)),
+            "params": params,
             "output": _describe_model(getattr(cls, "output_model", None)),
             "dataspace_version": StepRegistry.version_of(step_type),
         }
@@ -233,7 +257,7 @@ def compare(engine: dict, blocks: list[dict]) -> dict:
         lookup = _input_lookup(step["params"])
         readable = _readable_names(step)
 
-        dropped, bound, required_drift = [], [], []
+        dropped, bound, required_drift, gate_drift = [], [], [], []
         consumed = set()
         for param in block.get("params") or []:
             name = param["name"]
@@ -254,6 +278,9 @@ def compare(engine: dict, blocks: list[dict]) -> dict:
                           "via_alias": len(field["accepts"]) > 1})
             if bool(param.get("required")) != field["required"]:
                 required_drift.append(name)
+            if param.get("extension") != field.get("extension"):
+                gate_drift.append({"name": name, "ide": param.get("extension"),
+                                   "engine": field.get("extension")})
 
         engine_only_params = [
             {"name": name, "type": field["type"], "accepts": field["accepts"],
@@ -282,6 +309,7 @@ def compare(engine: dict, blocks: list[dict]) -> dict:
             "params_extra": step["params"]["extra"],
             "dropped_params": dropped, "bound_params": bound,
             "required_drift": required_drift, "engine_only_params": engine_only_params,
+            "gate_drift": gate_drift,
             "unreadable_returns": sorted(unreadable),
             "engine_only_outputs": sorted(engine_only_outputs),
             "version_drift": version_drift,
@@ -352,6 +380,13 @@ def report(result: dict) -> int:
     )
 
     section(
+        "I. extension gate the two sides disagree on",
+        [f"   {r['uses']}: " + ", ".join(
+            f"{g['name']} (block: {g['ide'] or 'always'}, engine: {g['engine'] or 'always'})"
+            for g in r["gate_drift"])
+         for r in matched if r["gate_drift"]],
+    )
+    section(
         "H. dataspace release the two sides disagree on",
         [f"   {r['uses']}: block says {r['version_drift']['ide'] or 'every release'}, "
          f"engine registers {r['version_drift']['engine'] or 'every release'}"
@@ -364,6 +399,7 @@ def report(result: dict) -> int:
         + sum(len(r["unreadable_returns"]) for r in matched)
         + sum(1 for r in matched for p in r["bound_params"] if p["via_alias"])
         + sum(1 for r in matched if r["version_drift"])
+        + sum(len(r["gate_drift"]) for r in matched)
     )
     print(f"\n{breaking} breaking divergence(s) across {len(rows)} IDE blocks.")
     return 1 if breaking else 0

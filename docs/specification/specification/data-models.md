@@ -182,6 +182,7 @@ classDiagram
         +Path trust_store_dir = "~/.testlab/trusted_compilers/"
         +Path storage_dir = "~/.testlab/packages/"
         +int server_port = 8100
+        +str mock_public_url?
         +int max_upload_bytes = 52428800
         +VaultConfig vault?
         +Path library_path?

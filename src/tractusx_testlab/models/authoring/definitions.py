@@ -35,7 +35,11 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from tractusx_testlab.extensions import EXTENSIONS
-from tractusx_testlab.extensions.step_keys import AssertionExtensionKeys, StepExtensionKeys
+from tractusx_testlab.extensions.step_keys import (
+    AssertionExtensionKeys,
+    StepExtensionKeys,
+    TestExtensionKeys,
+)
 from tractusx_testlab.models.authoring.infrastructure import (
     DataspaceContext,
     InfrastructureConfig,
@@ -183,7 +187,7 @@ class StepDefinition(StepExtensionKeys):
     if_condition: str | None = Field(default=None, alias="if")
 
 
-class TestDefinition(BaseModel):
+class TestDefinition(TestExtensionKeys):
     """Top-level test definition."""
 
     __test__ = False  # a TestLab test, not a pytest one

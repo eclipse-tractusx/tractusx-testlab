@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from tractusx_testlab.models import VaultConfig
@@ -70,6 +70,13 @@ class TestlabConfig(BaseSettings):
     #: without the transcript becoming unreadable.
     data_dir: Path = Field(default=_DEFAULT_BASE / "data")
     server_port: int = Field(default=8100, ge=1, le=65535)
+    #: The mock server's address as the system under test reaches it — origin
+    #: only, no path: ``https://testlab.example.com`` or ``http://engine:8100``.
+    #: ``mock/api`` publishes every callback URL under this root. Left unset,
+    #: it is ``http://localhost:<server_port>``, which is right only while the
+    #: SUT shares the host; a connector in another container, or the engine
+    #: behind an ingress, needs the address it can actually dial.
+    mock_public_url: str | None = Field(default=None)
     max_upload_bytes: int = Field(default=52_428_800, gt=0)  # 50 MB
     default_timeout_s: float = Field(default=600.0, gt=0)
     #: The deployment this engine drives — its own connector, registry and
@@ -78,3 +85,26 @@ class TestlabConfig(BaseSettings):
     infrastructure: Infrastructure = Field(default_factory=Infrastructure)
     vault: VaultConfig | None = None
     library_path: Path | None = None
+
+    @field_validator("mock_public_url")
+    @classmethod
+    def _origin_only(cls, value: str | None) -> str | None:
+        """An origin, not a page: scheme and host, no trailing slash.
+
+        The step joins the mock's path straight onto it, so a trailing slash
+        would double up and a bare hostname would produce a relative URL the
+        SUT cannot dial.
+        """
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            return None
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("mock_public_url must start with http:// or https://")
+        return value.rstrip("/")
+
+    @property
+    def mock_base_url(self) -> str:
+        """Root URL the mock server is published under, resolved."""
+        return self.mock_public_url or f"http://localhost:{self.server_port}"

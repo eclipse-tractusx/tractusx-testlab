@@ -124,7 +124,9 @@ async def run_step(
             step_instance, step_def, step_name, context, started_at, params
         )
     wire.attach_to(result, recorder)
-    result.cac = list(getattr(step_def, "cac", None) or [])
+    # The step's own CACs, else the test's (§9.1): a step without ``cac`` —
+    # nested in a flow step or not — still verifies what its test claims to.
+    result.cac = list(getattr(step_def, "cac", None) or context.test_cac)
     return result
 
 
