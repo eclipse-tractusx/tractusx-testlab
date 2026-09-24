@@ -42,8 +42,10 @@ from typing import Any
 import yaml
 
 from tractusx_testlab.compiler.validation._variable_declarations import (
-    declared_variable_ids,
     validate_variable_declarations,
+)
+from tractusx_testlab.compiler.validation._variable_references import (
+    declared_variable_ids,
     validate_variable_references,
 )
 from tractusx_testlab.compiler.validation.json_schema_findings import collect_errors, validator_for
