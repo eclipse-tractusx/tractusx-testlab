@@ -46,7 +46,7 @@ comes with it as a dependency.
 To install one specific release:
 
 ```bash
-pip install tractusx-testlab==1.0.0a3
+pip install tractusx-testlab==1.0.0a4
 ```
 
 ---
@@ -161,7 +161,7 @@ If `testlab` is not found after installation, ensure:
 
 ### `No matching distribution found for tractusx-testlab`
 
-Only pre-releases are published so far. Add `--pre`, or pin a version such as `tractusx-testlab==1.0.0a3`.
+Only pre-releases are published so far. Add `--pre`, or pin a version such as `tractusx-testlab==1.0.0a4`.
 
 ### Python version too old
 
