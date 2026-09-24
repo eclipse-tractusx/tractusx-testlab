@@ -162,6 +162,18 @@ class TestSomethingMustSeedIt:
         assert len(errors) == 1
         assert "Nothing would seed it" in errors[0]
 
+    def test_a_document_the_sut_registers_is_accepted(self) -> None:
+        entry = _policy()
+        entry["with"] = {**entry["with"], "source": "register", "scope": "sut"}
+
+        assert validate_variable_declarations(_env(entry)) == []
+
+    def test_a_document_to_register_must_carry_its_value(self) -> None:
+        errors = validate_variable_declarations(_env(_policy(**{"with": {"source": "register"}})))
+
+        assert len(errors) == 1
+        assert "Nothing would seed it" in errors[0]
+
     def test_an_unrecognized_source_is_rejected(self) -> None:
         errors = validate_variable_declarations(_env(_string(**{"with": {"source": "runtime"}})))
 

@@ -52,8 +52,13 @@ from tractusx_testlab.syntax.variables import (
 )
 
 #: What ``with.source`` may say. ``value`` is the default, so an entry that
-#: names no source carries its value in the manifest.
-_SOURCES: frozenset[str] = frozenset({"input", "value", "generated"})
+#: names no source carries its value in the manifest. ``register`` carries its
+#: value too — it is a document the SUT operator registers in their own system
+#: before the run, and the run reads the same document the operator was given.
+_SOURCES: frozenset[str] = frozenset({"input", "value", "generated", "register"})
+
+#: The sources whose value is written in the manifest.
+_CARRIED_SOURCES: frozenset[str] = frozenset({"value", "register"})
 
 #: Namespaces a variable may not name, and what to write instead. ``generate/``
 #: parses — it has since the first verb-form grammar — but nothing in the engine
@@ -155,7 +160,7 @@ def _check_source(entry: dict[str, Any], var_id: str) -> Iterator[str]:
         return
 
     # ``value`` is the default: an entry naming no source carries its own value.
-    if source is None or str(source) == "value":
+    if source is None or str(source) in _CARRIED_SOURCES:
         if keys.VALUE not in with_block:
             yield (
                 f"Variable '{var_id}' has no 'with.value' and does not ask the "

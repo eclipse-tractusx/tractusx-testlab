@@ -266,6 +266,9 @@ sequenceDiagram
 
 - `testlab run` and `TestlabPlayer` start the server in a background thread on `server_port` (default `8100`) for the
   duration of the run; under `testlab serve` the same app serves them.
+- `full_mock_url` is built on `mock_public_url` (`TESTLAB_MOCK_PUBLIC_URL`), the server's address as the SUT reaches
+  it — origin only, e.g. `https://testlab.example.com`. Unset, it is `http://localhost:<server_port>`, which only
+  works while the SUT shares the host.
 - If the request does not arrive within `timeout_s`, the step fails. Mock registrations last for the run.
 
 ## Deployment Modes

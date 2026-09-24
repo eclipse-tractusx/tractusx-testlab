@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `mock_public_url` (`TESTLAB_MOCK_PUBLIC_URL`): the mock server's address as
+  the system under test reaches it. `mock/api` builds `base_mock_url` and
+  `full_mock_url` on it, so a SUT on another host — or an engine behind an
+  ingress — is handed a callback it can dial. Unset, the URLs stay
+  `http://localhost:<server_port>` as before.
 - Experimental extensions (`tractusx_testlab.extensions`): additions that are
   not part of `v1-alpha` yet, which a TCK opts into with `extensions: [...]` in
   `index.yaml`. The compiler rejects an extension's keys, parameters and steps in any TCK

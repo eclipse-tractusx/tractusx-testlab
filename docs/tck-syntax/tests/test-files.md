@@ -28,6 +28,7 @@ metadata:
 | `metadata.name` | R | Label for the user. |
 | `metadata.version` | R | For version control. |
 | `metadata.description` | O | Detailed text. |
+| `cac` | O **[PROP]** | CAC identifiers this test as a whole verifies; every step and validation without its own reports under them. Experimental extension: needs `extensions: [cac]` in `index.yaml`. See [§9.1](../extensions.md#91-cac-traceability-cac-p1). |
 
 ## 4.2 Phases **[SPEC]**
 

@@ -100,4 +100,10 @@ def _compile_single_test(
         if test_data.get(declared) is not None:
             compiled[declared] = test_data[declared]
 
+    # The CACs the test as a whole verifies (the ``cac`` extension, §9.1) —
+    # what every step and check without its own reports under. Carried only
+    # when written, like a step's, so the compiled form stays the test's shape.
+    if test_data.get("cac"):
+        compiled["cac"] = test_data["cac"]
+
     return compiled

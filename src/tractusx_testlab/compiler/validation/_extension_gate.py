@@ -61,6 +61,19 @@ def extension_findings(tck: TckDefinition, test: TestDefinition) -> list[Validat
     """Every use of an extension *tck* did not enable, and every enabled one's findings."""
     enabled = set(tck.extensions)
     issues: list[ValidationIssue] = []
+    written = test.model_dump(by_alias=True, exclude_none=True)
+    for extension in EXTENSIONS.values():
+        if extension.name in enabled:
+            continue
+        # A test-level key belongs to no step, so it is located by field alone.
+        for key in sorted(extension.test_keys & written.keys()):
+            issues.append(
+                ValidationIssue(
+                    level="error",
+                    message=_not_enabled(f"'{key}:' on the test", extension.name),
+                    field=key,
+                )
+            )
     for phase, idx, step in written_steps(test):
         for extension in EXTENSIONS.values():
             if extension.name in enabled:
@@ -69,11 +82,7 @@ def extension_findings(tck: TckDefinition, test: TestDefinition) -> list[Validat
                 issues.append(
                     ValidationIssue(
                         level="error",
-                        message=(
-                            f"{used} comes from the experimental extension "
-                            f"'{extension.name}', which this TCK does not enable. Add "
-                            f"'extensions: [{extension.name}]' to index.yaml to use it."
-                        ),
+                        message=_not_enabled(used, extension.name),
                         step_index=idx,
                         field=field,
                         phase=phase,
@@ -94,6 +103,14 @@ def extension_findings(tck: TckDefinition, test: TestDefinition) -> list[Validat
             for finding in check(tck, test)
         ]
     return issues
+
+
+def _not_enabled(used: str, extension: str) -> str:
+    """The refusal for one use of an extension the TCK did not enable."""
+    return (
+        f"{used} comes from the experimental extension '{extension}', which this "
+        f"TCK does not enable. Add 'extensions: [{extension}]' to index.yaml to use it."
+    )
 
 
 def _uses_of(extension: Extension, step: dict[str, Any]) -> list[tuple[str, str]]:

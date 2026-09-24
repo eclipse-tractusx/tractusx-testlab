@@ -39,9 +39,11 @@ class ExtensionFinding:
     """One problem an extension found in a test, located the way the compiler reports."""
 
     message: str
-    step_index: int
+    #: ``None`` with ``phase`` ``None`` for a finding about the test itself,
+    #: e.g. a test-level key, rather than about one of its steps.
+    step_index: int | None
     field: str
-    phase: str
+    phase: str | None
 
 
 #: An extension's own compile-time check, run only for a TCK that enabled it.
@@ -52,8 +54,8 @@ ExtensionCheck = Callable[["TckDefinition", "TestDefinition"], list[ExtensionFin
 class Extension:
     """An experimental addition to the syntax or the step catalogue.
 
-    ``step_keys`` and ``validation_keys`` name the keys it adds to a step and to
-    a ``validate:`` entry. The keys themselves are declared as fields in
+    ``test_keys``, ``step_keys`` and ``validation_keys`` name the keys it adds to
+    a test, to a step and to a ``validate:`` entry. The keys themselves are declared as fields in
     :mod:`tractusx_testlab.extensions.step_keys`; naming them here is what lets
     the compiler refuse them in a TCK that did not enable the extension.
     ``step_prefix`` reserves a namespace of step ids, e.g. ``labs/``.
@@ -61,6 +63,7 @@ class Extension:
 
     name: str
     summary: str
+    test_keys: frozenset[str] = frozenset()
     step_keys: frozenset[str] = frozenset()
     validation_keys: frozenset[str] = frozenset()
     step_prefix: str | None = None

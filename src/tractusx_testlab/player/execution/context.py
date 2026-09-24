@@ -50,6 +50,7 @@ class StepContext:
         "_listener_reporter",
         "_reporter",
         "_services",
+        "_test_cac",
         "_variables",
     )
 
@@ -68,6 +69,7 @@ class StepContext:
         self._invoker: StepInvoker | None = None
         self._reporter: CallReporter | None = None
         self._listener_reporter: ListenerReporter | None = None
+        self._test_cac: tuple[str, ...] = ()
 
     # ------------------------------------------------------------------
     # Configuration
@@ -184,6 +186,24 @@ class StepContext:
         """Say that the call arrived, and what it carried."""
         if self._listener_reporter is not None:
             self._listener_reporter.received(step_type, step_id, listener, request, waited_ms)
+
+    # ------------------------------------------------------------------
+    # Traceability: the CACs the running test verifies
+    # ------------------------------------------------------------------
+
+    def bind_test_cac(self, cac: list[str] | None) -> None:
+        """Fix the test-level ``cac`` (syntax spec §9.1) — the phase runner does.
+
+        Bound on the context rather than passed to the runner for the same
+        reason the reporters are: a step nested inside a flow step runs on this
+        context, and it reports under the test's CACs just as a top-level one.
+        """
+        self._test_cac = tuple(cac or ())
+
+    @property
+    def test_cac(self) -> list[str]:
+        """The CACs a step that names none of its own reports under."""
+        return list(self._test_cac)
 
     # ------------------------------------------------------------------
     # Job / Memory

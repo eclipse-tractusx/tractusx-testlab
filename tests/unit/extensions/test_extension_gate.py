@@ -44,7 +44,7 @@ from tractusx_testlab.models import TckDefinition
 _CAC = ["CX-0135:v3.1.0:CAC-014"]
 
 
-def _issues(tmp_path, step: dict, extensions: list[str]) -> list:
+def _issues(tmp_path, step: dict, extensions: list[str], **test_keys) -> list:
     manifest = {
         "syntax": "v1-alpha",
         "kind": "tck",
@@ -60,6 +60,7 @@ def _issues(tmp_path, step: dict, extensions: list[str]) -> list:
         "namespace": "gate-tck",
         "metadata": {"name": "t"},
         "execution": [step],
+        **test_keys,
     }
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "t.yaml").write_text(yaml.dump(test), encoding="utf-8")
@@ -76,6 +77,20 @@ class TestAKeyNeedsItsExtension:
         assert "experimental extension 'cac'" in error.message
         assert "extensions: [cac]" in error.message
         assert error.field == "cac"
+
+    def test_a_test_key_is_refused_without_it(self, tmp_path) -> None:
+        issues = _issues(tmp_path, _log(), [], cac=_CAC)
+        (error,) = [i for i in issues if i.level == "error"]
+        assert "'cac:' on the test" in error.message
+        assert "experimental extension 'cac'" in error.message
+        assert "extensions: [cac]" in error.message
+        assert error.field == "cac"
+        assert error.step_index is None
+        assert error.phase is None
+
+    def test_a_test_key_is_accepted_with_it(self, tmp_path) -> None:
+        issues = _issues(tmp_path, _log(), ["cac"], cac=_CAC)
+        assert [i for i in issues if i.level == "error"] == []
 
     def test_a_validation_key_is_refused_without_it(self, tmp_path) -> None:
         check = {"uses": "validate/assert", "cac": _CAC, "with": {"input": "value"}}
