@@ -465,7 +465,7 @@ package under a versioned file name. The file name must be a bare name: one with
 (`../x-1.0.tck`, `sub/x-1.0.tck`) is refused with `400`. Upload is limited to `max_upload_bytes` (50 MB by default).
 A `package_id` is the twelve hexadecimal digits the upload returned; any other value names no package (`404`).
 
-!!! note "Known limitations in 1.0.0a4"
+!!! note "Known limitations in 1.0.0a5"
     `format` is reported as `ENCRYPTED` for every package, readable or not, and `GET /testlab/packages` lists each
     package with the whole file stem as its `name` and an empty `version`. Uploaded packages are stored under
     `<storage_dir>/packages/`.

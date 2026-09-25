@@ -357,7 +357,7 @@ the call, a person has to, and this is the line that tells them what to type.
 | `test_id` | string | |
 | `step_id` | string \| null | |
 | `step_type` | string | `mock/wait/http_request`. |
-| `listener` | `Listener` | The address the step is blocked on. |
+| `listener` | `Listener` | The address the step is blocked on. `via` says how the call has to arrive: `direct` (`mock/wait/http_request` — the SUT calls `url`) or `dataplane` (`mock/wait/dataplane/http_request` — the SUT negotiates `offer.asset_id` on the engine connector at `offer.dsp_url` / `offer.participant_id` and calls through its data plane, so `url` is only the data plane's target). |
 | `timeout_s` | number | How long the step waits before failing. |
 
 ```json

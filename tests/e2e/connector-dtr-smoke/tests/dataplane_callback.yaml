@@ -1,0 +1,318 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: dataplane-callback
+
+metadata:
+  name: "Dataplane Callback"
+  version: "v1.0.0"
+  description: >
+    `mock/wait/dataplane/http_request` against the connector it names.
+    inbound_call.yaml puts its mock behind an asset on the SUT; this test
+    puts it behind an asset on the *engine's* connector, which is the shape
+    a callback the SUT must deliver through the dataspace takes: the offer
+    lives on the test suite's connector, is visible to one business partner
+    only, and every id in it carries this run's `execution.id`, so two runs
+    never offer the same thing. The umbrella's only other connector is the
+    SUT, which this suite cannot drive as a consumer, so the engine's own
+    consumer plays the partner the access policy names — it negotiates with
+    the engine connector's DSP endpoint and posts through that connector's
+    data plane. The call therefore reaches the mock the way the step says it
+    will: from the engine connector's data plane, for the named asset. The
+    workflow then reads the waiting event back and checks that it announced
+    the offer — the asset, and the engine connector's DSP URL and DID —
+    rather than the mock URL.
+
+setup:
+  - id: open_callback
+    uses: mock/api
+    name: Open the mock endpoint the engine connector's data plane will post to
+    with:
+      method: POST
+      path: "/testlab-e2e/dataplane-callback"
+      response_status: 202
+      response_body:
+        accepted: true
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+      full_mock_url:
+        type: string
+
+  # Everything below is registered on the engine's connector over its
+  # management API. The `connector/provider/*` steps address the system under
+  # test, and this offer belongs to the test suite. The bodies are the ones
+  # those steps send to a Saturn connector.
+  #
+  # Catalog visibility: `action: access` and one business partner. Only the
+  # participant the access policy names sees the offer at all, which is what
+  # keeps a live connector down to one offer per partner and per run.
+  - id: create_access_policy
+    uses: http/http_request
+    name: Allow one business partner to see this run's offer
+    with:
+      method: POST
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions"
+      headers:
+        x-api-key: "${{ infrastructure.engine.connector.api_key }}"
+        Content-Type: application/json
+      body:
+        "@context":
+          - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+          - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+          - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+        "@type": PolicyDefinition
+        "@id": "testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
+        policy:
+          "@type": Set
+          permission:
+            - action: access
+              constraint:
+                - leftOperand: BusinessPartnerNumber
+                  operator: isAnyOf
+                  rightOperand:
+                    - "${{ env.engine_bpnl }}"
+          prohibition: []
+          obligation: []
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+
+  # The same usage policy the other tests offer from the SUT, so the pull
+  # below can hold the offer to `env.usage_policy`.
+  - id: create_usage_policy
+    uses: http/http_request
+    name: Register the usage policy the offer is made under
+    with:
+      method: POST
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions"
+      headers:
+        x-api-key: "${{ infrastructure.engine.connector.api_key }}"
+        Content-Type: application/json
+      body:
+        "@context":
+          - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+          - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+          - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+        "@type": PolicyDefinition
+        "@id": "testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+        policy:
+          "@type": Set
+          permission:
+            - action: use
+              constraint:
+                - and:
+                    - leftOperand: Membership
+                      operator: eq
+                      rightOperand: active
+                    - leftOperand: FrameworkAgreement
+                      operator: eq
+                      rightOperand: "DataExchangeGovernance:1.0"
+                    - leftOperand: UsagePurpose
+                      operator: isAnyOf
+                      rightOperand:
+                        - "cx.core.digitalTwinRegistry:1"
+          prohibition: []
+          obligation: []
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+
+  # The asset's backend is the mock server's root as a pod reaches it, and
+  # the path, the method and the body travel with each call, as in
+  # inbound_call.yaml.
+  - id: create_asset
+    uses: http/http_request
+    name: Register this run's asset on the engine connector, backed by the mock
+    with:
+      method: POST
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/assets"
+      headers:
+        x-api-key: "${{ infrastructure.engine.connector.api_key }}"
+        Content-Type: application/json
+      body:
+        "@context":
+          "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+          dct: "http://purl.org/dc/terms/"
+        "@type": Asset
+        "@id": "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+        properties:
+          "dct:type":
+            "@id": "https://w3id.org/catenax/taxonomy#TestData"
+        privateProperties: {}
+        dataAddress:
+          "@type": DataAddress
+          type: HttpData
+          baseUrl: "${{ env.mock_server_external_url }}"
+          proxyPath: "true"
+          proxyMethod: "true"
+          proxyBody: "true"
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+
+  - id: create_contract
+    uses: http/http_request
+    name: Publish the asset behind the one-partner access policy
+    with:
+      method: POST
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/contractdefinitions"
+      headers:
+        x-api-key: "${{ infrastructure.engine.connector.api_key }}"
+        Content-Type: application/json
+      body:
+        "@context":
+          "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+        "@type": ContractDefinition
+        "@id": "testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
+        accessPolicyId: "testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
+        contractPolicyId: "testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+        assetsSelector:
+          - operandLeft: "https://w3id.org/edc/v0.0.1/ns/id"
+            operator: "="
+            operandRight: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+
+execution:
+  # The partner's side of the hand-off: find the offer on the engine
+  # connector's DSP endpoint, negotiate it and open a transfer. It is visible
+  # at all only because the access policy names this participant.
+  - id: pull_offer
+    uses: connector/consumer/pull_data_filtered
+    name: Negotiate this run's offer on the engine connector
+    with:
+      counter_party_address: "${{ infrastructure.engine.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.engine.connector.participant_id }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
+          operator: "="
+          operand_right: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+      expected_policies: "${{ env.usage_policy }}"
+    returns:
+      asset_id:
+        type: string
+      dataplane_url:
+        type: string
+    validate:
+      - uses: validate/assert
+        with:
+          input: asset_id
+          operator: equals
+          value: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+      - uses: validate/assert
+        with: { input: dataplane_url, operator: not_null }
+
+  # The callback itself, through the engine connector's data plane, which
+  # forwards the method, the path and the body to the mock.
+  - id: post_callback
+    uses: connector/dataplane/http_request
+    name: Post the callback through the engine connector's data plane
+    with:
+      method: POST
+      path: "/testlab-e2e/dataplane-callback"
+      headers:
+        Content-Type: "application/json"
+      body:
+        from: dataplane-partner
+        run: "${{ execution.id }}"
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/field
+        with: { input: value, path: accepted, operator: equals, value: true }
+
+  # The step under test. It hands back the same request `mock/wait/http_request`
+  # would; what it adds is on the waiting event — `via: dataplane` and the
+  # offer — which the workflow checks in the trace.
+  - id: await_callback
+    uses: mock/wait/dataplane/http_request
+    name: Read the callback the engine connector's data plane delivered
+    with:
+      mock: "${{ setup.open_callback.mock }}"
+      asset_id: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+      timeout_s: 30
+    returns:
+      request_method:
+        type: string
+      request_path:
+        type: string
+      request_body:
+        type: object
+    validate:
+      - uses: validate/assert
+        with: { input: request_method, operator: equals, value: "POST" }
+      - uses: validate/assert
+        with: { input: request_path, operator: equals, value: "/testlab-e2e/dataplane-callback" }
+      - uses: validate/field
+        with: { input: request_body, path: from, operator: equals, value: dataplane-partner }
+      - uses: validate/field
+        with: { input: request_body, path: run, operator: equals, value: "${{ execution.id }}" }
+
+# Leaves the engine connector as it was found. The connector refuses to delete
+# an asset a contract agreement names, so that delete may answer 409 on a run
+# that negotiated; nothing asserts on these, and the cluster is thrown away
+# with the job either way.
+teardown:
+  - id: delete_contract
+    uses: http/http_request
+    name: Remove this run's contract definition
+    with:
+      method: DELETE
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/contractdefinitions/testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
+      headers:
+        x-api-key: "${{ infrastructure.engine.connector.api_key }}"
+
+  - id: delete_asset
+    uses: http/http_request
+    name: Remove this run's asset
+    with:
+      method: DELETE
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/assets/testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+      headers:
+        x-api-key: "${{ infrastructure.engine.connector.api_key }}"
+
+  - id: delete_usage_policy
+    uses: http/http_request
+    name: Remove this run's usage policy
+    with:
+      method: DELETE
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+      headers:
+        x-api-key: "${{ infrastructure.engine.connector.api_key }}"
+
+  - id: delete_access_policy
+    uses: http/http_request
+    name: Remove this run's access policy
+    with:
+      method: DELETE
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
+      headers:
+        x-api-key: "${{ infrastructure.engine.connector.api_key }}"

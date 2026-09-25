@@ -42,7 +42,11 @@ from tractusx_testlab.steps._checks.extraction import declared_names
 from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
 from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
-from tractusx_testlab.syntax import defaults, diagnostics, patterns
+from tractusx_testlab.syntax import context_vars, defaults, diagnostics, patterns
+
+#: ``execution.id`` names the run (ADR-0010 §3.4), so no execution step may
+#: take the id its outputs would be published under.
+_RESERVED_EXECUTION_STEP_ID = context_vars.EXECUTION_ID.split(".", 1)[1]
 
 
 def _root_of(reference: str) -> str:
@@ -67,8 +71,8 @@ def _root_of(reference: str) -> str:
 def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
     """Every name a reference in *test* may legally resolve to.
 
-    Assembled from the manifest's ``env`` block, the test's own step ids, and
-    the infrastructure binding keys. This is the namespace the runtime will
+    Assembled from the manifest's ``env`` block, the test's own step ids, the
+    infrastructure binding keys and ``execution.id``. This is the namespace the runtime will
     actually have, so a name missing from here is a name that will be missing
     from the run.
     """
@@ -93,6 +97,7 @@ def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
                 names.add(f"{phase}.{step.id}")
 
     names.update(known_keys())
+    names.add(context_vars.EXECUTION_ID)
     return frozenset(names)
 
 
@@ -185,6 +190,14 @@ class TestValidator:
         ):
             for idx, step_def in enumerate(steps):
                 self._validate_step(step_def, idx, declared, version, result, phase=phase)
+                if phase == "execution" and step_def.id == _RESERVED_EXECUTION_STEP_ID:
+                    result.add_error(
+                        "Step id 'id' is reserved in execution: '${{ execution.id }}' is the "
+                        "id of the run. Rename the step.",
+                        step_index=idx,
+                        field="id",
+                        phase=phase,
+                    )
 
         return result
 

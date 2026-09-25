@@ -5,7 +5,33 @@ Further information can be found on the [README.md](README.md) file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [1.0.0a5] - 2026-09-25
+
+### Added
+
+- `mock/wait/dataplane/http_request`: waits like `mock/wait/http_request`, for a
+  call that has to arrive through the engine connector's data plane. It takes
+  the `asset_id` the system under test negotiates, and its `step_waiting`
+  listener announces that offer — the asset and the engine connector's
+  `dsp_url` and `participant_id` — instead of leaving the mock URL, which on
+  that path is only the data plane's target, as the one thing to call.
+- `${{ execution.id }}` (ADR-0010 §3.4): the id of the run — the job id an
+  engine hands the player — seeded after every input so nothing can override
+  it. For a test that has to name what it leaves in a shared system apart from
+  another run's. `id` is therefore reserved as an execution step id.
+- `Listener.via` (`direct` | `dataplane`) and `Listener.offer`
+  (`ConnectorOffer`) on the listening, waiting and received events. A plain
+  wait reports `via: direct`.
+
+### Changed
+
+- `Listener` and `ConnectorOffer` live in `models/runtime/listener.py`; both
+  are still exported from `tractusx_testlab.models`.
+- The E2E suite runs `mock/wait/dataplane/http_request` in a new
+  `dataplane_callback.yaml`: this run's asset on the engine connector, visible
+  to one BPN, negotiated and posted to through that connector's data plane.
+  The workflow checks the waiting events announce `via` and the offer. A unit
+  test now fails for any registered step no E2E test uses.
 
 ### Security
 

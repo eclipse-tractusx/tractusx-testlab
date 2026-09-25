@@ -40,6 +40,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from tractusx_testlab.models.primitives.enums import EventKind, JobStatus
+from tractusx_testlab.models.runtime.listener import Listener
 from tractusx_testlab.models.runtime.results import (
     AssertionResult,
     CallbackResult,
@@ -174,20 +175,6 @@ class StepSkippedEvent(_ExecutionEvent):
     test_id: str
     step_id: str | None = None
     result: StepResult
-
-
-class Listener(BaseModel):
-    """Where the system under test is expected to call.
-
-    Published so that whoever is watching a run — or driving the SUT by hand —
-    is told the one thing they need at that moment: which method, at which
-    address. ``url`` is the address as the engine knows it; ``path`` is the
-    part of it the mock server routes on.
-    """
-
-    method: str
-    url: str
-    path: str
 
 
 class StepListeningEvent(_ExecutionEvent):

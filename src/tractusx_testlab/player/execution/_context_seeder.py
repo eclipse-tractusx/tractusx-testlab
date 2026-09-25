@@ -41,7 +41,7 @@ from tractusx_testlab.models.primitives.binding_errors import MissingInputVariab
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.loading._package_paths import package_path
-from tractusx_testlab.syntax import keys, variables
+from tractusx_testlab.syntax import context_vars, keys, variables
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,8 @@ def seed_context_variables(
     1. Shared variables with defaults.
     2. ``env.variables`` static values (``source: value``).
     3. Operator-supplied ``runtime_vars`` (highest — overrides everything).
+
+    ``execution.id`` is set after all three and cannot be overridden.
 
     Side effects: writes to *context* variables store and loads testdata files.
     """
@@ -77,6 +79,12 @@ def seed_context_variables(
         declared = _declared_types(tck)
         for key, value in runtime_vars.items():
             context.set_variable(key, _as_declared_type(key, value, declared.get(key)))
+
+    # Last, so no input can pose as it: the id of this run, for a test that
+    # leaves something behind in a shared system and has to name it apart from
+    # what another run of the same TCK leaves there — an asset on the engine
+    # connector, say. An engine that adopts its own job id hands it through.
+    context.set_variable(context_vars.EXECUTION_ID, context.job.job_id)
 
 
 def require_inputs(context: StepContext, tck: Tck) -> None:

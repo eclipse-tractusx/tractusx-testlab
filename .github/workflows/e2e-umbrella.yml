@@ -1171,6 +1171,7 @@ jobs:
               "bpn_discovery.yaml",
               "catalog_variants.yaml",
               "connector_negotiation.yaml",
+              "dataplane_callback.yaml",
               "dsp_step_by_step.yaml",
               "dtr_consumer_dataplane.yaml",
               "dtr_roundtrip.yaml",
@@ -1202,7 +1203,7 @@ jobs:
             --logs-dir logs/e2e/full \
             --data-dir /data
 
-      # The four tests where the dataspace calls testlab pass or fail behind
+      # The five tests where the dataspace calls testlab pass or fail behind
       # the same banner as the outbound ones, and the banner cannot tell a
       # blocking wait from a buffered call. This step goes further than the
       # banner: it reads the run's trace back and checks that every inbound
@@ -1236,6 +1237,7 @@ jobs:
               ("inbound-call", "await_call"),
               ("inbound-call", "await_notification"),
               ("external-callback", "await_call"),
+              ("dataplane-callback", "await_callback"),
               ("notification-roundtrip", "await_notification"),
               ("notification-roundtrip", "await_direct_notification"),
               ("push-transfer", "await_push"),
@@ -1284,11 +1286,39 @@ jobs:
           if push["request"]["method"] != "POST":
               sys.exit(f"push-transfer: expected the data plane's POST, got {push['request']}")
 
+          # What each wait announced while it was blocked. A direct wait names
+          # the mock and nothing else; the dataplane wait names the offer to
+          # negotiate — this run's asset on the engine connector, and that
+          # connector's DSP URL and DID from the bindings — which is what the
+          # IDE shows the operator instead of the mock URL.
+          waiting = {
+              tuple(event["id"].split("/")[1:4:2]): event["data"]["listener"]
+              for event in events
+              if event["type"] == "tck.test.step.waiting"
+          }
+          direct = waiting[("inbound-call", "await_call")]
+          if direct.get("via") != "direct" or direct.get("offer") is not None:
+              sys.exit(f"inbound-call: the direct wait announced {direct}, expected via=direct and no offer")
+          dataplane = waiting[("dataplane-callback", "await_callback")]
+          offer = dataplane.get("offer") or {}
+          callback = received[("dataplane-callback", "await_callback")]
+          run_id = (callback["request"]["body"] or {}).get("run")
+          if not run_id:
+              sys.exit(f"dataplane-callback: the callback did not carry the run id: {callback['request']}")
+          expected_offer = {
+              "asset_id": f"testlab-e2e-callback-BPNL000000000002-{run_id}",
+              "dsp_url": "http://consumer-dsp.local/api/v1/dsp/2025-1",
+              "participant_id": "did:web:consumer.local:identityhub:BPNL000000000002",
+          }
+          if dataplane.get("via") != "dataplane" or offer != expected_offer:
+              sys.exit(f"dataplane-callback: the wait announced {dataplane}, expected via=dataplane and offer {expected_offer}")
+
           print("inbound-call: received GET from the SUT's data plane, held for the wait step")
           print("inbound-call: received the POSTed payload intact through both data planes")
           print(f"external-callback: received POST from the stub after {external['waited_ms']}ms of waiting")
           print("notification-roundtrip: both notifications arrived with their headers intact")
           print("push-transfer: received the provider's POST at the sink")
+          print(f"dataplane-callback: announced offer {offer['asset_id']} on the engine connector, received its POST")
           PY
 
       # The experimental extensions the manifest enables (`extensions: [cac,
@@ -1359,7 +1389,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,experimental_extensions.yaml" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,experimental_extensions.yaml" \
             --logs-dir logs/e2e/registry \
             --data-dir /data
 
@@ -1376,7 +1406,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,experimental_extensions.yaml" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,experimental_extensions.yaml" \
             --logs-dir logs/e2e/engine-only \
             --data-dir /data
 

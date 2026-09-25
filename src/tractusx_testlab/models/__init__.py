@@ -121,7 +121,6 @@ from tractusx_testlab.models.runtime.events import (
     JobPausedEvent,
     JobResumedEvent,
     JobStartedEvent,
-    Listener,
     StepCallEvent,
     StepCompletedEvent,
     StepFailedEvent,
@@ -143,6 +142,7 @@ from tractusx_testlab.models.runtime.jobs import (
     JobEvent,
     JobMemory,
 )
+from tractusx_testlab.models.runtime.listener import ConnectorOffer, Listener
 from tractusx_testlab.models.runtime.results import (
     AssertionResult,
     AssertionSummary,
@@ -177,6 +177,7 @@ __all__ = [
     "CapabilityRequirement",
     "ConnectorBinding",
     "ConnectorError",
+    "ConnectorOffer",
     "DataspaceContext",
     "DefinitionKind",
     "DtrBinding",

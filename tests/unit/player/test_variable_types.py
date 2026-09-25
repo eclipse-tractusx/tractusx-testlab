@@ -37,6 +37,7 @@ from tractusx_testlab.player.execution._context_seeder import (
     seed_env_variables,
 )
 from tractusx_testlab.player.execution.context import StepContext
+from tractusx_testlab.player.loading.resolver import resolve_str
 from tractusx_testlab.services.instances import ServiceManager
 
 _POLICY_JSON = """
@@ -221,3 +222,29 @@ class TestOperatorOverrides:
         )
 
         assert context.get_variable("infrastructure.sut.connector.dsp_url") == "https://x"
+
+
+class TestTheExecutionId:
+    """``${{ execution.id }}`` names the run, so a test can tell its own leftovers apart."""
+
+    def test_the_execution_id_is_the_job_id(self) -> None:
+        context = _context()
+
+        seed_context_variables(context, _tck(), None)
+
+        assert context.get_variable("execution.id") == "variable-types-test"
+
+    def test_no_input_can_pose_as_the_execution_id(self) -> None:
+        context = _context()
+
+        seed_context_variables(context, _tck(), {"execution.id": "someone-else"})
+
+        assert context.get_variable("execution.id") == "variable-types-test"
+
+    def test_a_reference_reads_it(self) -> None:
+        context = _context()
+        seed_context_variables(context, _tck(), None)
+
+        assert resolve_str("testlab-ccmapi-${{ execution.id }}", context) == (
+            "testlab-ccmapi-variable-types-test"
+        )
