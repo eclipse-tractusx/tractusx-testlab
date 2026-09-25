@@ -181,6 +181,18 @@ teardown:
       - uses: validate/assert
         with: { input: policy_ids, operator: length_equals, value: 2 }
 
+  - id: find_usage_policy
+    uses: labs/connector/provider/query_policies
+    name: Find the usage policy setup created, by its id
+    with:
+      id_prefix: "${{ setup.create_usage_policy.policy_id }}"
+    returns:
+      policy_ids:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: policy_ids, operator: not_empty }
+
   - id: delete_contracts
     uses: labs/flow/for_each
     name: Remove every definition found
@@ -225,14 +237,18 @@ teardown:
           with:
             asset_id: "${{ each.item }}"
 
-  - id: confirm_policies_gone
-    uses: labs/connector/provider/query_policies
-    name: The access policy setup created is gone
+  # The verdict on the loop: no definition offering this test's asset is left.
+  # The policies are not checked the same way — their ids are shared with the
+  # other tests (env.access_policy, env.usage_policy), and another test's
+  # definition may still bind one, which the connector answers with 409.
+  - id: confirm_offer_gone
+    uses: labs/connector/provider/query_contract_definitions
+    name: No contract definition offers this test's asset any more
     with:
-      id_prefix: "${{ setup.create_access_policy.policy_id }}"
+      asset_id_prefix: testlab-e2e-extensions-
     returns:
-      policy_ids:
+      contract_definition_ids:
         type: array
     validate:
       - uses: validate/assert
-        with: { input: policy_ids, operator: length_equals, value: 0 }
+        with: { input: contract_definition_ids, operator: length_equals, value: 0 }

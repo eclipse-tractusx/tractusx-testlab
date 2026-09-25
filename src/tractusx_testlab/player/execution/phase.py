@@ -254,15 +254,15 @@ EXECUTION = PhaseConfig(
 )
 
 #: Teardown is the phase that must happen regardless: it runs after a failure,
-#: ignores ``if:``, cannot be paused, and publishes nothing — releasing a
-#: resource is not a result a later step reads.
+#: ignores ``if:`` and cannot be paused. It publishes under ``teardown.`` like
+#: the others: a delete loop reads the ids a query step before it found.
 TEARDOWN = PhaseConfig(
     phase=StepPhase.TEARDOWN,
     phase_label="teardown",
     failure_policy=FailurePolicy.CONTINUE,
     evaluate_conditions=False,
     use_pause_gate=False,
-    store_outputs=False,
+    store_outputs=True,
 )
 
 

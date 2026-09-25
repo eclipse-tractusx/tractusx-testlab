@@ -28,6 +28,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   step starts. A step declares such keys as `deferred_params`. A reference that
   names nothing now fails the nested step rather than the flow step.
 
+### Fixed
+
+- Teardown steps publish their outputs under `teardown.<id>`, as setup and
+  execution steps do. The compiler already accepted
+  `${{ teardown.<id>.<field> }}`, but the runner published nothing in
+  teardown, so every such reference failed at run time as unresolved.
+
 ## [1.0.0a5] - 2026-09-25
 
 ### Added
