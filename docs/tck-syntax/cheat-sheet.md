@@ -146,6 +146,7 @@ teardown: []
 | `${{ steps.step_id.output_name }}` | Output from a step in `steps:` |
 | `${{ setup.step_id.output_name }}` | Output from a step in `setup:` |
 | `${{ metadata.dataspace_version }}` | Metadata field value |
+| `${{ run.id }}` | The id of this run (the job id), e.g. to name what a test leaves in a shared system |
 
 ---
 

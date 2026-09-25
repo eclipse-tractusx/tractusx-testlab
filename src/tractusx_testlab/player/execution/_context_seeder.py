@@ -44,6 +44,9 @@ from tractusx_testlab.syntax import keys, variables
 
 logger = logging.getLogger(__name__)
 
+#: The reference a test reads the run's id through: ``${{ run.id }}``.
+RUN_ID = "run.id"
+
 
 def seed_context_variables(
     context: StepContext,
@@ -56,6 +59,8 @@ def seed_context_variables(
     1. Shared variables with defaults.
     2. ``env.variables`` static values (``source: value``).
     3. Operator-supplied ``runtime_vars`` (highest — overrides everything).
+
+    ``run.id`` is set after all three and cannot be overridden.
 
     Side effects: writes to *context* variables store and loads testdata files.
     """
@@ -76,6 +81,12 @@ def seed_context_variables(
         declared = _declared_types(tck)
         for key, value in runtime_vars.items():
             context.set_variable(key, _as_declared_type(key, value, declared.get(key)))
+
+    # Last, so no input can pose as it: the id of this run, for a test that
+    # leaves something behind in a shared system and has to name it apart from
+    # what another run of the same TCK leaves there — an asset on the engine
+    # connector, say. An engine that adopts its own job id hands it through.
+    context.set_variable(RUN_ID, context.job.job_id)
 
 
 def require_inputs(context: StepContext, tck: Tck) -> None:

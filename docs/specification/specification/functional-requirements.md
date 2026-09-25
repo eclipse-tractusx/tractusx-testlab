@@ -29,7 +29,7 @@ limitation noted), or **Open** (specified, not implemented).
 | FR-AUTH-01 | TCKs SHALL be authored in YAML: an `index.yaml` manifest (`kind: tck`) and one file per test (`kind: test`), both declaring `syntax: v1-alpha`. | Must | Done |
 | FR-AUTH-02 | A TCK SHALL declare the dataspace it targets in `dataspace` (`ecosystem`, `version`, e.g. `saturn`, `jupiter`). | Must | Done |
 | FR-AUTH-03 | A TCK SHALL declare shared variables in `env.variables` as a list of entries with `id`, `uses` (the variable type), `with.source` (`value` or `input`), and `returns.value`. `source: input` variables SHALL declare `scope: engine` or `scope: sut`. | Must | Done |
-| FR-AUTH-04 | Step parameters SHALL reference values with `${{ }}` expressions: `env.<id>`, `env.schemas.<id>`, `env.testdata.<id>`, `setup.<step>.<output>`, `execution.<step>.<output>`, `infrastructure.<side>.<capability>.<field>`. | Must | Done |
+| FR-AUTH-04 | Step parameters SHALL reference values with `${{ }}` expressions: `env.<id>`, `env.schemas.<id>`, `env.testdata.<id>`, `setup.<step>.<output>`, `execution.<step>.<output>`, `infrastructure.<side>.<capability>.<field>`, `run.id`. | Must | Done |
 | FR-AUTH-05 | `source: input` variables SHALL be supplied at run time (`--var`, a run config, or `runtime_vars`); a run missing one SHALL be refused before it starts, naming the variables. | Must | Done |
 | FR-AUTH-06 | Steps SHALL declare a `uses:` field naming a registered step. Parameters are passed via `with:`, readable outputs declared via `returns:`, checks via `validate:`. | Must | Done |
 | FR-AUTH-07 | Steps SHALL NOT declare per-step failure handling. A failed step fails the test: the remaining steps are skipped and teardown runs. | Must | Done |
