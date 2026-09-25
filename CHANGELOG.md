@@ -27,6 +27,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - `Listener` and `ConnectorOffer` live in `models/runtime/listener.py`; both
   are still exported from `tractusx_testlab.models`.
+- The E2E suite runs `mock/wait/dataplane/http_request` in a new
+  `dataplane_callback.yaml`: this run's asset on the engine connector, visible
+  to one BPN, negotiated and posted to through that connector's data plane.
+  The workflow checks the waiting events announce `via` and the offer. A unit
+  test now fails for any registered step no E2E test uses.
 
 ### Security
 

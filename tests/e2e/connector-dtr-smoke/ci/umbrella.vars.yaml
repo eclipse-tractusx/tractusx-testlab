@@ -51,6 +51,11 @@ variables:
   # with. The BPN-addressed steps (`query_catalog_by_bpnl`, `do_dsp_with_bpnl`)
   # are the ones that take a BPN, and they resolve it to this DID themselves.
   infrastructure.engine.connector.participant_id: "did:web:consumer.local:identityhub:BPNL000000000002"
+  # The engine connector's own DSP version path, for the same reason as the
+  # SUT's below. dataplane_callback.yaml offers an asset on this connector and
+  # negotiates it there, and `mock/wait/dataplane/http_request` announces this
+  # address as the one to negotiate on.
+  infrastructure.engine.connector.dsp_url: "http://consumer-dsp.local/api/v1/dsp/2025-1"
 
   # sut = umbrella's "provider" participant — the connector + DTR under test.
   infrastructure.sut.connector.management_url: "http://provider-management.local/management"

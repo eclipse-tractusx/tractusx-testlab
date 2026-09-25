@@ -25,8 +25,8 @@ cluster is created and destroyed within the job.
 ## What runs
 
 `tests/e2e/connector-dtr-smoke/` is a small TCK, purpose-built as testlab's
-own CI signal (not a published certification TCK). Between them its fourteen
-tests use every one of the 55 steps in the engine's catalogue
+own CI signal (not a published certification TCK). Between them its fifteen
+tests use every one of the 56 steps in the engine's catalogue
 (`docs/api-reference/steps/`) and all three validation kinds —
 `validate/assert`, `validate/field` and `validate/schema` — so no step ships
 without having been run once against something real.
@@ -61,6 +61,17 @@ without having been run once against something real.
   once, and blocks on `mock/wait/http_request`. The call arrives from the
   stub's pod while the test is blocked, and `elapsed_ms` must show the wait
   lasted the delay.
+- `dataplane_callback.yaml` — `mock/wait/dataplane/http_request`, the wait for
+  a callback the SUT must deliver through the dataspace rather than to the
+  mock URL. The mock sits behind an asset on the *engine's* connector,
+  registered over its management API with an access policy that names one
+  business partner, and every id carries the run's `execution.id`. The
+  umbrella's only other connector is the SUT, which the suite cannot drive as
+  a consumer, so the engine's own consumer plays that partner: it negotiates
+  the offer on the engine connector's DSP endpoint and posts through that
+  connector's data plane. What the step adds over `mock/wait/http_request` is
+  what the run announces while it waits — the offer, not the mock URL — so the
+  workflow checks that on the trace.
 - `catalog_variants.yaml` — the consumer catalogue the two DSP tests leave
   untouched: the unfiltered query, the query filtered by asset id, the
   one-shot `do_dsp`, and the pull that only accepts an offer made under a
@@ -108,10 +119,13 @@ The workflow runs the full suite, every test, on every event — pull requests
 included. The cluster bring-up is where the job's minutes go and a run takes
 seconds, so nothing is trimmed for a pull request. After the run, a step reads
 the trace back and fails unless every `tck.test.step.received` event is there
-(`inbound_call`, `external_callback`, `notification_roundtrip`,
-`push_transfer`), the external one shows the wait step blocked for the stub's
-delay, and both notifications arrived with their headers intact and with
-different sender and receiver partners. A second trace check covers the
+(`inbound_call`, `external_callback`, `dataplane_callback`,
+`notification_roundtrip`, `push_transfer`), the external one shows the wait
+step blocked for the stub's delay, both notifications arrived with their
+headers intact and with different sender and receiver partners, and the
+`tck.test.step.waiting` events announced the right thing: `via: direct` and no
+offer for a plain wait, `via: dataplane` and this run's asset with the engine
+connector's DSP URL and DID for the dataplane one. A second trace check covers the
 experimental extensions: `fetch_with_retry` must have published exactly two
 `tck.test.step.call` events, and `pull_data`'s terminal event must carry its
 `cac` on the step and, resolved, on each of its checks. Two subset runs of the same compiled

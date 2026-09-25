@@ -302,6 +302,9 @@ tests:
   - id: external_callback.yaml
     name: Block on a mock until a stand-in SUT in the cluster calls it back
     skippable: true
+  - id: dataplane_callback.yaml
+    name: Offer a mock on the engine connector, and read the call its data plane delivers
+    skippable: true
   - id: catalog_variants.yaml
     name: Query the catalog four ways, and provision the provider two ways
     skippable: true
