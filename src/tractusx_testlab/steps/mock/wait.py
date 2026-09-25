@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from pydantic import Field
 
@@ -108,7 +108,8 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
         RuntimeError: If no ``CallbackManager`` is available or the wait times out.
     """
 
-    params_model: type[WaitForCallParams] = WaitForCallParams
+    # Widened like OAuth2GetTokenStep's, so the dataplane wait can narrow it.
+    params_model: ClassVar[type[StepParams]] = WaitForCallParams
     output_model = InboundCallOutput
 
     def listener(self, params: WaitForCallParams, context: StepContext) -> Listener:
