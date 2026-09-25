@@ -50,6 +50,7 @@ class StepContext:
         "_listener_reporter",
         "_reporter",
         "_services",
+        "_templates",
         "_test_cac",
         "_variables",
     )
@@ -66,6 +67,7 @@ class StepContext:
         self._config = config
         self._infrastructure = config.infrastructure if infrastructure is None else infrastructure
         self._variables: dict[str, object] = {}
+        self._templates: set[str] = set()
         self._invoker: StepInvoker | None = None
         self._reporter: CallReporter | None = None
         self._listener_reporter: ListenerReporter | None = None
@@ -218,7 +220,27 @@ class StepContext:
     # ------------------------------------------------------------------
 
     def set_variable(self, name: str, value: object) -> None:
+        """Store *value* as data: a ``${{ ... }}`` inside it is never resolved.
+
+        Everything a run learns while it runs is written here — step outputs,
+        which carry what a remote service answered, operator inputs, bindings.
+        Overwriting a template makes it data too.
+        """
         self._variables[name] = value
+        self._templates.discard(name)
+
+    def set_template(self, name: str, value: object) -> None:
+        """Store *value* as part of the test: its own ``${{ ... }}`` are resolved when read.
+
+        Only for what the TCK package itself carries — test data files and
+        static ``env`` values — whose references the author wrote.
+        """
+        self._variables[name] = value
+        self._templates.add(name)
+
+    def is_template(self, name: str) -> bool:
+        """Whether *name* holds TCK-authored content whose references are resolved on read."""
+        return name in self._templates
 
     def get_variable(self, name: str, default: object = None) -> object:
         return self._variables.get(name, default)
