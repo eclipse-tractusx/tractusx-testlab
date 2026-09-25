@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import uuid
 from pathlib import Path
 from typing import Annotated
 
@@ -39,7 +38,7 @@ from tractusx_testlab.models import JobStatus
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.routes.callbacks import callback_router
 from tractusx_testlab.server.routes.compile import compile_router
-from tractusx_testlab.server.storage import PackageStorage
+from tractusx_testlab.server.storage import InvalidPackageNameError, PackageStorage, new_package_id
 from tractusx_testlab.server.streaming import streaming_router
 
 _logger = logging.getLogger(__name__)
@@ -94,7 +93,7 @@ StorageDep = Annotated[PackageStorage, Depends(_get_storage)]
     "/packages",
     status_code=201,
     responses={
-        400: {"description": "File must be a .tck archive"},
+        400: {"description": "File must be a .tck archive named without a path"},
         413: {"description": "Package exceeds maximum upload size"},
     },
 )
@@ -103,7 +102,7 @@ async def upload_package(
     player: PlayerDep,
     storage: StorageDep,
 ) -> JSONResponse:
-    """Upload a .tck archive."""
+    """Upload a .tck archive; its bare file name gives the package name and version."""
     if not file.filename or not file.filename.endswith(".tck"):
         raise HTTPException(400, "File must be a .tck archive")
 
@@ -112,13 +111,16 @@ async def upload_package(
     if len(data) > max_bytes:
         raise HTTPException(413, f"Package exceeds maximum size of {max_bytes} bytes")
 
-    package_id = uuid.uuid4().hex[:12]
+    package_id = new_package_id()
     stem = file.filename.rsplit(".", 1)[0]
     parts = stem.rsplit("-", 1)
     name = parts[0] if parts else stem
     version = parts[1] if len(parts) > 1 else "1.0"
 
-    pkg = storage.save(package_id, name, version, data)
+    try:
+        pkg = storage.save(package_id, name, version, data)
+    except InvalidPackageNameError as exc:
+        raise HTTPException(400, "File name must not contain a path") from exc
     return JSONResponse(content=pkg.model_dump(mode="json"), status_code=201)
 
 
