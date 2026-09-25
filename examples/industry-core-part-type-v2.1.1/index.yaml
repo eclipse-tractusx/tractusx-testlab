@@ -1,0 +1,266 @@
+################################################################################
+# Catena-X - Test Suite
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are proprietary.
+# All rights reserved. No part of this work may be used, copied,
+# modified, or distributed without the prior written permission of
+# the copyright holder.
+#
+# SPDX-License-Identifier: LicenseRef-All-Rights-Reserved
+################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Sonnet 5).
+## It was reviewed and tested by a human committer.
+
+kind: tck
+syntax: v1-alpha
+
+id: industry-core-part-type-tck-v2.1.1
+
+metadata:
+  name: "Industry Core: Part Type TCK (CX-0126)"
+  version: "1.0"
+  description: >
+    Conformance tests for the normative MUST requirements of CX-0126
+    Industry Core: Part Type (Saturn). Validates that a data provider
+    registers each part type as an Asset Administration Shell (AAS) in the
+    Digital Twin Registry with the mandatory specificAssetIds
+    (manufacturerId, manufacturerPartId, digitalTwinType = "PartType"), that
+    the shell carries a globalAssetId equal to the aspect catenaXId, that it
+    exposes the PartTypeInformation aspect submodel via DSP, and that the
+    aspect payloads pulled through the connector match their aspect models
+    (PartTypeInformation 1.0.0 and, where the twin publishes them,
+    SingleLevelBomAsPlanned 3.0.0 and SingleLevelUsageAsPlanned 2.0.0).
+    Bill-of-material and usage information are asserted to be exclusive to the
+    SingleLevelBomAsPlanned and SingleLevelUsageAsPlanned aspects
+    respectively.
+  authors:
+    - name: Industry Core Expert Group
+  copyright_holders:
+    - "2026 Contributors to the Eclipse Foundation"
+  license: LicenseRef-All-Rights-Reserved
+  standards:
+    - id: CX-0126
+      version: "2.1.1"
+  tags:
+    - IndustryCore
+    - PartType
+    - DigitalTwin
+
+dataspace:
+  ecosystem: Catena-X
+  version: saturn
+
+infrastructure:
+  engine:
+    connector:
+      required: true
+      standard:
+        id: CX-0018
+        version: "4.1.1"
+  sut:
+    connector:
+      required: true
+
+env:
+  variables:
+    - id: valid_bpn
+      uses: variable/type/string
+      with:
+        source: input
+        scope: engine
+      returns:
+        value:
+          type: string
+
+    - id: shell_descriptor_id
+      uses: variable/type/string
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    # TC-16 negative: known PartInstance twin that MUST NOT appear in
+    # digitalTwinType=PartType lookup results (from CX-0127 Part Instance TCK).
+    - id: shell_descriptor_id_part_instance
+      uses: variable/type/string
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    # TC-17: BPN of a third party that is neither the manufacturer nor a
+    # customer of the test twin, used to confirm specificAssetIds visibility
+    # is properly restricted.
+    - id: unauthorized_bpn
+      uses: variable/type/string
+      with:
+        source: input
+        scope: engine
+      returns:
+        value:
+          type: string
+
+    - id: ic_usage_policy
+      uses: config/connector/policy
+      with:
+        value:
+          permissions:
+            - action: use
+              constraints:
+                and:
+                  - left_operand: FrameworkAgreement
+                    operator: eq
+                    right_operand: "DataExchangeGovernance:1.0"
+                  - left_operand: UsagePurpose
+                    operator: eq
+                    right_operand: "cx.core.industrycore:1"
+      returns:
+        value:
+          type: object
+          class: Policy
+
+    - id: expected_part_type_information_semantic_id
+      uses: variable/type/string
+      with:
+        value: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
+      returns:
+        value:
+          type: string
+
+    - id: expected_single_level_bom_as_planned_semantic_id
+      uses: variable/type/string
+      with:
+        value: "urn:samm:io.catenax.single_level_bom_as_planned:3.0.0#SingleLevelBomAsPlanned"
+      returns:
+        value:
+          type: string
+
+    - id: expected_single_level_usage_as_planned_semantic_id
+      uses: variable/type/string
+      with:
+        value: "urn:samm:io.catenax.single_level_usage_as_planned:2.0.0#SingleLevelUsageAsPlanned"
+      returns:
+        value:
+          type: string
+
+    # TC-16: the SpecificAssetId criteria GET /lookup/shells is filtered by.
+    # A list, because that is what the AAS API takes: each criterion travels as
+    # its own base64url-encoded object in its own 'assetIds' query value, which
+    # 'lookup_shell' does. Encoding the whole list into one value is a different
+    # request, and not the one the standard defines.
+    - id: digital_twin_type_filter
+      uses: variable/type/array
+      with:
+        source: input
+        scope: engine
+      returns:
+        value:
+          type: array
+
+    # TC-24-32 Unique ID Push (Connect to Parent) POST fixtures.
+    - id: unique_id_push_receiver_bpn
+      uses: variable/type/string
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    - id: unique_id_push_sender_bpn
+      uses: variable/type/string
+      with:
+        source: input
+        scope: engine
+      returns:
+        value:
+          type: string
+
+    - id: unique_id_push_catena_x_id
+      uses: variable/type/string
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    - id: unique_id_push_manufacturer_id
+      uses: variable/type/string
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    - id: unique_id_push_manufacturer_part_id
+      uses: variable/type/string
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    - id: unique_id_push_part_instance_id
+      uses: variable/type/string
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    - id: usage_policy
+      uses: config/connector/policy
+      name: usage_policy
+      with:
+        value: |
+          {
+              "permission": [
+                {
+                  "action": "use",
+                  "constraint": [
+                    {
+                      "and": [
+                        {
+                          "leftOperand": "UsagePurpose",
+                          "operator": "isAnyOf",
+                          "rightOperand": "cx.core.digitalTwinRegistry:1"
+                        },
+                        {
+                          "leftOperand": "Membership",
+                          "operator": "eq",
+                          "rightOperand": "active"
+                        },
+                        {
+                          "leftOperand": "FrameworkAgreement",
+                          "operator": "eq",
+                          "rightOperand": "DataExchangeGovernance:1.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "prohibition": [],
+              "obligation": []
+            
+          }
+      returns:
+        value: { type: object, class: Policy }
+
+tests:
+  - id: validate_dtr_filterability.yaml
+    name: "DTR Search Filters by digitalTwinType (TC-16)"
+    skippable: true
