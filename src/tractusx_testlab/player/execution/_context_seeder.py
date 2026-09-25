@@ -57,7 +57,7 @@ def seed_context_variables(
     2. ``env.variables`` static values (``source: value``).
     3. Operator-supplied ``runtime_vars`` (highest — overrides everything).
 
-    ``run.id`` is set after all three and cannot be overridden.
+    ``execution.id`` is set after all three and cannot be overridden.
 
     Side effects: writes to *context* variables store and loads testdata files.
     """
@@ -83,7 +83,7 @@ def seed_context_variables(
     # leaves something behind in a shared system and has to name it apart from
     # what another run of the same TCK leaves there — an asset on the engine
     # connector, say. An engine that adopts its own job id hands it through.
-    context.set_variable(context_vars.RUN_ID, context.job.job_id)
+    context.set_variable(context_vars.EXECUTION_ID, context.job.job_id)
 
 
 def require_inputs(context: StepContext, tck: Tck) -> None:

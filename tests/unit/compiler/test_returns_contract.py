@@ -97,8 +97,8 @@ class TestDeletedOutputNamesAreCaught:
         )
 
 
-class TestTheRunIdIsInScope:
-    """``${{ run.id }}`` is supplied by the player, so no manifest declares it."""
+class TestTheExecutionIdIsInScope:
+    """``${{ execution.id }}`` is supplied by the player, so no manifest declares it."""
 
     def _errors_for(self, value: str) -> list[str]:
         test = TestDefinition(
@@ -120,8 +120,20 @@ class TestTheRunIdIsInScope:
         result = TestValidator().validate(test, scope=_scope_of(tck, test))
         return [issue.message for issue in result.issues if issue.level == "error"]
 
-    def test_a_run_id_reference_compiles(self) -> None:
-        assert self._errors_for("testlab-ccmapi-${{ run.id }}") == []
+    def test_an_execution_id_reference_compiles(self) -> None:
+        assert self._errors_for("testlab-ccmapi-${{ execution.id }}") == []
 
-    def test_another_name_under_run_does_not(self) -> None:
-        assert len(self._errors_for("${{ run.name }}")) == 1
+    def test_an_unknown_execution_name_does_not(self) -> None:
+        assert len(self._errors_for("${{ execution.nothing }}")) == 1
+
+    def test_no_execution_step_may_take_the_id(self) -> None:
+        test = TestDefinition(
+            syntax="v1-alpha",
+            kind="test",
+            id="t",
+            namespace="n",
+            metadata={"name": "t"},
+            execution=[StepDefinition(id="id", uses="util/log", with_={"message": "m"})],
+        )
+        errors = [i.message for i in TestValidator().validate(test).issues if i.level == "error"]
+        assert any("reserved" in message for message in errors)

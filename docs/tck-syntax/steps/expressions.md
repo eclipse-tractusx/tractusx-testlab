@@ -9,7 +9,7 @@ Values are interpolated with `${{ … }}`.
 | `${{ env.testdata.<testdata-id> }}` | A declared test data file's content | `${{ env.testdata.send_feedback_body }}` |
 | `${{ execution.<step-id>.<return-key> }}` | A prior step's declared return | `${{ execution.pull_notification_endpoint.edr_token }}` |
 | `${{ setup.<step-id>.<return-key> }}` **[PROP]** | A setup step's return | `${{ setup.create_asset.asset_id }}` |
-| `${{ run.id }}` | The id of this run — the job id an engine hands the player. Unique per run, so a test can name what it leaves in a shared system apart from another run's | `"testlab-ccmapi-${{ run.id }}"` |
+| `${{ execution.id }}` | The id of this run — the job id an engine hands the player. Unique per run (no execution step may be called `id`), so a test can name what it leaves in a shared system apart from another run's | `"testlab-ccmapi-${{ execution.id }}"` |
 
 > **Resolved.** Slide 29 referenced a compound `sut_connector` variable with `counter_party_*` return keys,
 > while slide 20 declared one variable per value. One value per variable is normative, and a variable is

@@ -15,9 +15,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   listener announces that offer — the asset and the engine connector's
   `dsp_url` and `participant_id` — instead of leaving the mock URL, which on
   that path is only the data plane's target, as the one thing to call.
-- `${{ run.id }}`: the id of the run (the job id an engine hands the player),
-  seeded after every input so nothing can override it. For a test that has to
-  name what it leaves in a shared system apart from another run's.
+- `${{ execution.id }}` (ADR-0010 §3.4): the id of the run — the job id an
+  engine hands the player — seeded after every input so nothing can override
+  it. For a test that has to name what it leaves in a shared system apart from
+  another run's. `id` is therefore reserved as an execution step id.
 - `Listener.via` (`direct` | `dataplane`) and `Listener.offer`
   (`ConnectorOffer`) on the listening, waiting and received events. A plain
   wait reports `via: direct`.
