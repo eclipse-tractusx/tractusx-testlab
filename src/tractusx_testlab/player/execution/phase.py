@@ -105,6 +105,9 @@ async def run_phase(
     # which run on this same context (_reporters).
     bind_reporters(context, monitor, job_id, test.definition.id, config.phase_label)
     context.bind_test_cac(getattr(test.definition, "cac", None))
+    context.bind_step_namespace(
+        _PHASE_TO_NAMESPACE.get(config.phase_label) if config.store_outputs else None
+    )
 
     for step_idx, step_def in enumerate(steps_source):
         await _handle_pause_gate(jobs, job_id, config)
@@ -187,8 +190,7 @@ async def _resolve_and_run_step(
     params: dict[str, Any] | None = None,
 ) -> bool:
     """Resolve step class, execute, store outputs. Returns True if phase should abort."""
-    from tractusx_testlab.player.execution._step_outputs import store_step_outputs
-    from tractusx_testlab.player.execution.step_runner import run_step
+    from tractusx_testlab.player.execution._step_outputs import run_and_publish
 
     step_cls = StepRegistry.get(step_def.uses, test.dataspace_version)
     if step_cls is None:
@@ -197,14 +199,10 @@ async def _resolve_and_run_step(
         monitor.on_step_completed(job_id, test.definition.id, step_def.id, missing)
         return config.failure_policy == FailurePolicy.STOP
 
-    step_result = await run_step(step_cls, step_def, step_name, context, params)
+    step_result = await run_and_publish(step_cls, step_def, step_name, context, params)
     step_result.phase = config.phase
     results.append(step_result)
     monitor.on_step_completed(job_id, test.definition.id, step_def.id, step_result)
-
-    if config.store_outputs:
-        step_namespace = _PHASE_TO_NAMESPACE.get(config.phase_label)
-        store_step_outputs(step_def, step_result, context, step_namespace=step_namespace)
 
     return step_result.status == StepStatus.FAILED and config.failure_policy == FailurePolicy.STOP
 

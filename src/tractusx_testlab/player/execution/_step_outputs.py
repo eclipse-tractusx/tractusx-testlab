@@ -28,7 +28,8 @@
 A step's outputs are addressable only where the test said so: a ``returns:``
 block names them, and a name it did not declare is a typo rather than a
 ``None`` three steps later. That check, and the two shapes a name is stored
-under — flat, and namespaced by phase and step id — are this module's whole job.
+under — flat, and namespaced by phase and step id — are this module's whole job,
+for a top-level step and for one nested in a flow step alike.
 """
 
 from __future__ import annotations
@@ -82,3 +83,30 @@ def store_step_outputs(
         context.set_variable(var_name, value)
         if step_id and step_namespace:
             context.set_variable(f"{step_namespace}.{step_id}.{var_name}", value)
+
+
+async def run_and_publish(
+    step_cls: type,
+    step_def: Any,
+    step_name: str,
+    context: StepContext,
+    params: dict[str, Any] | None = None,
+) -> StepResult:
+    """Run one step and publish its ``returns:`` under the phase *context* is bound to.
+
+    How a phase runs a step: the phase runner calls it for a top-level step, and
+    the step runner binds it as the invoker a flow step runs its nested steps
+    with (``StepContext.invoke_step``). The namespaced name used to be written
+    by the phase runner alone, so a step inside ``flow/retry`` published nothing
+    under its id and the step after it could not read
+    ``${{ execution.<id>.<field> }}`` — the EDR a negotiation returned, for the
+    data-plane call retried with it. A retried or looped step leaves the value
+    of its latest run.
+    """
+    # Imported here: the step runner binds this function, so it imports this module.
+    from tractusx_testlab.player.execution.step_runner import run_step
+
+    step_result = await run_step(step_cls, step_def, step_name, context, params)
+    if context.step_namespace is not None:
+        store_step_outputs(step_def, step_result, context, step_namespace=context.step_namespace)
+    return step_result

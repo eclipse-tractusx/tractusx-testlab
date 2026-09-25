@@ -114,6 +114,9 @@ the `flow/if` step, not with keys on validations:
 - The conditions are evaluated once, before either branch runs. `then:` and `else:` are ordinary step lists.
   A failing step or check in the branch that ran fails the `flow/if` step. `condition_result` and
   `branch_taken` are published so a check can show which way the run went.
+- A step nested in `then:` or `else:` (or in the `steps:` of `flow/retry` and `labs/flow/for_each`) publishes
+  its `returns:` under its phase and id, as a top-level step does: a later step, nested or not, reads it as
+  `${{ execution.<id>.<field> }}`. A retried or looped step leaves the value of its latest run.
 - `MUST … AND MUST …` needs no construct: sibling `validate:` entries are always ANDed.
 - A step's own `if:` is a different thing. It reads run state only (`success()`, `failure()`, `always()`,
   `steps.<id>.outcome`, `vars.<name>`), never a value a step returned. When false, it skips the step.

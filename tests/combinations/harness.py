@@ -24,8 +24,8 @@
 """Run a sequence of steps the way the player runs a phase.
 
 The point of these tests is the wiring *between* steps, so the harness must not
-reimplement it: it calls the same ``run_step`` and ``store_step_outputs`` the
-phase runner calls, and reads the namespace from the same table. A harness that
+reimplement it: it calls the same ``run_and_publish`` the phase runner calls,
+and reads the namespace from the same table. A harness that
 published outputs its own way would pass while the player failed.
 """
 
@@ -38,10 +38,9 @@ from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.models import Job, StepDefinition, StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
-from tractusx_testlab.player.execution._step_outputs import store_step_outputs
+from tractusx_testlab.player.execution._step_outputs import run_and_publish
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.phase import _PHASE_TO_NAMESPACE
-from tractusx_testlab.player.execution.step_runner import run_step
 from tractusx_testlab.services.instances import ServiceManager
 
 # Nested steps are looked up version-agnostically, and so is everything here:
@@ -103,7 +102,8 @@ class Harness:
         usually wants to see what the rest of the chain then did with a missing
         value, which stopping would hide.
         """
-        namespace = _PHASE_TO_NAMESPACE[phase]
+        # As the phase runner does: every step, nested ones included, publishes here.
+        self.context.bind_step_namespace(_PHASE_TO_NAMESPACE[phase])
         results: list[StepResult] = []
 
         for index, raw in enumerate(steps):
@@ -116,8 +116,7 @@ class Harness:
                     "cannot say anything about a step the engine does not have."
                 )
 
-            result = await run_step(step_cls, step_def, step_id, self.context)
-            store_step_outputs(step_def, result, self.context, step_namespace=namespace)
+            result = await run_and_publish(step_cls, step_def, step_id, self.context)
             results.append(result)
 
         return Outcome(results=results, variables=self.context.variables)

@@ -40,6 +40,7 @@ from tractusx_testlab.models.runtime.results import (
     StepResult,
     TestResult,
 )
+from tractusx_testlab.player.execution._step_outputs import run_and_publish
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.execution.phase import (
@@ -106,9 +107,8 @@ async def run_step(
 
     # Bound here rather than at the composition root so that every context which
     # reaches a step can run a nested one — including the contexts built directly
-    # by tests. See contracts.StepInvoker for why a flow step is handed the
-    # runner instead of importing it.
-    context.bind_invoker(run_step)
+    # by tests (contracts.StepInvoker says why a flow step is handed the runner).
+    context.bind_invoker(run_and_publish)
 
     # The SDK's traffic is the traffic worth seeing and the engine never makes
     # it. Both it and the engine's own calls are recorded for the duration of

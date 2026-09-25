@@ -102,6 +102,29 @@ class TestForEachStep:
         assert result.output["outputs"][0][1] == "outer"
 
     @pytest.mark.asyncio
+    async def test_a_nested_step_reads_the_one_before_it_in_the_same_item(
+        self, context: StepContext
+    ) -> None:
+        context.bind_step_namespace("teardown")
+        mint = {
+            "id": "mint",
+            "uses": "util/generate_uuid",
+            "returns": {"value": {"type": "string"}},
+        }
+
+        result = await run_step(
+            ForEachStep,
+            _loop([mint, _log("${{ teardown.mint.value }}")], items=["a", "b"]),
+            "s",
+            context,
+        )
+
+        (first_minted, first_read), (second_minted, second_read) = result.output["outputs"]
+        assert first_read == first_minted
+        assert second_read == second_minted
+        assert first_minted != second_minted
+
+    @pytest.mark.asyncio
     async def test_a_failing_nested_step_fails_the_loop_and_names_the_item(
         self, context: StepContext
     ) -> None:

@@ -299,17 +299,14 @@ class TestRetryingSomethingThatCanFail:
 
 
 class TestWhatANestedStepPublishes:
-    """A nested step is reachable by its field name, never by its step id.
+    """A nested step publishes under its id, as a top-level step does.
 
-    Two different mechanisms publish a step's output, and only one of them
-    descends into a branch. Every step publishes its own fields flatly as it
-    runs (``BaseStep.publish_output``), so ``bpn`` is set from inside a
-    branch; the *namespaced* ``execution.<id>.<field>`` name is written by the
-    phase runner, which never looks inside ``flow/if`` or ``flow/retry``.
-
-    So a nested step's value survives, but only under a name that any later
-    step could overwrite. Pinned here because the asymmetry is invisible from
-    either step's contract.
+    Every step publishes its own fields flatly as it runs
+    (``BaseStep.publish_output``). The *namespaced* ``execution.<id>.<field>``
+    name is written by whoever ran the step: the phase runner for a top-level
+    step, the nested-step invoker for one inside ``flow/if`` or ``flow/retry``.
+    It used to be the phase runner alone, so the second step of a retried
+    sequence could not read what the first one returned.
     """
 
     async def test_a_nested_step_publishes_its_fields_flatly(self, harness: Harness) -> None:
@@ -333,8 +330,8 @@ class TestWhatANestedStepPublishes:
 
         assert outcome.variables["full_mock_url"]
 
-    async def test_a_nested_step_is_not_reachable_by_its_id(self, harness: Harness) -> None:
-        """``${{ execution.mint.value }}`` does not resolve from inside a branch."""
+    async def test_a_nested_step_is_reachable_by_its_id(self, harness: Harness) -> None:
+        """``${{ execution.mint.value }}`` resolves after the branch that minted it."""
         outcome = await harness.run(
             {
                 "id": "branch",
@@ -357,9 +354,70 @@ class TestWhatANestedStepPublishes:
             },
         )
 
+        assert outcome.passed, outcome.failures
+        assert outcome.variables["execution.mint.value"]
+
+    async def test_a_retried_step_reads_the_step_before_it_by_id(
+        self, harness: Harness, http: HttpDouble
+    ) -> None:
+        """The shape of a DSP negotiation followed by a data-plane call, retried together."""
+        http.json_route("GET", "/negotiate", {"token": "edr-1"})
+        http.json_route("GET", "/pull/200", {"ok": True})
+        base = http.start()
+
+        outcome = await harness.run(
+            {
+                "id": "attempt",
+                "uses": "flow/retry",
+                "with": {
+                    "max_attempts": 2,
+                    "delay_s": 0,
+                    "steps": [
+                        {
+                            "id": "negotiate",
+                            "uses": "http/http_request",
+                            "with": {"method": "GET", "url": f"{base}/negotiate"},
+                            "returns": {"status_code": {"type": "integer"}},
+                        },
+                        {
+                            "id": "pull",
+                            "uses": "http/http_request",
+                            "with": {
+                                "method": "GET",
+                                "url": f"{base}/pull/" + "${{ execution.negotiate.status_code }}",
+                            },
+                        },
+                    ],
+                },
+            },
+        )
+
+        assert outcome.passed, outcome.failures
+        assert http.calls_to("GET", "/pull/200")
+
+    async def test_a_teardown_step_nested_in_a_flow_step_publishes_under_teardown(
+        self, harness: Harness
+    ) -> None:
+        outcome = await harness.run(
+            {
+                "id": "branch",
+                "uses": "flow/if",
+                "with": {
+                    "conditions": [{"input": "go", "operator": "not_null"}],
+                    "then": [
+                        {
+                            "id": "mint",
+                            "uses": "util/generate_uuid",
+                            "returns": {"value": {"type": "string"}},
+                        }
+                    ],
+                },
+            },
+            phase="teardown",
+        )
+
+        assert outcome.variables["teardown.mint.value"]
         assert "execution.mint.value" not in outcome.variables
-        assert not outcome.passed
-        assert "execution.mint.value" in (outcome.error("echo") or "")
 
     async def test_the_wrapper_carries_the_nested_outputs_instead(self, harness: Harness) -> None:
         outcome = await harness.run(
