@@ -18,6 +18,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   URL or body of its choosing. Authored content may nest references at most
   16 deep; a cycle is a reportable error instead of a `RecursionError`.
   (GHSA-rxvc-664c-hcv4)
+- Loading a `.tck` package no longer writes an archive entry outside the
+  extraction directory. Entry names with a `..` segment, an absolute path, a
+  drive, a backslash or a NUL byte — or that resolve outside through a
+  symbolic link — are refused before anything is written, so a hostile
+  package (uploaded through `POST /testlab/packages`, or handed over by
+  another organisation) can no longer create or overwrite files as the engine
+  user. The same check now guards the package paths the player reads: `tests:`
+  ids and test data / schema `source` files. (GHSA-5982-hx9j-38f7)
 
 ## [1.0.0a4] - 2026-09-24
 
