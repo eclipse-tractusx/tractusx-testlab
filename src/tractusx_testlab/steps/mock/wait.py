@@ -22,18 +22,24 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4).
 ## It was reviewed and tested by a human committer.
 
-"""wait_for_call step — blocks until a mock endpoint receives an inbound request."""
+"""Wait steps — block until a mock endpoint receives an inbound request.
+
+``mock/wait/http_request`` waits for a call the system under test makes to the
+mock URL itself. ``mock/wait/dataplane/http_request`` waits for one that must
+arrive through the engine connector's data plane, for a named asset whose data
+address is the mock.
+"""
 
 from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.models import ConnectorContact, Listener, StepDefinition
+from tractusx_testlab.models import ConnectorOffer, Listener, StepDefinition
 from tractusx_testlab.server.mock_registry import get_callback_manager
 from tractusx_testlab.steps.mock._models import MockInstance
 from tractusx_testlab.steps.shared_models import StepParams
@@ -61,13 +67,16 @@ class WaitForCallParams(StepParams):
     timeout_s: float = Field(
         default=_DEFAULT_TIMEOUT_S, gt=0, description="Seconds to wait before failing."
     )
-    via_connector: bool = Field(
-        default=False,
+
+
+class WaitForDataplaneCallParams(WaitForCallParams):
+    """Input contract of ``mock/wait/dataplane/http_request``."""
+
+    asset_id: str = Field(
+        min_length=1,
         description=(
-            "The system under test calls through the engine's connector — it negotiates "
-            "an offer whose data address is the mock and calls through its data plane — "
-            "instead of calling the mock URL directly. Changes only what the run tells "
-            "the person driving the SUT: the connector to discover, not the mock URL."
+            "The asset on the engine connector whose data address is the mock — the "
+            "offer the system under test negotiates to reach it."
         ),
     )
 
@@ -87,23 +96,6 @@ class InboundCallOutput(StepPayload):
     elapsed_ms: int = Field(description="Milliseconds spent waiting before the request arrived.")
 
 
-def _engine_connector(context: StepContext) -> ConnectorContact | None:
-    """The engine connector a counter-party has to discover, if the run is bound to one.
-
-    Read from the run's infrastructure rather than taken as a parameter: which
-    connector the engine operates is the operator's binding, not the test's.
-    """
-    connector = context.infrastructure.engine.connector
-
-    def text(value: object) -> str | None:
-        return value if isinstance(value, str) and value else None
-
-    dsp_url, participant_id = text(connector.dsp_url), text(connector.participant_id)
-    if dsp_url is None and participant_id is None:
-        return None
-    return ConnectorContact(dsp_url=dsp_url, participant_id=participant_id)
-
-
 @step("mock/wait/http_request")
 class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
     """Wait for an inbound HTTP request on a previously-registered mock endpoint.
@@ -116,8 +108,14 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
         RuntimeError: If no ``CallbackManager`` is available or the wait times out.
     """
 
-    params_model = WaitForCallParams
+    params_model: type[WaitForCallParams] = WaitForCallParams
     output_model = InboundCallOutput
+
+    def listener(self, params: WaitForCallParams, context: StepContext) -> Listener:
+        """Where the call is expected, as the run announces it."""
+        return Listener(
+            method=params.mock.method, url=params.mock.full_mock_url, path=params.mock.path
+        )
 
     async def execute(
         self, params: WaitForCallParams, context: StepContext, definition: StepDefinition
@@ -133,13 +131,7 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
             )
 
         manager.register(path, method)
-        listener = Listener(
-            method=method,
-            url=params.mock.full_mock_url,
-            path=path,
-            via="connector" if params.via_connector else "direct",
-            connector=_engine_connector(context) if params.via_connector else None,
-        )
+        listener = self.listener(params, context)
         # The run is now blocked on the SUT. Said out loud, with the address,
         # because from here the only thing that moves the run forward is a
         # call to it — and if the SUT will not make it, a person has to.
@@ -165,3 +157,40 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
                 elapsed_ms=elapsed_ms,
             )
         )
+
+
+@step("mock/wait/dataplane/http_request")
+class WaitForDataplaneCallStep(WaitForCallStep):
+    """Wait for an inbound HTTP request that arrives through the engine connector's data plane.
+
+    The same wait as ``mock/wait/http_request``, for a mock the system under
+    test must not call directly: a test offers an asset on the engine connector
+    whose data address is the mock, and the SUT negotiates that asset and calls
+    through its data plane. What differs is what the run announces — not the
+    mock URL, which is only the data plane's target, but the offer to negotiate:
+    the asset, and the engine connector's DSP URL and identity from the run's
+    infrastructure binding.
+    """
+
+    params_model = WaitForDataplaneCallParams
+
+    def listener(self, params: WaitForCallParams, context: StepContext) -> Listener:
+        # Validated against this step's own params_model, so the asset is there.
+        asset_id = cast(WaitForDataplaneCallParams, params).asset_id
+        connector = context.infrastructure.engine.connector
+        return Listener(
+            method=params.mock.method,
+            url=params.mock.full_mock_url,
+            path=params.mock.path,
+            via="dataplane",
+            offer=ConnectorOffer(
+                asset_id=asset_id,
+                dsp_url=_text(connector.dsp_url),
+                participant_id=_text(connector.participant_id),
+            ),
+        )
+
+
+def _text(value: object) -> str | None:
+    """A binding field as published — ``None`` for one the run left empty."""
+    return value if isinstance(value, str) and value else None

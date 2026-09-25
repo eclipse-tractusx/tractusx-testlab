@@ -203,6 +203,7 @@ nav:
       - http: api-reference/steps/http/index.md
       - mock:
         - Overview: api-reference/steps/mock/index.md
+        - wait/dataplane: api-reference/steps/mock/wait-dataplane.md
         - wait: api-reference/steps/mock/wait.md
       - notification:
         - Overview: api-reference/steps/notification/index.md

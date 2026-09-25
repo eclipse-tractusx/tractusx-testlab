@@ -7,6 +7,7 @@
 | — | [`mock/api`](#mock-api) | Register a mock HTTP endpoint that returns a canned response. |
 | — | [`mock/discovery`](#mock-discovery) | Register a BPN Discovery Finder mock returning configured EDC endpoints. |
 | — | [`mock/dtr`](#mock-dtr) | Register a protocol-aware AAS Digital Twin Registry mock. |
+| `wait/dataplane` | [`mock/wait/dataplane/http_request`](wait-dataplane.md#mock-wait-dataplane-http_request) | Wait for an inbound HTTP request that arrives through the engine connector's data plane. |
 | `wait` | [`mock/wait/http_request`](wait.md#mock-wait-http_request) | Wait for an inbound HTTP request on a previously-registered mock endpoint. |
 
 ## `mock/api` { #mock-api }

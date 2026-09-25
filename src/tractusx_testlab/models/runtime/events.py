@@ -40,6 +40,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from tractusx_testlab.models.primitives.enums import EventKind, JobStatus
+from tractusx_testlab.models.runtime.listener import Listener
 from tractusx_testlab.models.runtime.results import (
     AssertionResult,
     CallbackResult,
@@ -174,38 +175,6 @@ class StepSkippedEvent(_ExecutionEvent):
     test_id: str
     step_id: str | None = None
     result: StepResult
-
-
-class ConnectorContact(BaseModel):
-    """How a counter-party finds the engine's connector in the dataspace."""
-
-    dsp_url: str | None = None
-    #: The connector's dataspace identity — a DID on a DCP dataspace, a BPNL
-    #: on an older one.
-    participant_id: str | None = None
-
-
-class Listener(BaseModel):
-    """Where the system under test is expected to call.
-
-    Published so that whoever is watching a run — or driving the SUT by hand —
-    is told the one thing they need at that moment: which method, at which
-    address. ``url`` is the address as the engine knows it; ``path`` is the
-    part of it the mock server routes on.
-    """
-
-    method: str
-    url: str
-    path: str
-    #: How the call has to arrive. ``direct``: the SUT calls ``url`` itself.
-    #: ``connector``: the SUT reaches the mock only through the engine's
-    #: connector — it discovers ``connector``, negotiates the offer whose data
-    #: address is the mock and calls through its data plane — so ``url`` is the
-    #: data plane's target, never an address to hand the SUT.
-    via: Literal["direct", "connector"] = "direct"
-    #: The engine connector to go through, when ``via`` is ``connector`` and
-    #: the run is bound to one.
-    connector: ConnectorContact | None = None
 
 
 class StepListeningEvent(_ExecutionEvent):

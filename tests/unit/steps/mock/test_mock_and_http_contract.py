@@ -42,7 +42,12 @@ from tractusx_testlab.server.mock_registry import (
 )
 from tractusx_testlab.steps.http.request import HttpRequestStep
 from tractusx_testlab.steps.mock.api import MockEndpointStep
-from tractusx_testlab.steps.mock.wait import WaitForCallParams, WaitForCallStep
+from tractusx_testlab.steps.mock.wait import (
+    WaitForCallParams,
+    WaitForCallStep,
+    WaitForDataplaneCallParams,
+    WaitForDataplaneCallStep,
+)
 
 _PATH = "/companycertificate/notification/receive"
 
@@ -360,7 +365,7 @@ class TestTheStepsSayWhereToCall:
         assert waited_ms == output.value["elapsed_ms"]
 
     @pytest.mark.asyncio
-    async def test_a_direct_wait_names_no_connector(self, context: MagicMock) -> None:
+    async def test_a_direct_wait_names_no_offer(self, context: MagicMock) -> None:
         manager = CallbackManager()
         set_callback_manager(manager)
         registered = await MockEndpointStep().invoke(
@@ -376,59 +381,7 @@ class TestTheStepsSayWhereToCall:
 
         listener = context.report_waiting.call_args.args[2]
         assert listener.via == "direct"
-        assert listener.connector is None
-
-    @pytest.mark.asyncio
-    async def test_a_wait_via_the_connector_names_the_engine_connector(
-        self, context: MagicMock
-    ) -> None:
-        """The SUT is sent to the connector to discover, not to the mock URL."""
-        context.infrastructure = Infrastructure(
-            engine=EngineBindings(
-                connector=ConnectorBinding(
-                    management_url="https://engine-edc.example/management",
-                    dsp_url="https://engine-edc.example/api/v1/dsp",
-                    participant_id="did:web:engine.example:BPNL000000000TLB",
-                )
-            )
-        )
-        manager = CallbackManager()
-        set_callback_manager(manager)
-        registered = await MockEndpointStep().invoke(
-            {"path": _PATH}, context, _definition("mock/api")
-        )
-        manager.resolve(_PATH, "POST", {}, None)
-
-        await WaitForCallStep().invoke(
-            {"mock": registered.value["mock"], "timeout_s": 1, "via_connector": True},
-            context,
-            _definition("mock/wait/http_request"),
-        )
-
-        listener = context.report_waiting.call_args.args[2]
-        assert listener.via == "connector"
-        assert listener.connector.dsp_url == "https://engine-edc.example/api/v1/dsp"
-        assert listener.connector.participant_id == "did:web:engine.example:BPNL000000000TLB"
-
-    @pytest.mark.asyncio
-    async def test_a_wait_via_an_unbound_connector_names_none(self, context: MagicMock) -> None:
-        context.infrastructure = Infrastructure()
-        manager = CallbackManager()
-        set_callback_manager(manager)
-        registered = await MockEndpointStep().invoke(
-            {"path": _PATH}, context, _definition("mock/api")
-        )
-        manager.resolve(_PATH, "POST", {}, None)
-
-        await WaitForCallStep().invoke(
-            {"mock": registered.value["mock"], "timeout_s": 1, "via_connector": True},
-            context,
-            _definition("mock/wait/http_request"),
-        )
-
-        listener = context.report_waiting.call_args.args[2]
-        assert listener.via == "connector"
-        assert listener.connector is None
+        assert listener.offer is None
 
     @pytest.mark.asyncio
     async def test_a_call_that_never_arrives_reports_no_arrival(self, context: MagicMock) -> None:
@@ -445,3 +398,71 @@ class TestTheStepsSayWhereToCall:
             )
 
         context.report_received.assert_not_called()
+
+
+class TestWaitForDataplaneCall:
+    """The same wait, announced as the offer to negotiate rather than the URL to call."""
+
+    def test_it_needs_the_asset_to_negotiate(self) -> None:
+        mock = {"path": _PATH, "method": "POST", "base_mock_url": "b", "full_mock_url": "f"}
+        with pytest.raises(ValueError):
+            WaitForDataplaneCallParams.model_validate({"mock": mock})
+        with pytest.raises(ValueError):
+            WaitForDataplaneCallParams.model_validate({"mock": mock, "asset_id": ""})
+
+    @pytest.mark.asyncio
+    async def test_it_announces_the_asset_and_the_engine_connector(
+        self, context: MagicMock
+    ) -> None:
+        context.infrastructure = Infrastructure(
+            engine=EngineBindings(
+                connector=ConnectorBinding(
+                    management_url="https://engine-edc.example/management",
+                    dsp_url="https://engine-edc.example/api/v1/dsp",
+                    participant_id="did:web:engine.example:BPNL000000000TLB",
+                )
+            )
+        )
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_PATH, "POST", {"edc-bpn": "BPNL000000000SUT"}, {"status": "RECEIVED"})
+
+        output = await WaitForDataplaneCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1, "asset_id": "ccmapi-offer"},
+            context,
+            StepDefinition(id="await_push", uses="mock/wait/dataplane/http_request"),
+        )
+
+        step_type, step_id, listener, _ = context.report_waiting.call_args.args
+        assert (step_type, step_id) == ("mock/wait/dataplane/http_request", "await_push")
+        assert listener.via == "dataplane"
+        assert listener.offer.asset_id == "ccmapi-offer"
+        assert listener.offer.dsp_url == "https://engine-edc.example/api/v1/dsp"
+        assert listener.offer.participant_id == "did:web:engine.example:BPNL000000000TLB"
+        # The wait itself is the plain one: same output, same arrival report.
+        assert output.value["request_body"] == {"status": "RECEIVED"}
+        assert context.report_received.call_args.args[2] is listener
+
+    @pytest.mark.asyncio
+    async def test_an_unbound_connector_still_names_the_asset(self, context: MagicMock) -> None:
+        context.infrastructure = Infrastructure()
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_PATH, "POST", {}, None)
+
+        await WaitForDataplaneCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1, "asset_id": "ccmapi-offer"},
+            context,
+            _definition("mock/wait/dataplane/http_request"),
+        )
+
+        offer = context.report_waiting.call_args.args[2].offer
+        assert offer.asset_id == "ccmapi-offer"
+        assert offer.dsp_url is None
+        assert offer.participant_id is None
