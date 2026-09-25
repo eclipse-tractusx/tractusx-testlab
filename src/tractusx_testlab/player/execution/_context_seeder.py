@@ -40,6 +40,7 @@ from tractusx_testlab.authoring.test import Tck
 from tractusx_testlab.models.primitives.binding_errors import MissingInputVariableError
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
 from tractusx_testlab.player.execution.context import StepContext
+from tractusx_testlab.player.loading._package_paths import package_path
 from tractusx_testlab.syntax import keys, variables
 
 logger = logging.getLogger(__name__)
@@ -179,7 +180,11 @@ def _resolve_asset_path(base_dir: Path, folder_name: str, source: str) -> Path |
     valid inputs to the player, so try the compiled layout first and fall back
     to the raw one.  Returns ``None`` when the file exists in neither.
     """
-    for candidate in (base_dir / "assets" / folder_name / source, base_dir / folder_name / source):
+    # `source` comes from the package; it may not name a file outside it.
+    for candidate in (
+        package_path(base_dir, f"assets/{folder_name}/{source}"),
+        package_path(base_dir, f"{folder_name}/{source}"),
+    ):
         if candidate.is_file():
             return candidate
     return None

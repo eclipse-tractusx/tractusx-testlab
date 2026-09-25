@@ -40,6 +40,7 @@ from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.models.authoring.definitions import TestDefinition
 from tractusx_testlab.models.primitives.enums import DefinitionKind
 from tractusx_testlab.player.loading._encrypted import PAYLOAD_ENTRY, open_encrypted_package
+from tractusx_testlab.player.loading._package_paths import package_path
 from tractusx_testlab.player.loading._parser import (
     _TCK_ADAPTER,
     _TEST_ADAPTER,
@@ -65,7 +66,8 @@ def _load_tests(entries: list, base_dir: Path) -> list[Test]:
     tests_dir = base_dir / "tests"
     validation_errors = []
     for entry in entries:
-        test_path = tests_dir / entry.id
+        # The id comes from the package; it may not name a file outside it.
+        test_path = package_path(tests_dir, entry.id)
         if not test_path.exists():
             logger.warning("Test file not found, skipping: %s", test_path)
             continue
@@ -182,8 +184,16 @@ class Loader:
         _verify_tck_integrity(entries)
 
         extract_dir = Path(tempfile.mkdtemp(prefix="tck_"))
+        # Every name is checked before the first byte is written: an entry
+        # named `../x` or `/home/u/.bashrc` used to be written there, before the
+        # bundle was even parsed (GHSA-5982-hx9j-38f7). A directory entry
+        # (`tests/`) carries no content and is only created.
+        targets = {name: package_path(extract_dir, name) for name in entries}
         for name, blob in entries.items():
-            target = extract_dir / name
+            target = targets[name]
+            if name.endswith("/"):
+                target.mkdir(parents=True, exist_ok=True)
+                continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(blob)
 
