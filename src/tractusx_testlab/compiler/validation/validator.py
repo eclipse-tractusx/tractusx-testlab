@@ -35,6 +35,7 @@ from tractusx_testlab.compiler.validation._extension_gate import (
     experimental_warnings,
     extension_findings,
 )
+from tractusx_testlab.compiler.validation._variable_references import unresolved_references
 from tractusx_testlab.compiler.validation.issues import ValidationResult
 from tractusx_testlab.infrastructure.mapping import known_keys
 from tractusx_testlab.models import StepDefinition, TckDefinition, TestDefinition
@@ -42,30 +43,11 @@ from tractusx_testlab.steps._checks.extraction import declared_names
 from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
 from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
-from tractusx_testlab.syntax import context_vars, defaults, diagnostics, patterns
+from tractusx_testlab.syntax import context_vars, defaults, diagnostics
 
 #: ``execution.id`` names the run (ADR-0010 §3.4), so no execution step may
 #: take the id its outputs would be published under.
 _RESERVED_EXECUTION_STEP_ID = context_vars.EXECUTION_ID.split(".", 1)[1]
-
-
-def _root_of(reference: str) -> str:
-    """The part of a reference that has to exist for the rest to be reachable.
-
-    ``execution.fetch.response_body`` hangs off the step ``execution.fetch``;
-    ``env.testdata.request_body`` off the file the manifest declared, which is
-    three segments; ``infrastructure.sut.connector.dsp_url`` off the binding
-    key, which is four. Checking the root is what can be checked statically —
-    how deep a declared output can be walked is the step's business, not the
-    manifest's. A manifest variable has no depth to check: its id is the whole
-    reference, and one that reaches past it is refused by name.
-    """
-    parts = reference.split(".")
-    if parts[0] == "infrastructure":
-        return ".".join(parts[:4])
-    if parts[0] == "env" and len(parts) > 1 and parts[1] in ("testdata", "schemas"):
-        return ".".join(parts[:3])
-    return ".".join(parts[:2]) if len(parts) > 1 else reference
 
 
 def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
@@ -230,7 +212,7 @@ class TestValidator:
                 )
 
         # Check variable references in with_ params resolve
-        self._check_var_refs(step_def.with_ or {}, idx, declared, result)
+        self._check_var_refs(step_def.with_ or {}, idx, declared, result, step_cls)
 
         # Enforce plain-string validate inputs for inline validate assertions.
         self._validate_inline_assert_inputs(step_def, step_cls, idx, result, phase)
@@ -271,7 +253,12 @@ class TestValidator:
             )
 
     def _check_var_refs(
-        self, params: dict, step_idx: int, declared: set[str] | None, result: ValidationResult
+        self,
+        params: dict,
+        step_idx: int,
+        declared: set[str] | None,
+        result: ValidationResult,
+        step_cls: type | None = None,
     ) -> None:
         """Reject a reference to a name nothing in this TCK supplies.
 
@@ -283,25 +270,14 @@ class TestValidator:
         """
         if declared is None:
             return
-        for key, value in params.items():
-            if isinstance(value, str):
-                for match in patterns.EXPR_REF.finditer(value):
-                    reference = match.group(1)
-                    if _root_of(reference) in declared:
-                        continue
-                    result.add_error(
-                        f"'${{{{ {reference} }}}}' in param '{key}' names nothing this "
-                        f"TCK supplies. Available: {', '.join(sorted(declared)[:12])}"
-                        f"{'…' if len(declared) > 12 else ''}.",
-                        step_index=step_idx,
-                        field=key,
-                    )
-            elif isinstance(value, dict):
-                self._check_var_refs(value, step_idx, declared, result)
-            elif isinstance(value, list):
-                for item in value:
-                    if isinstance(item, dict):
-                        self._check_var_refs(item, step_idx, declared, result)
+        for key, reference in unresolved_references(params, declared, step_cls):
+            result.add_error(
+                f"'${{{{ {reference} }}}}' in param '{key}' names nothing this "
+                f"TCK supplies. Available: {', '.join(sorted(declared)[:12])}"
+                f"{'…' if len(declared) > 12 else ''}.",
+                step_index=step_idx,
+                field=key,
+            )
 
     def _validate_inline_assert_inputs(
         self,

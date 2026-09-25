@@ -26,5 +26,9 @@
 
 Import each step module here: registration happens when the module is imported,
 and this package is imported through :mod:`tractusx_testlab.extensions.step_modules`
-so ``labs/`` steps register with the rest. No step is in labs today.
+so ``labs/`` steps register with the rest.
 """
+
+from tractusx_testlab.extensions.labs.steps import for_each, provider_query
+
+__all__ = ["for_each", "provider_query"]

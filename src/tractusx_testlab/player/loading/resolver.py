@@ -33,6 +33,7 @@ grammar gets an error that says what to write instead.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from typing import TYPE_CHECKING
 
 from tractusx_testlab.models import UnresolvedReferenceError
@@ -143,12 +144,24 @@ def _resolve_value(value: object, context: StepContext, _depth: int = 0) -> obje
     return value
 
 
-def resolve_params(params: dict, context: StepContext) -> dict:
-    """Resolve every ``${{ ... }}`` reference in a step's ``with:`` block."""
-    return {key: _resolve_value(value, context) for key, value in params.items()}
+def resolve_params(params: dict, context: StepContext, deferred: Collection[str] = ()) -> dict:
+    """Resolve every ``${{ ... }}`` reference in a step's ``with:`` block.
+
+    A key in *deferred* is handed over as written. That is how a flow step
+    receives the steps nested inside it: each nested step resolves its own
+    ``with:`` when it runs, so it reads what the steps before it published —
+    and, inside ``flow/for_each``, the item it is running for, which does not
+    exist yet when the flow step itself starts.
+    """
+    return {
+        key: value if key in deferred else _resolve_value(value, context)
+        for key, value in params.items()
+    }
 
 
-def try_resolve_params(params: dict, context: StepContext) -> dict | None:
+def try_resolve_params(
+    params: dict, context: StepContext, deferred: Collection[str] = ()
+) -> dict | None:
     """Resolve a ``with:`` block, or answer ``None`` rather than raise.
 
     For the callers that resolve a block *before* running the step — the phase
@@ -158,6 +171,6 @@ def try_resolve_params(params: dict, context: StepContext) -> dict | None:
     be turned into a failed step.
     """
     try:
-        return resolve_params(params, context)
+        return resolve_params(params, context, deferred)
     except TestLabError:
         return None

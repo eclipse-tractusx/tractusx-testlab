@@ -5,6 +5,36 @@ Further information can be found on the [README.md](README.md) file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- `labs/flow/for_each` (experimental, `extensions: [labs]`): runs its nested
+  `steps:` once per entry of `items:`. A nested step reads the entry as
+  `${{ each.item }}` and its position as `${{ each.index }}`; the compiler
+  refuses both names outside a loop's steps.
+- `labs/connector/provider/query_assets`, `query_policies` and
+  `query_contract_definitions` (experimental): list the ids the provider
+  connector holds, every page, keeping those that start with `id_prefix`. The
+  contract-definition query also matches on `asset_id_prefix` and publishes the
+  `policy_ids` and `asset_ids` the kept definitions bind — with `for_each` and
+  the existing delete steps, a test withdraws an offer whose ids the connector
+  generated.
+
+### Changed
+
+- The nested steps of `flow/retry` and `flow/if` are handed over as written and
+  resolve their own `with:` when they run, instead of all at once when the flow
+  step starts. A step declares such keys as `deferred_params`. A reference that
+  names nothing now fails the nested step rather than the flow step.
+
+### Fixed
+
+- Teardown steps publish their outputs under `teardown.<id>`, as setup and
+  execution steps do. The compiler already accepted
+  `${{ teardown.<id>.<field> }}`, but the runner published nothing in
+  teardown, so every such reference failed at run time as unresolved.
+
 ## [1.0.0a5] - 2026-09-25
 
 ### Added

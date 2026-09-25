@@ -74,6 +74,7 @@ class RetryStep(BaseStep[RetryParams, RetryOutput]):
 
     params_model = RetryParams
     output_model = RetryOutput
+    deferred_params = frozenset({"steps"})
 
     async def execute(
         self, params: RetryParams, context: StepContext, definition: StepDefinition

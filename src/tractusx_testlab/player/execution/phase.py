@@ -112,14 +112,14 @@ async def run_phase(
         step_name = _format_step_name(
             test.definition.id, step_idx, step_def.uses, config.phase_label, step_def.id
         )
-        # Resolved before the event rather than inside the runner: what the
-        # step is about to be given is what ``step.start`` has to report, and a
-        # trace repeating ``${{ env.usage_policy }}`` names the variable without
-        # ever saying what the run seeded it with. ``None`` — a reference that
-        # names nothing — publishes the block as written and leaves the failure
-        # to the runner, which is the only place that can turn it into a failed
-        # step.
-        params = try_resolve_params(step_def.with_ or {}, context)
+        # Resolved before the event rather than inside the runner: ``step.start``
+        # reports what the step is about to be given, not the ``${{ }}`` it was
+        # written with. ``None`` (a reference naming nothing) publishes the block
+        # as written and leaves the failure to the runner. A flow step's nested
+        # steps stay as written: each resolves its own ``with:`` when it runs.
+        step_cls = StepRegistry.get(step_def.uses, test.dataspace_version)
+        deferred: frozenset[str] = getattr(step_cls, "deferred_params", frozenset())
+        params = try_resolve_params(step_def.with_ or {}, context, deferred)
         monitor.on_step_started(
             job_id,
             test.definition.id,
@@ -254,15 +254,15 @@ EXECUTION = PhaseConfig(
 )
 
 #: Teardown is the phase that must happen regardless: it runs after a failure,
-#: ignores ``if:``, cannot be paused, and publishes nothing — releasing a
-#: resource is not a result a later step reads.
+#: ignores ``if:`` and cannot be paused. It publishes under ``teardown.`` like
+#: the others: a delete loop reads the ids a query step before it found.
 TEARDOWN = PhaseConfig(
     phase=StepPhase.TEARDOWN,
     phase_label="teardown",
     failure_policy=FailurePolicy.CONTINUE,
     evaluate_conditions=False,
     use_pause_gate=False,
-    store_outputs=False,
+    store_outputs=True,
 )
 
 

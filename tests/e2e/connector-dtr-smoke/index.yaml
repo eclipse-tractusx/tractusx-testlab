@@ -327,5 +327,5 @@ tests:
     name: Run the flow, utility, OAuth2 and protocol-mock steps against real endpoints
     skippable: true
   - id: experimental_extensions.yaml
-    name: Run the experimental extensions — `cac:` and a `labs` retry parameter — through a live data plane
+    name: Run the experimental extensions — `cac:`, a `labs` retry parameter, and the `labs` loop and queries — against a live connector
     skippable: true

@@ -37,11 +37,21 @@ import ast
 import re
 from pathlib import Path
 
+import tractusx_testlab.extensions.labs.steps
 import tractusx_testlab.steps
 from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.steps.step_contract import BaseStep
 
 _STEPS_DIR = Path(tractusx_testlab.steps.__file__).parent
+#: ``labs/`` steps live with the extension that gates them, not under steps/.
+_LABS_STEPS_DIR = Path(tractusx_testlab.extensions.labs.steps.__file__).parent
+_SRC_DIR = _STEPS_DIR.parent
+
+
+def _step_sources() -> list[Path]:
+    """Every module a registered step may be declared in, core and ``labs/``."""
+    return sorted([*_STEPS_DIR.rglob("*.py"), *_LABS_STEPS_DIR.rglob("*.py")])
+
 
 #: Step classes that are deliberately not registered: shared bases that exist
 #: only for the registered subclasses below them to inherit ``execute`` from.
@@ -53,7 +63,7 @@ _STEP_DECORATOR = re.compile(r"^step\((['\"])(?P<step_type>.+?)\1")
 def _decorated_step_types() -> dict[str, str]:
     """Every ``@step("…")`` under the steps package, mapped to ``file:line``."""
     found: dict[str, str] = {}
-    for path in sorted(_STEPS_DIR.rglob("*.py")):
+    for path in _step_sources():
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef):
@@ -61,7 +71,7 @@ def _decorated_step_types() -> dict[str, str]:
             for decorator in node.decorator_list:
                 match = _STEP_DECORATOR.match(ast.unparse(decorator))
                 if match:
-                    where = f"{path.relative_to(_STEPS_DIR)}:{node.lineno}"
+                    where = f"{path.relative_to(_SRC_DIR)}:{node.lineno}"
                     found[match.group("step_type")] = where
     return found
 
@@ -69,13 +79,13 @@ def _decorated_step_types() -> dict[str, str]:
 def _step_class_names() -> dict[str, str]:
     """Every class deriving from ``BaseStep`` on disk, mapped to ``file:line``."""
     classes: dict[str, tuple[str, list[str]]] = {}
-    for path in sorted(_STEPS_DIR.rglob("*.py")):
+    for path in _step_sources():
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
             bases = [re.sub(r"\[.*\]", "", ast.unparse(base)).split(".")[-1] for base in node.bases]
-            classes[node.name] = (f"{path.relative_to(_STEPS_DIR)}:{node.lineno}", bases)
+            classes[node.name] = (f"{path.relative_to(_SRC_DIR)}:{node.lineno}", bases)
 
     def derives_from_base_step(name: str, seen: frozenset[str] = frozenset()) -> bool:
         if name in seen or name not in classes:
@@ -91,7 +101,7 @@ def _step_class_names() -> dict[str, str]:
 def _decorated_class_names() -> set[str]:
     """Names of the classes that carry a ``@step("…")`` decorator."""
     names: set[str] = set()
-    for path in sorted(_STEPS_DIR.rglob("*.py")):
+    for path in _step_sources():
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and any(
@@ -153,14 +163,21 @@ class TestAStepsPathMirrorsItsId:
         misplaced = {
             step_type: location
             for step_type, location in _decorated_step_types().items()
-            if not location.split(":")[0].startswith(
-                step_type.split("/")[0].replace("-", "_") + "/"
-            )
+            if not location.split(":")[0].startswith(_home_of(step_type))
         }
         assert not misplaced, (
             f"These steps are not under the directory their id names: {misplaced}. "
-            f"A step id's first segment is its package, with '-' written as '_'."
+            f"A step id's first segment is its package, with '-' written as '_'; "
+            f"a 'labs/' step lives in extensions/labs/steps/."
         )
+
+
+def _home_of(step_type: str) -> str:
+    """The directory, relative to the source root, a step's id says it lives in."""
+    category = step_type.split("/")[0]
+    if category == "labs":
+        return "extensions/labs/steps/"
+    return f"steps/{category.replace('-', '_')}/"
 
 
 class TestEveryRegisteredStepIsReachable:

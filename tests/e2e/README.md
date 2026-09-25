@@ -113,7 +113,10 @@ without having been run once against something real.
   references, and a pull through the SUT's data plane carries `retry_on`, a
   `labs` parameter the extension adds to `connector/dataplane/http_request`
   from outside the step. It retries on 200 for two attempts, so the retry
-  always happens and always stops. Every other test uses no extension.
+  always happens and always stops. Its teardown withdraws the offer with the
+  `labs` steps `query_contract_definitions`, `query_assets` and
+  `query_policies`, looping the core delete steps over what they find with
+  `labs/flow/for_each`. Every other test uses no extension.
 
 The workflow runs the full suite, every test, on every event — pull requests
 included. The cluster bring-up is where the job's minutes go and a run takes
