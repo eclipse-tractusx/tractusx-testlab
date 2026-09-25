@@ -16,7 +16,7 @@ source venv/bin/activate   # On Windows, use `venv\Scripts\activate`
 
 ## Installation
 
-TestLab is published on PyPI as pre-releases (`1.0.0a4` is the current one), so pip needs `--pre`:
+TestLab is published on PyPI as pre-releases (`1.0.0a5` is the current one), so pip needs `--pre`:
 
 ```bash
 pip install --pre tractusx-testlab

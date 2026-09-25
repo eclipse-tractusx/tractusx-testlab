@@ -5,6 +5,25 @@ Further information can be found on the [README.md](README.md) file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.0.0a5] - 2026-09-25
+
+### Added
+
+- `mock/wait/dataplane/http_request`: waits like `mock/wait/http_request`, for a
+  call that has to arrive through the engine connector's data plane. It takes
+  the `asset_id` the system under test negotiates, and its `step_waiting`
+  listener announces that offer — the asset and the engine connector's
+  `dsp_url` and `participant_id` — instead of leaving the mock URL, which on
+  that path is only the data plane's target, as the one thing to call.
+- `Listener.via` (`direct` | `dataplane`) and `Listener.offer`
+  (`ConnectorOffer`) on the listening, waiting and received events. A plain
+  wait reports `via: direct`.
+
+### Changed
+
+- `Listener` and `ConnectorOffer` live in `models/runtime/listener.py`; both
+  are still exported from `tractusx_testlab.models`.
+
 ## [1.0.0a4] - 2026-09-24
 
 ### Added

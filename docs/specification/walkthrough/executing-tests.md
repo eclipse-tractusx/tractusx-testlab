@@ -463,7 +463,7 @@ curl -X POST http://localhost:8100/testlab/packages -F "file=@dist/my-certificat
 The name and version are read from the file name, split at its last `-` (`<name>-<version>.tck`), so upload a
 package under a versioned file name. Upload is limited to `max_upload_bytes` (50 MB by default).
 
-!!! note "Known limitations in 1.0.0a4"
+!!! note "Known limitations in 1.0.0a5"
     `format` is reported as `ENCRYPTED` for every package, readable or not, and `GET /testlab/packages` lists each
     package with the whole file stem as its `name` and an empty `version`. Uploaded packages are stored under
     `<storage_dir>/packages/`.
