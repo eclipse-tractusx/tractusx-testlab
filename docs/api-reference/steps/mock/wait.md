@@ -18,6 +18,7 @@ This is the other half of `mock/api`: that step hands the system under test a ca
 |---|---|---|---|---|---|
 | `mock` | [MockInstance](#mockinstance) | yes | — | — | The mock to wait on, as returned by the step that registered it. |
 | `timeout_s` | number | no | `30.0` | — | Seconds to wait before failing. |
+| `via_connector` | boolean | no | `False` | — | The system under test calls through the engine's connector — it negotiates an offer whose data address is the mock and calls through its data plane — instead of calling the mock URL directly. Changes only what the run tells the person driving the SUT: the connector to discover, not the mock URL. |
 
 **Output** — the value assertions and `returns:` read
 

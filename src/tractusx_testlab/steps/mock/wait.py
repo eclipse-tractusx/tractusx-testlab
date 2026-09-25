@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.models import Listener, StepDefinition
+from tractusx_testlab.models import ConnectorContact, Listener, StepDefinition
 from tractusx_testlab.server.mock_registry import get_callback_manager
 from tractusx_testlab.steps.mock._models import MockInstance
 from tractusx_testlab.steps.shared_models import StepParams
@@ -61,6 +61,15 @@ class WaitForCallParams(StepParams):
     timeout_s: float = Field(
         default=_DEFAULT_TIMEOUT_S, gt=0, description="Seconds to wait before failing."
     )
+    via_connector: bool = Field(
+        default=False,
+        description=(
+            "The system under test calls through the engine's connector — it negotiates "
+            "an offer whose data address is the mock and calls through its data plane — "
+            "instead of calling the mock URL directly. Changes only what the run tells "
+            "the person driving the SUT: the connector to discover, not the mock URL."
+        ),
+    )
 
 
 class InboundCallOutput(StepPayload):
@@ -76,6 +85,23 @@ class InboundCallOutput(StepPayload):
     )
     request_body: Any = Field(default=None, description="Body of the inbound request.")
     elapsed_ms: int = Field(description="Milliseconds spent waiting before the request arrived.")
+
+
+def _engine_connector(context: StepContext) -> ConnectorContact | None:
+    """The engine connector a counter-party has to discover, if the run is bound to one.
+
+    Read from the run's infrastructure rather than taken as a parameter: which
+    connector the engine operates is the operator's binding, not the test's.
+    """
+    connector = context.infrastructure.engine.connector
+
+    def text(value: object) -> str | None:
+        return value if isinstance(value, str) and value else None
+
+    dsp_url, participant_id = text(connector.dsp_url), text(connector.participant_id)
+    if dsp_url is None and participant_id is None:
+        return None
+    return ConnectorContact(dsp_url=dsp_url, participant_id=participant_id)
 
 
 @step("mock/wait/http_request")
@@ -107,7 +133,13 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
             )
 
         manager.register(path, method)
-        listener = Listener(method=method, url=params.mock.full_mock_url, path=path)
+        listener = Listener(
+            method=method,
+            url=params.mock.full_mock_url,
+            path=path,
+            via="connector" if params.via_connector else "direct",
+            connector=_engine_connector(context) if params.via_connector else None,
+        )
         # The run is now blocked on the SUT. Said out loud, with the address,
         # because from here the only thing that moves the run forward is a
         # call to it — and if the SUT will not make it, a person has to.

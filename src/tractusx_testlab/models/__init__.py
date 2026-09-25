@@ -114,6 +114,7 @@ from tractusx_testlab.models.primitives.service_errors import (
 )
 from tractusx_testlab.models.runtime.events import (
     AssertionResultEvent,
+    ConnectorContact,
     ExecutionEvent,
     JobCancelledEvent,
     JobCompletedEvent,
@@ -176,6 +177,7 @@ __all__ = [
     # infrastructure requirements (authored)
     "CapabilityRequirement",
     "ConnectorBinding",
+    "ConnectorContact",
     "ConnectorError",
     "DataspaceContext",
     "DefinitionKind",

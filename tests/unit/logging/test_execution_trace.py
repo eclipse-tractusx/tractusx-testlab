@@ -418,6 +418,7 @@ class TestTheInboundCallIsInTheTrace:
                 "method": "POST",
                 "url": "http://localhost:8100/testlab-e2e/callback",
                 "path": "/testlab-e2e/callback",
+                "via": "direct",
             }
 
     def test_the_arrival_is_its_own_event_with_the_request_in_it(self, tmp_path) -> None:

@@ -32,6 +32,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.models.domain.capabilities import ConnectorBinding
+from tractusx_testlab.models.domain.infrastructure import EngineBindings, Infrastructure
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import (
     clear_mocks,
@@ -356,6 +358,77 @@ class TestTheStepsSayWhereToCall:
         assert request.payload == {"status": "RECEIVED"}
         assert request.headers == {"x-trace": "1"}
         assert waited_ms == output.value["elapsed_ms"]
+
+    @pytest.mark.asyncio
+    async def test_a_direct_wait_names_no_connector(self, context: MagicMock) -> None:
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_PATH, "POST", {}, None)
+
+        await WaitForCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1},
+            context,
+            _definition("mock/wait/http_request"),
+        )
+
+        listener = context.report_waiting.call_args.args[2]
+        assert listener.via == "direct"
+        assert listener.connector is None
+
+    @pytest.mark.asyncio
+    async def test_a_wait_via_the_connector_names_the_engine_connector(
+        self, context: MagicMock
+    ) -> None:
+        """The SUT is sent to the connector to discover, not to the mock URL."""
+        context.infrastructure = Infrastructure(
+            engine=EngineBindings(
+                connector=ConnectorBinding(
+                    management_url="https://engine-edc.example/management",
+                    dsp_url="https://engine-edc.example/api/v1/dsp",
+                    participant_id="did:web:engine.example:BPNL000000000TLB",
+                )
+            )
+        )
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_PATH, "POST", {}, None)
+
+        await WaitForCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1, "via_connector": True},
+            context,
+            _definition("mock/wait/http_request"),
+        )
+
+        listener = context.report_waiting.call_args.args[2]
+        assert listener.via == "connector"
+        assert listener.connector.dsp_url == "https://engine-edc.example/api/v1/dsp"
+        assert listener.connector.participant_id == "did:web:engine.example:BPNL000000000TLB"
+
+    @pytest.mark.asyncio
+    async def test_a_wait_via_an_unbound_connector_names_none(self, context: MagicMock) -> None:
+        context.infrastructure = Infrastructure()
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_PATH, "POST", {}, None)
+
+        await WaitForCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1, "via_connector": True},
+            context,
+            _definition("mock/wait/http_request"),
+        )
+
+        listener = context.report_waiting.call_args.args[2]
+        assert listener.via == "connector"
+        assert listener.connector is None
 
     @pytest.mark.asyncio
     async def test_a_call_that_never_arrives_reports_no_arrival(self, context: MagicMock) -> None:
