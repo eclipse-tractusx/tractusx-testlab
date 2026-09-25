@@ -40,12 +40,9 @@ from tractusx_testlab.authoring.test import Tck
 from tractusx_testlab.models.primitives.binding_errors import MissingInputVariableError
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.syntax import keys, variables
+from tractusx_testlab.syntax import context_vars, keys, variables
 
 logger = logging.getLogger(__name__)
-
-#: The reference a test reads the run's id through: ``${{ run.id }}``.
-RUN_ID = "run.id"
 
 
 def seed_context_variables(
@@ -86,7 +83,7 @@ def seed_context_variables(
     # leaves something behind in a shared system and has to name it apart from
     # what another run of the same TCK leaves there — an asset on the engine
     # connector, say. An engine that adopts its own job id hands it through.
-    context.set_variable(RUN_ID, context.job.job_id)
+    context.set_variable(context_vars.RUN_ID, context.job.job_id)
 
 
 def require_inputs(context: StepContext, tck: Tck) -> None:

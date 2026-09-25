@@ -31,6 +31,10 @@ the field names of the producing steps' output models, and using constants
 prevents silent typo breakage.
 """
 
+#: The id of the run a test is part of, readable as ``${{ run.id }}``. Seeded
+#: by the player, known to the compiler — no manifest declares it.
+RUN_ID = "run.id"
+
 # Catalog query results
 CATALOG_ASSET_ID = "catalog_asset_id"
 CATALOG_POLICY = "catalog_policy"

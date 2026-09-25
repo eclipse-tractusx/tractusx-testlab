@@ -42,7 +42,7 @@ from tractusx_testlab.steps._checks.extraction import declared_names
 from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
 from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
-from tractusx_testlab.syntax import defaults, diagnostics, patterns
+from tractusx_testlab.syntax import context_vars, defaults, diagnostics, patterns
 
 
 def _root_of(reference: str) -> str:
@@ -67,8 +67,8 @@ def _root_of(reference: str) -> str:
 def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
     """Every name a reference in *test* may legally resolve to.
 
-    Assembled from the manifest's ``env`` block, the test's own step ids, and
-    the infrastructure binding keys. This is the namespace the runtime will
+    Assembled from the manifest's ``env`` block, the test's own step ids, the
+    infrastructure binding keys and ``run.id``. This is the namespace the runtime will
     actually have, so a name missing from here is a name that will be missing
     from the run.
     """
@@ -93,6 +93,7 @@ def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
                 names.add(f"{phase}.{step.id}")
 
     names.update(known_keys())
+    names.add(context_vars.RUN_ID)
     return frozenset(names)
 
 

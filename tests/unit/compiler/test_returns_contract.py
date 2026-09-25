@@ -30,8 +30,9 @@ later, far from the typo that caused it.
 
 from __future__ import annotations
 
-from tractusx_testlab.compiler.validation.validator import TestValidator
+from tractusx_testlab.compiler.validation.validator import TestValidator, _scope_of
 from tractusx_testlab.models import StepDefinition, TestDefinition
+from tractusx_testlab.models.authoring.definitions import TckDefinition, TckMetadataDefinition
 
 
 def _errors_for(uses: str, returns: dict) -> list[str]:
@@ -94,3 +95,33 @@ class TestDeletedOutputNamesAreCaught:
             )
             == []
         )
+
+
+class TestTheRunIdIsInScope:
+    """``${{ run.id }}`` is supplied by the player, so no manifest declares it."""
+
+    def _errors_for(self, value: str) -> list[str]:
+        test = TestDefinition(
+            syntax="v1-alpha",
+            kind="test",
+            id="t",
+            namespace="n",
+            metadata={"name": "t"},
+            execution=[
+                StepDefinition(id="s1", uses="util/log", with_={"message": "m", "value": value})
+            ],
+        )
+        tck = TckDefinition(
+            kind="tck",
+            syntax="v1-alpha",
+            id="tck",
+            metadata=TckMetadataDefinition(name="tck", version="1.0"),
+        )
+        result = TestValidator().validate(test, scope=_scope_of(tck, test))
+        return [issue.message for issue in result.issues if issue.level == "error"]
+
+    def test_a_run_id_reference_compiles(self) -> None:
+        assert self._errors_for("testlab-ccmapi-${{ run.id }}") == []
+
+    def test_another_name_under_run_does_not(self) -> None:
+        assert len(self._errors_for("${{ run.name }}")) == 1
