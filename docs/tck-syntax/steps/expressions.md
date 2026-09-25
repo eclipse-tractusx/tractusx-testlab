@@ -20,6 +20,8 @@ Values are interpolated with `${{ … }}`.
 
 Rules **[PROP]**:
 
+- A reference is resolved once. What it stands for is resolved again only when it is part of the TCK package — a test data file or a static `env` value, whose `${{ }}` the author wrote. A step output, an operator input or a binding is data: a `${{ }}` inside it is handed on as text, never resolved. Authored content may nest references 16 deep.
+
 - References resolve **only backwards** within the same test, plus `env` / `testdata` globally.
 - Referencing a step in a later phase, a later step, or another test is a compile error.
 - Whole-value references may be unquoted; embedded references must be quoted:

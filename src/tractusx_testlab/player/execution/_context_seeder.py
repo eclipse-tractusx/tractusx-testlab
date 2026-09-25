@@ -70,7 +70,7 @@ def seed_context_variables(
     if shared_vars:
         for var_name, var_def in shared_vars.items():
             if var_def.default is not None:
-                context.set_variable(var_name, var_def.default)
+                context.set_template(var_name, var_def.default)
 
     seed_env_variables(context, tck)
 
@@ -119,7 +119,7 @@ def seed_env_variables(context: StepContext, tck: Tck) -> None:
         if value is None:
             continue
         var_id = str(var[keys.ID])
-        context.set_variable(var_id, _as_declared_type(var_id, value, _declared_type(var)))
+        context.set_template(var_id, _as_declared_type(var_id, value, _declared_type(var)))
 
 
 def _declared_variables(tck: Tck) -> Iterator[dict]:
@@ -221,8 +221,8 @@ def _load_json_assets(
         except (json.JSONDecodeError, OSError) as exc:
             logger.warning("Failed to load %s file %s: %s", folder_name, path, exc)
             continue
-        context.set_variable(f"{folder_name}.{entry.id}", content)
-        context.set_variable(f"env.{folder_name}.{entry.id}", content)
+        context.set_template(f"{folder_name}.{entry.id}", content)
+        context.set_template(f"env.{folder_name}.{entry.id}", content)
         logger.debug("Loaded %s '%s' from %s", folder_name, entry.id, path.name)
 
 
