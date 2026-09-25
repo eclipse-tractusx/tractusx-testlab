@@ -50,6 +50,7 @@ class StepContext:
         "_listener_reporter",
         "_reporter",
         "_services",
+        "_step_namespace",
         "_templates",
         "_test_cac",
         "_variables",
@@ -72,6 +73,7 @@ class StepContext:
         self._reporter: CallReporter | None = None
         self._listener_reporter: ListenerReporter | None = None
         self._test_cac: tuple[str, ...] = ()
+        self._step_namespace: str | None = None
 
     # ------------------------------------------------------------------
     # Configuration
@@ -206,6 +208,26 @@ class StepContext:
     def test_cac(self) -> list[str]:
         """The CACs a step that names none of its own reports under."""
         return list(self._test_cac)
+
+    # ------------------------------------------------------------------
+    # Where a step publishes its outputs
+    # ------------------------------------------------------------------
+
+    def bind_step_namespace(self, namespace: str | None) -> None:
+        """Name the phase a step's ``returns:`` are published under — the phase runner does.
+
+        Bound on the context for the reason the reporters are: a step nested in
+        a flow step runs on this context, not in the phase loop, and publishes
+        under this namespace too (``_step_outputs.run_and_publish``). That is
+        what lets the second step of a ``flow/retry`` read the first one's
+        ``${{ execution.<id>.<field> }}``.
+        """
+        self._step_namespace = namespace
+
+    @property
+    def step_namespace(self) -> str | None:
+        """``setup``, ``execution`` or ``teardown``; ``None`` outside a phase."""
+        return self._step_namespace
 
     # ------------------------------------------------------------------
     # Job / Memory

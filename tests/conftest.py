@@ -103,14 +103,17 @@ def mock_context() -> MagicMock:
     ctx.get_variable = MagicMock(side_effect=_get)
     ctx.get_str = MagicMock(side_effect=_get_str)
     ctx.has_variable = MagicMock(side_effect=_has)
+    # The namespace a phase binds and every step it runs publishes under.
+    ctx.step_namespace = None
+    ctx.bind_step_namespace = MagicMock(side_effect=lambda ns: setattr(ctx, "step_namespace", ns))
 
-    # The real runner, because `flow/if` and `flow/retry` run the steps nested
+    # The real invoker, because `flow/if` and `flow/retry` run the steps nested
     # inside them and take the runner from the context rather than importing it
     # (contracts.StepInvoker). A step that contains steps needs something that
     # can run one, and a MagicMock cannot.
-    from tractusx_testlab.player.execution.step_runner import run_step
+    from tractusx_testlab.player.execution._step_outputs import run_and_publish
 
-    ctx.invoke_step = run_step
+    ctx.invoke_step = run_and_publish
     return ctx
 
 

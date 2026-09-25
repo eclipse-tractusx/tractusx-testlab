@@ -35,7 +35,10 @@ from tractusx_testlab.compiler.validation._extension_gate import (
     experimental_warnings,
     extension_findings,
 )
-from tractusx_testlab.compiler.validation._variable_references import unresolved_references
+from tractusx_testlab.compiler.validation._variable_references import (
+    nested_step_ids,
+    unresolved_references,
+)
 from tractusx_testlab.compiler.validation.issues import ValidationResult
 from tractusx_testlab.infrastructure.mapping import known_keys
 from tractusx_testlab.models import StepDefinition, TckDefinition, TestDefinition
@@ -53,8 +56,9 @@ _RESERVED_EXECUTION_STEP_ID = context_vars.EXECUTION_ID.split(".", 1)[1]
 def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
     """Every name a reference in *test* may legally resolve to.
 
-    Assembled from the manifest's ``env`` block, the test's own step ids, the
-    infrastructure binding keys and ``execution.id``. This is the namespace the runtime will
+    Assembled from the manifest's ``env`` block, the test's own step ids (those
+    nested in a flow step included), the infrastructure binding keys and
+    ``execution.id``. This is the namespace the runtime will
     actually have, so a name missing from here is a name that will be missing
     from the run.
     """
@@ -77,6 +81,8 @@ def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
         for step in steps:
             if step.id:
                 names.add(f"{phase}.{step.id}")
+            for nested_id in nested_step_ids(step.uses, step.with_):
+                names.add(f"{phase}.{nested_id}")
 
     names.update(known_keys())
     names.add(context_vars.EXECUTION_ID)

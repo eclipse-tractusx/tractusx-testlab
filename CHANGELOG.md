@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- A step nested in `flow/retry`, `flow/if` or `labs/flow/for_each` publishes
+  its `returns:` under its phase and id, as a top-level step does, and the
+  compiler knows those ids. The step after a DSP negotiation in the same
+  retried sequence can read `${{ execution.<negotiation>.edr_token }}`; it used
+  to be refused as naming nothing the TCK supplies, and at run time nothing was
+  published under that name either. A retried or looped step leaves the value
+  of its latest run.
+
+## [1.0.0a6] - 2026-09-25
+
 ### Added
 
 - `labs/flow/for_each` (experimental, `extensions: [labs]`): runs its nested

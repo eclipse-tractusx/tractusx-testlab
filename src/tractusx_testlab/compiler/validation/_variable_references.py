@@ -148,3 +148,23 @@ def _unresolved_in_step(step: dict[str, Any], declared: Set[str]) -> Iterator[tu
     nested_cls = StepRegistry.get_any(str(step.get("uses", "")))
     yield from unresolved_references(step.get("with") or {}, declared, nested_cls)
     yield from unresolved_references({k: v for k, v in step.items() if k != "with"}, declared)
+
+
+def nested_step_ids(uses: str, params: Any) -> Iterator[str]:
+    """The ids of the steps a flow step runs, at any depth.
+
+    A nested step publishes under its phase as a top-level one does
+    (``_step_outputs.run_and_publish``), so the step after it in a
+    ``flow/retry`` reads ``${{ execution.<id>.<field> }}`` as it would outside.
+    """
+    if not isinstance(params, dict):
+        return
+    step_cls = StepRegistry.get_any(uses)
+    for key in getattr(step_cls, "deferred_params", frozenset()):
+        nested_steps = params.get(key)
+        for nested in nested_steps if isinstance(nested_steps, list) else []:
+            if not isinstance(nested, dict):
+                continue
+            if nested.get(keys.ID):
+                yield str(nested[keys.ID])
+            yield from nested_step_ids(str(nested.get(keys.USES, "")), nested.get(keys.WITH))
