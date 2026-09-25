@@ -71,6 +71,8 @@ What ships under `labs` today:
 | Contribution | On | What it does |
 |---|---|---|
 | `retry_on`, `retry_attempts`, `retry_delay_s` | `connector/dataplane/http_request` | Calls again while the answer's status is in `retry_on`, up to `retry_attempts` calls in total. Each attempt is its own `tck.test.step.call` event. A transport error is not retried. Source: `extensions/labs/dataplane_retry.py` |
+| `labs/flow/for_each` | new step | Runs its nested `steps:` once per entry of `items:`. A nested step reads the entry as `${{ each.item }}` and its position as `${{ each.index }}`; the compiler refuses both names outside the loop. The nested steps resolve their `with:` when they run, as the nested steps of `flow/retry` and `flow/if` do. Source: `extensions/labs/steps/for_each.py` |
+| `labs/connector/provider/query_assets`, `query_policies`, `query_contract_definitions` | new steps | List the ids the provider connector holds, page by page, keeping those that start with `id_prefix`. The contract-definition query also matches on `asset_id_prefix` and publishes the `policy_ids` and `asset_ids` the kept definitions bind, so a test can withdraw an offer whose ids the connector generated. Source: `extensions/labs/steps/provider_query.py` |
 
 ## Layout
 

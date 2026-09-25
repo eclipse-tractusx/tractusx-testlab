@@ -201,6 +201,10 @@ nav:
         - submodel: api-reference/steps/digital-twin-registry/submodel.md
       - flow: api-reference/steps/flow/index.md
       - http: api-reference/steps/http/index.md
+      - labs:
+        - Overview: api-reference/steps/labs/index.md
+        - connector/provider: api-reference/steps/labs/connector-provider.md
+        - flow: api-reference/steps/labs/flow.md
       - mock:
         - Overview: api-reference/steps/mock/index.md
         - wait/dataplane: api-reference/steps/mock/wait-dataplane.md

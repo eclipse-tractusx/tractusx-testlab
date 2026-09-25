@@ -147,7 +147,9 @@ async def _run_step_guarded(
         # hands them over; one that could not, or never tried, passes ``None``
         # and the same call is made here.
         if params is None:
-            params = resolve_params(step_def.with_ or {}, context)
+            params = resolve_params(
+                step_def.with_ or {}, context, getattr(step_instance, "deferred_params", ())
+            )
         # What the step was actually given, once every ``${{ ... }}`` was
         # resolved. A step that failed on what a reference resolved to cannot be
         # debugged from the test, which only says which reference was written.

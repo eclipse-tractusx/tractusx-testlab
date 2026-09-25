@@ -180,6 +180,6 @@ class TestTheManifestHasToEnableThem:
     def test_without_cac_the_references_are_refused(self) -> None:
         assert {e.field for e in self._errors(["labs"])} == {"cac", "validate.cac"}
 
-    def test_without_labs_the_retry_parameters_are_refused(self) -> None:
+    def test_without_labs_the_retry_parameters_and_labs_steps_are_refused(self) -> None:
         fields = {e.field for e in self._errors(["cac"])}
-        assert fields == {"with.retry_on", "with.retry_attempts", "with.retry_delay_s"}
+        assert fields == {"uses", "with.retry_on", "with.retry_attempts", "with.retry_delay_s"}

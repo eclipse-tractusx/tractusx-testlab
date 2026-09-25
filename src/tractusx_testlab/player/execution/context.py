@@ -238,6 +238,15 @@ class StepContext:
         self._variables[name] = value
         self._templates.add(name)
 
+    def unset_variable(self, name: str) -> None:
+        """Forget *name*, so a reference to it fails again as unresolved.
+
+        For a value that is only in scope for a while — the item
+        ``flow/for_each`` is running for — and must not outlive it.
+        """
+        self._variables.pop(name, None)
+        self._templates.discard(name)
+
     def is_template(self, name: str) -> bool:
         """Whether *name* holds TCK-authored content whose references are resolved on read."""
         return name in self._templates

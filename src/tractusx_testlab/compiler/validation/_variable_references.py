@@ -34,9 +34,10 @@ change, rather than as an unresolved reference in the middle of a test.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Set
 from typing import Any
 
+from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.syntax import keys, patterns
 
 
@@ -92,3 +93,58 @@ def _references_in(node: Any) -> Iterator[str]:
     elif isinstance(node, list):
         for item in node:
             yield from _references_in(item)
+
+
+def root_of(reference: str) -> str:
+    """The part of a reference that has to exist for the rest to be reachable.
+
+    ``execution.fetch.response_body`` hangs off the step ``execution.fetch``;
+    ``env.testdata.request_body`` off the file the manifest declared, which is
+    three segments; ``infrastructure.sut.connector.dsp_url`` off the binding
+    key, which is four. Checking the root is what can be checked statically —
+    how deep a declared output can be walked is the step's business, not the
+    manifest's. A manifest variable has no depth to check: its id is the whole
+    reference, and one that reaches past it is refused by name.
+    """
+    parts = reference.split(".")
+    if parts[0] == "infrastructure":
+        return ".".join(parts[:4])
+    if parts[0] == "env" and len(parts) > 1 and parts[1] in ("testdata", "schemas"):
+        return ".".join(parts[:3])
+    return ".".join(parts[:2]) if len(parts) > 1 else reference
+
+
+def unresolved_references(
+    params: dict[str, Any], declared: Set[str], step_cls: type | None = None
+) -> Iterator[tuple[str, str]]:
+    """Every ``(param, reference)`` in *params* whose root *declared* does not name.
+
+    *step_cls* is the step whose ``with:`` *params* is, when known. A flow
+    step's nested steps are checked as steps of their own, and a loop's may
+    also read what the loop binds (``each.item``) — a name that exists nowhere
+    else in the run, so it is in scope nowhere else.
+    """
+    nested_keys: frozenset[str] = getattr(step_cls, "deferred_params", frozenset())
+    body_scope: Set[str] = declared | getattr(step_cls, "body_references", frozenset())
+    for key, value in params.items():
+        if key in nested_keys and isinstance(value, list):
+            for nested in value:
+                if isinstance(nested, dict):
+                    yield from _unresolved_in_step(nested, body_scope)
+        elif isinstance(value, str):
+            for match in patterns.EXPR_REF.finditer(value):
+                if root_of(match.group(1)) not in declared:
+                    yield key, match.group(1)
+        elif isinstance(value, dict):
+            yield from unresolved_references(value, declared)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    yield from unresolved_references(item, declared)
+
+
+def _unresolved_in_step(step: dict[str, Any], declared: Set[str]) -> Iterator[tuple[str, str]]:
+    """The unresolved references of one nested step definition, its own nesting included."""
+    nested_cls = StepRegistry.get_any(str(step.get("uses", "")))
+    yield from unresolved_references(step.get("with") or {}, declared, nested_cls)
+    yield from unresolved_references({k: v for k, v in step.items() if k != "with"}, declared)

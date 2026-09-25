@@ -146,6 +146,7 @@ class IfStep(BaseStep[IfParams, IfOutput]):
 
     params_model = IfParams
     output_model = IfOutput
+    deferred_params = frozenset({"then", "else"})
 
     async def execute(
         self, params: IfParams, context: StepContext, definition: StepDefinition

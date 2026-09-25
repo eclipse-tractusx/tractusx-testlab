@@ -158,26 +158,81 @@ execution:
         with: { input: value, path: served_by, operator: equals, value: testlab-mock }
 
 teardown:
-  - id: delete_contract
-    uses: connector/provider/delete_contract_definition
-    name: Remove the mock-backed contract
+  # The `labs` loop and queries, withdrawing the offer setup published without
+  # naming a single id: the query finds the definition by the asset it offers,
+  # and publishes the two policies it binds, whose ids the connector generated.
+  # Order is the connector's referential integrity — definition, then its
+  # policies, then the asset.
+  - id: find_offer
+    uses: labs/connector/provider/query_contract_definitions
+    name: Find the contract definitions offering this test's asset
     with:
-      contract_definition_id: "${{ setup.create_contract.contract_definition_id }}"
+      asset_id_prefix: testlab-e2e-extensions-
+    returns:
+      contract_definition_ids:
+        type: array
+      policy_ids:
+        type: array
+      asset_ids:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: contract_definition_ids, operator: length_equals, value: 1 }
+      - uses: validate/assert
+        with: { input: policy_ids, operator: length_equals, value: 2 }
 
-  - id: delete_asset
-    uses: connector/provider/delete_asset
-    name: Remove the mock-backed asset
+  - id: delete_contracts
+    uses: labs/flow/for_each
+    name: Remove every definition found
     with:
-      asset_id: "${{ setup.create_asset.asset_id }}"
+      items: "${{ teardown.find_offer.contract_definition_ids }}"
+      steps:
+        - uses: connector/provider/delete_contract_definition
+          with:
+            contract_definition_id: "${{ each.item }}"
+    validate:
+      - uses: validate/assert
+        with: { input: iterations, operator: equals, value: 1 }
 
-  - id: delete_usage_policy
-    uses: connector/provider/delete_policy
-    name: Remove the SUT usage policy
+  - id: delete_policies
+    uses: labs/flow/for_each
+    name: Remove the policies the definition bound
     with:
-      policy_id: "${{ setup.create_usage_policy.policy_id }}"
+      items: "${{ teardown.find_offer.policy_ids }}"
+      steps:
+        - uses: connector/provider/delete_policy
+          with:
+            policy_id: "${{ each.item }}"
 
-  - id: delete_access_policy
-    uses: connector/provider/delete_policy
-    name: Remove the SUT access policy
+  # The asset keeps the agreement pull_data negotiated, and a connector refuses
+  # to delete an asset an agreement names: a 409 here is expected, not checked.
+  - id: find_assets
+    uses: labs/connector/provider/query_assets
+    name: Find this test's assets
     with:
-      policy_id: "${{ setup.create_access_policy.policy_id }}"
+      id_prefix: testlab-e2e-extensions-
+    returns:
+      asset_ids:
+        type: array
+
+  - id: delete_assets
+    uses: labs/flow/for_each
+    name: Remove every asset found
+    with:
+      items: "${{ teardown.find_assets.asset_ids }}"
+      steps:
+        - uses: connector/provider/delete_asset
+          with:
+            asset_id: "${{ each.item }}"
+
+  - id: confirm_policies_gone
+    uses: labs/connector/provider/query_policies
+    name: The access policy setup created is gone
+    with:
+      id_prefix: "${{ setup.create_access_policy.policy_id }}"
+    returns:
+      policy_ids:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: policy_ids, operator: length_equals, value: 0 }
