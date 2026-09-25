@@ -5,6 +5,20 @@ Further information can be found on the [README.md](README.md) file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Security
+
+- A whole-string `${{ }}` reference's value is resolved again only when it is
+  TCK-authored content (test data, static `env` values, shared defaults). Step
+  outputs — which carry what a remote service answered — operator inputs and
+  infrastructure bindings are passed on as data, so a `${{ }}` inside them is
+  never expanded. Before, a hostile response could have a later step expand
+  an operator credential (e.g. `infrastructure.*.connector.api_key`) into a
+  URL or body of its choosing. Authored content may nest references at most
+  16 deep; a cycle is a reportable error instead of a `RecursionError`.
+  (GHSA-rxvc-664c-hcv4)
+
 ## [1.0.0a4] - 2026-09-24
 
 ### Added
