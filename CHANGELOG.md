@@ -7,6 +7,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `mock/api` takes `require_api_key`: the mock answers only calls that carry
+  its API key in `api_key_header` (default `x-api-key`) and refuses every other
+  with 401. The run mints the key and returns it as `api_key`, for the test to
+  put in the `headers` of the asset whose data address is the mock; the
+  connector's data plane then adds it to every call it forwards. A mock behind
+  a connector can then no longer be reached by calling its published URL
+  directly. `api_key` can also be given, so two mocks behind one asset share
+  the key it carries.
+- A refused call is counted, and a `mock/wait/*` step that times out says how
+  many calls reached the mock without the key.
+- Secrets a run mints are masked by value (`***`) in the execution trace, in
+  the events handed to an embedder's callbacks and in the console transcript,
+  wherever they occur — a step input, a request body sent to the connector, a
+  returned value or an inbound header. The value the run uses is untouched.
+
 ### Fixed
 
 - A step nested in `flow/retry`, `flow/if` or `labs/flow/for_each` publishes
