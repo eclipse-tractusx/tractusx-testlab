@@ -34,6 +34,7 @@ test never names it.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -52,11 +53,13 @@ from tractusx_testlab.server.app import create_app
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import (
     MockResponse,
+    _mint_key,
     admits,
     clear_callback_manager,
     clear_mocks,
     register_mock,
     required_header,
+    run_key,
     set_callback_manager,
 )
 from tractusx_testlab.steps.connector.provision.mock_asset import (
@@ -116,6 +119,17 @@ class TestEveryMockRequiresTheKey:
         rearmed = await _register(context, "/companycertificate/status")
 
         assert push["api_key"] == status["api_key"] == rearmed["api_key"]
+
+    def test_the_key_is_a_256_bit_blake2b_digest_minted_once_per_run(self) -> None:
+        first = run_key("run-digest")
+
+        assert re.fullmatch(r"[0-9a-f]{64}", first)
+        assert run_key("run-digest") == first
+        assert run_key("run-digest-other") != first
+
+    def test_two_mintings_for_the_same_run_id_differ(self) -> None:
+        """The nonce, not the run id, is what makes a key unguessable."""
+        assert _mint_key("same-run") != _mint_key("same-run")
 
     @pytest.mark.asyncio
     async def test_a_wrong_key_is_refused(self, context: MagicMock) -> None:

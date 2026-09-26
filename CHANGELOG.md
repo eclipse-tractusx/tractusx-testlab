@@ -33,7 +33,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   of its mocks, and is returned as `api_key` (hidden unless `hidden: false`,
   for a mock the system under test calls directly and whose operator needs
   it). `api_key_header` names the header (default `x-api-key`); `public: true`
-  opts a mock out, for an engine step that cannot send a header. A refused call
+  opts a mock out, for an engine step that cannot send a header. The key is a
+  keyed BLAKE2b-256 digest (hex) of a 32-byte random nonce, the run id and a
+  nanosecond timestamp, under a per-process random salt. A refused call
   is counted, and a wait that times out says how many there were.
   `mock/dtr` and `mock/discovery` do not require the key yet.
 

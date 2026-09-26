@@ -31,8 +31,10 @@ through ``StepContext``.
 
 from __future__ import annotations
 
+import hashlib
 import hmac
 import secrets
+import time
 from collections import OrderedDict
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
@@ -117,6 +119,15 @@ _guards: dict[str, tuple[str, str]] = {}
 _run_keys: OrderedDict[str, str] = OrderedDict()
 _MAX_RUN_KEYS = 1024
 
+# The BLAKE2b key a mock API key is derived under: random per process and never
+# written anywhere, so knowing a run's id and when it started is not enough to
+# recompute its key. Keys only need to outlive the process that serves them.
+_KEY_SALT = secrets.token_bytes(hashlib.blake2b.MAX_KEY_SIZE)
+# Domain separation, so the same inputs hashed for another purpose never
+# produce a mock key (BLAKE2b's personalisation, at most 16 bytes).
+_KEY_PERSON = b"testlab-mock-key"
+_KEY_NONCE_BYTES = 32
+
 # Singleton holder for the active CallbackManager
 _callback_manager: CallbackManager | None = None
 
@@ -187,10 +198,27 @@ def run_key(run_id: str) -> str:
     """
     key = _run_keys.get(run_id)
     if key is None:
-        key = _run_keys[run_id] = secrets.token_urlsafe(32)
+        key = _run_keys[run_id] = _mint_key(run_id)
         while len(_run_keys) > _MAX_RUN_KEYS:
             _run_keys.popitem(last=False)
     return key
+
+
+def _mint_key(run_id: str) -> str:
+    """A 256-bit BLAKE2b digest of a fresh nonce, the run id and the time.
+
+    The message is ``nonce ‖ run id ‖ nanosecond timestamp``, hashed with the
+    per-process secret salt as the BLAKE2b key (keyed hashing, i.e. a MAC) and
+    a fixed personalisation. The nonce — 32 bytes from the operating system's
+    CSPRNG — comes first and carries the unpredictability on its own; the salt
+    means the digest cannot be recomputed outside this process even from a
+    known nonce; the run id and timestamp bind the key to the run it was minted
+    for and make two mintings distinct by construction. Hex-encoded: 64
+    characters, safe in any HTTP header.
+    """
+    nonce = secrets.token_bytes(_KEY_NONCE_BYTES)
+    message = b"\x00".join((nonce, run_id.encode("utf-8"), str(time.time_ns()).encode()))
+    return hashlib.blake2b(message, key=_KEY_SALT, digest_size=32, person=_KEY_PERSON).hexdigest()
 
 
 def require_header(path: str, method: str, header: str, value: str) -> None:
