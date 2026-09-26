@@ -555,3 +555,60 @@ class TestDelayBetweenSteps:
 
         assert outcome.passed, outcome.failures
         assert outcome.output("echo") == outcome.output("mint")
+
+
+class TestValidatingTheBranchOutcome:
+    """A ``validate:`` on ``flow/if`` reads its boolean ``condition_result``.
+
+    The IDE wrote a check typed into a text socket as ``value: "true"``, and the
+    run failed with "Expected 'true', got True" although the branch was taken.
+    """
+
+    def _branch(self, expected: object) -> tuple[dict, dict]:
+        return (
+            {
+                "id": "gen_uuid",
+                "uses": "util/generate_uuid",
+                "returns": {"value": {"type": "string"}},
+            },
+            {
+                "id": "branch",
+                "uses": "flow/if",
+                "with": {
+                    "conditions": [
+                        {"input": "${{ execution.gen_uuid.value }}", "operator": "not_null"}
+                    ],
+                    "then": [
+                        {
+                            "id": "log",
+                            "uses": "util/log",
+                            "with": {"value": "${{ execution.gen_uuid.value }}"},
+                        }
+                    ],
+                },
+                "returns": {"condition_result": {"type": "boolean"}},
+                "validate": [
+                    {
+                        "uses": "validate/assert",
+                        "with": {
+                            "input": "condition_result",
+                            "operator": "equals",
+                            "value": expected,
+                        },
+                    }
+                ],
+            },
+        )
+
+    @pytest.mark.parametrize("expected", [True, "true"])
+    async def test_the_taken_branch_validates_as_true(
+        self, harness: Harness, expected: object
+    ) -> None:
+        outcome = await harness.run(*self._branch(expected))
+
+        assert outcome.passed, outcome.assertion_messages("branch")
+
+    async def test_a_wrong_expectation_still_fails(self, harness: Harness) -> None:
+        outcome = await harness.run(*self._branch("false"))
+
+        assert not outcome.passed
