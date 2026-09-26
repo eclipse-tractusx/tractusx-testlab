@@ -51,6 +51,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
 
+from tractusx_testlab.logging.masking import mask
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -93,9 +95,13 @@ class _Tee:
         self._pending = ""
 
     def write(self, text: str) -> int:
-        written = self._stream.write(text)
-        self._to_file(text)
-        return written
+        # Masked for the console as much as for the file: a pod's stdout is a
+        # log someone else reads (logging.masking). What the caller is told was
+        # written is its own length, not the masked one.
+        masked = mask(text)
+        self._stream.write(masked)
+        self._to_file(masked)
+        return len(text)
 
     def _to_file(self, text: str) -> None:
         """Strip the terminal's own bookkeeping, then keep the words.

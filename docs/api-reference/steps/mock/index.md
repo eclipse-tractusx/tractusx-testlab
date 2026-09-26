@@ -14,7 +14,7 @@
 
 Register a mock HTTP endpoint that returns a canned response.
 
-`full_mock_url` is what a test hands to the system under test as its callback address; `mock` is what it hands to `mock/wait/http_request`, which then blocks until the SUT calls it.
+`full_mock_url` is what a test hands to the system under test as its callback address; `mock` is what it hands to `mock/wait/http_request`, which then blocks until the SUT calls it. A mock that stands behind a connector sets `require_api_key`. Its address is still published, so anyone reading the run could call it; what they do not have is `api_key`, which the test puts in the headers of the asset whose data address is the mock. The data plane adds it to every call it forwards, a direct call lacks it and is refused with 401, and the key itself is masked wherever the run is written down.
 
 **Inputs**
 
@@ -26,6 +26,9 @@ Register a mock HTTP endpoint that returns a canned response.
 | `response_status` | integer | no | `200` | — | Status code the mock returns. |
 | `response_body` | any | no | `{}` | — | JSON body the mock returns. References are written the usual way, '${{ ... }}', and are resolved before the step runs. |
 | `response_headers` | object | no | `{}` | — | Headers the mock returns alongside the body. |
+| `require_api_key` | boolean | no | `False` | — | Answer only calls that carry the mock's API key in 'api_key_header', and refuse every other with 401. For a mock the system under test must reach through a connector: put 'api_key' in the asset's data address headers, and only a call the data plane forwards has it. |
+| `api_key` | string | no | `''` | — | The key to require, e.g. another mock's 'api_key' when one asset fronts both. Minted by the run when empty. Setting it implies 'require_api_key'. |
+| `api_key_header` | string | no | `'x-api-key'` | — | Request header the key must arrive in. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -36,6 +39,7 @@ _The mock that now exists, and the two URLs a test needs from it._
 | `mock` | [MockInstance](#mockinstance) | The registered mock, as 'mock/wait/http_request' takes it. |
 | `base_mock_url` | string | Root URL of the testlab mock server. |
 | `full_mock_url` | string | Address to hand the system under test — root plus the mock's path. |
+| `api_key` | string | The key a call must carry, when the mock requires one — for the asset's data address, never for the system under test. Masked in every record of the run. |
 
 ## `mock/discovery` { #mock-discovery }
 
