@@ -50,7 +50,6 @@ MAX_LINES = 300
 OVERSIZED: dict[str, int] = {
     "steps/digital_twin_registry/consumer.py": 412,
     "steps/digital_twin_registry/submodel.py": 386,
-    "steps/assertions/operators.py": 382,
     "compiler/validation/validator.py": 373,
     "steps/digital_twin_registry/provider/shell.py": 363,
     "steps/step_contract.py": 363,
