@@ -18,7 +18,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5, Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The ``validate/*`` vocabulary — every spelling a TCK may write, and what it does.
@@ -199,6 +199,52 @@ class TestFieldPath:
         result = _run(self._OUTPUT, "validate/field", input="response_body", operator="not_null")
         assert result.passed, result.message
         assert result.actual == self._OUTPUT["response_body"]
+
+
+class TestBooleanAgainstText:
+    """A boolean output compared with text is compared as the YAML spells it.
+
+    ``flow/if`` reports ``condition_result: True``; a check written as
+    ``value: "true"`` failed with "Expected 'true', got True" because
+    ``str(True)`` is ``"True"``.
+    """
+
+    _OUTPUT = {"condition_result": True, "branch_taken": "then"}
+
+    @pytest.mark.parametrize("expected", ["true", "True", "TRUE", True])
+    def test_equals_holds_for_every_spelling_of_the_value(self, expected: object) -> None:
+        result = _run(
+            self._OUTPUT,
+            "validate/assert",
+            input="condition_result",
+            operator="equals",
+            value=expected,
+        )
+        assert result.passed, result.message
+
+    @pytest.mark.parametrize("expected", ["false", "False", False])
+    def test_equals_fails_for_the_other_value(self, expected: object) -> None:
+        result = _run(
+            self._OUTPUT,
+            "validate/assert",
+            input="condition_result",
+            operator="equals",
+            value=expected,
+        )
+        assert not result.passed
+
+    def test_not_equals_is_the_exact_opposite(self) -> None:
+        assert not apply_operator("not_equals", True, "true")[0]
+        assert apply_operator("not_equals", True, "false")[0]
+        assert apply_operator("not_equals", False, "true")[0]
+
+    def test_text_that_is_not_a_boolean_never_matches_one(self) -> None:
+        assert not apply_operator("equals", True, "yes")[0]
+        assert not apply_operator("equals", True, "1")[0]
+
+    def test_text_comparison_stays_case_sensitive_without_a_boolean(self) -> None:
+        assert apply_operator("equals", 200, "200")[0]
+        assert not apply_operator("equals", "then", "Then")[0]
 
 
 class TestUnknownAssertions:

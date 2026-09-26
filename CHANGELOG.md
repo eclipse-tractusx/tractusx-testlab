@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- `equals` / `not_equals` compare a boolean with text by its YAML spelling:
+  `condition_result: True` equals `value: "true"` (in any case). Before this,
+  the check fell back to `str(True)`, which is `"True"`, and failed with
+  "Expected 'true', got True". Text that spells no boolean still never
+  matches one, and text against text stays case-sensitive.
 - A step nested in `flow/retry`, `flow/if` or `labs/flow/for_each` publishes
   its `returns:` under its phase and id, as a top-level step does, and the
   compiler knows those ids. The step after a DSP negotiation in the same
