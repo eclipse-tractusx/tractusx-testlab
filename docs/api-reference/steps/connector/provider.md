@@ -6,6 +6,7 @@
 |---|---|
 | [`connector/provider/create_asset`](#connector-provider-create_asset) | Register an asset at the provider connector. |
 | [`connector/provider/create_contract_definition`](#connector-provider-create_contract_definition) | Publish assets by binding them to an access and a contract policy. |
+| [`connector/provider/create_mock_asset`](#connector-provider-create_mock_asset) | Offer one of the run's own mocks as an asset on the engine connector. |
 | [`connector/provider/create_policy`](#connector-provider-create_policy) | Register an ODRL policy definition at the provider connector. |
 | [`connector/provider/delete_asset`](#connector-provider-delete_asset) | Delete an asset from the provider connector. |
 | [`connector/provider/delete_contract_definition`](#connector-provider-delete_contract_definition) | Delete a contract definition from the provider connector. |
@@ -21,7 +22,7 @@ What the asset *is* is not written into the step: it is configured once in the m
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `asset` | object | no | `{}` | — | The whole asset definition, as declared by a 'config/connector/asset' manifest variable and referenced as '${{ env.<id> }}'. Carries 'base_url', 'dct_type' or 'properties', 'version', 'semantic_id', 'proxy_params', 'headers', 'private_properties' and an optional '@context'. |
+| `asset` | object | no | `{}` | — | The whole asset definition, as declared by a 'config/connector/asset' manifest variable and referenced as '${{ env.<id> }}'. Carries 'base_url', 'dct_type' or 'properties', 'dct_subject', 'version', 'semantic_id', 'proxy_params', 'headers', 'private_properties' and an optional '@context'. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -54,6 +55,28 @@ _Output contract of `connector/provider/create_contract_definition`._
 | Field | Type | Description |
 |---|---|---|
 | `contract_definition_id` | string | ID of the contract definition that now exists at the provider. |
+
+## `connector/provider/create_mock_asset` { #connector-provider-create_mock_asset }
+
+Offer one of the run's own mocks as an asset on the engine connector.
+
+The reflexive asset: the system under test negotiates it and calls through its data plane, and the data plane forwards to the engine's mock. The data address is the mock server's root, with the path, method and body proxied, and carries the key the mock requires as `header:<name>` — so a call the data plane forwards is answered, and a call made to the mock URL directly is refused. The key never appears in the test: it is read from the mock. It sits only in the asset's private data address, which neither the catalog nor the EDR the system under test receives carries, and it is masked wherever the run is written down. The key is new every run, so an asset left by an earlier run with the same id would forward the wrong one. The connector keeps an existing asset on 409, so that is an error here rather than the "already there" that `create_asset` reports; give the asset id the run id (`${{ execution.id }}`) and withdraw it in teardown.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `asset` | object | yes | — | — | The asset, as declared by a 'config/connector/mock_asset' variable and referenced as '${{ env.<id> }}'. Carries 'asset_id', 'dct_type' or 'properties', 'dct_subject', 'version', 'semantic_id', 'proxy_params', 'private_properties' and an optional '@context' — not 'base_url' or 'headers', which the mock supplies. |
+| `mock` | [MockInstance](#mockinstance) | yes | — | — | The mock the asset fronts, as 'mock/api' returned it. Its root becomes the data address, and the key it requires a header the data plane sends. |
+| `base_url` | string | no | `''` | — | Where the connector's data plane reaches the mock server, when that is not the root the mock published (the engine's mock_public_url) — a data plane in another network. Defaults to the mock's 'base_mock_url'. |
+
+**Output** — the value assertions and `returns:` read
+
+_Output contract of `connector/provider/create_asset`._
+
+| Field | Type | Description |
+|---|---|---|
+| `asset_id` | string | ID of the asset that now exists at the provider. |
 
 ## `connector/provider/create_policy` { #connector-provider-create_policy }
 
@@ -142,3 +165,15 @@ One catalog filter criterion.
 | `operand_left` | string | yes | — | — | Left-hand property of the criterion, e.g. 'https://w3id.org/edc/v0.0.1/ns/id'. |
 | `operator` | string | no | `'='` | — | Comparison operator. |
 | `operand_right` | any | no | `''` | — | Value the left-hand property is compared against. |
+
+### MockInstance
+
+A registered mock, as the steps that use it later need to see it.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `endpoint_id` | string | no | `''` | — | Identifier the mock was registered under, when it was given one. |
+| `path` | string | yes | — | — | Path the mock listens on. |
+| `method` | string | yes | — | — | HTTP method the mock answers. |
+| `base_mock_url` | string | yes | — | — | Root URL of the testlab mock server. |
+| `full_mock_url` | string | yes | — | — | Address the system under test calls — root plus path. |

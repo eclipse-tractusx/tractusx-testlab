@@ -36,7 +36,7 @@ is also what makes each readable on its own.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from tractusx_testlab.contracts import (
     ConnectorConsumer,
@@ -45,8 +45,14 @@ from tractusx_testlab.contracts import (
     RegistryService,
 )
 from tractusx_testlab.models import ServiceNotFoundError, ServiceType
+from tractusx_testlab.models.primitives.exceptions import AuthoringError
 from tractusx_testlab.services.instances import ServiceManager
 from tractusx_testlab.syntax import defaults
+
+#: The engine's own connector in the provider role, for the steps that offer
+#: something on it by definition — a mock the run itself serves. Kept out of
+#: the role lookups: a plain provider step is asking about the system under test.
+ENGINE_PROVIDER_SERVICE = "__engine_connector_provider__"
 
 
 class DataspaceAccess:
@@ -65,6 +71,19 @@ class DataspaceAccess:
     def provider(self) -> ConnectorProvider:
         """The CONNECTOR_PROVIDER service the run was seeded with."""
         return self._first_of(ServiceType.CONNECTOR_PROVIDER)
+
+    def engine_provider(self) -> ConnectorProvider:
+        """The engine's own connector, as a provider — never the SUT's."""
+        try:
+            return cast(
+                ConnectorProvider,
+                self._services.get(ENGINE_PROVIDER_SERVICE, ServiceType.CONNECTOR_PROVIDER),
+            )
+        except ServiceNotFoundError:
+            raise AuthoringError(
+                "No engine connector is bound: a step that offers something on the engine's "
+                "own connector needs infrastructure.engine.connector"
+            ) from None
 
     def consumer(self) -> ConnectorConsumer:
         """The CONNECTOR_CONSUMER service the run was seeded with."""
@@ -100,6 +119,8 @@ class DataspaceAccess:
 
     def _first_of(self, stype: ServiceType) -> Any:
         for name in self._services.service_names:
+            if name == ENGINE_PROVIDER_SERVICE:
+                continue
             try:
                 return self._services.get(name, stype)
             except (ServiceNotFoundError, ValueError):

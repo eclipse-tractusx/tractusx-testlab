@@ -35,7 +35,8 @@ is blocked, made by another process, from wherever this runs.
 Standard library only, so it runs unchanged as a bare ``python:alpine`` pod in
 the cluster and as a subprocess in the offline tests.
 
-    POST /call   {"url": ..., "delay_s": 3, "method": "POST", "body": {...}}
+    POST /call   {"url": ..., "delay_s": 3, "method": "POST", "body": {...},
+                  "headers": {...}}
                  -> 202 {"scheduled": true}, then the request after the delay
     GET  /health -> 200 {"status": "ok"}
 """
@@ -54,13 +55,19 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 _DEFAULT_DELAY_S = 3.0
 
 
-def _fire(url: str, method: str, body: object, delay_s: float) -> None:
-    """Sleep, then make the call the script asked for."""
+def _fire(url: str, method: str, body: object, delay_s: float, headers: dict) -> None:
+    """Sleep, then make the call the script asked for.
+
+    *headers* is what a real SUT's operator configures once they have been
+    given it — a TestLab mock's API key, most of all: every mock requires one.
+    """
     time.sleep(delay_s)
     payload = None if body is None else json.dumps(body).encode("utf-8")
     request = urllib.request.Request(url, data=payload, method=method)
     if payload is not None:
         request.add_header("Content-Type", "application/json")
+    for name, value in headers.items():
+        request.add_header(str(name), str(value))
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
             print(f"called {method} {url} -> {response.status}", flush=True)
@@ -104,8 +111,12 @@ class _Handler(BaseHTTPRequestHandler):
             return
         delay_s = float(order.get("delay_s", _DEFAULT_DELAY_S))
         method = str(order.get("method", "POST")).upper()
+        headers = order.get("headers") or {}
+        if not isinstance(headers, dict):
+            self._answer(400, {"error": "'headers' must be an object"})
+            return
         threading.Thread(
-            target=_fire, args=(url, method, order.get("body"), delay_s), daemon=True
+            target=_fire, args=(url, method, order.get("body"), delay_s, headers), daemon=True
         ).start()
         self._answer(202, {"scheduled": True, "url": url, "delay_s": delay_s, "method": method})
 

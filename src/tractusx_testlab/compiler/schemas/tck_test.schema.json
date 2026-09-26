@@ -178,6 +178,19 @@
           "default": null,
           "title": "Class"
         },
+        "hidden": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Mask the value in every record of the run (trace, UI, logs). Unset, the step decides: a secret output is hidden, anything else shown.",
+          "title": "Hidden"
+        },
         "type": {
           "title": "Type",
           "type": "string"

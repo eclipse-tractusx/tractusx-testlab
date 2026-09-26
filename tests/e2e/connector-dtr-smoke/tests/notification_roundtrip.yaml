@@ -63,6 +63,8 @@ setup:
         accepted: true
         status: RECEIVED
     returns:
+      api_key:
+        type: string
       mock:
         type: class
         class: MockInstance
@@ -120,6 +122,10 @@ setup:
           proxyPath: "true"
           proxyMethod: "true"
           proxyBody: "true"
+        # Every mock requires the run's key; the SUT's data plane sends it
+        # because the asset's data address carries it.
+        headers:
+          x-api-key: "${{ setup.open_notification_api.api_key }}"
     returns:
       asset_id:
         type: string

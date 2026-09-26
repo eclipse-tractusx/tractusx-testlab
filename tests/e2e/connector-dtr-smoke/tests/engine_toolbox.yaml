@@ -61,6 +61,9 @@ setup:
         expires_in: 3600
         scope: "catenax:read"
         refresh_token: "testlab-e2e-refresh-token"
+      # The OAuth2 steps post a form and send no header of the test's, so this
+      # is the one mock that answers without the run's key.
+      public: true
     returns:
       mock:
         type: class
@@ -85,6 +88,8 @@ setup:
         ok: true
         served_by: testlab-mock
     returns:
+      api_key:
+        type: string
       mock:
         type: class
         class: MockInstance
@@ -639,6 +644,8 @@ execution:
           with:
             url: "${{ setup.mock_root.full_mock_url }}"
             method: GET
+            headers:
+              x-api-key: "${{ setup.mock_root.api_key }}"
           validate:
             - uses: validate/assert
               with: { input: status_code, operator: equals, value: 200 }

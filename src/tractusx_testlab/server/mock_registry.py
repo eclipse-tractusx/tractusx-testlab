@@ -32,6 +32,8 @@ through ``StepContext``.
 from __future__ import annotations
 
 import hmac
+import secrets
+from collections import OrderedDict
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -111,6 +113,10 @@ _mock_routes: dict[str, MockResponse | MockHandler] = {}
 # path+method -> (header name, lower-cased; the value a caller must send in it)
 _guards: dict[str, tuple[str, str]] = {}
 
+# run id -> the key every mock of that run requires; bounded like logging.masking
+_run_keys: OrderedDict[str, str] = OrderedDict()
+_MAX_RUN_KEYS = 1024
+
 # Singleton holder for the active CallbackManager
 _callback_manager: CallbackManager | None = None
 
@@ -171,6 +177,22 @@ def resolve_mock(
     )
 
 
+def run_key(run_id: str) -> str:
+    """The key every mock of run *run_id* requires, minted on first use.
+
+    One per run rather than one per mock: an asset carries one key in its data
+    address, and one asset may front several mocks — CX-0135's CCMAPI serves
+    push and status — or a mock re-armed between two waits. A new run is a new
+    key, so an offer an earlier run left behind forwards one no mock accepts.
+    """
+    key = _run_keys.get(run_id)
+    if key is None:
+        key = _run_keys[run_id] = secrets.token_urlsafe(32)
+        while len(_run_keys) > _MAX_RUN_KEYS:
+            _run_keys.popitem(last=False)
+    return key
+
+
 def require_header(path: str, method: str, header: str, value: str) -> None:
     """Admit a call on *path*/*method* only when it carries *value* in *header*.
 
@@ -181,6 +203,16 @@ def require_header(path: str, method: str, header: str, value: str) -> None:
     connector, and the mock refuses it rather than let it pass for one that did.
     """
     _guards[_key(path, method)] = (header.lower(), value)
+
+
+def required_header(path: str, method: str) -> tuple[str, str] | None:
+    """The ``(name, value)`` a call on *path*/*method* must carry, or ``None``.
+
+    Read by the step that fronts a mock with a connector asset: it hands the
+    same pair to the asset's data address, so the data plane sends what the
+    mock requires without the test ever naming the key.
+    """
+    return _guards.get(_key(path, method))
 
 
 def admits(path: str, method: str, headers: dict) -> bool:

@@ -47,6 +47,7 @@ from tractusx_testlab.models.domain.infrastructure import (
     DtrBinding,
 )
 from tractusx_testlab.models.primitives.enums import ServiceType
+from tractusx_testlab.player.execution.dataspace_access import ENGINE_PROVIDER_SERVICE
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -245,4 +246,14 @@ def seed_infrastructure_services(
             context,
             _dtr_definition(_ENGINE_DTR_NAME, engine_dtr),
             "infrastructure.engine.dtr",
+        )
+
+    # engine.connector → CONNECTOR_PROVIDER under a name only
+    # DataspaceAccess.engine_provider asks for: what a reflexive step offers
+    # (connector/provider/create_mock_asset) lives on the engine's connector.
+    if engine_connector.is_bound() and ENGINE_PROVIDER_SERVICE not in already:
+        svc_mgr.register(
+            _connector_definition(
+                ENGINE_PROVIDER_SERVICE, ServiceType.CONNECTOR_PROVIDER, engine_connector
+            )
         )

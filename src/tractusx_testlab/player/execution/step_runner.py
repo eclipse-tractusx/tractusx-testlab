@@ -40,7 +40,7 @@ from tractusx_testlab.models.runtime.results import (
     StepResult,
     TestResult,
 )
-from tractusx_testlab.player.execution._step_outputs import run_and_publish
+from tractusx_testlab.player.execution._step_outputs import hide_secrets, run_and_publish
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.execution.phase import (
@@ -150,12 +150,12 @@ async def _run_step_guarded(
             params = resolve_params(
                 step_def.with_ or {}, context, getattr(step_instance, "deferred_params", ())
             )
-        # What the step was actually given, once every ``${{ ... }}`` was
-        # resolved. A step that failed on what a reference resolved to cannot be
-        # debugged from the test, which only says which reference was written.
+        # What the step was given, every ``${{ ... }}`` resolved: the test only
+        # says which reference was written, not what it resolved to.
         inputs = dict(params)
 
         output = await invoke_extended(step_instance, params, context, step_def)
+        hide_secrets(type(step_instance), step_def, output)
 
         assertion_results: list[AssertionResult] = []
         if step_def.assertions:

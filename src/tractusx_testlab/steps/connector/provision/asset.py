@@ -79,8 +79,9 @@ class CreateAssetParams(StepParams):
         description=(
             "The whole asset definition, as declared by a 'config/connector/asset' "
             "manifest variable and referenced as '${{ env.<id> }}'. Carries "
-            "'base_url', 'dct_type' or 'properties', 'version', 'semantic_id', "
-            "'proxy_params', 'headers', 'private_properties' and an optional '@context'."
+            "'base_url', 'dct_type' or 'properties', 'dct_subject', 'version', "
+            "'semantic_id', 'proxy_params', 'headers', 'private_properties' and an "
+            "optional '@context'."
         ),
     )
 
@@ -123,6 +124,9 @@ class CreateAssetParams(StepParams):
         return {
             "base_url": self.asset.get("base_url", ""),
             "dct_type": _iri(self.asset.get("dct_type")) or _iri(properties.get("dct:type")),
+            "dct_subject": (
+                _iri(self.asset.get("dct_subject")) or _iri(properties.get("dct:subject"))
+            ),
             "version": self.asset.get("version") or properties.get("cx-common:version") or "3.0",
             "properties": semantic_properties,
             "proxy_params": self.asset.get("proxy_params"),
@@ -133,7 +137,13 @@ class CreateAssetParams(StepParams):
 
 
 def _register_asset(
-    context: StepContext, asset_id: str, definition: dict[str, Any], request_body: Any
+    context: StepContext,
+    asset_id: str,
+    definition: dict[str, Any],
+    request_body: Any,
+    *,
+    provider: Any = None,
+    url: str | None = None,
 ) -> StepOutput[CreateAssetOutput]:
     """Create an asset at the provider and report what happened.
 
@@ -141,8 +151,9 @@ def _register_asset(
     over the config it was given, the wizard hands over the config it
     assembled, and both get the same call and the same 409 handling.
     """
-    provider = context.dataspace.provider()
-    url = context.dataspace.provider_endpoint_url("assets")
+    if provider is None:
+        provider = context.dataspace.provider()
+        url = context.dataspace.provider_endpoint_url("assets")
 
     result, http_status = _create_or_conflict(
         provider.create_asset, asset_id=asset_id, **definition
@@ -150,7 +161,7 @@ def _register_asset(
 
     return StepOutput(
         value=CreateAssetOutput(asset_id=asset_id),
-        request=HttpRequest(method="POST", url=url, body=request_body),
+        request=HttpRequest(method="POST", url=url or "", body=request_body),
         response=HttpResponse(
             status_code=http_status,
             body={"asset_id": asset_id, **(result if isinstance(result, dict) else {})},

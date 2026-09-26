@@ -9,20 +9,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- `mock/api` takes `require_api_key`: the mock answers only calls that carry
-  its API key in `api_key_header` (default `x-api-key`) and refuses every other
-  with 401. The run mints the key and returns it as `api_key`, for the test to
-  put in the `headers` of the asset whose data address is the mock; the
-  connector's data plane then adds it to every call it forwards. A mock behind
-  a connector can then no longer be reached by calling its published URL
-  directly. `api_key` can also be given, so two mocks behind one asset share
-  the key it carries.
-- A refused call is counted, and a `mock/wait/*` step that times out says how
-  many calls reached the mock without the key.
-- Secrets a run mints are masked by value (`***`) in the execution trace, in
-  the events handed to an embedder's callbacks and in the console transcript,
-  wherever they occur — a step input, a request body sent to the connector, a
-  returned value or an inbound header. The value the run uses is untouched.
+- `connector/provider/create_mock_asset` offers one of the run's own mocks as
+  an asset on the engine connector (the reflexive asset). The asset is
+  described statically by a new variable type, `config/connector/mock_asset`
+  (`asset_id`, `dct_type`, `dct_subject`, `version`, …); the data address —
+  the mock's root, with path, method and body proxied, and the mock's key as
+  `header:<name>` — comes from the `mock:` it is given, so a test never names
+  the key. It always registers on the engine connector, and a 409 is an error:
+  an asset left by an earlier run forwards that run's key. Give the id the run
+  id (`${{ execution.id }}`).
+- `hidden: true | false` on a `returns:` entry masks the value (`***`) in
+  every record of the run: the execution trace, the events handed to an
+  embedder's callbacks, and the console transcript — wherever it occurs, in a
+  step input, a request body, a returned value or an inbound header. The value
+  the run uses is untouched. Unset, the step decides: an output it marks secret
+  is hidden.
+- `connector/provider/create_asset` forwards `dct_subject`.
+
+### Changed
+
+- Every `mock/api` requires an API key: a call without it is refused with 401
+  and never resolves a `mock/wait/*` step. The key is the run's, shared by all
+  of its mocks, and is returned as `api_key` (hidden unless `hidden: false`,
+  for a mock the system under test calls directly and whose operator needs
+  it). `api_key_header` names the header (default `x-api-key`); `public: true`
+  opts a mock out, for an engine step that cannot send a header. A refused call
+  is counted, and a wait that times out says how many there were.
+  `mock/dtr` and `mock/discovery` do not require the key yet.
 
 ### Fixed
 

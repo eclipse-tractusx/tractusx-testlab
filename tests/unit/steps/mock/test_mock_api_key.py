@@ -22,13 +22,14 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""A mock behind a connector answers only calls the connector's data plane forwards.
+"""Every mock requires the run's API key, and a reflexive asset carries it.
 
-``mock/api`` with ``require_api_key`` mints a key, the test puts it in the data
-address of the asset that fronts the mock, and the mock refuses every call that
-does not carry it. What is pinned here: the key is minted and returned, the
-mock server enforces it on both of its routes without letting a refused call
-stand in for the awaited one, and the key never reaches a record of the run.
+``mock/api`` registers every mock behind the key of the run it belongs to, and
+refuses every call without it; ``public`` is the one way out. The key is hidden
+in every record of the run unless the step's ``returns:`` says ``hidden:
+false``. ``connector/provider/create_mock_asset`` offers the mock on the engine
+connector with the key in the asset's data address, read from the mock, so the
+test never names it.
 """
 
 from __future__ import annotations
@@ -44,7 +45,9 @@ from starlette.testclient import TestClient
 
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.logging.masking import forget_secrets, mask
-from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.models import AuthoringError, StepDefinition
+from tractusx_testlab.models.authoring.definitions import ReturnFieldDefinition
+from tractusx_testlab.player.execution._step_outputs import hide_secrets
 from tractusx_testlab.server.app import create_app
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import (
@@ -53,22 +56,29 @@ from tractusx_testlab.server.mock_registry import (
     clear_callback_manager,
     clear_mocks,
     register_mock,
+    required_header,
     set_callback_manager,
 )
-from tractusx_testlab.steps.mock.api import MockEndpointParams, MockEndpointStep
+from tractusx_testlab.steps.connector.provision.mock_asset import (
+    CreateMockAssetParams,
+    CreateMockAssetStep,
+)
+from tractusx_testlab.steps.mock.api import MockEndpointStep
 from tractusx_testlab.steps.mock.wait import WaitForCallStep
+from tractusx_testlab.steps.step_contract import StepOutput
 
 _PATH = "/uniqueidpush/connect-to-parent"
 
 
-def _definition(uses: str) -> StepDefinition:
-    return StepDefinition(id="s", uses=uses)
+def _definition(uses: str, returns: dict[str, Any] | None = None) -> StepDefinition:
+    return StepDefinition(id="s", uses=uses, returns=returns)
 
 
 @pytest.fixture()
 def context(mock_context: MagicMock) -> MagicMock:
     mock_context.config.server_port = 8080
     mock_context.config.mock_public_url = None
+    mock_context.job.job_id = "run-1"
     return mock_context
 
 
@@ -82,92 +92,178 @@ def _clean() -> Iterator[None]:
     clear_callback_manager()
 
 
-async def _register(context: MagicMock, **params: Any) -> dict[str, Any]:
+async def _register(context: MagicMock, path: str = _PATH, **params: Any) -> dict[str, Any]:
     output = await MockEndpointStep().invoke(
-        {"path": _PATH, "method": "POST", **params}, context, _definition("mock/api")
+        {"path": path, "method": "POST", **params}, context, _definition("mock/api")
     )
     return output.value
 
 
-class TestTheStep:
+class TestEveryMockRequiresTheKey:
     @pytest.mark.asyncio
-    async def test_a_plain_mock_requires_nothing(self, context: MagicMock) -> None:
+    async def test_a_mock_refuses_a_call_without_the_key(self, context: MagicMock) -> None:
         value = await _register(context)
-
-        assert value["api_key"] == ""
-        assert admits(_PATH, "POST", {})
-
-    @pytest.mark.asyncio
-    async def test_require_api_key_mints_a_key_and_returns_it(self, context: MagicMock) -> None:
-        value = await _register(context, require_api_key=True)
 
         assert len(value["api_key"]) >= 32
         assert not admits(_PATH, "POST", {})
         assert admits(_PATH, "POST", {"x-api-key": value["api_key"]})
 
     @pytest.mark.asyncio
-    async def test_every_registration_mints_a_new_key(self, context: MagicMock) -> None:
-        first = await _register(context, require_api_key=True)
-        second = await _register(context, require_api_key=True)
+    async def test_the_mocks_of_one_run_share_its_key(self, context: MagicMock) -> None:
+        """One asset can front several mocks, and a re-armed mock keeps its key."""
+        push = await _register(context, "/companycertificate/push")
+        status = await _register(context, "/companycertificate/status")
+        rearmed = await _register(context, "/companycertificate/status")
+
+        assert push["api_key"] == status["api_key"] == rearmed["api_key"]
+
+    @pytest.mark.asyncio
+    async def test_a_wrong_key_is_refused(self, context: MagicMock) -> None:
+        await _register(context)
+
+        assert not admits(_PATH, "POST", {"X-API-KEY": "j" * 43})
+
+    @pytest.mark.asyncio
+    async def test_another_run_has_another_key(self, context: MagicMock) -> None:
+        first = await _register(context)
+        context.job.job_id = "run-2"
+        second = await _register(context)
 
         assert first["api_key"] != second["api_key"]
         assert not admits(_PATH, "POST", {"x-api-key": first["api_key"]})
 
     @pytest.mark.asyncio
-    async def test_a_given_key_is_required_as_given(self, context: MagicMock) -> None:
-        """Two mocks behind one asset share the key the asset carries."""
-        shared = "shared-key-from-the-first-mock"
-        value = await _register(context, api_key=shared, api_key_header="X-Mock-Key")
+    async def test_the_header_can_be_named(self, context: MagicMock) -> None:
+        value = await _register(context, api_key_header="X-Mock-Key")
 
-        assert value["api_key"] == shared
-        assert admits(_PATH, "POST", {"x-mock-key": shared})
-        assert not admits(_PATH, "POST", {"x-api-key": shared})
+        assert admits(_PATH, "POST", {"x-mock-key": value["api_key"]})
+        assert not admits(_PATH, "POST", {"x-api-key": value["api_key"]})
 
     @pytest.mark.asyncio
-    async def test_the_key_is_masked_from_the_moment_it_is_minted(self, context: MagicMock) -> None:
-        value = await _register(context, require_api_key=True)
+    async def test_a_public_mock_answers_anyone(self, context: MagicMock) -> None:
+        value = await _register(context, public=True)
 
-        assert mask({"api_key": value["api_key"]}) == {"api_key": "***"}
+        assert value["api_key"] == ""
+        assert admits(_PATH, "POST", {})
 
     @pytest.mark.asyncio
-    async def test_registering_the_path_again_without_a_key_opens_it(
-        self, context: MagicMock
-    ) -> None:
-        await _register(context, require_api_key=True)
+    async def test_registering_the_path_again_as_public_opens_it(self, context: MagicMock) -> None:
         await _register(context)
+        await _register(context, public=True)
 
         assert admits(_PATH, "POST", {})
 
-    def test_a_key_too_short_to_mask_is_refused(self) -> None:
-        with pytest.raises(ValidationError, match="at least"):
-            MockEndpointParams(path=_PATH, api_key="short")
+
+class TestHiddenReturns:
+    """What the run keeps is untouched; what it writes down is masked."""
+
+    _KEY = "the-run-key-0123456789abcdef"
+
+    def _output(self) -> StepOutput:
+        return StepOutput(value={"api_key": self._KEY, "full_mock_url": "http://engine/mock/x"})
+
+    def test_a_secret_output_is_hidden_without_being_asked(self) -> None:
+        hide_secrets(MockEndpointStep, _definition("mock/api"), self._output())
+
+        assert mask(self._KEY) == "***"
+
+    def test_hidden_false_shows_a_secret_output(self) -> None:
+        returns = {"api_key": ReturnFieldDefinition(type="string", hidden=False)}
+        hide_secrets(MockEndpointStep, _definition("mock/api", returns), self._output())
+
+        assert mask(self._KEY) == self._KEY
+
+    def test_hidden_true_hides_any_return(self) -> None:
+        returns = {"full_mock_url": ReturnFieldDefinition(type="string", hidden=True)}
+        hide_secrets(MockEndpointStep, _definition("mock/api", returns), self._output())
+
+        assert mask("http://engine/mock/x") == "***"
+
+    def test_the_flag_is_part_of_the_returns_syntax(self) -> None:
+        entry = ReturnFieldDefinition.model_validate({"type": "string", "hidden": True})
+        assert entry.hidden is True
 
 
-class TestTheRegistry:
-    def test_the_header_name_is_matched_without_regard_to_case(self) -> None:
-        register_mock(
-            _PATH, "POST", MockResponse(status_code=200), required_header=("X-Api-Key", "k" * 16)
+class TestTheReflexiveAsset:
+    @pytest.fixture()
+    def provider(self, context: MagicMock) -> MagicMock:
+        provider = MagicMock()
+        provider.create_asset.return_value = {"@id": "created"}
+        context.dataspace.engine_provider.return_value = provider
+        context.infrastructure.engine.connector.management_url = "https://engine/management"
+        return provider
+
+    async def _offer(self, context: MagicMock, asset: dict[str, Any]) -> Any:
+        mock = (await _register(context, "/companycertificate/push"))["mock"]
+        return await CreateMockAssetStep().invoke(
+            {"asset": asset, "mock": mock},
+            context,
+            _definition("connector/provider/create_mock_asset"),
         )
-        assert admits(_PATH, "POST", {"X-API-KEY": "k" * 16})
 
-    def test_a_wrong_value_is_refused(self) -> None:
-        register_mock(
-            _PATH, "POST", MockResponse(status_code=200), required_header=("x-api-key", "k" * 16)
+    @pytest.mark.asyncio
+    async def test_the_data_address_is_the_mock_and_carries_its_key(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        output = await self._offer(
+            context,
+            {
+                "asset_id": "testlab-ccmapi-run-1",
+                "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI",
+                "dct_subject": "https://w3id.org/catenax/taxonomy#CCMAPIsubject",
+                "version": "3.0",
+            },
         )
-        assert not admits(_PATH, "POST", {"x-api-key": "j" * 16})
 
-    def test_the_guard_is_per_method(self) -> None:
-        register_mock(
-            _PATH, "POST", MockResponse(status_code=200), required_header=("x-api-key", "k" * 16)
-        )
-        assert admits(_PATH, "GET", {})
+        assert output.value["asset_id"] == "testlab-ccmapi-run-1"
+        kwargs = provider.create_asset.call_args.kwargs
+        header, key = required_header("/companycertificate/push", "POST")
+        assert kwargs["base_url"] == "http://localhost:8080"
+        assert kwargs["headers"] == {header: key}
+        assert kwargs["dct_subject"] == "https://w3id.org/catenax/taxonomy#CCMAPIsubject"
+        assert kwargs["proxy_params"]["proxyBody"] == "true"
+        context.dataspace.provider.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_without_an_id_the_asset_is_named_after_the_run(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        output = await self._offer(context, {"dct_type": "cx-taxo:CCMAPI"})
+
+        assert output.value["asset_id"] == "testlab-mock-run-1"
+
+    @pytest.mark.asyncio
+    async def test_an_asset_left_by_an_earlier_run_is_an_error(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        provider.create_asset.side_effect = ValueError("HTTP 409 conflict")
+
+        with pytest.raises(AuthoringError, match="earlier run's key"):
+            await self._offer(context, {"asset_id": "testlab-fixed"})
+
+    @pytest.mark.asyncio
+    async def test_a_public_mock_cannot_be_offered(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        mock = (await _register(context, public=True))["mock"]
+
+        with pytest.raises(AuthoringError, match="requires no key"):
+            await CreateMockAssetStep().invoke(
+                {"asset": {"asset_id": "a"}, "mock": mock},
+                context,
+                _definition("connector/provider/create_mock_asset"),
+            )
+
+    def test_the_config_cannot_name_what_the_mock_supplies(self) -> None:
+        mock = {"path": "/x", "method": "POST", "base_mock_url": "b", "full_mock_url": "f"}
+        with pytest.raises(ValidationError, match="takes base_url"):
+            CreateMockAssetParams(asset={"base_url": "http://elsewhere"}, mock=mock)
 
 
 class TestTheServer:
     @pytest.fixture()
     def client(self, tmp_path: Path) -> Iterator[TestClient]:
-        manager = CallbackManager()
-        set_callback_manager(manager)
+        set_callback_manager(CallbackManager())
         app = create_app(config=TestlabConfig(storage_dir=tmp_path, logs_dir=tmp_path))
         with TestClient(app) as client:
             yield client
@@ -223,7 +319,7 @@ class TestTheWait:
     async def test_a_timeout_says_calls_were_refused(self, context: MagicMock) -> None:
         manager = CallbackManager()
         set_callback_manager(manager)
-        registered = await _register(context, require_api_key=True)
+        registered = await _register(context)
         manager.refuse(_PATH, "POST")
         manager.refuse(_PATH, "POST")
 
@@ -237,7 +333,7 @@ class TestTheWait:
     @pytest.mark.asyncio
     async def test_a_timeout_with_nothing_refused_says_only_that(self, context: MagicMock) -> None:
         set_callback_manager(CallbackManager())
-        registered = await _register(context, require_api_key=True)
+        registered = await _register(context)
 
         with pytest.raises(RuntimeError) as raised:
             await WaitForCallStep().invoke(

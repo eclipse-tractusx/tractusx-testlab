@@ -57,6 +57,8 @@ setup:
         served_by: testlab-mock
         answer: 42
     returns:
+      api_key:
+        type: string
       mock:
         type: class
         class: MockInstance
@@ -124,6 +126,10 @@ setup:
           proxyPath: "true"
           proxyMethod: "true"
           proxyBody: "true"
+        # Every mock requires the run's key; the SUT's data plane sends it
+        # because the asset's data address carries it.
+        headers:
+          x-api-key: "${{ setup.open_backend.api_key }}"
     returns:
       asset_id:
         type: string

@@ -49,6 +49,7 @@ Single output field declared in a step `returns` block.
 |---|---|---|---|---|---|
 | `type` | string | yes | — | — |  |
 | `class` | string | no | `None` | — |  |
+| `hidden` | boolean | no | `None` | — | Mask the value in every record of the run (trace, UI, logs). |
 
 ### StepDefinition
 

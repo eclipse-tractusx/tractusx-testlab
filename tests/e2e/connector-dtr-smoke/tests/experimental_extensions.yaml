@@ -53,6 +53,8 @@ setup:
         served_by: testlab-mock
         extension: labs
     returns:
+      api_key:
+        type: string
       full_mock_url:
         type: string
     validate:
@@ -90,6 +92,10 @@ setup:
         version: "1.0"
         proxy_params:
           proxyPath: "true"
+        # Every mock requires the run's key; the SUT's data plane sends it
+        # because the asset's data address carries it.
+        headers:
+          x-api-key: "${{ setup.open_backend.api_key }}"
     returns:
       asset_id:
         type: string

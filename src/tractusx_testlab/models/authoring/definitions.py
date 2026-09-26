@@ -123,6 +123,10 @@ class ReturnFieldDefinition(BaseModel):
 
     type: str
     cls: str | None = Field(default=None, alias="class")
+    #: Unset leaves it to the step: a secret output (mock/api's api_key) is hidden.
+    hidden: bool | None = Field(
+        default=None, description="Mask the value in every record of the run (trace, UI, logs)."
+    )
 
 
 class Assertion(AssertionExtensionKeys):

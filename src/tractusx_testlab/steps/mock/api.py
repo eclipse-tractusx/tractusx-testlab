@@ -27,18 +27,17 @@
 from __future__ import annotations
 
 import logging
-import secrets
 from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.logging.masking import MIN_SECRET_LENGTH, register_secret
 from tractusx_testlab.models import Listener, StepDefinition
 from tractusx_testlab.server.mock_registry import (
     MockResponse,
     get_callback_manager,
     register_mock,
+    run_key,
 )
 from tractusx_testlab.steps.mock._models import MockIdParams, MockInstance
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
@@ -79,26 +78,18 @@ class MockEndpointParams(MockIdParams):
     response_headers: dict[str, str] = Field(
         default_factory=dict, description="Headers the mock returns alongside the body."
     )
-    require_api_key: bool = Field(
-        default=False,
-        description=(
-            "Answer only calls that carry the mock's API key in 'api_key_header', and "
-            "refuse every other with 401. For a mock the system under test must reach "
-            "through a connector: put 'api_key' in the asset's data address headers, "
-            "and only a call the data plane forwards has it."
-        ),
-    )
-    api_key: str = Field(
-        default="",
-        description=(
-            "The key to require, e.g. another mock's 'api_key' when one asset fronts "
-            "both. Minted by the run when empty. Setting it implies 'require_api_key'."
-        ),
-    )
     api_key_header: str = Field(
         default="x-api-key",
         min_length=1,
-        description="Request header the key must arrive in.",
+        description="Request header the run's mock API key must arrive in.",
+    )
+    public: bool = Field(
+        default=False,
+        description=(
+            "Answer anyone who has the URL, without the API key. Only for a mock an "
+            "engine step calls that cannot send a header, such as an OAuth2 token "
+            "endpoint; every other mock requires the key."
+        ),
     )
 
     @field_validator("method")
@@ -106,17 +97,6 @@ class MockEndpointParams(MockIdParams):
     def _uppercase_method(cls, value: str) -> str:
         """Accept ``post`` as readily as ``POST``."""
         return value.upper()
-
-    @field_validator("api_key")
-    @classmethod
-    def _maskable_key(cls, value: str) -> str:
-        """A key too short to be masked would be written down wherever it goes."""
-        if value and len(value) < MIN_SECRET_LENGTH:
-            raise ValueError(
-                f"api_key must be at least {MIN_SECRET_LENGTH} characters, "
-                "or left empty to have the run mint one"
-            )
-        return value
 
     @field_validator("path")
     @classmethod
@@ -138,10 +118,11 @@ class MockEndpointOutput(StepPayload):
     api_key: str = Field(
         default="",
         description=(
-            "The key a call must carry, when the mock requires one — for the asset's "
-            "data address, never for the system under test. Masked in every record "
-            "of the run."
+            "The key a call must carry — the run's, shared by every mock it registers; "
+            "empty for a public mock. Hidden unless the step's returns say "
+            "'hidden: false'."
         ),
+        json_schema_extra={"secret": True},
     )
 
 
@@ -153,12 +134,16 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
     callback address; ``mock`` is what it hands to
     ``mock/wait/http_request``, which then blocks until the SUT calls it.
 
-    A mock that stands behind a connector sets ``require_api_key``. Its address
-    is still published, so anyone reading the run could call it; what they do
-    not have is ``api_key``, which the test puts in the headers of the asset
-    whose data address is the mock. The data plane adds it to every call it
-    forwards, a direct call lacks it and is refused with 401, and the key itself
-    is masked wherever the run is written down.
+    Every mock requires an API key, so none is a public API: a call without
+    it is refused with 401 and never reaches a ``mock/wait/*`` step. The key is
+    the run's, minted when the run registers its first mock and shared by all
+    of them, so one asset can front several mocks and a re-armed mock keeps it.
+    A mock behind a connector gets it from ``connector/provider/create_mock_asset``,
+    which puts it in the asset's private data address: the data plane adds it,
+    and the system under test never learns it. ``api_key`` is hidden in every
+    record of the run unless the step's ``returns:`` says ``hidden: false`` —
+    for a mock the system under test calls directly, whose operator needs it.
+    ``public`` opts a mock out, for an engine step that cannot send a header.
     """
 
     params_model = MockEndpointParams
@@ -173,11 +158,7 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
         # mangled any JSON-LD value beginning with "@" on its way past.
         resolved_body = params.response_body
 
-        # Masked before any record of this step is written, the output included.
-        api_key = ""
-        if params.require_api_key or params.api_key:
-            api_key = params.api_key or secrets.token_urlsafe(32)
-            register_secret(api_key)
+        api_key = "" if params.public else run_key(str(context.job.job_id))
 
         register_mock(
             params.path,
@@ -214,7 +195,7 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
             params.method,
             params.path,
             params.response_status,
-            f" (requires {params.api_key_header})" if api_key else "",
+            f" (requires {params.api_key_header})" if api_key else " (public)",
         )
         return StepOutput(
             value=MockEndpointOutput(
