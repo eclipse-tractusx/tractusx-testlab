@@ -52,7 +52,8 @@ without having been run once against something real.
   the call provably came from the provider's data plane pod and not from the
   test. A second mock takes a POST: the test's JSON body goes through both
   data planes (`proxyMethod`, `proxyBody`) and the wait step checks the payload
-  the mock received field by field.
+  the mock received field by field. Every mock requires the run's API key, so
+  the asset carries it as a data address header, which the data plane sends.
 - `external_callback.yaml` — the wait step, actually waiting. The call in
   `inbound_call.yaml` is a consequence of the test's own pull and has
   already arrived when the wait step runs. Here the test tells a stand-in
@@ -60,12 +61,15 @@ without having been run once against something real.
   `tck-stub.local`) to call the mock in three seconds, is acknowledged at
   once, and blocks on `mock/wait/http_request`. The call arrives from the
   stub's pod while the test is blocked, and `elapsed_ms` must show the wait
-  lasted the delay.
+  lasted the delay. The stub is handed the mock's API key, as a real SUT's
+  operator would be, which is why this test returns it with `hidden: false`.
 - `dataplane_callback.yaml` — `mock/wait/dataplane/http_request`, the wait for
   a callback the SUT must deliver through the dataspace rather than to the
-  mock URL. The mock sits behind an asset on the *engine's* connector,
-  registered over its management API with an access policy that names one
-  business partner, and every id carries the run's `execution.id`. The
+  mock URL. The mock sits behind an asset on the *engine's* connector — the
+  reflexive asset `connector/provider/create_mock_asset` registers from a
+  `config/connector/mock_asset` variable, with the mock's key in its data
+  address — behind an access policy that names one business partner, and
+  every id carries the run's `execution.id`. The
   umbrella's only other connector is the SUT, which the suite cannot drive as
   a consumer, so the engine's own consumer plays that partner: it negotiates
   the offer on the engine connector's DSP endpoint and posts through that

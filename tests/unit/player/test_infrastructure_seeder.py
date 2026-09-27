@@ -28,12 +28,18 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from tractusx_testlab.config.settings import TestlabConfig as _TestlabConfig
 from tractusx_testlab.infrastructure.mapping import apply_overrides, collect_overrides
-from tractusx_testlab.models import Job
+from tractusx_testlab.models import Job, ServiceNotFoundError
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
 from tractusx_testlab.models.primitives.enums import ServiceType
 from tractusx_testlab.player.execution.context import StepContext
+from tractusx_testlab.player.execution.dataspace_access import (
+    ENGINE_PROVIDER_SERVICE,
+    DataspaceAccess,
+)
 from tractusx_testlab.player.execution.infrastructure_seeder import (
     _ENGINE_CONNECTOR_NAME,
     _SUT_CONNECTOR_NAME,
@@ -182,13 +188,24 @@ class TestEngineConnectorAlias:
         # Only internal name registered, no alias
         connector_names = svc_mgr.service_names
         assert _ENGINE_CONNECTOR_NAME in connector_names
-        # No extra provider-type services from engine
+        # No extra provider-type services from engine, beyond the one only
+        # DataspaceAccess.engine_provider asks for by name.
         provider_defns = [
             n
             for n in connector_names
             if svc_mgr._definitions[n].type == ServiceType.CONNECTOR_PROVIDER
         ]
-        assert provider_defns == []
+        assert provider_defns == [ENGINE_PROVIDER_SERVICE]
+
+    def test_the_engine_provider_is_not_what_a_provider_step_finds(self) -> None:
+        """A plain provider step asks about the SUT; only a reflexive step gets the engine."""
+        svc_mgr = ServiceManager()
+        seed_infrastructure_services(svc_mgr, _make_context(_base_engine_vars()))
+        access = DataspaceAccess(svc_mgr)
+
+        assert access.engine_provider() is not None
+        with pytest.raises(ServiceNotFoundError):
+            access.provider()
 
     def test_existing_alias_not_overwritten(self) -> None:
         """An explicit ``services:`` block that already defines 'testlab' is not replaced."""

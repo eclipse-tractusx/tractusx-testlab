@@ -58,6 +58,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO, Any
 
+from tractusx_testlab.logging.masking import mask
+
 #: CloudEvents spec version every line declares.
 SPEC_VERSION = "1.0"
 
@@ -136,8 +138,11 @@ class ExecutionTrace:
         *scope* is the path between the TCK id and the event type — the test id,
         then the step id, or ``("infrastructure", "engine.connector")`` for a
         boot event. The returned envelope is what the SSE transport frames.
+
+        A secret the run minted is masked here, on the way in, so neither the
+        file nor the envelope handed back ever holds it (logging.masking).
         """
-        payload = _jsonable(data)
+        payload = mask(_jsonable(data))
         with self._lock:
             self._sequence += 1
             sequence = self._sequence

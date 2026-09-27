@@ -37,6 +37,7 @@ from tractusx_testlab.server.mock_registry import (
     MockResponse,
     get_callback_manager,
     register_mock,
+    run_key,
 )
 from tractusx_testlab.steps.mock._models import MockIdParams, MockInstance
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
@@ -77,6 +78,19 @@ class MockEndpointParams(MockIdParams):
     response_headers: dict[str, str] = Field(
         default_factory=dict, description="Headers the mock returns alongside the body."
     )
+    api_key_header: str = Field(
+        default="x-api-key",
+        min_length=1,
+        description="Request header the run's mock API key must arrive in.",
+    )
+    public: bool = Field(
+        default=False,
+        description=(
+            "Answer anyone who has the URL, without the API key. Only for a mock an "
+            "engine step calls that cannot send a header, such as an OAuth2 token "
+            "endpoint; every other mock requires the key."
+        ),
+    )
 
     @field_validator("method")
     @classmethod
@@ -101,6 +115,15 @@ class MockEndpointOutput(StepPayload):
     full_mock_url: str = Field(
         description="Address to hand the system under test — root plus the mock's path."
     )
+    api_key: str = Field(
+        default="",
+        description=(
+            "The key a call must carry — the run's, shared by every mock it registers; "
+            "empty for a public mock. Hidden unless the step's returns say "
+            "'hidden: false'."
+        ),
+        json_schema_extra={"secret": True},
+    )
 
 
 @step("mock/api")
@@ -110,6 +133,17 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
     ``full_mock_url`` is what a test hands to the system under test as its
     callback address; ``mock`` is what it hands to
     ``mock/wait/http_request``, which then blocks until the SUT calls it.
+
+    Every mock requires an API key, so none is a public API: a call without
+    it is refused with 401 and never reaches a ``mock/wait/*`` step. The key is
+    the run's, minted when the run registers its first mock and shared by all
+    of them, so one asset can front several mocks and a re-armed mock keeps it.
+    A mock behind a connector gets it from ``connector/provider/create_mock_asset``,
+    which puts it in the asset's private data address: the data plane adds it,
+    and the system under test never learns it. ``api_key`` is hidden in every
+    record of the run unless the step's ``returns:`` says ``hidden: false`` —
+    for a mock the system under test calls directly, whose operator needs it.
+    ``public`` opts a mock out, for an engine step that cannot send a header.
     """
 
     params_model = MockEndpointParams
@@ -123,6 +157,9 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
         # here for the legacy ``@name`` spelling, which is gone — and which
         # mangled any JSON-LD value beginning with "@" on its way past.
         resolved_body = params.response_body
+
+        api_key = "" if params.public else run_key(str(context.job.job_id))
+
         register_mock(
             params.path,
             params.method,
@@ -131,6 +168,7 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
                 body=resolved_body,
                 headers=params.response_headers,
             ),
+            required_header=(params.api_key_header, api_key) if api_key else None,
         )
 
         # Pre-register a callback listener so wait_for_call can block on it
@@ -153,10 +191,11 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
         )
 
         logger.info(
-            "Registered mock endpoint %s %s -> %d",
+            "Registered mock endpoint %s %s -> %d%s",
             params.method,
             params.path,
             params.response_status,
+            f" (requires {params.api_key_header})" if api_key else " (public)",
         )
         return StepOutput(
             value=MockEndpointOutput(
@@ -169,5 +208,6 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
                 ),
                 base_mock_url=base_url,
                 full_mock_url=full_url,
+                api_key=api_key,
             )
         )

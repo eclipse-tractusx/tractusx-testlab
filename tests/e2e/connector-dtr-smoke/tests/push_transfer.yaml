@@ -54,6 +54,8 @@ setup:
       response_body:
         stored: true
     returns:
+      api_key:
+        type: string
       mock:
         type: class
         class: MockInstance
@@ -164,6 +166,9 @@ execution:
         type: HttpData
         baseUrl: "${{ env.mock_server_external_url }}/testlab-e2e/push-sink"
         method: POST
+        # The sink requires the run's key, like every mock; the provider's data
+        # plane sends it because the destination carries it.
+        "header:x-api-key": "${{ setup.open_push_sink.api_key }}"
       max_wait: 90
       poll_interval: 2
     returns:

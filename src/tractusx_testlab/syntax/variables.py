@@ -104,6 +104,13 @@ CATALOG: tuple[VariableVerb, ...] = (
         "An asset definition the provider steps register",
         class_="Asset",
     ),
+    VariableVerb(
+        "config/connector/mock_asset",
+        "object",
+        "An asset whose data address is one of the run's own mocks, registered by "
+        "connector/provider/create_mock_asset",
+        class_="MockAsset",
+    ),
 )
 
 _BY_USES: dict[str, VariableVerb] = {verb.uses: verb for verb in CATALOG}

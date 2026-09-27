@@ -86,8 +86,8 @@ class _FetchingDataplane:
 
     Every request it receives is answered by forwarding it — method, path and
     body — to the ``base_url`` of the asset the provider double registered
-    last, exactly as the EDC's ``HttpData`` source does when the asset proxies
-    all three. It is a separate server on its own thread, so
+    last, with the headers its data address carries, exactly as the EDC's
+    ``HttpData`` source does when the asset proxies all three. It is a separate server on its own thread, so
     the call the mock receives arrives from outside the awaiting coroutine —
     the arrangement the wait step exists for.
     """
@@ -118,7 +118,13 @@ class _FetchingDataplane:
                         self.command,
                         backend,
                         data=body,
-                        headers={"Content-Type": self.headers.get("Content-Type", "")},
+                        # What the asset's data address adds — the run's API key
+                        # every mock requires, as `header:x-api-key` — the way
+                        # the EDC's HttpData source sends its additional headers.
+                        headers={
+                            "Content-Type": self.headers.get("Content-Type", ""),
+                            **(asset.get("headers") or {}),
+                        },
                         timeout=5,
                     )
                     # The public API answers a successful backend call with its

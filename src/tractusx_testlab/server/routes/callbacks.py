@@ -26,15 +26,44 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from tractusx_testlab.server.callbacks import CallbackManager
-from tractusx_testlab.server.mock_registry import query_of, resolve_mock
+from tractusx_testlab.server.mock_registry import admits, query_of, resolve_mock
+
+_logger = logging.getLogger(__name__)
 
 callback_router = APIRouter(tags=["testlab"])
+
+
+def refused(callbacks: CallbackManager, path: str, method: str) -> JSONResponse:
+    """Turn away a call that lacks what the mock requires, and count it.
+
+    401 rather than 404: the address exists, and whoever called it should learn
+    that it is the credential that is missing — which, for a mock behind a
+    connector, means the call did not come through the connector. The expected
+    header's name and value are not said, not even in the log.
+    """
+    callbacks.refuse(path, method)
+    _logger.warning(
+        "Refused %s %s: the call lacks the key the mock requires — it did not come "
+        "through the connector whose asset carries it",
+        method,
+        path[:80].replace("\n", "").replace("\r", ""),
+    )
+    return JSONResponse(
+        status_code=401,
+        content={
+            "detail": (
+                f"{method} {path} is served only through the connector that offers it: "
+                "negotiate the offer and call through the data plane."
+            )
+        },
+    )
 
 
 def _get_callbacks(request: Request) -> CallbackManager:
@@ -58,6 +87,8 @@ async def callback_webhook(
     full_path = f"/callbacks/{path}"
     method = request.method
     headers = dict(request.headers)
+    if not admits(full_path, method, headers):
+        return refused(callbacks, full_path, method)
     body = None
     if method in ("POST", "PUT"):
         body = await request.json()

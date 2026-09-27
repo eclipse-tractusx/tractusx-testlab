@@ -39,12 +39,14 @@ from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import (
+    admits,
     get_callback_manager,
     query_of,
     resolve_mock,
     set_callback_manager,
 )
 from tractusx_testlab.server.routes import router
+from tractusx_testlab.server.routes.callbacks import refused
 from tractusx_testlab.server.storage import PackageStorage
 
 _logger = logging.getLogger(__name__)
@@ -118,6 +120,12 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
                 body = {}
 
         callbacks: CallbackManager = app.state.callbacks
+        # Before the mock is resolved, so a dynamic handler never runs for a
+        # caller the mock does not admit, and before the listener is, so the
+        # call cannot stand in for the one the test is waiting on.
+        if not admits(full_path, method, headers):
+            return refused(callbacks, full_path, method)
+
         mock = resolve_mock(
             full_path,
             method,

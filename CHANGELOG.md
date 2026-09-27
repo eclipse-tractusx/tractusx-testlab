@@ -7,6 +7,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `connector/provider/create_mock_asset` offers one of the run's own mocks as
+  an asset on the engine connector (the reflexive asset). The asset is
+  described statically by a new variable type, `config/connector/mock_asset`
+  (`asset_id`, `dct_type`, `dct_subject`, `version`, …); the data address —
+  the mock's root, with path, method and body proxied, and the mock's key as
+  `header:<name>` — comes from the `mock:` it is given, so a test never names
+  the key. It always registers on the engine connector, and a 409 is an error:
+  an asset left by an earlier run forwards that run's key. Give the id the run
+  id (`${{ execution.id }}`).
+- `hidden: true | false` on a `returns:` entry masks the value (`***`) in
+  every record of the run: the execution trace, the events handed to an
+  embedder's callbacks, and the console transcript — wherever it occurs, in a
+  step input, a request body, a returned value or an inbound header. The value
+  the run uses is untouched. Unset, the step decides: an output it marks secret
+  is hidden.
+- `connector/provider/create_asset` forwards `dct_subject`.
+
+### Changed
+
+- Every `mock/api` requires an API key: a call without it is refused with 401
+  and never resolves a `mock/wait/*` step. The key is the run's, shared by all
+  of its mocks, and is returned as `api_key` (hidden unless `hidden: false`,
+  for a mock the system under test calls directly and whose operator needs
+  it). `api_key_header` names the header (default `x-api-key`); `public: true`
+  opts a mock out, for an engine step that cannot send a header. The key is a
+  keyed BLAKE2b-256 digest (hex) of a 32-byte random nonce, the run id and a
+  nanosecond timestamp, under a per-process random salt. A refused call
+  is counted, and a wait that times out says how many there were.
+  `mock/dtr` and `mock/discovery` do not require the key yet.
+
 ### Fixed
 
 - `equals` / `not_equals` compare a boolean with text by its YAML spelling:

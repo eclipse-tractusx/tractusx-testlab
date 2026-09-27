@@ -225,6 +225,25 @@ env:
           type: object
           class: Policy
 
+    # The reflexive asset dataplane_callback.yaml offers on the engine's own
+    # connector: only what is known before the run. The mock's address and
+    # the key it requires come from the mock, at create_mock_asset. The id
+    # carries the run id: the key is new every run, so an offer an earlier run
+    # left would forward one no mock accepts.
+    - id: callback_asset
+      uses: config/connector/mock_asset
+      name: The engine's dataplane-callback mock, offered as an asset
+      with:
+        source: value
+        value:
+          asset_id: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+          dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+          version: "1.0"
+      returns:
+        value:
+          type: object
+          class: MockAsset
+
     - id: stepwise_asset
       uses: config/connector/asset
       name: A second HTTP test asset, for the step-by-step DSP journey

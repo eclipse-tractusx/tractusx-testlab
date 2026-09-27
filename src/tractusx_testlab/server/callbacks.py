@@ -40,12 +40,13 @@ class CallbackManager:
     a matching request arrives or the timeout elapses.
     """
 
-    __slots__ = ("_buffered", "_listeners", "_loop")
+    __slots__ = ("_buffered", "_listeners", "_loop", "_refused")
 
     def __init__(self) -> None:
         self._listeners: dict[str, asyncio.Future[CallbackResult]] = {}
         self._buffered: dict[str, CallbackResult] = {}
         self._loop: asyncio.AbstractEventLoop | None = None
+        self._refused: dict[str, int] = {}
 
     def register(self, path: str, method: str) -> None:
         """Prepare a listener slot. The future will be resolved when a request arrives.
@@ -148,6 +149,20 @@ class CallbackManager:
         self._buffered[key] = result
         return True
 
+    def refuse(self, path: str, method: str) -> None:
+        """Count a call on *path*/*method* the mock turned away.
+
+        It resolves nothing — it is not the call the test waits for — but a
+        wait that times out can then say that calls did arrive, and why they
+        did not count, instead of implying nothing reached the mock at all.
+        """
+        key = self._key(path, method)
+        self._refused[key] = self._refused.get(key, 0) + 1
+
+    def refused(self, path: str, method: str) -> int:
+        """How many calls on *path*/*method* the mock has turned away."""
+        return self._refused.get(self._key(path, method), 0)
+
     def clear(self) -> None:
         """Cancel all pending listeners and clear buffers."""
         for future in self._listeners.values():
@@ -155,6 +170,7 @@ class CallbackManager:
                 future.cancel()
         self._listeners.clear()
         self._buffered.clear()
+        self._refused.clear()
 
     @staticmethod
     def _key(path: str, method: str) -> str:

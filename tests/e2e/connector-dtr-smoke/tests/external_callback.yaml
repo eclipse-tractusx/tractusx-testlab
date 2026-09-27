@@ -52,12 +52,18 @@ setup:
       response_status: 202
       response_body:
         ack: true
+    # The stub plays a SUT that calls the mock directly, so its operator has
+    # to be given the key every mock requires: `hidden: false` shows it in the
+    # run, where a connector-fronted mock keeps it masked.
     returns:
       mock:
         type: class
         class: MockInstance
       full_mock_url:
         type: string
+      api_key:
+        type: string
+        hidden: false
 
 execution:
   # The stub is told where to call, at the address it can reach the mock
@@ -73,6 +79,8 @@ execution:
         url: "${{ env.mock_server_external_url }}/testlab-e2e/callback"
         method: POST
         delay_s: 3
+        headers:
+          x-api-key: "${{ setup.open_callback.api_key }}"
         body:
           from: stub-sut
           message: called back while the test was waiting

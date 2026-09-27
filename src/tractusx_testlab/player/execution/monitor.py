@@ -49,6 +49,7 @@ from collections.abc import Callable
 from typing import Any
 
 from tractusx_testlab.logging import wire
+from tractusx_testlab.logging.masking import mask
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.logging.trace import ExecutionTrace
 from tractusx_testlab.models.runtime.events import (
@@ -174,6 +175,9 @@ class ExecutionMonitor(StepEvents):
         self._emit(wire_event, event_id=event_id, **event.model_dump(mode="json"))
 
     def _emit(self, event: str, *, event_id: str | None = None, **payload: Any) -> None:
+        # What an embedder receives is what a viewer of it will see, so a secret
+        # the run minted is masked before either audience gets the event.
+        payload = mask(payload)
         self._logger.info(event, event_id=event_id, **payload)
         for callback in self._callbacks:
             try:

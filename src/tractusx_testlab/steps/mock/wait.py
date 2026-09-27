@@ -144,7 +144,7 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
         elapsed_ms = round((time.monotonic() - started) * 1000)
 
         if result.timed_out:
-            raise RuntimeError(f"Timed out after {timeout}s waiting for {method} {path}")
+            raise RuntimeError(_timed_out(manager, timeout, method, path))
 
         context.report_received(definition.uses, definition.id, listener, result, elapsed_ms)
         logger.info("Received callback on %s %s after %dms", method, path, elapsed_ms)
@@ -190,6 +190,25 @@ class WaitForDataplaneCallStep(WaitForCallStep):
                 participant_id=_text(connector.participant_id),
             ),
         )
+
+
+def _timed_out(manager: Any, timeout: float, method: str, path: str) -> str:
+    """Why the wait failed — including calls that arrived and were turned away.
+
+    A mock that requires a key refuses a call without it (``mock/api``'s
+    ``require_api_key``). Such a call did reach the mock, just not through the
+    connector, and a bare "timed out" would send whoever reads it looking for a
+    network problem instead.
+    """
+    message = f"Timed out after {timeout}s waiting for {method} {path}"
+    refused = manager.refused(path, method) if hasattr(manager, "refused") else 0
+    if isinstance(refused, int) and refused > 0:
+        message += (
+            f"; {refused} call(s) reached the mock without the key the connector "
+            "adds and were refused — the call has to go through the engine "
+            "connector's data plane, not to the mock URL directly"
+        )
+    return message
 
 
 def _text(value: object) -> str | None:

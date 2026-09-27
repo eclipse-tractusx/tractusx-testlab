@@ -68,7 +68,9 @@ setup:
   # Everything below is registered on the engine's connector over its
   # management API. The `connector/provider/*` steps address the system under
   # test, and this offer belongs to the test suite. The bodies are the ones
-  # those steps send to a Saturn connector.
+  # those steps send to a Saturn connector. The asset is the exception:
+  # `connector/provider/create_mock_asset` always offers on the engine's own
+  # connector, since what it fronts is the engine's own mock.
   #
   # Catalog visibility: `action: access` and one business partner. Only the
   # participant the access policy names sees the offer at all, which is what
@@ -148,34 +150,23 @@ setup:
   # the path, the method and the body travel with each call, as in
   # inbound_call.yaml.
   - id: create_asset
-    uses: http/http_request
-    name: Register this run's asset on the engine connector, backed by the mock
+    uses: connector/provider/create_mock_asset
+    name: Offer the mock on the engine connector, with the run's key in its data address
     with:
-      method: POST
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/assets"
-      headers:
-        x-api-key: "${{ infrastructure.engine.connector.api_key }}"
-        Content-Type: application/json
-      body:
-        "@context":
-          "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
-          dct: "http://purl.org/dc/terms/"
-        "@type": Asset
-        "@id": "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
-        properties:
-          "dct:type":
-            "@id": "https://w3id.org/catenax/taxonomy#TestData"
-        privateProperties: {}
-        dataAddress:
-          "@type": DataAddress
-          type: HttpData
-          baseUrl: "${{ env.mock_server_external_url }}"
-          proxyPath: "true"
-          proxyMethod: "true"
-          proxyBody: "true"
+      asset: "${{ env.callback_asset }}"
+      mock: "${{ setup.open_callback.mock }}"
+      # Where a pod reaches the runner's mock server; the mock's own root is
+      # the runner's localhost.
+      base_url: "${{ env.mock_server_external_url }}"
+    returns:
+      asset_id:
+        type: string
     validate:
       - uses: validate/assert
-        with: { input: status_code, operator: equals, value: 200 }
+        with:
+          input: asset_id
+          operator: equals
+          value: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
 
   - id: create_contract
     uses: http/http_request

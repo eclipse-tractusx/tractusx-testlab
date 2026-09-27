@@ -21,6 +21,7 @@
 | `discover/digital-twin-registry` | [`connector/discover/digital-twin-registry/auth`](discover-digital-twin-registry.md#connector-discover-digital-twin-registry-auth) | Get authorization to a counterparty's Digital Twin Registry. |
 | `provider` | [`connector/provider/create_asset`](provider.md#connector-provider-create_asset) | Register an asset at the provider connector. |
 | `provider` | [`connector/provider/create_contract_definition`](provider.md#connector-provider-create_contract_definition) | Publish assets by binding them to an access and a contract policy. |
+| `provider` | [`connector/provider/create_mock_asset`](provider.md#connector-provider-create_mock_asset) | Offer one of the run's own mocks as an asset on the engine connector. |
 | `provider` | [`connector/provider/create_policy`](provider.md#connector-provider-create_policy) | Register an ODRL policy definition at the provider connector. |
 | `provider` | [`connector/provider/delete_asset`](provider.md#connector-provider-delete_asset) | Delete an asset from the provider connector. |
 | `provider` | [`connector/provider/delete_contract_definition`](provider.md#connector-provider-delete_contract_definition) | Delete a contract definition from the provider connector. |

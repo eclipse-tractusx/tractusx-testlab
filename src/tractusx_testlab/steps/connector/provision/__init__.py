@@ -32,5 +32,6 @@ them: register the asset, register the policy, bind the two.
 from tractusx_testlab.steps.connector.provision import (
     asset,
     contract_definition,
+    mock_asset,
     policy,
 )
