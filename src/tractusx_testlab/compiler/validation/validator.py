@@ -36,6 +36,7 @@ from tractusx_testlab.compiler.validation._extension_gate import (
     extension_findings,
 )
 from tractusx_testlab.compiler.validation._variable_references import (
+    call_scope_hint,
     nested_step_ids,
     unresolved_references,
 )
@@ -280,7 +281,7 @@ class TestValidator:
             result.add_error(
                 f"'${{{{ {reference} }}}}' in param '{key}' names nothing this "
                 f"TCK supplies. Available: {', '.join(sorted(declared)[:12])}"
-                f"{'…' if len(declared) > 12 else ''}.",
+                f"{'…' if len(declared) > 12 else ''}.{call_scope_hint(reference)}",
                 step_index=step_idx,
                 field=key,
             )

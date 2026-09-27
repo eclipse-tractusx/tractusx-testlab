@@ -23,11 +23,11 @@ Register a mock HTTP endpoint that returns a canned response.
 | `id` | string | no | `''` | — | Identifier for the registered mock; also the variable its URL is stored under. |
 | `path` | string | yes | — | — | URL path to register, e.g. '/companycertificate/request'. |
 | `method` | string | no | `'POST'` | — | HTTP method the mock answers on. |
+| `api_key_header` | string | no | `'x-api-key'` | — | Request header the run's mock API key must arrive in. |
+| `public` | boolean | no | `False` | — | Answer anyone who has the URL, without the API key. Only for a mock an engine step calls that cannot send a header, such as an OAuth2 token endpoint; every other mock requires the key. |
 | `response_status` | integer | no | `200` | — | Status code the mock returns. |
 | `response_body` | any | no | `{}` | — | JSON body the mock returns. References are written the usual way, '${{ ... }}', and are resolved before the step runs. |
 | `response_headers` | object | no | `{}` | — | Headers the mock returns alongside the body. |
-| `api_key_header` | string | no | `'x-api-key'` | — | Request header the run's mock API key must arrive in. |
-| `public` | boolean | no | `False` | — | Answer anyone who has the URL, without the API key. Only for a mock an engine step calls that cannot send a header, such as an OAuth2 token endpoint; every other mock requires the key. |
 
 **Output** — the value assertions and `returns:` read
 

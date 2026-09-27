@@ -9,6 +9,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `labs/mock/api/dynamic` — a mock that works out its reply per call. Its
+  `process:` steps run for every call, on a copy of the run's context and on
+  the run's event loop, and its `response_status`, `response_body` and
+  `response_headers` are read once they have run. A failing step, a reply that
+  names nothing, or steps slower than `process_timeout` (10 s) answer 500 with
+  a fixed body and log why. Everything else — the key, the listener for
+  `mock/wait/*`, the published address — is `mock/api`'s.
+- Call-scoped references, `${{ *.<…> }}`, read per call and only inside
+  `labs/mock/api/dynamic`: `*.request.body`, `.headers`, `.query`, `.method`
+  and `.path` for the call, and `*.process.<id>.<field>` for what the mock's
+  own steps returned. Unlike any other reference, one may reach into the value
+  it names (`${{ *.request.body.header.messageId }}`). The compiler refuses
+  them anywhere else, and a `process:` step's id is no phase name.
+- `labs/util/now` — the current time in UTC, ISO 8601 with milliseconds and a
+  `Z`, for a `sentDateTime` a test or a dynamic mock builds.
+- A mock handler (`server.mock_registry.MockHandler`) may answer
+  asynchronously; both mock routes await it.
+
 - `connector/provider/create_mock_asset` offers one of the run's own mocks as
   an asset on the engine connector (the reflexive asset). The asset is
   described statically by a new variable type, `config/connector/mock_asset`

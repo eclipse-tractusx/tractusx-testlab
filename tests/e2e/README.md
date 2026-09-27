@@ -52,7 +52,11 @@ without having been run once against something real.
   the call provably came from the provider's data plane pod and not from the
   test. A second mock takes a POST: the test's JSON body goes through both
   data planes (`proxyMethod`, `proxyBody`) and the wait step checks the payload
-  the mock received field by field. Every mock requires the run's API key, so
+  the mock received field by field. A third mock is a `labs/mock/api/dynamic`
+  one: its steps run when the test's POST arrives, a `flow/if` on the body
+  picks the answer, `labs/util/now` stamps it, and the reply echoes the
+  request's `messageId` — so what the consumer reads through the data plane
+  was worked out from that very call. Every mock requires the run's API key, so
   the asset carries it as a data address header, which the data plane sends.
 - `external_callback.yaml` — the wait step, actually waiting. The call in
   `inbound_call.yaml` is a consequence of the test's own pull and has
@@ -120,7 +124,9 @@ without having been run once against something real.
   always happens and always stops. Its teardown withdraws the offer with the
   `labs` steps `query_contract_definitions`, `query_assets` and
   `query_policies`, looping the core delete steps over what they find with
-  `labs/flow/for_each`. Every other test uses no extension.
+  `labs/flow/for_each`. `inbound_call.yaml` uses the `labs` steps
+  `labs/mock/api/dynamic` and `labs/util/now`; every other test uses no
+  extension.
 
 The workflow runs the full suite, every test, on every event — pull requests
 included. The cluster bring-up is where the job's minutes go and a run takes

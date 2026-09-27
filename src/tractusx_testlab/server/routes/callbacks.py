@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import logging
+from inspect import isawaitable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -142,6 +143,8 @@ async def callback_webhook(
         query_params=query_of(request.query_params.multi_items()),
         body=body,
     )
+    if isawaitable(mock):
+        mock = await mock
 
     # A path no step opened is refused rather than buffered — see the
     # equivalent guard on the app-level catch-all in ``server.app``.

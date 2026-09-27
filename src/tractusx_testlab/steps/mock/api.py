@@ -34,6 +34,7 @@ from pydantic import Field, field_validator
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import Listener, StepDefinition
 from tractusx_testlab.server.mock_registry import (
+    MockHandler,
     MockResponse,
     get_callback_manager,
     register_mock,
@@ -62,22 +63,15 @@ def _published_base_url(context: StepContext) -> str:
     return f"http://localhost:{context.config.server_port}"
 
 
-class MockEndpointParams(MockIdParams):
-    """Input contract of ``mock/api``."""
+class MockRouteParams(MockIdParams):
+    """Where a mock listens and who it answers — what every mock step takes.
+
+    ``mock/api`` adds a canned reply to it, ``labs/mock/api/dynamic`` a reply
+    worked out per call.
+    """
 
     path: str = Field(description="URL path to register, e.g. '/companycertificate/request'.")
     method: str = Field(default="POST", description="HTTP method the mock answers on.")
-    response_status: int = Field(default=200, description="Status code the mock returns.")
-    response_body: Any = Field(
-        default_factory=dict,
-        description=(
-            "JSON body the mock returns. References are written the usual way, "
-            "'${{ ... }}', and are resolved before the step runs."
-        ),
-    )
-    response_headers: dict[str, str] = Field(
-        default_factory=dict, description="Headers the mock returns alongside the body."
-    )
     api_key_header: str = Field(
         default="x-api-key",
         min_length=1,
@@ -103,6 +97,22 @@ class MockEndpointParams(MockIdParams):
     def _absolute_path(cls, value: str) -> str:
         """The path must match the URL the SUT will call, leading slash included."""
         return value if value.startswith("/") else f"/{value}"
+
+
+class MockEndpointParams(MockRouteParams):
+    """Input contract of ``mock/api``."""
+
+    response_status: int = Field(default=200, description="Status code the mock returns.")
+    response_body: Any = Field(
+        default_factory=dict,
+        description=(
+            "JSON body the mock returns. References are written the usual way, "
+            "'${{ ... }}', and are resolved before the step runs."
+        ),
+    )
+    response_headers: dict[str, str] = Field(
+        default_factory=dict, description="Headers the mock returns alongside the body."
+    )
 
 
 class MockEndpointOutput(StepPayload):
@@ -156,58 +166,72 @@ class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
         # already resolved before this step ran. A second pass used to run
         # here for the legacy ``@name`` spelling, which is gone — and which
         # mangled any JSON-LD value beginning with "@" on its way past.
-        resolved_body = params.response_body
-
-        api_key = "" if params.public else run_key(str(context.job.job_id))
-
-        register_mock(
-            params.path,
-            params.method,
-            MockResponse(
-                status_code=params.response_status,
-                body=resolved_body,
-                headers=params.response_headers,
-            ),
-            required_header=(params.api_key_header, api_key) if api_key else None,
+        response = MockResponse(
+            status_code=params.response_status,
+            body=params.response_body,
+            headers=params.response_headers,
         )
+        return publish_mock(params, response, context, definition)
 
-        # Pre-register a callback listener so wait_for_call can block on it
-        callback_manager = get_callback_manager()
-        if callback_manager is not None:
-            callback_manager.register(params.path, params.method)
 
-        # Where the SUT dials in, not where the server binds: the operator's
-        # ``mock_public_url`` when the SUT is on another host, else localhost.
-        base_url = _published_base_url(context)
-        full_url = f"{base_url}{params.path}"
-        params.publish_url(full_url, context)
+def publish_mock(
+    params: MockRouteParams,
+    response: MockResponse | MockHandler,
+    context: StepContext,
+    definition: StepDefinition,
+) -> StepOutput[MockEndpointOutput]:
+    """Register *response* for the mock's path and tell the run where it listens.
 
-        # From here on a call may arrive, so this is when whoever is watching
-        # — or driving the SUT by hand — is told where to call.
-        context.report_listening(
-            definition.uses,
-            definition.id,
-            Listener(method=params.method, url=full_url, path=params.path),
-        )
+    Shared by ``mock/api`` and ``labs/mock/api/dynamic``, which differ only in
+    what answers a call: a canned response, or a handler that works it out
+    from the call. Everything else — the key, the listener, the published
+    address — is the same for both.
+    """
+    api_key = "" if params.public else run_key(str(context.job.job_id))
 
-        logger.info(
-            "Registered mock endpoint %s %s -> %d%s",
-            params.method,
-            params.path,
-            params.response_status,
-            f" (requires {params.api_key_header})" if api_key else " (public)",
-        )
-        return StepOutput(
-            value=MockEndpointOutput(
-                mock=MockInstance(
-                    endpoint_id=params.id,
-                    path=params.path,
-                    method=params.method,
-                    base_mock_url=base_url,
-                    full_mock_url=full_url,
-                ),
+    register_mock(
+        params.path,
+        params.method,
+        response,
+        required_header=(params.api_key_header, api_key) if api_key else None,
+    )
+
+    # Pre-register a callback listener so wait_for_call can block on it
+    callback_manager = get_callback_manager()
+    if callback_manager is not None:
+        callback_manager.register(params.path, params.method)
+
+    # Where the SUT dials in, not where the server binds: the operator's
+    # ``mock_public_url`` when the SUT is on another host, else localhost.
+    base_url = _published_base_url(context)
+    full_url = f"{base_url}{params.path}"
+    params.publish_url(full_url, context)
+
+    # From here on a call may arrive, so this is when whoever is watching
+    # — or driving the SUT by hand — is told where to call.
+    context.report_listening(
+        definition.uses,
+        definition.id,
+        Listener(method=params.method, url=full_url, path=params.path),
+    )
+
+    logger.info(
+        "Registered mock endpoint %s %s%s",
+        params.method,
+        params.path,
+        f" (requires {params.api_key_header})" if api_key else " (public)",
+    )
+    return StepOutput(
+        value=MockEndpointOutput(
+            mock=MockInstance(
+                endpoint_id=params.id,
+                path=params.path,
+                method=params.method,
                 base_mock_url=base_url,
                 full_mock_url=full_url,
-                api_key=api_key,
-            )
+            ),
+            base_mock_url=base_url,
+            full_mock_url=full_url,
+            api_key=api_key,
         )
+    )

@@ -1227,7 +1227,7 @@ jobs:
               for line in trace.read_text(encoding="utf-8").splitlines()
               if line.strip()
           ]
-          # Keyed by test and step: inbound-call waits twice, once per mock.
+          # Keyed by test and step: inbound-call waits three times, once per mock.
           received = {
               tuple(event["id"].split("/")[1:4:2]): event["data"]
               for event in events
@@ -1236,6 +1236,7 @@ jobs:
           expected = {
               ("inbound-call", "await_call"),
               ("inbound-call", "await_notification"),
+              ("inbound-call", "await_question"),
               ("external-callback", "await_call"),
               ("dataplane-callback", "await_callback"),
               ("notification-roundtrip", "await_notification"),
@@ -1256,6 +1257,12 @@ jobs:
           header = (notification["request"]["body"] or {}).get("header") or {}
           if header.get("messageId") != "urn:uuid:testlab-e2e-inbound-notification":
               sys.exit(f"inbound-call: the posted payload did not arrive intact: {notification['request']}")
+
+          # The dynamic mock worked its reply out from this call; the call itself
+          # still reached the wait, after both data planes.
+          question = received[("inbound-call", "await_question")]
+          if ((question["request"]["body"] or {}).get("content") or {}).get("question") != "ping":
+              sys.exit(f"inbound-call: the dynamic mock's call did not arrive intact: {question['request']}")
 
           # The stub was told to wait three seconds; the wait step must have
           # blocked for about that long, or the call did not arrive during it.
@@ -1315,6 +1322,7 @@ jobs:
 
           print("inbound-call: received GET from the SUT's data plane, held for the wait step")
           print("inbound-call: received the POSTed payload intact through both data planes")
+          print("inbound-call: the dynamic mock answered from the call and the wait received it")
           print(f"external-callback: received POST from the stub after {external['waited_ms']}ms of waiting")
           print("notification-roundtrip: both notifications arrived with their headers intact")
           print("push-transfer: received the provider's POST at the sink")

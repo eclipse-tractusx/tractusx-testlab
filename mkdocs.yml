@@ -180,6 +180,7 @@ nav:
       - Add a Validation Rule: tutorials/add-validation-rule.md
     - Development Workflow: tutorials/development-workflow.md
     - Debugging: tutorials/debugging.md
+    - Answer a Call from What It Carried: tutorials/dynamic-mock.md
   - API Reference:
     - Overview: api-reference/index.md
     - Steps:
@@ -205,6 +206,8 @@ nav:
         - Overview: api-reference/steps/labs/index.md
         - connector/provider: api-reference/steps/labs/connector-provider.md
         - flow: api-reference/steps/labs/flow.md
+        - mock/api: api-reference/steps/labs/mock-api.md
+        - util: api-reference/steps/labs/util.md
       - mock:
         - Overview: api-reference/steps/mock/index.md
         - wait/dataplane: api-reference/steps/mock/wait-dataplane.md
