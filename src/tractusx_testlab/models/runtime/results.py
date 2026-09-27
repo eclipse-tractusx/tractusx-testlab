@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Result models — execution-time structures for steps, tests, and TCKs."""
@@ -170,6 +171,9 @@ class CallbackResult(BaseModel):
     payload: Any | None = None
     received_at: datetime | None = None
     timed_out: bool = False
+    #: Why the call that ended the wait was turned away — no key, the wrong
+    #: key, the wrong address — or ``None`` for the call the wait was for.
+    refused: str | None = None
 
 
 class AssertionSummary(BaseModel):

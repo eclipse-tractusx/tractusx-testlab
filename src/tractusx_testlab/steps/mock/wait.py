@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Wait steps — block until a mock endpoint receives an inbound request.
@@ -39,7 +40,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, cast
 from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.models import ConnectorOffer, Listener, StepDefinition
+from tractusx_testlab.models import ConnectorOffer, ExecutionError, Listener, StepDefinition
 from tractusx_testlab.server.mock_registry import get_callback_manager
 from tractusx_testlab.steps.mock._models import MockInstance
 from tractusx_testlab.steps.shared_models import StepParams
@@ -104,8 +105,13 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
     test a callback URL, and this one blocks until the SUT calls it, then hands
     the request it made to the assertions.
 
+    A call the mock turns away — no key, another run's key, the wrong method
+    or path — fails the wait as soon as it arrives, saying which
+    (``MockCallRefusedError``); only the call the mock answers ends it well.
+
     Raises:
         RuntimeError: If no ``CallbackManager`` is available or the wait times out.
+        MockCallRefusedError: If the call the wait was for was refused.
     """
 
     # Widened like OAuth2GetTokenStep's, so the dataplane wait can narrow it.
@@ -145,6 +151,8 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
 
         if result.timed_out:
             raise RuntimeError(_timed_out(manager, timeout, method, path))
+        if result.refused is not None:
+            raise MockCallRefusedError(listener, result.refused, elapsed_ms)
 
         context.report_received(definition.uses, definition.id, listener, result, elapsed_ms)
         logger.info("Received callback on %s %s after %dms", method, path, elapsed_ms)
@@ -190,6 +198,34 @@ class WaitForDataplaneCallStep(WaitForCallStep):
                 participant_id=_text(connector.participant_id),
             ),
         )
+
+
+class MockCallRefusedError(ExecutionError):
+    """The call the wait was for arrived in a form the mock does not accept.
+
+    A result about the system under test, and one reached as soon as the call
+    came: it had no key (it did not come through the connector that carries
+    it), another run's key, or went to another address than the one waited on.
+    Waiting on after it would only turn a precise finding into a timeout.
+    """
+
+    code = "MOCK_CALL_REFUSED"
+
+    def __init__(self, listener: Listener, reason: str, elapsed_ms: int) -> None:
+        through = (
+            "; the call has to reach the mock through the engine connector's data plane"
+            f", for asset {listener.offer.asset_id}"
+            if listener.via == "dataplane" and listener.offer is not None
+            else ""
+        )
+        super().__init__(
+            f"Refused a call while waiting for {listener.method} {listener.path}: {reason}{through}"
+        )
+        self.diagnostics = {
+            "reason": reason,
+            "expected": {"method": listener.method, "path": listener.path},
+            "waited_ms": elapsed_ms,
+        }
 
 
 def _timed_out(manager: Any, timeout: float, method: str, path: str) -> str:

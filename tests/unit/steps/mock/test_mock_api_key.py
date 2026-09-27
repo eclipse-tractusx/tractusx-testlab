@@ -34,7 +34,9 @@ test never names it.
 
 from __future__ import annotations
 
+import asyncio
 import re
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -52,6 +54,8 @@ from tractusx_testlab.player.execution._step_outputs import hide_secrets
 from tractusx_testlab.server.app import create_app
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import (
+    MISSING_KEY,
+    WRONG_KEY,
     MockResponse,
     _mint_key,
     admits,
@@ -67,7 +71,11 @@ from tractusx_testlab.steps.connector.provision.mock_asset import (
     CreateMockAssetStep,
 )
 from tractusx_testlab.steps.mock.api import MockEndpointStep
-from tractusx_testlab.steps.mock.wait import WaitForCallStep
+from tractusx_testlab.steps.mock.wait import (
+    MockCallRefusedError,
+    WaitForCallStep,
+    WaitForDataplaneCallStep,
+)
 from tractusx_testlab.steps.step_contract import StepOutput
 
 _PATH = "/uniqueidpush/connect-to-parent"
@@ -358,3 +366,193 @@ class TestTheWait:
                 _definition("mock/wait/http_request"),
             )
         assert "refused" not in str(raised.value)
+
+
+class TestARefusedCallFailsTheWait:
+    """A call the mock turns away ends the wait at once, saying why.
+
+    The wait runs on the test's loop and the call arrives on the server's
+    thread, as it does in a run: the refusal has to cross from one to the
+    other, and a wait that only noticed it at its timeout would fail these
+    tests by taking the whole of it.
+    """
+
+    _TIMEOUT_S = 10.0
+
+    @pytest.fixture()
+    def manager(self) -> CallbackManager:
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        return manager
+
+    @pytest.fixture()
+    def client(self, manager: CallbackManager, tmp_path: Path) -> Iterator[TestClient]:
+        app = create_app(config=TestlabConfig(storage_dir=tmp_path, logs_dir=tmp_path))
+        with TestClient(app) as client:
+            yield client
+
+    async def _wait_through(
+        self,
+        context: MagicMock,
+        manager: CallbackManager,
+        client: TestClient,
+        call: dict[str, Any],
+        step: type[WaitForCallStep] = WaitForCallStep,
+        **params: Any,
+    ) -> tuple[Any, Any, float]:
+        """Wait on the mock at ``_PATH`` while *call* is made.
+
+        Returns the answer the caller got, what the wait step ended with, and
+        the seconds between the call and that end. A header written as ``...``
+        in *call* carries the run's key.
+        """
+        registered = await _register(context)
+        key = registered["api_key"]
+        waiting = asyncio.create_task(
+            step().invoke(
+                {"mock": registered["mock"], "timeout_s": self._TIMEOUT_S, **params},
+                context,
+                _definition(step.__name__),
+            )
+        )
+        while not manager.awaited():
+            await asyncio.sleep(0.01)
+        started = time.monotonic()
+        headers = {
+            name: key if value is ... else value for name, value in call.get("headers", {}).items()
+        }
+        answer = await asyncio.to_thread(
+            client.request,
+            call.get("method", "POST"),
+            call.get("path", _PATH),
+            headers=headers,
+            json={},
+        )
+        try:
+            outcome: Any = await waiting
+        except MockCallRefusedError as refused:
+            outcome = refused
+        return answer, outcome, time.monotonic() - started
+
+    @pytest.mark.asyncio
+    async def test_a_call_without_the_key_fails_the_wait(
+        self, context: MagicMock, manager: CallbackManager, client: TestClient
+    ) -> None:
+        answer, outcome, seconds = await self._wait_through(context, manager, client, {})
+
+        assert answer.status_code == 401
+        assert isinstance(outcome, MockCallRefusedError)
+        assert MISSING_KEY in str(outcome)
+        assert outcome.code == "MOCK_CALL_REFUSED"
+        assert outcome.diagnostics["reason"] == MISSING_KEY
+        assert outcome.diagnostics["expected"] == {"method": "POST", "path": _PATH}
+        assert seconds < self._TIMEOUT_S / 2
+        assert manager.refused(_PATH, "POST") == 1
+
+    @pytest.mark.asyncio
+    async def test_a_call_with_another_key_fails_the_wait(
+        self, context: MagicMock, manager: CallbackManager, client: TestClient
+    ) -> None:
+        call = {"headers": {"x-api-key": "f" * 64}}
+        answer, outcome, _ = await self._wait_through(context, manager, client, call)
+
+        assert answer.status_code == 401
+        assert isinstance(outcome, MockCallRefusedError)
+        assert WRONG_KEY in str(outcome)
+        assert "f" * 64 not in str(outcome)
+
+    @pytest.mark.asyncio
+    async def test_a_call_with_the_key_on_another_path_fails_the_wait(
+        self, context: MagicMock, manager: CallbackManager, client: TestClient
+    ) -> None:
+        call = {"path": "/uniqueidpush/wrong", "headers": {"x-api-key": ...}}
+        answer, outcome, _ = await self._wait_through(context, manager, client, call)
+
+        assert answer.status_code == 404
+        assert isinstance(outcome, MockCallRefusedError)
+        assert f"went to POST /uniqueidpush/wrong, not to POST {_PATH}" in str(outcome)
+
+    @pytest.mark.asyncio
+    async def test_a_call_with_another_method_fails_the_wait(
+        self, context: MagicMock, manager: CallbackManager, client: TestClient
+    ) -> None:
+        call = {"method": "PUT", "headers": {"x-api-key": ...}}
+        answer, outcome, _ = await self._wait_through(context, manager, client, call)
+
+        assert answer.status_code == 404
+        assert isinstance(outcome, MockCallRefusedError)
+        assert f"went to PUT {_PATH}, not to POST {_PATH}" in str(outcome)
+
+    @pytest.mark.asyncio
+    async def test_the_dataplane_wait_names_the_asset_to_negotiate(
+        self, context: MagicMock, manager: CallbackManager, client: TestClient
+    ) -> None:
+        context.infrastructure.engine.connector.dsp_url = "https://engine/api/v1/dsp"
+        context.infrastructure.engine.connector.participant_id = "did:web:engine"
+        _, outcome, _ = await self._wait_through(
+            context, manager, client, {}, WaitForDataplaneCallStep, asset_id="ccmapi-run-1"
+        )
+
+        assert isinstance(outcome, MockCallRefusedError)
+        assert "engine connector's data plane, for asset ccmapi-run-1" in str(outcome)
+
+    @pytest.mark.asyncio
+    async def test_the_right_call_ends_the_wait_well(
+        self, context: MagicMock, manager: CallbackManager, client: TestClient
+    ) -> None:
+        call = {"headers": {"X-Api-Key": ...}}
+        answer, outcome, _ = await self._wait_through(context, manager, client, call)
+
+        assert answer.status_code == 200
+        assert outcome.value["request_path"] == _PATH
+
+    @pytest.mark.asyncio
+    async def test_a_keyless_call_elsewhere_is_pinned_on_no_wait(
+        self, context: MagicMock, manager: CallbackManager, client: TestClient
+    ) -> None:
+        """Anyone can dial an address nobody opened; that says nothing about this run."""
+        await _register(context)
+        waiting = asyncio.create_task(manager.wait(_PATH, "POST", 0.5))
+        while not manager.awaited():
+            await asyncio.sleep(0.01)
+
+        answer = await asyncio.to_thread(client.post, "/somewhere/else", json={})
+
+        assert answer.status_code == 404
+        assert (await waiting).timed_out
+
+
+class TestARefusalOutlivesNoRun:
+    def test_a_refusal_with_no_open_listener_is_dropped(self) -> None:
+        manager = CallbackManager()
+
+        assert manager.reject(_PATH, "POST", MISSING_KEY) is False
+        assert manager._buffered == {}
+
+    @pytest.mark.asyncio
+    async def test_a_mock_armed_again_after_a_refusal_starts_clean(self) -> None:
+        manager = CallbackManager()
+        manager.register(_PATH, "POST")
+        assert manager.reject(_PATH, "POST", MISSING_KEY)
+
+        manager.register(_PATH, "POST")
+
+        assert (await manager.wait(_PATH, "POST", 0.05)).timed_out
+
+    def test_a_listener_of_an_ended_run_is_replaced(self) -> None:
+        manager = CallbackManager()
+        ended = asyncio.new_event_loop()
+        manager._listeners[f"POST:{_PATH}"] = ended.create_future()
+        ended.close()
+
+        assert manager.reject(_PATH, "POST", MISSING_KEY) is False
+
+        async def rearm() -> asyncio.AbstractEventLoop:
+            manager.register(_PATH, "POST")
+            return manager._listeners[f"POST:{_PATH}"].get_loop()
+
+        loop = asyncio.new_event_loop()
+        try:
+            assert loop.run_until_complete(rearm()) is loop
+        finally:
+            loop.close()

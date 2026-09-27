@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """``mock/api`` and ``mock/wait/http_request`` — the inbound half of a TCK.
@@ -165,19 +166,26 @@ class TestThePairWorks:
         assert outcome.variables["request_query_params"] == {"trace": "abc"}
         assert outcome.variables["request_body"] == {"cert": "ISO9001"}
 
-    async def test_a_caller_without_the_key_is_refused_and_not_waited_for(
+    async def test_a_caller_without_the_key_is_refused_and_fails_the_wait(
         self, server: MockServer, sut_harness: Harness
     ) -> None:
-        """The URL alone opens nothing: every mock requires the run's API key."""
+        """The URL alone opens nothing: every mock requires the run's API key.
+
+        And a call without it is the run's finding, not something to wait past:
+        the wait fails on it with the reason, long before its timeout, even
+        though the call came before the wait began.
+        """
         opened = await sut_harness.run(_endpoint("/certificate/request"))
 
         refused = server.call(opened.variables["full_mock_url"], json={}, with_key=False)
-        waited = await sut_harness.run(_wait(timeout_s=0.5))
+        waited = await sut_harness.run(_wait(timeout_s=30))
 
         assert refused.status_code == 401
         assert "through the connector" in refused.json()["detail"]
         assert not waited.passed
-        assert "1 call(s) reached the mock without the key" in str(waited.failures[0].error)
+        error = str(waited.failures[0].error)
+        assert "the call carried no API key" in error
+        assert "Timed out" not in error
 
 
 class TestTheOrderTheyHappenIn:

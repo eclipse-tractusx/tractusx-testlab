@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """FastAPI application factory for the Testlab server."""
@@ -39,14 +40,14 @@ from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import (
-    admits,
     get_callback_manager,
     query_of,
+    refusal,
     resolve_mock,
     set_callback_manager,
 )
 from tractusx_testlab.server.routes import router
-from tractusx_testlab.server.routes.callbacks import refused
+from tractusx_testlab.server.routes.callbacks import misdirected, refused
 from tractusx_testlab.server.storage import PackageStorage
 
 _logger = logging.getLogger(__name__)
@@ -123,8 +124,9 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
         # Before the mock is resolved, so a dynamic handler never runs for a
         # caller the mock does not admit, and before the listener is, so the
         # call cannot stand in for the one the test is waiting on.
-        if not admits(full_path, method, headers):
-            return refused(callbacks, full_path, method)
+        reason = refusal(full_path, method, headers)
+        if reason is not None:
+            return refused(callbacks, full_path, method, reason)
 
         mock = resolve_mock(
             full_path,
@@ -143,6 +145,7 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
         # registered: the SUT is told 200 for a call that reached nobody, and
         # the test then waits out its timeout on the address it did open.
         if mock is None and not callbacks.has_listener(full_path, method):
+            misdirected(callbacks, full_path, method, headers)
             raise HTTPException(404, f"No mock or listener for {method} {full_path}")
 
         # Resolve the callback listener (so wait_for_call steps unblock)
