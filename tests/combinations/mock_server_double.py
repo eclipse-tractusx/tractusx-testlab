@@ -40,11 +40,13 @@ import socket
 import threading
 import time
 from typing import Any
+from urllib.parse import urlsplit
 
 import requests
 
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.player.execution.mock_server import _BackgroundMockServer
+from tractusx_testlab.server.mock_registry import required_header
 
 
 def free_port() -> int:
@@ -101,9 +103,21 @@ class MockServer:
         json: Any = None,
         params: dict | None = None,
         timeout: float = 5.0,
+        with_key: bool = True,
     ) -> requests.Response:
-        """Call the mock, the way the system under test would."""
-        return requests.request(method, self.local(url), json=json, params=params, timeout=timeout)
+        """Call the mock, the way the system under test would.
+
+        Every mock requires the run's API key, so a SUT that calls one directly
+        is one whose operator was handed it (``hidden: false``); by default this
+        caller is. ``with_key=False`` is the caller who only read the URL.
+        """
+        headers = {}
+        guard = required_header(urlsplit(url).path, method) if with_key else None
+        if guard is not None:
+            headers[guard[0]] = guard[1]
+        return requests.request(
+            method, self.local(url), json=json, params=params, headers=headers, timeout=timeout
+        )
 
     def call_soon(self, url: str, delay_s: float = 0.2, **kwargs: Any) -> _LateCall:
         """Call the mock from another thread after *delay_s*.

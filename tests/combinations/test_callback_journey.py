@@ -165,6 +165,20 @@ class TestThePairWorks:
         assert outcome.variables["request_query_params"] == {"trace": "abc"}
         assert outcome.variables["request_body"] == {"cert": "ISO9001"}
 
+    async def test_a_caller_without_the_key_is_refused_and_not_waited_for(
+        self, server: MockServer, sut_harness: Harness
+    ) -> None:
+        """The URL alone opens nothing: every mock requires the run's API key."""
+        opened = await sut_harness.run(_endpoint("/certificate/request"))
+
+        refused = server.call(opened.variables["full_mock_url"], json={}, with_key=False)
+        waited = await sut_harness.run(_wait(timeout_s=0.5))
+
+        assert refused.status_code == 401
+        assert "through the connector" in refused.json()["detail"]
+        assert not waited.passed
+        assert "1 call(s) reached the mock without the key" in str(waited.failures[0].error)
+
 
 class TestTheOrderTheyHappenIn:
     """The SUT does not wait for the test to be ready, so neither can this."""
