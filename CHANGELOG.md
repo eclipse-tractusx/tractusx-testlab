@@ -38,6 +38,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   nanosecond timestamp, under a per-process random salt. A refused call
   is counted, and a wait that times out says how many there were.
   `mock/dtr` and `mock/discovery` do not require the key yet.
+- A `mock/wait/*` step fails as soon as the call it waits for arrives in a form
+  the mock turns away, instead of running out its timeout: no key (the call
+  skipped the connector), another run's key, or — carrying the run's key, or
+  on the awaited path — the wrong path or method. The error (code
+  `MOCK_CALL_REFUSED`) says which, and for `mock/wait/dataplane/http_request`
+  names the asset to negotiate; it never names the header or the key. A
+  refusal only ends a wait that is still open, so a stray call after a run
+  cannot fail the next one, and a mock registered again starts clean.
 
 ### Fixed
 

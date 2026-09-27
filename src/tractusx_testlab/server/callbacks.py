@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """CallbackManager — manages ephemeral HTTP listener endpoints for async callbacks."""
@@ -40,13 +41,14 @@ class CallbackManager:
     a matching request arrives or the timeout elapses.
     """
 
-    __slots__ = ("_buffered", "_listeners", "_loop", "_refused")
+    __slots__ = ("_awaited", "_buffered", "_listeners", "_loop", "_refused")
 
     def __init__(self) -> None:
         self._listeners: dict[str, asyncio.Future[CallbackResult]] = {}
         self._buffered: dict[str, CallbackResult] = {}
         self._loop: asyncio.AbstractEventLoop | None = None
         self._refused: dict[str, int] = {}
+        self._awaited: set[str] = set()
 
     def register(self, path: str, method: str) -> None:
         """Prepare a listener slot. The future will be resolved when a request arrives.
@@ -55,6 +57,9 @@ class CallbackManager:
         was registered), the future is resolved immediately.
         """
         key = self._key(path, method)
+        stale = self._listeners.get(key)
+        if stale is not None and _is_stale(stale):
+            del self._listeners[key]
         if key not in self._listeners:
             try:
                 loop = asyncio.get_running_loop()
@@ -91,6 +96,7 @@ class CallbackManager:
                 timed_out=True,
             )
 
+        self._awaited.add(key)
         try:
             result = await asyncio.wait_for(future, timeout=timeout_s)
             return result
@@ -102,6 +108,7 @@ class CallbackManager:
                 timed_out=True,
             )
         finally:
+            self._awaited.discard(key)
             self._listeners.pop(key, None)
 
     def resolve(
@@ -163,6 +170,59 @@ class CallbackManager:
         """How many calls on *path*/*method* the mock has turned away."""
         return self._refused.get(self._key(path, method), 0)
 
+    def reject(self, path: str, method: str, reason: str) -> bool:
+        """End the wait on *path*/*method* with a call that was turned away, and why.
+
+        A call that did not come through the connector, or carried another
+        run's key, or went to the wrong address, is a finding about the system
+        under test: the wait fails on it now, with the reason, instead of
+        running out its timeout as though nothing had arrived.
+
+        Only a listener that is still open is ended; a refusal is never
+        buffered, since the address outlives the run that opened it and a
+        stray call after the run would otherwise fail the next one. Delivered
+        on the loop the listener belongs to, whichever thread refused the call.
+        Returns whether a wait was ended.
+        """
+        key = self._key(path, method)
+        future = self._listeners.get(key)
+        if future is None or future.done():
+            return False
+        result = CallbackResult(
+            listener_name=key,
+            path=path,
+            method=method,
+            received_at=datetime.now(UTC),
+            refused=reason,
+        )
+        loop = future.get_loop()
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+        if current_loop is loop:
+            future.set_result(result)
+            return True
+        try:
+            loop.call_soon_threadsafe(_settle, future, result)
+        except RuntimeError:
+            # The loop is closed: the run that opened the listener has ended.
+            return False
+        return True
+
+    def awaited(self) -> list[tuple[str, str]]:
+        """``(path, method)`` of every call a wait step is blocked on right now.
+
+        Narrower than the open listeners: ``mock/api`` opens one for every mock
+        it registers, and a call that reached no mock is attributed only to a
+        wait already under way, not to one the test may never reach.
+        """
+        return [
+            (path, method)
+            for key in list(self._awaited)
+            for method, _, path in [key.partition(":")]
+        ]
+
     def clear(self) -> None:
         """Cancel all pending listeners and clear buffers."""
         for future in self._listeners.values():
@@ -171,7 +231,31 @@ class CallbackManager:
         self._listeners.clear()
         self._buffered.clear()
         self._refused.clear()
+        self._awaited.clear()
 
     @staticmethod
     def _key(path: str, method: str) -> str:
         return f"{method.upper()}:{path}"
+
+
+def _is_stale(future: asyncio.Future[CallbackResult]) -> bool:
+    """Whether a listener left behind cannot serve a mock registered again now.
+
+    One ended by a refused call: the refusal belonged to the wait it was meant
+    to fail, and a mock armed afresh on the address starts clean. And one bound
+    to a loop that is gone — the run that opened it ended without waiting on
+    it, and awaiting it from another run's loop would fail.
+    """
+    if future.get_loop().is_closed():
+        return True
+    if not future.done():
+        return False
+    if future.cancelled() or future.exception() is not None:
+        return True
+    return future.result().refused is not None
+
+
+def _settle(future: asyncio.Future[CallbackResult], result: CallbackResult) -> None:
+    """Resolve *future* with *result* unless something resolved it first."""
+    if not future.done():
+        future.set_result(result)
