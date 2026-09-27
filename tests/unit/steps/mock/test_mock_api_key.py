@@ -129,7 +129,9 @@ class TestEveryMockRequiresTheKey:
 
     def test_two_mintings_for_the_same_run_id_differ(self) -> None:
         """The nonce, not the run id, is what makes a key unguessable."""
-        assert _mint_key("same-run") != _mint_key("same-run")
+        first, second = (_mint_key("same-run") for _ in range(2))
+
+        assert first != second
 
     @pytest.mark.asyncio
     async def test_a_wrong_key_is_refused(self, context: MagicMock) -> None:
