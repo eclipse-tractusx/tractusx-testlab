@@ -38,7 +38,7 @@ from collections.abc import Iterator, Set
 from typing import Any
 
 from tractusx_testlab.authoring.registry import StepRegistry
-from tractusx_testlab.syntax import keys, patterns
+from tractusx_testlab.syntax import call_scope, keys, patterns
 
 
 def declared_variable_ids(env_data: dict[str, Any]) -> frozenset[str]:
@@ -107,6 +107,8 @@ def root_of(reference: str) -> str:
     reference, and one that reaches past it is refused by name.
     """
     parts = reference.split(".")
+    if call_scope.is_call_scoped(reference):
+        return ".".join(parts[: call_scope.ROOT_SEGMENTS])
     if parts[0] == "infrastructure":
         return ".".join(parts[:4])
     if parts[0] == "env" and len(parts) > 1 and parts[1] in ("testdata", "schemas"):
@@ -122,15 +124,24 @@ def unresolved_references(
     *step_cls* is the step whose ``with:`` *params* is, when known. A flow
     step's nested steps are checked as steps of their own, and a loop's may
     also read what the loop binds (``each.item``) — a name that exists nowhere
-    else in the run, so it is in scope nowhere else.
+    else in the run, so it is in scope nowhere else. A step's
+    ``template_params`` are values it resolves later itself, and read the same
+    names its nested steps do (``labs/mock/api/dynamic``'s reply).
     """
-    nested_keys: frozenset[str] = getattr(step_cls, "deferred_params", frozenset())
-    body_scope: Set[str] = declared | getattr(step_cls, "body_references", frozenset())
+    body_scope: Set[str] = (
+        declared
+        | getattr(step_cls, "body_references", frozenset())
+        | _namespaced_ids(step_cls, params)
+    )
+    nested_keys = _step_list_keys(step_cls)
+    templates: frozenset[str] = getattr(step_cls, "template_params", frozenset())
     for key, value in params.items():
         if key in nested_keys and isinstance(value, list):
             for nested in value:
                 if isinstance(nested, dict):
                     yield from _unresolved_in_step(nested, body_scope)
+        elif key in templates:
+            yield from unresolved_references({key: value}, body_scope)
         elif isinstance(value, str):
             for match in patterns.EXPR_REF.finditer(value):
                 if root_of(match.group(1)) not in declared:
@@ -143,6 +154,49 @@ def unresolved_references(
                     yield from unresolved_references(item, declared)
 
 
+def call_scope_hint(reference: str) -> str:
+    """What to add to "names nothing" when *reference* is call-scoped, else ``""``."""
+    if not call_scope.is_call_scoped(reference):
+        return ""
+    return (
+        " A '*.' reference is read per call, and only inside labs/mock/api/dynamic: "
+        "'*.request.<body|headers|query|method|path>' or '*.process.<id of one of its steps>'."
+    )
+
+
+def _step_list_keys(step_cls: type | None) -> frozenset[str]:
+    """The ``with:`` keys of *step_cls* that hold nested steps, not deferred values."""
+    deferred: frozenset[str] = getattr(step_cls, "deferred_params", frozenset())
+    return deferred - getattr(step_cls, "template_params", frozenset())
+
+
+def _namespaced_ids(step_cls: type | None, params: Any) -> frozenset[str]:
+    """``<namespace>.<id>`` for the nested steps of a step that publishes them apart.
+
+    A step with a ``nested_namespace`` runs its nested steps outside the phase
+    — ``labs/mock/api/dynamic`` once per call — and they publish under that
+    namespace instead (``*.process.<id>``), readable only inside the step.
+    """
+    namespace = getattr(step_cls, "nested_namespace", None)
+    if not namespace or not isinstance(params, dict):
+        return frozenset()
+    return frozenset(f"{namespace}.{step_id}" for step_id in _all_nested_ids(step_cls, params))
+
+
+def _all_nested_ids(step_cls: type | None, params: dict[str, Any]) -> Iterator[str]:
+    for key in _step_list_keys(step_cls):
+        nested_steps = params.get(key)
+        for nested in nested_steps if isinstance(nested_steps, list) else []:
+            if not isinstance(nested, dict):
+                continue
+            if nested.get(keys.ID):
+                yield str(nested[keys.ID])
+            nested_with = nested.get(keys.WITH)
+            if isinstance(nested_with, dict):
+                nested_cls = StepRegistry.get_any(str(nested.get(keys.USES, "")))
+                yield from _all_nested_ids(nested_cls, nested_with)
+
+
 def _unresolved_in_step(step: dict[str, Any], declared: Set[str]) -> Iterator[tuple[str, str]]:
     """The unresolved references of one nested step definition, its own nesting included."""
     nested_cls = StepRegistry.get_any(str(step.get("uses", "")))
@@ -151,16 +205,20 @@ def _unresolved_in_step(step: dict[str, Any], declared: Set[str]) -> Iterator[tu
 
 
 def nested_step_ids(uses: str, params: Any) -> Iterator[str]:
-    """The ids of the steps a flow step runs, at any depth.
+    """The ids of the steps a flow step runs, at any depth, that publish under its phase.
 
     A nested step publishes under its phase as a top-level one does
     (``_step_outputs.run_and_publish``), so the step after it in a
     ``flow/retry`` reads ``${{ execution.<id>.<field> }}`` as it would outside.
+    A step with a ``nested_namespace`` publishes its nested steps elsewhere, so
+    none of them is a phase name.
     """
     if not isinstance(params, dict):
         return
     step_cls = StepRegistry.get_any(uses)
-    for key in getattr(step_cls, "deferred_params", frozenset()):
+    if getattr(step_cls, "nested_namespace", None):
+        return
+    for key in _step_list_keys(step_cls):
         nested_steps = params.get(key)
         for nested in nested_steps if isinstance(nested_steps, list) else []:
             if not isinstance(nested, dict):

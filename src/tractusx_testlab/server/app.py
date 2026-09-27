@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import logging
+from inspect import isawaitable
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -138,6 +139,8 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
             query_params=query_of(request.query_params.multi_items()),
             body=body,
         )
+        if isawaitable(mock):
+            mock = await mock
 
         # A path no step opened is refused. `resolve` buffers a call nothing is
         # waiting for and reports success for it — right when the SUT beats the

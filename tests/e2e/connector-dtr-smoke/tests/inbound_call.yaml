@@ -86,6 +86,56 @@ setup:
       full_mock_url:
         type: string
 
+  # The third mock works its reply out per call (`labs/mock/api/dynamic`):
+  # its steps run when the POST arrives, read what it carried, and the reply
+  # is built from them — the request's messageId echoed back, an answer chosen
+  # by a `flow/if` on the body, and the time it was answered. The data plane
+  # carries that reply back to the consumer, so what the test reads there was
+  # decided by the call itself.
+  - id: open_answering
+    uses: labs/mock/api/dynamic
+    name: Open a mock endpoint that answers each call from what it carried
+    with:
+      method: POST
+      path: "/testlab-e2e/answer"
+      process:
+        - id: answered_at
+          uses: labs/util/now
+          returns:
+            value:
+              type: string
+        - id: pick
+          uses: flow/if
+          with:
+            conditions:
+              - input: "${{ *.request.body }}"
+                path: content.question
+                operator: equals
+                value: ping
+            then:
+              - id: answer
+                uses: util/log
+                with: { value: pong }
+                returns:
+                  value:
+                    type: string
+            else:
+              - id: answer
+                uses: util/log
+                with: { value: unknown }
+                returns:
+                  value:
+                    type: string
+      response_status: 200
+      response_body:
+        relatedMessageId: "${{ *.request.body.header.messageId }}"
+        answer: "${{ *.process.answer.value }}"
+        answeredAt: "${{ *.process.answered_at.value }}"
+    returns:
+      mock:
+        type: class
+        class: MockInstance
+
   - id: create_access_policy
     uses: connector/provider/create_policy
     name: Create the SUT catalog access policy
@@ -294,6 +344,48 @@ execution:
         with: { input: request_body, path: content.status, operator: equals, value: "RECEIVED" }
       - uses: validate/field
         with: { input: request_body, path: content.items.1, operator: equals, value: "part-2" }
+
+  # The dynamic mock's reply, read where the consumer got it: two connectors
+  # after the mock worked it out from this very request.
+  - id: ask_through_sut
+    uses: connector/dataplane/http_request
+    name: Post a question through the SUT's data plane to the answering mock
+    with:
+      method: POST
+      path: "/testlab-e2e/answer"
+      headers:
+        Content-Type: "application/json"
+      body:
+        header:
+          messageId: "urn:uuid:testlab-e2e-inbound-question"
+        content:
+          question: ping
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/field
+        with:
+          input: value
+          path: relatedMessageId
+          operator: equals
+          value: "urn:uuid:testlab-e2e-inbound-question"
+      - uses: validate/field
+        with: { input: value, path: answer, operator: equals, value: pong }
+      - uses: validate/field
+        with: { input: value, path: answeredAt, operator: not_null }
+
+  - id: await_question
+    uses: mock/wait/http_request
+    name: Read the question the SUT's data plane posted to the answering mock
+    with:
+      mock: "${{ setup.open_answering.mock }}"
+      timeout_s: 30
+    returns:
+      request_body:
+        type: object
+    validate:
+      - uses: validate/field
+        with: { input: request_body, path: content.question, operator: equals, value: ping }
 
 teardown:
   - id: delete_contract

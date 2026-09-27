@@ -26,3 +26,35 @@ Rules **[PROP]**:
 - Referencing a step in a later phase, a later step, or another test is a compile error.
 - Whole-value references may be unquoted; embedded references must be quoted:
   `path: "/companycertificate/request"` vs `dataplane_url: "${{ execution.x.dataplane_url }}"`.
+
+## Call-scoped references (`labs`)
+
+**[PROP]** Inside [`labs/mock/api/dynamic`](../../api-reference/steps/labs/mock-api.md) a reference may start
+with `*.`. It names something that exists only while the mock answers one call, and it is read when
+that call arrives — once per call — rather than when the step runs.
+
+| Form | Resolves to | Example |
+|---|---|---|
+| `${{ *.request.body }}` | The JSON body of the call being answered: `{}` for a POST or PUT whose body is not JSON, `null` for any other method | `${{ *.request.body }}` |
+| `${{ *.request.headers }}` | Its headers, keyed by lower-case name | `${{ *.request.headers.x-correlation-id }}` |
+| `${{ *.request.query }}` | Its query string, one value per name (the last one given), as `mock/wait/*` publishes it | `${{ *.request.query.page }}` |
+| `${{ *.request.method }}`, `${{ *.request.path }}` | The call's method and path | `${{ *.request.path }}` |
+| `${{ *.process.<step-id>.<return-key> }}` | A return of one of the mock's own `process:` steps, for this call | `${{ *.process.answer_id.value }}` |
+
+Rules:
+
+- A call-scoped reference may continue past what it names, into the value: dictionary keys, and list
+  positions written as numbers — `${{ *.request.body.header.messageId }}`,
+  `${{ *.request.body.items.0.id }}`. No other reference does; everywhere else a path into a value is an
+  extraction step or a `validate/field`.
+- They are in scope in the mock's `process:` steps, at any depth (a `flow/if` branch included), and in its
+  `response_status`, `response_body` and `response_headers`. The compiler refuses them anywhere else, and
+  refuses a `*.request.<field>` other than the five above or a `*.process.<id>` that is not one of that
+  mock's steps.
+- A `process:` step publishes under `*.process.<id>` only, never under its phase: `execution.<id>` does
+  not name it. As everywhere, it publishes only what its `returns:` declares.
+- Every other reference in the mock's reply — `env.*`, `setup.*`, `execution.*` — is read at the same
+  moment, against a copy of the run's variables taken when the call arrives.
+- A reference that resolves to nothing at call time does not fail the test: the mock answers 500 and logs
+  why.
+

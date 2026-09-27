@@ -68,6 +68,7 @@ _SCENARIO = Path("tests/e2e/connector-dtr-smoke/tests/inbound_call.yaml")
 _ASSET_ID = "testlab-e2e-inbound-asset"
 _BACKEND_PATH = "/testlab-e2e/backend"
 _NOTIFICATION_PATH = "/testlab-e2e/notification"
+_ANSWER_PATH = "/testlab-e2e/answer"
 
 
 def _phase(phase: str) -> list[dict]:
@@ -222,7 +223,8 @@ def harness(server: MockServer, provider: ProviderDouble, dataplane: _FetchingDa
 async def outcome(harness: Harness):
     """Setup as far as the doubles go, then the whole execution phase."""
     opened = await harness.run(
-        *_steps("setup", "open_backend", "open_notification", "create_asset"), phase="setup"
+        *_steps("setup", "open_backend", "open_notification", "open_answering", "create_asset"),
+        phase="setup",
     )
     assert opened.passed, [(r.step_name, r.error) for r in opened.failures]
     return await harness.run(*_phase("execution"))
@@ -267,10 +269,25 @@ class TestTheBackendIsTheMock:
         assert dataplane.fetched == [
             ("GET", f"{root}{_BACKEND_PATH}"),
             ("POST", f"{root}{_NOTIFICATION_PATH}"),
+            ("POST", f"{root}{_ANSWER_PATH}"),
         ]
 
     async def test_what_came_through_the_data_plane_is_the_mocks_answer(self, outcome) -> None:
         assert outcome.output("fetch_through_sut") == {"served_by": "testlab-mock", "answer": 42}
+
+
+class TestTheDynamicMockAnswersFromTheCall:
+    """``labs/mock/api/dynamic`` worked its reply out from the POST it received."""
+
+    async def test_the_reply_echoes_the_request_and_takes_the_branch_it_asked_for(
+        self, outcome
+    ) -> None:
+        reply = outcome.output("ask_through_sut")
+        assert reply["relatedMessageId"] == "urn:uuid:testlab-e2e-inbound-question"
+        assert reply["answer"] == "pong"
+
+    async def test_the_reply_carries_the_time_it_was_answered(self, outcome) -> None:
+        assert outcome.output("ask_through_sut")["answeredAt"].endswith("Z")
 
 
 class TestTheWaitReadsTheDataPlanesRequest:

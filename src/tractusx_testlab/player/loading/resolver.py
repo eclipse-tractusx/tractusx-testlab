@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING
 
 from tractusx_testlab.models import UnresolvedReferenceError
 from tractusx_testlab.models.primitives.exceptions import AuthoringError, TestLabError
-from tractusx_testlab.syntax import patterns
+from tractusx_testlab.syntax import call_scope, patterns
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -89,9 +89,14 @@ def _require(expr: str, context: StepContext) -> tuple[str, object]:
     that was never asked the question.
     """
     name = _name_of(expr)
-    if not context.has_variable(name):
-        raise UnresolvedReferenceError(expr, list(context.variables))
-    return name, context.get_variable(name)
+    if context.has_variable(name):
+        return name, context.get_variable(name)
+    # A call-scoped reference may reach into what it names (syntax.call_scope).
+    if call_scope.is_call_scoped(name):
+        found = call_scope.lookup(name, context.has_variable, context.get_variable)
+        if found is not call_scope.MISSING:
+            return name, found
+    raise UnresolvedReferenceError(expr, list(context.variables))
 
 
 def resolve_str(value: str, context: StepContext, _depth: int = 0) -> object:

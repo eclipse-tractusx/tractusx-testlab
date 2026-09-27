@@ -33,7 +33,7 @@ lives in ``mock_keys``.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -119,8 +119,9 @@ def query_of(pairs: Iterable[tuple[str, str]]) -> dict[str, list[str]]:
 
 # A dynamic handler computes the response from the inbound request — used by
 # protocol-aware mocks (e.g. mock/dtr, mock/discovery) whose reply depends on
-# the request path/query/body rather than being a single canned value.
-MockHandler = Callable[["MockRequest"], MockResponse]
+# the request path/query/body rather than being a single canned value. One
+# that runs steps (labs/mock/api/dynamic) answers asynchronously.
+MockHandler = Callable[["MockRequest"], MockResponse | Awaitable[MockResponse]]
 
 # path+method -> canned response or dynamic handler
 _mock_routes: dict[str, MockResponse | MockHandler] = {}
@@ -187,8 +188,8 @@ def resolve_mock(
     headers: dict,
     query_params: dict[str, list[str]],
     body: dict | None,
-) -> MockResponse | None:
-    """Look up a mock and, if it's a dynamic handler, invoke it to get a response."""
+) -> MockResponse | Awaitable[MockResponse] | None:
+    """Look up a mock and, if it's a dynamic handler, invoke it (the caller awaits an async one)."""
     mock = get_mock(path, method)
     if mock is None:
         return None

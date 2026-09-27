@@ -19,16 +19,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Experimental steps, registered under ``labs/``. **Experimental.**
+"""``labs/mock/api/dynamic`` — a mock that works out its reply per call. **Experimental.**
 
-Import each step module here: registration happens when the module is imported,
-and this package is imported through :mod:`tractusx_testlab.extensions.step_modules`
-so ``labs/`` steps register with the rest.
+``mock/api`` answers every call with the same canned reply. This one runs
+steps for each call first — the mock's ``process`` — and reads its reply
+after them, so the reply can depend on what the call carried: echo its
+``messageId``, swap its sender and receiver, answer COMPLETED or REJECTED.
+
+- :mod:`.params` — the step's input contract.
+- :mod:`.call` — answering one call: its own context, its steps, its reply.
+- :mod:`.step` — the step, registering the mock with a handler.
 """
 
-from tractusx_testlab.extensions.labs.steps import dynamic_mock, for_each, now, provider_query
+from tractusx_testlab.extensions.labs.steps.dynamic_mock import step
 
-__all__ = ["dynamic_mock", "for_each", "now", "provider_query"]
+__all__ = ["step"]
