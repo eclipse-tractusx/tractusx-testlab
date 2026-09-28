@@ -180,6 +180,7 @@ class EventKind(str, enum.Enum):
     JOB_CANCELLED = "job_cancelled"
     TEST_STARTED = "test_started"
     TEST_COMPLETED = "test_completed"
+    TEST_AWAITING = "test_awaiting"
     STEP_STARTED = "step_started"
     STEP_CALL = "step_call"
     STEP_COMPLETED = "step_completed"

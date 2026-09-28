@@ -246,8 +246,14 @@
     },
     "TckTestEntry": {
       "additionalProperties": false,
-      "description": "A single entry in the TCK ``tests:`` list.\n\n``id`` is the test filename, relative to the ``tests/`` sub-folder of the\nTCK package.  ``name`` is an optional human-readable label used in reports\nand log output.  ``skippable`` controls whether the operator may omit this\ntest at runtime via the ``skip_tests`` runtime variable.",
+      "description": "A single entry in the TCK ``tests:`` list.\n\n``id`` is the test filename under ``tests/``; ``name`` a label for reports and\nlogs; ``skippable`` whether the operator may omit the test via ``skip_tests``.\nThe ``labs`` extension adds ``async:`` (:class:`EntryExtensionKeys`).",
       "properties": {
+        "async": {
+          "default": false,
+          "description": "Run this test on demand: a host that holds the run open leaves it waiting until someone runs it, and lets them run it again. Requires 'extensions: [labs]'.",
+          "title": "Async",
+          "type": "boolean"
+        },
         "id": {
           "pattern": "^[a-zA-Z0-9_\\-\\.]+\\.yaml$",
           "title": "Id",

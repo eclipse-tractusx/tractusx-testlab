@@ -44,6 +44,7 @@ from tractusx_testlab.infrastructure import (
 )
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.player import TestlabPlayer
+from tractusx_testlab.player.execution.session import TckSession
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.security.trust.identity import PlayerIdentity
 from tractusx_testlab.server.app import create_app
@@ -72,6 +73,7 @@ __all__ = [
     "SutBindings",
     "SutConnectorBinding",
     "Tck",
+    "TckSession",
     "Test",
     "TestValidator",
     "TestlabConfig",

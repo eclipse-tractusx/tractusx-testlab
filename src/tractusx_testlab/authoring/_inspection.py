@@ -64,6 +64,7 @@ def build_inspection_result(tck: Tck) -> TckInspectionResult:
                 name=test.name,
                 test_id=test.test_id,
                 skippable=test.skippable,
+                on_demand=test.on_demand,
                 steps=tuple(step_metas),
             )
         )

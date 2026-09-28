@@ -26,15 +26,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
-
-# Ensure built-in steps are registered
-import contextlib
 
 from tractusx_testlab.authoring.test import Tck as Tck
 from tractusx_testlab.config.loader import ConfigLoader
@@ -43,27 +40,19 @@ from tractusx_testlab.infrastructure.profiles import InfrastructureManager
 from tractusx_testlab.logging import transcript
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.logging.trace import ExecutionTrace
-from tractusx_testlab.models import (
-    TckResult as TckResult,  # SDK alias
-)
+from tractusx_testlab.models import TckResult as TckResult  # SDK alias
 from tractusx_testlab.player.execution._binding import bind_infrastructure
 from tractusx_testlab.player.execution._context_seeder import require_inputs, seed_context_variables
 from tractusx_testlab.player.execution._skip import resolve_skip_ids
-from tractusx_testlab.player.execution._test_sequence import run_tests
-from tractusx_testlab.player.execution._trace_formatter import (
-    build_tck_result,
-    finalize_job,
-    open_run_records,
-)
+from tractusx_testlab.player.execution._trace_formatter import open_run_records
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.infrastructure_seeder import seed_infrastructure_services
 from tractusx_testlab.player.execution.mock_server import _BackgroundMockServer
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
+from tractusx_testlab.player.execution.session import TckSession
 from tractusx_testlab.player.jobs import JobManager
-from tractusx_testlab.player.loading._parser import (
-    encrypted_package_compiler_id,
-    is_encrypted_package,
-)
+from tractusx_testlab.player.loading._encrypted import engine_package_keys
+from tractusx_testlab.player.loading._parser import is_encrypted_package
 from tractusx_testlab.player.loading.loader import Loader
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.mock_registry import get_callback_manager, set_callback_manager
@@ -83,6 +72,9 @@ class TestlabPlayer:
     registry and submodel server, and the system under test::
 
         player = TestlabPlayer(infrastructure=InfrastructureManager(integration))
+
+    A host that lets a person drive the run test by test (labs, ``async: true``
+    tests) opens a :class:`TckSession` with :meth:`open_session` instead.
     """
 
     __slots__ = (
@@ -151,37 +143,8 @@ class TestlabPlayer:
         return await self.run_tck(tck, runtime_vars=runtime_vars, job_id=job_id)
 
     def _package_keys(self, package: Path) -> dict[str, bytes]:
-        """Resolve the keys an encrypted *package* needs from this engine's config.
-
-        A server cannot be handed a player's private key per request, and should
-        not be: the engine *is* the player, so its identity lives in ``keys_dir``
-        and the compilers it accepts in ``trust_store_dir``. The CLI passes the
-        same two keys explicitly with ``--player-keys`` and ``--compiler-pub``.
-        """
-        from tractusx_testlab.security.trust.trust_store import TrustStore
-
-        private_key = self._config.keys_dir / "encryption.pem"
-        if not private_key.is_file():
-            raise ValueError(
-                f"Package {package.name!r} is encrypted, and this engine has no player "
-                f"identity: {private_key} does not exist. Generate one with "
-                f"`testlab keygen` and point TESTLAB_KEYS_DIR at the directory holding "
-                f"its encryption.pem."
-            )
-
-        compiler_id = encrypted_package_compiler_id(package)
-        compiler_key = TrustStore(self._config.trust_store_dir).find(compiler_id)
-        if compiler_key is None:
-            raise ValueError(
-                f"Package {package.name!r} is signed by compiler {compiler_id[:16]}, "
-                f"which this engine does not trust. Copy that compiler's signing.pub "
-                f"into {self._config.trust_store_dir}."
-            )
-
-        return {
-            "player_private_key": private_key.read_bytes(),
-            "compiler_public_key": compiler_key,
-        }
+        """Resolve the keys an encrypted *package* needs from this engine's config."""
+        return engine_package_keys(self._config, package)
 
     async def run_tck(
         self,
@@ -191,6 +154,9 @@ class TestlabPlayer:
     ) -> TckResult:
         """Execute a loaded Tck object.
 
+        Every test runs in manifest order, ``async: true`` ones included: a run
+        nobody drives leaves nothing for anyone to ask for.
+
         Args:
             tck: The TCK to execute.
             runtime_vars: Optional runtime variable overrides.
@@ -199,20 +165,49 @@ class TestlabPlayer:
                 id it committed to when it opened the transcript, before there
                 was a TCK to make a job from.
         """
+        session = await self.open_session(tck, runtime_vars=runtime_vars, job_id=job_id)
+        try:
+            await session.run_all()
+        finally:
+            result = await session.close()
+        return result
+
+    async def open_session(
+        self,
+        tck: Tck,
+        runtime_vars: dict | None = None,
+        job_id: str | None = None,
+    ) -> TckSession:
+        """Start a run of *tck* and hold it open until the session is closed.
+
+        Everything a run does before its first test is done here; the tests run
+        when the session is asked to run them (:class:`TckSession`). A run refused
+        before it started (a missing input, an unbindable infrastructure) raises,
+        with the job failed and nothing left open.
+        """
         job = self._jobs.get(job_id) if job_id else None
         if job is None:
             job = self._jobs.create(tck.id, job_id=job_id)
         if runtime_vars:
             job.runtime_vars = runtime_vars
 
+        records = contextlib.ExitStack()
         # A CLI run opened its transcript before it had a TCK to compile, so
         # that the compiler's output is in it too; this is a no-op there and the
         # only transcript there is for a server or an embedder.
-        with transcript.recording(transcript.transcript_path(self._config.logs_dir, job.job_id)):
-            return await self._execute_job(tck, job, runtime_vars)
+        records.enter_context(
+            transcript.recording(transcript.transcript_path(self._config.logs_dir, job.job_id))
+        )
+        try:
+            return self._open_session(tck, job, runtime_vars, records)
+        except BaseException:
+            records.close()
+            raise
 
-    async def _execute_job(self, tck: Tck, job: Any, runtime_vars: dict | None) -> TckResult:
-        """Run every test of *tck* for an already-created job."""
+    def _open_session(
+        self, tck: Tck, job: Any, runtime_vars: dict | None, records: contextlib.ExitStack
+    ) -> TckSession:
+        """Prepare everything the tests of *tck* need, for an already-created job."""
         self._jobs.start(job.job_id)
 
         job_logger, trace = open_run_records(self._logger, self._config, tck.id, job.job_id)
@@ -238,29 +233,23 @@ class TestlabPlayer:
             self._jobs.fail(job.job_id, str(exc))
             raise
 
+        skip_ids = resolve_skip_ids(tck, runtime_vars)
         self._ensure_callback_manager()
         seed_infrastructure_services(svc_mgr, context)
 
-        skip_ids = resolve_skip_ids(tck, runtime_vars)
-
-        tck_started_at = datetime.now(UTC)
-        test_results = await run_tests(tck.tests, context, job, monitor, self._jobs, skip_ids)
-        tck_finished_at = datetime.now(UTC)
-
-        svc_mgr.teardown()
-
-        if self._mock_server is not None:
-            self._mock_server.stop()
-            self._mock_server = None
-
-        result = build_tck_result(
-            tck.name,
-            test_results,
-            tck_started_at,
-            tck_finished_at,
+        return TckSession(
+            tck=tck,
+            job=job,
+            context=context,
+            monitor=monitor,
+            jobs=self._jobs,
+            services=svc_mgr,
+            job_logger=job_logger,
+            trace=trace,
+            skip_ids=skip_ids,
+            records=records,
+            on_close=self._stop_mock_server,
         )
-        finalize_job(self._jobs, job, result, monitor, job_logger, trace)
-        return result
 
     # ------------------------------------------------------------------
     # TCK helpers
@@ -292,3 +281,9 @@ class TestlabPlayer:
             config=self._config,
         )
         self._mock_server.start()
+
+    def _stop_mock_server(self) -> None:
+        """Stop the mock server this player started for the run, if it started one."""
+        if self._mock_server is not None:
+            self._mock_server.stop()
+            self._mock_server = None

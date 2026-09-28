@@ -27,7 +27,8 @@
 An extension's keys and steps are ordinary syntax to the models, which is what
 lets the IDE schema describe them. Whether a TCK may *use* them is decided here:
 a key, a ``with:`` parameter or a ``labs/`` step from an extension the manifest
-does not list is an error, and an enabled extension runs its own checks.
+does not list is an error, and an enabled extension runs its own checks. The
+manifest's own ``tests:`` entries are held to the same rule.
 """
 
 from __future__ import annotations
@@ -55,6 +56,29 @@ def experimental_warnings(tck: TckDefinition) -> list[ValidationIssue]:
         )
         for name in tck.extensions
     ]
+
+
+def entry_findings(tck: TckDefinition) -> list[ValidationIssue]:
+    """Every key on a ``tests:`` entry of *tck* from an extension it did not enable."""
+    enabled = set(tck.extensions)
+    issues: list[ValidationIssue] = []
+    for idx, entry in enumerate(tck.tests):
+        # Only what the author wrote: a key left at its default was never used.
+        written = entry.model_dump(by_alias=True, exclude_unset=True)
+        for extension in EXTENSIONS.values():
+            if extension.name in enabled:
+                continue
+            for key in sorted(extension.entry_keys & written.keys()):
+                issues.append(
+                    ValidationIssue(
+                        level="error",
+                        message=_not_enabled(
+                            f"'{key}:' on the tests entry '{entry.id}'", extension.name
+                        ),
+                        field=f"tests[{idx}].{key}",
+                    )
+                )
+    return issues
 
 
 def extension_findings(tck: TckDefinition, test: TestDefinition) -> list[ValidationIssue]:

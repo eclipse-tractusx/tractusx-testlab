@@ -31,6 +31,7 @@ Sub-modules:
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.execution.player import TestlabPlayer
+from tractusx_testlab.player.execution.session import SessionClosedError, TckSession
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.loader import Loader
 from tractusx_testlab.player.loading.resolver import resolve_params
@@ -42,7 +43,9 @@ __all__ = [
     # Loading
     "Loader",
     # Execution
+    "SessionClosedError",
     "StepContext",
+    "TckSession",
     "TestlabPlayer",
     "resolve_params",
 ]

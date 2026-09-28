@@ -60,6 +60,7 @@ from tractusx_testlab.models.runtime.events import (
     JobPausedEvent,
     JobResumedEvent,
     JobStartedEvent,
+    TestAwaitingEvent,
     TestCompletedEvent,
     TestStartedEvent,
 )
@@ -133,9 +134,16 @@ class ExecutionMonitor(StepEvents):
     # Test lifecycle
     # ------------------------------------------------------------------
 
-    def on_test_started(self, job_id: str, test: str, index: int) -> None:
-        event_id = self._trace.test_started(test, index)
-        self._publish(TestStartedEvent(job_id=job_id, test_id=test, index=index), event_id)
+    def on_test_started(self, job_id: str, test: str, index: int, attempt: int = 1) -> None:
+        event_id = self._trace.test_started(test, index, attempt)
+        self._publish(
+            TestStartedEvent(job_id=job_id, test_id=test, index=index, attempt=attempt), event_id
+        )
+
+    def on_test_awaiting(self, job_id: str, test: str, index: int) -> None:
+        """An on-demand test is ready and waits for someone to run it."""
+        event_id = self._trace.test_awaiting(test, index)
+        self._publish(TestAwaitingEvent(job_id=job_id, test_id=test, index=index), event_id)
 
     def on_test_completed(self, job_id: str, result: TestResult) -> None:
         """Publish a test_completed event; ``result.status`` carries the outcome."""

@@ -41,8 +41,11 @@ from pathlib import Path
 import yaml
 
 from tractusx_testlab.compiler import package_digest
+from tractusx_testlab.config.settings import TestlabConfig
+from tractusx_testlab.player.loading._parser import encrypted_package_compiler_id
 from tractusx_testlab.security.crypto.encryption import decrypt_package, wrapped_key_for
 from tractusx_testlab.security.crypto.signing import package_signing_message, verify_signature
+from tractusx_testlab.security.trust.trust_store import TrustStore
 
 #: Archive entries of an encrypted package.
 MANIFEST_ENTRY = "manifest.yaml"
@@ -140,3 +143,35 @@ def _require_described_content(manifest: dict, entries: dict[str, bytes]) -> Non
             "The package manifest does not describe its payload: it states checksum "
             f"{stated}, and the decrypted content is sealed with {actual}."
         )
+
+
+def engine_package_keys(config: TestlabConfig, package: Path) -> dict[str, bytes]:
+    """Resolve the keys an encrypted *package* needs from this engine's config.
+
+    A server cannot be handed a player's private key per request, and should
+    not be: the engine *is* the player, so its identity lives in ``keys_dir``
+    and the compilers it accepts in ``trust_store_dir``. The CLI passes the
+    same two keys explicitly with ``--player-keys`` and ``--compiler-pub``.
+    """
+    private_key = config.keys_dir / "encryption.pem"
+    if not private_key.is_file():
+        raise ValueError(
+            f"Package {package.name!r} is encrypted, and this engine has no player "
+            f"identity: {private_key} does not exist. Generate one with "
+            f"`testlab keygen` and point TESTLAB_KEYS_DIR at the directory holding "
+            f"its encryption.pem."
+        )
+
+    compiler_id = encrypted_package_compiler_id(package)
+    compiler_key = TrustStore(config.trust_store_dir).find(compiler_id)
+    if compiler_key is None:
+        raise ValueError(
+            f"Package {package.name!r} is signed by compiler {compiler_id[:16]}, "
+            f"which this engine does not trust. Copy that compiler's signing.pub "
+            f"into {config.trust_store_dir}."
+        )
+
+    return {
+        "player_private_key": private_key.read_bytes(),
+        "compiler_public_key": compiler_key,
+    }

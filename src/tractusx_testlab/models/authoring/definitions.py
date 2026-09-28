@@ -37,6 +37,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from tractusx_testlab.extensions import EXTENSIONS
 from tractusx_testlab.extensions.step_keys import (
     AssertionExtensionKeys,
+    EntryExtensionKeys,
     StepExtensionKeys,
     TestExtensionKeys,
 )
@@ -256,13 +257,12 @@ class EnvDefinition(BaseModel):
     testdata: list[TestDataDefinition] | None = None
 
 
-class TckTestEntry(BaseModel):
+class TckTestEntry(EntryExtensionKeys):
     """A single entry in the TCK ``tests:`` list.
 
-    ``id`` is the test filename, relative to the ``tests/`` sub-folder of the
-    TCK package.  ``name`` is an optional human-readable label used in reports
-    and log output.  ``skippable`` controls whether the operator may omit this
-    test at runtime via the ``skip_tests`` runtime variable.
+    ``id`` is the test filename under ``tests/``; ``name`` a label for reports and
+    logs; ``skippable`` whether the operator may omit the test via ``skip_tests``.
+    The ``labs`` extension adds ``async:`` (:class:`EntryExtensionKeys`).
     """
 
     model_config = _STRICT
