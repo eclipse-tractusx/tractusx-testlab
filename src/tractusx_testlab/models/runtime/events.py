@@ -37,9 +37,13 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
-
 from tractusx_testlab.models.primitives.enums import EventKind, JobStatus
+from tractusx_testlab.models.runtime._event_base import _ExecutionEvent
+from tractusx_testlab.models.runtime.hold_events import (
+    JobHeldEvent,
+    JobRestoredEvent,
+    StepSuspendedEvent,
+)
 from tractusx_testlab.models.runtime.listener import Listener
 from tractusx_testlab.models.runtime.results import (
     AssertionResult,
@@ -48,12 +52,6 @@ from tractusx_testlab.models.runtime.results import (
     StepResult,
     TestResult,
 )
-
-
-class _ExecutionEvent(BaseModel):
-    """Fields shared by every execution event."""
-
-    job_id: str
 
 
 class JobStartedEvent(_ExecutionEvent):
@@ -268,6 +266,8 @@ ExecutionEvent = (
     JobStartedEvent
     | JobPausedEvent
     | JobResumedEvent
+    | JobHeldEvent
+    | JobRestoredEvent
     | JobCompletedEvent
     | JobFailedEvent
     | JobCancelledEvent
@@ -281,6 +281,7 @@ ExecutionEvent = (
     | StepSkippedEvent
     | StepListeningEvent
     | StepWaitingEvent
+    | StepSuspendedEvent
     | StepReceivedEvent
     | AssertionResultEvent
 )

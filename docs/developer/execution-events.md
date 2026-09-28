@@ -112,6 +112,31 @@ The operator paused a running job, or resumed a paused one. Both carry only
 {"kind": "job_paused", "job_id": "3f1c…"}
 ```
 
+#### `job_held` / `job_restored`
+
+A paused run has stopped and is on hold, or has left it and goes on
+(ADR-0026). On hold, every contract definition the run created is deleted
+from its connector and its mocks answer 404; on leaving it, the definitions are
+created again. `job_held` follows `job_paused` once the step in flight has
+ended, or stopped for the pause (`step_suspended`). `job_restored` follows the
+resume, and also a cancellation of the paused run, so that its teardown finds
+what it created.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"job_held"` / `"job_restored"` | |
+| `job_id` | string | |
+| `withdrawn` | string[] | `job_held`: the contract definitions deleted, in the order they were created. |
+| `kept` | object | `job_held`: definition id → why the connector would not delete it. Empty when all were. |
+| `restored` | string[] | `job_restored`: the contract definitions created again. |
+| `lost` | object | `job_restored`: definition id → why the connector would not take it back. |
+
+```json
+{"kind": "job_held", "job_id": "3f1c…", "withdrawn": ["testlab-ccmapi-cd-3f1c"], "kept": {}}
+```
+
+In the trace they are a `tck.held` and a `tck.restored`.
+
 #### `job_completed`
 
 **Terminal.** Every test completed or was intentionally skipped.
@@ -393,6 +418,41 @@ the call, a person has to, and this is the line that tells them what to type.
 On the console: `step.waiting [external-callback] await_call mock/wait/http_request — call POST http://localhost:8100/testlab-e2e/callback (up to 30s)`.
 In the trace it is a `tck.test.step.waiting`.
 
+#### `step_suspended`
+
+The run was paused while `mock/wait/*` was blocked: the listener has closed
+and the timeout has stopped (ADR-0026). When the run resumes, the step opens
+the listener again and publishes a fresh `step_waiting` whose `timeout_s` is
+this event's `remaining_s`. A consumer counting down re-reads its deadline
+from that event.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"step_suspended"` | |
+| `job_id` | string | |
+| `test_id` | string | |
+| `step_id` | string \| null | |
+| `step_type` | string | `mock/wait/http_request` or `mock/wait/dataplane/http_request`. |
+| `listener` | `Listener` | The address the step was blocked on, as in `step_waiting`. |
+| `remaining_s` | number | What is left of the timeout: what the step waits for once the run resumes. |
+| `waited_ms` | integer | How long the step has waited so far, pauses excluded. |
+
+```json
+{
+  "kind": "step_suspended",
+  "job_id": "3f1c…",
+  "test_id": "external-callback",
+  "step_id": "await_call",
+  "step_type": "mock/wait/http_request",
+  "listener": {"method": "POST", "url": "http://localhost:8100/testlab-e2e/callback", "path": "/testlab-e2e/callback"},
+  "remaining_s": 21.4,
+  "waited_ms": 8600
+}
+```
+
+On the console: `step.suspended [external-callback] await_call mock/wait/http_request — call POST http://localhost:8100/testlab-e2e/callback (paused, 21s left)`.
+In the trace it is a `tck.test.step.suspended`.
+
 #### `step_received`
 
 The call arrived. Published by `mock/wait/http_request` the moment it has the
@@ -485,7 +545,11 @@ job_started
 job_completed | job_failed | job_cancelled
 ```
 
-`job_paused` and `job_resumed` can appear between any two step events.
+`job_paused` and `job_resumed` can appear between any two step events, and so
+can the hold they bracket: `job_paused`, then `job_held`, then — once resumed —
+`job_resumed` and `job_restored`. A wait blocked when the pause came reports
+`step_suspended` before `job_held` and a fresh `step_waiting` after
+`job_restored`.
 `job_cancelled` can end the stream at any point.
 
 ### Sessions
@@ -507,8 +571,8 @@ The verdict counts each test's latest attempt.
 ## Adding a kind
 
 1. Add the value to `EventKind`.
-2. Add its payload model to `models/runtime/events.py` and to the
-   `ExecutionEvent` union.
+2. Add its payload model to `models/runtime/events.py` (or, for the hold's,
+   `hold_events.py`) and to the `ExecutionEvent` union.
 3. Add the `on_*` method to `ExecutionMonitor` — the publisher is the only place
    that builds an event, so a new kind cannot be emitted from anywhere else. A
    step-level kind goes on its `StepEvents` half (`_monitor_steps.py`).

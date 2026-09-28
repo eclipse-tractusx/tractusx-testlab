@@ -48,7 +48,7 @@ from tractusx_testlab.server.mock_registry import (
     set_callback_manager,
 )
 from tractusx_testlab.server.routes import router
-from tractusx_testlab.server.routes.callbacks import misdirected, refused
+from tractusx_testlab.server.routes.callbacks import held, misdirected, on_hold, refused
 from tractusx_testlab.server.storage import PackageStorage
 
 _logger = logging.getLogger(__name__)
@@ -113,6 +113,10 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
         """Handle inbound calls to dynamically-registered mock endpoints."""
         full_path = f"/{path}"
         method = request.method
+        # A paused run answers nothing until it resumes, and the call counts
+        # for no wait (routes.callbacks.on_hold).
+        if on_hold(app):
+            raise held(method, full_path)
         headers = dict(request.headers)
         body = None
         if method in ("POST", "PUT"):

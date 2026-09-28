@@ -40,7 +40,12 @@ from __future__ import annotations
 
 import json
 
-from tractusx_testlab.logging.inbound_lines import listening_line, received_line, waiting_line
+from tractusx_testlab.logging.inbound_lines import (
+    listening_line,
+    received_line,
+    suspended_line,
+    waiting_line,
+)
 from tractusx_testlab.models.primitives.enums import EventKind
 
 #: The three ways a step can finish. All three render the same columns —
@@ -58,6 +63,7 @@ _STEP_OUTCOME_KINDS: frozenset[str] = frozenset(
 _INBOUND_LINES = {
     EventKind.STEP_LISTENING.value: listening_line,
     EventKind.STEP_WAITING.value: waiting_line,
+    EventKind.STEP_SUSPENDED.value: suspended_line,
     EventKind.STEP_RECEIVED.value: received_line,
 }
 

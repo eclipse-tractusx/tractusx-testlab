@@ -57,7 +57,9 @@ from tractusx_testlab.models.runtime.events import (
     JobCancelledEvent,
     JobCompletedEvent,
     JobFailedEvent,
+    JobHeldEvent,
     JobPausedEvent,
+    JobRestoredEvent,
     JobResumedEvent,
     JobStartedEvent,
     TestAwaitingEvent,
@@ -117,6 +119,16 @@ class ExecutionMonitor(StepEvents):
 
     def on_job_resumed(self, job_id: str) -> None:
         self._publish(JobResumedEvent(job_id=job_id))
+
+    def on_job_held(self, job_id: str, withdrawn: list[str], kept: dict[str, str]) -> None:
+        """The paused run has stopped and withdrawn its offers (``player.execution.hold``)."""
+        event_id = self._trace.run_held(withdrawn, kept)
+        self._publish(JobHeldEvent(job_id=job_id, withdrawn=withdrawn, kept=kept), event_id)
+
+    def on_job_restored(self, job_id: str, restored: list[str], lost: dict[str, str]) -> None:
+        """The held run has put its offers back and goes on."""
+        event_id = self._trace.run_restored(restored, lost)
+        self._publish(JobRestoredEvent(job_id=job_id, restored=restored, lost=lost), event_id)
 
     def on_job_completed(self, job_id: str) -> None:
         event_id = self._trace.run_ended(job_id, "PASSED")

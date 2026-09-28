@@ -36,7 +36,7 @@ _Output contract of `connector/provider/create_asset`._
 
 Publish assets by binding them to an access and a contract policy.
 
-This is the step that makes an asset appear in the provider's catalog; the assets and both policies must already exist. The SDK's own `create_contract` only ever offers a single asset, so the definition is built here and posted through the contract-definition controller.
+This is the step that makes an asset appear in the provider's catalog; the assets and both policies must already exist. While the run is paused the definition is withdrawn, and it is created again on resume (`player.execution.hold`). The SDK's own `create_contract` only ever offers a single asset, so the definition is built here and posted through the contract-definition controller.
 
 **Inputs**
 
