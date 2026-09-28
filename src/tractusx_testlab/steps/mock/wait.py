@@ -34,7 +34,6 @@ address is the mock.
 from __future__ import annotations
 
 import logging
-import time
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from pydantic import Field
@@ -43,6 +42,7 @@ from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import ConnectorOffer, ExecutionError, Listener, StepDefinition
 from tractusx_testlab.server.mock_registry import get_callback_manager
 from tractusx_testlab.steps.mock._models import MockInstance
+from tractusx_testlab.steps.mock._paused_wait import wait_through_pauses
 from tractusx_testlab.steps.shared_models import StepParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
@@ -109,6 +109,12 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
     or path — fails the wait as soon as it arrives, saying which
     (``MockCallRefusedError``); only the call the mock answers ends it well.
 
+    Pausing the run stops the wait where it is: the listener closes, the
+    timeout stops counting (``step_suspended`` says how much is left), and the
+    run goes on hold (``player.execution.hold``). On resume the listener opens
+    again and the wait carries on for the time it had left, announced by a
+    fresh ``step_waiting``. ``elapsed_ms`` counts only the time spent waiting.
+
     Raises:
         RuntimeError: If no ``CallbackManager`` is available or the wait times out.
         MockCallRefusedError: If the call the wait was for was refused.
@@ -145,9 +151,10 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
         context.report_waiting(definition.uses, definition.id, listener, timeout)
         logger.info("Waiting up to %.0fs for %s %s", timeout, method, path)
 
-        started = time.monotonic()
-        result = await manager.wait(path, method, timeout)
-        elapsed_ms = round((time.monotonic() - started) * 1000)
+        result, waited_s = await wait_through_pauses(
+            manager, context, definition, listener, timeout
+        )
+        elapsed_ms = round(waited_s * 1000)
 
         if result.timed_out:
             raise RuntimeError(_timed_out(manager, timeout, method, path))

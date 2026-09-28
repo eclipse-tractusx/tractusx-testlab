@@ -37,11 +37,15 @@ from tractusx_testlab.models.primitives.enums import JobStatus
 class JobManager:
     """Manages the lifecycle of Job objects."""
 
-    __slots__ = ("_jobs", "_pause_events")
+    __slots__ = ("_held", "_jobs", "_pause_events", "_pause_requests")
 
     def __init__(self) -> None:
         self._jobs: dict[str, Job] = {}
         self._pause_events: dict[str, asyncio.Event] = {}
+        # The pause gate's other side: set while a pause is asked for, so a
+        # step blocked on something else (a wait for a callback) can notice it.
+        self._pause_requests: dict[str, asyncio.Event] = {}
+        self._held: set[str] = set()
 
     def create(
         self, tck_id: str, package_name: str | None = None, job_id: str | None = None
@@ -126,6 +130,7 @@ class JobManager:
             self._event(job, "lifecycle", "Job resumed from WAITING")
         elif job.status == JobStatus.PAUSED:
             job.status = JobStatus.RUNNING
+            self.get_pause_request(job_id).clear()
             self._pause_events[job_id].set()
             self._event(job, "lifecycle", "Job resumed from PAUSED")
         return job
@@ -139,6 +144,19 @@ class JobManager:
             self._pause_events[job_id] = event
         return event
 
+    def get_pause_request(self, job_id: str) -> asyncio.Event:
+        """Set while *job_id* is asked to pause: ``await event.wait()`` returns once it is.
+
+        The gate's mirror image. The gate is what a run waits on to go on; this
+        is what a step waits on to stop — a wait for a callback races it, so a
+        pause reaches the step instead of queuing behind its timeout.
+        """
+        event = self._pause_requests.get(job_id)
+        if event is None:
+            event = asyncio.Event()
+            self._pause_requests[job_id] = event
+        return event
+
     def pause(self, job_id: str) -> Job:
         """Pause a RUNNING job. Blocks the execution loop until resumed."""
         job = self._require(job_id)
@@ -146,6 +164,7 @@ class JobManager:
             raise ValueError(f"Cannot pause job '{job_id}' in state {job.status.value}")
         job.status = JobStatus.PAUSED
         self._pause_events[job_id].clear()
+        self.get_pause_request(job_id).set()
         self._event(job, "lifecycle", "Job paused")
         return job
 
@@ -155,10 +174,32 @@ class JobManager:
         if job.status in (JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED):
             return
         if job.status == JobStatus.PAUSED:
+            self.get_pause_request(job_id).clear()
             self._pause_events[job_id].set()  # Unblock execution loop
         job.status = JobStatus.CANCELLED
         job.finished_at = datetime.now(UTC)
         self._event(job, "lifecycle", "Job cancelled")
+
+    def hold(self, job_id: str, held: bool) -> None:
+        """Record whether *job_id* is on hold: paused, with its offers and mocks withdrawn.
+
+        Set by the run itself (``RunHold``) once it has stopped, and cleared once
+        it has put everything back — not by :meth:`pause`, which only asks. A
+        host serving the run's mocks reads it (:meth:`is_held`) to answer as it
+        would for a run that is not going.
+        """
+        if held:
+            self._held.add(job_id)
+        else:
+            self._held.discard(job_id)
+
+    def is_held(self, job_id: str) -> bool:
+        """Whether *job_id* is on hold right now (:meth:`hold`)."""
+        return job_id in self._held
+
+    def any_held(self) -> bool:
+        """Whether any job is on hold — for a server whose mocks are not per job."""
+        return bool(self._held)
 
     def set_current_step(self, job_id: str, step_name: str) -> None:
         """Update the current step name for progress tracking."""

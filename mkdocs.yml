@@ -251,6 +251,7 @@ nav:
         - ADR-0022 TCK Static Inspection: developer/decision-records/backend/ADR-0022-tck-static-inspection.md
         - ADR-0023 Variable Scope Annotation: developer/decision-records/backend/ADR-0023-variable-scope-annotation.md
         - ADR-0024 Test-Level Skip Configuration: developer/decision-records/backend/ADR-0024-test-skip-configuration.md
+        - ADR-0026 Paused Runs Are Held: developer/decision-records/backend/ADR-0026-paused-runs-are-held.md
       - Shared:
         - ADR-0003 SSE for Live Execution: developer/decision-records/shared/ADR-0003-sse-for-live-execution.md
         - ADR-0008 TCK Rename: developer/decision-records/shared/ADR-0008-test-case-to-tck-rename.md

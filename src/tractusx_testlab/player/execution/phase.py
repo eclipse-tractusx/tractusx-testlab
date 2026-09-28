@@ -110,7 +110,8 @@ async def run_phase(
     )
 
     for step_idx, step_def in enumerate(steps_source):
-        await _handle_pause_gate(jobs, job_id, config)
+        if config.use_pause_gate and jobs is not None:
+            await context.hold.gate(jobs, job_id)
 
         step_name = _format_step_name(
             test.definition.id, step_idx, step_def.uses, config.phase_label, step_def.id
@@ -166,16 +167,6 @@ async def run_phase(
             return results, TestStatus.FAILED
 
     return results, TestStatus.COMPLETED
-
-
-async def _handle_pause_gate(
-    jobs: JobManager | None,
-    job_id: str,
-    config: PhaseConfig,
-) -> None:
-    """Wait on the pause gate if configured."""
-    if config.use_pause_gate and jobs is not None:
-        await jobs.get_pause_event(job_id).wait()
 
 
 async def _resolve_and_run_step(

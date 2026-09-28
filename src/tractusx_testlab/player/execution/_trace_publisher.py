@@ -97,6 +97,20 @@ class TracePublisher:
             data["errors"] = [{"code": "RUN_FAILED", "message": error, "retryable": False}]
         return self.emit("tck.end", data)
 
+    def run_held(self, withdrawn: list[str], kept: dict[str, str]) -> str | None:
+        """The paused run has stopped: the offers it withdrew, and any it could not."""
+        data: dict[str, Any] = {"withdrawn": withdrawn}
+        if kept:
+            data["kept"] = kept
+        return self.emit("tck.held", data)
+
+    def run_restored(self, restored: list[str], lost: dict[str, str]) -> str | None:
+        """The held run goes on: the offers it put back, and any it could not."""
+        data: dict[str, Any] = {"restored": restored}
+        if lost:
+            data["lost"] = lost
+        return self.emit("tck.restored", data)
+
     def test_started(self, test: str, index: int, attempt: int = 1) -> str | None:
         data: dict[str, Any] = {"test_id": test, "index": index}
         # Only a run again says so, which keeps a plain run's trace as it was.
@@ -203,6 +217,29 @@ class TracePublisher:
         return self.emit(
             "tck.test.step.waiting",
             {"attempt": 1, "listener": listener.model_dump(mode="json"), "timeout_s": timeout_s},
+            source=step_type,
+            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
+        )
+
+    def step_suspended(
+        self,
+        test: str,
+        step_id: str | None,
+        step_type: str,
+        phase: str,
+        listener: Any,
+        remaining_s: float,
+        waited_ms: int,
+    ) -> str | None:
+        """The wait stopped counting for a pause, with *remaining_s* of its timeout left."""
+        return self.emit(
+            "tck.test.step.suspended",
+            {
+                "attempt": 1,
+                "listener": listener.model_dump(mode="json"),
+                "remaining_s": remaining_s,
+                "waited_ms": waited_ms,
+            },
             source=step_type,
             scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
         )

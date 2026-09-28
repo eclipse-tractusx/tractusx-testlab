@@ -35,19 +35,21 @@ from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.contracts import CallReporter, ListenerReporter, StepInvoker
 from tractusx_testlab.models import Job
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
+from tractusx_testlab.player.execution._context_inbound import InboundReporting
 from tractusx_testlab.player.execution.dataspace_access import DataspaceAccess
+from tractusx_testlab.player.execution.hold import RunHold
 from tractusx_testlab.services.instances import ServiceManager
 
 
-class StepContext:
+class StepContext(InboundReporting):
     """Mutable execution context shared across steps within a single test run."""
 
     __slots__ = (
         "_config",
+        "_hold",
         "_infrastructure",
         "_invoker",
         "_job",
-        "_listener_reporter",
         "_reporter",
         "_services",
         "_step_namespace",
@@ -74,6 +76,7 @@ class StepContext:
         self._listener_reporter: ListenerReporter | None = None
         self._test_cac: tuple[str, ...] = ()
         self._step_namespace: str | None = None
+        self._hold = RunHold()
 
     # ------------------------------------------------------------------
     # Configuration
@@ -160,38 +163,6 @@ class StepContext:
             self._reporter(step_type, step_id, index, call)
 
     # ------------------------------------------------------------------
-    # Reporting an inbound call: opened, blocked on, arrived
-    # ------------------------------------------------------------------
-
-    def bind_listener_reporter(self, reporter: ListenerReporter | None) -> None:
-        """Give this context somewhere to publish an inbound call's two moments."""
-        self._listener_reporter = reporter
-
-    def report_listening(self, step_type: str, step_id: str | None, listener: Any) -> None:
-        """Say that an address is open for the SUT to call — and which one."""
-        if self._listener_reporter is not None:
-            self._listener_reporter.listening(step_type, step_id, listener)
-
-    def report_waiting(
-        self, step_type: str, step_id: str | None, listener: Any, timeout_s: float
-    ) -> None:
-        """Say that the run is now blocked on that address, and for how long at most."""
-        if self._listener_reporter is not None:
-            self._listener_reporter.waiting(step_type, step_id, listener, timeout_s)
-
-    def report_received(
-        self,
-        step_type: str,
-        step_id: str | None,
-        listener: Any,
-        request: Any,
-        waited_ms: int,
-    ) -> None:
-        """Say that the call arrived, and what it carried."""
-        if self._listener_reporter is not None:
-            self._listener_reporter.received(step_type, step_id, listener, request, waited_ms)
-
-    # ------------------------------------------------------------------
     # Traceability: the CACs the running test verifies
     # ------------------------------------------------------------------
 
@@ -228,6 +199,21 @@ class StepContext:
     def step_namespace(self) -> str | None:
         """``setup``, ``execution`` or ``teardown``; ``None`` outside a phase."""
         return self._step_namespace
+
+    # ------------------------------------------------------------------
+    # Holding the run while it is paused
+    # ------------------------------------------------------------------
+
+    @property
+    def hold(self) -> RunHold:
+        """What the run withdraws while it is paused, and puts back on resume.
+
+        A step that publishes something the system under test acts on — a
+        contract definition — records it here, and a step that blocks on the
+        system under test — a wait for a callback — stops here when the run is
+        paused (``player.execution.hold``).
+        """
+        return self._hold
 
     # ------------------------------------------------------------------
     # Job / Memory

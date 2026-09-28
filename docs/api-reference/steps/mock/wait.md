@@ -10,7 +10,7 @@
 
 Wait for an inbound HTTP request on a previously-registered mock endpoint.
 
-This is the other half of `mock/api`: that step hands the system under test a callback URL, and this one blocks until the SUT calls it, then hands the request it made to the assertions. A call the mock turns away — no key, another run's key, the wrong method or path — fails the wait as soon as it arrives, saying which (`MockCallRefusedError`); only the call the mock answers ends it well. Raises: RuntimeError: If no `CallbackManager` is available or the wait times out. MockCallRefusedError: If the call the wait was for was refused.
+This is the other half of `mock/api`: that step hands the system under test a callback URL, and this one blocks until the SUT calls it, then hands the request it made to the assertions. A call the mock turns away — no key, another run's key, the wrong method or path — fails the wait as soon as it arrives, saying which (`MockCallRefusedError`); only the call the mock answers ends it well. Pausing the run stops the wait where it is: the listener closes, the timeout stops counting (`step_suspended` says how much is left), and the run goes on hold (`player.execution.hold`). On resume the listener opens again and the wait carries on for the time it had left, announced by a fresh `step_waiting`. `elapsed_ms` counts only the time spent waiting. Raises: RuntimeError: If no `CallbackManager` is available or the wait times out. MockCallRefusedError: If the call the wait was for was refused.
 
 **Inputs**
 
