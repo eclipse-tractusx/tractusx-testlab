@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Static validation of tests before compilation."""
@@ -31,6 +32,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.compiler.validation._assertion_severity import severity_findings
 from tractusx_testlab.compiler.validation._extension_gate import (
     entry_findings,
     experimental_warnings,
@@ -226,6 +228,10 @@ class TestValidator:
         self._validate_inline_assert_inputs(step_def, step_cls, idx, result, phase)
 
         self._validate_returns(step_def, step_cls, idx, result, phase)
+
+        # A severity the engine cannot read used to compile and then stop the run.
+        for field, problem in severity_findings(step_def, step_cls):
+            result.add_error(problem, step_index=idx, field=field, phase=phase)
 
     def _validate_returns(
         self,

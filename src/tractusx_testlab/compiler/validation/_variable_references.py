@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Checking that a test names a variable whole, never a path into it.
@@ -184,17 +185,32 @@ def _namespaced_ids(step_cls: type | None, params: Any) -> frozenset[str]:
 
 
 def _all_nested_ids(step_cls: type | None, params: dict[str, Any]) -> Iterator[str]:
-    for key in _step_list_keys(step_cls):
-        nested_steps = params.get(key)
-        for nested in nested_steps if isinstance(nested_steps, list) else []:
+    for _, nested in nested_steps(step_cls, params):
+        if nested.get(keys.ID):
+            yield str(nested[keys.ID])
+
+
+def nested_steps(
+    step_cls: type | None, params: Any, at: str = keys.WITH
+) -> Iterator[tuple[str, dict[str, Any]]]:
+    """Every step *step_cls* runs from its ``with:`` *params*, at any depth.
+
+    Each comes with where it sits under the enclosing step — *at* is where
+    *params* itself sits, so a ``flow/retry`` step's first nested step is at
+    ``with.steps[0]`` — which is what lets a finding about a nested step name
+    the line to change.
+    """
+    if not isinstance(params, dict):
+        return
+    for key in sorted(_step_list_keys(step_cls)):
+        steps = params.get(key)
+        for index, nested in enumerate(steps if isinstance(steps, list) else []):
             if not isinstance(nested, dict):
                 continue
-            if nested.get(keys.ID):
-                yield str(nested[keys.ID])
-            nested_with = nested.get(keys.WITH)
-            if isinstance(nested_with, dict):
-                nested_cls = StepRegistry.get_any(str(nested.get(keys.USES, "")))
-                yield from _all_nested_ids(nested_cls, nested_with)
+            where = f"{at}.{key}[{index}]"
+            yield where, nested
+            nested_cls = StepRegistry.get_any(str(nested.get(keys.USES, "")))
+            yield from nested_steps(nested_cls, nested.get(keys.WITH), f"{where}.{keys.WITH}")
 
 
 def _unresolved_in_step(step: dict[str, Any], declared: Set[str]) -> Iterator[tuple[str, str]]:

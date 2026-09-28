@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Enumerations used across the Testlab module."""
@@ -66,10 +67,23 @@ class JobStatus(str, enum.Enum):
 
 
 class AssertionSeverity(str, enum.Enum):
-    """Whether assertion failure aborts (HARD) or just warns (SOFT)."""
+    """Whether assertion failure aborts (HARD) or just warns (SOFT).
+
+    A TCK may write the value in any case — ``hard``, ``Soft`` and ``SOFT``
+    all name a member. The spelling is settled here, where the value becomes a
+    member, so no reader of ``severity`` has to normalise it again. Anything
+    else is still refused with :class:`ValueError`.
+    """
 
     HARD = "HARD"
     SOFT = "SOFT"
+
+    @classmethod
+    def _missing_(cls, value: object) -> AssertionSeverity | None:
+        """Accept a member's value in any case; ``None`` lets the lookup fail."""
+        if isinstance(value, str):
+            return cls.__members__.get(value.upper())
+        return None
 
 
 class ValueSource(str, enum.Enum):
