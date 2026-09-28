@@ -86,6 +86,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- A `validate:` entry's `severity` is read in any case — `soft` is `SOFT`,
+  `Hard` is `HARD`. `severity: soft` used to stop the run with a `ValueError`.
+  Any other value, such as `warning`, is now a compile error located at the
+  entry (`validate[<n>].with.severity`, nested steps of `flow/*` and `labs/*`
+  steps included); at run time it is a failed HARD check that names it.
+
 - A test the operator skipped now carries its `test_id` in its result (and in
   `test_completed`); it was empty, so a viewer could not tell which row it was.
 

@@ -19,6 +19,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
 
 """Assemble the step reference from the rendered step contracts.
 
@@ -180,7 +182,9 @@ def render_validations(*, level: int = 2, condition_href: str = "#condition") ->
         "the step's output fields — a dotted name reaches inside it. The operator is given "
         "either in `with:` (`validate/assert` + `operator: equals`) or as a suffix of `uses` "
         f"(`validate/assert/equals`); when neither names one, `{DEFAULT_OPERATOR}` applies. "
-        "`severity` is `HARD` (default, fails the step) or `SOFT` (reported as a warning).",
+        "`severity` is `HARD` (the default: a failed check fails the step) or `SOFT` (a failed "
+        "check is reported as a warning and the step still passes). The value is "
+        "case-insensitive — `soft` is `SOFT` — and any other value is a compile error.",
         "",
         f"{sub} Assertion kinds",
         "",

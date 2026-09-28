@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Evaluates a step's ``validate:`` block against the output the step produced."""
@@ -40,6 +41,7 @@ from tractusx_testlab.steps.assertions.operators import RANGE_OPERATORS, apply_o
 from tractusx_testlab.steps.assertions.vocabulary import (
     AssertionKind,
     ResolvedAssertion,
+    check_severity,
     resolve,
 )
 
@@ -68,19 +70,25 @@ class AssertionEngine:
         assertion: Assertion, output: object, declared: frozenset[str] | None = None
     ) -> AssertionResult:
         params = assertion.with_ or {}
-        severity = AssertionSeverity(params.get("severity", "HARD"))
+        # A severity that names nothing cannot soften its own failure, so it is
+        # reported as a HARD one rather than raised out of the run.
+        written_severity = params.get("severity", AssertionSeverity.HARD)
+        unknown_severity = check_severity(written_severity)
+        severity = (
+            AssertionSeverity.HARD if unknown_severity else AssertionSeverity(written_severity)
+        )
         resolved = resolve(assertion.uses, params)
 
         # An assertion that cannot be understood is reported as a failure that
         # names the problem. Guessing at what was meant is how a broken check
         # ends up looking like a passing one.
-        if isinstance(resolved, str):
+        if unknown_severity is not None or isinstance(resolved, str):
             return AssertionResult(
                 assertion=assertion,
                 passed=False,
                 expected=None,
                 actual=None,
-                message=resolved,
+                message=unknown_severity or str(resolved),
                 severity=severity,
             )
 

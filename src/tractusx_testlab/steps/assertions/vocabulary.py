@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """What a ``validate:`` entry's ``uses`` names, and what it needs to run.
@@ -35,6 +36,7 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass
 
+from tractusx_testlab.models.primitives import AssertionSeverity
 from tractusx_testlab.steps.assertions.operators import OPERATORS, Arity, arity_of
 
 #: The operator assumed when a ``validate/assert`` block names none.
@@ -150,6 +152,23 @@ def check_operands(operator: str, params: dict) -> str | None:
     missing = expected - supplied
     if missing:
         return f"Operator '{operator}' needs {', '.join(sorted(missing))}, which is not set."
+    return None
+
+
+def check_severity(value: object) -> str | None:
+    """Return why *value* is not a ``severity``, or ``None`` if it is one.
+
+    ``HARD`` and ``SOFT`` are the only severities, written in any case. The
+    same answer serves the compiler, which refuses the value, and the engine,
+    which reports it as a failed check instead of crashing the run on it.
+    """
+    try:
+        AssertionSeverity(value)
+    except ValueError:
+        return (
+            f"Unknown severity {value!r}. Severity is 'HARD' (the default: a failure "
+            f"fails the step) or 'SOFT' (a failure is reported as a warning), in any case."
+        )
     return None
 
 

@@ -14,6 +14,7 @@
  SPDX-License-Identifier: CC-BY-4.0
 -->
 <!-- This document was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5). -->
+<!-- This document was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
 <!-- It was reviewed and validated by a human committer. -->
 
 # ADR-0025: Assertions Read Declared Returns
@@ -368,7 +369,7 @@ for it in the same commit.
 ## Implementation status
 
 Landed 2026-08-13. What this record specified and what shipped
-differ in three places, all deliberate.
+differ in four places, all deliberate.
 
 ### What landed
 
@@ -417,10 +418,16 @@ differ in three places, all deliberate.
    `resolve_params` — a change to the compiler's expression pass rather than to
    the assertion engine. It is not done.
 
+4. **`severity` is read in any case, not lower-case only.** The enum, the
+   generated step reference and the shipped TCKs spell it `HARD` / `SOFT`,
+   while this record spells it `hard` / `soft`. Both are accepted — `soft` is
+   `SOFT` — and the compiler refuses any other value at the `validate:` entry,
+   so neither spelling can compile cleanly and then stop the run.
+
 ### Not yet implemented
 
 Decision 1 (returns resolved before assertions run), decision 4 (`${{ }}` as the
 only interpolation), decision 6 (inline assertions routed through the registered
 steps) and decision 7's loose ends — the `source:` → `input:` rename on
-`util/json_path_extract` and `util/validate_path`, `severity` as a declared
-field, and lower-case severity values.
+`util/json_path_extract` and `util/validate_path`, and `severity` as a declared
+field. Lower-case severity values are accepted — see divergence 4.

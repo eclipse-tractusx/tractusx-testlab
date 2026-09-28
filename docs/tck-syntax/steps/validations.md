@@ -37,6 +37,19 @@ validate:
       value: ["RECEIVED", "ACCEPTED", "REJECTED"]
 ```
 
+**Severity.** Every `validate/*` entry takes an optional `severity` in `with:`.
+`HARD`, the default, fails the step when the check fails. `SOFT` reports a failed
+check as a warning: the step still passes, and the run counts the check under
+`failed_soft`. The value is case-insensitive, so `soft` and `SOFT` are the same.
+Any other value, such as `warning`, is a compile error at that entry.
+
+```yaml
+validate:
+  - uses: validate/field
+    name: "the receiver answers with a message id"    # reported, never fails the step
+    with: { input: response_body, path: "header.messageId", operator: not_null, severity: soft }
+```
+
 **Operator vocabulary [PROP]** — ratifying this closes ADR gap P4:
 
 | Operator | Applies to | Meaning |
