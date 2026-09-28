@@ -166,6 +166,39 @@ class TestSomethingMustSeedIt:
 
         assert validate_variable_declarations(_env(entry)) == []
 
+    def test_a_document_to_register_may_say_what_to_do_with_it(self) -> None:
+        """A payload the SUT serves back — any verb, not only a connector one."""
+        entry = _string(
+            id="iso9001_certificate",
+            uses="variable/type/object",
+            returns={"value": {"type": "object"}},
+        )
+        entry["with"] = {
+            "source": "register",
+            "instructions": "Register it in your certificate management and share it in your EDC.",
+            "value": {"businessPartnerNumber": "${{ env.provider_bpn }}"},
+        }
+
+        assert validate_variable_declarations(_env(entry)) == []
+
+    def test_instructions_must_be_text(self) -> None:
+        entry = _policy()
+        entry["with"] = {**entry["with"], "source": "register", "instructions": ["do", "this"]}
+
+        errors = validate_variable_declarations(_env(entry))
+
+        assert len(errors) == 1
+        assert "not text" in errors[0]
+
+    def test_instructions_on_a_document_nobody_is_handed_are_rejected(self) -> None:
+        entry = _policy()
+        entry["with"] = {**entry["with"], "instructions": "Offer it on your CCM asset."}
+
+        errors = validate_variable_declarations(_env(entry))
+
+        assert len(errors) == 1
+        assert "source: register" in errors[0]
+
     def test_a_document_to_register_must_carry_its_value(self) -> None:
         errors = validate_variable_declarations(_env(_policy(**{"with": {"source": "register"}})))
 

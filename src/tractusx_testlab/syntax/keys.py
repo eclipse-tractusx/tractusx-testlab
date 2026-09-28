@@ -117,6 +117,8 @@ FORMAT = "format"
 VARIABLE = "variable"
 GENERATE = "generate"
 SCOPE = "scope"
+# What the SUT operator is told to do with a ``source: register`` document.
+INSTRUCTIONS = "instructions"
 
 # -- Test case entry ----------------------------------------------------------
 TEST = "test"
