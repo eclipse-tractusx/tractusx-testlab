@@ -262,6 +262,30 @@ class TestASession:
         assert await session.close() is first
         assert len(_of(events, "job.completed")) == 1
 
+    async def test_a_close_a_host_interrupts_still_releases_the_run(
+        self, package: Path, player
+    ) -> None:
+        """An engine abandoning a cancelled run raises from its event callback."""
+        from tractusx_testlab.logging import transcript
+
+        class Abandoned(Exception):
+            pass
+
+        player, _ = player
+        session = await player.open_session(Loader().load(package))
+
+        def _abandon(event: str, _payload: dict) -> None:
+            if event == "test.started":
+                raise Abandoned
+
+        player.monitor.add_callback(_abandon)
+        with pytest.raises(Abandoned):
+            await session.close()
+
+        assert transcript._active is None  # the transcript's tee is gone
+        with pytest.raises(SessionClosedError):
+            await session.close()
+
     async def test_an_unknown_test_is_refused(self, package: Path, player) -> None:
         player, _ = player
         session = await player.open_session(Loader().load(package))

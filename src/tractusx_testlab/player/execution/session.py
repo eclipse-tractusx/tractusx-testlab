@@ -206,36 +206,35 @@ class TckSession:
     async def close(self) -> TckResult:
         """Tear the session down and deliver the verdict (latest attempts); idempotent.
 
-        A test that never ran (skipped, or ``async: true`` and never asked for) is skipped.
+        A test that never ran (skipped, or ``async: true`` and never asked for) is
+        skipped. The services, the mock server and the transcript are released even
+        when publishing that raises (a host abandoning a cancelled run does).
         """
         async with self._lock:
-            if self._result is not None:
+            if self._closed:
+                if self._result is None:
+                    raise SessionClosedError(f"The session of job '{self.job_id}' failed to close")
                 return self._result
             self._closed = True
             try:
-                for idx, test in enumerate(self._tck.tests):
-                    if test.test_id not in self._results:
-                        self._skip(idx, test)
-                finished_at = datetime.now(UTC)
-                self._services.teardown()
-                self._on_close()
-                self._result = build_tck_result(
-                    self._tck.name,
-                    [self._results[test.test_id] for test in self._tck.tests],
-                    self._started_at,
-                    finished_at,
+                try:
+                    for idx, test in enumerate(self._tck.tests):
+                        if test.test_id not in self._results:
+                            self._skip(idx, test)
+                finally:
+                    self._services.teardown()
+                    self._on_close()
+                results = [self._results[test.test_id] for test in self._tck.tests]
+                result = build_tck_result(
+                    self._tck.name, results, self._started_at, datetime.now(UTC)
                 )
                 finalize_job(
-                    self._jobs,
-                    self._job,
-                    self._result,
-                    self._monitor,
-                    self._job_logger,
-                    self._trace,
+                    self._jobs, self._job, result, self._monitor, self._job_logger, self._trace
                 )
+                self._result = result
             finally:
                 self._records.close()
-            return self._result
+            return result
 
     # ------------------------------------------------------------------
     # Internals
