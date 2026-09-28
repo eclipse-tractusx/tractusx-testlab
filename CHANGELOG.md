@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `with.instructions` on a `with.source: register` variable: what the SUT
+  operator has to do with the document the TCK hands them — where to register
+  it, and how the run will read it back. `source: register` now reads as the
+  general handover, on any verb: a certificate the SUT's certificate
+  management holds and a pull test retrieves is a `variable/type/object`, not a
+  connector document. The compiler rejects instructions that are not text, and
+  instructions on a variable that is not handed over (the source was
+  forgotten).
 - `is_in` operator for `validate/assert`, `validate/field` and `flow/if`: the
   value under test, as text, occurs in `value` — `contains` turned around. An
   echoed id passes with or without its prefix

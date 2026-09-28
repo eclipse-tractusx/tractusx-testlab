@@ -411,6 +411,31 @@ env:
 **Reference in tests:** `${{ env.sut_dsp_url }}`, `${{ env.usage_policy }}`,
 `${{ env.api_asset }}` — the id alone, for every type.
 
+**Handed to the SUT operator** (`with.source: register`): the TCK carries the
+document and the operator registers it in their own system before the run —
+a policy their connector offers, a twin their registry holds, a payload their
+application serves. `with.instructions` says what to do with it; the engine
+shows both before the run starts. A test reads the same document back, so it
+knows exactly what the SUT should answer with:
+
+```yaml
+    - id: iso9001_certificate
+      uses: variable/type/object
+      name: ISO9001 test certificate
+      with:
+        source: register
+        instructions: >
+          Register this certificate in your certificate management and share it
+          in your EDC as a CompanyCertificate asset. The pull test retrieves it.
+        value:
+          businessPartnerNumber: "${{ env.provider_bpn }}"
+          type:
+            certificateType: ISO9001
+      returns:
+        value:
+          type: object
+```
+
 ---
 
 ## Failure Handling
