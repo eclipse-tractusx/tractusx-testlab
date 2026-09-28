@@ -58,6 +58,7 @@ def make_intentionally_skipped_result(test: Test) -> TestResult:
     """
     now = datetime.now(UTC)
     return TestResult(
+        test_id=test.definition.id,
         test_name=test.name,
         dataspace_version=test.dataspace_version,
         status=TestStatus.SKIPPED,

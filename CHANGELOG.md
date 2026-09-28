@@ -80,6 +80,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- A test the operator skipped now carries its `test_id` in its result (and in
+  `test_completed`); it was empty, so a viewer could not tell which row it was.
+
 - `equals` / `not_equals` compare a boolean with text by its YAML spelling:
   `condition_result: True` equals `value: "true"` (in any case). Before this,
   the check fell back to `str(True)`, which is `"True"`, and failed with

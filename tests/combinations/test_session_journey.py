@@ -243,7 +243,7 @@ class TestASession:
 
         result = await session.close()
 
-        assert {test.test_name: test.status for test in result.tests} == {
+        assert {test.test_id: test.status for test in result.tests} == {
             "push": TestStatus.SKIPPED,
             "ping": TestStatus.COMPLETED,
         }
