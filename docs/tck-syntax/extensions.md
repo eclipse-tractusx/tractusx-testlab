@@ -118,8 +118,11 @@ the `flow/if` step, not with keys on validations:
   its `returns:` under its phase and id, as a top-level step does: a later step, nested or not, reads it as
   `${{ execution.<id>.<field> }}`. A retried or looped step leaves the value of its latest run.
 - `MUST … AND MUST …` needs no construct: sibling `validate:` entries are always ANDed.
-- A step's own `if:` is a different thing. It reads run state only (`success()`, `failure()`, `always()`,
-  `steps.<id>.outcome`, `vars.<name>`), never a value a step returned. When false, it skips the step.
+- A step's own `if:` is a different thing. It reads run state (`success()`, `failure()`, `always()`,
+  `steps.<id>.outcome`) or one variable (`vars.<name>`, where a field an earlier step returned is
+  `vars.<phase>.<id>.<field>`), and when false it skips that one step. It chooses nothing and reports
+  nothing: a CAC `IF` is a `flow/if`. The compiler refuses an `if:` outside this grammar, one naming a
+  step or return that does not exist before it, and one on a teardown or nested step, which is never read.
 - Validations take no `if:`. The syntax has no `validate/any_of` or `validate/all_of`.
 
 See [§6.3](authoring/cac-mapping.md#63-worked-example) for a full CAC translated this way.

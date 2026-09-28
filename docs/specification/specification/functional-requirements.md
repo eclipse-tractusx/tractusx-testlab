@@ -36,7 +36,7 @@ limitation noted), or **Open** (specified, not implemented).
 | FR-AUTH-08 | Each step MAY specify `timeout_s`; a step exceeding it SHALL fail. | Should | Partial — accepted and compiled into the IR, not enforced at run time; steps with their own `timeout`/`timeout_s` parameter enforce that |
 | FR-AUTH-09 | Tests MAY declare `setup` and `teardown` phases around `execution`. Teardown steps SHALL always run. | Must | Done |
 | FR-AUTH-10 | The manifest SHALL list its tests in execution order (`tests[].id` = file name, optional `name`, `skippable`). Tests SHALL NOT read each other's outputs. | Must | Done |
-| FR-AUTH-11 | Steps MAY declare `if:` — `success()`, `failure()`, `always()`, `steps.<id>.outcome == '…'`, or `vars.<name>` comparisons — evaluated in setup and execution. | Should | Done |
+| FR-AUTH-11 | Steps MAY declare `if:` — `success()`, `failure()`, `always()`, `steps.<id>.outcome == '…'`, or `vars.<name>` comparisons (a returned field as `vars.<phase>.<id>.<field>`) — evaluated in setup and execution. The compiler SHALL refuse an expression outside this grammar, a step or return not published before the step, and an `if:` on a teardown or nested step. | Should | Done |
 
 ## Expected Results / Assertions (FR-ASSERT)
 

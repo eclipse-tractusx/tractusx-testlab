@@ -165,6 +165,13 @@ teardown: []
 | `${{ steps.step_id.outcome == 'success' }}` | Specific step outcome check |
 | `${{ steps.step_id.outcome == 'failure' }}` | Specific step failed |
 | `${{ steps.step_id.outcome == 'skipped' }}` | Specific step was skipped |
+| `${{ vars.region == 'eu' }}` | A manifest variable or binding, read by its id (`!=` too) |
+| `${{ vars.execution.step_id.field == 'RECEIVED' }}` | A field an earlier step lists under `returns:` (`vars.setup.…` for a setup step) |
+| `${{ vars.execution.step_id.field }}` | That field is truthy |
+
+One expression per `if:`: there is no `and`, `or` or `not` — combine conditions with a `flow/if` step.
+`steps.<id>` reads an earlier step of the same phase. Teardown ignores `if:`, and a step nested in a flow
+step never reads its own, so the compiler refuses both, and any expression outside this table.
 
 ---
 
