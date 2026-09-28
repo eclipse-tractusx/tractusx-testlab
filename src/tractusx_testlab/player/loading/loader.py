@@ -60,7 +60,8 @@ def _load_tests(entries: list, base_dir: Path) -> list[Test]:
 
     Each entry is a ``TckTestEntry`` with an ``id`` filename relative to
     ``<base_dir>/tests/``.  The ``skippable`` flag from the manifest entry is
-    forwarded to the ``Test`` so the player can enforce skip rules.
+    forwarded to the ``Test`` so the player can enforce skip rules, and the
+    labs ``async`` flag so a session can hold the test back until asked.
     """
     tests: list[Test] = []
     tests_dir = base_dir / "tests"
@@ -73,7 +74,14 @@ def _load_tests(entries: list, base_dir: Path) -> list[Test]:
             continue
         try:
             test_def = parse_test_file(test_path)
-            tests.append(Test(test_def, skippable=entry.skippable, test_id=entry.id))
+            tests.append(
+                Test(
+                    test_def,
+                    skippable=entry.skippable,
+                    test_id=entry.id,
+                    on_demand=entry.async_,
+                )
+            )
         except ValidationError as exc:
             # 3. if Pydantic fails, capture exception to add filename
             findings = diagnostics.render(exc, model=TestDefinition, source=test_path)

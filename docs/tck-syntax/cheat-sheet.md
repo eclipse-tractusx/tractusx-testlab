@@ -88,6 +88,11 @@ tests:                       # ordered; entries are mappings, never bare strings
 `skip_tests` names a test that is unknown or not marked, so only what the author
 allowed can ever be skipped.
 
+With `extensions: [labs]`, an entry may also say `async: true`: a host that holds
+the run open (a `TckSession`) leaves that test waiting until someone runs it, and
+lets them run it again. A plain `testlab run` runs it in order like any other.
+See [Extensions › labs](../developer/extensions.md#available-extensions).
+
 ---
 
 ## Test File Structure

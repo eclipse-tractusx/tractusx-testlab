@@ -55,7 +55,8 @@ class Extension:
     """An experimental addition to the syntax or the step catalogue.
 
     ``test_keys``, ``step_keys`` and ``validation_keys`` name the keys it adds to
-    a test, to a step and to a ``validate:`` entry. The keys themselves are declared as fields in
+    a test, to a step and to a ``validate:`` entry; ``entry_keys`` the keys it
+    adds to a ``tests:`` entry of the manifest. The keys themselves are declared as fields in
     :mod:`tractusx_testlab.extensions.step_keys`; naming them here is what lets
     the compiler refuse them in a TCK that did not enable the extension.
     ``step_prefix`` reserves a namespace of step ids, e.g. ``labs/``.
@@ -66,6 +67,7 @@ class Extension:
     test_keys: frozenset[str] = frozenset()
     step_keys: frozenset[str] = frozenset()
     validation_keys: frozenset[str] = frozenset()
+    entry_keys: frozenset[str] = frozenset()
     step_prefix: str | None = None
     check: ExtensionCheck | None = None
     #: Every extension is experimental. The field exists so a report can print

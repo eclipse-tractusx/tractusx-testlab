@@ -104,6 +104,9 @@ class TestStartedEvent(_ExecutionEvent):
     kind: Literal[EventKind.TEST_STARTED] = EventKind.TEST_STARTED
     test_id: str
     index: int
+    #: Which run of this test within the job, from 1. Only a session runs a
+    #: test more than once (an ``async: true`` test, run again on demand).
+    attempt: int = 1
 
 
 class TestCompletedEvent(_ExecutionEvent):
@@ -112,6 +115,20 @@ class TestCompletedEvent(_ExecutionEvent):
     __test__ = False  # a TestLab test, not a pytest one
     kind: Literal[EventKind.TEST_COMPLETED] = EventKind.TEST_COMPLETED
     result: TestResult
+
+
+class TestAwaitingEvent(_ExecutionEvent):
+    """An ``async: true`` test is ready and waits for someone to run it (labs).
+
+    Published by a :class:`~tractusx_testlab.player.TckSession` once the tests
+    that run on their own are done. Nothing is running: the session does
+    nothing more until it is asked to run a test or to close.
+    """
+
+    __test__ = False  # a TestLab test, not a pytest one
+    kind: Literal[EventKind.TEST_AWAITING] = EventKind.TEST_AWAITING
+    test_id: str
+    index: int
 
 
 class StepStartedEvent(_ExecutionEvent):
@@ -256,6 +273,7 @@ ExecutionEvent = (
     | JobCancelledEvent
     | TestStartedEvent
     | TestCompletedEvent
+    | TestAwaitingEvent
     | StepStartedEvent
     | StepCallEvent
     | StepCompletedEvent

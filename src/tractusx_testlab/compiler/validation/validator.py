@@ -32,6 +32,7 @@ from pydantic import ValidationError
 
 from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.compiler.validation._extension_gate import (
+    entry_findings,
     experimental_warnings,
     extension_findings,
 )
@@ -106,7 +107,7 @@ class TestValidator:
         self, tck: TckDefinition, base_dir: Path, version: str | None = None
     ) -> ValidationResult:
         """Validate all test files referenced by a TCK manifest."""
-        combined = ValidationResult(issues=experimental_warnings(tck))
+        combined = ValidationResult(issues=experimental_warnings(tck) + entry_findings(tck))
         for entry in tck.tests:
             test_path = base_dir / "tests" / entry.id
             if not test_path.is_file():

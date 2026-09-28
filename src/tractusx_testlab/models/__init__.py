@@ -129,6 +129,7 @@ from tractusx_testlab.models.runtime.events import (
     StepSkippedEvent,
     StepStartedEvent,
     StepWaitingEvent,
+    TestAwaitingEvent,
     TestCompletedEvent,
     TestStartedEvent,
 )
@@ -249,6 +250,7 @@ __all__ = [
     "TckInspectionResult",
     "TckMetadataDefinition",
     "TckResult",
+    "TestAwaitingEvent",
     "TestCompletedEvent",
     "TestDefinition",
     # inspection

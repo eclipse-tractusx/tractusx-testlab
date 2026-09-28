@@ -97,8 +97,15 @@ class TracePublisher:
             data["errors"] = [{"code": "RUN_FAILED", "message": error, "retryable": False}]
         return self.emit("tck.end", data)
 
-    def test_started(self, test: str, index: int) -> str | None:
-        return self.emit("tck.test.start", {"test_id": test, "index": index}, scope=(test,))
+    def test_started(self, test: str, index: int, attempt: int = 1) -> str | None:
+        data: dict[str, Any] = {"test_id": test, "index": index}
+        # Only a run again says so, which keeps a plain run's trace as it was.
+        if attempt > 1:
+            data["attempt"] = attempt
+        return self.emit("tck.test.start", data, scope=(test,))
+
+    def test_awaiting(self, test: str, index: int) -> str | None:
+        return self.emit("tck.test.awaiting", {"test_id": test, "index": index}, scope=(test,))
 
     def test_ended(self, result: TestResult) -> str | None:
         test_id = result.test_id or result.test_name

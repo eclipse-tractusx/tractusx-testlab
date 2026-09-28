@@ -285,6 +285,8 @@ def _build_tests_list(
         if entry.name is not None:
             test_entry["name"] = entry.name
         test_entry["skippable"] = entry.skippable
+        if entry.async_:  # labs; absent otherwise, so other packages are unchanged
+            test_entry["async"] = True
         test_entry["source_hash"] = source_hash
         tests_list.append(test_entry)
 

@@ -51,6 +51,8 @@ class TestInspection(BaseModel):
     name: str
     test_id: str = ""
     skippable: bool = False
+    #: The manifest entry says ``async: true`` (labs): a session runs it on demand.
+    on_demand: bool = False
     steps: tuple[StepMeta, ...]
 
 

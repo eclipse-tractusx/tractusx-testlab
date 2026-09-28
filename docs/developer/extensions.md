@@ -64,7 +64,7 @@ of `flow/if` and the `steps` of `flow/retry`.
 | Name | Contributes | Documented in |
 |---|---|---|
 | `cac` | `cac:` on tests, steps and `validate:` entries: the CACs a test, step or check verifies | [§9.1](../tck-syntax/extensions.md#91-cac-traceability-cac-p1) |
-| `labs` | Steps under the `labs/` prefix, and `with:` parameters on core steps, whose contract is still being tested | [Experimental steps](#experimental-steps-labs), [Step parameters](#adding-parameters-to-an-existing-step) |
+| `labs` | Steps under the `labs/` prefix, `with:` parameters on core steps, and keys on manifest `tests:` entries, whose contract is still being tested | [Experimental steps](#experimental-steps-labs), [Step parameters](#adding-parameters-to-an-existing-step) |
 
 What ships under `labs` today:
 
@@ -74,6 +74,7 @@ What ships under `labs` today:
 | `labs/flow/for_each` | new step | Runs its nested `steps:` once per entry of `items:`. A nested step reads the entry as `${{ each.item }}` and its position as `${{ each.index }}`; the compiler refuses both names outside the loop. The nested steps resolve their `with:` when they run, as the nested steps of `flow/retry` and `flow/if` do. Source: `extensions/labs/steps/for_each.py` |
 | `labs/connector/provider/query_assets`, `query_policies`, `query_contract_definitions` | new steps | List the ids the provider connector holds, page by page, keeping those that start with `id_prefix`. The contract-definition query also matches on `asset_id_prefix` and publishes the `policy_ids` and `asset_ids` the kept definitions bind, so a test can withdraw an offer whose ids the connector generated. Source: `extensions/labs/steps/provider_query.py` |
 | `labs/mock/api/dynamic` | new step | A mock that runs its `process:` steps for every call and answers with what they worked out. The steps read the call as `${{ *.request.* }}` and each other as `${{ *.process.<id>.<field> }}` — [call-scoped references](../tck-syntax/steps/expressions.md#call-scoped-references-labs), which the compiler refuses anywhere else. The reply (`response_status`, `response_body`, `response_headers`) is read once `process` has run. Each call runs on a copy of the run's context, on the run's event loop; a failing step, an unreadable reply or `process_timeout` answer 500. Source: `extensions/labs/steps/dynamic_mock/`. Tutorial: [Answer a call from what it carried](../tutorials/dynamic-mock.md) |
+| `async: true` | a `tests:` entry in `index.yaml` | Runs the test on demand. `TestlabPlayer.open_session` returns a `TckSession`: `run_scheduled()` runs every other test and sends `test_awaiting` for this one, `run_test(id)` runs it (again: `test_started.attempt` counts), `close()` tears down and gives the verdict from each test's latest attempt, reporting one never asked for as skipped. A plain run (`testlab run`, `TestlabPlayer.run`) runs it in manifest order. The compiled package carries `async: true` on the entry. Source: `extensions/labs/entry_keys.py`, `player/execution/session.py` |
 | `labs/util/now` | new step | The current time in UTC, ISO 8601 with milliseconds and a `Z` (`2026-09-27T20:44:49.995Z`), for a `sentDateTime` a test or a dynamic mock builds. Source: `extensions/labs/steps/now.py` |
 
 ## Layout
@@ -82,7 +83,7 @@ What ships under `labs` today:
 src/tractusx_testlab/extensions/
 ├── __init__.py          # EXTENSIONS: the registry, one entry per extension
 ├── extension.py         # Extension, ExtensionFinding, written_steps()
-├── step_keys.py         # TestExtensionKeys / StepExtensionKeys / AssertionExtensionKeys: keys every extension adds
+├── step_keys.py         # Test/Step/Assertion/EntryExtensionKeys: keys every extension adds
 ├── step_modules.py      # imports every module that registers a labs/ step or step parameters
 ├── cac/                 # a syntax-key extension
 │   ├── __init__.py      # EXTENSION = Extension(name="cac", …)
@@ -91,6 +92,7 @@ src/tractusx_testlab/extensions/
 ├── labs/                # experimental steps and parameters
 │   ├── __init__.py      # EXTENSION = Extension(name="labs", step_prefix="labs/")
 │   ├── dataplane_retry.py  # retry_on: a step parameter extension on connector/dataplane/http_request
+│   ├── entry_keys.py    # async: on a manifest tests: entry
 │   └── steps/           # labs/ step modules
 └── <name>/
     └── <what_it_adds>.py  # a step parameter extension: extra with: keys on a core step
@@ -112,6 +114,7 @@ Extension(
     test_keys=frozenset({"cac"}),             # keys it adds to the top level of a test file
     step_keys=frozenset({"cac"}),             # keys it adds to a step
     validation_keys=frozenset({"cac"}),       # keys it adds to a validate: entry
+    entry_keys=frozenset(),                   # keys it adds to a tests: entry of index.yaml
     step_prefix=None,                         # a reserved step-id prefix, e.g. "labs/"
     check=uncertified_cac,                    # optional (tck, test) -> list[ExtensionFinding]
     docs="tck-syntax/extensions.md#91-cac-traceability-cac-p1",

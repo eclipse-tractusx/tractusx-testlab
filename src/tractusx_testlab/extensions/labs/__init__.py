@@ -36,6 +36,9 @@ kept as an alias, so every TCK using it is migrated in the same change.
 
 An experimental ``with:`` parameter on a core step that belongs to no named
 extension also registers under ``labs`` (``@extends(..., extension="labs")``).
+
+``async:`` on a manifest ``tests:`` entry is a labs key too
+(:mod:`tractusx_testlab.extensions.labs.entry_keys`).
 """
 
 from __future__ import annotations
@@ -44,7 +47,11 @@ from tractusx_testlab.extensions.extension import Extension
 
 EXTENSION = Extension(
     name="labs",
-    summary="Use steps under `labs/` and step parameters whose contract is still being tested.",
+    summary=(
+        "Use steps under `labs/`, step parameters and manifest keys whose contract is "
+        "still being tested."
+    ),
+    entry_keys=frozenset({"async"}),
     step_prefix="labs/",
     docs="developer/extensions.md#experimental-steps-labs",
 )

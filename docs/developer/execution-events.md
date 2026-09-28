@@ -158,9 +158,10 @@ own.
 | `job_id` | string | |
 | `test_id` | string | The test's id. |
 | `index` | integer | Its position in the run, from 0. |
+| `attempt` | integer | Which run of this test within the job, from 1. Above 1 only in a session, for an `async: true` test run again. |
 
 ```json
-{"kind": "test_started", "job_id": "3f1c…", "test_id": "catalog-policy-validation", "index": 2}
+{"kind": "test_started", "job_id": "3f1c…", "test_id": "catalog-policy-validation", "index": 2, "attempt": 1}
 ```
 
 #### `test_completed`
@@ -187,6 +188,23 @@ result already carries its status and its steps.
     "assertion_summary": {"total": 6, "passed": 6, "failed_hard": 0, "failed_soft": 0}
   }
 }
+```
+
+#### `test_awaiting`
+
+**Labs.** Only a `TckSession` sends it (see [Sessions](#sessions)). An
+`async: true` test is ready and waits for someone to run it; nothing is running.
+Sent once per such test, after the tests that run on their own are done.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"test_awaiting"` | |
+| `job_id` | string | |
+| `test_id` | string | The test's id. |
+| `index` | integer | Its position in the manifest, from 0. |
+
+```json
+{"kind": "test_awaiting", "job_id": "3f1c…", "test_id": "push-notification", "index": 3}
 ```
 
 ### Step lifecycle
@@ -469,6 +487,22 @@ job_completed | job_failed | job_cancelled
 
 `job_paused` and `job_resumed` can appear between any two step events.
 `job_cancelled` can end the stream at any point.
+
+### Sessions
+
+A host that holds a run open between tests (`TestlabPlayer.open_session`, labs)
+sends the same events, in this order:
+
+```text
+job_started
+  test_started … test_completed          (every test not marked async: true)
+  test_awaiting                          (each async: true test)
+  test_started(attempt=n) … test_completed   (each time one is asked for)
+  test_started … test_completed          (SKIPPED, for each one never asked for)
+job_completed | job_failed
+```
+
+The verdict counts each test's latest attempt.
 
 ## Adding a kind
 

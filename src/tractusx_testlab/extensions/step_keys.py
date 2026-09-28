@@ -22,13 +22,13 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
 ## It was reviewed and tested by a human committer.
 
-"""The keys extensions add to a test, to a step and to a ``validate:`` entry.
+"""The keys extensions add to a test, to a step, to a ``validate:`` entry and to a manifest entry.
 
 ``TestDefinition``, ``StepDefinition`` and ``Assertion`` inherit these, so an extension's key is an
 ordinary, typed field: the JSON Schema the IDE reads describes it, and a typo in
 it is refused like any other. Whether the TCK *may* use it is the compiler's
-check, driven by ``Extension.test_keys``, ``Extension.step_keys`` and
-``Extension.validation_keys``.
+check, driven by ``Extension.test_keys``, ``Extension.step_keys``,
+``Extension.validation_keys`` and ``Extension.entry_keys``.
 
 To add keys, write a model of them in the extension's own package and add it to
 the bases below. Keep the classes free of ``model_config``: the core models set
@@ -42,6 +42,7 @@ from tractusx_testlab.extensions.cac.references import (
     CacStepKeys,
     CacTestKeys,
 )
+from tractusx_testlab.extensions.labs.entry_keys import LabsEntryKeys
 
 
 class TestExtensionKeys(CacTestKeys):
@@ -56,3 +57,7 @@ class StepExtensionKeys(CacStepKeys):
 
 class AssertionExtensionKeys(CacAssertionKeys):
     """Every key an extension adds to a ``validate:`` entry."""
+
+
+class EntryExtensionKeys(LabsEntryKeys):
+    """Every key an extension adds to a ``tests:`` entry of the manifest."""

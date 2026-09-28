@@ -45,7 +45,7 @@ class Test:
     """Runtime wrapper for a single test definition."""
 
     __test__ = False  # Prevent pytest from collecting this class
-    __slots__ = ("_skippable", "_test_id", "definition")
+    __slots__ = ("_on_demand", "_skippable", "_test_id", "definition")
 
     def __init__(
         self,
@@ -53,16 +53,27 @@ class Test:
         *,
         skippable: bool = False,
         test_id: str = "",
+        on_demand: bool = False,
     ):
         """Initialize with a parsed test definition."""
         self.definition = definition
         self._skippable = skippable
         self._test_id = test_id
+        self._on_demand = on_demand
 
     @property
     def skippable(self) -> bool:
         """Whether the operator is allowed to skip this test at runtime."""
         return self._skippable
+
+    @property
+    def on_demand(self) -> bool:
+        """Whether the manifest entry says ``async: true`` (labs).
+
+        A :class:`~tractusx_testlab.player.TckSession` leaves such a test
+        waiting until it is asked to run it; a plain run runs it in order.
+        """
+        return self._on_demand
 
     @property
     def test_id(self) -> str:

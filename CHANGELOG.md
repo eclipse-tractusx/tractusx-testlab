@@ -9,6 +9,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Sessions (labs): `async: true` on a `tests:` entry of `index.yaml` (with
+  `extensions: [labs]`) marks a test to run on demand.
+  `TestlabPlayer.open_session()` returns a `TckSession` that holds the run open
+  between tests — infrastructure bound, services and mocks up, context kept.
+  `run_scheduled()` runs every other test and announces the on-demand ones
+  with the new `test_awaiting` event; `run_test(id)` runs one, as often as it
+  is asked (`test_started` carries `attempt`, and a re-run forgets what the
+  previous attempt published); `close()` tears down and gives the verdict from
+  each test's latest attempt, reporting a test never run as skipped.
+  `run_tck` is now a session that runs everything, so a plain run is unchanged.
+  The compiled package's test entry carries `async: true`, and so does
+  `TestInspection.on_demand`.
+
 - `labs/mock/api/dynamic` — a mock that works out its reply per call. Its
   `process:` steps run for every call, on a copy of the run's context and on
   the run's event loop, and its `response_status`, `response_body` and

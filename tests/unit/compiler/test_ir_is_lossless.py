@@ -100,7 +100,7 @@ def _manifest() -> dict:
             "license": "Apache-2.0",
             "standards": [{"id": "CX-0135", "version": "v3.1.0"}],
         },
-        "extensions": ["cac"],
+        "extensions": ["cac", "labs"],
         "env": {
             "variables": [
                 {
@@ -112,7 +112,9 @@ def _manifest() -> dict:
             "schemas": [{"id": "cert_schema", "source": "cert.json"}],
             "testdata": [{"id": "body", "source": "body.json"}],
         },
-        "tests": [{"id": "everything.yaml", "name": "Everything", "skippable": True}],
+        "tests": [
+            {"id": "everything.yaml", "name": "Everything", "skippable": True, "async": True}
+        ],
     }
 
 
@@ -221,7 +223,9 @@ class TestTheFixtureIsComplete:
 
     def test_the_test_entry_declares_every_manifest_entry_field(self) -> None:
         entry = _manifest()["tests"][0]
-        missing = set(TckTestEntry.model_fields) - set(entry)
+        missing = {field.alias or name for name, field in TckTestEntry.model_fields.items()} - set(
+            entry
+        )
         assert not missing, (
             f"The fixture test entry does not exercise {sorted(missing)}. Add them to _manifest()."
         )
@@ -355,6 +359,7 @@ class TestEveryManifestEntryFieldSurvives:
         entry = execution["tests"][0]
 
         assert entry["skippable"] is True
+        assert entry["async"] is True
         assert entry["name"] == "Everything"
 
     def test_the_manifest_carries_the_same_entries(self, tmp_path) -> None:
@@ -365,7 +370,7 @@ class TestEveryManifestEntryFieldSurvives:
     def test_the_manifest_names_the_experimental_extensions_used(self, tmp_path) -> None:
         """A package built on experimental syntax says so where a reviewer looks first."""
         manifest, _ = _compile_package(tmp_path)
-        assert manifest["tck"]["extensions"] == ["cac"]
+        assert manifest["tck"]["extensions"] == ["cac", "labs"]
 
     def test_a_test_no_one_marked_is_not_skippable(self, tmp_path) -> None:
         """The default travels too — silence means the test must run."""
@@ -377,3 +382,4 @@ class TestEveryManifestEntryFieldSurvives:
 
         _, execution = build_ir(manifest_path)
         assert execution["tests"][0]["skippable"] is False
+        assert "async" not in execution["tests"][0]
