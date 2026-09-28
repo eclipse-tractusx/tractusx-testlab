@@ -49,6 +49,7 @@ from tractusx_testlab.steps.assertions.operands import (
     bounded,
     has_key,
     is_member,
+    is_within,
     matches,
     numeric,
     same,
@@ -66,6 +67,7 @@ AssertOperator = Literal[
     "not_equals",
     "contains",
     "not_contains",
+    "is_in",
     "matches_regex",
     "one_of",
     "none_of",
@@ -157,6 +159,12 @@ TABLE: tuple[Operator, ...] = (
         Arity.BINARY,
         lambda actual, expected: actual is None or str(expected) not in str(actual),
         "Expected {actual!r} to NOT contain {expected!r}",
+    ),
+    Operator(
+        "is_in",
+        Arity.BINARY,
+        is_within,
+        "Expected {actual!r} to occur in {expected!r}",
     ),
     Operator(
         "matches_regex",

@@ -148,6 +148,20 @@ def is_member(actual: object, expected: object) -> bool:
         raise OperandError(f"Cannot look for {actual!r} inside {expected!r}") from error
 
 
+def is_within(actual: object, expected: object) -> bool:
+    """Ask whether *actual*, as text, occurs inside the text *expected*.
+
+    The mirror of ``contains``: the value under test is the fragment and the
+    expectation the whole, so ``abc`` and ``urn:uuid:abc`` are both in
+    ``urn:uuid:abc``. A missing or empty value is in nothing, since the empty
+    text would otherwise sit inside every expectation and pass on an answer
+    that carried no value at all.
+    """
+    if actual is None or actual == "":
+        return False
+    return as_text(actual) in as_text(expected)
+
+
 def has_key(actual: object, expected: object) -> bool:
     """Ask whether *actual* is a mapping carrying the key *expected*."""
     if not isinstance(actual, dict):
