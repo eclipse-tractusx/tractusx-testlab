@@ -339,6 +339,12 @@ Validations are **nested inside the terminal step event** in `data.validations[]
 | `inputs` | `object` | Assertion type + expected value |
 | `outputs` | `object` | Actual value + `passed` boolean |
 | `errors` | `array` | Present only on validation failure (with recommendations) |
+| `step` | `array` | Present only on a flow step (`flow/if`, `flow/retry`, `labs/flow/for_each`): the sub-step the check ran on, outermost first — its `id`, else the last segment of its `uses`; a loop's item is a `[<index>]` segment |
+| `cac` | `array` | The check's CACs, else its sub-step's, else its step's |
+
+A flow step's sub-steps publish no terminal event of their own, so the flow
+step's `validations[]` carries theirs, each tagged with `step`: the checks of
+the branch it took, of a retry's last attempt, and of every item a loop ran.
 
 **Rationale**: Validations are semantically part of the step result, not independent events. Nesting reduces event count and keeps the step result self-contained for rendering.
 

@@ -40,6 +40,7 @@ from tractusx_testlab.syntax import diagnostics
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
+    from tractusx_testlab.steps.flow._nested import NestedChecks
 
 
 class StepParams(BaseModel):
@@ -129,19 +130,22 @@ class StepOutput[PayloadT]:
     step publishes into the run context: every top-level field of the output is
     written as a context variable after the step runs, so a step's return value
     is the whole of its interface — there is no separate export channel.
+    ``nested`` is a flow step's: the checks its sub-steps evaluated.
     """
 
-    __slots__ = ("request", "response", "value")
+    __slots__ = ("nested", "request", "response", "value")
 
     def __init__(
         self,
         value: Any = None,
         request: HttpRequest | None = None,
         response: HttpResponse | None = None,
+        nested: NestedChecks | None = None,
     ):
         self.value = value
         self.request = request
         self.response = response
+        self.nested = nested
 
 
 class BaseStep[ParamsT, PayloadT](ABC):

@@ -108,6 +108,16 @@ class AssertionResult(BaseModel):
     actual: Any | None = None
     message: str = ""
     severity: AssertionSeverity = AssertionSeverity.HARD
+    #: The sub-step of a flow step (``flow/if``, ``flow/retry``,
+    #: ``labs/flow/for_each``) this check was evaluated on, outermost first: each
+    #: segment is the sub-step's ``id`` — else the last segment of what it
+    #: ``uses`` — and a loop's item is a ``[<index>]`` segment of its own. Empty
+    #: for the step's own checks. A flow step reports its sub-steps' checks as
+    #: its own, because the sub-steps have no result of their own to carry them.
+    step_path: list[str] = Field(default_factory=list)
+    #: The CACs of the sub-step that evaluated the check, when it is one: what
+    #: coverage counts the check under when the check names none itself.
+    step_cac: list[str] = Field(default_factory=list)
 
 
 class StepResult(BaseModel):
@@ -158,6 +168,10 @@ class StepResult(BaseModel):
     error_traceback: str | None = None
     output: Any | None = None
     assertions: list[AssertionResult] = Field(default_factory=list)
+    #: How many checks the sub-steps that ran declared — for a flow step, what
+    #: :attr:`assertions` should hold beyond its own. Counted so a sub-step that
+    #: stopped before its checks shows as checks declared and not evaluated.
+    nested_declared: int = 0
 
 
 class CallbackResult(BaseModel):

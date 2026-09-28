@@ -201,7 +201,10 @@ class TestEngineToolbox:
         declared = sum(
             len(step.get("validate") or []) for step in _phase("engine_toolbox.yaml", "execution")
         )
-        assert sum(len(r.assertions) for r in outcome.results) == declared
+        # The branch and the retry report their sub-steps' checks as their own.
+        nested = sum(r.nested_declared for r in outcome.results)
+        assert nested > 0
+        assert sum(len(r.assertions) for r in outcome.results) == declared + nested
 
     async def test_all_three_grants_came_back_with_the_token_the_endpoint_issued(
         self, outcome

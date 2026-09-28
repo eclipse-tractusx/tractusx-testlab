@@ -102,7 +102,11 @@ def validation_of(result: AssertionResult, step_cac: list[str] | None = None) ->
         "inputs": inputs,
         "outputs": {"actual": result.actual, "passed": result.passed},
     }
-    cac = declared.cac or step_cac
+    # A sub-step's check is its own step's: the sub-step it ran on, and that
+    # sub-step's CACs before the flow step's.
+    if result.step_path:
+        validation["step"] = list(result.step_path)
+    cac = declared.cac or result.step_cac or step_cac
     if cac:
         validation["cac"] = list(cac)
     if not result.passed:

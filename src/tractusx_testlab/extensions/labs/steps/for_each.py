@@ -35,6 +35,12 @@ from tractusx_testlab.authoring.registry import StepRegistry, step
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
+from tractusx_testlab.steps.flow._nested import (
+    NestedChecks,
+    NestedStepFailed,
+    first_failure,
+    nested_checks,
+)
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepPayload
 
 if TYPE_CHECKING:
@@ -105,20 +111,27 @@ class ForEachStep(BaseStep[ForEachParams, ForEachOutput]):
         self, params: ForEachParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[ForEachOutput]:
         outputs: list[list[Any]] = []
+        nested = NestedChecks()
         with _loop_scope(context):
             for index, item in enumerate(params.items):
                 context.set_variable(EACH_ITEM, item)
                 context.set_variable(EACH_INDEX, index)
                 results = await _run_sequence(params.steps, index, context)
-                failed = next((r for r in results if r.status == StepStatus.FAILED), None)
+                # Every item's checks are a verdict: under the item they ran for.
+                nested += nested_checks(params.steps, results, prefix=(f"[{index}]",))
+                failed = first_failure(results)
                 if failed is not None:
-                    raise RuntimeError(
+                    raise NestedStepFailed(
                         f"Nested step failed for item {index} ({item!r}): "
-                        f"'{failed.step_type}' — {failed.error or 'assertion failed'}"
+                        f"'{failed.step_type}' — {failed.error or 'assertion failed'}",
+                        failed,
+                        nested,
                     )
                 outputs.append([result.output for result in results])
 
-        return StepOutput(value=ForEachOutput(iterations=len(outputs), outputs=outputs))
+        return StepOutput(
+            value=ForEachOutput(iterations=len(outputs), outputs=outputs), nested=nested
+        )
 
 
 @contextmanager

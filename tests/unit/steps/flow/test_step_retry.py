@@ -30,6 +30,7 @@ import pytest
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.step_runner import run_step
+from tractusx_testlab.steps.flow._nested import NestedStepFailed
 from tractusx_testlab.steps.flow.retry import RetryStep
 from tractusx_testlab.steps.util.log import LogStep
 
@@ -104,14 +105,14 @@ class TestRetryStep:
             "delay_s": 0,
         }
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(NestedStepFailed):
             await RetryStep().invoke(params, _context(), _step_def())
 
     @pytest.mark.asyncio
     async def test_unknown_nested_step_type_fails(self) -> None:
         params = {"steps": [{"uses": "does/not_exist"}], "max_attempts": 1}
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(NestedStepFailed):
             await RetryStep().invoke(params, _context(), _step_def())
 
     @pytest.mark.asyncio
