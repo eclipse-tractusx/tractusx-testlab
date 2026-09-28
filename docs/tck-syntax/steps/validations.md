@@ -44,6 +44,7 @@ validate:
 | `equals` / `not_equals` | any | Exact comparison |
 | `not_null` / `is_null` | any | Presence |
 | `contains` / `not_contains` | string, array | Containment |
+| `is_in` | string | The value occurs in `value` (`contains` turned around): `abc` and `urn:uuid:abc` are both in `urn:uuid:abc` |
 | `one_of` / `none_of` | any | Membership in `value` (a list) |
 | `matches_regex` | string | Regular expression match |
 | `gt` / `gte` / `lt` / `lte` | number | Numeric comparison |

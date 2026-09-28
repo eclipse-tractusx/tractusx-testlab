@@ -25,6 +25,7 @@ The same operators are used by `validate/assert`, `validate/field` and the [Cond
 | `not_equals` | `value` | `Expected a value other than <value>, got <input>` |
 | `contains` | `value` | `Expected <input> to contain <value>` |
 | `not_contains` | `value` | `Expected <input> to NOT contain <value>` |
+| `is_in` | `value` | `Expected <input> to occur in <value>` |
 | `matches_regex` | `value` | `Pattern <value> not matched in <input>` |
 | `one_of` | `value` | `Expected <input> to be one of <value>` |
 | `none_of` | `value` | `Expected <input> to be none of <value>` |

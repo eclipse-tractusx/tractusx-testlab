@@ -211,7 +211,7 @@ Exactly three validation steps: `validate/assert {input, operator, value}`,
 `validate/schema {input, schema}`. Operator vocabulary (only these):
 
 `not_null, is_null, not_empty, equals, not_equals, contains, not_contains,
-matches_regex, one_of, none_of, has_key, not_has_key, gt, gte, lt, lte,
+is_in, matches_regex, one_of, none_of, has_key, not_has_key, gt, gte, lt, lte,
 length_equals, length_gt, length_lt, between`
 
 A failed validation fails its step; a failed step aborts the test (rest skipped,

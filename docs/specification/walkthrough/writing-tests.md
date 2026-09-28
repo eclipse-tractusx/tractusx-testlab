@@ -311,8 +311,8 @@ validate:
     with: { input: status_code, operator: between, min: 200, max: 299 }
 ```
 
-Operators: `not_null`, `is_null`, `not_empty`, `equals`, `not_equals`, `contains`, `not_contains`, `matches_regex`,
-`one_of`, `none_of`, `has_key`, `not_has_key`, `gt`, `gte`, `lt`, `lte`, `length_equals`, `length_gt`, `length_lt`,
+Operators: `not_null`, `is_null`, `not_empty`, `equals`, `not_equals`, `contains`, `not_contains`, `is_in`,
+`matches_regex`, `one_of`, `none_of`, `has_key`, `not_has_key`, `gt`, `gte`, `lt`, `lte`, `length_equals`, `length_gt`, `length_lt`,
 `between` (`min`/`max`). When none is named, `not_null` applies. `severity: HARD` (the default) fails the step;
 `severity: SOFT` is reported as a warning. A failed step aborts the rest of the test.
 

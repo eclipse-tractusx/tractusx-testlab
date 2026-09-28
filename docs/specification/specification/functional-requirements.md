@@ -44,7 +44,7 @@ limitation noted), or **Open** (specified, not implemented).
 |----|-------------|----------|--------|
 | FR-ASSERT-01 | Each step MAY declare a `validate` block of assertions evaluated against the step's declared returns. | Must | Done |
 | FR-ASSERT-02 | Assertions SHALL be `validate/assert` (the value at `input`), `validate/field` (the value at `path` inside `input`) or `validate/schema` (JSON Schema). The operator MAY be given as `with.operator` or as a `uses` suffix (`validate/assert/equals`). | Must | Done |
-| FR-ASSERT-03 | Operators SHALL be `not_null`, `is_null`, `not_empty`, `equals`, `not_equals`, `contains`, `not_contains`, `matches_regex`, `one_of`, `none_of`, `has_key`, `not_has_key`, `gt`, `gte`, `lt`, `lte`, `length_equals`, `length_gt`, `length_lt`, `between`, shared with `flow/if` conditions. | Must | Done |
+| FR-ASSERT-03 | Operators SHALL be `not_null`, `is_null`, `not_empty`, `equals`, `not_equals`, `contains`, `not_contains`, `is_in`, `matches_regex`, `one_of`, `none_of`, `has_key`, `not_has_key`, `gt`, `gte`, `lt`, `lte`, `length_equals`, `length_gt`, `length_lt`, `between`, shared with `flow/if` conditions. | Must | Done |
 | FR-ASSERT-04 | Each assertion MAY declare `severity`: `HARD` (default; failure fails the step) or `SOFT` (failure is a warning). | Must | Done |
 | FR-ASSERT-05 | Each assertion MAY carry a `name`, used by the run report to identify it. | Should | Done |
 | FR-ASSERT-06 | Assertion results SHALL be recorded per step in `StepResult.assertions` and summarised per test in `TestResult.assertion_summary`. | Must | Done |

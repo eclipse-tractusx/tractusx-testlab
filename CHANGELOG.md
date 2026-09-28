@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `is_in` operator for `validate/assert`, `validate/field` and `flow/if`: the
+  value under test, as text, occurs in `value` — `contains` turned around. An
+  echoed id passes with or without its prefix
+  (`value: "urn:uuid:${{ execution.mint_id.value }}"` accepts both
+  `urn:uuid:<uuid>` and `<uuid>`), and the result's `actual` records which
+  one arrived. A missing or empty value is in nothing.
 - Sessions (labs): `async: true` on a `tests:` entry of `index.yaml` (with
   `extensions: [labs]`) marks a test to run on demand.
   `TestlabPlayer.open_session()` returns a `TckSession` that holds the run open

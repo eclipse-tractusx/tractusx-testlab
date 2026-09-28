@@ -92,7 +92,7 @@ One comparison the branch is decided on.
 |---|---|---|---|---|---|
 | `input` | any | no | `None` | — | The value to test, usually a previous step's output. |
 | `path` | string | no | `''` | — | Dot-notation path into the input, e.g. 'content.state'; empty tests it whole. |
-| `operator` | `not_null` \| `is_null` \| `not_empty` \| `equals` \| `not_equals` \| `contains` \| `not_contains` \| `matches_regex` \| `one_of` \| `none_of` \| `has_key` \| `not_has_key` \| `gt` \| `gte` \| `lt` \| `lte` \| `length_equals` \| `length_gt` \| `length_lt` \| `between` | no | `'not_null'` | — | Comparison applied to the value. |
+| `operator` | `not_null` \| `is_null` \| `not_empty` \| `equals` \| `not_equals` \| `contains` \| `not_contains` \| `is_in` \| `matches_regex` \| `one_of` \| `none_of` \| `has_key` \| `not_has_key` \| `gt` \| `gte` \| `lt` \| `lte` \| `length_equals` \| `length_gt` \| `length_lt` \| `between` | no | `'not_null'` | — | Comparison applied to the value. |
 | `value` | any | no | `None` | — | What the value is compared against; unused by unary operators. |
 
 ### ReturnFieldDefinition

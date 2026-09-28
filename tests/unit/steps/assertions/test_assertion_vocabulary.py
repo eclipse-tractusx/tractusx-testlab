@@ -62,6 +62,7 @@ class TestOperatorVocabulary:
             "not_equals",
             "contains",
             "not_contains",
+            "is_in",
             "matches_regex",
             "one_of",
             "none_of",
@@ -130,6 +131,40 @@ class TestBetween:
             {"status_code": 204}, "validate/assert/between", input="status_code", min=200, max=299
         )
         assert result.passed, result.message
+
+
+class TestIsIn:
+    """``is_in`` asks whether the value occurs in ``value`` — ``contains`` turned around."""
+
+    _MESSAGE_ID = "urn:uuid:9f1c2d3e-0000-4000-8000-000000000001"
+
+    @pytest.mark.parametrize("related", [_MESSAGE_ID, _MESSAGE_ID.removeprefix("urn:uuid:")])
+    def test_the_id_passes_with_or_without_its_urn_prefix(self, related: str) -> None:
+        result = _run(
+            {"request_body": {"header": {"relatedMessageId": related}}},
+            "validate/field",
+            input="request_body",
+            path="header.relatedMessageId",
+            operator="is_in",
+            value=self._MESSAGE_ID,
+        )
+        assert result.passed, result.message
+        assert result.actual == related
+
+    def test_a_different_id_fails(self) -> None:
+        result = _run(
+            {"related": "urn:uuid:another"},
+            "validate/assert",
+            input="related",
+            operator="is_in",
+            value=self._MESSAGE_ID,
+        )
+        assert not result.passed
+        assert "occur in" in result.message
+
+    @pytest.mark.parametrize("missing", [None, ""])
+    def test_a_missing_or_empty_value_is_in_nothing(self, missing: object) -> None:
+        assert apply_operator("is_in", missing, self._MESSAGE_ID)[0] is False
 
 
 class TestSchema:
