@@ -261,7 +261,7 @@ nav:
         - ADR-0018 Unified Variables Model: developer/decision-records/shared/ADR-0018-unified-variables-model.md
         - ADR-0021 Remove Precondition Concept: developer/decision-records/shared/ADR-0021-remove-precondition-concept.md
         - ADR-0025 Assertions Read Declared Returns: developer/decision-records/shared/ADR-0025-assertions-read-declared-returns.md
-        - ADR-0027 Call Provenance: developer/decision-records/shared/ADR-0027-call-provenance.md
+        - ADR-0027 Hosted and Remote Runs: developer/decision-records/shared/ADR-0027-call-provenance.md
   - Contributing:
     - Guidelines: contributing/index.md
 

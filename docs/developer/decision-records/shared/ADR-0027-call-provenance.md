@@ -21,7 +21,7 @@
 <!-- This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1). -->
 <!-- It was reviewed and tested by a human committer. -->
 
-# ADR-0027: Call Provenance — the Product Made the Call, Not a Replay
+# ADR-0027: Proving the Product Made the Call — Hosted and Remote Runs
 
 ## Status
 
@@ -33,192 +33,207 @@ Proposed
 
 ## Context
 
-An assessment says that a product conforms to a standard. The run reaches
-that product over HTTP, and HTTP has no notion of *which program* sent a
-request. Whatever a product sends, `curl` or a Postman collection can send
-byte for byte. A vendor could therefore pass an inbound suite without the
-product ever taking part: read the run wizard's SUT Setup step, drive their
-own connector's management API by hand (negotiate the engine's offer, fetch
-the EDR), call the mock through their data plane with a body copied from a
-previous run, and collect the report. Outbound suites have the mirror image:
-the thing answering the engine's connector may be a stand-in server, not the
-product.
+An assessment says that a product conforms to a standard. The question this
+ADR answers is how the engine knows that the calls it graded were made by
+that product, and not by a person with Postman or `curl`.
 
-What the runs already establish, and what they do not:
+### What the engine can see today
 
-- **Inbound suites** (CX-0135 certificate push, CX-0151 notification receipt,
-  CX-0127 Unique ID push) never hand out the mock URL. The mock sits behind an
-  asset on the engine connector, under an access policy that names the SUT's
-  BPNL, and requires the run's API key, which only the asset's private data
-  address carries (testlab 1.0.0a8). A keyless call is refused with 401 and
-  fails the open wait at once (`MOCK_CALL_REFUSED`). This proves that the
-  call came through a data plane holding an EDR for *this run's* asset, and
-  that the connector which negotiated it presented the SUT's dataspace
-  identity. It says nothing about the software behind that connector.
-- **Outbound suites** negotiate with the SUT's connector over DSP. The
-  dataspace verifies that connector's identity (its membership credential),
-  so the counterparty *organisation* is proven. Which backend served the
-  data behind the connector is not.
-- **Direct suites** (CX-0002 registry, OAuth2-protected) call the SUT as a
-  server. Replay does not apply; a stand-in does, as for outbound suites.
+In an inbound suite (CX-0135 certificate push, CX-0151 notification receipt,
+CX-0127 Unique ID push) the mock sits behind an asset on the engine
+connector. The access policy names the SUT's BPNL, and the mock requires the
+run's API key, which only the asset's private data address carries (testlab
+1.0.0a8). A call that reaches the mock therefore came through a data plane
+that holds an EDR for this run's asset, negotiated by a connector that
+presented the SUT's dataspace identity. The data plane can also forward the
+consumer's BPN and agreement id, and the engine can check them against its
+own connector.
 
-The constraints are fixed by what the assessment is for. The product speaks
-the Catena-X standards and nothing else: it does not know the engine exists,
-and no standard makes it send a header, token or attestation that a script
-could not send too. Requiring one would certify our SDK, not the vendor's
-product. There is therefore no purely technical proof that the product made
-the call, and a decision that pretends otherwise would be wrong. What the
-runs *can* do is make a hand-driven pass expensive, leave evidence that a
-reviewer can weigh, and bind the result to a named product and a named
-connector so that a replay is a false declaration rather than a gap in the
-test.
+### Why none of that proves the product made the call
 
-The conformity assessment itself is done by a Conformity Assessment Body
-(CAB). The engine's report is evidence handed to that body, not the
-certificate. The decision below is written for that division of labour.
+Every one of those checks is about the **connector**, and the connector is
+operated by the vendor. A person can open Postman against their own
+connector's management API, request the engine's catalog, negotiate the
+offer, read the EDR, and POST a body to their own data plane. The engine then
+sees exactly what it would see if the product had done it: the right BPN,
+the right agreement, the right key, the right run. There is no header, no
+token and no timing the product produces that the person cannot produce as
+well, because the person controls the connector *and* the product. A secret
+placed in the product is a secret the product's owner can read.
+
+This holds for any check the engine performs on what arrives. It is not a
+gap in the current checks that a better check would close. It follows from
+who controls the machine the call leaves. Only a party that controls where
+the product runs can know that the product, and nothing else, made the call.
+
+### Constraints
+
+- The product speaks the Catena-X standards and nothing else. It does not
+  know the engine exists, and no standard makes it carry an attestation.
+- The test suite already runs its own dataspace identity services on its
+  cluster (Tractus-X IdentityHub and IssuerService in
+  `cx-playground-infra`), so it can issue a DID and credentials to a
+  connector it deploys itself.
+- The conformity assessment is done by a Conformity Assessment Body (CAB).
+  The engine's report is evidence handed to that body.
 
 ## Decision
 
-**We do not try to recognise the client at the HTTP layer. We bind every
-call to an identity and a run, write kits so that a pass cannot be replayed
-from a recording, and record evidence a reviewer can act on.** Three layers,
-each with an owner.
+**A result is only called verified when the engine controlled where the
+product ran. Every result carries its assurance level: `hosted` when the
+engine ran the product in a sandbox it controls, `remote` when the product
+ran at the vendor.** Remote runs keep their value as self-assessment, are
+hardened against manual driving, and say plainly what they do not prove.
 
-### 1. Every call is bound to an identity and a run (testlab, engine)
+### Level `hosted`: the engine runs the product
 
-The mock key already binds a call to the run. The wait step will also bind it
-to the organisation and to the agreement:
+The vendor hands over the product, not access to it. The engine deploys it
+in a sandbox where the product is the only thing that can reach the SUT
+connector.
 
-- `mock/wait/dataplane/http_request` reads the consumer's identity from what
-  the engine connector's data plane adds to the forwarded call. The Tractus-X
-  data plane forwards the negotiating party's BPN and the agreement id as
-  request headers (`Edc-Bpn`, `Edc-Contract-Agreement-Id`); the exact names
-  are confirmed on the first real push, as CX-0135's push test already
-  notes, and are looked up in one place rather than in every kit.
-- The step resolves the agreement id on the engine connector's management API
-  (`/v3/contractagreements/{id}`) and checks that the agreement's consumer is
-  the bound `sut.connector` participant and its asset is the one waited on.
-  A call whose agreement belongs to another party, another asset or another
-  run is refused the way a keyless call is: the wait fails at once with the
-  reason, it does not time out.
-- The step publishes a `caller` output — `bpn`, `agreement_id`, `verified`
-  — so a kit can assert on it and the trace records it (ADR-0016). Where the
-  data plane forwards nothing, `verified` is false and the report says so;
-  the run does not invent a caller.
-- Outbound steps already hold the agreement they negotiated. `caller` gets
-  its counterpart there, `counterparty`, taken from the agreement's provider
-  id, so every exchange in a report names the organisation on the other side.
+1. **The product is submitted as images pinned by digest.** An OCI image or a
+   Helm chart whose images are all pinned by `sha256` digest, plus a values
+   file with the product's own configuration. Connector and identity settings
+   are not in it; the engine supplies them.
+2. **The engine provisions one namespace per assessment**, containing:
+   - the product's pods, from the submitted digests;
+   - a SUT connector, deployed by the engine from the same Tractus-X chart it
+     uses for its own connector;
+   - a dataspace identity for that connector: a DID and membership
+     credential for a test BPNL, issued by the test suite's IssuerService;
+   - a registry or other backend the kit's services require, where the
+     product does not bring its own.
+3. **The connector's secrets exist only inside the namespace.** The engine
+   generates the management API key and the wallet credentials and injects
+   them as Kubernetes secrets into the product's pods. They are never shown
+   in the UI, the trace or the logs, and no person receives them.
+4. **Network policy makes the product the only caller.**
+   - The SUT connector's management API accepts connections only from the
+     product's pods. It has no ingress, no port-forward and no route from
+     outside the namespace.
+   - Egress from the namespace goes only to the engine connector's DSP and
+     data plane endpoints, the test suite's identity services, and the
+     product's declared dependencies.
+   - Nobody gets `exec`, a shell, or a Kubernetes credential for the
+     namespace. The operator gets read-only logs.
+5. **The operator uses the product, not the connector.** Where a kit hands
+   something over for the SUT to hold (`with.source: register`) or asks for a
+   business action, the operator does it through the product's own UI or API,
+   which the engine exposes behind the engine login for the duration of the
+   run and records in the trace. A person triggering the product is the
+   product at work; a person reaching past it to the connector is what the
+   sandbox rules out.
+6. **The report names the digests.** A `hosted` result is issued to the image
+   digests that ran, the chart version and the values file hash. A
+   deployment with other digests is not what was assessed; the CAB can check
+   that in an audit.
 
-This closes "someone else's connector" and "an EDR from an earlier run". It
-does not close "the right connector, driven by hand", which layers 2 and 3
-address.
+Under these rules, every call that reaches the engine connector from the SUT
+connector was started by a process in the product's pods, because nothing
+else can reach that connector's management API or hold its credentials.
+That is the guarantee Postman cannot break.
 
-### 2. Kits are written so a recording cannot pass them (kits, testlab)
+The namespace is torn down when the run ends, the same way teardown removes
+a run's assets today. Vendor code runs in the test suite's cluster, so the
+sandbox also protects the cluster: a dedicated node pool, a sandboxed
+runtime (gVisor or Kata), resource quotas, no service account token, and
+deny-all network policy as the default.
 
-A collection captured from one run must not pass the next. Kit authors apply
-these rules; static inspection (ADR-0022) warns where it can see they were
-not.
+### Level `remote`: the product runs at the vendor
 
-- **Per-run values the SUT must carry back.** Anything the engine sends that
-  the SUT must answer carries a value minted for this run
-  (`util/generate_uuid`, `${{ execution.id }}`): a request id, a
-  notification id, a certificate type or BPNL chosen for the run, a
-  correlation id. The assertions compare against that value, never against a
-  literal the last run also used. A replayed body carries the old value and
-  fails.
-- **Chains, not single shots.** Where the standard has a request/response or
-  push/status pair, the kit tests the pair: the engine's reply is worked out
-  from what the SUT sent (`labs/mock/api/dynamic`), and the SUT's next message
-  must depend on that reply. A collection cannot precompute a reply it has
-  not seen.
-- **Reaction windows.** A message that is a *reaction* to something the engine
-  sent (a status after a push, a response to a request) is waited on with a
-  short window, distinct from the setup window a human needs to register an
-  offer. The window is a property of the assessment session, set by the
-  operator, not a normative requirement from the standard: a reaction that
-  arrives late does not fail conformance, it fails the session, and the
-  report says which reactions were late. Software answers in seconds; a
-  person copying values between tabs does not.
-- **Unsolicited messages are marked as such.** A test the engine cannot
-  seed — a provider push that the standard leaves unsolicited, as CX-0135's
-  push is in Saturn — proves delivery of a well-formed message by the
-  organisation's connector, and no more. Its description says so, and the
-  report weighs it as delivery evidence rather than as proof of behaviour.
+Many products cannot be handed over as images: they are SaaS, depend on an
+ERP, or are connectors themselves. They are still assessed, at level
+`remote`, and the report says that the engine could verify the organisation
+but not the program.
 
-### 3. The result is bound to a named product, with evidence a person reviews (engine, procedure)
+- **Organisation, agreement and run are checked.** The existing mock key and
+  access policy stay. In addition, `mock/wait/dataplane/http_request`
+  resolves the agreement id the data plane forwards on the engine connector,
+  checks that its consumer is the bound `sut.connector` participant and its
+  asset the one waited on, and publishes a `caller` output (`bpn`,
+  `agreement_id`, `verified`) for the trace. Header names are confirmed on
+  the first real push, as CX-0135's push test already notes.
+- **Kits make driving by hand impractical.** A hand-driven pass should cost
+  more than implementing the standard.
+  - Per-run values the SUT must carry back (`util/generate_uuid`,
+    `${{ execution.id }}`), so a collection recorded from one run fails the
+    next.
+  - Request and response chains through `labs/mock/api/dynamic`, so the
+    SUT's next message depends on a reply it has not seen before.
+  - Reaction windows short enough for software and too short for a person
+    copying values between tabs, as a condition of the session rather than a
+    conformance rule. A late reaction fails the session, not the standard.
+  - Several reactions in one run where the standard allows it.
+- **The operator declares.** Starting a remote assessment records the
+  operator's declaration that the named product, unmodified, performed the
+  run without manual intervention.
 
-- **The assessment names the product.** An assessment carries the product's
-  name, version and vendor, and the SUT connector record it ran against. The
-  report is issued to that product and connector, and the trace records, for
-  every inbound call, the caller identity and agreement from layer 1 and the
-  time elapsed since the engine action it reacts to.
-- **The vendor declares.** Starting an assessment run records the operator's
-  declaration that the named product, unmodified, performs the exchanges of
-  the run without manual intervention. A replay is then a false declaration
-  toward the CAB, with the trace as the record against which it is checked.
-- **The CAB may witness.** The live trace (ADR-0003) and interactive
-  sessions (testlab 1.0.0a11) already let a reviewer watch a run as it goes.
-  A witnessed session, where the CAB observes the product's own screens or
-  logs alongside the trace, is the assessment body's procedure to require;
-  the engine provides the trace and marks the session as witnessed when the
-  CAB says so.
+These measures stop a person with Postman. They do not stop a person who
+writes a script that implements the protocol, and the ADR does not claim
+they do. That residual is why the result is labelled `remote`.
+
+### Who requires which level
+
+The CAB decides, per standard, whether `remote` is acceptable or `hosted` is
+required, and the engine enforces it: an assessment that requires `hosted`
+cannot be started against a vendor-run SUT connector. The level is part of
+the assessment record, the report and the certificate evidence.
 
 ### Alternatives rejected
 
-- **Client fingerprinting** (User-Agent, header order, TLS fingerprint). On
-  every connector path the client is a data plane, not the product, so
-  there is nothing of the product to fingerprint; on a direct path the
-  values are trivially set by any tool and differ across proxies, so a
-  fingerprint would fail conformant products and pass replays.
+- **Checks on the engine side alone** (key, policy, `Edc-Bpn`, agreement).
+  They identify the connector, and the vendor drives the connector. They are
+  kept for `remote`, never presented as proof of the program.
+- **Client fingerprinting** (User-Agent, header order, TLS fingerprint). On a
+  connector path the client is a data plane, not the product. On a direct
+  path any tool sets the same values.
 - **A required header, token or SDK inside the product.** Not in any
-  standard; it would certify our attestation library rather than the
-  vendor's implementation of the standard, and a script would send the same
-  header.
-- **Inspecting the SUT connector's management API.** The engine holds the
-  SUT connector's management URL for outbound suites, and could read the
-  transfer processes behind an inbound push. They look the same whether the
-  product or a person started them, so the check would prove nothing and
-  would give inbound suites a dependency on management access they do not
-  otherwise need.
-- **Timing as the verdict.** A fast script beats a slow product. Timing is
-  evidence in the report and a session condition (layer 2), never a
-  conformance failure on its own.
+  standard. It would certify our library, and the product's owner can read
+  any key the product holds.
+- **Inspecting the SUT connector's management API.** Transfers started by the
+  product and by Postman look the same there.
+- **Remote attestation on the vendor's infrastructure** (confidential VMs or
+  containers attesting an image digest). It would give `hosted` assurance
+  without hosting, and is the right direction for products that cannot be
+  handed over. It needs attestation infrastructure at every vendor and a
+  verifier in the engine, so it is left for a later ADR.
 
 ## Consequences
 
 ### Positive
 
-- Every inbound call in a report names the organisation and the agreement it
-  came through, checked against the engine connector, not inferred from
-  headers alone. "Which connector" and "which run" are settled technically.
-- A collection recorded from one run fails the next by construction, so a
-  hand-driven pass costs a person a live, interactive session against per-run
-  values, under a window and a declaration. That is the deterrent HTTP
-  allows.
-- The division of labour is explicit: the engine proves identity, run and
-  timing; the kit proves behaviour that cannot be precomputed; the CAB
-  weighs the evidence and holds the vendor to its declaration. Nobody has to
-  believe the engine proves what it cannot.
+- `hosted` results carry a guarantee that holds against the product's owner:
+  the calls came from the digests in the report, because nothing else could
+  make them.
+- `remote` results keep their use for self-assessment and for products that
+  cannot be hosted, and no longer overstate what they prove.
+- The CAB gets one field to reason about, the level, instead of inferring
+  trust from a trace.
+- Hosting also removes setup work from the vendor: no connector, identity or
+  registry of their own is needed for an assessment.
 
 ### Negative
 
-- There is no absolute proof, and the ADR says so. A person with the right
-  connector, enough time and a live session can still pass a suite by hand.
-  The declaration and the witnessed session, not the engine, carry that case.
-- Inbound kits become more involved: dynamic mocks, minted values, paired
-  tests and two windows instead of one. Existing inbound suites (CX-0127,
-  CX-0135, CX-0151) need a pass to adopt the rules.
-- Layer 1 depends on what the Tractus-X data plane forwards. The header names
-  are confirmed against a real push before any kit asserts on them; a
-  deployment whose data plane forwards nothing gets `verified: false` in its
-  reports rather than a pass.
-- The engine gains an assessment field set (product name, version, vendor,
-  declaration) and a report section; the wizard gains the declaration step.
+- The engine must deploy and isolate vendor code: namespace provisioning, a
+  per-run connector and identity, network policy, a sandboxed runtime and
+  image pulls from vendor registries. This is the largest piece of work in
+  the ADR and the main cost.
+- Not every product can be hosted. Products that depend on systems outside
+  the sandbox need stubs or declared dependencies, and some can only ever
+  reach `remote`.
+- A hosted run assesses the product with the engine's connector, not the
+  vendor's production connector. Connectors are assessed separately.
+- A vendor could submit an image that relays whatever an operator sends. The
+  report binds the result to that image; the CAB's audit of deployed digests,
+  not the engine, catches a relay shipped as a product.
+- Inbound kits become more involved for `remote`: minted values, dynamic
+  mocks, paired tests and reaction windows.
 
 ### Neutral
 
-- The mock key and the access policy stay as they are; layer 1 adds to them.
-- Direct and outbound suites change only in what the report records
-  (`counterparty`); their assertions do not change.
-- Whether a witnessed session is required, and for which standards, is the
-  CAB's decision and is documented in the assessment procedure, not here.
+- The mock key, the access policy and the teardown rules stay as they are
+  and apply to both levels.
+- Direct and outbound suites need no kit changes. They run against the hosted
+  product the same way they run against a remote one.
+- Which standards require `hosted` is the CAB's decision, documented in the
+  assessment procedure, not here.
