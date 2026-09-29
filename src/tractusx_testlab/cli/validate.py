@@ -32,6 +32,7 @@ import typer
 import yaml
 
 from tractusx_testlab.cli import app
+from tractusx_testlab.cli._run_summary import _colour_wanted
 from tractusx_testlab.syntax import diagnostics
 
 
@@ -46,35 +47,51 @@ def validate(
     ),
 ) -> None:
     """Validate a TCK manifest and its tests without compiling."""
+    from tractusx_testlab.cli._compile_report import ConsoleProgress
     from tractusx_testlab.compiler.compiler import Compiler
 
-    compiler = Compiler()
+    progress = ConsoleProgress()
+    progress.begin(manifest)
+    compiler = Compiler(progress=progress)
     try:
         result = compiler.validate(manifest, version=version)
     except (ValueError, yaml.YAMLError) as exc:
+        progress.fail()
         # A manifest that does not parse is the author's problem to fix, not a
         # crash to report: nothing downstream can run, so it is the only
         # finding there is, and a traceback of our own call stack buries it.
         message = exc if isinstance(exc, ValueError) else diagnostics.unparseable(exc, manifest)
-        typer.echo(f"  [ERROR] {message}")
-        typer.echo("\nInvalid — 1 error(s)")
+        _say(f"  {_mark('error')} {message}")
+        _say(typer.style("\nInvalid — 1 error(s)", fg=typer.colors.RED, bold=True))
         raise typer.Exit(1) from exc
 
+    progress.finish()
     if not result.issues:
-        typer.echo(f"OK — {manifest.name} is valid (no issues)")
+        _say(typer.style(f"OK — {manifest.name} is valid (no issues)", fg=typer.colors.GREEN))
         raise typer.Exit(0)
 
     for issue in result.issues:
-        prefix = "ERROR" if issue.level == "error" else "WARN "
-        typer.echo(f"  [{prefix}]{_where(issue)} {issue.message}")
+        _say(f"  {_mark(issue.level)}{_where(issue)} {issue.message}")
 
     if result.valid:
-        typer.echo(f"\nValid with {len(result.issues)} warning(s)")
+        _say(typer.style(f"\nValid with {len(result.issues)} warning(s)", fg=typer.colors.YELLOW))
         raise typer.Exit(0)
     else:
         errors = sum(1 for issue in result.issues if issue.level == "error")
-        typer.echo(f"\nInvalid — {errors} error(s)")
+        _say(typer.style(f"\nInvalid — {errors} error(s)", fg=typer.colors.RED, bold=True))
         raise typer.Exit(1)
+
+
+def _mark(level: str) -> str:
+    """``[ERROR]`` in red or ``[WARN ]`` in yellow — the colour is dropped where it is not wanted."""
+    if level == "error":
+        return typer.style("[ERROR]", fg=typer.colors.RED, bold=True)
+    return typer.style("[WARN ]", fg=typer.colors.YELLOW, bold=True)
+
+
+def _say(line: str) -> None:
+    """Print *line*, keeping its colour by the run report's rule (``_colour_wanted``)."""
+    typer.echo(line, color=_colour_wanted())
 
 
 def _where(issue: object) -> str:

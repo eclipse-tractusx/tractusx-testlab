@@ -41,6 +41,7 @@ from pathlib import Path
 import typer
 import yaml
 
+from tractusx_testlab.cli._compile_report import compile_or_exit, compiled
 from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.compiler.compiler import Compiler
 from tractusx_testlab.security.crypto.encryption import encrypt_for_recipients
@@ -215,12 +216,10 @@ def _seal_and_encrypt(
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
-        try:
-            compiler.compile_plain(manifest_path=manifest, output_path=tmp_path, version=version)
-        except (ValueError, FileNotFoundError) as exc:
-            typer.echo(f"Compilation failed: {exc}", err=True)
-            raise typer.Exit(1) from exc
+        compile_or_exit(compiler, manifest, tmp_path, version)
+        compiler.progress.stage("Bundling the sources")
         embed_bundle_yaml(manifest, tmp_path)
+        compiler.progress.stage(f"Sealing and encrypting for {len(recipient_keys)} player(s)")
         entries = sealed_entries(tmp_path)
 
     sealed_manifest = yaml.safe_load(entries[package_digest.MANIFEST_ENTRY])
@@ -236,6 +235,7 @@ def _seal_and_encrypt(
         compiler_identity.signing.private_bytes,
     )
     sig_b64 = base64.b64encode(signature).decode()
+    compiler.progress.finish()
     return sealed_manifest, redacted, manifest_bytes, payload_b64, sig_b64
 
 
@@ -257,7 +257,7 @@ def compile_encrypted_plain(
     (out / "payload.enc").write_text(payload_b64, encoding="utf-8")
     (out / "signature.sig").write_text(sig_b64, encoding="utf-8")
 
-    typer.echo(f"\nCompiled (encrypted plain) → {out}/manifest.yaml")
+    compiled(f"\nCompiled (encrypted plain) → {out}/manifest.yaml")
     typer.echo(f"                           → {out}/payload.enc")
     typer.echo(f"                           → {out}/signature.sig")
     typer.echo(f"  Checksum : {redacted['package']['checksum'][:32]}...")
@@ -294,7 +294,7 @@ def compile_encrypted_tck(
     tck_path = resolve_tck_output_path(manifest, sealed_manifest, output)
     write_encrypted_tck(tck_path, manifest_bytes, payload_b64, sig_b64)
 
-    typer.echo(f"\nCompiled (encrypted .tck) → {tck_path}")
+    compiled(f"\nCompiled (encrypted .tck) → {tck_path}")
     typer.echo(f"  Checksum : {redacted['package']['checksum'][:32]}...")
     typer.echo(f"  Signed by: {redacted['security']['compiler_id'][:32]}...")
     typer.echo(f"  Players  : {len(redacted['security']['authorized_players'])}")

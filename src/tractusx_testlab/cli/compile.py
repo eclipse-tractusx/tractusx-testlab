@@ -33,6 +33,7 @@ from pathlib import Path
 import typer
 
 from tractusx_testlab.cli import app
+from tractusx_testlab.cli._compile_report import ConsoleProgress, compile_or_exit, compiled
 from tractusx_testlab.cli._tck_packager import (
     compile_encrypted_plain,
     compile_encrypted_tck,
@@ -125,21 +126,18 @@ def compile(
         )
         raise typer.Exit(1)
 
-    compiler = Compiler()
+    progress = ConsoleProgress()
+    progress.begin(manifest)
+    compiler = Compiler(progress=progress)
 
     if plain:
         out = output or manifest.parent / "plain"
         if compiler_keys and player_pub:
             compile_encrypted_plain(manifest, compiler_keys, player_pub, out, version, compiler)
         else:
-            try:
-                manifest_dict, _ = compiler.compile_plain(
-                    manifest_path=manifest, output_path=out, version=version
-                )
-            except (ValueError, FileNotFoundError) as exc:
-                typer.echo(f"Compilation failed: {exc}", err=True)
-                raise typer.Exit(1) from exc
-            typer.echo(f"\nCompiled (plain) → {out}/manifest.yaml")
+            manifest_dict, _ = compile_or_exit(compiler, manifest, out, version)
+            progress.finish()
+            compiled(f"\nCompiled (plain) → {out}/manifest.yaml")
             typer.echo(f"                 → {out}/tck-execution.json")
             typer.echo(f"                 → {out}/assets/")
             typer.echo("")
@@ -157,14 +155,9 @@ def compile(
     # Default: unencrypted .tck ZIP archive
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
-        try:
-            manifest_dict, _ = compiler.compile_plain(
-                manifest_path=manifest, output_path=tmp_path, version=version
-            )
-        except (ValueError, FileNotFoundError) as exc:
-            typer.echo(f"Compilation failed: {exc}", err=True)
-            raise typer.Exit(1) from exc
+        manifest_dict, _ = compile_or_exit(compiler, manifest, tmp_path, version)
 
+        progress.stage("Bundling the sources")
         embed_bundle_yaml(manifest, tmp_path)
 
         tck_id = manifest_dict["tck"]["id"]
@@ -177,8 +170,10 @@ def compile(
         else:
             tck_path = manifest.parent / f"{tck_id}.tck"
         tck_path.parent.mkdir(parents=True, exist_ok=True)
+        progress.stage("Sealing the package")
         checksum = _create_tck_archive(tmp_path, tck_path)
+        progress.finish()
 
-    typer.echo(f"\nCompiled → {tck_path}")
+    compiled(f"\nCompiled → {tck_path}")
     typer.echo(f"  Package checksum : {checksum}")
     typer.echo(f"  Fingerprint digest: {manifest_dict['compilation']['fingerprint']['digest']}")

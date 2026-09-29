@@ -73,10 +73,23 @@ testlab compile my-certificate-tck/index.yaml -o dist/
 ```
 
 ```text
+Compiling my-certificate-tck/index.yaml
+  ✓ Reading index.yaml                                           0.0s
+  ✓ Checking the tests (2)                                       0.1s
+  ✓ Checking the manifest and tests against the JSON schemas     0.1s
+  ✓ Building the execution plan and packing its assets           0.1s
+  ✓ Bundling the sources                                         0.0s
+  ✓ Sealing the package                                          0.0s
+
 Compiled → dist/my-certificate-tck.tck
   Package checksum : blake2b:0fbeddc9f130b975e6d4a6b84b4145b95c9d023fc44625bcb8f5e6d4939431a5
   Fingerprint digest: blake2b:b5b6209acfaaf378ea38812f5aa1c2c4fb682d7233f2bb25ae0d09ad53430727
 ```
+
+The compiler reports each stage as it ends, on stderr. In a terminal the stage
+under way spins, with the test being checked named beside it; in a CI log each
+test gets a line (`2/5 tests/…`) as it is checked. A stage that fails is marked
+`✗`, and the errors follow it.
 
 `compile` re-runs the validation first and stops on any error. `-o` takes a directory (the file is named
 `<tck-id>.tck`) or a file path; without it, the package is written next to the manifest.
