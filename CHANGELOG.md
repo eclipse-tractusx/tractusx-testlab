@@ -106,6 +106,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- `flow/if`, `flow/retry` and `labs/flow/for_each` report their sub-steps'
+  checks. The sub-steps' `validate:` blocks were evaluated but only their
+  outputs were kept: a check that passed was never reported, a check that
+  failed surfaced as "assertion failed" without saying which, a `SOFT` failure
+  vanished, and none of them reached the summary or the CAC coverage. They are
+  now the flow step's own checks, each tagged with the sub-step it ran on
+  (`AssertionResult.step_path`, `validations[].step` in the trace) — for a
+  retry only the last attempt's, for a loop every item's under `[<index>]` —
+  and the sub-steps' declared checks count towards the test's `declared`.
+- A failing sub-step fails its flow step as a verdict (`origin: sut`, or the
+  sub-step's own origin) rather than as an engine fault: the `RuntimeError`
+  the flow steps raised was classified as a TestLab bug.
 - A step's `if:` is checked at compile time. It used to be copied into the
   compiled test unread: an expression the player did not recognise
   (`vars.a == 'x' and success()`) ran its step unconditionally, and a

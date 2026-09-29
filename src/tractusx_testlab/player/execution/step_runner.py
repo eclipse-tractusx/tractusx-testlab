@@ -40,6 +40,7 @@ from tractusx_testlab.models.runtime.results import (
     StepResult,
     TestResult,
 )
+from tractusx_testlab.player.execution._declared import declared_checks
 from tractusx_testlab.player.execution._step_outputs import hide_secrets, run_and_publish
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
@@ -52,6 +53,7 @@ from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
 from tractusx_testlab.steps._checks.published_names import publishes
 from tractusx_testlab.steps.assertions import AssertionEngine
+from tractusx_testlab.steps.flow._nested import NestedChecks
 from tractusx_testlab.steps.step_extension import invoke_extended
 
 logger = logging.getLogger(__name__)
@@ -168,6 +170,9 @@ async def _run_step_guarded(
                 )
             ]
 
+        # A flow step's sub-steps' checks, first: they ran before its own.
+        nested = getattr(output, "nested", None) or NestedChecks()
+        assertion_results = [*nested.checks, *assertion_results]
         finished_at = datetime.now(UTC)
         failed = AssertionEngine.has_hard_failure(assertion_results)
 
@@ -183,6 +188,7 @@ async def _run_step_guarded(
             request=output.request,
             response=output.response,
             assertions=assertion_results,
+            nested_declared=nested.declared,
         )
     except Exception as exc:
         finished_at = datetime.now(UTC)
@@ -191,6 +197,7 @@ async def _run_step_guarded(
         )
         if engine_fault:
             logger.exception("Engine fault while running step %s", step_name)
+        nested = getattr(exc, "nested", None) or NestedChecks()
         return StepResult(
             step_name=step_name,
             step_type=step_def.uses,
@@ -214,6 +221,9 @@ async def _run_step_guarded(
             # a bug about a catalog the provider never published.
             error_origin=getattr(exc, "origin", None) or ("engine" if engine_fault else "sut"),
             error_context=getattr(exc, "diagnostics", None),
+            # A sub-step that failed failed its flow step: its checks say which one.
+            assertions=nested.checks,
+            nested_declared=nested.declared,
         )
 
 
@@ -257,7 +267,7 @@ async def run_test(
     all_step_results = setup_results + step_results + teardown_results
 
     summary = AssertionEngine.build_summary(
-        all_step_results, declared=_declared_assertions(test, all_step_results)
+        all_step_results, declared=declared_checks(test, all_step_results)
     )
 
     # Checks that were asked for and did not run mean the result describes less
@@ -278,23 +288,4 @@ async def run_test(
         finished_at=test_end,
         total_duration_s=(test_end - test_start).total_seconds(),
         assertion_summary=summary,
-    )
-
-
-def _declared_assertions(test: Test, results: list[StepResult]) -> int:
-    """Count the assertions the steps that actually ran had asked for.
-
-    Steps skipped by ``if:`` are excluded: a check that was never reached was
-    not dropped, it was correctly not applicable.
-    """
-    ran = {result.step_type for result in results if result.status is not StepStatus.SKIPPED}
-    return sum(
-        len(step.assertions or [])
-        for phase in (
-            test.definition.setup,
-            test.definition.execution,
-            test.definition.teardown,
-        )
-        for step in phase
-        if step.uses in ran
     )

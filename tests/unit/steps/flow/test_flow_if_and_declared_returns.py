@@ -37,6 +37,7 @@ from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.player.execution._step_outputs import store_step_outputs
 from tractusx_testlab.steps._checks.extraction import declared_names, extract_path
 from tractusx_testlab.steps.assertions import apply_operator
+from tractusx_testlab.steps.flow._nested import NestedStepFailed
 from tractusx_testlab.steps.flow.conditional import IfStep
 from tractusx_testlab.steps.step_contract import StepOutput
 
@@ -105,7 +106,7 @@ class TestIfStep:
 
     @pytest.mark.asyncio
     async def test_a_failing_nested_step_fails_the_branch(self, mock_context: MagicMock) -> None:
-        with pytest.raises(RuntimeError, match="'then' branch"):
+        with pytest.raises(NestedStepFailed, match="'then' branch"):
             await IfStep().invoke(
                 {
                     "conditions": [{"input": "x", "operator": "not_null"}],

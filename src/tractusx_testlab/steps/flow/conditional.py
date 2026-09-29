@@ -36,6 +36,7 @@ from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.steps._checks.extraction import extract_path
 from tractusx_testlab.steps.assertions import AssertOperator, apply_operator
+from tractusx_testlab.steps.flow._nested import NestedStepFailed, first_failure, nested_checks
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepPayload
 
 if TYPE_CHECKING:
@@ -164,12 +165,15 @@ class IfStep(BaseStep[IfParams, IfOutput]):
 
         label: Literal["then", "else"] = "then" if condition_result else "else"
         results = await _run_sequence(branch, label, context)
+        nested = nested_checks(branch, results)
 
-        failed = next((r for r in results if r.status == StepStatus.FAILED), None)
+        failed = first_failure(results)
         if failed is not None:
-            raise RuntimeError(
+            raise NestedStepFailed(
                 f"Nested step failed in the '{label}' branch: "
-                f"'{failed.step_type}' — {failed.error or 'assertion failed'}"
+                f"'{failed.step_type}' — {failed.error or 'assertion failed'}",
+                failed,
+                nested,
             )
 
         return StepOutput(
@@ -177,7 +181,8 @@ class IfStep(BaseStep[IfParams, IfOutput]):
                 condition_result=condition_result,
                 branch_taken=label,
                 outputs=[result.output for result in results],
-            )
+            ),
+            nested=nested,
         )
 
 

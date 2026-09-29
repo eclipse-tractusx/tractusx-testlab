@@ -33,6 +33,7 @@ from tractusx_testlab.authoring.registry import StepRegistry, step
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
+from tractusx_testlab.steps.flow._nested import NestedStepFailed, first_failure, nested_checks
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepValue
 
 if TYPE_CHECKING:
@@ -86,14 +87,19 @@ class RetryStep(BaseStep[RetryParams, RetryOutput]):
             await asyncio.sleep(params.delay_s)
             results = await _run_sequence(params.steps, context)
 
-        if _has_failure(results):
-            failed = next(r for r in results if r.status == StepStatus.FAILED)
-            raise RuntimeError(
+        # The last attempt's checks alone: an attempt that failed and was
+        # retried is not a verdict, and the checks it failed were run again.
+        nested = nested_checks(params.steps, results)
+        failed = first_failure(results)
+        if failed is not None:
+            raise NestedStepFailed(
                 f"Nested steps still failing after {attempt} attempt(s): "
-                f"'{failed.step_type}' — {failed.error or 'assertion failed'}"
+                f"'{failed.step_type}' — {failed.error or 'assertion failed'}",
+                failed,
+                nested,
             )
 
-        return StepOutput(value=RetryOutput([result.output for result in results]))
+        return StepOutput(value=RetryOutput([result.output for result in results]), nested=nested)
 
 
 async def _run_sequence(

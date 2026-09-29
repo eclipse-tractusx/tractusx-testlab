@@ -213,4 +213,6 @@ def _check_label(check) -> str:
     so a reader could not tell which requirement had failed. Naming an assertion
     is optional, and this is where writing one pays off.
     """
-    return check.assertion.name or check.assertion.uses
+    label = check.assertion.name or check.assertion.uses
+    # A flow step's sub-step checks are listed under the flow step: say which.
+    return f"{' > '.join(check.step_path)} > {label}" if check.step_path else label
