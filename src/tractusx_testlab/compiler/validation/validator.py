@@ -21,6 +21,7 @@
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
 ## It was reviewed and tested by a human committer.
 
 """Static validation of tests before compilation."""
@@ -33,6 +34,7 @@ from pydantic import ValidationError
 
 from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.compiler.validation._assertion_severity import severity_findings
+from tractusx_testlab.compiler.validation._conditions import condition_findings
 from tractusx_testlab.compiler.validation._extension_gate import (
     entry_findings,
     experimental_warnings,
@@ -190,6 +192,9 @@ class TestValidator:
                         field="id",
                         phase=phase,
                     )
+
+        for phase, idx, field, message in condition_findings(test, scope):
+            result.add_error(message, step_index=idx, field=field, phase=phase)
 
         return result
 

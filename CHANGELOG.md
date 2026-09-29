@@ -106,6 +106,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- A step's `if:` is checked at compile time. It used to be copied into the
+  compiled test unread: an expression the player did not recognise
+  (`vars.a == 'x' and success()`) ran its step unconditionally, and a
+  variable with a typo read as empty and skipped it. The compiler now refuses
+  an expression outside the grammar, a `vars.<phase>.<id>.<field>` naming a
+  step that does not run before it or a field it does not list under
+  `returns:`, a bare `vars.<name>` nothing in the manifest supplies,
+  `steps.<id>.outcome` naming no earlier step of the phase or compared with
+  anything but `success`/`failure`/`skipped`, the retired `${name}`
+  spelling, and an `if:` on a teardown or nested step, neither of which is
+  ever read. `vars.<phase>.<id>.<field>` — a field an earlier step returned —
+  is now documented. The player logs the expressions it cannot read instead of
+  running past them silently.
+- `steps.<id>.outcome` reads the step with that exact id. It matched on a
+  substring, so `steps.fetch.outcome` could answer with the outcome of a later
+  `fetch_again`.
 - A `validate:` entry's `severity` is read in any case — `soft` is `SOFT`,
   `Hard` is `HARD`. `severity: soft` used to stop the run with a `ValueError`.
   Any other value, such as `warning`, is now a compile error located at the

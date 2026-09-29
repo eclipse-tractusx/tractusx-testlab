@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
 ## It was reviewed and tested by a human committer.
 
 """Evaluates ``if`` conditions on step definitions.
@@ -35,9 +36,9 @@ Status functions
     ``${{ always() }}``    — always true; the step runs regardless of status.
 
 Step outcome references
-    ``${{ steps.<name>.outcome == 'success' }}``
-    ``${{ steps.<name>.outcome == 'failure' }}``
-    ``${{ steps.<name>.outcome == 'skipped' }}``
+    ``${{ steps.<id>.outcome == 'success' }}``
+    ``${{ steps.<id>.outcome == 'failure' }}``
+    ``${{ steps.<id>.outcome == 'skipped' }}``
 
 Variable comparisons
     ``${{ vars.<name> == 'value' }}``   — equals.
@@ -45,28 +46,32 @@ Variable comparisons
 
 Truthy check
     ``${{ vars.<name> }}``              — true when the variable is truthy.
+
+A step's outputs are variables too: ``vars.<phase>.<id>.<field>`` reads the
+``<field>`` an earlier step listed under ``returns:``.
+
+The grammar is :func:`~tractusx_testlab.steps._condition_parsing.parse_condition`;
+the compiler refuses an expression outside it.
 """
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from tractusx_testlab.steps._condition_parsing import (
-    LEGACY_COMPARISON_RE,
-    LEGACY_TRUTHY_RE,
-    STATUS_FN_RE,
-    STEP_OUTCOME_RE,
-    VARS_COMPARISON_RE,
-    VARS_TRUTHY_RE,
     evaluate_comparison,
     evaluate_status_fn,
     evaluate_step_outcome,
     evaluate_truthy,
+    parse_condition,
 )
 
 if TYPE_CHECKING:
     from tractusx_testlab.models.runtime.results import StepResult
     from tractusx_testlab.player.execution.context import StepContext
+
+logger = logging.getLogger(__name__)
 
 
 class ConditionEvaluator:
@@ -82,7 +87,7 @@ class ConditionEvaluator:
 
         Args:
             condition: The raw ``if`` expression string, or ``None`` (always run).
-            previous_results: Results of all steps executed so far in the test.
+            previous_results: Results of the steps this phase has run so far.
             context: The current execution context (for variable lookups).
 
         Returns:
@@ -92,55 +97,20 @@ class ConditionEvaluator:
         if condition is None:
             return True
 
-        expr = condition.strip()
-        if not expr:
+        parsed = parse_condition(condition)
+        if parsed is None:
+            # Only a package compiled before the compiler checked `if:` gets
+            # here. Running the step is what such a package has always done;
+            # the warning is so that it no longer does it unnoticed.
+            logger.warning("Unrecognised if: condition %r; running the step.", condition)
             return True
 
-        # Strip ${{ }} wrapper if present (string ops — no regex backtracking)
-        if expr.startswith("${{") and expr.endswith("}}"):
-            expr = expr[3:-2].strip()
-
-        if not expr:
-            return True
-
-        # --- Status functions: success(), failure(), always() ----------------
-        m = STATUS_FN_RE.match(expr)
-        if m:
-            return evaluate_status_fn(m.group(1), previous_results)
-
-        # --- Step outcome: steps.<name>.outcome == 'value' -------------------
-        m = STEP_OUTCOME_RE.match(expr)
-        if m:
-            step_name = m.group(1)
-            operator = m.group(2)
-            expected = m.group(3)
-            return evaluate_step_outcome(step_name, operator, expected, previous_results)
-
-        # --- Variable comparison: vars.<name> == 'value' ---------------------
-        m = VARS_COMPARISON_RE.match(expr)
-        if m:
-            var_name = m.group(1)
-            operator = m.group(2)
-            expected = m.group(3) if m.group(3) is not None else m.group(4)
-            return evaluate_comparison(var_name, operator, expected, context)
-
-        # --- Variable truthy: vars.<name> ------------------------------------
-        m = VARS_TRUTHY_RE.match(expr)
-        if m:
-            return evaluate_truthy(m.group(1), context)
-
-        # --- Legacy: ${var} == 'value' (backward compat) ---------------------
-        m = LEGACY_COMPARISON_RE.match(expr)
-        if m:
-            var_name = m.group(1)
-            operator = m.group(2)
-            expected = m.group(3) if m.group(3) is not None else m.group(4)
-            return evaluate_comparison(var_name, operator, expected, context)
-
-        # --- Legacy: ${var} (backward compat) --------------------------------
-        m = LEGACY_TRUTHY_RE.match(expr)
-        if m:
-            return evaluate_truthy(m.group(1), context)
-
-        # Unrecognised expression → do not skip (safe default)
-        return True
+        if parsed.kind == "status":
+            return evaluate_status_fn(parsed.name, previous_results)
+        if parsed.kind == "outcome":
+            return evaluate_step_outcome(
+                parsed.name, parsed.operator, parsed.expected, previous_results
+            )
+        if parsed.kind == "compare":
+            return evaluate_comparison(parsed.name, parsed.operator, parsed.expected, context)
+        return evaluate_truthy(parsed.name, context)

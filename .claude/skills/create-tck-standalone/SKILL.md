@@ -225,8 +225,10 @@ execution:
   `create_shell_descriptor`/`create_submodel_descriptor` take one document param
   (`asset`, `policy`, `shell_descriptor`, `submodel_descriptor`) fed from an env
   variable. Flat-field authoring is the separate `.../wizard/...` step family.
-- Optional control keys: `if:` (list of Condition objects gating the step) and
-  `timeout_s: 30.0`.
+- Optional control keys: `if:` (one expression string: `${{ success() }}`,
+  `${{ steps.<id>.outcome == 'success' }}`, `${{ vars.<name> == 'x' }}`, a returned
+  field as `${{ vars.execution.<id>.<field> == 'x' }}`; top-level setup/execution
+  steps only) and `timeout_s: 30.0`.
 
 ### The counter-party is a binding, not a variable
 

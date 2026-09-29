@@ -26,9 +26,10 @@ MUST  <assertion>                 ← repeatable; combinable with AND / OR
 | CAC identity | `cac:` on the step or on one validation **[PROP [§9.1](../extensions.md#91-cac-traceability-cac-p1)]** |
 | JSON Schema as MUST | `validate/schema` |
 
-A step's own `if:` is not the way to write a CAC `IF`. It only reads the run's state (`success()`,
-`failure()`, `always()`, `steps.<id>.outcome`, `vars.<name>`), never a value a step returned, and it skips
-the step rather than choosing between two sets of checks. Validations take no `if:`, and there is no
+A step's own `if:` is not the way to write a CAC `IF`. It reads the run's state (`success()`,
+`failure()`, `always()`, `steps.<id>.outcome`) or one variable (`vars.<name>`, a returned field as
+`vars.<phase>.<id>.<field>`), and it skips the step rather than choosing between two sets of checks, so the
+report shows a skipped step where a CAC needs a branch it can prove was taken. Validations take no `if:`, and there is no
 `validate/any_of` or `validate/all_of`.
 
 ## 6.3 Worked example

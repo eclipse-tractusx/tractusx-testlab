@@ -217,7 +217,9 @@ def _unresolved_in_step(step: dict[str, Any], declared: Set[str]) -> Iterator[tu
     """The unresolved references of one nested step definition, its own nesting included."""
     nested_cls = StepRegistry.get_any(str(step.get("uses", "")))
     yield from unresolved_references(step.get("with") or {}, declared, nested_cls)
-    yield from unresolved_references({k: v for k, v in step.items() if k != "with"}, declared)
+    # An `if:` is a condition, not a reference; `_conditions` says what is wrong with it.
+    rest = {k: v for k, v in step.items() if k not in (keys.WITH, keys.IF)}
+    yield from unresolved_references(rest, declared)
 
 
 def nested_step_ids(uses: str, params: Any) -> Iterator[str]:
