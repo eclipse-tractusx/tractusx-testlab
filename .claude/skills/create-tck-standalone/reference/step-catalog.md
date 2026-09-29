@@ -15,8 +15,9 @@ Every step below has a visual block in the cx-test-suite IDE **except
   camelCase is a serialization detail, never authored.
 - **DataAddressPayload** (the full EDR document, returned as `data_address`):
   `endpoint`, `authorization`, `authCode`.
-- **Condition** (items of `flow/if` `conditions:` and step-level `if:`): `input`,
-  `path` (dot-separated), `operator`, `value`.
+- **Condition** (items of `flow/if` `conditions:`): `input`, `path` (dot-separated),
+  `operator`, `value`. A step-level `if:` is not a Condition but one expression string
+  (see the cheat sheet's Conditionals table).
 - **StepDefinition**: nested steps inside `flow/if`/`flow/retry` use the exact same
   shape as top-level steps (`id`, `uses`, `with`, `returns`, `validate`, …).
 - **SpecificAssetId** (digital-twin lookups): `name` (required), `value` (required).

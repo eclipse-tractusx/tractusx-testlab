@@ -72,6 +72,25 @@ class ListenerReports:
             self._job_id, self._test, step_id, step_type, self._phase, listener, timeout_s
         )
 
+    def suspended(
+        self,
+        step_type: str,
+        step_id: str | None,
+        listener: Any,
+        remaining_s: float,
+        waited_ms: int,
+    ) -> None:
+        self._monitor.on_step_suspended(
+            self._job_id,
+            self._test,
+            step_id,
+            step_type,
+            self._phase,
+            listener,
+            remaining_s,
+            waited_ms,
+        )
+
     def received(
         self,
         step_type: str,

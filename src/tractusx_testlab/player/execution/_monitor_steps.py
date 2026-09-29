@@ -47,6 +47,7 @@ from tractusx_testlab.models.runtime.events import (
     StepReceivedEvent,
     StepSkippedEvent,
     StepStartedEvent,
+    StepSuspendedEvent,
     StepWaitingEvent,
 )
 from tractusx_testlab.models.runtime.results import CallbackResult, HttpExchange, StepResult
@@ -214,6 +215,32 @@ class StepEvents:
         )
         event_id = self._trace.step_waiting(
             test, step_id, step_type, phase, event.listener, timeout_s
+        )
+        self._publish(event, event_id)
+
+    def on_step_suspended(
+        self,
+        job_id: str,
+        test: str,
+        step_id: str | None,
+        step_type: str,
+        phase: str,
+        listener: Any,
+        remaining_s: float,
+        waited_ms: int,
+    ) -> None:
+        """Publish that a wait stopped counting for a pause, with *remaining_s* left."""
+        event = StepSuspendedEvent(
+            job_id=job_id,
+            test_id=test,
+            step_id=step_id,
+            step_type=step_type,
+            listener=listener,
+            remaining_s=remaining_s,
+            waited_ms=waited_ms,
+        )
+        event_id = self._trace.step_suspended(
+            test, step_id, step_type, phase, event.listener, remaining_s, waited_ms
         )
         self._publish(event, event_id)
 

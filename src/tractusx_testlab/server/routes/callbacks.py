@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import logging
 from inspect import isawaitable
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -99,6 +99,26 @@ def misdirected(callbacks: CallbackManager, path: str, method: str, headers: dic
             )
 
 
+def on_hold(app: Any) -> bool:
+    """Whether a run of this server's player is paused on hold (``player.execution.hold``).
+
+    A held run answers nothing: a call is turned away with 404, as for a run
+    that is not going, and neither resolves nor fails the wait — which has
+    stopped, and starts again with the time it had left once the run resumes.
+    This server's mocks are not kept per run, so any held run holds them all.
+    """
+    jobs = getattr(getattr(app.state, "player", None), "jobs", None)
+    any_held = getattr(jobs, "any_held", None)
+    return callable(any_held) and any_held() is True
+
+
+def held(method: str, path: str) -> HTTPException:
+    """The answer to a call made while the run is on hold."""
+    return HTTPException(
+        404, f"No mock answers {method} {path} while the run is paused; call again once it resumes"
+    )
+
+
 def _loggable(path: str) -> str:
     """*path* as it may be logged: bounded, and unable to start a log line of its own."""
     return path[:80].replace("\n", "").replace("\r", "")
@@ -124,6 +144,8 @@ async def callback_webhook(
     """Catch-all endpoint for async callback listeners."""
     full_path = f"/callbacks/{path}"
     method = request.method
+    if on_hold(request.app):
+        raise held(method, full_path)
     headers = dict(request.headers)
     reason = refusal(full_path, method, headers)
     if reason is not None:

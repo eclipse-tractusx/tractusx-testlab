@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- A paused run is held (ADR-0026). Once it stops, it deletes every contract
+  definition it created (assets and policies stay) and its mocks answer 404,
+  so the system under test finds nothing to negotiate and nothing to call
+  until the run resumes. On resume the definitions are posted again with the
+  same ids. `mock/wait/*` no longer counts its timeout through a pause: it
+  stops with the time it had left (`step_suspended`, `remaining_s`), and after
+  the resume it waits that long again, announced by a fresh `step_waiting`.
+  New events `job_held` / `job_restored` (`tck.held` / `tck.restored` in the
+  trace) name what was withdrawn and put back. `JobManager.is_held(job_id)`
+  tells a host serving a run's mocks to turn them away. A paused run that is
+  cancelled puts its definitions back first, so its teardown deletes them as
+  usual.
 - `with.instructions` on a `with.source: register` variable: what the SUT
   operator has to do with the document the TCK hands them — where to register
   it, and how the run will read it back. `source: register` now reads as the
@@ -106,6 +118,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - A failing sub-step fails its flow step as a verdict (`origin: sut`, or the
   sub-step's own origin) rather than as an engine fault: the `RuntimeError`
   the flow steps raised was classified as a TestLab bug.
+- A step's `if:` is checked at compile time. It used to be copied into the
+  compiled test unread: an expression the player did not recognise
+  (`vars.a == 'x' and success()`) ran its step unconditionally, and a
+  variable with a typo read as empty and skipped it. The compiler now refuses
+  an expression outside the grammar, a `vars.<phase>.<id>.<field>` naming a
+  step that does not run before it or a field it does not list under
+  `returns:`, a bare `vars.<name>` nothing in the manifest supplies,
+  `steps.<id>.outcome` naming no earlier step of the phase or compared with
+  anything but `success`/`failure`/`skipped`, the retired `${name}`
+  spelling, and an `if:` on a teardown or nested step, neither of which is
+  ever read. `vars.<phase>.<id>.<field>` — a field an earlier step returned —
+  is now documented. The player logs the expressions it cannot read instead of
+  running past them silently.
+- `steps.<id>.outcome` reads the step with that exact id. It matched on a
+  substring, so `steps.fetch.outcome` could answer with the outcome of a later
+  `fetch_again`.
 - A `validate:` entry's `severity` is read in any case — `soft` is `SOFT`,
   `Hard` is `HARD`. `severity: soft` used to stop the run with a `ValueError`.
   Any other value, such as `warning`, is now a compile error located at the

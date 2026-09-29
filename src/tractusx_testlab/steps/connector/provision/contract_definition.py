@@ -36,6 +36,7 @@ from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.steps.connector.provision._shared import (
+    _ALREADY_EXISTS,
     _as_id,
     _create_or_conflict,
 )
@@ -128,7 +129,9 @@ class CreateContractDefinitionStep(
     """Publish assets by binding them to an access and a contract policy.
 
     This is the step that makes an asset appear in the provider's catalog; the
-    assets and both policies must already exist.  The SDK's own
+    assets and both policies must already exist. While the run is paused the
+    definition is withdrawn, and it is created again on resume
+    (``player.execution.hold``).  The SDK's own
     ``create_contract`` only ever offers a single asset, so the definition is
     built here and posted through the contract-definition controller.
     """
@@ -156,6 +159,18 @@ class CreateContractDefinitionStep(
         result, http_status = _create_or_conflict(
             _post_definition, controller=provider.contract_definitions, model=model
         )
+        if http_status != _ALREADY_EXISTS:
+            # The offer the system under test negotiates: withdrawn while the
+            # run is paused, and posted again, as it is now, when it resumes.
+            # One that was there before this run is not the run's to withdraw.
+            controller = provider.contract_definitions
+            context.hold.offer(
+                definition_id,
+                withdraw=lambda: _delete_definition(controller, definition_id),
+                restore=lambda: _create_or_conflict(
+                    _post_definition, controller=controller, model=model
+                ),
+            )
 
         return StepOutput(
             value=CreateContractDefinitionOutput(contract_definition_id=definition_id),
@@ -182,3 +197,16 @@ def _post_definition(controller: Any, model: Any) -> dict:
             f"Failed to create contract definition. Status code: {response.status_code}"
         )
     return response.json()
+
+
+def _delete_definition(controller: Any, definition_id: str) -> None:
+    """Withdraw a contract definition, raising if the connector did not.
+
+    The controller answers a refused delete with its response rather than an
+    error, and a hold that took it for done would report an offer withdrawn
+    that the system under test can still negotiate.
+    """
+    response = controller.delete(oid=definition_id)
+    status = getattr(response, "status_code", None)
+    if isinstance(status, int) and status >= 400:
+        raise ValueError(f"The connector answered {status} to deleting '{definition_id}'")

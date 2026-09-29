@@ -222,6 +222,7 @@ class TestlabPlayer:
             infrastructure=self._infrastructure.active,
         )
 
+        context.hold.bind(self._jobs, job.job_id, monitor)
         seed_context_variables(context, tck, runtime_vars)
 
         # Before the callback server: a run this engine cannot reach, or was

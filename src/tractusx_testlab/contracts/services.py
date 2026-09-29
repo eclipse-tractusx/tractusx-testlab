@@ -150,7 +150,7 @@ class CallReporter(Protocol):
 
 @runtime_checkable
 class ListenerReporter(Protocol):
-    """Publishing the three moments of an inbound call: opened, blocked on, arrived.
+    """Publishing the moments of an inbound call: opened, blocked on, suspended, arrived.
 
     Same arrangement as :class:`CallReporter` — handed to the context by the
     phase runner, used by the mock steps — for the traffic that goes the other
@@ -167,6 +167,15 @@ class ListenerReporter(Protocol):
         step_id: str | None,
         listener: Any,
         timeout_s: float,
+    ) -> None: ...
+
+    def suspended(
+        self,
+        step_type: str,
+        step_id: str | None,
+        listener: Any,
+        remaining_s: float,
+        waited_ms: int,
     ) -> None: ...
 
     def received(

@@ -167,6 +167,8 @@ class DeleteContractDefinitionStep(BaseStep[DeleteContractDefinitionParams, Dele
 
         result = provider.contract_definitions.delete(oid=contract_id)
         status = result.status_code if result is not None else _DELETED
+        # Deleted by the test, so a pause no longer withdraws it or puts it back.
+        context.hold.forget(contract_id)
 
         return StepOutput(
             value=DeletionOutput(status_code=status),

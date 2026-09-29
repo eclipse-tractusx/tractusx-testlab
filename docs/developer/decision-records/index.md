@@ -57,6 +57,7 @@ library (`src/tractusx_testlab/`) or **shared** concerns that span the system. T
 | [0022](backend/ADR-0022-tck-static-inspection.md) | TCK Static Inspection | Accepted |
 | [0023](backend/ADR-0023-variable-scope-annotation.md) | Variable Scope Annotation (`engine` / `sut`) | Accepted |
 | [0024](backend/ADR-0024-test-skip-configuration.md) | Test-Level Skip Configuration | Accepted |
+| [0026](backend/ADR-0026-paused-runs-are-held.md) | Paused Runs Are Held | Accepted |
 
 ### Shared
 

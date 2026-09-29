@@ -64,6 +64,14 @@ def waiting_line(base: str, data: dict) -> str:
     return " ".join(p for p in parts if p)
 
 
+def suspended_line(base: str, data: dict) -> str:
+    """The run was paused mid-wait: the timeout stopped, with this much of it left."""
+    remaining = data.get("remaining_s")
+    left = f"(paused, {float(remaining):.0f}s left)" if remaining is not None else "(paused)"
+    parts = (base, _where(data), str(data.get("step_type", "")), _call(data), left)
+    return " ".join(p for p in parts if p)
+
+
 def received_line(base: str, data: dict) -> str:
     """The call arrived: what came in, and how long the step had been waiting."""
     request = data.get("request") or {}
