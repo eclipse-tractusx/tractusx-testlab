@@ -28,6 +28,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -108,11 +109,21 @@ class TestValidator:
     """Validates a TestDefinition for correctness before execution."""
 
     def validate_tck(
-        self, tck: TckDefinition, base_dir: Path, version: str | None = None
+        self,
+        tck: TckDefinition,
+        base_dir: Path,
+        version: str | None = None,
+        on_test: Callable[[str], None] | None = None,
     ) -> ValidationResult:
-        """Validate all test files referenced by a TCK manifest."""
+        """Validate all test files referenced by a TCK manifest.
+
+        *on_test* is told each test's path before it is checked, so a caller can
+        say which one a slow compile is on.
+        """
         combined = ValidationResult(issues=experimental_warnings(tck) + entry_findings(tck))
         for entry in tck.tests:
+            if on_test is not None:
+                on_test(f"tests/{entry.id}")
             test_path = base_dir / "tests" / entry.id
             if not test_path.is_file():
                 combined.add_error(f"Referenced test file not found: tests/{entry.id}")

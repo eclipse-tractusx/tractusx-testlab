@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `testlab compile` (and `run` and `validate`, which compile or check the
+  same way) says what it is doing while it does it. It used to print nothing
+  until the package was written, so a slow compile looked like a stuck one.
+  Each stage now gets a line with its time — reading the manifest, checking
+  the tests (each named as it is checked, `2/5 tests/…`), the JSON-schema
+  check, building the plan, bundling, sealing or encrypting — and in a
+  terminal a spinner shows the stage under way. A stage that fails is marked
+  `✗`. The report goes to stderr, so the summary on stdout is unchanged.
+  `Compiler(progress=…)` takes any `CompileProgress` (`compiler.progress`);
+  the default reports nowhere.
 - A paused run is held (ADR-0026). Once it stops, it deletes every contract
   definition it created (assets and policies stay) and its mocks answer 404,
   so the system under test finds nothing to negotiate and nothing to call

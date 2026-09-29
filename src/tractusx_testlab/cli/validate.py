@@ -46,12 +46,16 @@ def validate(
     ),
 ) -> None:
     """Validate a TCK manifest and its tests without compiling."""
+    from tractusx_testlab.cli._compile_report import ConsoleProgress
     from tractusx_testlab.compiler.compiler import Compiler
 
-    compiler = Compiler()
+    progress = ConsoleProgress()
+    progress.begin(manifest)
+    compiler = Compiler(progress=progress)
     try:
         result = compiler.validate(manifest, version=version)
     except (ValueError, yaml.YAMLError) as exc:
+        progress.fail()
         # A manifest that does not parse is the author's problem to fix, not a
         # crash to report: nothing downstream can run, so it is the only
         # finding there is, and a traceback of our own call stack buries it.
@@ -60,6 +64,7 @@ def validate(
         typer.echo("\nInvalid — 1 error(s)")
         raise typer.Exit(1) from exc
 
+    progress.finish()
     if not result.issues:
         typer.echo(f"OK — {manifest.name} is valid (no issues)")
         raise typer.Exit(0)

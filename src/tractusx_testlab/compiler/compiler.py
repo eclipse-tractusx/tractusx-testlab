@@ -31,6 +31,7 @@ from pathlib import Path
 import yaml
 
 from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.compiler.progress import SILENT, CompileProgress
 from tractusx_testlab.compiler.validation.issues import ValidationResult
 from tractusx_testlab.compiler.validation.validator import TestValidator
 
@@ -40,23 +41,38 @@ class Compiler:
 
     Sealing and encryption belong to the packaging step, not here — see
     :mod:`tractusx_testlab.cli.compile`.
+
+    *progress* hears each stage as it starts, and each test as it is checked
+    (:mod:`~tractusx_testlab.compiler.progress`); the packaging step reports
+    its own stages to the same :attr:`progress`.
     """
 
-    __slots__ = ("_parser", "_validator")
+    __slots__ = ("_parser", "_progress", "_validator")
 
-    def __init__(self) -> None:
+    def __init__(self, progress: CompileProgress = SILENT) -> None:
         self._validator = TestValidator()
         self._parser = YamlParser()
+        self._progress = progress
+
+    @property
+    def progress(self) -> CompileProgress:
+        """Where this compiler reports its stages."""
+        return self._progress
 
     def validate(self, manifest_path: Path, version: str | None = None) -> ValidationResult:
         """Validate a YAML tck and its tests without compiling."""
         from tractusx_testlab.compiler.validation._manifest_validation import validate_tck_manifest
 
+        self._progress.stage(f"Reading {manifest_path.name}")
         definition = self._parser.parse_tck(manifest_path)
         # Validate restrictions and rules of tck and test files
-        result = self._validator.validate_tck(definition, manifest_path.parent, version=version)
+        self._progress.stage("Checking the tests", total=len(definition.tests))
+        result = self._validator.validate_tck(
+            definition, manifest_path.parent, version=version, on_test=self._progress.item
+        )
 
         # Validate the tck and test files against JSON schemas
+        self._progress.stage("Checking the manifest and tests against the JSON schemas")
         try:
             manifest_data = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
             validate_tck_manifest(manifest_data, manifest_path.parent)
@@ -99,11 +115,8 @@ class Compiler:
         if output_path is None:
             output_path = manifest_path.parent / "plain"
 
-        return build_ir(
-            manifest_path=manifest_path,
-            output_path=output_path,
-            version=version,
-        )
+        self._progress.stage("Building the execution plan and packing its assets")
+        return build_ir(manifest_path=manifest_path, output_path=output_path, version=version)
 
 
 def _new_findings(report: str, already: ValidationResult) -> list[str]:
