@@ -153,3 +153,45 @@ class TestTheCommand:
         assert result.exit_code == 1
         assert "✗ Reading index.yaml" in result.output
         assert "Compiled →" not in result.output
+
+
+class TestColour:
+    """The run report's rule: FORCE_COLOR keeps colour in a log, NO_COLOR drops it."""
+
+    def _stderr(self, capsys: pytest.CaptureFixture[str]) -> str:
+        progress = ConsoleProgress()
+        progress.stage("Checking the tests", total=1)
+        progress.item("tests/a.yaml")
+        progress.fail()
+        return capsys.readouterr().err
+
+    def test_a_ci_log_keeps_its_colour_but_does_not_spin(
+        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("FORCE_COLOR", "1")
+        monkeypatch.delenv("NO_COLOR", raising=False)
+
+        err = self._stderr(capsys)
+
+        assert "\x1b[1;31m✗" in err  # the failed mark, bold red
+        assert "tests/a.yaml" in err  # printed as a line: nothing is redrawn
+
+    def test_no_color_wins(
+        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("FORCE_COLOR", "1")
+        monkeypatch.setenv("NO_COLOR", "1")
+
+        assert "\x1b[" not in self._stderr(capsys)
+
+    def test_a_failed_compile_says_so_in_red(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("FORCE_COLOR", "1")
+        monkeypatch.delenv("NO_COLOR", raising=False)
+        manifest = tmp_path / "index.yaml"
+        manifest.write_text("{{not valid yaml", encoding="utf-8")
+
+        result = runner.invoke(app, ["compile", str(manifest)])
+
+        assert "\x1b[31mCompilation failed" in result.output

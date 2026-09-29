@@ -33,7 +33,7 @@ from pathlib import Path
 import typer
 
 from tractusx_testlab.cli import app
-from tractusx_testlab.cli._compile_report import ConsoleProgress, compile_or_exit
+from tractusx_testlab.cli._compile_report import ConsoleProgress, compile_or_exit, compiled
 from tractusx_testlab.cli._tck_packager import (
     compile_encrypted_plain,
     compile_encrypted_tck,
@@ -137,7 +137,7 @@ def compile(
         else:
             manifest_dict, _ = compile_or_exit(compiler, manifest, out, version)
             progress.finish()
-            typer.echo(f"\nCompiled (plain) → {out}/manifest.yaml")
+            compiled(f"\nCompiled (plain) → {out}/manifest.yaml")
             typer.echo(f"                 → {out}/tck-execution.json")
             typer.echo(f"                 → {out}/assets/")
             typer.echo("")
@@ -174,6 +174,6 @@ def compile(
         checksum = _create_tck_archive(tmp_path, tck_path)
         progress.finish()
 
-    typer.echo(f"\nCompiled → {tck_path}")
+    compiled(f"\nCompiled → {tck_path}")
     typer.echo(f"  Package checksum : {checksum}")
     typer.echo(f"  Fingerprint digest: {manifest_dict['compilation']['fingerprint']['digest']}")

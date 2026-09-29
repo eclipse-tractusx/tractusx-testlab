@@ -17,6 +17,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   check, building the plan, bundling, sealing or encrypting — and in a
   terminal a spinner shows the stage under way. A stage that fails is marked
   `✗`. The report goes to stderr, so the summary on stdout is unchanged.
+  It is coloured — a green `✓`, a red `✗` and failure, dim timings — and so
+  are `validate`'s `[ERROR]` (red) and `[WARN ]` (yellow) and the verdict
+  line, by the run report's rule: a terminal gets colour, `FORCE_COLOR`
+  keeps it in a CI log (without the spinner), `NO_COLOR` drops it.
   `Compiler(progress=…)` takes any `CompileProgress` (`compiler.progress`);
   the default reports nowhere.
 - A paused run is held (ADR-0026). Once it stops, it deletes every contract

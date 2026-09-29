@@ -41,7 +41,7 @@ from pathlib import Path
 import typer
 import yaml
 
-from tractusx_testlab.cli._compile_report import compile_or_exit
+from tractusx_testlab.cli._compile_report import compile_or_exit, compiled
 from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.compiler.compiler import Compiler
 from tractusx_testlab.security.crypto.encryption import encrypt_for_recipients
@@ -257,7 +257,7 @@ def compile_encrypted_plain(
     (out / "payload.enc").write_text(payload_b64, encoding="utf-8")
     (out / "signature.sig").write_text(sig_b64, encoding="utf-8")
 
-    typer.echo(f"\nCompiled (encrypted plain) → {out}/manifest.yaml")
+    compiled(f"\nCompiled (encrypted plain) → {out}/manifest.yaml")
     typer.echo(f"                           → {out}/payload.enc")
     typer.echo(f"                           → {out}/signature.sig")
     typer.echo(f"  Checksum : {redacted['package']['checksum'][:32]}...")
@@ -294,7 +294,7 @@ def compile_encrypted_tck(
     tck_path = resolve_tck_output_path(manifest, sealed_manifest, output)
     write_encrypted_tck(tck_path, manifest_bytes, payload_b64, sig_b64)
 
-    typer.echo(f"\nCompiled (encrypted .tck) → {tck_path}")
+    compiled(f"\nCompiled (encrypted .tck) → {tck_path}")
     typer.echo(f"  Checksum : {redacted['package']['checksum'][:32]}...")
     typer.echo(f"  Signed by: {redacted['security']['compiler_id'][:32]}...")
     typer.echo(f"  Players  : {len(redacted['security']['authorized_players'])}")

@@ -37,6 +37,10 @@ In a terminal the stage under way spins, and the test being checked is named
 next to it. Anywhere else — a CI log — nothing redraws: each test gets a line
 as it is checked, and each stage its ✓ line when it ends. It is written to
 stderr, so the summary on stdout reads as it did.
+
+Colour follows the run report's rule (``_run_summary._colour_wanted``): a
+terminal gets it, ``FORCE_COLOR`` keeps it in a CI log — without the spinner,
+which only a real terminal gets — and ``NO_COLOR`` drops it everywhere.
 """
 
 from __future__ import annotations
@@ -48,6 +52,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import typer
+
+from tractusx_testlab.cli._run_summary import _colour_wanted
 
 if TYPE_CHECKING:
     from tractusx_testlab.compiler.compiler import Compiler
@@ -63,8 +69,15 @@ def compile_or_exit(
         )
     except (ValueError, FileNotFoundError) as exc:
         compiler.progress.fail()
-        typer.echo(f"Compilation failed: {exc}", err=True)
+        typer.secho(
+            f"Compilation failed: {exc}", fg=typer.colors.RED, err=True, color=_colour_wanted()
+        )
         raise typer.Exit(1) from exc
+
+
+def compiled(text: str) -> None:
+    """Print the line that names the package written — in green, where colour is wanted."""
+    typer.secho(text, fg=typer.colors.GREEN, bold=True, color=_colour_wanted())
 
 
 #: The column the stage timings line up on.
@@ -79,12 +92,18 @@ class ConsoleProgress:
     def __init__(self, console: Any = None) -> None:
         from rich.console import Console
 
+        terminal = sys.stderr.isatty()
+        colour = _colour_wanted()
         # Soft wrap: a path or a label longer than the log's 80 columns is one
         # line in a log, not two.
         self._console = console or Console(
-            stderr=True, force_terminal=sys.stderr.isatty(), soft_wrap=True
+            stderr=True,
+            force_terminal=terminal or colour is True,
+            no_color=colour is False,
+            soft_wrap=True,
         )
-        self._live = self._console.is_terminal
+        # Only a real terminal redraws: FORCE_COLOR makes rich think it has one.
+        self._live = terminal if console is None else self._console.is_terminal
         self._status: Any = None
         self._label: str | None = None
         self._total: int | None = None
@@ -95,10 +114,10 @@ class ConsoleProgress:
         """Say what is being compiled, before the first stage."""
         relative = os.path.relpath(manifest)
         shown = relative if not relative.startswith("..") else str(manifest)
-        self._console.print(f"Compiling [bold]{shown}[/bold]", highlight=False)
+        self._console.print(f"[bold cyan]Compiling[/] [bold]{shown}[/]", highlight=False)
 
     def stage(self, label: str, total: int | None = None) -> None:
-        self._end("[green]✓[/green]")
+        self._end("green", "✓")
         self._label, self._total, self._count = label, total, 0
         self._started = time.monotonic()
         if self._live:
@@ -110,16 +129,16 @@ class ConsoleProgress:
         if self._status is not None:
             self._status.update(self._describe(label))
         elif not self._live:
-            self._console.print(f"      {self._position()}{label}", highlight=False)
+            self._console.print(f"      [dim]{self._position()}{label}[/]", highlight=False)
 
     def finish(self) -> None:
-        self._end("[green]✓[/green]")
+        self._end("green", "✓")
 
     def fail(self) -> None:
-        self._end("[red]✗[/red]")
+        self._end("red", "✗")
 
-    def _end(self, mark: str) -> None:
-        """Close the stage under way with *mark* and how long it took."""
+    def _end(self, colour: str, mark: str) -> None:
+        """Close the stage under way with *mark*, in *colour*, and how long it took."""
         if self._label is None:
             return
         if self._status is not None:
@@ -128,12 +147,16 @@ class ConsoleProgress:
         seconds = time.monotonic() - self._started
         counted = f" ({self._total})" if self._total is not None else ""
         label = f"{self._label}{counted}".ljust(_LABEL_WIDTH)
-        self._console.print(f"  {mark} {label} [dim]{seconds:5.1f}s[/dim]", highlight=False)
+        # A failed stage is red all along; a finished one keeps the colour in its mark.
+        text = f"[{colour}]{label}[/]" if colour == "red" else label
+        self._console.print(
+            f"  [bold {colour}]{mark}[/] {text} [dim]{seconds:5.1f}s[/]", highlight=False
+        )
         self._label = None
 
     def _describe(self, item: str | None = None) -> str:
         """The spinner's text: the stage, and the item it is on."""
-        text = f"{self._label}"
+        text = f"[bold]{self._label}[/]"
         if item:
             text += f" [dim]· {self._position()}{item}[/dim]"
         return text
