@@ -19,7 +19,6 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Package storage never reads, writes or removes anything outside its root.
@@ -35,12 +34,14 @@ the storage root, and ``DELETE /testlab/packages/..`` removed the whole
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from starlette.testclient import TestClient
 
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.server.app import create_app
+from tractusx_testlab.server.routes import jobs as jobs_routes
 from tractusx_testlab.server.storage import (
     InvalidPackageNameError,
     PackageStorage,
@@ -141,6 +142,74 @@ class TestRun:
         response = client.post("/testlab/run/package", json={"package_id": ".."})
 
         assert response.status_code == 404
+
+
+class TestRunByPath:
+    """A ``path`` names a package in the store — never any other file on the server."""
+
+    @pytest.fixture()
+    def started(self, monkeypatch: pytest.MonkeyPatch) -> list[Path]:
+        """What the server set out to run; nothing actually runs."""
+        targets: list[Path] = []
+
+        async def record(_player: object, target: Path, _runtime_vars: dict) -> None:
+            targets.append(target)
+
+        monkeypatch.setattr(jobs_routes, "_execute_in_background", record)
+        return targets
+
+    @pytest.fixture()
+    def outside(self, tmp_path: Path) -> Path:
+        package = tmp_path / "elsewhere" / "planted-1.0.tck"
+        package.parent.mkdir()
+        package.write_bytes(_BODY)
+        return package
+
+    def _run(self, client: TestClient, path: Path | str) -> Any:
+        return client.post("/testlab/run/package", json={"path": str(path)})
+
+    def test_a_package_outside_the_store_is_refused(
+        self, client: TestClient, outside: Path, started: list[Path]
+    ) -> None:
+        response = self._run(client, outside)
+
+        assert response.status_code == 403
+        assert started == []
+        assert client.get("/testlab/tck-execution").json() == []
+
+    def test_a_path_that_climbs_out_of_the_store_is_refused(
+        self, client: TestClient, storage_dir: Path, outside: Path, started: list[Path]
+    ) -> None:
+        climbing = storage_dir / "packages" / ".." / ".." / "elsewhere" / outside.name
+
+        assert self._run(client, climbing).status_code == 403
+        assert started == []
+
+    def test_a_link_in_the_store_to_a_file_outside_is_refused(
+        self, client: TestClient, storage_dir: Path, outside: Path, started: list[Path]
+    ) -> None:
+        link = storage_dir / "packages" / "linked-1.0.tck"
+        link.symlink_to(outside)
+
+        assert self._run(client, link).status_code == 403
+        assert started == []
+
+    def test_a_missing_file_outside_the_store_is_refused_the_same(
+        self, client: TestClient, tmp_path: Path, started: list[Path]
+    ) -> None:
+        """403 whether it exists or not: the answer says nothing about the disk."""
+        assert self._run(client, tmp_path / "nowhere-1.0.tck").status_code == 403
+        assert started == []
+
+    def test_a_package_in_the_store_runs(self, client: TestClient, started: list[Path]) -> None:
+        uploaded = client.post(
+            "/testlab/packages", files={"file": ("mine-1.0.tck", _BODY, "application/octet-stream")}
+        ).json()
+
+        response = self._run(client, uploaded["file_path"])
+
+        assert response.status_code == 202
+        assert started == [Path(uploaded["file_path"])]
 
 
 class TestPackageStorage:

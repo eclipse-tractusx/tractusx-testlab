@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Server models — uploaded packages and vault configuration."""
@@ -28,7 +29,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from tractusx_testlab.models.primitives.enums import PackageFormat
 
@@ -45,6 +46,13 @@ class UploadedPackage(BaseModel):
 
 
 class VaultConfig(BaseModel):
+    """Where the vault is, and the token that opens it.
+
+    The token is left out of ``repr()`` — and so of every log line, traceback
+    and debugger view that prints the config holding it — but not out of a
+    dump: the config is rebuilt from its dump, and the vault client needs it.
+    """
+
     vault_url: str
-    vault_token: str = ""
+    vault_token: str = Field(default="", repr=False)
     vault_secret_path: str = "secret/data/testlab"

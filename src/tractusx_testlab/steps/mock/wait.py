@@ -40,6 +40,7 @@ from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import ConnectorOffer, ExecutionError, Listener, StepDefinition
+from tractusx_testlab.server.inbound.run_scope import declared, scoped
 from tractusx_testlab.server.mock_registry import get_callback_manager
 from tractusx_testlab.steps.mock._models import MockInstance
 from tractusx_testlab.steps.mock._paused_wait import wait_through_pauses
@@ -136,6 +137,9 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
         path = params.mock.path
         method = params.mock.method
         timeout = params.timeout_s
+        # The listener of this run's mock, kept under the run's own address:
+        # another run waiting on the same path waits on a listener of its own.
+        key_path = scoped(str(context.job.job_id), path)
 
         manager = get_callback_manager()
         if manager is None:
@@ -143,7 +147,7 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
                 "No CallbackManager available — wait_for_call requires the TestLab server"
             )
 
-        manager.register(path, method)
+        manager.register(key_path, method)
         listener = self.listener(params, context)
         # The run is now blocked on the SUT. Said out loud, with the address,
         # because from here the only thing that moves the run forward is a
@@ -152,12 +156,12 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
         logger.info("Waiting up to %.0fs for %s %s", timeout, method, path)
 
         result, waited_s = await wait_through_pauses(
-            manager, context, definition, listener, timeout
+            manager, context, definition, listener, timeout, key_path=key_path
         )
         elapsed_ms = round(waited_s * 1000)
 
         if result.timed_out:
-            raise RuntimeError(_timed_out(manager, timeout, method, path))
+            raise RuntimeError(_timed_out(manager, timeout, method, key_path))
         if result.refused is not None:
             raise MockCallRefusedError(listener, result.refused, elapsed_ms)
 
@@ -243,7 +247,7 @@ def _timed_out(manager: Any, timeout: float, method: str, path: str) -> str:
     connector, and a bare "timed out" would send whoever reads it looking for a
     network problem instead.
     """
-    message = f"Timed out after {timeout}s waiting for {method} {path}"
+    message = f"Timed out after {timeout}s waiting for {method} {declared(path)}"
     refused = manager.refused(path, method) if hasattr(manager, "refused") else 0
     if isinstance(refused, int) and refused > 0:
         message += (

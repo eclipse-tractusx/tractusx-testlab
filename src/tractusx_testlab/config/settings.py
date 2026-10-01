@@ -75,11 +75,20 @@ class TestlabConfig(BaseSettings):
     server_port: int = Field(default=8100, ge=1, le=65535)
     #: The mock server's address as the system under test reaches it — origin
     #: only, no path: ``https://testlab.example.com`` or ``http://engine:8100``.
-    #: ``mock/api`` publishes every callback URL under this root. Left unset,
+    #: ``mock/api`` publishes every callback URL under this root, behind the
+    #: run's own ``/runs/<run id>`` unless the root names the run already (an
+    #: engine's ``<origin>/mock/<job id>``). Left unset,
     #: it is ``http://localhost:<server_port>``, which is right only while the
     #: SUT shares the host; a connector in another container, or the engine
     #: behind an ingress, needs the address it can actually dial.
     mock_public_url: str | None = Field(default=None)
+    #: Which routes the in-process server mounts (``server.app.ServerMode``):
+    #: ``full`` — the package, compile and job API besides the mocks, what
+    #: ``testlab serve`` offers — or ``mock``, only what a running job needs for
+    #: inbound calls. Unset, ``testlab serve`` is ``full`` and the server the
+    #: player starts for a run is ``mock``. A host whose mock server is
+    #: reachable by the systems it tests sets ``mock``.
+    server_mode: Literal["full", "mock"] | None = Field(default=None)
     max_upload_bytes: int = Field(default=52_428_800, gt=0)  # 50 MB
     default_timeout_s: float = Field(default=600.0, gt=0)
     #: The deployment this engine drives — its own connector, registry and

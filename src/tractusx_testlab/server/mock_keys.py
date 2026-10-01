@@ -29,6 +29,10 @@ it, in a header; a mock behind a connector asset gets it into the asset's
 private data address, so only a call through the connector carries it. This
 module mints the keys, keeps what each address requires, and says of a call
 whether it may be answered — and if not, why.
+
+Every address here is a *key path*: the path under the run's own address
+(``inbound.run_scope``), exactly as it is kept. ``mock_registry`` exports the
+same names, which first work out the key path a call is for.
 """
 
 from __future__ import annotations
@@ -39,7 +43,9 @@ import secrets
 import time
 from collections import OrderedDict
 
-# path+method -> (header name, lower-cased; the value a caller must send in it)
+from tractusx_testlab.server.inbound.run_scope import split
+
+# key path+method -> (header name, lower-cased; the value a caller must send in it)
 _guards: dict[str, tuple[str, str]] = {}
 
 # run id -> the key every mock of that run requires; bounded like logging.masking
@@ -169,9 +175,34 @@ def _header(headers: dict, name: str) -> str | None:
     return next((str(value) for key, value in headers.items() if str(key).lower() == name), None)
 
 
+def carries_any_key_of(path: str, headers: dict) -> bool:
+    """Whether *headers* carry the key some mock on *path*, by any method, requires.
+
+    How a call on a bare path names its run when several runs serve that path:
+    each run's key is its own, and only the run that handed it out can be meant.
+    """
+    return any(
+        carries_key_of(path, method, headers)
+        for method, _, guarded_path in (key.partition(":") for key in list(_guards))
+        if guarded_path == path
+    )
+
+
+def guarded() -> list[str]:
+    """The key path of every mock that requires something of a caller."""
+    return [key.partition(":")[2] for key in list(_guards)]
+
+
 def drop_guard(path: str, method: str) -> None:
     """Require nothing more of a caller on *path*/*method*."""
     _guards.pop(_key(path, method), None)
+
+
+def drop_guards_of(run: str) -> None:
+    """Require nothing more on any address of run *run* — its mocks are gone."""
+    for key in list(_guards):
+        if split(key.partition(":")[2])[0] == run:
+            _guards.pop(key, None)
 
 
 def clear_guards() -> None:

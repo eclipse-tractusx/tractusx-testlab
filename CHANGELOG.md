@@ -203,6 +203,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   cut by the trace are redacted too, and the job API keeps a copy masked when
   the run ends. Whitespace around a secret input or a binding value is
   stripped. A run pins at most 256 values from `returns: … hidden: true`.
+- The server a run starts for its mocks (`testlab run`, or a `TestlabPlayer`
+  that finds no server to use) serves the mock and callback routes only. An
+  embedding host gets the same from `create_app(config, mode="mock")` or the
+  new setting `server_mode` (`TESTLAB_SERVER_MODE`: `full` or `mock`);
+  `testlab serve` keeps the whole API. `POST /testlab/run/package` runs a
+  `path` only when it lies in the server's package store, and answers `403`
+  for any other.
+- A run's mocks, their keys and the listeners its `mock/wait/*` steps wait on
+  are its own: two runs in one process, of one TCK or of two, never answer or
+  resolve each other's calls, and a run's mocks are removed when it ends.
+  `base_mock_url` and `full_mock_url` carry the run's segment,
+  `<root>/runs/<run id>`, unless the root names the run already (an engine's
+  `<origin>/mock/<job id>`). A call on the bare path is still answered when it
+  can be pinned on one run — the only one serving the path, or the one whose
+  key it carries — and with `409` otherwise.
+- `testlab config` shows set credentials (binding `api_key`,
+  `vault.vault_token`) as `***`, with `--json` too, and `repr()` of the config
+  and of the bindings leaves them out; a dump still carries them.
+- The private keys `testlab keygen` writes and the compiler's own key are
+  created `0600`, and a run's transcript, trace and log file `0600`, in
+  directories created `0700`.
+- Infrastructure bindings are settled from the run's inputs only. A value the
+  TCK package carries (`env` value, shared variable, test data) never changes a
+  binding, and the compiler refuses an `env.variables` id under
+  `infrastructure.`. New setting `binding_overrides`
+  (`TESTLAB_BINDING_OVERRIDES`), default both sides, limits which sides a run's
+  inputs may override (`BINDING_OVERRIDE_REFUSED`). A run input that moves a
+  connector's address to another origin drops its `api_key` unless it supplies
+  one too. `infrastructure.*` is read-only once the run is bound
+  (`SEALED_VARIABLE`).
+- An EDR's token is a handle bound to its data plane. `edr_token` and the
+  `authorization`/`authCode`/`refreshToken` of a `data_address` are sent by
+  `connector/dataplane/http_request`, the registry consumer steps and the
+  notification direct mode to their own data-plane origin only, and by
+  `http/http_request` as a whole header to that origin; they cannot be
+  interpolated, logged or put into a body. `token_prefix` shows 4 characters.
+  `returns: … hidden: false` no longer shows an EDR or OAuth2 token, only
+  outputs a step marks revealable (the `mock/api` key).
+- Check paths and `returns:` names never read private attributes.
 
 ## [1.0.0a6] - 2026-09-25
 
