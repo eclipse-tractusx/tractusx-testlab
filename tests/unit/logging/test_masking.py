@@ -36,7 +36,12 @@ from unittest.mock import MagicMock
 import pytest
 
 from tractusx_testlab.logging import masking
-from tractusx_testlab.logging.masking import forget_secrets, mask, register_secret
+from tractusx_testlab.logging.masking import (
+    forget_secrets,
+    mask,
+    register_secret,
+    release_run,
+)
 from tractusx_testlab.logging.trace import ExecutionTrace
 from tractusx_testlab.logging.transcript import _Tee
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
@@ -93,6 +98,37 @@ class TestMask:
             register_secret(f"{_KEY}-{index}")
         assert mask(f"{_KEY}-0") == f"{_KEY}-0"
         assert mask(f"{_KEY}-2") == _MARK
+
+
+class TestPinnedForTheRun:
+    """A run's own credentials cannot be evicted while it is still running."""
+
+    def test_newer_secrets_never_evict_a_pinned_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(masking, "MAX_SECRETS", 2)
+        register_secret(_KEY, run="run-1")
+        for index in range(10):
+            register_secret(f"other-secret-{index:04d}")
+        assert mask(_KEY) == _MARK
+
+    def test_released_secrets_stay_masked_until_newer_ones_evict_them(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(masking, "MAX_SECRETS", 2)
+        register_secret(_KEY, run="run-1")
+        release_run("run-1")
+        assert mask(_KEY) == _MARK
+        for index in range(2):
+            register_secret(f"other-secret-{index:04d}")
+        assert mask(_KEY) == _KEY
+
+    def test_releasing_one_run_leaves_another_pinned(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(masking, "MAX_SECRETS", 1)
+        register_secret(_KEY, run="run-1")
+        register_secret(f"{_KEY}-two", run="run-2")
+        release_run("run-1")
+        register_secret("other-secret-0000")
+        assert mask(f"{_KEY}-two") == _MARK
+        assert mask(_KEY) == _KEY
 
 
 class TestSinks:

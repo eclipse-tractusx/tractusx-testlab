@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The three surfaces of an infrastructure binding, all derived from one model.
@@ -42,6 +43,11 @@ looking each one up, rather than by splitting names apart. The capability and
 field cannot be recovered from ``TESTLAB_ENGINE_DTR_SUBMODEL_BASE_URL`` by
 counting underscores — both halves carry them — and a generated set has no
 ambiguity to resolve.
+
+A field marked secret (``CapabilityBinding.secret_fields``) is projected onto
+the context as a :class:`~tractusx_testlab.security.credentials.Credential`
+handle rather than as its value: a test may send it as a header to the
+binding's own origin, and read it nowhere else.
 """
 
 from __future__ import annotations
@@ -56,6 +62,7 @@ from tractusx_testlab.models.domain.infrastructure import (
     capability_bindings,
 )
 from tractusx_testlab.models.primitives.binding_errors import UnknownBindingKeyError
+from tractusx_testlab.security.credentials import Credential, origin_of
 
 #: Prefix every infrastructure binding carries inside the variable namespace.
 CONTEXT_PREFIX = "infrastructure."
@@ -125,20 +132,61 @@ def _iter_bound(infrastructure: Infrastructure) -> Iterator[tuple[str, str, Capa
             yield side, capability, binding
 
 
-def flatten(infrastructure: Infrastructure) -> dict[str, str]:
+def flatten(infrastructure: Infrastructure) -> dict[str, str | Credential]:
     """Project *infrastructure* onto the context keys a test can reference.
 
     Only bound capabilities are projected, and only their non-empty fields: an
     unbound connector has nothing to say, and publishing its defaults would put
     an ``api_key_header`` in the namespace for a connector that does not exist.
+
+    A secret field is projected as a :class:`Credential` handle bound to the
+    origin of the capability's own URL, never as text. The SDK services are
+    built from the binding itself and do not read the namespace.
     """
-    projected: dict[str, str] = {}
+    projected: dict[str, str | Credential] = {}
     for side, capability, binding in _iter_bound(infrastructure):
+        secret = type(binding).secret_fields()
         for field in type(binding).model_fields:
             value = getattr(binding, field, "")
-            if value not in (None, ""):
-                projected[context_key(side, capability, field)] = str(value)
+            if value in (None, ""):
+                continue
+            key = context_key(side, capability, field)
+            projected[key] = (
+                Credential(
+                    str(value), name=key, side=side, origins=[origin_of(binding.credential_url())]
+                )
+                if field in secret
+                else str(value)
+            )
     return projected
+
+
+def secret_keys() -> frozenset[str]:
+    """Every context key whose binding field is a credential, read off the model."""
+    return frozenset(
+        context_key(side, capability, field)
+        for side, capability, binding_type in capabilities()
+        for field in binding_type.secret_fields()
+    )
+
+
+def secret_values(infrastructure: Infrastructure) -> list[str]:
+    """The raw value of every credential *infrastructure* binds, for the masking registry."""
+    return [
+        str(getattr(binding, field))
+        for _, _, binding in _iter_bound(infrastructure)
+        for field in type(binding).secret_fields()
+        if getattr(binding, field, "")
+    ]
+
+
+def credential_headers(infrastructure: Infrastructure) -> set[str]:
+    """The header names the bound capabilities present their credentials in."""
+    return {
+        str(getattr(binding, "api_key_header", ""))
+        for _, _, binding in _iter_bound(infrastructure)
+        if getattr(binding, "api_key_header", "")
+    }
 
 
 def collect_overrides(

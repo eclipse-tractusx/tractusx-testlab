@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """FastAPI routes for job execution and management."""
@@ -34,6 +35,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
+from tractusx_testlab.logging.wire import written
 from tractusx_testlab.models import JobStatus
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.routes.callbacks import callback_router
@@ -43,10 +45,9 @@ from tractusx_testlab.server.streaming import streaming_router
 
 _logger = logging.getLogger(__name__)
 
-#: Strong references to in-flight background runs. ``asyncio`` holds only a weak
-#: reference to a task, so a run whose reference is dropped can be garbage
-#: collected mid-execution; holding it here until the done-callback discards it
-#: is what keeps that from happening.
+#: Strong references to in-flight background runs. ``asyncio`` holds a task only
+#: weakly, so a run nobody references can be collected mid-execution; holding it
+#: here until the done-callback discards it is what keeps that from happening.
 _background_tasks: set[asyncio.Task] = set()
 
 
@@ -185,8 +186,7 @@ async def run_test(
         target = Path(path)
         if not target.exists():
             raise HTTPException(404, f"File not found: {path}")
-        # Caught here, not in the background task: the caller is told, rather
-        # than getting a 202 for a job that dies into a log line.
+        # Caught here: the caller is told, not given a 202 for a job that dies in a log.
         if target.suffix != ".tck":
             raise HTTPException(
                 400,
@@ -230,7 +230,7 @@ async def list_jobs(
             raise HTTPException(400, f"Invalid status: {status}") from exc
 
     jobs = player.jobs.list_jobs(status=status_filter)
-    return JSONResponse(content=[job.model_dump(mode="json") for job in jobs])
+    return JSONResponse(content=[written(job.model_dump(mode="json")) for job in jobs])
 
 
 @router.get(
@@ -238,11 +238,11 @@ async def list_jobs(
     responses={404: {"description": "Job not found"}},
 )
 async def get_job(job_id: str, player: PlayerDep) -> JSONResponse:
-    """Get details for a specific execution."""
+    """Get details for a specific execution, its secrets read as ``***``."""
     job = player.jobs.get(job_id)
     if job is None:
         raise HTTPException(404, f"Job '{job_id}' not found")
-    return JSONResponse(content=job.model_dump(mode="json"))
+    return JSONResponse(content=written(job.model_dump(mode="json")))
 
 
 @router.post(

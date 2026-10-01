@@ -170,6 +170,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   published under that name either. A retried or looped step leaves the value
   of its latest run.
 
+### Security
+
+- Hardened credential handling. A credential field of an infrastructure
+  binding (`infrastructure.<side>.connector.api_key`) is published to a test
+  as a handle instead of its value. It may be used only as the whole value of
+  an `http/http_request` header sent to that binding's own origin; any other
+  use is a compile error and fails the step (`CREDENTIAL_MISUSE`,
+  `CREDENTIAL_ORIGIN_MISMATCH`). The connector and registry steps are
+  unchanged. A request carrying a credential no longer follows redirects.
+- `env.variables` entries take `secret: true`. The value is used as before
+  and masked in every record; embedders read the flag as
+  `VariableDefinition.secret` (also shown by `testlab inspect --variables`).
+- New setting `credential_release` (`TESTLAB_CREDENTIAL_RELEASE`), default
+  both sides, lets a host restrict which sides' credentials a test may send
+  through `http/http_request` (`CREDENTIAL_NOT_RELEASED`).
+- More values are shown as `***` in traces, live events, transcripts and the
+  job API: bound credentials (also under a custom `api_key_header`), secret
+  variables (`secret: true` on an `env.variables` entry, or a credential-like
+  name), EDR tokens
+  and data-address authorization, OAuth2 tokens and token-request secrets,
+  credential-named fields of recorded request and response bodies, and the
+  credential headers of inbound mock calls. A run's own secrets are no longer
+  evicted from the masking registry while the run is open.
+
 ## [1.0.0a6] - 2026-09-25
 
 ### Added

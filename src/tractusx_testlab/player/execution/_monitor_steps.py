@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The step lifecycle half of the ExecutionMonitor.
@@ -83,8 +84,10 @@ class StepEvents:
         """Publish a step_started event.
 
         *inputs* is the step's ``with:`` block with its references resolved —
-        the values the step is about to be given, not the template naming them.
+        the values the step is about to be given, not the template naming them —
+        with every credential-named input shown as ``***`` (logging.wire).
         """
+        inputs = wire.redact_secrets(inputs)
         event_id = self._trace.step_started(test, step_id, step_index, step_type, phase, inputs)
         self._publish(
             StepStartedEvent(

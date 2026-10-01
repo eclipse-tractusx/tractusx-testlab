@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 
@@ -38,6 +39,7 @@ from typing import Any
 
 from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.logging.masking import register_secret
+from tractusx_testlab.logging.wire import is_secret_key
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.steps.assertions import AssertionEngine
@@ -86,19 +88,25 @@ def store_step_outputs(
             context.set_variable(f"{step_namespace}.{step_id}.{var_name}", value)
 
 
-def hide_secrets(step_cls: type, step_def: Any, output: Any) -> None:
+def hide_secrets(step_cls: type, step_def: Any, output: Any, run: str | None = None) -> None:
     """Mask what this step returned that no record of the run may show.
 
     Two sources, and the author has the last word on both. A step marks an
     output field secret (``json_schema_extra={"secret": True}``) — ``mock/api``'s
-    ``api_key`` — and it is hidden unless the step's ``returns:`` names it with
+    ``api_key``, an EDR's ``edr_token``, a token endpoint's ``access_token`` —
+    and it is hidden unless the step's ``returns:`` names it with
     ``hidden: false``. Any other return is hidden when ``returns:`` says
     ``hidden: true``. Called as soon as the step has run and before its checks
     are evaluated, because an assertion line prints the value it compared.
 
+    A credential nested in a document the step returned — the ``authorization``
+    of a data address, the ``refreshToken`` beside it — is filed under a name
+    that says so (logging.wire.redaction), and is hidden by that name whatever
+    the field holding the document is called.
+
     The value the run keeps is untouched; only what is written down is masked
     (logging.masking), and every string inside a structured value is masked
-    with it.
+    with it. *run* pins what is registered for as long as that run is open.
     """
     from tractusx_testlab.steps._checks.extraction import declared_names
 
@@ -112,26 +120,45 @@ def hide_secrets(step_cls: type, step_def: Any, output: Any) -> None:
         ).items()
         if isinstance(field.json_schema_extra, dict) and field.json_schema_extra.get("secret")
     }
+    shown: set[str] = set()
     for name, entry in returns.items():
         flag = getattr(entry, "hidden", None)
         if flag is True:
             hidden.add(name)
         elif flag is False:
             hidden.discard(name)
+            shown.add(name)
 
     for name in hidden:
-        _register_strings(AssertionEngine.extract_path(output, name, declared))
+        _register_strings(AssertionEngine.extract_path(output, name, declared), run)
+    value = getattr(output, "value", None)
+    if isinstance(value, dict):
+        for name, item in value.items():
+            if name not in shown:
+                _register_named(item, run, is_secret_key(name))
 
 
-def _register_strings(value: Any) -> None:
+def _register_strings(value: Any, run: str | None = None) -> None:
     if isinstance(value, str):
-        register_secret(value)
+        register_secret(value, run=run)
     elif isinstance(value, dict):
         for item in value.values():
-            _register_strings(item)
+            _register_strings(item, run)
     elif isinstance(value, list | tuple):
         for item in value:
-            _register_strings(item)
+            _register_strings(item, run)
+
+
+def _register_named(value: Any, run: str | None, is_secret: bool) -> None:
+    """Register every string filed under a credential's name, at any depth."""
+    if is_secret:
+        _register_strings(value, run)
+    elif isinstance(value, dict):
+        for name, item in value.items():
+            _register_named(item, run, is_secret_key(name))
+    elif isinstance(value, list | tuple):
+        for item in value:
+            _register_named(item, run, False)
 
 
 async def run_and_publish(

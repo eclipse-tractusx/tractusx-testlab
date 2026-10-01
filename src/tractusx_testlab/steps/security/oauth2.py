@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """security/oauth2/* — obtain a token from an OAuth2 authorization server.
@@ -44,6 +45,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from tractusx_testlab.authoring.registry import step
+from tractusx_testlab.logging.masking import register_secret
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.steps import http_client
 from tractusx_testlab.steps.shared_models import HttpTransportParams, StepParams
@@ -133,7 +135,9 @@ class OAuth2TokenPayload(StepPayload):
     model_config = ConfigDict(extra="allow")
 
     access_token: str | None = Field(
-        default=None, description="The bearer token to present to protected services."
+        default=None,
+        description="The bearer token to present to protected services.",
+        json_schema_extra={"secret": True},
     )
     token_type: str | None = Field(
         default=None, description="Type of the issued token, normally 'Bearer'."
@@ -143,7 +147,9 @@ class OAuth2TokenPayload(StepPayload):
     )
     scope: str | None = Field(default=None, description="Scopes the server actually granted.")
     refresh_token: str | None = Field(
-        default=None, description="Refresh token, when the server issues one."
+        default=None,
+        description="Refresh token, when the server issues one.",
+        json_schema_extra={"secret": True},
     )
 
 
@@ -175,6 +181,10 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
     ) -> StepOutput[OAuth2TokenPayload]:
         timeout = params.timeout_or(context.config.default_timeout_s)
         form = params.form_fields()
+        # Basic auth carries the client secret outside the form, so it is named too.
+        for key, value in {**form, "client_secret": params.client_secret}.items():
+            if key in _SECRET_FIELDS:
+                register_secret(value, run=str(context.job.job_id))
         auth = (params.client_id, params.client_secret) if params.client_auth == "basic" else None
 
         resp = await http_client.request(

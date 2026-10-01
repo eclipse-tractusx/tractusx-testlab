@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Context-seeding helpers — populate a StepContext before a TCK run begins.
@@ -32,11 +33,13 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 from tractusx_testlab.authoring.test import Tck
+from tractusx_testlab.logging.masking import register_secret
 from tractusx_testlab.models.primitives.binding_errors import MissingInputVariableError
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
 from tractusx_testlab.player.execution.context import StepContext
@@ -44,6 +47,11 @@ from tractusx_testlab.player.loading._package_paths import package_path
 from tractusx_testlab.syntax import context_vars, keys, variables
 
 logger = logging.getLogger(__name__)
+
+#: A variable named like a credential is treated as one whatever it declares.
+_SECRET_NAME = re.compile(
+    r"secret|passw(or)?d|token|api[_-]?key|credential|authori[sz]ation", re.IGNORECASE
+)
 
 
 def seed_context_variables(
@@ -77,8 +85,11 @@ def seed_context_variables(
 
     if runtime_vars:
         declared = _declared_types(tck)
+        secret = {name for name, var in tck.all_variables().items() if var.secret}
         for key, value in runtime_vars.items():
             context.set_variable(key, _as_declared_type(key, value, declared.get(key)))
+            if key in secret or _SECRET_NAME.search(str(key)):
+                register_secret(str(value), run=str(context.job.job_id))
 
     # Last, so no input can pose as it: the id of this run, for a test that
     # leaves something behind in a shared system and has to name it apart from
@@ -121,6 +132,8 @@ def seed_env_variables(context: StepContext, tck: Tck) -> None:
             continue
         var_id = str(var[keys.ID])
         context.set_template(var_id, _as_declared_type(var_id, value, _declared_type(var)))
+        if var.get(keys.SECRET) is True:
+            register_secret(str(value), run=str(context.job.job_id))
 
 
 def _declared_variables(tck: Tck) -> Iterator[dict]:

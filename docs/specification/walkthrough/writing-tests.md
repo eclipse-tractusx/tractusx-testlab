@@ -17,6 +17,7 @@ SPDX-License-Identifier: CC-BY-4.0
 
 -->
 <!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
 # Writing Tests
@@ -135,6 +136,9 @@ Key points:
   `${{ env.<id> }}`:
     - `with.source: value` carries a literal (`with.value`).
     - `with.source: input` asks the operator at run time and must say who owes the value: `scope: engine` or `scope: sut`.
+      An input that is a secret says `secret: true` beside `uses:`; it is read like any other value, and every record
+      of the run shows it as `***`. An input named like a credential (`…secret`, `…password`, `…token`,
+      `…api_key`, `…credential`, `…authorization`) is masked the same way without saying so.
     - `uses` is the variable's type: `variable/type/string|integer|number|boolean|object|array`, or
       `config/connector/policy` / `config/connector/asset` for the two connector documents (`class: Policy` / `class: Asset`).
 - `schemas` and `testdata` are lists of `{ id, source }` entries — `source` is the file name under `schemas/` or
@@ -287,7 +291,7 @@ All references use the `${{ }}` expression syntax:
 | `${{ env.schemas.<id> }}` | A schema file's content |
 | `${{ setup.<step-id>.<output> }}` | A setup step's output (same test) |
 | `${{ execution.<step-id>.<output> }}` | An earlier execution step's output (same test) |
-| `${{ infrastructure.<engine\|sut>.<capability>.<field> }}` | A bound infrastructure value |
+| `${{ infrastructure.<engine\|sut>.<capability>.<field> }}` | A bound infrastructure value. A credential (`…connector.api_key`) may only be the whole value of an `http/http_request` header sent to that binding's own origin; traces show it as `***` ([rules](../../tck-syntax/steps/expressions.md#credential-references)) |
 
 References resolve **backwards only**, within one test. A reference that is the whole value may be unquoted; one
 embedded in a longer string must be quoted. `testlab validate` rejects a reference that names nothing and lists what is available.

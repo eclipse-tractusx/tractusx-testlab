@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 
@@ -38,27 +39,14 @@ from typing import Any
 
 from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
 
+from tractusx_testlab.logging.wire.redaction import (
+    SECRET_HEADERS,
+    redact_secrets,
+    secret_headers,
+)
 from tractusx_testlab.models.runtime.results import HttpRequest, HttpResponse
 
-#: Header names whose value never reaches what is written down. Matched
-#: case-insensitively against the whole name: the point is that a bearer token or
-#: an API key must not be written to a file an operator will paste into an issue.
-#: One list for both records — it is handed to the tracer for the calls it
-#: records and used here for the account a step gives of itself, because the SDK's
-#: own default set is close but not identical, and one run must not redact two ways.
-SECRET_HEADERS: frozenset[str] = frozenset(
-    {
-        "authorization",
-        "proxy-authorization",
-        "x-api-key",
-        "x-api-secret",
-        "x-auth-token",
-        "apikey",
-        "api-key",
-        "cookie",
-        "set-cookie",
-    }
-)
+__all__ = ["SECRET_HEADERS", "as_recorded", "safe_headers"]
 
 
 def as_recorded(result: Any) -> Any:
@@ -77,6 +65,11 @@ def as_recorded(result: Any) -> Any:
     * A credential the step was handed — the EDR token, a bearer a test set —
       never went through the tracer, so it is masked here.
 
+    Whichever account is written, it is redacted the same way — headers by name,
+    bodies and the step's resolved inputs by key (logging.wire.redaction) — so a
+    step that took care to redact its own request (``security/oauth2/*``) is not
+    undone by the call the tracer recorded underneath it.
+
     The result the run keeps is untouched. Its ``request`` / ``response`` are
     what a ``returns:`` block may name and what assertions read, so they stay as
     the step declared them, headers and all; a step that made no call at all
@@ -87,20 +80,45 @@ def as_recorded(result: Any) -> Any:
     request = subject.request if subject is not None else result.request
     response = subject.response if subject is not None else result.response
     return result.model_copy(
-        update={"request": _safe_request(request), "response": _safe_response(response)}
+        update={
+            "request": _safe_request(request),
+            "response": _safe_response(response),
+            "inputs": redact_secrets(result.inputs),
+            "exchanges": [_safe_exchange(exchange) for exchange in result.exchanges],
+        }
+    )
+
+
+def _safe_exchange(exchange: Any) -> Any:
+    return exchange.model_copy(
+        update={
+            "request": _safe_request(exchange.request),
+            "response": _safe_response(exchange.response),
+        }
     )
 
 
 def _safe_request(request: HttpRequest | None) -> HttpRequest | None:
-    if request is None or not request.headers:
+    if request is None:
         return request
-    return request.model_copy(update={"headers": safe_headers(request.headers)})
+    return request.model_copy(
+        update={
+            "headers": safe_headers(request.headers) if request.headers else request.headers,
+            "params": redact_secrets(request.params),
+            "body": redact_secrets(request.body),
+        }
+    )
 
 
 def _safe_response(response: HttpResponse | None) -> HttpResponse | None:
-    if response is None or not response.headers:
+    if response is None:
         return response
-    return response.model_copy(update={"headers": safe_headers(response.headers)})
+    return response.model_copy(
+        update={
+            "headers": safe_headers(response.headers) if response.headers else response.headers,
+            "body": redact_secrets(response.body),
+        }
+    )
 
 
 def safe_headers(headers: Any) -> dict[str, str]:
@@ -117,7 +135,8 @@ def safe_headers(headers: Any) -> dict[str, str]:
         pairs = headers.items()
     except AttributeError:
         return {}
+    redacted = secret_headers()
     return {
-        str(name): (REDACTED_VALUE if str(name).lower() in SECRET_HEADERS else str(value))
+        str(name): (REDACTED_VALUE if str(name).lower() in redacted else str(value))
         for name, value in pairs
     }

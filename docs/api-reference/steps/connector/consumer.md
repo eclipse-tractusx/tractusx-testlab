@@ -65,7 +65,7 @@ _What every DSP flow step hands back: where the data is, and the token for it._
 | Field | Type | Description |
 |---|---|---|
 | `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. |
+| `edr_token` | string | Authorization token for that data-plane URL. Shown as '***' in every record. |
 
 ## `connector/consumer/do_dsp_with_bpnl` { #connector-consumer-do_dsp_with_bpnl }
 
@@ -89,7 +89,7 @@ _What every DSP flow step hands back: where the data is, and the token for it._
 | Field | Type | Description |
 |---|---|---|
 | `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. |
+| `edr_token` | string | Authorization token for that data-plane URL. Shown as '***' in every record. |
 
 ## `connector/consumer/extract_dataset` { #connector-consumer-extract_dataset }
 
@@ -133,7 +133,7 @@ _Output contract of `connector/consumer/get_edr`._
 | Field | Type | Description |
 |---|---|---|
 | `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. |
+| `edr_token` | string | Authorization token for that data-plane URL. Shown as '***' in every record. |
 | `data_address` | [DataAddressPayload](#dataaddresspayload) | The full EDR data address document, unchanged. |
 
 ## `connector/consumer/initiate_transfer` { #connector-consumer-initiate_transfer }

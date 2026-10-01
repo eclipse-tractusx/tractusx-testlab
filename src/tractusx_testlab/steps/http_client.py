@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The one way a step makes an HTTP call.
@@ -37,10 +38,12 @@ were present and neither was canonical. This is the canonical one.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from typing import Any
 
 import httpx
 from tractusx_sdk.dataspace.tools import trace_call
+from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
 
 from tractusx_testlab.logging import wire
 
@@ -57,6 +60,7 @@ async def request(
     auth: tuple[str, str] | None = None,
     timeout: float | None = None,
     follow_redirects: bool = True,
+    secret_headers: Collection[str] = (),
 ) -> httpx.Response:
     """Make one HTTP request without blocking the event loop.
 
@@ -71,12 +75,20 @@ async def request(
     request before sending it, completes the entry with the response or with the
     exception, and does nothing at all outside a step. See
     :mod:`tractusx_testlab.logging.wire`.
+
+    *secret_headers* names headers carrying a credential under a name the
+    tracer would not recognise; they are recorded as ``***`` and sent as given.
     """
+    traced_headers = (
+        {k: REDACTED_VALUE if k in secret_headers else v for k, v in headers.items()}
+        if headers and secret_headers
+        else headers
+    )
     async with httpx.AsyncClient(follow_redirects=follow_redirects) as client:
         with trace_call(
             method.upper(),
             str(url),
-            headers=headers,
+            headers=traced_headers,
             params=params,
             body=json if json is not None else data or content,
             context=wire.ENGINE_CONTEXT,

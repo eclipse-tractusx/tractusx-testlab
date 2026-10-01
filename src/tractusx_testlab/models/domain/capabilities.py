@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """One bound capability, and the kinds of capability a deployment can have.
@@ -55,6 +56,13 @@ from pydantic import BaseModel, ConfigDict, Field
 #: without them (``api_key`` on an unauthenticated connector, ``name``).
 OPERATOR_SUPPLIED: dict[str, Any] = {"operator_supplied": True}
 
+#: Marker a field carries when its value is a credential. A test never reads
+#: it as text: the variable namespace holds a handle in its place
+#: (:mod:`tractusx_testlab.security.credentials`), and every record of the run
+#: masks the value. A new secret field is declared by carrying this marker, and
+#: every surface that has to treat it as one reads :meth:`secret_fields`.
+SECRET: dict[str, Any] = {"secret": True}
+
 
 class CapabilityBinding(BaseModel):
     """One bound capability — the base every side's capabilities share.
@@ -70,6 +78,11 @@ class CapabilityBinding(BaseModel):
 
     #: Field whose presence decides whether this capability was bound at all.
     identity_field: ClassVar[str] = ""
+
+    #: Field holding the URL this capability's credentials authenticate against.
+    #: Empty means the identity field, which is right for every capability whose
+    #: address and API are the same thing.
+    credential_url_field: ClassVar[str] = ""
 
     version: str = Field(
         default="",
@@ -109,6 +122,19 @@ class CapabilityBinding(BaseModel):
             and field.json_schema_extra.get("operator_supplied")
         )
 
+    @classmethod
+    def secret_fields(cls) -> tuple[str, ...]:
+        """Return the fields of this capability that hold credentials (:data:`SECRET`)."""
+        return tuple(
+            name
+            for name, field in cls.model_fields.items()
+            if isinstance(field.json_schema_extra, dict) and field.json_schema_extra.get("secret")
+        )
+
+    def credential_url(self) -> str:
+        """The URL this binding's credentials are presented to — and nowhere else."""
+        return str(getattr(self, self.credential_url_field or self.identity_field, "") or "")
+
     def missing_fields(self) -> tuple[str, ...]:
         """Return the operator-supplied fields of this binding that are still empty."""
         return tuple(
@@ -132,6 +158,7 @@ class ConnectorBinding(CapabilityBinding):
     """An EDC connector, on either side of the topology."""
 
     identity_field: ClassVar[str] = "management_url"
+    credential_url_field: ClassVar[str] = "management_url"
 
     management_url: str = Field(
         default="",
@@ -144,7 +171,11 @@ class ConnectorBinding(CapabilityBinding):
     )
     api_key: str = Field(
         default="",
-        description="Management API key. Empty when the connector is unauthenticated.",
+        description=(
+            "Management API key. Empty when the connector is unauthenticated. A test "
+            "reads it only as a handle, sendable as a header to 'management_url'."
+        ),
+        json_schema_extra=SECRET,
     )
     api_key_header: str = Field(
         default="x-api-key",

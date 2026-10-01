@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Settling which deployment a run targets, before the run starts.
@@ -36,8 +37,17 @@ from __future__ import annotations
 
 from tractusx_testlab.authoring._infrastructure import collect_infrastructure_requirements
 from tractusx_testlab.authoring.test import Tck
-from tractusx_testlab.infrastructure.mapping import collect_overrides, flatten
+from tractusx_testlab.infrastructure.mapping import (
+    collect_overrides,
+    credential_headers,
+    flatten,
+    secret_keys,
+    secret_values,
+)
 from tractusx_testlab.infrastructure.profiles import InfrastructureManager
+from tractusx_testlab.logging.masking import register_secret
+from tractusx_testlab.logging.wire import register_secret_header
+from tractusx_testlab.models.domain.infrastructure import Infrastructure
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.syntax import defaults
 
@@ -69,6 +79,9 @@ def bind_infrastructure(
     whether the value came from a profile, the environment, or the CLI, and
     the requirements reach the override reader so a typo is answered with
     the keys this TCK needs rather than with the whole model.
+
+    A credential is published as a handle, never as its value (see
+    :func:`publish_bindings`).
     """
     requirements = collect_infrastructure_requirements(tck)
     release, release_stated = _target_release(tck)
@@ -83,8 +96,27 @@ def bind_infrastructure(
     )
 
     context.bind_infrastructure(resolved)
-    for key, value in flatten(resolved).items():
+    publish_bindings(resolved, context)
+
+
+def publish_bindings(resolved: Infrastructure, context: StepContext) -> None:
+    """Publish *resolved* into the variable namespace, its credentials as handles.
+
+    Every bound credential is also registered for masking, pinned for as long
+    as this run is open, and the header each binding presents its key in is
+    redacted by name from now on. A credential an operator supplied as a
+    ``--var`` override arrived in the namespace as text; it is replaced by its
+    handle, or removed when the capability it belongs to is not bound at all.
+    """
+    for secret in secret_values(resolved):
+        register_secret(secret, run=str(context.job.job_id))
+    for header in credential_headers(resolved):
+        register_secret_header(header)
+    published = flatten(resolved)
+    for key, value in published.items():
         context.set_variable(key, value)
+    for key in secret_keys() - set(published):
+        context.unset_variable(key)
 
 
 def _target_release(tck: Tck) -> tuple[str, bool]:

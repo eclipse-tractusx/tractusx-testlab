@@ -31,6 +31,7 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
+from tractusx_testlab.logging.wire import safe_headers
 from tractusx_testlab.models import CallbackResult
 
 
@@ -122,13 +123,17 @@ class CallbackManager:
         """Called by the webhook route when a request matches a listener.
 
         Returns True if a listener was waiting or the result was buffered.
+
+        The call's credentials are redacted by header name before anything is
+        kept: the mock has already admitted the caller, and what the wait
+        returns is published, traced and shown to whoever watches the run.
         """
         key = self._key(path, method)
         result = CallbackResult(
             listener_name=key,
             path=path,
             method=method,
-            headers=headers,
+            headers=safe_headers(headers),
             query_params=query_params or {},
             payload=payload,
             received_at=datetime.now(UTC),

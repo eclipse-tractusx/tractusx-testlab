@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Contract models shared by more than one step.
@@ -213,11 +214,16 @@ class DataAddressPayload(StepPayload):
     model_config = ConfigDict(extra="allow")
 
     endpoint: str | None = Field(default=None, description="Data-plane URL to fetch the data from.")
-    authorization: str | None = Field(default=None, description="Authorization token for that URL.")
+    authorization: str | None = Field(
+        default=None,
+        description="Authorization token for that URL.",
+        json_schema_extra={"secret": True},
+    )
     auth_code: str | None = Field(
         default=None,
         alias="authCode",
         description="Legacy spelling of 'authorization' used by older connectors.",
+        json_schema_extra={"secret": True},
     )
 
 

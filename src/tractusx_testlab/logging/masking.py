@@ -44,6 +44,12 @@ in one process, and one run's key showing up in another run's record would be
 exactly as wrong as it showing up in its own. It is bounded, so a long-lived
 engine does not mask against every key it ever minted: by the time
 :data:`MAX_SECRETS` newer ones exist, the run that minted the oldest is over.
+
+That reasoning holds only for a run that is over, so a secret registered *for a
+run* (``register_secret(value, run=job_id)``) is pinned: no number of newer
+secrets evicts it while the run is open. :func:`release_run` hands the run's
+secrets to the bounded registry when it ends, so an event published after the
+run closed is still masked.
 """
 
 from __future__ import annotations
@@ -65,22 +71,32 @@ MIN_SECRET_LENGTH = 8
 
 _lock = threading.Lock()
 _secrets: OrderedDict[str, None] = OrderedDict()
+#: Secrets of runs still open, by run id — never evicted (see the module doc).
+_pinned: dict[str, set[str]] = {}
 _pattern: re.Pattern[str] | None = None
 
 
-def register_secret(value: str | None) -> None:
-    """Mask *value* wherever a record of the run would otherwise carry it."""
-    global _pattern
+def register_secret(value: str | None, run: str | None = None) -> None:
+    """Mask *value* wherever a record of the run would otherwise carry it.
+
+    *run* pins it for as long as that run is open (:func:`release_run`).
+    """
     if not isinstance(value, str) or len(value) < MIN_SECRET_LENGTH:
         return
     with _lock:
-        _secrets.pop(value, None)
-        _secrets[value] = None
-        while len(_secrets) > MAX_SECRETS:
-            _secrets.popitem(last=False)
-        # Longest first, so a secret that contains another is masked whole.
-        ordered = sorted(_secrets, key=len, reverse=True)
-        _pattern = re.compile("|".join(re.escape(secret) for secret in ordered))
+        if run is not None:
+            _pinned.setdefault(run, set()).add(value)
+        else:
+            _remember(value)
+        _recompile()
+
+
+def release_run(run: str) -> None:
+    """End the pin on *run*'s secrets; they stay masked until newer ones evict them."""
+    with _lock:
+        for value in _pinned.pop(run, set()):
+            _remember(value)
+        _recompile()
 
 
 def forget_secrets() -> None:
@@ -88,7 +104,23 @@ def forget_secrets() -> None:
     global _pattern
     with _lock:
         _secrets.clear()
+        _pinned.clear()
         _pattern = None
+
+
+def _remember(value: str) -> None:
+    _secrets.pop(value, None)
+    _secrets[value] = None
+    while len(_secrets) > MAX_SECRETS:
+        _secrets.popitem(last=False)
+
+
+def _recompile() -> None:
+    global _pattern
+    every = set(_secrets).union(*_pinned.values())
+    # Longest first, so a secret that contains another is masked whole.
+    ordered = sorted(every, key=len, reverse=True)
+    _pattern = re.compile("|".join(re.escape(secret) for secret in ordered)) if ordered else None
 
 
 def mask(value: Any) -> Any:

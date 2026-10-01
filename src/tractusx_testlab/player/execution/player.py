@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """TestlabPlayer — async executor that runs TCKs test-by-test, step-by-step."""
@@ -38,6 +39,7 @@ from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.infrastructure.profiles import InfrastructureManager
 from tractusx_testlab.logging import transcript
+from tractusx_testlab.logging.masking import release_run
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.logging.trace import ExecutionTrace
 from tractusx_testlab.models import TckResult as TckResult  # SDK alias
@@ -209,6 +211,8 @@ class TestlabPlayer:
     ) -> TckSession:
         """Prepare everything the tests of *tck* need, for an already-created job."""
         self._jobs.start(job.job_id)
+        # The run's secrets stay masked, unevictable, until its records close.
+        records.callback(release_run, str(job.job_id))
 
         job_logger, trace = open_run_records(self._logger, self._config, tck.id, job.job_id)
         monitor = self._create_job_monitor(job_logger, trace)

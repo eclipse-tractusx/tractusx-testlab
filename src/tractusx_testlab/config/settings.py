@@ -19,12 +19,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
 
 """Testlab configuration model — resolves settings from YAML, env vars, CLI flags."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -85,6 +88,15 @@ class TestlabConfig(BaseSettings):
     infrastructure: Infrastructure = Field(default_factory=Infrastructure)
     vault: VaultConfig | None = None
     library_path: Path | None = None
+    #: The sides of the topology whose bound credentials a test may put on the
+    #: wire itself — as a header of ``http/http_request``, to the binding's own
+    #: origin. Both by default. A host running TCKs it did not author sets
+    #: ``{"sut"}``, so a test can never send the engine's own management key
+    #: anywhere; the connector and registry steps keep working either way,
+    #: because they are handed the credential by the binding, not by the test.
+    credential_release: frozenset[Literal["engine", "sut"]] = Field(
+        default=frozenset({"engine", "sut"})
+    )
 
     @field_validator("mock_public_url")
     @classmethod

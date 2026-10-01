@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 
@@ -28,7 +29,9 @@
 :mod:`~tractusx_testlab.logging.wire.recording` captures the calls — both
 transports, through the SDK's tracer — and
 :mod:`~tractusx_testlab.logging.wire.records` decides what a run writes down
-about them, which is not the same thing as what it keeps (ADR-0016).
+about them, which is not the same thing as what it keeps (ADR-0016), with
+:mod:`~tractusx_testlab.logging.wire.redaction` taking every credential out by
+the name it is filed under.
 """
 
 from tractusx_testlab.logging.wire.recording import (
@@ -38,6 +41,13 @@ from tractusx_testlab.logging.wire.recording import (
     recording,
 )
 from tractusx_testlab.logging.wire.records import SECRET_HEADERS, as_recorded, safe_headers
+from tractusx_testlab.logging.wire.redaction import (
+    is_secret_key,
+    redact_secrets,
+    register_secret_header,
+    secret_headers,
+    written,
+)
 
 __all__ = [
     "ENGINE_CONTEXT",
@@ -45,6 +55,11 @@ __all__ = [
     "ExchangeRecorder",
     "as_recorded",
     "attach_to",
+    "is_secret_key",
     "recording",
+    "redact_secrets",
+    "register_secret_header",
     "safe_headers",
+    "secret_headers",
+    "written",
 ]

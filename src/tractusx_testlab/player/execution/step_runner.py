@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Step-level execution helpers — run individual steps, evaluate assertions, store outputs."""
@@ -150,14 +151,17 @@ async def _run_step_guarded(
         # and the same call is made here.
         if params is None:
             params = resolve_params(
-                step_def.with_ or {}, context, getattr(step_instance, "deferred_params", ())
+                step_def.with_ or {},
+                context,
+                getattr(step_instance, "deferred_params", ()),
+                getattr(step_instance, "credential_params", ()),
             )
         # What the step was given, every ``${{ ... }}`` resolved: the test only
         # says which reference was written, not what it resolved to.
         inputs = dict(params)
 
         output = await invoke_extended(step_instance, params, context, step_def)
-        hide_secrets(type(step_instance), step_def, output)
+        hide_secrets(type(step_instance), step_def, output, run=str(context.job.job_id))
 
         assertion_results: list[AssertionResult] = []
         if step_def.assertions:

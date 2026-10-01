@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """CLI command for showing the configuration the engine actually resolved."""
@@ -28,6 +29,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
 
 import typer
@@ -77,7 +79,7 @@ def config(
         typer.echo(f"  none — no {ENV_PREFIX}* variables are set")
 
 
-def _flat_infrastructure(settings: object) -> dict[str, str]:
+def _flat_infrastructure(settings: object) -> Mapping[str, object]:
     from tractusx_testlab.infrastructure.mapping import flatten
 
     return flatten(settings.infrastructure)  # type: ignore[attr-defined]

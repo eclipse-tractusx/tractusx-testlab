@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Unit tests for the three surfaces of an infrastructure binding."""
@@ -32,16 +33,20 @@ from tractusx_testlab.infrastructure.mapping import (
     capabilities,
     collect_overrides,
     context_key,
+    credential_headers,
     env_key,
     flatten,
     known_keys,
     merge,
     overrides_from_env,
+    secret_keys,
+    secret_values,
 )
 from tractusx_testlab.models.authoring.infrastructure import (
     CapabilityRequirement,
     InfrastructureConfig,
 )
+from tractusx_testlab.models.domain.capabilities import ConnectorBinding
 from tractusx_testlab.models.domain.infrastructure import (
     DtrBinding,
     EngineBindings,
@@ -51,6 +56,7 @@ from tractusx_testlab.models.domain.infrastructure import (
     SutConnectorBinding,
 )
 from tractusx_testlab.models.primitives.binding_errors import UnknownBindingKeyError
+from tractusx_testlab.security.credentials import Credential
 
 
 def _bound_sut() -> Infrastructure:
@@ -120,6 +126,65 @@ class TestFlatten:
     def test_defaults_of_a_bound_capability_are_published(self) -> None:
         projected = flatten(_bound_sut())
         assert projected["infrastructure.sut.connector.api_key_header"] == "x-api-key"
+
+
+class TestCredentialProjection:
+    """A credential field reaches the namespace as a handle, never as text."""
+
+    _KEY = "engine-management-key-0123"
+
+    def _bound_engine(self) -> Infrastructure:
+        return Infrastructure(
+            engine=EngineBindings(
+                connector=ConnectorBinding(
+                    management_url="https://engine.example.com/management",
+                    api_key=self._KEY,
+                    api_key_header="X-EDC-Key",
+                    participant_id="BPNL000000000001",
+                ),
+            ),
+        )
+
+    def test_secret_fields_are_read_off_the_model(self) -> None:
+        assert secret_keys() == {
+            "infrastructure.engine.connector.api_key",
+            "infrastructure.sut.connector.api_key",
+        }
+
+    def test_the_api_key_is_published_as_a_handle(self) -> None:
+        projected = flatten(self._bound_engine())
+        handle = projected["infrastructure.engine.connector.api_key"]
+        assert isinstance(handle, Credential)
+        assert handle.name == "infrastructure.engine.connector.api_key"
+        assert handle.side == "engine"
+        assert handle.origins == {"https://engine.example.com:443"}
+        assert self._KEY not in str(projected)
+
+    def test_the_rest_of_the_binding_stays_text(self) -> None:
+        projected = flatten(self._bound_engine())
+        assert projected["infrastructure.engine.connector.management_url"] == (
+            "https://engine.example.com/management"
+        )
+        assert projected["infrastructure.engine.connector.api_key_header"] == "X-EDC-Key"
+
+    def test_a_sut_key_authenticates_against_the_sut_management_url(self) -> None:
+        infrastructure = Infrastructure(
+            sut=SutBindings(
+                connector=SutConnectorBinding(
+                    management_url="http://sut-cp:8081/management",
+                    dsp_url="https://sut.example.com/api/v1/dsp",
+                    api_key="sut-management-key-01",
+                ),
+            ),
+        )
+        handle = flatten(infrastructure)["infrastructure.sut.connector.api_key"]
+        assert isinstance(handle, Credential)
+        assert handle.side == "sut"
+        assert handle.origins == {"http://sut-cp:8081"}
+
+    def test_raw_values_and_header_names_are_there_for_the_masking_registry(self) -> None:
+        assert secret_values(self._bound_engine()) == [self._KEY]
+        assert credential_headers(self._bound_engine()) == {"X-EDC-Key"}
 
 
 class TestCollectOverrides:

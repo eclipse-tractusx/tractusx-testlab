@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Full DSP flow steps — thin wrappers over the SDK ``do_dsp`` helpers."""
@@ -61,7 +62,9 @@ class DspFlowOutput(StepPayload):
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
     edr_token: str | None = Field(
-        default=None, description="Authorization token for that data-plane URL."
+        default=None,
+        description="Authorization token for that data-plane URL. Shown as '***' in every record.",
+        json_schema_extra={"secret": True},
     )
 
 
