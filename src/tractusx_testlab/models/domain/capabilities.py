@@ -176,6 +176,9 @@ class ConnectorBinding(CapabilityBinding):
             "reads it only as a handle, sendable as a header to 'management_url'."
         ),
         json_schema_extra=SECRET,
+        # Out of repr() — of the binding and of every config or infrastructure
+        # printed with it — but not out of a dump, which the models are rebuilt from.
+        repr=False,
     )
     api_key_header: str = Field(
         default="x-api-key",

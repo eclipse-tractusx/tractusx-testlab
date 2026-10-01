@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The execution trace — one CloudEvents v1.0 line per thing that happened.
@@ -59,6 +60,7 @@ from pathlib import Path
 from typing import IO, Any
 
 from tractusx_testlab.logging.masking import mask
+from tractusx_testlab.security.private_files import open_private
 
 #: CloudEvents spec version every line declares.
 SPEC_VERSION = "1.0"
@@ -101,8 +103,8 @@ class ExecutionTrace:
         self._lock = threading.Lock()
         self._handle: IO[str] | None = None
         if path is not None:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            self._handle = path.open("a", encoding="utf-8")
+            # Every call the run made, in full: 0600, in 0700 directories.
+            self._handle = open_private(path)
 
     @classmethod
     def for_job(cls, tck_id: str, job_id: str, data_dir: Path | None) -> ExecutionTrace:

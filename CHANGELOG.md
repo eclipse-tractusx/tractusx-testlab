@@ -208,6 +208,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `<origin>/mock/<job id>`). A call on the bare path is still answered when it
   can be pinned on one run — the only one serving the path, or the one whose
   key it carries — and with `409` otherwise.
+- `testlab config` shows set credentials (binding `api_key`,
+  `vault.vault_token`) as `***`, with `--json` too, and `repr()` of the config
+  and of the bindings leaves them out; a dump still carries them.
+- The private keys `testlab keygen` writes and the compiler's own key are
+  created `0600`, and a run's transcript, trace and log file `0600`, in
+  directories created `0700`.
 
 ## [1.0.0a6] - 2026-09-25
 

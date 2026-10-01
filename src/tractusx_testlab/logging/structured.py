@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The run's console transcript — the same lines on screen and on disk.
@@ -43,6 +44,7 @@ from pathlib import Path
 from typing import IO
 
 from tractusx_testlab.logging.console import render
+from tractusx_testlab.security.private_files import open_private
 
 
 class _LazyStdout:
@@ -147,7 +149,8 @@ class StructuredLogger:
         self._logger.addHandler(CliHandler(stream or sys.stdout))
 
         if log_file:
-            log_file.parent.mkdir(parents=True, exist_ok=True)
+            # Created 0600 (in 0700 directories) before the handler appends to it.
+            open_private(log_file).close()
             file_handler = logging.FileHandler(str(log_file), encoding="utf-8")
             file_handler.setFormatter(
                 logging.Formatter(

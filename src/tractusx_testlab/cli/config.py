@@ -33,10 +33,12 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import typer
+from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
 
 from tractusx_testlab.cli import app
 from tractusx_testlab.config.loader import ConfigLoader
-from tractusx_testlab.infrastructure.mapping import ENV_PREFIX
+from tractusx_testlab.config.settings import TestlabConfig
+from tractusx_testlab.infrastructure.mapping import ENV_PREFIX, capabilities
 
 
 @app.command("config")
@@ -49,18 +51,19 @@ def config(
     """Show the settings this engine resolved, and which of them came from the environment.
 
     Precedence questions — "why is it writing packages *there*?" — are otherwise
-    answered by reading three sources and guessing which won.
+    answered by reading three sources and guessing which won. Credentials are
+    shown as ``***`` in every form of the output (:func:`_shown`).
     """
     settings = ConfigLoader.load(config_path=config_file)
 
     if as_json:
-        typer.echo(settings.model_dump_json(indent=2))
+        typer.echo(json.dumps(_shown(settings), indent=2, ensure_ascii=False))
         return
 
     from_env = sorted(name for name in os.environ if name.startswith(ENV_PREFIX))
 
     typer.echo("Resolved configuration:\n")
-    for field, value in settings.model_dump(mode="json").items():
+    for field, value in _shown(settings).items():
         if field == "infrastructure":
             continue
         typer.echo(f"  {field:20} {json.dumps(value) if isinstance(value, dict) else value}")
@@ -77,6 +80,28 @@ def config(
         typer.echo(f"  {name}")
     if not from_env:
         typer.echo(f"  none — no {ENV_PREFIX}* variables are set")
+
+
+def _shown(settings: TestlabConfig) -> dict[str, object]:
+    """The resolved settings as they may be printed: every credential reads ``***``.
+
+    The bindings' secret fields (``CapabilityBinding.secret_fields``) and the
+    vault token. What this command prints is pasted into tickets and chats and
+    kept in terminal scrollback; whether a credential is set is what the reader
+    needs, not the credential. An empty one stays empty, since that says,
+    truly, that none was configured.
+    """
+    shown = settings.model_dump(mode="json")
+    vault = shown.get("vault")
+    if isinstance(vault, dict) and vault.get("vault_token"):
+        vault["vault_token"] = REDACTED_VALUE
+    infrastructure = shown.get("infrastructure") or {}
+    for side, capability, binding_type in capabilities():
+        binding = (infrastructure.get(side) or {}).get(capability)
+        for field in binding_type.secret_fields() if isinstance(binding, dict) else ():
+            if binding.get(field):
+                binding[field] = REDACTED_VALUE
+    return shown
 
 
 def _flat_infrastructure(settings: object) -> Mapping[str, object]:

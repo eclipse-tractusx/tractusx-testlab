@@ -21,14 +21,16 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""What a run leaves on the shared server once it has ended.
+"""What a run leaves on the shared server and on disk once it has ended.
 
 Its mocks, guards and listeners go with it — and only its own: another run
-going on in the same process keeps every one of its mocks.
+going on in the same process keeps every one of its mocks. Its transcript and
+its execution trace stay, readable by the account that ran it alone.
 """
 
 from __future__ import annotations
 
+import stat
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -103,3 +105,15 @@ class TestARunEnding:
         assert manager.listening() == [(scoped("run-b", "/push"), "POST")]
         assert get_mock("/push", "POST", run="run-b") is not None
         assert required_header("/push", "POST", run="run-b") == ("k", "run-b")
+
+    @pytest.mark.asyncio
+    async def test_leaves_records_only_its_account_can_read(
+        self, manager: CallbackManager, player: TestlabPlayer, tmp_path: Path
+    ) -> None:
+        await player.run_tck(_empty_tck(), job_id="run-a")
+
+        records = [path for path in (tmp_path / "records").rglob("*") if path.is_file()]
+        directories = [path for path in (tmp_path / "records").rglob("*") if path.is_dir()]
+        assert {path.suffix for path in records} == {".log", ".jsonl"}
+        assert all(stat.S_IMODE(path.stat().st_mode) == 0o600 for path in records)
+        assert all(stat.S_IMODE(path.stat().st_mode) == 0o700 for path in directories)

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """RSA and Ed25519 key pair generation for package encryption and signing."""
@@ -32,6 +33,8 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
+
+from tractusx_testlab.security.private_files import make_private_dirs, write_private_bytes
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,9 +107,14 @@ def generate_ed25519_keypair() -> KeyPair:
 
 
 def save_keypair(kp: KeyPair, directory: Path, name: str) -> None:
-    """Persist a key pair as PEM files."""
-    directory.mkdir(parents=True, exist_ok=True)
-    (directory / f"{name}.pem").write_bytes(kp.private_bytes)
+    """Persist a key pair as PEM files.
+
+    The private key is created ``0600`` and any directory made for it ``0700``
+    (``security.private_files``): it is never, even for a moment, a file other
+    accounts on the host may read. The public key is meant to be handed out.
+    """
+    make_private_dirs(directory)
+    write_private_bytes(directory / f"{name}.pem", kp.private_bytes)
     (directory / f"{name}.pub").write_bytes(kp.public_bytes)
 
 
