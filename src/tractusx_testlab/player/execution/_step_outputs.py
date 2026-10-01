@@ -39,7 +39,7 @@ from typing import Any
 
 from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.logging.masking import register_secret
-from tractusx_testlab.logging.wire import is_secret_key
+from tractusx_testlab.logging.wire import Disclosure, is_secret_key
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.steps.assertions import AssertionEngine
@@ -88,7 +88,7 @@ def store_step_outputs(
             context.set_variable(f"{step_namespace}.{step_id}.{var_name}", value)
 
 
-def hide_secrets(step_cls: type, step_def: Any, output: Any, run: str | None = None) -> None:
+def hide_secrets(step_cls: type, step_def: Any, output: Any, run: str | None = None) -> Disclosure:
     """Mask what this step returned that no record of the run may show.
 
     Two sources. A step marks an output field secret
@@ -108,7 +108,11 @@ def hide_secrets(step_cls: type, step_def: Any, output: Any, run: str | None = N
 
     The value the run keeps is untouched; only what is written down is masked
     (logging.masking), and every string inside a structured value is masked
-    with it. *run* pins what is registered for as long as that run is open.
+    with it. *run* pins what is registered for as long as that run is open. A
+    field the step marks secret is explicit and always pinned; what the author
+    hid, or what a document files under a credential's name, counts against the
+    run's allowance. What the allowance turns away is returned with the outputs
+    the author revealed, for the step's own record (``wire.as_recorded``).
     """
     from tractusx_testlab.steps._checks.extraction import declared_names
 
@@ -132,36 +136,33 @@ def hide_secrets(step_cls: type, step_def: Any, output: Any, run: str | None = N
             hidden.discard(name)
             shown.add(name)
 
+    withheld: list[str] = []
     for name in hidden:
-        _register_strings(AssertionEngine.extract_path(output, name, declared), run)
+        value = AssertionEngine.extract_path(output, name, declared)
+        if name in marked:
+            register_secret(value, run=run, explicit=True)
+        else:
+            withheld += register_secret(value, run=run, declared=True)
     value = getattr(output, "value", None)
     if isinstance(value, dict):
         # A shown name is not masked as a whole; a credential nested in it still is.
         for name, item in value.items():
-            _register_named(item, run, name not in shown and is_secret_key(name))
+            withheld += _register_named(item, run, name not in shown and is_secret_key(name))
+    return Disclosure(shown=frozenset(shown), withheld=tuple(dict.fromkeys(withheld)))
 
 
-def _register_strings(value: Any, run: str | None = None) -> None:
-    if isinstance(value, str):
-        register_secret(value, run=run)
-    elif isinstance(value, dict):
-        for item in value.values():
-            _register_strings(item, run)
-    elif isinstance(value, list | tuple):
-        for item in value:
-            _register_strings(item, run)
-
-
-def _register_named(value: Any, run: str | None, is_secret: bool) -> None:
+def _register_named(value: Any, run: str | None, is_secret: bool) -> list[str]:
     """Register every string filed under a credential's name, at any depth."""
     if is_secret:
-        _register_strings(value, run)
-    elif isinstance(value, dict):
+        return register_secret(value, run=run, declared=True)
+    withheld: list[str] = []
+    if isinstance(value, dict):
         for name, item in value.items():
-            _register_named(item, run, is_secret_key(name))
+            withheld += _register_named(item, run, is_secret_key(name))
     elif isinstance(value, list | tuple):
         for item in value:
-            _register_named(item, run, False)
+            withheld += _register_named(item, run, False)
+    return withheld
 
 
 async def run_and_publish(

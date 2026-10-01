@@ -161,7 +161,9 @@ async def _run_step_guarded(
         inputs = dict(params)
 
         output = await invoke_extended(step_instance, params, context, step_def)
-        hide_secrets(type(step_instance), step_def, output, run=str(context.job.job_id))
+        disclosure = hide_secrets(
+            type(step_instance), step_def, output, run=str(context.job.job_id)
+        )
 
         assertion_results: list[AssertionResult] = []
         if step_def.assertions:
@@ -180,7 +182,7 @@ async def _run_step_guarded(
         finished_at = datetime.now(UTC)
         failed = AssertionEngine.has_hard_failure(assertion_results)
 
-        return StepResult(
+        result = StepResult(
             step_name=step_name,
             step_type=step_def.uses,
             status=StepStatus.FAILED if failed else StepStatus.PASSED,
@@ -194,6 +196,7 @@ async def _run_step_guarded(
             assertions=assertion_results,
             nested_declared=nested.declared,
         )
+        return wire.disclose(result, disclosure)
     except Exception as exc:
         finished_at = datetime.now(UTC)
         engine_fault = isinstance(exc, EngineError) or not isinstance(

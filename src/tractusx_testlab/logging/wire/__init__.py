@@ -31,7 +31,8 @@ transports, through the SDK's tracer — and
 :mod:`~tractusx_testlab.logging.wire.records` decides what a run writes down
 about them, which is not the same thing as what it keeps (ADR-0016), with
 :mod:`~tractusx_testlab.logging.wire.redaction` taking every credential out by
-the name it is filed under.
+the name it is filed under — which names those are is
+:mod:`~tractusx_testlab.logging.wire.secret_names`.
 """
 
 from tractusx_testlab.logging.wire.recording import (
@@ -40,24 +41,40 @@ from tractusx_testlab.logging.wire.recording import (
     attach_to,
     recording,
 )
-from tractusx_testlab.logging.wire.records import SECRET_HEADERS, as_recorded, safe_headers
+from tractusx_testlab.logging.wire.records import (
+    SECRET_HEADERS,
+    Disclosure,
+    as_kept,
+    as_recorded,
+    disclose,
+    safe_headers,
+)
 from tractusx_testlab.logging.wire.redaction import (
-    is_secret_key,
     redact_secrets,
+    redact_url,
+    written,
+)
+from tractusx_testlab.logging.wire.secret_names import (
+    is_secret_header,
+    is_secret_key,
     register_secret_header,
     secret_headers,
-    written,
 )
 
 __all__ = [
     "ENGINE_CONTEXT",
     "SECRET_HEADERS",
+    "Disclosure",
     "ExchangeRecorder",
+    "as_kept",
     "as_recorded",
     "attach_to",
+    "disclose",
+    "is_secret_header",
     "is_secret_key",
     "recording",
     "redact_secrets",
+    "redact_url",
     "register_secret_header",
     "safe_headers",
     "secret_headers",

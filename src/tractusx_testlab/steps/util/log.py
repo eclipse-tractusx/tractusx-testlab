@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """util/log step — surface a resolved value while authoring a test."""
@@ -33,6 +34,8 @@ from typing import TYPE_CHECKING, Any
 from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
+from tractusx_testlab.logging.masking import mask
+from tractusx_testlab.logging.wire import written
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepParams, StepValue
 
@@ -84,8 +87,12 @@ class LogStep(BaseStep[LogParams, LogOutput]):
         context: StepContext,
         definition: StepDefinition,
     ) -> StepOutput[LogOutput]:
-        label = params.message or getattr(definition, "id", None) or "log"
-        rendered = _render(params.value)
+        label = mask(params.message or getattr(definition, "id", None) or "log")
+        # The run's records mask what they write, but a Python logger hands the
+        # line to whatever handler the host installed — so the line is written
+        # as any record shows it (logging.wire) before the logger sees it. The
+        # output keeps the value as it was.
+        rendered = _render(written(params.value))
 
         # Through the logger, so the message reaches the JSON-lines log file
         # and the SSE stream the IDE reads. `print` put it on stdout alone.

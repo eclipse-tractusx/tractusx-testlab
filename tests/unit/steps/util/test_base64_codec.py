@@ -20,16 +20,19 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Tests for util/base64 — encode/decode with base64 and base64url."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from unittest.mock import MagicMock
 
 import pytest
 
+from tractusx_testlab.logging.masking import forget_secrets, mask, register_secret
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.steps.util.base64_codec import Base64Step
@@ -153,3 +156,25 @@ class TestBase64Step:
                 context,
                 _definition(),
             )
+
+
+class TestEncodingASecret:
+    """What encodes a secret is one: ``user:<secret>`` becomes a basic credential."""
+
+    @pytest.fixture(autouse=True)
+    def _fresh(self) -> Iterator[None]:
+        forget_secrets()
+        yield
+        forget_secrets()
+
+    @pytest.mark.asyncio
+    async def test_the_encoding_of_a_masked_input_is_masked(self, context: StepContext) -> None:
+        register_secret("p@ss w0rd/42!x", run="run-1", explicit=True)
+        output = await Base64Step().invoke({"input": "user:p@ss w0rd/42!x"}, context, _definition())
+        assert mask(f"Basic {output.value}") == "Basic ***"
+
+    @pytest.mark.asyncio
+    async def test_the_encoding_of_plain_text_is_not(self, context: StepContext) -> None:
+        register_secret("p@ss w0rd/42!x", run="run-1", explicit=True)
+        output = await Base64Step().invoke({"input": _AAS_ID}, context, _definition())
+        assert mask(output.value) == _STD

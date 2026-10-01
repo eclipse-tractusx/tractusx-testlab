@@ -30,7 +30,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from tractusx_testlab.models.authoring.definitions import Assertion
 from tractusx_testlab.models.primitives.enums import (
@@ -172,6 +172,9 @@ class StepResult(BaseModel):
     #: :attr:`assertions` should hold beyond its own. Counted so a sub-step that
     #: stopped before its checks shows as checks declared and not evaluated.
     nested_declared: int = 0
+    #: What the step's record shows and hides beyond its names — never serialised
+    #: (``logging.wire.records.Disclosure``, set by the runner).
+    _disclosure: Any = PrivateAttr(default=None)
 
 
 class CallbackResult(BaseModel):
