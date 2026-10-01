@@ -257,3 +257,25 @@ def test_a_presence_check_on_the_handle_still_holds(operator: str, passed: bool)
 
     assert result.passed is passed
     assert _TOKEN not in result.model_dump_json()
+
+
+def test_the_handle_s_value_is_masked_in_every_record_of_the_run() -> None:
+    from tractusx_testlab.logging.masking import mask
+    from tractusx_testlab.player.execution._step_outputs import hide_secrets
+    from tractusx_testlab.steps.connector.dataplane import GetEdrStep
+    from tractusx_testlab.steps.step_contract import StepOutput
+
+    document = issued_data_address(
+        {"endpoint": _DATAPLANE, "authorization": _TOKEN, "refreshToken": _REFRESH}
+    )
+    output = StepOutput(
+        value={
+            "dataplane_url": _DATAPLANE,
+            "edr_token": edr_token(_TOKEN, _DATAPLANE),
+            "data_address": document,
+        }
+    )
+
+    hide_secrets(GetEdrStep, StepDefinition(uses="connector/consumer/get_edr"), output, run="r")
+
+    assert mask(f"echo {_TOKEN} {_REFRESH}") == "echo *** ***"

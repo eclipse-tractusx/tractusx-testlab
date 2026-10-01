@@ -46,6 +46,7 @@ from pydantic import ConfigDict, Field
 
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.logging.masking import register_secret
+from tractusx_testlab.logging.wire import is_secret_key
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.steps import http_client
 from tractusx_testlab.steps.shared_models import HttpTransportParams, StepParams
@@ -56,17 +57,16 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-#: Form fields whose values must never appear in the run report.
-_SECRET_FIELDS = frozenset({"client_secret", "password", "refresh_token"})
-
 _REDACTED = "***"
 
 
 def _redacted(form: dict[str, str]) -> dict[str, str]:
-    """The token request form with every credential value masked."""
-    return {
-        key: _REDACTED if key in _SECRET_FIELDS and value else value for key, value in form.items()
-    }
+    """The token request form with every credential value — known by its name — masked.
+
+    That is ``client_secret`` and ``password``, and an ``extra_fields`` entry
+    like ``client_assertion`` too (logging.wire).
+    """
+    return {k: _REDACTED if is_secret_key(k) and value else value for k, value in form.items()}
 
 
 class OAuth2GetTokenParams(HttpTransportParams):
@@ -183,8 +183,8 @@ class OAuth2GetTokenStep(BaseStep[OAuth2GetTokenParams, OAuth2TokenPayload]):
         form = params.form_fields()
         # Basic auth carries the client secret outside the form, so it is named too.
         for key, value in {**form, "client_secret": params.client_secret}.items():
-            if key in _SECRET_FIELDS:
-                register_secret(value, run=str(context.job.job_id))
+            if is_secret_key(key):
+                register_secret(value, run=str(context.job.job_id), explicit=True)
         auth = (params.client_id, params.client_secret) if params.client_auth == "basic" else None
 
         resp = await http_client.request(

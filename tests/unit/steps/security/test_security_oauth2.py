@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Tests for the security/oauth2/* steps — obtaining OAuth2 authorization tokens."""
@@ -32,6 +33,7 @@ import pytest
 
 from conftest import http_response
 from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.logging.masking import forget_secrets, mask
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.steps.security.oauth2 import (
@@ -217,6 +219,32 @@ class TestOAuth2ClientCredentialsStep:
                 _definition(),
             )
         assert post.call_args.kwargs["data"]["audience"] == "https://api.example"
+
+    @pytest.mark.asyncio
+    async def test_secret_named_extra_fields_are_redacted_and_masked(
+        self, context: StepContext
+    ) -> None:
+        forget_secrets()
+        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
+            post.return_value = _response()
+            output = await OAuth2ClientCredentialsStep().invoke(
+                {
+                    "token_url": _TOKEN_URL,
+                    "client_id": "testlab",
+                    "extra_fields": {
+                        "client_assertion": "eyJ.client-assertion.sig",
+                        "subject_token": "subject-token-value",
+                        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+                    },
+                },
+                context,
+                _definition(),
+            )
+        assert output.request.body["client_assertion"] == "***"
+        assert output.request.body["subject_token"] == "***"
+        assert output.request.body["subject_token_type"] == "urn:ietf:params:oauth:token-type:jwt"
+        assert mask("eyJ.client-assertion.sig subject-token-value") == "*** ***"
+        forget_secrets()
 
 
 class TestOAuth2PasswordStep:

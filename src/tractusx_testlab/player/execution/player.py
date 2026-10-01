@@ -190,8 +190,7 @@ class TestlabPlayer:
         job = self._jobs.get(job_id) if job_id else None
         if job is None:
             job = self._jobs.create(tck.id, job_id=job_id)
-        if runtime_vars:
-            job.runtime_vars = runtime_vars
+        # The job's ``runtime_vars`` are written by the seeder, masked (_context_seeder).
 
         records = contextlib.ExitStack()
         # A CLI run opened its transcript before it had a TCK to compile, so

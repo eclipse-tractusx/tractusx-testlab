@@ -435,7 +435,9 @@ env:
 resolves to the string — and every record of the run (trace, live events, console transcript, job API) shows it
 as `***`. An embedder reads the flag off the declaration (`Tck.all_variables()[id].secret`), in an uncompiled
 manifest and in a compiled package alike. An input whose id looks like a credential (`…secret`, `…password`,
-`…token`, `…api_key`, `…credential`, `…authorization`) is masked even without the flag.
+`…token`, `…api_key`, `…credential`, `…authorization`) is masked even without the flag. A secret input is read
+without surrounding whitespace (a trailing newline from a key file is dropped), and a number or an object is
+masked too — every string inside the object.
 
 **Handed to the SUT operator** (`with.source: register`): the TCK carries the
 document and the operator registers it in their own system before the run —
