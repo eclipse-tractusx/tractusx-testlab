@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Package storage — filesystem-backed storage for uploaded .tck archives."""
@@ -76,8 +77,12 @@ class PackageStorage:
             return None
         return self._base_dir / package_id
 
-    def _contains(self, path: Path) -> bool:
-        """Whether *path* resolves to a location strictly inside the storage root."""
+    def contains(self, path: Path) -> bool:
+        """Whether *path* resolves to a location strictly inside the storage root.
+
+        Resolved with its symlinks followed, so a link inside the store that
+        points out of it is outside, and so is ``<root>/../elsewhere``.
+        """
         root = self._base_dir.resolve()
         resolved = path.resolve()
         return resolved != root and resolved.is_relative_to(root)
@@ -154,7 +159,7 @@ class PackageStorage:
         name no package.
         """
         pkg_dir = self._package_dir(package_id)
-        if pkg_dir is None or pkg_dir.is_symlink() or not self._contains(pkg_dir):
+        if pkg_dir is None or pkg_dir.is_symlink() or not self.contains(pkg_dir):
             return False
         if pkg_dir.is_dir():
             shutil.rmtree(pkg_dir)

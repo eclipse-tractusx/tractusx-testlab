@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Waiting for a callback across pauses — the clock stops while the run is on hold.
@@ -53,13 +54,17 @@ async def wait_through_pauses(
     definition: StepDefinition,
     listener: Listener,
     timeout: float,
+    *,
+    key_path: str | None = None,
 ) -> tuple[Any, float]:
     """Wait for the call, stopping the clock while the run is on hold.
 
     Returns the callback result and the seconds spent waiting — the stretches
-    before and after each pause, not the pause itself.
+    before and after each pause, not the pause itself. *key_path* is where the
+    run's listener is kept (``inbound.run_scope``); the listener's own path
+    when it is not given.
     """
-    path, method = listener.path, listener.method
+    path, method = key_path or listener.path, listener.method
     waited = 0.0
     while True:
         started = time.monotonic()

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """``mock/wait`` across a pause: the clock stops, and carries on with what was left."""
@@ -36,6 +37,7 @@ from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.hold import RunHold
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.server.callbacks import CallbackManager
+from tractusx_testlab.server.inbound.run_scope import scoped
 from tractusx_testlab.server.mock_registry import clear_mocks, set_callback_manager
 from tractusx_testlab.steps.mock.api import MockEndpointStep
 from tractusx_testlab.steps.mock.wait import WaitForCallStep
@@ -45,6 +47,11 @@ _PATH = "/companycertificate/push"
 
 def _definition(uses: str) -> StepDefinition:
     return StepDefinition(id="s", uses=uses)
+
+
+def _key(context: MagicMock) -> str:
+    """Where the run's listener on ``_PATH`` is kept, and so where its call lands."""
+    return scoped(str(context.job.job_id), _PATH)
 
 
 @pytest.fixture()
@@ -98,13 +105,13 @@ class TestAPauseDuringTheWait:
         remaining = context.report_suspended.call_args.args[3]
         assert 4.5 < remaining < 5
         assert jobs.is_held(context.job.job_id)
-        assert not manager.has_listener(_PATH, "POST")  # nothing listens while held
+        assert not manager.has_listener(_key(context), "POST")  # nothing listens while held
 
         jobs.resume(context.job.job_id)
         await asyncio.sleep(0.05)
         assert _waiting_timeouts(context) == [5, remaining]
 
-        manager.resolve(_PATH, "POST", {}, {"status": "RECEIVED"})
+        manager.resolve(_key(context), "POST", {}, {"status": "RECEIVED"})
         output = await asyncio.wait_for(wait, 1)
         assert output.value["request_body"] == {"status": "RECEIVED"}
 
@@ -125,7 +132,7 @@ class TestAPauseDuringTheWait:
         await asyncio.sleep(0.4)
         jobs.resume(context.job.job_id)
         await asyncio.sleep(0.05)
-        manager.resolve(_PATH, "POST", {}, None)
+        manager.resolve(_key(context), "POST", {}, None)
 
         output = await asyncio.wait_for(wait, 1)
         assert output.value["elapsed_ms"] < 350
@@ -157,7 +164,7 @@ class TestAPauseDuringTheWait:
         manager = CallbackManager()
         set_callback_manager(manager)
         mock = await _register(context)
-        manager.resolve(_PATH, "POST", {}, {"early": True})
+        manager.resolve(_key(context), "POST", {}, {"early": True})
         jobs.pause(context.job.job_id)
 
         output = await asyncio.wait_for(

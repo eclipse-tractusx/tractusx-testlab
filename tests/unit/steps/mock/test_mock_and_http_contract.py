@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Contract tests for the mock-server and plain-HTTP steps."""
@@ -35,6 +36,7 @@ from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.models.domain.capabilities import ConnectorBinding
 from tractusx_testlab.models.domain.infrastructure import EngineBindings, Infrastructure
 from tractusx_testlab.server.callbacks import CallbackManager
+from tractusx_testlab.server.inbound.run_scope import scoped
 from tractusx_testlab.server.mock_registry import (
     clear_mocks,
     get_mock,
@@ -50,6 +52,11 @@ from tractusx_testlab.steps.mock.wait import (
 )
 
 _PATH = "/companycertificate/notification/receive"
+_RUN = "run-1"
+#: Where the run's listener on ``_PATH`` is kept, and so where a call to it lands.
+_KEY = scoped(_RUN, _PATH)
+#: The root every mock of the run is published under on a local server.
+_ROOT = f"http://localhost:8080/runs/{_RUN}"
 
 
 def _definition(uses: str) -> StepDefinition:
@@ -61,6 +68,7 @@ def context(mock_context: MagicMock) -> MagicMock:
     mock_context.config.server_port = 8080
     mock_context.config.mock_public_url = None
     mock_context.config.default_timeout_s = 30
+    mock_context.job.job_id = _RUN
     return mock_context
 
 
@@ -83,8 +91,8 @@ class TestMockEndpoint:
             {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
         )
 
-        assert output.value["base_mock_url"] == "http://localhost:8080"
-        assert output.value["full_mock_url"] == f"http://localhost:8080{_PATH}"
+        assert output.value["base_mock_url"] == _ROOT
+        assert output.value["full_mock_url"] == f"{_ROOT}{_PATH}"
         assert output.value["mock"]["path"] == _PATH
         assert output.value["mock"]["method"] == "POST"
 
@@ -99,9 +107,24 @@ class TestMockEndpoint:
             {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
         )
 
-        assert output.value["base_mock_url"] == "https://testlab.example.com"
-        assert output.value["full_mock_url"] == f"https://testlab.example.com{_PATH}"
-        assert output.value["mock"]["full_mock_url"] == f"https://testlab.example.com{_PATH}"
+        root = f"https://testlab.example.com/runs/{_RUN}"
+        assert output.value["base_mock_url"] == root
+        assert output.value["full_mock_url"] == f"{root}{_PATH}"
+        assert output.value["mock"]["full_mock_url"] == f"{root}{_PATH}"
+
+    @pytest.mark.asyncio
+    async def test_a_public_url_that_names_the_run_already_is_published_as_it_is(
+        self, context: MagicMock
+    ) -> None:
+        """An engine hands each run ``<origin>/mock/<job id>`` and serves that prefix itself."""
+        context.config.mock_public_url = f"https://engine.example.com/mock/{_RUN}"
+
+        output = await MockEndpointStep().invoke(
+            {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
+        )
+
+        assert output.value["base_mock_url"] == f"https://engine.example.com/mock/{_RUN}"
+        assert output.value["full_mock_url"] == f"https://engine.example.com/mock/{_RUN}{_PATH}"
 
     @pytest.mark.asyncio
     async def test_a_trailing_slash_on_mock_public_url_does_not_double_up(
@@ -113,7 +136,7 @@ class TestMockEndpoint:
             {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
         )
 
-        assert output.value["full_mock_url"] == f"http://engine:8100{_PATH}"
+        assert output.value["full_mock_url"] == f"http://engine:8100/runs/{_RUN}{_PATH}"
 
     @pytest.mark.asyncio
     async def test_the_mock_carries_the_id_it_was_registered_under(
@@ -173,7 +196,7 @@ class TestWaitForCall:
         registered = await MockEndpointStep().invoke(
             {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
         )
-        manager.resolve(_PATH, "POST", {"x-trace": "1"}, {"status": "RECEIVED"}, {"page": "2"})
+        manager.resolve(_KEY, "POST", {"x-trace": "1"}, {"status": "RECEIVED"}, {"page": "2"})
 
         output = await WaitForCallStep().invoke(
             {"mock": registered.value["mock"], "timeout_s": 1},
@@ -194,7 +217,7 @@ class TestWaitForCall:
         registered = await MockEndpointStep().invoke(
             {"path": _PATH}, context, _definition("mock/api")
         )
-        manager.resolve(_PATH, "POST", {}, None, {"notificationId": "n-1"})
+        manager.resolve(_KEY, "POST", {}, None, {"notificationId": "n-1"})
 
         output = await WaitForCallStep().invoke(
             {"mock": registered.value["mock"], "timeout_s": 1},
@@ -211,7 +234,7 @@ class TestWaitForCall:
         registered = await MockEndpointStep().invoke(
             {"path": _PATH}, context, _definition("mock/api")
         )
-        manager.resolve(_PATH, "POST", {}, None)
+        manager.resolve(_KEY, "POST", {}, None)
 
         output = await WaitForCallStep().invoke(
             {"mock": registered.value["mock"], "timeout_s": 1},
@@ -334,7 +357,7 @@ class TestTheStepsSayWhereToCall:
         step_type, step_id, listener = context.report_listening.call_args.args
         assert (step_type, step_id) == ("mock/api", "open_ack")
         assert listener.method == "POST"
-        assert listener.url == f"http://localhost:8080{_PATH}"
+        assert listener.url == f"{_ROOT}{_PATH}"
         assert listener.path == _PATH
 
     @pytest.mark.asyncio
@@ -347,7 +370,7 @@ class TestTheStepsSayWhereToCall:
             {"path": _PATH}, context, _definition("mock/api")
         )
         context.reset_mock()
-        manager.resolve(_PATH, "POST", {"x-trace": "1"}, {"status": "RECEIVED"})
+        manager.resolve(_KEY, "POST", {"x-trace": "1"}, {"status": "RECEIVED"})
 
         output = await WaitForCallStep().invoke(
             {"mock": registered.value["mock"], "timeout_s": 1},
@@ -357,7 +380,7 @@ class TestTheStepsSayWhereToCall:
 
         step_type, step_id, listener, timeout = context.report_waiting.call_args.args
         assert (step_type, step_id, timeout) == ("mock/wait/http_request", "await_ack", 1)
-        assert listener.url == f"http://localhost:8080{_PATH}"
+        assert listener.url == f"{_ROOT}{_PATH}"
         step_type, step_id, listener, request, waited_ms = context.report_received.call_args.args
         assert (step_type, step_id) == ("mock/wait/http_request", "await_ack")
         assert request.payload == {"status": "RECEIVED"}
@@ -371,7 +394,7 @@ class TestTheStepsSayWhereToCall:
         registered = await MockEndpointStep().invoke(
             {"path": _PATH}, context, _definition("mock/api")
         )
-        manager.resolve(_PATH, "POST", {}, None)
+        manager.resolve(_KEY, "POST", {}, None)
 
         await WaitForCallStep().invoke(
             {"mock": registered.value["mock"], "timeout_s": 1},
@@ -428,7 +451,7 @@ class TestWaitForDataplaneCall:
         registered = await MockEndpointStep().invoke(
             {"path": _PATH}, context, _definition("mock/api")
         )
-        manager.resolve(_PATH, "POST", {"edc-bpn": "BPNL000000000SUT"}, {"status": "RECEIVED"})
+        manager.resolve(_KEY, "POST", {"edc-bpn": "BPNL000000000SUT"}, {"status": "RECEIVED"})
 
         output = await WaitForDataplaneCallStep().invoke(
             {"mock": registered.value["mock"], "timeout_s": 1, "asset_id": "ccmapi-offer"},
@@ -454,7 +477,7 @@ class TestWaitForDataplaneCall:
         registered = await MockEndpointStep().invoke(
             {"path": _PATH}, context, _definition("mock/api")
         )
-        manager.resolve(_PATH, "POST", {}, None)
+        manager.resolve(_KEY, "POST", {}, None)
 
         await WaitForDataplaneCallStep().invoke(
             {"mock": registered.value["mock"], "timeout_s": 1, "asset_id": "ccmapi-offer"},

@@ -193,6 +193,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   credential-named fields of recorded request and response bodies, and the
   credential headers of inbound mock calls. A run's own secrets are no longer
   evicted from the masking registry while the run is open.
+- The server a run starts for its mocks (`testlab run`, or a `TestlabPlayer`
+  that finds no server to use) serves the mock and callback routes only. An
+  embedding host gets the same from `create_app(config, mode="mock")` or the
+  new setting `server_mode` (`TESTLAB_SERVER_MODE`: `full` or `mock`);
+  `testlab serve` keeps the whole API. `POST /testlab/run/package` runs a
+  `path` only when it lies in the server's package store, and answers `403`
+  for any other.
+- A run's mocks, their keys and the listeners its `mock/wait/*` steps wait on
+  are its own: two runs in one process, of one TCK or of two, never answer or
+  resolve each other's calls, and a run's mocks are removed when it ends.
+  `base_mock_url` and `full_mock_url` carry the run's segment,
+  `<root>/runs/<run id>`, unless the root names the run already (an engine's
+  `<origin>/mock/<job id>`). A call on the bare path is still answered when it
+  can be pinned on one run — the only one serving the path, or the one whose
+  key it carries — and with `409` otherwise.
 
 ## [1.0.0a6] - 2026-09-25
 

@@ -19,6 +19,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
 
 """mock/discovery step — a BPN Discovery Finder mock.
 
@@ -108,7 +110,7 @@ class MockDiscoveryStep(BaseStep[MockDiscoveryParams, NoOutput]):
             # Mirrors the real discovery finder, which returns a bare JSON array.
             return MockResponse(status_code=200, body=result)
 
-        register_mock(_DISCOVERY_PATH, "POST", _discover)
+        register_mock(_DISCOVERY_PATH, "POST", _discover, run=str(context.job.job_id))
 
         logger.info(
             "Registered mock discovery service '%s' with %d mappings",

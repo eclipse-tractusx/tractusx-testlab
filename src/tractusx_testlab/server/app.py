@@ -23,16 +23,24 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""FastAPI application factory for the Testlab server."""
+"""FastAPI application factory for the Testlab server.
+
+Two shapes of one app (``ServerMode``). ``full`` is ``testlab serve``: the
+package, compile and job API, live events, and the mocks and callbacks of the
+runs it starts. ``mock`` is what a run needs while it is going and nothing
+more — the mock and callback routes the system under test calls — for a
+server that is reachable by whoever a run hands an address to: the one the
+player starts for a run, or one an engine starts and forwards calls to. Such a
+server must not take a package path or a YAML body from that caller and run it.
+"""
 
 from __future__ import annotations
 
 import importlib.metadata
-import logging
-from inspect import isawaitable
 from pathlib import Path
+from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
@@ -40,18 +48,13 @@ from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.callbacks import CallbackManager
-from tractusx_testlab.server.mock_registry import (
-    get_callback_manager,
-    query_of,
-    refusal,
-    resolve_mock,
-    set_callback_manager,
-)
-from tractusx_testlab.server.routes import router
-from tractusx_testlab.server.routes.callbacks import held, misdirected, on_hold, refused
+from tractusx_testlab.server.mock_registry import get_callback_manager, set_callback_manager
+from tractusx_testlab.server.routes import inbound_router, router
+from tractusx_testlab.server.routes.callbacks import answer
 from tractusx_testlab.server.storage import PackageStorage
 
-_logger = logging.getLogger(__name__)
+#: Which routes a server mounts — see the module docstring.
+ServerMode = Literal["full", "mock"]
 
 
 def _version() -> str:
@@ -69,29 +72,38 @@ def _version() -> str:
         return "unknown"
 
 
-def create_app(config: TestlabConfig | None = None) -> FastAPI:
+def create_app(config: TestlabConfig | None = None, *, mode: ServerMode | None = None) -> FastAPI:
     """Build and return a fully-wired FastAPI application.
 
     Args:
         config: Optional pre-loaded configuration. Defaults to ``ConfigLoader.load()``.
+        mode: ``full`` or ``mock`` (``ServerMode``). Unset, ``config.server_mode``
+            decides, and ``full`` when that is unset too — what ``testlab serve``
+            has always served. An embedding host that only needs a run's mocks
+            answered passes ``mock``.
     """
     if config is None:
         config = ConfigLoader.load()
+    is_mock_only = (mode or getattr(config, "server_mode", None)) == "mock"
 
+    # A mock-only server publishes no API description either: its callers are
+    # handed the addresses they need, and nothing else is theirs to browse.
+    unpublished = {"openapi_url": None, "docs_url": None, "redoc_url": None}
     app = FastAPI(
         title="Tractus-X Testlab Player",
         version=_version(),
         description="Automated TCK execution for Tractus-X dataspace interoperability.",
+        **(unpublished if is_mock_only else {}),
     )
 
     # Shared instances — stored on app.state for FastAPI dependency injection
-    app.state.player = TestlabPlayer(config=config)
-    app.state.storage = PackageStorage(base_dir=Path(config.storage_dir) / "packages")
     existing_manager = get_callback_manager()
     app.state.callbacks = existing_manager if existing_manager is not None else CallbackManager()
     set_callback_manager(app.state.callbacks)
-
-    app.include_router(router)
+    if is_mock_only:
+        app.include_router(inbound_router)
+    else:
+        _mount_control_api(app, config)
 
     app.add_middleware(
         CORSMiddleware,
@@ -106,68 +118,19 @@ def create_app(config: TestlabConfig | None = None) -> FastAPI:
         return JSONResponse(content={"status": "ok", "version": _version()})
 
     # ── Catch-all for mock endpoints registered at arbitrary paths ─────
-    # SUTs send callbacks to URLs like /companycertificate/status.
-    # This route must be added LAST so it doesn't shadow named routes.
+    # SUTs send callbacks to URLs like /companycertificate/status, or to the
+    # run's own address /runs/<run>/companycertificate/status. This route must
+    # be added LAST so it doesn't shadow named routes.
     @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
     async def mock_catch_all(path: str, request: Request) -> JSONResponse:
         """Handle inbound calls to dynamically-registered mock endpoints."""
-        full_path = f"/{path}"
-        method = request.method
-        # A paused run answers nothing until it resumes, and the call counts
-        # for no wait (routes.callbacks.on_hold).
-        if on_hold(app):
-            raise held(method, full_path)
-        headers = dict(request.headers)
-        body = None
-        if method in ("POST", "PUT"):
-            try:
-                body = await request.json()
-            except ValueError:
-                body = {}
-
-        callbacks: CallbackManager = app.state.callbacks
-        # Before the mock is resolved, so a dynamic handler never runs for a
-        # caller the mock does not admit, and before the listener is, so the
-        # call cannot stand in for the one the test is waiting on.
-        reason = refusal(full_path, method, headers)
-        if reason is not None:
-            return refused(callbacks, full_path, method, reason)
-
-        mock = resolve_mock(
-            full_path,
-            method,
-            headers=headers,
-            # Every value, not the last one: `?assetIds=<a>&assetIds=<b>` is one
-            # request with two criteria, and `dict(...)` would hand the handler
-            # only `<b>` (mock_registry.query_of).
-            query_params=query_of(request.query_params.multi_items()),
-            body=body,
-        )
-        if isawaitable(mock):
-            mock = await mock
-
-        # A path no step opened is refused. `resolve` buffers a call nothing is
-        # waiting for and reports success for it — right when the SUT beats the
-        # test to its own wait step, wrong for an address that was never
-        # registered: the SUT is told 200 for a call that reached nobody, and
-        # the test then waits out its timeout on the address it did open.
-        if mock is None and not callbacks.has_listener(full_path, method):
-            misdirected(callbacks, full_path, method, headers)
-            raise HTTPException(404, f"No mock or listener for {method} {full_path}")
-
-        # Resolve the callback listener (so wait_for_call steps unblock)
-        matched = callbacks.resolve(full_path, method, headers, body, dict(request.query_params))
-        if mock is not None:
-            _safe_path = full_path[:80].replace("\n", "").replace("\r", "")
-            _logger.debug(
-                "Mock catch-all matched %s %s -> %d", method, _safe_path, mock.status_code
-            )
-            return JSONResponse(
-                content=mock.body, status_code=mock.status_code, headers=mock.headers or None
-            )
-        if matched:
-            return JSONResponse(content={"status": "received"})
-
-        raise HTTPException(404, f"No mock or listener for {method} {full_path}")
+        return await answer(request, f"/{path}")
 
     return app
+
+
+def _mount_control_api(app: FastAPI, config: TestlabConfig) -> None:
+    """Give *app* the player, the package store and the routes that drive them."""
+    app.state.player = TestlabPlayer(config=config)
+    app.state.storage = PackageStorage(base_dir=Path(config.storage_dir) / "packages")
+    app.include_router(router)

@@ -57,7 +57,11 @@ from tractusx_testlab.player.loading._encrypted import engine_package_keys
 from tractusx_testlab.player.loading._parser import is_encrypted_package
 from tractusx_testlab.player.loading.loader import Loader
 from tractusx_testlab.server.callbacks import CallbackManager
-from tractusx_testlab.server.mock_registry import get_callback_manager, set_callback_manager
+from tractusx_testlab.server.mock_registry import (
+    get_callback_manager,
+    release_mocks,
+    set_callback_manager,
+)
 from tractusx_testlab.services.instances import ServiceManager
 
 
@@ -213,6 +217,7 @@ class TestlabPlayer:
         self._jobs.start(job.job_id)
         # The run's secrets stay masked, unevictable, until its records close.
         records.callback(release_run, str(job.job_id))
+        records.callback(release_mocks, str(job.job_id))  # and its mocks are served until then
 
         job_logger, trace = open_run_records(self._logger, self._config, tck.id, job.job_id)
         monitor = self._create_job_monitor(job_logger, trace)

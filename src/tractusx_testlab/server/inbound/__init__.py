@@ -19,17 +19,45 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Routes sub-package — the full testlab API router, and the inbound-only one.
+"""Inbound calls to the mock server: what they carry, and which run they are for.
 
-``router`` is everything ``testlab serve`` offers; ``inbound_router`` is the
-callback route alone, for a server that only answers a running job's mocks.
+- :mod:`.messages` — the request a mock handler sees and the response it gives.
+- :mod:`.run_scope` — the address every run's mocks are kept and served under.
+
+Nothing here imports the registry or the routes, so both can import it.
 """
 
-from tractusx_testlab.server.routes.callbacks import inbound_router
-from tractusx_testlab.server.routes.jobs import router
+from tractusx_testlab.server.inbound.messages import (
+    MockHandler,
+    MockRequest,
+    MockResponse,
+    query_of,
+)
+from tractusx_testlab.server.inbound.run_scope import (
+    RUN_SEGMENT,
+    acting_for,
+    current_run,
+    declared,
+    pick,
+    run_root,
+    scoped,
+    split,
+)
 
-__all__ = ["inbound_router", "router"]
+__all__ = [
+    "RUN_SEGMENT",
+    "MockHandler",
+    "MockRequest",
+    "MockResponse",
+    "acting_for",
+    "current_run",
+    "declared",
+    "pick",
+    "query_of",
+    "run_root",
+    "scoped",
+    "split",
+]

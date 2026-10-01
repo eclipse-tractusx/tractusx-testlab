@@ -52,6 +52,7 @@ from tractusx_testlab.player.execution.phase import (
 )
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
+from tractusx_testlab.server.inbound.run_scope import acting_for
 from tractusx_testlab.steps._checks.published_names import publishes
 from tractusx_testlab.steps.assertions import AssertionEngine
 from tractusx_testlab.steps.flow._nested import NestedChecks
@@ -122,7 +123,8 @@ async def run_step(
     def report(call: Any) -> None:
         context.report_call(step_def.uses, getattr(step_def, "id", None), next(calls), call)
 
-    with wire.recording(step_name, on_call=report) as recorder:
+    # A mock the step registers or reads without naming its run is its run's.
+    with wire.recording(step_name, on_call=report) as recorder, acting_for(str(context.job.job_id)):
         result = await _run_step_guarded(
             step_instance, step_def, step_name, context, started_at, params
         )
