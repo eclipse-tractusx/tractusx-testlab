@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Trace formatting — builds result objects from execution data."""
@@ -31,6 +32,7 @@ from typing import Any
 
 from tractusx_testlab.authoring.test import Test
 from tractusx_testlab.config.settings import TestlabConfig
+from tractusx_testlab.logging import wire
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.logging.trace import ExecutionTrace
 from tractusx_testlab.models import (
@@ -120,8 +122,13 @@ def finalize_job(
     job_logger: StructuredLogger,
     trace: ExecutionTrace | None = None,
 ) -> None:
-    """Update job status and close both records after execution completes."""
-    job.result = result
+    """Update job status and close both records after execution completes.
+
+    The job keeps the verdict as it is written down (``wire.as_kept``), masked
+    now — while the run's secrets are still pinned — because the job is read
+    long after newer runs may have evicted them. The caller keeps *result*.
+    """
+    job.result = wire.as_kept(result)
     # `status`, not a step tally: the verdict is the aggregate the TCK reports.
     if result.status in _NON_FAILING_STATUSES:
         jobs.complete(job.job_id)

@@ -121,7 +121,7 @@ def publish_bindings(resolved: Infrastructure, context: StepContext) -> None:
     as is every other ``infrastructure.*`` name the run does not bind.
     """
     for secret in secret_values(resolved):
-        register_secret(secret, run=str(context.job.job_id))
+        register_secret(secret, run=str(context.job.job_id), explicit=True)
     for header in credential_headers(resolved):
         register_secret_header(header)
     published = flatten(resolved)

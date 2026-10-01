@@ -48,7 +48,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 #: Marker a field carries when the operator must supply it themselves. Fields
 #: without it either have a working default (``api_key_header``), are inherited
@@ -106,6 +106,16 @@ class CapabilityBinding(BaseModel):
             "requirement when left empty."
         ),
     )
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _stripped(cls, value: Any) -> Any:
+        """A value without the whitespace around it — a key read from a file ends in a newline.
+
+        Sent as it was, the newline makes the HTTP client refuse the header and
+        quote the whole value in its error, where no mask is looking for it.
+        """
+        return value.strip() if isinstance(value, str) else value
 
     @classmethod
     def operator_fields(cls) -> tuple[str, ...]:

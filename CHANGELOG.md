@@ -193,6 +193,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   credential-named fields of recorded request and response bodies, and the
   credential headers of inbound mock calls. A run's own secrets are no longer
   evicted from the masking registry while the run is open.
+- Masking covers more spellings and more places. A secret is also masked in
+  its escaped, percent-encoded and base64 forms; a declared secret from four
+  characters, and in every string and number of an object or list value.
+  Credential names are matched by what they contain (`client_assertion`,
+  `sut_password`, `X-Vault-Token`) with names like `token_type` or
+  `api_key_header` left visible. Inbound mock calls, step outputs, check
+  values, URL query parameters (`?access_token=`), `util/log` lines and a body
+  cut by the trace are redacted too, and the job API keeps a copy masked when
+  the run ends. Whitespace around a secret input or a binding value is
+  stripped. A run pins at most 256 values from `returns: … hidden: true`.
 
 ## [1.0.0a6] - 2026-09-25
 
