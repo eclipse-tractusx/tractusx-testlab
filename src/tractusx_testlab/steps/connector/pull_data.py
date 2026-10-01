@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Pull-data shortcut steps — the whole DSP flow (catalog → negotiate → transfer → EDR)."""
@@ -38,6 +39,7 @@ from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector import policy_mismatch
+from tractusx_testlab.steps.connector._edr import Credential, edr_token
 from tractusx_testlab.steps.connector.policies import ExpectedPoliciesParams
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.dsp_keys import ID_KEY
@@ -91,11 +93,8 @@ class PullDataOutput(StepPayload):
     dataplane_url: str | None = Field(
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
-    edr_token: str = Field(default="", description="Authorization token for that URL.")
-    token_prefix: str | None = Field(
-        default=None,
-        description="First characters of the token, safe to log or assert on.",
-    )
+    edr_token: Credential | str = Field(default="", description="Authorization token for that URL.")
+    token_prefix: str | None = Field(default=None, description="First 4 characters of the token.")
     catalog: dict = Field(
         default_factory=dict, description="Catalog document the offer was taken from."
     )
@@ -177,8 +176,8 @@ async def _do_dsp_flow(
 
     value = PullDataOutput(
         dataplane_url=endpoint,
-        edr_token=token or "",
-        token_prefix=token[:10] + "..." if token else None,
+        edr_token=edr_token(token, endpoint) or "",
+        token_prefix=token[:4] + "..." if token else None,
         catalog=catalog,
         datasets=datasets,
         asset_id=asset_id,

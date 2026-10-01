@@ -190,7 +190,9 @@ def _resolve_value(value: object, context: StepContext, _depth: int = 0) -> obje
 
 
 def _resolve_carrier(value: object, context: StepContext) -> object:
-    """Resolve a mapping whose values may each be a whole credential reference."""
+    """Resolve a value that may be — or map names to — a whole credential reference."""
+    if isinstance(value, str):
+        return resolve_str(value, context, credential_ok=True)
     if not isinstance(value, dict):
         return _resolve_value(value, context)
     return {
@@ -215,9 +217,10 @@ def resolve_params(
     and, inside ``flow/for_each``, the item it is running for, which does not
     exist yet when the flow step itself starts.
 
-    A key in *credential_params* is a mapping each of whose values may be a
-    whole credential reference — ``http/http_request``'s ``headers``. Its
-    values come back as the handles themselves, for the step to release.
+    A key in *credential_params* may be a whole credential reference — the
+    ``edr_token`` of a data-plane step — or a mapping each of whose values may
+    be one — ``http/http_request``'s ``headers``. The handles come back as
+    themselves, for the step to release.
     """
     return {
         key: value

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Contract tests for ``connector/consumer/negotiate`` and ``initiate_transfer``.
@@ -38,6 +39,7 @@ import pytest
 from pydantic import ValidationError
 
 from tractusx_testlab.models import StepExecutionError
+from tractusx_testlab.security.credentials import secret_of
 from tractusx_testlab.steps.connector.dataplane import DataplaneCallParams
 from tractusx_testlab.steps.connector.negotiate import NegotiateStep
 from tractusx_testlab.steps.connector.transfer import InitiateTransferStep
@@ -227,7 +229,7 @@ class TestInitiateTransferPull:
         output = await InitiateTransferStep().invoke({}, mock_context, definition)
 
         assert output.value["dataplane_url"] == _ENDPOINT
-        assert output.value["edr_token"] == _TOKEN
+        assert secret_of(output.value["edr_token"]) == _TOKEN
         assert output.value["transfer_id"] == _TRANSFER_ID
 
     @pytest.mark.asyncio
@@ -241,7 +243,7 @@ class TestInitiateTransferPull:
         await InitiateTransferStep().invoke({}, mock_context, definition)
 
         assert mock_context.variables[DATAPLANE_URL] == _ENDPOINT
-        assert mock_context.variables[EDR_TOKEN] == _TOKEN
+        assert secret_of(mock_context.variables[EDR_TOKEN]) == _TOKEN
         assert mock_context.variables[TRANSFER_ID] == _TRANSFER_ID
         assert "edr_entry" in mock_context.variables
         assert "dataplane_endpoint" not in mock_context.variables

@@ -52,6 +52,7 @@ from tractusx_testlab.player.execution.phase import (
 )
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
+from tractusx_testlab.security.credentials import credential_carriers
 from tractusx_testlab.steps._checks.published_names import publishes
 from tractusx_testlab.steps.assertions import AssertionEngine
 from tractusx_testlab.steps.flow._nested import NestedChecks
@@ -154,7 +155,7 @@ async def _run_step_guarded(
                 step_def.with_ or {},
                 context,
                 getattr(step_instance, "deferred_params", ()),
-                getattr(step_instance, "credential_params", ()),
+                credential_carriers(type(step_instance)),
             )
         # What the step was given, every ``${{ ... }}`` resolved: the test only
         # says which reference was written, not what it resolved to.

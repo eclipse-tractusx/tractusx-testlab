@@ -42,6 +42,7 @@ from tractusx_testlab.logging.masking import register_secret
 from tractusx_testlab.logging.wire import is_secret_key
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.player.execution.context import StepContext
+from tractusx_testlab.security.credentials import Credential, secret_of
 from tractusx_testlab.steps.assertions import AssertionEngine
 
 
@@ -142,7 +143,9 @@ def hide_secrets(step_cls: type, step_def: Any, output: Any, run: str | None = N
 
 
 def _register_strings(value: Any, run: str | None = None) -> None:
-    if isinstance(value, str):
+    if isinstance(value, Credential):
+        register_secret(secret_of(value), run=run)
+    elif isinstance(value, str):
         register_secret(value, run=run)
     elif isinstance(value, dict):
         for item in value.values():

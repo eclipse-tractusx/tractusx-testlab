@@ -22,7 +22,7 @@ The consumer-side reading of `digital-twin-registry/provider/get_shell_descripto
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
-| `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
+| `edr_token` | Credential \| string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
 | `aas_identifier` | string | yes | — | — | Identifier of the AAS shell descriptor. |
 
 **Output** — the value assertions and `returns:` read
@@ -49,7 +49,7 @@ The consumer-side reading of the registry's `GET /shell-descriptors` — the sam
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
-| `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
+| `edr_token` | Credential \| string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
 | `limit` | integer | no | `None` | — | Maximum number of entries the registry may return in one page; its own default applies when omitted. |
 | `cursor` | string | no | `None` | — | Cursor a previous page returned, to read the page after it. |
 
@@ -76,7 +76,7 @@ This is the consumer's half of the DTR contract, and it is a different thing fro
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
-| `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
+| `edr_token` | Credential \| string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
 | `specific_asset_ids` | list of [SpecificAssetId](#specificassetid) | yes | — | — | Criteria the shell must match; all of them have to. |
 
 **Output** — the value assertions and `returns:` read
@@ -101,7 +101,7 @@ The same search `digital-twin-registry/consumer/dataplane/lookup_shell` performs
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `dataplane_url` | string | no | `''` | — | Data-plane URL of the counterparty's registry; falls back to the 'dataplane_url' context variable. |
-| `edr_token` | string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
+| `edr_token` | Credential \| string | no | `''` | — | EDR authorization token; falls back to the 'edr_token' context variable. |
 | `limit` | integer | no | `None` | — | Maximum number of entries the registry may return in one page; its own default applies when omitted. |
 | `cursor` | string | no | `None` | — | Cursor a previous page returned, to read the page after it. |
 | `specific_asset_ids` | list of [SpecificAssetId](#specificassetid) | yes | — | — | Criteria the shell must match; all of them have to. |

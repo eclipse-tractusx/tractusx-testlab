@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Notification steps — reuses SDK NotificationConsumerService."""
@@ -35,6 +36,7 @@ from pydantic import ConfigDict, Field, model_validator
 
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.security.credentials import Credential, reveal
 from tractusx_testlab.steps import http_client, sdk_call
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload, StepValue
@@ -72,7 +74,7 @@ class SendNotificationParams(CounterPartyParams):
         default=None,
         description="Direct mode: data-plane URL to POST to; its presence selects that mode.",
     )
-    edr_token: str = Field(
+    edr_token: Credential | str = Field(
         default="",
         description="Direct mode: authorization token for that data-plane URL.",
     )
@@ -161,7 +163,7 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
         definition: StepDefinition,
     ) -> StepOutput[SendNotificationOutput]:
         if params.is_direct:
-            return await self._execute_dataplane_direct(params)
+            return await self._execute_dataplane_direct(params, context)
         return await self._execute_sdk_notification(params, context)
 
     async def _execute_sdk_notification(
@@ -201,18 +203,27 @@ class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutp
     async def _execute_dataplane_direct(
         self,
         params: SendNotificationParams,
+        context: StepContext,
     ) -> StepOutput[SendNotificationOutput]:
         """CCM mode: POST directly to dataplane URL with EDR auth token."""
         url = params.direct_url()
         body = params.direct_body()
         headers = {"Content-Type": "application/json"}
         if params.edr_token:
-            headers["Authorization"] = params.edr_token
+            # A handle opens for its own data plane only.
+            headers["Authorization"] = reveal(
+                params.edr_token, url, context.config.credential_release
+            )
 
         response_headers: dict[str, str] = {}
         try:
             resp = await http_client.request(
-                "POST", url, json=body, headers=headers, timeout=params.timeout
+                "POST",
+                url,
+                json=body,
+                headers=headers,
+                timeout=params.timeout,
+                follow_redirects=not isinstance(params.edr_token, Credential),
             )
             result = resp.json() if resp.content else {}
             status_code = resp.status_code

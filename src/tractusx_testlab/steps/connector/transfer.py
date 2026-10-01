@@ -35,6 +35,7 @@ from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.steps.connector._edr import Credential
 from tractusx_testlab.steps.connector._polling import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
@@ -161,7 +162,7 @@ class InitiateTransferOutput(StepPayload):
     dataplane_url: str | None = Field(
         default=None, description="PULL only — data-plane URL the data is fetched from."
     )
-    edr_token: str | None = Field(
+    edr_token: Credential | str | None = Field(
         default=None,
         description="PULL only — authorization token for that data-plane URL.",
         json_schema_extra={"secret": True},

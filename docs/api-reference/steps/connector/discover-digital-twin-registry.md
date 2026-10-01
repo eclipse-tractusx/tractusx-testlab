@@ -28,4 +28,4 @@ _What every DSP flow step hands back: where the data is, and the token for it._
 | Field | Type | Description |
 |---|---|---|
 | `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. Shown as '***' in every record. |
+| `edr_token` | Credential \| string | Authorization token for that data-plane URL. Shown as '***' in every record. |

@@ -65,7 +65,7 @@ _What every DSP flow step hands back: where the data is, and the token for it._
 | Field | Type | Description |
 |---|---|---|
 | `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. Shown as '***' in every record. |
+| `edr_token` | Credential \| string | Authorization token for that data-plane URL. Shown as '***' in every record. |
 
 ## `connector/consumer/do_dsp_with_bpnl` { #connector-consumer-do_dsp_with_bpnl }
 
@@ -89,7 +89,7 @@ _What every DSP flow step hands back: where the data is, and the token for it._
 | Field | Type | Description |
 |---|---|---|
 | `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. Shown as '***' in every record. |
+| `edr_token` | Credential \| string | Authorization token for that data-plane URL. Shown as '***' in every record. |
 
 ## `connector/consumer/extract_dataset` { #connector-consumer-extract_dataset }
 
@@ -133,7 +133,7 @@ _Output contract of `connector/consumer/get_edr`._
 | Field | Type | Description |
 |---|---|---|
 | `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that data-plane URL. Shown as '***' in every record. |
+| `edr_token` | Credential \| string | Authorization token for that data-plane URL. Shown as '***' in every record. |
 | `data_address` | [DataAddressPayload](#dataaddresspayload) | The full EDR data address document, unchanged. |
 
 ## `connector/consumer/initiate_transfer` { #connector-consumer-initiate_transfer }
@@ -165,7 +165,7 @@ _Output contract of `connector/consumer/initiate_transfer`._
 | `state` | string | State the transfer settled at, e.g. 'STARTED' or 'COMPLETED'. |
 | `edr_entry` | object | PULL only — the EDR entry the negotiation produced. |
 | `dataplane_url` | string | PULL only — data-plane URL the data is fetched from. |
-| `edr_token` | string | PULL only — authorization token for that data-plane URL. |
+| `edr_token` | Credential \| string | PULL only — authorization token for that data-plane URL. |
 | `data_address` | [DataAddressPayload](#dataaddresspayload) | PULL only — the full data address document, for assertions on its other keys. |
 
 ## `connector/consumer/negotiate` { #connector-consumer-negotiate }
@@ -219,8 +219,8 @@ _Everything the DSP flow produced, from the catalog through to the token._
 | Field | Type | Description |
 |---|---|---|
 | `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that URL. |
-| `token_prefix` | string | First characters of the token, safe to log or assert on. |
+| `edr_token` | Credential \| string | Authorization token for that URL. |
+| `token_prefix` | string | First 4 characters of the token. |
 | `catalog` | object | Catalog document the offer was taken from. |
 | `datasets` | list of object | Dataset offers in that catalog. |
 | `asset_id` | string | Asset ID of the first offer. |
@@ -252,8 +252,8 @@ _Everything the DSP flow produced, from the catalog through to the token._
 | Field | Type | Description |
 |---|---|---|
 | `dataplane_url` | string | Data-plane URL the negotiated data is fetched from. |
-| `edr_token` | string | Authorization token for that URL. |
-| `token_prefix` | string | First characters of the token, safe to log or assert on. |
+| `edr_token` | Credential \| string | Authorization token for that URL. |
+| `token_prefix` | string | First 4 characters of the token. |
 | `catalog` | object | Catalog document the offer was taken from. |
 | `datasets` | list of object | Dataset offers in that catalog. |
 | `asset_id` | string | Asset ID of the first offer. |
@@ -379,8 +379,8 @@ An EDR data address — where negotiated data is fetched and with what token.
 | Field | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `endpoint` | string | no | `None` | — | Data-plane URL to fetch the data from. |
-| `authorization` | string | no | `None` | — | Authorization token for that URL. |
-| `authCode` | string | no | `None` | — | Legacy spelling of 'authorization' used by older connectors. |
+| `authorization` | Credential \| string | no | `None` | — | Authorization token for that URL. |
+| `authCode` | Credential \| string | no | `None` | — | Legacy spelling of 'authorization' used by older connectors. |
 
 Additional keys sent by the counterpart are passed through unchanged.
 

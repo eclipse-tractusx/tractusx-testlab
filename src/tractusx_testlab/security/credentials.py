@@ -50,21 +50,40 @@ import httpx
 from pydantic_core import SchemaSerializer, core_schema
 from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
 
-from tractusx_testlab.models.primitives.exceptions import AuthoringError
+from tractusx_testlab.security.credential_errors import (
+    CredentialError,
+    CredentialMisuseError,
+    CredentialNotReleasedError,
+    CredentialOriginMismatchError,
+)
 
 __all__ = [
+    "BINDING_SIDES",
+    "ISSUED",
     "Credential",
     "CredentialError",
     "CredentialMisuseError",
     "CredentialNotReleasedError",
     "CredentialOriginMismatchError",
+    "credential_carriers",
     "find_credential",
+    "issued_credential",
     "origin_of",
     "public_attr",
+    "reveal",
+    "secret_of",
 ]
 
 #: The port a scheme implies when the URL does not state one.
 _DEFAULT_PORTS: dict[str, int] = {"http": 80, "https": 443}
+
+#: The sides of the topology a run may withhold (``credential_release``).
+BINDING_SIDES: frozenset[str] = frozenset({"engine", "sut"})
+
+#: The side of a credential the run was issued while it ran — an EDR's token,
+#: handed to the engine's connector by a provider. It belongs to no binding and
+#: is never withheld: it opens for its own data plane, and for nothing else.
+ISSUED = "issued"
 
 
 def origin_of(url: object) -> str:
@@ -143,7 +162,7 @@ class Credential:
             CredentialNotReleasedError: the run does not release this side.
             CredentialOriginMismatchError: *url* is not this credential's origin.
         """
-        if self._side not in released:
+        if self._side in BINDING_SIDES and self._side not in released:
             raise CredentialNotReleasedError(self)
         target = origin_of(url)
         if not target or target not in self._origins:
@@ -194,6 +213,56 @@ class Credential:
             ),
         )
 
+    @classmethod
+    def __get_pydantic_json_schema__(cls, schema: Any, handler: Any) -> dict[str, Any]:
+        """Document a handle as what a reader sees of it: a string."""
+        return {"type": "string", "writeOnly": True}
+
+
+def issued_credential(value: object, *, name: str, url: object) -> Credential | None:
+    """A handle for a credential the run was issued, bound to *url*'s origin.
+
+    ``None`` for no value, so an output that had no token still says so.
+    """
+    if value is None or value == "":
+        return None
+    if isinstance(value, Credential):
+        return value
+    return Credential(str(value), name=name, side=ISSUED, origins=[origin_of(url)])
+
+
+def reveal(value: object, url: str, released: Collection[str]) -> Any:
+    """What to send for *value* in a request to *url*: a handle opened, anything else as is.
+
+    A test may still type a token itself — an empty one for a negative path, a
+    literal for a fixture — and that is sent as written.
+    """
+    if isinstance(value, Credential):
+        return value.reveal_for(url, released)
+    return value
+
+
+def secret_of(handle: Credential) -> str:
+    """The raw value, for the masking registry only — never for a request."""
+    return object.__getattribute__(handle, "_value")
+
+
+def credential_carriers(step_cls: object) -> frozenset[str]:
+    """The ``with:`` keys of *step_cls* a credential reference may be the whole value of.
+
+    What the step declares (``credential_params``, e.g. ``http/http_request``'s
+    ``headers``) and every parameter its model types as a :class:`Credential` —
+    the ``edr_token`` of the data-plane steps.
+    """
+    declared: frozenset[str] = getattr(step_cls, "credential_params", frozenset())
+    fields = getattr(getattr(step_cls, "params_model", None), "model_fields", None) or {}
+    typed = {
+        name
+        for name, field in fields.items()
+        if Credential in getattr(field.annotation, "__args__", (field.annotation,))
+    }
+    return declared | typed
+
 
 def find_credential(value: object) -> Credential | None:
     """The first handle *value* is or holds at any depth, or ``None``."""
@@ -224,61 +293,3 @@ def public_attr(obj: object, name: str, default: Any = None) -> Any:
     if not isinstance(name, str) or name.startswith("_") or isinstance(obj, Credential):
         return default
     return getattr(obj, name, default)
-
-
-class CredentialError(AuthoringError):
-    """A test used a credential handle somewhere it may not go."""
-
-    def __init__(self, credential_name: str, message: str) -> None:
-        self.credential = credential_name
-        self.diagnostics = {"credential": credential_name}
-        super().__init__(message)
-
-
-class CredentialMisuseError(CredentialError):
-    """A handle was written anywhere but as the whole value of a request header."""
-
-    code = "CREDENTIAL_MISUSE"
-
-    def __init__(self, credential_name: str, where: str = "") -> None:
-        at = f" ({where})" if where else ""
-        super().__init__(
-            credential_name,
-            f"'${{{{ {credential_name} }}}}' is a credential and may only be the whole "
-            f"value of a request header in http/http_request{at} — e.g. "
-            f"'headers: {{ x-api-key: \"${{{{ {credential_name} }}}}\" }}'. It cannot be "
-            "interpolated into text or passed to any other input.",
-        )
-
-
-class CredentialOriginMismatchError(CredentialError):
-    """A handle was sent to a request whose origin is not the binding's own."""
-
-    code = "CREDENTIAL_ORIGIN_MISMATCH"
-
-    def __init__(self, credential: Credential, target: str) -> None:
-        allowed = ", ".join(sorted(credential.origins)) or "nowhere (the binding has no URL)"
-        super().__init__(
-            credential.name,
-            f"{credential.name} may only be sent to {allowed}; this request goes to {target}.",
-        )
-        self.diagnostics = {
-            "credential": credential.name,
-            "allowed": sorted(credential.origins),
-            "target": target,
-        }
-
-
-class CredentialNotReleasedError(CredentialError):
-    """A handle of a side this run does not release was put on the wire by a test."""
-
-    code = "CREDENTIAL_NOT_RELEASED"
-
-    def __init__(self, credential: Credential) -> None:
-        super().__init__(
-            credential.name,
-            f"{credential.name} is not released to this run: the host allows only "
-            f"the steps that use the {credential.side} binding themselves to send it. "
-            "Use the connector/* or digital-twin-registry/* steps instead of a raw "
-            "http/http_request.",
-        )

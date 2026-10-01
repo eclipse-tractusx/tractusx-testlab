@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Abstract base class for all steps and the @step auto-registration decorator."""
@@ -36,6 +37,7 @@ from tractusx_testlab.models import (
     HttpResponse,
     StepDefinition,
 )
+from tractusx_testlab.security.credential_documents import holds_credential, restore_credentials
 from tractusx_testlab.syntax import diagnostics
 
 if TYPE_CHECKING:
@@ -349,15 +351,13 @@ def _dump_payload(payload: StepPayload | StepValue) -> Any:
     """Serialise a declared payload to the plain JSON data the rest of the run sees.
 
     ``exclude_unset`` is the rule: the output carries exactly what the step
-    produced.  A pass-through document like a provider's catalog keeps the keys
-    the provider sent and gains no ``"@type": null`` for the ones it omitted,
-    while a field a step deliberately set to ``None`` still shows up as null
-    because the step said so.  The cost is that a payload must pass every field
-    it means to publish — a field left to its default is absent from the output.
+    produced. A provider's catalog keeps the keys it sent and gains no
+    ``"@type": null``; a field a step set to ``None`` still shows up as null. A
+    payload must pass every field it means to publish. A credential handle stays
+    a handle (security.credential_documents).
     """
     if isinstance(payload, StepValue):
-        # A bare value has no fields to filter, and its content is already the
-        # plain data a test reads — dumping it in JSON mode would coerce
-        # whatever a provider sent.
+        # Already the plain data a test reads; a JSON dump would coerce it.
         return payload.root
-    return payload.model_dump(mode="json", by_alias=True, exclude_unset=True)
+    dumped = payload.model_dump(mode="json", by_alias=True, exclude_unset=True)
+    return restore_credentials(payload, dumped) if holds_credential(payload) else dumped

@@ -44,6 +44,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from tractusx_testlab.security.credentials import Credential
 from tractusx_testlab.steps.dsp_keys import DATASET_KEYS, first_present
 from tractusx_testlab.steps.step_contract import StepParams, StepPayload, StepValue
 
@@ -214,12 +215,12 @@ class DataAddressPayload(StepPayload):
     model_config = ConfigDict(extra="allow")
 
     endpoint: str | None = Field(default=None, description="Data-plane URL to fetch the data from.")
-    authorization: str | None = Field(
+    authorization: Credential | str | None = Field(
         default=None,
         description="Authorization token for that URL.",
         json_schema_extra={"secret": True},
     )
-    auth_code: str | None = Field(
+    auth_code: Credential | str | None = Field(
         default=None,
         alias="authCode",
         description="Legacy spelling of 'authorization' used by older connectors.",
@@ -227,7 +228,7 @@ class DataAddressPayload(StepPayload):
     )
 
 
-def data_address_token(data_address: dict | None) -> str | None:
+def data_address_token(data_address: dict | None) -> Credential | str | None:
     """Read the auth token from a data address under either of its two spellings."""
     if not data_address:
         return None

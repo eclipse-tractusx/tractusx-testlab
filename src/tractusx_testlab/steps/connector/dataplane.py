@@ -31,10 +31,13 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
+from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
 
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.security.credentials import reveal
 from tractusx_testlab.steps import http_client, sdk_call
+from tractusx_testlab.steps.connector._edr import Credential, issued_data_address
 from tractusx_testlab.steps.shared_models import (
     DataAddressPayload,
     HttpBodyOutput,
@@ -77,7 +80,7 @@ class DataplaneCallParams(HttpCallParams):
         ),
     )
     path: str = Field(default="", description="Path appended to the data-plane URL.")
-    edr_token: str | None = Field(
+    edr_token: Credential | str | None = Field(
         default=None,
         description=(
             "EDR authorization token; falls back to the 'edr_token' context variable "
@@ -87,7 +90,7 @@ class DataplaneCallParams(HttpCallParams):
         ),
     )
 
-    def resolved_token(self, fallback: str) -> str:
+    def resolved_token(self, fallback: object) -> object:
         """The token to send, or '' if the test explicitly asked for none.
 
         ``None`` means the test left the field out, so the context variable a
@@ -124,17 +127,25 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
         self, params: DataplaneCallParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
         url = params.resolved_url(context.get_str(DATAPLANE_URL))
-        token = params.resolved_token(context.get_str(EDR_TOKEN))
+        # An EDR token is a handle that opens for its own data plane only.
+        held = params.resolved_token(context.get_variable(EDR_TOKEN, ""))
+        token = reveal(held, url, context.config.credential_release)
         headers = {"Authorization": token, **params.headers}
         timeout = params.timeout_or(context.config.default_timeout_s)
 
         resp = await http_client.request(
-            params.method, url, headers=headers, json=params.body, timeout=timeout
+            params.method,
+            url,
+            headers=headers,
+            json=params.body,
+            timeout=timeout,
+            follow_redirects=not isinstance(held, Credential),
         )
 
+        recorded = {**headers, "Authorization": REDACTED_VALUE} if token else headers
         return StepOutput(
             value=HttpBodyOutput(http_client.body_of(resp)),
-            request=HttpRequest(method=params.method, url=url, headers=headers, body=params.body),
+            request=HttpRequest(method=params.method, url=url, headers=recorded, body=params.body),
             response=HttpResponse(
                 status_code=resp.status_code,
                 headers=http_client.headers_of(resp),
@@ -178,7 +189,9 @@ async def fetch_data_address(
     if not transfer_id:
         return None
     try:
-        return await sdk_call.run(consumer.get_edr, transfer_id=transfer_id, verify=verify)
+        # Its tokens are handles from here on (steps.connector._edr).
+        document = await sdk_call.run(consumer.get_edr, transfer_id=transfer_id, verify=verify)
+        return issued_data_address(document)
     except ConnectionError:
         logger.warning("Failed to retrieve EDR data address for transfer %s", transfer_id)
         return None
@@ -195,7 +208,7 @@ class EdrOutput(StepPayload):
     dataplane_url: str | None = Field(
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
-    edr_token: str | None = Field(
+    edr_token: Credential | str | None = Field(
         default=None,
         description="Authorization token for that data-plane URL. Shown as '***' in every record.",
         json_schema_extra={"secret": True},
