@@ -40,6 +40,7 @@ from tractusx_testlab.security.credentials import (
     CredentialOriginMismatchError,
     find_credential,
     origin_of,
+    public_attr,
 )
 
 _SECRET = "platform-management-key-0123"
@@ -163,3 +164,31 @@ def test_find_credential_reaches_into_documents() -> None:
     handle = _handle()
     assert find_credential({"a": [1, {"b": (handle,)}]}) is handle
     assert find_credential({"a": ["x"]}) is None
+
+
+class TestPathWalking:
+    """A check path or ``returns:`` name reaches public data and nothing of a handle."""
+
+    def test_a_private_attribute_of_a_handle_answers_nothing(self) -> None:
+        assert public_attr(_handle(), "_value") is None
+
+    def test_no_attribute_of_a_handle_is_read(self) -> None:
+        assert public_attr(_handle(), "name") is None
+
+    @pytest.mark.parametrize("name", ["_value", "__class__", "__dict__", "__init__"])
+    def test_private_and_dunder_names_answer_the_default(self, name: str) -> None:
+        assert public_attr(object(), name, "default") == "default"
+
+    def test_a_public_attribute_is_read(self) -> None:
+        class Response:
+            status_code = 200
+
+        assert public_attr(Response(), "status_code") == 200
+
+    def test_a_check_path_into_a_document_holding_a_handle_finds_nothing(self) -> None:
+        from tractusx_testlab.player.execution._step_outputs import AssertionEngine
+        from tractusx_testlab.steps.step_contract import StepOutput
+
+        output = StepOutput(value={"key": _handle()})
+        assert AssertionEngine.extract_path(output, "key._value") is None
+

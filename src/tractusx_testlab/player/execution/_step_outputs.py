@@ -91,13 +91,15 @@ def store_step_outputs(
 def hide_secrets(step_cls: type, step_def: Any, output: Any, run: str | None = None) -> None:
     """Mask what this step returned that no record of the run may show.
 
-    Two sources, and the author has the last word on both. A step marks an
-    output field secret (``json_schema_extra={"secret": True}``) — ``mock/api``'s
-    ``api_key``, an EDR's ``edr_token``, a token endpoint's ``access_token`` —
-    and it is hidden unless the step's ``returns:`` names it with
-    ``hidden: false``. Any other return is hidden when ``returns:`` says
-    ``hidden: true``. Called as soon as the step has run and before its checks
-    are evaluated, because an assertion line prints the value it compared.
+    Two sources. A step marks an output field secret
+    (``json_schema_extra={"secret": True}``) — an EDR's ``edr_token``, a token
+    endpoint's ``access_token``, ``mock/api``'s ``api_key`` — and it is hidden.
+    The author may show one with ``hidden: false`` only when the step also marks
+    it ``revealable``: the mock's key is the run's own, minted to be handed to the
+    SUT operator, while an EDR or a token is a credential another party issued,
+    and no test text turns its masking off. Any other return is hidden when
+    ``returns:`` says ``hidden: true``. Called as soon as the step has run and
+    before its checks are evaluated, because an assertion line prints the value.
 
     A credential nested in a document the step returned — the ``authorization``
     of a data address, the ``refreshToken`` beside it — is filed under a name
@@ -113,19 +115,20 @@ def hide_secrets(step_cls: type, step_def: Any, output: Any, run: str | None = N
     returns = getattr(step_def, "returns", None) or {}
     declared = declared_names(step_cls)
 
-    hidden: set[str] = {
-        name
+    marked = {
+        name: field.json_schema_extra
         for name, field in (
             getattr(getattr(step_cls, "output_model", None), "model_fields", None) or {}
         ).items()
         if isinstance(field.json_schema_extra, dict) and field.json_schema_extra.get("secret")
     }
+    hidden: set[str] = set(marked)
     shown: set[str] = set()
     for name, entry in returns.items():
         flag = getattr(entry, "hidden", None)
         if flag is True:
             hidden.add(name)
-        elif flag is False:
+        elif flag is False and (name not in marked or marked[name].get("revealable")):
             hidden.discard(name)
             shown.add(name)
 
@@ -133,9 +136,9 @@ def hide_secrets(step_cls: type, step_def: Any, output: Any, run: str | None = N
         _register_strings(AssertionEngine.extract_path(output, name, declared), run)
     value = getattr(output, "value", None)
     if isinstance(value, dict):
+        # A shown name is not masked as a whole; a credential nested in it still is.
         for name, item in value.items():
-            if name not in shown:
-                _register_named(item, run, is_secret_key(name))
+            _register_named(item, run, name not in shown and is_secret_key(name))
 
 
 def _register_strings(value: Any, run: str | None = None) -> None:

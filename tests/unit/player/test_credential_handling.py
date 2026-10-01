@@ -224,6 +224,25 @@ class TestHiddenOutputs:
         )
         assert mask(f"{_TOKEN} {_TOKEN}-r") == "*** ***"
 
+    def test_hidden_false_cannot_show_an_edr_token(self) -> None:
+        output = StepOutput(
+            value={"edr_token": _TOKEN, "data_address": {"authorization": f"{_TOKEN}-2"}}
+        )
+        hide_secrets(
+            GetEdrStep,
+            StepDefinition.model_validate(
+                {
+                    "uses": "connector/consumer/get_edr",
+                    "returns": {
+                        "edr_token": {"type": "string", "hidden": False},
+                        "data_address": {"type": "object", "hidden": False},
+                    },
+                }
+            ),
+            output,
+        )
+        assert mask(f"{_TOKEN} {_TOKEN}-2") == "*** ***"
+
     def test_hidden_false_still_shows_an_output_the_author_unhid(self) -> None:
         output = StepOutput(value={"api_key": "mock-api-key-0123"})
         hide_secrets(

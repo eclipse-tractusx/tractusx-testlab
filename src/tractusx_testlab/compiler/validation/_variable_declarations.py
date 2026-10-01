@@ -67,6 +67,10 @@ _CARRIED_SOURCES: frozenset[str] = frozenset({"value", "register"})
 #: takes ``with.instructions``.
 _REGISTER_SOURCE = "register"
 
+#: The namespace the run's infrastructure bindings are published under. Only
+#: the operator binds it; a variable of that name would re-point a binding.
+_BINDING_PREFIX = "infrastructure."
+
 #: Namespaces a variable may not name, and what to write instead. ``generate/``
 #: parses — it has since the first verb-form grammar — but nothing in the engine
 #: produces a generated variable, so the value is never seeded and every
@@ -124,6 +128,12 @@ def _check_entry(entry: dict[str, Any], index: int, seen: set[str]) -> Iterator[
             f"happened to end with."
         )
     seen.add(var_id)
+    if var_id.startswith(_BINDING_PREFIX):
+        yield (
+            f"Variable '{var_id}' is named under '{_BINDING_PREFIX}', the deployment the "
+            "operator binds: a TCK reads it but never sets it. Give it a name of its own."
+        )
+        return
 
     uses = str(entry.get(keys.USES) or "")
     if not uses:

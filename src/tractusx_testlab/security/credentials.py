@@ -60,6 +60,7 @@ __all__ = [
     "CredentialOriginMismatchError",
     "find_credential",
     "origin_of",
+    "public_attr",
 ]
 
 #: The port a scheme implies when the URL does not state one.
@@ -210,6 +211,19 @@ def find_credential(value: object) -> Credential | None:
         if found is not None:
             return found
     return None
+
+
+def public_attr(obj: object, name: str, default: Any = None) -> Any:
+    """``getattr`` for an attribute name a test wrote, which reaches only public data.
+
+    A check path or a ``returns:`` name falls back to attributes when the value
+    is not a document, and the name is the author's: ``x._value`` would read a
+    handle's secret, ``x.__class__`` the code around it. A name starting with
+    ``_`` answers *default*, and so does anything asked of a handle.
+    """
+    if not isinstance(name, str) or name.startswith("_") or isinstance(obj, Credential):
+        return default
+    return getattr(obj, name, default)
 
 
 class CredentialError(AuthoringError):

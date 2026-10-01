@@ -108,6 +108,8 @@ def _call_context(run: StepContext, request: MockRequest) -> StepContext:
             call.set_template(name, value)
         else:
             call.set_variable(name, value)
+    for prefix in run.sealed:
+        call.seal(prefix)
     call.bind_invoker(run.invoke_step)
     call.bind_test_cac(run.test_cac)
     call.bind_step_namespace(call_scope.PROCESS)

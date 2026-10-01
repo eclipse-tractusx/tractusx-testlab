@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """mock_endpoint step — registers a canned HTTP response on the mock server."""
@@ -132,7 +133,8 @@ class MockEndpointOutput(StepPayload):
             "empty for a public mock. Hidden unless the step's returns say "
             "'hidden: false'."
         ),
-        json_schema_extra={"secret": True},
+        # The run's own key, minted for the SUT operator: an author may show it.
+        json_schema_extra={"secret": True, "revealable": True},
     )
 
 

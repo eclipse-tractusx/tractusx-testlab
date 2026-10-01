@@ -220,9 +220,10 @@ class InfrastructureManager:
         Overrides are context-keyed (``infrastructure.sut.dtr.base_url``), which
         is the form they arrive in from ``--var``, a run-config, and the HTTP
         API alike. The registered deployment is not modified: a value supplied
-        for one run does not leak into the next.
+        for one run does not leak into the next, nor does a credential follow
+        its address to another origin (see ``mapping.apply_overrides``).
         """
-        return apply_overrides(self.active, overrides or {})
+        return apply_overrides(self.active, overrides or {}, credentials_follow=False)
 
     def validate(
         self,

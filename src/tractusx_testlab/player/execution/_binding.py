@@ -38,16 +38,18 @@ from __future__ import annotations
 from tractusx_testlab.authoring._infrastructure import collect_infrastructure_requirements
 from tractusx_testlab.authoring.test import Tck
 from tractusx_testlab.infrastructure.mapping import (
+    CONTEXT_PREFIX,
     collect_overrides,
     credential_headers,
     flatten,
-    secret_keys,
+    known_keys,
     secret_values,
 )
 from tractusx_testlab.infrastructure.profiles import InfrastructureManager
 from tractusx_testlab.logging.masking import register_secret
 from tractusx_testlab.logging.wire import register_secret_header
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
+from tractusx_testlab.models.primitives.binding_errors import BindingOverrideRefusedError
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.syntax import defaults
 
@@ -82,11 +84,20 @@ def bind_infrastructure(
 
     A credential is published as a handle, never as its value (see
     :func:`publish_bindings`).
+
+    Only the run's inputs override a binding — what the operator handed this
+    run, never what the TCK carries. A static ``env`` value, a shared variable
+    or a test-data file named ``infrastructure.engine.connector.management_url``
+    would otherwise re-point the engine's own connector, and its key with it,
+    wherever the package said. And only on the sides the host lets a run
+    override (``TestlabConfig.binding_overrides``).
     """
     requirements = collect_infrastructure_requirements(tck)
     release, release_stated = _target_release(tck)
 
-    resolved = manager.resolve(collect_overrides(context.variables, requirements))
+    overrides = collect_overrides(_run_inputs(context), requirements)
+    _refuse_held_sides(overrides, context.config.binding_overrides)
+    resolved = manager.resolve(overrides)
     manager.validate(requirements, resolved)
     resolved = manager.align(
         requirements,
@@ -106,7 +117,8 @@ def publish_bindings(resolved: Infrastructure, context: StepContext) -> None:
     as this run is open, and the header each binding presents its key in is
     redacted by name from now on. A credential an operator supplied as a
     ``--var`` override arrived in the namespace as text; it is replaced by its
-    handle, or removed when the capability it belongs to is not bound at all.
+    handle, or removed when the capability it belongs to is not bound at all —
+    as is every other ``infrastructure.*`` name the run does not bind.
     """
     for secret in secret_values(resolved):
         register_secret(secret, run=str(context.job.job_id))
@@ -115,8 +127,39 @@ def publish_bindings(resolved: Infrastructure, context: StepContext) -> None:
     published = flatten(resolved)
     for key, value in published.items():
         context.set_variable(key, value)
-    for key in secret_keys() - set(published):
+    for key in set(known_keys()) - set(published):
         context.unset_variable(key)
+
+
+def seal_bindings(context: StepContext) -> None:
+    """Make ``infrastructure.*`` read-only once the bindings and their services are seeded.
+
+    From here on the namespace says what the run is bound to and nothing else:
+    a step's ``returns:`` cannot re-point an address, nor swap a handle out.
+    """
+    context.seal(CONTEXT_PREFIX)
+
+
+def _run_inputs(context: StepContext) -> dict[str, object]:
+    """The variables the run was handed, without what its TCK package carries.
+
+    The package's own values — static ``env`` values, shared-variable defaults,
+    test data — are seeded as templates (:meth:`StepContext.set_template`);
+    the operator's inputs as data. An input that replaced a packaged value of
+    the same name is the operator's, and counts.
+    """
+    return {
+        name: value
+        for name, value in context.variables.items()
+        if name.startswith(CONTEXT_PREFIX) and not context.is_template(name)
+    }
+
+
+def _refuse_held_sides(overrides: dict[str, object], allowed: frozenset[str]) -> None:
+    """Refuse an override of a side the host keeps fixed, naming every one."""
+    refused = sorted(key for key in overrides if key.split(".")[1] not in allowed)
+    if refused:
+        raise BindingOverrideRefusedError(refused, sorted(allowed))
 
 
 def _target_release(tck: Tck) -> tuple[str, bool]:

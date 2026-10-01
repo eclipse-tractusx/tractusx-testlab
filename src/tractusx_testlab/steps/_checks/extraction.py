@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Path extraction utilities for navigating nested dicts/lists/StepOutput objects."""
@@ -29,6 +30,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from tractusx_testlab.security.credentials import public_attr
+
 # Matches a path segment with a predicate filter: ``name[key=value]``
 _PREDICATE_RE = re.compile(r"^([^\[]+)\[([^=\]]+)=([^\]]*)\]$")
 _SENTINEL = object()
@@ -37,12 +40,9 @@ _SENTINEL = object()
 def _dict_get(d: dict, key: str) -> Any:
     """Return ``d[key]``, or ``None`` when the key is not there.
 
-    Exactly the key that was written. A ``snake_case``→``camelCase`` fallback
-    used to run here, so ``header.message_id`` quietly found ``messageId`` — a
-    second spelling for one field, undocumented and unbounded, which made it
-    impossible to say from a test why a path resolved. Where a document really
-    does carry two spellings, the payload model declares the alias: that is what
-    ``authCode`` and ``@id`` already do, and it is visible.
+    Exactly the key that was written: a ``snake_case``→``camelCase`` fallback
+    made ``header.message_id`` quietly find ``messageId``. Where a document
+    carries two spellings, its model declares the alias (``authCode``, ``@id``).
     """
     return d.get(key)
 
@@ -228,7 +228,7 @@ def extract_path(output: Any, path: str | None, declared: frozenset[str] | None 
 
     if isinstance(output, (dict, list)):
         return _traverse_dict(output, path)
-    return getattr(output, path, None)
+    return public_attr(output, path)
 
 
 def _extract_from_step_output(
@@ -247,7 +247,7 @@ def _extract_from_step_output(
     if rest and resolved is not None:
         if isinstance(resolved, (dict, list)):
             return _traverse_dict(resolved, rest)
-        return getattr(resolved, rest, None)
+        return public_attr(resolved, rest)
 
     # Final fallback: full dot-path traversal on value dict
     if resolved is None and isinstance(output.value, dict):
@@ -301,7 +301,7 @@ def _resolve_response_headers(output: Any) -> Any:
 def _fallback_resolution(output: Any, first: str) -> Any:
     """Try response attrs, response body dict, and StepOutput slots in order."""
     if output.response is not None:
-        resp_val = getattr(output.response, first, _SENTINEL)
+        resp_val = public_attr(output.response, first, _SENTINEL)
         if resp_val is not _SENTINEL:
             return resp_val
 
@@ -310,7 +310,7 @@ def _fallback_resolution(output: Any, first: str) -> Any:
         if body_val is not None:
             return body_val
 
-    slot_val = getattr(output, first, _SENTINEL)
+    slot_val = public_attr(output, first, _SENTINEL)
     if slot_val is not _SENTINEL:
         return slot_val
 

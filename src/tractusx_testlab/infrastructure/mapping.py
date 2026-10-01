@@ -44,10 +44,8 @@ field cannot be recovered from ``TESTLAB_ENGINE_DTR_SUBMODEL_BASE_URL`` by
 counting underscores — both halves carry them — and a generated set has no
 ambiguity to resolve.
 
-A field marked secret (``CapabilityBinding.secret_fields``) is projected onto
-the context as a :class:`~tractusx_testlab.security.credentials.Credential`
-handle rather than as its value: a test may send it as a header to the
-binding's own origin, and read it nowhere else.
+A secret field (``CapabilityBinding.secret_fields``) is projected as a
+:class:`~tractusx_testlab.security.credentials.Credential` handle, never as text.
 """
 
 from __future__ import annotations
@@ -233,6 +231,8 @@ def overrides_from_env(environ: Mapping[str, str] | None = None) -> dict[str, st
 def apply_overrides(
     infrastructure: Infrastructure,
     overrides: Mapping[str, Any],
+    *,
+    credentials_follow: bool = True,
 ) -> Infrastructure:
     """Return *infrastructure* with *overrides* applied, leaving the original untouched.
 
@@ -240,19 +240,46 @@ def apply_overrides(
     operator gets, after the profile, the config file, and the environment.
     Values are stored as text because every surface they arrive from is text,
     and a binding field is an address or a credential either way.
+
+    With *credentials_follow* off (a run's own inputs), an override moving a
+    capability's credential URL to another origin drops its credentials unless
+    the same overrides supply them: a key registered for one host is never
+    presented to another because one address changed.
     """
     if not overrides:
         return infrastructure
 
     legal = known_keys()
     data = infrastructure.model_dump()
+    supplied: set[tuple[str, str, str]] = set()
     for key, value in overrides.items():
         located = legal.get(key)
         if located is None:
             raise UnknownBindingKeyError(key, sorted(legal))
         side, capability, field = located
         data[side][capability][field] = "" if value is None else str(value)
+        supplied.add(located)
+    if not credentials_follow:
+        _strand_moved_credentials(infrastructure.model_dump(), data, supplied)
     return Infrastructure.model_validate(data)
+
+
+def _strand_moved_credentials(
+    before: dict[str, Any], after: dict[str, Any], supplied: set[tuple[str, str, str]]
+) -> None:
+    """Blank, in *after*, each credential whose capability moved to another origin."""
+    for side, capability, binding_type in capabilities():
+        secret = binding_type.secret_fields()
+        if not secret:
+            continue
+        url_field = binding_type.credential_url_field or binding_type.identity_field
+        old = origin_of(before[side][capability].get(url_field, ""))
+        # No address bound yet: the overrides complete the binding, not move it.
+        if not old or old == origin_of(after[side][capability].get(url_field, "")):
+            continue
+        for field in secret:
+            if (side, capability, field) not in supplied:
+                after[side][capability][field] = ""
 
 
 def merge(base: Infrastructure, overlay: Infrastructure) -> Infrastructure:

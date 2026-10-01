@@ -97,6 +97,16 @@ class TestlabConfig(BaseSettings):
     credential_release: frozenset[Literal["engine", "sut"]] = Field(
         default=frozenset({"engine", "sut"})
     )
+    #: The sides of the topology a run's own inputs may re-point — an
+    #: ``infrastructure.<side>.<capability>.<field>`` among the run variables,
+    #: as ``--var`` or a run-config supplies it. Both by default, for an
+    #: operator driving TestLab from the CLI. A host that binds the deployment
+    #: itself and runs inputs it did not write sets an empty set: the run then
+    #: targets exactly what the host bound. Values a TCK carries (``env``,
+    #: shared variables, test data) never re-point a binding, whatever this says.
+    binding_overrides: frozenset[Literal["engine", "sut"]] = Field(
+        default=frozenset({"engine", "sut"})
+    )
 
     @field_validator("mock_public_url")
     @classmethod
