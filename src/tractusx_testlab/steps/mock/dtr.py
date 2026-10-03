@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """mock/dtr step — a protocol-aware Digital Twin Registry mock.
@@ -118,6 +119,8 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
         definition: StepDefinition,
     ) -> StepOutput[NoOutput]:
         shells: list[dict] = list(params.shells)
+        # Every route is the run's own, the ones a registration adds later too.
+        run = str(context.job.job_id)
 
         def _list_shells(_req: MockRequest) -> MockResponse:
             return MockResponse(status_code=200, body={"result": shells, "paging_metadata": {}})
@@ -146,6 +149,7 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
                 f"{_BASE_PATH}/{_b64url_encode(descriptor.get('id', ''))}",
                 "GET",
                 _get_shell(_b64url_encode(descriptor.get("id", ""))),
+                run=run,
             )
             return MockResponse(status_code=201, body=descriptor)
 
@@ -201,10 +205,10 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
             matches = [s.get("id") for s in shells if _matches_asset_ids(s, requested)]
             return MockResponse(status_code=200, body={"result": matches, "paging_metadata": {}})
 
-        register_mock(_BASE_PATH, "GET", _list_shells)
-        register_mock(_BASE_PATH, "POST", _register_shell)
-        register_mock(_LOOKUP_PATH, "GET", _lookup_shells)
-        register_mock(_LOOKUP_BY_ASSET_LINK_PATH, "POST", _lookup_shells_by_asset_link)
+        register_mock(_BASE_PATH, "GET", _list_shells, run=run)
+        register_mock(_BASE_PATH, "POST", _register_shell, run=run)
+        register_mock(_LOOKUP_PATH, "GET", _lookup_shells, run=run)
+        register_mock(_LOOKUP_BY_ASSET_LINK_PATH, "POST", _lookup_shells_by_asset_link, run=run)
         for shell in shells:
             shell_id = shell.get("id")
             if shell_id:
@@ -212,6 +216,7 @@ class MockDtrStep(BaseStep[MockDtrParams, NoOutput]):
                     f"{_BASE_PATH}/{_b64url_encode(shell_id)}",
                     "GET",
                     _get_shell(_b64url_encode(shell_id)),
+                    run=run,
                 )
 
         logger.info(

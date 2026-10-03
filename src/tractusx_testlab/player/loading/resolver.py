@@ -30,6 +30,12 @@
 could be written three ways and the compiler only understood one of them.  They
 are gone; the compiler rejects them by name so a test written against the old
 grammar gets an error that says what to write instead.
+
+A credential (:class:`~tractusx_testlab.security.credentials.Credential`) is
+never turned into text here. It resolves only as the whole value of a key the
+step declares it can carry (``credential_params``) — the headers of
+``http/http_request`` — and anywhere else, interpolated or whole, the reference
+fails the step with ``CREDENTIAL_MISUSE``.
 """
 
 from __future__ import annotations
@@ -39,6 +45,11 @@ from typing import TYPE_CHECKING
 
 from tractusx_testlab.models import UnresolvedReferenceError
 from tractusx_testlab.models.primitives.exceptions import AuthoringError, TestLabError
+from tractusx_testlab.security.credentials import (
+    Credential,
+    CredentialMisuseError,
+    find_credential,
+)
 from tractusx_testlab.syntax import call_scope, patterns
 
 if TYPE_CHECKING:
@@ -152,7 +163,9 @@ def origin_of(expr: str, context: StepContext) -> str:
     return outcome.origin or AuthoringError.origin
 
 
-def resolve_str(value: str, context: StepContext, _depth: int = 0) -> object:
+def resolve_str(
+    value: str, context: StepContext, _depth: int = 0, *, credential_ok: bool = False
+) -> object:
     """Replace ``${{ ... }}`` references in a single string.
 
     A reference that is the whole string returns the raw value, so a dict or a
@@ -167,9 +180,14 @@ def resolve_str(value: str, context: StepContext, _depth: int = 0) -> object:
     choose what the next step is given — the operator's connector API key
     expanded into a URL it controls.
 
+    *credential_ok* is set for the one position a credential handle may take —
+    the whole value of a header the step sends it in. Everywhere else a handle
+    is refused rather than handed over or turned into text.
+
     Raises:
         UnresolvedReferenceError: if any reference names nothing in scope.
         TemplateDepthError: if authored content nests references into itself.
+        CredentialMisuseError: if a credential appears where it may not.
     """
     if "${{" not in value:
         return value
@@ -178,17 +196,38 @@ def resolve_str(value: str, context: StepContext, _depth: int = 0) -> object:
     if full:
         name, resolved = _require(full.group(1), context)
         if not context.is_template(name):
-            return resolved
+            return _admitted(resolved, credential_ok)
         if _depth >= MAX_TEMPLATE_DEPTH:
             raise TemplateDepthError(full.group(1))
+        if isinstance(resolved, str):
+            return resolve_str(resolved, context, _depth + 1, credential_ok=credential_ok)
         return _resolve_value(resolved, context, _depth + 1)
 
     # Interpolated text is not rescanned: `re.sub` does not read its own
     # replacements, so whatever a reference stands for is inserted as it is.
     return patterns.EXPR_REF.sub(
-        lambda m: str(_require(m.group(1), context)[1]),
+        lambda m: _as_text(_require(m.group(1), context)[1]),
         value,
     )
+
+
+def _admitted(value: object, credential_ok: bool) -> object:
+    """*value*, unless it is or holds a credential where none may go."""
+    if isinstance(value, Credential):
+        if credential_ok:
+            return value
+        raise CredentialMisuseError(value.name)
+    held = find_credential(value) if isinstance(value, dict | list) else None
+    if held is not None:
+        raise CredentialMisuseError(held.name, "inside a structured value")
+    return value
+
+
+def _as_text(value: object) -> str:
+    """*value* as interpolated text — which a credential never becomes."""
+    if isinstance(value, Credential):
+        raise CredentialMisuseError(value.name, "interpolated into a larger string")
+    return str(value)
 
 
 def _resolve_value(value: object, context: StepContext, _depth: int = 0) -> object:
@@ -199,10 +238,29 @@ def _resolve_value(value: object, context: StepContext, _depth: int = 0) -> obje
         return {key: _resolve_value(item, context, _depth) for key, item in value.items()}
     if isinstance(value, list):
         return [_resolve_value(item, context, _depth) for item in value]
-    return value
+    return _admitted(value, credential_ok=False)
 
 
-def resolve_params(params: dict, context: StepContext, deferred: Collection[str] = ()) -> dict:
+def _resolve_carrier(value: object, context: StepContext) -> object:
+    """Resolve a value that may be — or map names to — a whole credential reference."""
+    if isinstance(value, str):
+        return resolve_str(value, context, credential_ok=True)
+    if not isinstance(value, dict):
+        return _resolve_value(value, context)
+    return {
+        key: resolve_str(item, context, credential_ok=True)
+        if isinstance(item, str)
+        else _resolve_value(item, context)
+        for key, item in value.items()
+    }
+
+
+def resolve_params(
+    params: dict,
+    context: StepContext,
+    deferred: Collection[str] = (),
+    credential_params: Collection[str] = (),
+) -> dict:
     """Resolve every ``${{ ... }}`` reference in a step's ``with:`` block.
 
     A key in *deferred* is handed over as written. That is how a flow step
@@ -210,15 +268,27 @@ def resolve_params(params: dict, context: StepContext, deferred: Collection[str]
     ``with:`` when it runs, so it reads what the steps before it published —
     and, inside ``flow/for_each``, the item it is running for, which does not
     exist yet when the flow step itself starts.
+
+    A key in *credential_params* may be a whole credential reference — the
+    ``edr_token`` of a data-plane step — or a mapping each of whose values may
+    be one — ``http/http_request``'s ``headers``. The handles come back as
+    themselves, for the step to release.
     """
     return {
-        key: value if key in deferred else _resolve_value(value, context)
+        key: value
+        if key in deferred
+        else _resolve_carrier(value, context)
+        if key in credential_params
+        else _resolve_value(value, context)
         for key, value in params.items()
     }
 
 
 def try_resolve_params(
-    params: dict, context: StepContext, deferred: Collection[str] = ()
+    params: dict,
+    context: StepContext,
+    deferred: Collection[str] = (),
+    credential_params: Collection[str] = (),
 ) -> dict | None:
     """Resolve a ``with:`` block, or answer ``None`` rather than raise.
 
@@ -229,6 +299,6 @@ def try_resolve_params(
     be turned into a failed step.
     """
     try:
-        return resolve_params(params, context, deferred)
+        return resolve_params(params, context, deferred, credential_params)
     except TestLabError:
         return None

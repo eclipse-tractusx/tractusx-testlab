@@ -53,6 +53,7 @@ from tractusx_testlab.models.authoring.definitions import ReturnFieldDefinition
 from tractusx_testlab.player.execution._step_outputs import hide_secrets
 from tractusx_testlab.server.app import create_app
 from tractusx_testlab.server.callbacks import CallbackManager
+from tractusx_testlab.server.inbound.run_scope import scoped
 from tractusx_testlab.server.mock_registry import (
     MISSING_KEY,
     WRONG_KEY,
@@ -79,6 +80,8 @@ from tractusx_testlab.steps.mock.wait import (
 from tractusx_testlab.steps.step_contract import StepOutput
 
 _PATH = "/uniqueidpush/connect-to-parent"
+#: Where run-1's mock and listener on ``_PATH`` are kept.
+_KEY = scoped("run-1", _PATH)
 
 
 def _definition(uses: str, returns: dict[str, Any] | None = None) -> StepDefinition:
@@ -149,12 +152,14 @@ class TestEveryMockRequiresTheKey:
 
     @pytest.mark.asyncio
     async def test_another_run_has_another_key(self, context: MagicMock) -> None:
+        """Each run keeps its own mock on the path, and only its own key opens it."""
         first = await _register(context)
         context.job.job_id = "run-2"
         second = await _register(context)
 
         assert first["api_key"] != second["api_key"]
-        assert not admits(_PATH, "POST", {"x-api-key": first["api_key"]})
+        assert not admits(scoped("run-2", _PATH), "POST", {"x-api-key": first["api_key"]})
+        assert admits(scoped("run-1", _PATH), "POST", {"x-api-key": first["api_key"]})
 
     @pytest.mark.asyncio
     async def test_the_header_can_be_named(self, context: MagicMock) -> None:
@@ -242,7 +247,7 @@ class TestTheReflexiveAsset:
         assert output.value["asset_id"] == "testlab-ccmapi-run-1"
         kwargs = provider.create_asset.call_args.kwargs
         header, key = required_header("/companycertificate/push", "POST")
-        assert kwargs["base_url"] == "http://localhost:8080"
+        assert kwargs["base_url"] == "http://localhost:8080/runs/run-1"
         assert kwargs["headers"] == {header: key}
         assert kwargs["dct_subject"] == "https://w3id.org/catenax/taxonomy#CCMAPIsubject"
         assert kwargs["proxy_params"]["proxyBody"] == "true"
@@ -351,8 +356,8 @@ class TestTheWait:
         manager = CallbackManager()
         set_callback_manager(manager)
         registered = await _register(context)
-        manager.refuse(_PATH, "POST")
-        manager.refuse(_PATH, "POST")
+        manager.refuse(_KEY, "POST")
+        manager.refuse(_KEY, "POST")
 
         with pytest.raises(RuntimeError, match=r"2 call\(s\) reached the mock without the key"):
             await WaitForCallStep().invoke(
@@ -454,7 +459,7 @@ class TestARefusedCallFailsTheWait:
         assert outcome.diagnostics["reason"] == MISSING_KEY
         assert outcome.diagnostics["expected"] == {"method": "POST", "path": _PATH}
         assert seconds < self._TIMEOUT_S / 2
-        assert manager.refused(_PATH, "POST") == 1
+        assert manager.refused(_KEY, "POST") == 1
 
     @pytest.mark.asyncio
     async def test_a_call_with_another_key_fails_the_wait(
@@ -519,7 +524,7 @@ class TestARefusedCallFailsTheWait:
     ) -> None:
         """Anyone can dial an address nobody opened; that says nothing about this run."""
         await _register(context)
-        waiting = asyncio.create_task(manager.wait(_PATH, "POST", 0.5))
+        waiting = asyncio.create_task(manager.wait(_KEY, "POST", 0.5))
         while not manager.awaited():
             await asyncio.sleep(0.01)
 

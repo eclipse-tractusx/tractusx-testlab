@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Syntax v1-alpha authoring models — compile-time structures for tests and TCKs.
@@ -51,15 +52,13 @@ from tractusx_testlab.models.primitives.enums import ServiceType, VariableScope,
 # Shared primitive models (kept across syntax versions)
 # ---------------------------------------------------------------------------
 
-#: Every authoring model rejects keys it does not declare.
-#:
-#: Pydantic's default is ``extra="ignore"``, which silently discarded them. A
-#: ``validte:`` block was dropped and the step reported PASS with zero
-#: assertions; a ``whit:`` block was dropped and the step ran with no
-#: parameters. The reasoning was already written down one layer in, on
-#: ``StepParams``, and simply never applied to the models that select it: a key
-#: the author wrote and the engine ignored is how a test comes to look like it
-#: configured something it never configured.
+#: Every authoring model rejects keys it does not declare. Pydantic's default is
+#: ``extra="ignore"``, which silently discarded them: a ``validte:`` block was
+#: dropped and the step reported PASS with zero assertions; a ``whit:`` block was
+#: dropped and the step ran with no parameters. The reasoning was already written
+#: down one layer in, on ``StepParams``, and never applied to the models that
+#: select it: a key the author wrote and the engine ignored is how a test comes
+#: to look like it configured something it never configured.
 _STRICT = ConfigDict(populate_by_name=True, extra="forbid")
 
 
@@ -78,6 +77,7 @@ class VariableDefinition(BaseModel):
     format: str | None = None
     placeholder: str | None = None
     scope: VariableScope | None = None
+    secret: bool = False  # Masked in every record; an embedder treats it as a password.
 
 
 class ServiceDefinition(BaseModel):

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Full DSP flow steps — thin wrappers over the SDK ``do_dsp`` helpers."""
@@ -34,6 +35,7 @@ from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector import policy_mismatch
+from tractusx_testlab.steps.connector._edr import Credential, edr_token
 from tractusx_testlab.steps.connector.discover_connector import discovery_address
 from tractusx_testlab.steps.connector.policies import ExpectedPoliciesParams
 from tractusx_testlab.steps.counter_party import CounterPartyParams
@@ -60,8 +62,10 @@ class DspFlowOutput(StepPayload):
     dataplane_url: str | None = Field(
         default=None, description="Data-plane URL the negotiated data is fetched from."
     )
-    edr_token: str | None = Field(
-        default=None, description="Authorization token for that data-plane URL."
+    edr_token: Credential | str | None = Field(
+        default=None,
+        description="Authorization token for that data-plane URL. Shown as '***' in every record.",
+        json_schema_extra={"secret": True},
     )
 
 
@@ -249,7 +253,7 @@ def _build_output(
             "the DSP flow completed without a data-plane endpoint, so there is "
             "nothing for a later step to pull data from.",
         )
-    value = DspFlowOutput(dataplane_url=endpoint, edr_token=token)
+    value = DspFlowOutput(dataplane_url=endpoint, edr_token=edr_token(token, endpoint))
     url = context.dataspace.consumer_endpoint_url("edrs")
     return StepOutput(
         value=value,

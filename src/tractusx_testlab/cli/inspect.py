@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The ``testlab inspect`` command — everything you can learn without running.
@@ -192,6 +193,7 @@ def _gather(
                 "scope": var.scope.value if var.scope else None,
                 "default": var.default,
                 "description": var.description,
+                "secret": var.secret,
             }
             for name, var in tck.all_variables().items()  # type: ignore[attr-defined]
         }

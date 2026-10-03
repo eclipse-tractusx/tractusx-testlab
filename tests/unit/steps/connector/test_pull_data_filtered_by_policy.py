@@ -19,6 +19,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
 
 """Tests for connector/consumer/pull_data_filtered_by_policy."""
 
@@ -31,6 +33,7 @@ from tractusx_sdk.dataspace.tools import PolicyMismatchError as SdkPolicyMismatc
 
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.player.execution.context import StepContext
+from tractusx_testlab.security.credentials import secret_of
 from tractusx_testlab.steps.connector.policy_mismatch import PolicyMismatchError
 from tractusx_testlab.steps.connector.pull_data import ConnectorPullDataFilteredByPolicy
 
@@ -119,7 +122,7 @@ class TestPullDataFilteredByPolicy:
             context,
             _definition(),
         )
-        assert output.value["edr_token"] == "token-abc"
+        assert secret_of(output.value["edr_token"]) == "token-abc"
         assert output.value["dataplane_url"] == "http://dataplane.example"
         assert output.value["transfer_id"] == "transfer-1"
         assert output.value["agreement_id"] == "agreement-1"

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Unit tests for DoDspStep, DoDspWithBpnlStep, and DiscoverDtrAuthStep."""
@@ -33,6 +34,7 @@ import pytest
 
 from tests.conftest import attach_endpoint_url_stubs
 from tractusx_testlab.models import StepExecutionError
+from tractusx_testlab.security.credentials import secret_of
 from tractusx_testlab.steps.connector.do_dsp import (
     DTR_DCT_TYPE,
     DiscoverDtrAuthStep,
@@ -95,7 +97,7 @@ class TestDoDspStep:
 
         # Assert — context variables
         assert ctx.variables[DATAPLANE_URL] == _ENDPOINT
-        assert ctx.variables[EDR_TOKEN] == _TOKEN
+        assert secret_of(ctx.variables[EDR_TOKEN]) == _TOKEN
 
     @pytest.mark.asyncio
     async def test_output_value_contains_endpoint_and_token(
@@ -117,7 +119,10 @@ class TestDoDspStep:
         )
 
         # Assert — output shape
-        assert output.value == {"dataplane_url": _ENDPOINT, "edr_token": _TOKEN}
+        assert {**output.value, "edr_token": secret_of(output.value["edr_token"])} == {
+            "dataplane_url": _ENDPOINT,
+            "edr_token": _TOKEN,
+        }
 
     @pytest.mark.asyncio
     async def test_status_200_on_success(self, ctx: MagicMock, definition: MagicMock) -> None:
@@ -232,8 +237,11 @@ class TestDoDspWithBpnlStep:
         )
 
         assert ctx.variables[DATAPLANE_URL] == _ENDPOINT
-        assert ctx.variables[EDR_TOKEN] == _TOKEN
-        assert output.value == {"dataplane_url": _ENDPOINT, "edr_token": _TOKEN}
+        assert secret_of(ctx.variables[EDR_TOKEN]) == _TOKEN
+        assert {**output.value, "edr_token": secret_of(output.value["edr_token"])} == {
+            "dataplane_url": _ENDPOINT,
+            "edr_token": _TOKEN,
+        }
         assert output.response.status_code == 200
 
     @pytest.mark.asyncio
@@ -307,8 +315,11 @@ class TestDiscoverDtrAuthStep:
         )
 
         assert ctx.variables[DATAPLANE_URL] == _ENDPOINT
-        assert ctx.variables[EDR_TOKEN] == _TOKEN
-        assert output.value == {"dataplane_url": _ENDPOINT, "edr_token": _TOKEN}
+        assert secret_of(ctx.variables[EDR_TOKEN]) == _TOKEN
+        assert {**output.value, "edr_token": secret_of(output.value["edr_token"])} == {
+            "dataplane_url": _ENDPOINT,
+            "edr_token": _TOKEN,
+        }
         assert output.response.status_code == 200
 
     @pytest.mark.asyncio

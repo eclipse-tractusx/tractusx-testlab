@@ -19,6 +19,7 @@
  SPDX-License-Identifier: Apache-2.0
 -->
 <!-- This document was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5). -->
+<!-- This document was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
 <!-- It was reviewed and validated by a human committer. -->
 
 # Infrastructure Bindings
@@ -203,6 +204,32 @@ call to `activate`, not a second player.
 Omitting the argument builds a manager from the engine's own configuration, so
 a CLI or server run needs no code at all.
 
+## Credentials
+
+A field marked `SECRET` on its binding model (`CapabilityBinding.secret_fields()`; today `api_key` on both
+connectors) is never published into the variable namespace as text. `flatten` publishes a
+`tractusx_testlab.security.credentials.Credential` handle in its place, carrying the reference name, the side
+and the origin of the binding's own URL (`credential_url_field`: the `management_url` for a connector, the
+identity URL for anything else). The handle renders as `***` under `str()`, `repr()`, pydantic and JSON, and
+gives up its value only through `reveal_for(url, released)`, which `http/http_request` calls at send time for a
+header whose whole value is the reference. The SDK services keep reading the value from the binding itself.
+
+At bind time every credential value is registered with the masking registry, pinned for as long as the run is
+open (`register_secret(value, run=job_id)`), and each binding's `api_key_header` is added to the header names
+every record redacts. A credential an operator supplied as a `--var` is replaced by its handle, or removed when
+its capability is not bound.
+
+A host decides which sides' credentials a test may put on the wire itself with
+`TestlabConfig.credential_release` (environment `TESTLAB_CREDENTIAL_RELEASE`), default `{"engine", "sut"}`.
+An engine running TCKs it did not author sets `{"sut"}`, so no test can send the engine's own management key:
+
+```python
+config = TestlabConfig(credential_release={"sut"})
+player = TestlabPlayer(config=config, infrastructure=InfrastructureManager(deployment, name="engine"))
+```
+
+A new secret field is declared by giving it `json_schema_extra=SECRET` — every surface above reads the marker.
+
 ## What happens at run start
 
 1. The active deployment is taken as the starting point.
@@ -223,7 +250,8 @@ a CLI or server run needs no code at all.
    them raises `StandardConflictError`.
 6. The resolved deployment is published back into the variable namespace, so
    `${{ infrastructure.sut.connector.dsp_url }}` resolves identically whether
-   the value came from a profile, the environment, or the CLI.
+   the value came from a profile, the environment, or the CLI. Credentials are
+   published as handles and registered for masking (see [Credentials](#credentials)).
 7. SDK services are registered from the typed bindings — the engine connector as
    consumer, the registries as DTR, each built for the release its binding
    carries. The SUT connector becomes a service only when a `management_url`

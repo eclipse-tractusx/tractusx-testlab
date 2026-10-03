@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 
@@ -40,6 +41,7 @@ from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.security.credentials import Credential, reveal
 from tractusx_testlab.steps import http_client
 from tractusx_testlab.steps.registry_models import (
     DescriptorPayload,
@@ -54,9 +56,7 @@ from tractusx_testlab.steps.registry_reading import (
     _shell_descriptor,
     _shell_ids,
 )
-from tractusx_testlab.steps.shared_models import (
-    HttpTransportParams,
-)
+from tractusx_testlab.steps.shared_models import HttpTransportParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput
 from tractusx_testlab.syntax.context_vars import DATAPLANE_URL, EDR_TOKEN
 
@@ -72,8 +72,7 @@ logger = logging.getLogger(__name__)
 class DataplaneParams(HttpTransportParams):
     """How every consumer-side registry step reaches the counterparty.
 
-    The registry is a counterparty's, so it is reached the way any negotiated
-    endpoint is: through the data-plane URL and EDR token a transfer published.
+    Through the data-plane URL and EDR token a transfer published.
     """
 
     dataplane_url: str = Field(
@@ -83,15 +82,16 @@ class DataplaneParams(HttpTransportParams):
             "'dataplane_url' context variable."
         ),
     )
-    edr_token: str = Field(
+    edr_token: Credential | str = Field(
         default="",
         description="EDR authorization token; falls back to the 'edr_token' context variable.",
     )
 
     def transport(self, context: StepContext) -> tuple[str, dict[str, str], float]:
-        """The (base URL, headers, timeout) this step's requests travel with."""
+        """The (base URL, headers, timeout) — the EDR handle opened for that base only."""
         base = (self.dataplane_url or context.get_str(DATAPLANE_URL)).rstrip("/")
-        token = self.edr_token or context.get_str(EDR_TOKEN)
+        held = self.edr_token or context.get_variable(EDR_TOKEN, "")
+        token = reveal(held, base, context.config.credential_release)
         headers = {"Authorization": token, **self.headers}
         return base, headers, self.timeout_or(context.config.default_timeout_s)
 

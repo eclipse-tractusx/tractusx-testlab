@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """
@@ -69,6 +70,7 @@ from tractusx_testlab.models.domain.server import (
     VaultConfig,
 )
 from tractusx_testlab.models.primitives.binding_errors import (
+    BindingOverrideRefusedError,
     InfrastructureError,
     MissingBindingError,
     MissingInputVariableError,
@@ -173,6 +175,7 @@ __all__ = [
     "AuthoringError",
     # security
     "Base64Bytes",
+    "BindingOverrideRefusedError",
     "BoundServiceError",
     "CallbackResult",
     # infrastructure bindings (operated)

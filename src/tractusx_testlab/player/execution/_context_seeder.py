@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Context-seeding helpers — populate a StepContext before a TCK run begins.
@@ -36,7 +37,11 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
+
 from tractusx_testlab.authoring.test import Tck
+from tractusx_testlab.logging import wire
+from tractusx_testlab.logging.masking import register_secret
 from tractusx_testlab.models.primitives.binding_errors import MissingInputVariableError
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
 from tractusx_testlab.player.execution.context import StepContext
@@ -77,14 +82,37 @@ def seed_context_variables(
 
     if runtime_vars:
         declared = _declared_types(tck)
+        secret = {name for name, var in tck.all_variables().items() if var.secret}
         for key, value in runtime_vars.items():
-            context.set_variable(key, _as_declared_type(key, value, declared.get(key)))
+            # A variable named like a credential is treated as one whatever it declares.
+            is_secret = key in secret or wire.is_secret_key(key)
+            if is_secret and isinstance(value, str):
+                # A key read from a file ends in a newline the server never sent.
+                value = value.strip()
+            parsed = _as_declared_type(key, value, declared.get(key))
+            context.set_variable(key, parsed)
+            if is_secret:
+                register_secret(parsed, run=str(context.job.job_id), explicit=True)
+        _keep_inputs(context, runtime_vars, secret)
 
     # Last, so no input can pose as it: the id of this run, for a test that
     # leaves something behind in a shared system and has to name it apart from
     # what another run of the same TCK leaves there — an asset on the engine
     # connector, say. An engine that adopts its own job id hands it through.
     context.set_variable(context_vars.EXECUTION_ID, context.job.job_id)
+
+
+def _keep_inputs(context: StepContext, runtime_vars: dict, secret: set[str]) -> None:
+    """Give the job the inputs it was run with, as any record shows them.
+
+    The job is read for as long as the engine runs, long after this run's
+    secrets were released, so it never holds a raw one: a secret input is
+    ``***`` whatever it holds, and the rest is redacted and masked now, while
+    the run's secrets are pinned (logging.wire).
+    """
+    context.job.runtime_vars = wire.written(
+        {key: REDACTED_VALUE if key in secret else value for key, value in runtime_vars.items()}
+    )
 
 
 def require_inputs(context: StepContext, tck: Tck) -> None:
@@ -121,6 +149,8 @@ def seed_env_variables(context: StepContext, tck: Tck) -> None:
             continue
         var_id = str(var[keys.ID])
         context.set_template(var_id, _as_declared_type(var_id, value, _declared_type(var)))
+        if var.get(keys.SECRET) is True:
+            register_secret(value, run=str(context.job.job_id), explicit=True)
 
 
 def _declared_variables(tck: Tck) -> Iterator[dict]:

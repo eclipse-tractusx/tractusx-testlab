@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The run transcript — everything the console showed, in a file.
@@ -52,6 +53,7 @@ from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
 
 from tractusx_testlab.logging.masking import mask
+from tractusx_testlab.security.private_files import open_private
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -161,8 +163,8 @@ def recording(path: Path | None) -> Iterator[Path | None]:
         yield _active
         return
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle = path.open("a", encoding="utf-8")
+    # What the run printed is for the account that ran it: 0600, in 0700 directories.
+    handle = open_private(path)
     out, err = _Tee(sys.stdout, handle), _Tee(sys.stderr, handle)
     saved_out, saved_err = sys.stdout, sys.stderr
     sys.stdout, sys.stderr = out, err

@@ -40,7 +40,7 @@ Supports two modes: - **Dataplane-direct mode**: `dataplane_url`, `edr_token`, `
 | `notification` | object | no | `None` | — | The notification document to send. |
 | `endpoint_path` | string | no | `''` | — | Notification API path appended to the endpoint. |
 | `dataplane_url` | string | no | `None` | — | Direct mode: data-plane URL to POST to; its presence selects that mode. |
-| `edr_token` | string | no | `''` | — | Direct mode: authorization token for that data-plane URL. |
+| `edr_token` | Credential \| string | no | `''` | — | Direct mode: authorization token for that data-plane URL. |
 | `content` | object | no | `None` | — | Older spelling of 'notification' — the document to send. |
 | `timeout` | number | no | `30` | — | Request timeout in seconds. |
 

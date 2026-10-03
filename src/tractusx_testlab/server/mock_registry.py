@@ -28,14 +28,30 @@
 Provides a shared registry for mock HTTP responses and a holder for the
 active ``CallbackManager`` so that steps can access them without threading
 through ``StepContext``. What a mock requires of a caller — the run's key —
-lives in ``mock_keys``.
+lives in ``mock_keys``; which run a call is for, in ``inbound.run_scope``.
+
+Every mock is kept under its run's address (``run_scope.scoped``), so two runs
+that register one path keep two mocks. A step registers by the path the test
+wrote and names its run — or leaves it to the run whose step is executing
+(``run_scope.acting_for``). A lookup takes either the run's address or the bare
+path, and first works out whose mock is meant (:func:`locate`).
 """
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Iterable
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from collections.abc import Awaitable
+from typing import TYPE_CHECKING
+
+from tractusx_testlab.server import mock_keys
+
+# The request and response types, re-exported: callers ask this module for them.
+from tractusx_testlab.server.inbound.messages import (
+    MockHandler,
+    MockRequest,
+    MockResponse,
+    query_of,
+)
+from tractusx_testlab.server.inbound.run_scope import current_run, declared, pick, scoped, split
 
 # The key half of the registry, re-exported: callers ask this module for both.
 from tractusx_testlab.server.mock_keys import (
@@ -43,91 +59,25 @@ from tractusx_testlab.server.mock_keys import (
     WRONG_KEY,
     _key,
     _mint_key,
-    admits,
-    carries_key_of,
     clear_guards,
     drop_guard,
-    refusal,
     require_header,
-    required_header,
     run_key,
 )
 
 if TYPE_CHECKING:
     from tractusx_testlab.server.callbacks import CallbackManager
 
+#: Why a call on a bare path is turned away when more than one run serves that
+#: path and the call carries none of their keys: there is no telling whose it is.
+UNADDRESSED = "the call named no run, and more than one run serves that address"
 
-@dataclass(frozen=True)
-class MockResponse:
-    """Canned response for a mock endpoint."""
-
-    status_code: int
-    body: Any = field(default_factory=dict)
-    headers: dict[str, str] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class MockRequest:
-    """Inbound request data passed to a dynamic mock handler.
-
-    ``query_params`` is the query as HTTP actually carries it: a multimap, since
-    a name may legitimately repeat. It used to be flattened to one value per
-    name, which silently dropped every repeat but the last — and a repeated name
-    is not an oddity, it is how the AAS API asks for several search criteria
-    (``?assetIds=<a>&assetIds=<b>``). A mock that cannot see the second one
-    answers a question it was not asked.
-
-    This is deliberately not the shape a *test* reads: ``mock/wait`` publishes
-    ``request_query_params`` as one value per name, because a test asserting on
-    a callback's ``state`` wants the value and not a list holding it. A handler
-    is a server and has to see the request; a result is a value and has to be
-    readable.
-    """
-
-    method: str
-    path: str
-    headers: dict
-    query_params: dict[str, list[str]]
-    body: Any | None
-
-    def query(self, name: str) -> str | None:
-        """The value of a parameter given once, or ``None`` if it was not given.
-
-        The first value when a name repeats: a handler asking for one has
-        already decided the parameter is single-valued.
-        """
-        values = self.query_params.get(name) or []
-        return values[0] if values else None
-
-    def query_all(self, name: str) -> list[str]:
-        """Every value a parameter was given, in the order they arrived."""
-        return list(self.query_params.get(name) or [])
-
-
-def query_of(pairs: Iterable[tuple[str, str]]) -> dict[str, list[str]]:
-    """The query string as a handler sees it, from the pairs it was sent as.
-
-    Built from pairs rather than from a mapping because the mapping is where the
-    repeats were lost: ``dict(request.query_params)`` keeps the last value for a
-    name and discards the rest.
-    """
-    query: dict[str, list[str]] = {}
-    for name, value in pairs:
-        query.setdefault(name, []).append(value)
-    return query
-
-
-# A dynamic handler computes the response from the inbound request — used by
-# protocol-aware mocks (e.g. mock/dtr, mock/discovery) whose reply depends on
-# the request path/query/body rather than being a single canned value. One
-# that runs steps (labs/mock/api/dynamic) answers asynchronously.
-MockHandler = Callable[["MockRequest"], MockResponse | Awaitable[MockResponse]]
-
-# path+method -> canned response or dynamic handler
+# key path+method -> canned response or dynamic handler
 _mock_routes: dict[str, MockResponse | MockHandler] = {}
 
 __all__ = [
     "MISSING_KEY",
+    "UNADDRESSED",
     "WRONG_KEY",
     "MockHandler",
     "MockRequest",
@@ -139,9 +89,11 @@ __all__ = [
     "clear_mocks",
     "get_callback_manager",
     "get_mock",
+    "locate",
     "query_of",
     "refusal",
     "register_mock",
+    "release_mocks",
     "remove_mock",
     "require_header",
     "required_header",
@@ -160,6 +112,7 @@ def register_mock(
     response: MockResponse | MockHandler,
     *,
     required_header: tuple[str, str] | None = None,
+    run: str | None = None,
 ) -> None:
     """Register a canned response, or a dynamic handler, for the given path and method.
 
@@ -167,18 +120,45 @@ def register_mock(
     to be answered (:func:`require_header`). It is set before the response is,
     so the mock is never reachable without it, and a registration without one
     drops whatever an earlier registration of the path required.
+
+    *run* is the run the mock belongs to; unnamed, it is the run whose step is
+    executing. A mock registered outside any run is kept at *path* itself.
     """
-    key = _key(path, method)
+    key_path = scoped(run or current_run(), path)
     if required_header is None:
-        drop_guard(path, method)
+        drop_guard(key_path, method)
     else:
-        require_header(path, method, *required_header)
-    _mock_routes[key] = response
+        require_header(key_path, method, *required_header)
+    _mock_routes[_key(key_path, method)] = response
 
 
-def get_mock(path: str, method: str) -> MockResponse | MockHandler | None:
-    """Look up a canned response or dynamic handler, or ``None`` if not registered."""
-    return _mock_routes.get(_key(path, method))
+def locate(path: str, headers: dict | None = None) -> str | None:
+    """The key path a call on *path* is for, or ``None`` when no one run can be told.
+
+    *path* is a run's address or a bare path; *headers* are the call's, read for
+    the key that names its run when several runs serve a bare path
+    (``run_scope.pick``). Asked again with the key path it returned, it returns
+    the same one.
+    """
+    registered = {key.partition(":")[2] for key in list(_mock_routes)}
+    registered.update(mock_keys.guarded())
+    listening = getattr(_callback_manager, "listening", None)
+    if callable(listening):
+        registered.update(listened for listened, _ in listening())
+    return pick(
+        path, registered, lambda key_path: mock_keys.carries_any_key_of(key_path, headers or {})
+    )
+
+
+def get_mock(
+    path: str, method: str, *, run: str | None = None
+) -> MockResponse | MockHandler | None:
+    """Look up a canned response or dynamic handler, or ``None`` if not registered.
+
+    The mock of *run* when it is named, else the one :func:`locate` finds.
+    """
+    key_path = scoped(run, path) if run else locate(path)
+    return None if key_path is None else _mock_routes.get(_key(key_path, method))
 
 
 def resolve_mock(
@@ -189,16 +169,19 @@ def resolve_mock(
     query_params: dict[str, list[str]],
     body: dict | None,
 ) -> MockResponse | Awaitable[MockResponse] | None:
-    """Look up a mock and, if it's a dynamic handler, invoke it (the caller awaits an async one)."""
-    mock = get_mock(path, method)
-    if mock is None:
-        return None
-    if isinstance(mock, MockResponse):
+    """Look up a mock and, if it's a dynamic handler, invoke it (the caller awaits an async one).
+
+    The handler is told the path the test registered, whichever address the
+    call came in on.
+    """
+    key_path = locate(path, headers)
+    mock = None if key_path is None else _mock_routes.get(_key(key_path, method))
+    if mock is None or isinstance(mock, MockResponse):
         return mock
     return mock(
         MockRequest(
             method=method,
-            path=path,
+            path=declared(key_path or path),
             headers=headers,
             query_params=query_params,
             body=body,
@@ -206,10 +189,68 @@ def resolve_mock(
     )
 
 
-def remove_mock(path: str, method: str) -> None:
-    """Remove a previously registered mock, and what it required of a caller."""
-    _mock_routes.pop(_key(path, method), None)
-    drop_guard(path, method)
+def required_header(path: str, method: str, *, run: str | None = None) -> tuple[str, str] | None:
+    """The ``(name, value)`` a call on *path*/*method* must carry, or ``None``.
+
+    Read by the step that fronts a mock with a connector asset: it hands the
+    same pair to the asset's data address, so the data plane sends what the
+    mock requires without the test ever naming the key. The mock is *run*'s —
+    the executing step's run's when unnamed — and otherwise the one
+    :func:`locate` finds for a call that carries no key.
+    """
+    owner = run or current_run()
+    key_path = scoped(owner, path) if owner else locate(path)
+    return None if key_path is None else mock_keys.required_header(key_path, method)
+
+
+def refusal(path: str, method: str, headers: dict) -> str | None:
+    """Why a call on *path*/*method* with *headers* may not reach the mock, or ``None``.
+
+    ``mock_keys.refusal`` for the mock the call is for; :data:`UNADDRESSED`
+    when there is no telling which run's that is.
+    """
+    key_path = locate(path, headers)
+    if key_path is None:
+        return UNADDRESSED
+    return mock_keys.refusal(key_path, method, headers)
+
+
+def admits(path: str, method: str, headers: dict) -> bool:
+    """Whether a call on *path*/*method* with *headers* may reach the mock it is for."""
+    return refusal(path, method, headers) is None
+
+
+def carries_key_of(path: str, method: str, headers: dict) -> bool:
+    """Whether *headers* carry the key of the mock on *path*/*method* (``mock_keys``)."""
+    key_path = locate(path, headers)
+    return key_path is not None and mock_keys.carries_key_of(key_path, method, headers)
+
+
+def remove_mock(path: str, method: str, *, run: str | None = None) -> None:
+    """Remove a previously registered mock, and what it required of a caller.
+
+    The mock of *run* — of the executing step's run when unnamed.
+    """
+    key_path = scoped(run or current_run(), path)
+    _mock_routes.pop(_key(key_path, method), None)
+    drop_guard(key_path, method)
+
+
+def release_mocks(run: str) -> None:
+    """Remove every mock run *run* registered, what they required, and its listeners.
+
+    Called once the run's records close. Its address keeps nothing after it: a
+    call there is answered as one to an address nobody opened, and the registry
+    does not grow with every run a long-lived process serves. Every other run's
+    mocks, on the same paths or not, stay as they are.
+    """
+    for key in list(_mock_routes):
+        if split(key.partition(":")[2])[0] == run:
+            _mock_routes.pop(key, None)
+    mock_keys.drop_guards_of(run)
+    forget = getattr(_callback_manager, "forget_run", None)
+    if callable(forget):
+        forget(run)
 
 
 def clear_mocks() -> None:

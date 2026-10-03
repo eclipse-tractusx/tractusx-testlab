@@ -482,7 +482,9 @@ curl -X POST http://localhost:8100/testlab/run/package \
 {"job_id": "f574e1925147431a95bf52a8dae302a1", "status": "QUEUED"}
 ```
 
-Instead of `package_id`, `"path"` names a `.tck` on the server's file system. The run happens in the background; follow it with the job endpoints.
+Instead of `package_id`, `"path"` names a `.tck` in the server's package store (`<storage_dir>/packages/`); a path
+anywhere else, or a link out of the store, is refused with `403`. The run happens in the background; follow it with
+the job endpoints.
 
 An encrypted package runs with the server's own Player identity and trusted Compilers, never with keys sent in the
 request — see [Keys on a Server](../specification/security.md#keys-on-a-server).
@@ -546,7 +548,7 @@ curl -X POST http://localhost:8100/testlab/compile \
 | `POST` | `/testlab/packages` | Upload a `.tck` package (multipart form, field `file`) |
 | `GET` | `/testlab/packages` | List uploaded packages |
 | `DELETE` | `/testlab/packages/{package_id}` | Delete an uploaded package |
-| `POST` | `/testlab/run/package` | Run an uploaded (`package_id`) or on-disk (`path`) package — returns `202` and a job |
+| `POST` | `/testlab/run/package` | Run an uploaded package, by `package_id` or by its `path` in the store — returns `202` and a job |
 | `POST` | `/testlab/compile` | Validate a YAML body; returns `{status, errors[]}` |
 | `POST` | `/testlab/tck-execution/run` | Run a TCK posted as YAML (`/run/yaml` is an alias) — returns `202` and a job |
 | `GET` | `/testlab/tck-execution` | List jobs (`?status=` filter) |

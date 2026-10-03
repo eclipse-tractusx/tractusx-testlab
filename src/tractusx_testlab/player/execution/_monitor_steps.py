@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The step lifecycle half of the ExecutionMonitor.
@@ -83,8 +84,10 @@ class StepEvents:
         """Publish a step_started event.
 
         *inputs* is the step's ``with:`` block with its references resolved —
-        the values the step is about to be given, not the template naming them.
+        the values the step is about to be given, not the template naming them —
+        with every credential-named input shown as ``***`` (logging.wire).
         """
+        inputs = wire.redact_secrets(inputs)
         event_id = self._trace.step_started(test, step_id, step_index, step_type, phase, inputs)
         self._publish(
             StepStartedEvent(
@@ -152,7 +155,7 @@ class StepEvents:
         # is where a reader following the id finds them.
         event_id = self._trace.step_ended(test, step_id, record)
 
-        for index, assertion_result in enumerate(result.assertions):
+        for index, assertion_result in enumerate(record.assertions):
             self._publish(
                 AssertionResultEvent(
                     job_id=job_id,
@@ -255,7 +258,21 @@ class StepEvents:
         request: CallbackResult,
         waited_ms: int,
     ) -> None:
-        """Publish that the call a step was waiting for has arrived."""
+        """Publish that the call a step was waiting for has arrived.
+
+        What arrived is the SUT's to send, and it is published before the step
+        that waited on it returns — before anything learned which of it is a
+        credential. So it is redacted here, the way a recorded call is: the
+        headers, the query and the body by the names they carry (logging.wire).
+        The step itself is handed the call as it came.
+        """
+        request = request.model_copy(
+            update={
+                "headers": wire.safe_headers(request.headers),
+                "query_params": wire.redact_secrets(request.query_params),
+                "payload": wire.redact_secrets(request.payload),
+            }
+        )
         event = StepReceivedEvent(
             job_id=job_id,
             test_id=test,

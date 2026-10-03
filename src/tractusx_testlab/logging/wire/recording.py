@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Recording what actually went over the wire, for the whole of a step.
@@ -65,7 +66,8 @@ from typing import TYPE_CHECKING, Any
 
 from tractusx_sdk.dataspace.tools import Tracer
 
-from tractusx_testlab.logging.wire.records import SECRET_HEADERS
+from tractusx_testlab.logging.wire.records import safe_headers
+from tractusx_testlab.logging.wire.redaction import redact_secrets, redact_url, secret_headers
 from tractusx_testlab.models.runtime.results import HttpExchange, HttpRequest, HttpResponse
 
 if TYPE_CHECKING:
@@ -169,7 +171,7 @@ def recording(
         name=name,
         max_entries=_MAX_CALLS,
         max_body_chars=_MAX_BODY_CHARS,
-        redacted_headers=set(SECRET_HEADERS),
+        redacted_headers=set(secret_headers()),
     )
     with tracer.activate(name) as operation:
         if on_call is not None:
@@ -203,8 +205,14 @@ def attach_to(result: Any, recorder: ExchangeRecorder) -> None:
 def _to_exchange(entry: TraceEntry) -> HttpExchange:
     """Turn one trace entry into the exchange a step result reports.
 
-    The tracer has already sanitised what it holds — headers redacted, bodies
-    parsed and clipped — so this is a rename, not a second pass. ``duration_ms``
+    The tracer has already redacted headers by their exact name and parsed and
+    clipped the bodies. It does not look inside a body, nor at a URL's query, and
+    it knows no header by what its name contains, so the bodies, the query, the
+    URL and the headers are redacted here by key (logging.wire.redaction): an
+    EDR's ``authorization``, a token endpoint's ``access_token``, a form's
+    ``client_secret``, ``?api_key=``, ``X-Forwarded-Access-Token``. This is the
+    one conversion every recorded call goes through — the live event, the
+    step's ``exchanges`` and the trace alike. ``duration_ms``
     is taken from the entry rather than from the response: the entry measures
     the call the engine waited on, and a response that never came still has one.
     """
@@ -214,23 +222,27 @@ def _to_exchange(entry: TraceEntry) -> HttpExchange:
     return HttpExchange(
         request=HttpRequest(
             method=str(request.get("method") or entry.method),
-            url=str(request.get("url") or entry.url),
-            headers=request.get("headers"),
-            params=request.get("params"),
-            body=request.get("body"),
+            url=redact_url(str(request.get("url") or entry.url)),
+            headers=_headers(request.get("headers")),
+            params=redact_secrets(request.get("params")),
+            body=redact_secrets(request.get("body")),
         ),
         response=None
         if status_code is None
         else HttpResponse(
             status_code=int(status_code),
-            headers=response.get("headers"),
-            body=response.get("body"),
+            headers=_headers(response.get("headers")),
+            body=redact_secrets(response.get("body")),
             duration_ms=entry.duration_ms or response.get("elapsed_ms") or 0.0,
         ),
         error=_to_error(entry.error),
         context=entry.context,
         started_at=datetime.fromisoformat(entry.started_at) if entry.started_at else None,
     )
+
+
+def _headers(headers: dict[str, Any] | None) -> dict[str, str] | None:
+    return safe_headers(headers) if headers else headers
 
 
 def _to_error(error: dict[str, Any] | None) -> str | None:

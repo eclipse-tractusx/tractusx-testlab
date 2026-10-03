@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """InfrastructureManager — the deployments an engine can run against.
@@ -67,9 +68,8 @@ engine hopes to find in its variables::
 
     player = TestlabPlayer(infrastructure=infrastructure)
 
-Registering several deployments is the point of the registry: an adopter that
-runs the same TCKs against local, integration and staging keeps all three side
-by side and switches with :meth:`activate` instead of rebuilding the player.
+Registering several deployments is the point of the registry: an adopter runs the
+same TCKs against local, integration and staging and switches with :meth:`activate`.
 """
 
 from __future__ import annotations
@@ -220,9 +220,10 @@ class InfrastructureManager:
         Overrides are context-keyed (``infrastructure.sut.dtr.base_url``), which
         is the form they arrive in from ``--var``, a run-config, and the HTTP
         API alike. The registered deployment is not modified: a value supplied
-        for one run does not leak into the next.
+        for one run does not leak into the next, nor does a credential follow
+        its address to another origin (see ``mapping.apply_overrides``).
         """
-        return apply_overrides(self.active, overrides or {})
+        return apply_overrides(self.active, overrides or {}, credentials_follow=False)
 
     def validate(
         self,
@@ -323,6 +324,6 @@ class InfrastructureManager:
 
         return apply_overrides(resolved, fills)
 
-    def flatten(self, infrastructure: Infrastructure | None = None) -> dict[str, str]:
+    def flatten(self, infrastructure: Infrastructure | None = None) -> Mapping[str, object]:
         """Project a deployment onto the context keys a test can reference."""
         return flatten(self.active if infrastructure is None else infrastructure)

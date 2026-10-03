@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """YAML field-key constants used when reading/writing test documents."""
@@ -119,6 +120,8 @@ GENERATE = "generate"
 SCOPE = "scope"
 # What the SUT operator is told to do with a ``source: register`` document.
 INSTRUCTIONS = "instructions"
+# Marks a variable whose value every record of the run shows as ``***``.
+SECRET = "secret"
 
 # -- Test case entry ----------------------------------------------------------
 TEST = "test"

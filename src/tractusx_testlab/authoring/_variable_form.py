@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Shared parsing of the LOCKED GRAMMAR v1 verb-form variable declarations.
@@ -114,6 +115,7 @@ def _build_verb_variable(name: str, spec: dict) -> VariableDefinition:
         format=value_return.get(keys.FORMAT),
         placeholder=placeholder,
         scope=scope,
+        secret=spec.get(keys.SECRET) is True,
     )
 
 

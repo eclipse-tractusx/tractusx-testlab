@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Background mock server for CLI execution — starts uvicorn in a daemon thread."""
@@ -40,7 +41,12 @@ class _BackgroundMockServer:
     """Starts the TestLab mock server in a background daemon thread.
 
     Used by ``TestlabPlayer`` when running via CLI (no external server).
-    The server handles mock endpoint responses and callback listeners.
+    The server handles mock endpoint responses and callback listeners — and,
+    unless the config says ``server_mode: full``, nothing else: it listens on
+    every interface for the system under test to call, and a caller of a
+    run's mock has no business starting runs, uploading packages or reading
+    jobs (``server.app``). Those routes would drive a player of their own, not
+    the run this server was started for.
     """
 
     __slots__ = ("_config", "_port", "_server", "_thread")
@@ -55,7 +61,9 @@ class _BackgroundMockServer:
         """Start the mock server on a background daemon thread."""
         from tractusx_testlab.server.app import create_app
 
-        app = create_app(config=self._config)
+        app = create_app(
+            config=self._config, mode="full" if self._config.server_mode == "full" else "mock"
+        )
         uv_config = uvicorn.Config(
             app,
             host="0.0.0.0",

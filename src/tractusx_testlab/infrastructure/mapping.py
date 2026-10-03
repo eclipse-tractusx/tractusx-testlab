@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The three surfaces of an infrastructure binding, all derived from one model.
@@ -42,6 +43,9 @@ looking each one up, rather than by splitting names apart. The capability and
 field cannot be recovered from ``TESTLAB_ENGINE_DTR_SUBMODEL_BASE_URL`` by
 counting underscores — both halves carry them — and a generated set has no
 ambiguity to resolve.
+
+A secret field (``CapabilityBinding.secret_fields``) is projected as a
+:class:`~tractusx_testlab.security.credentials.Credential` handle, never as text.
 """
 
 from __future__ import annotations
@@ -56,6 +60,7 @@ from tractusx_testlab.models.domain.infrastructure import (
     capability_bindings,
 )
 from tractusx_testlab.models.primitives.binding_errors import UnknownBindingKeyError
+from tractusx_testlab.security.credentials import Credential, origin_of
 
 #: Prefix every infrastructure binding carries inside the variable namespace.
 CONTEXT_PREFIX = "infrastructure."
@@ -125,20 +130,61 @@ def _iter_bound(infrastructure: Infrastructure) -> Iterator[tuple[str, str, Capa
             yield side, capability, binding
 
 
-def flatten(infrastructure: Infrastructure) -> dict[str, str]:
+def flatten(infrastructure: Infrastructure) -> dict[str, str | Credential]:
     """Project *infrastructure* onto the context keys a test can reference.
 
     Only bound capabilities are projected, and only their non-empty fields: an
     unbound connector has nothing to say, and publishing its defaults would put
     an ``api_key_header`` in the namespace for a connector that does not exist.
+
+    A secret field is projected as a :class:`Credential` handle bound to the
+    origin of the capability's own URL, never as text. The SDK services are
+    built from the binding itself and do not read the namespace.
     """
-    projected: dict[str, str] = {}
+    projected: dict[str, str | Credential] = {}
     for side, capability, binding in _iter_bound(infrastructure):
+        secret = type(binding).secret_fields()
         for field in type(binding).model_fields:
             value = getattr(binding, field, "")
-            if value not in (None, ""):
-                projected[context_key(side, capability, field)] = str(value)
+            if value in (None, ""):
+                continue
+            key = context_key(side, capability, field)
+            projected[key] = (
+                Credential(
+                    str(value), name=key, side=side, origins=[origin_of(binding.credential_url())]
+                )
+                if field in secret
+                else str(value)
+            )
     return projected
+
+
+def secret_keys() -> frozenset[str]:
+    """Every context key whose binding field is a credential, read off the model."""
+    return frozenset(
+        context_key(side, capability, field)
+        for side, capability, binding_type in capabilities()
+        for field in binding_type.secret_fields()
+    )
+
+
+def secret_values(infrastructure: Infrastructure) -> list[str]:
+    """The raw value of every credential *infrastructure* binds, for the masking registry."""
+    return [
+        str(getattr(binding, field))
+        for _, _, binding in _iter_bound(infrastructure)
+        for field in type(binding).secret_fields()
+        if getattr(binding, field, "")
+    ]
+
+
+def credential_headers(infrastructure: Infrastructure) -> set[str]:
+    """The header names the bound capabilities present their credentials in."""
+    return {
+        str(getattr(binding, "api_key_header", ""))
+        for _, _, binding in _iter_bound(infrastructure)
+        if getattr(binding, "api_key_header", "")
+    }
 
 
 def collect_overrides(
@@ -185,6 +231,8 @@ def overrides_from_env(environ: Mapping[str, str] | None = None) -> dict[str, st
 def apply_overrides(
     infrastructure: Infrastructure,
     overrides: Mapping[str, Any],
+    *,
+    credentials_follow: bool = True,
 ) -> Infrastructure:
     """Return *infrastructure* with *overrides* applied, leaving the original untouched.
 
@@ -192,19 +240,46 @@ def apply_overrides(
     operator gets, after the profile, the config file, and the environment.
     Values are stored as text because every surface they arrive from is text,
     and a binding field is an address or a credential either way.
+
+    With *credentials_follow* off (a run's own inputs), an override moving a
+    capability's credential URL to another origin drops its credentials unless
+    the same overrides supply them: a key registered for one host is never
+    presented to another because one address changed.
     """
     if not overrides:
         return infrastructure
 
     legal = known_keys()
     data = infrastructure.model_dump()
+    supplied: set[tuple[str, str, str]] = set()
     for key, value in overrides.items():
         located = legal.get(key)
         if located is None:
             raise UnknownBindingKeyError(key, sorted(legal))
         side, capability, field = located
         data[side][capability][field] = "" if value is None else str(value)
+        supplied.add(located)
+    if not credentials_follow:
+        _strand_moved_credentials(infrastructure.model_dump(), data, supplied)
     return Infrastructure.model_validate(data)
+
+
+def _strand_moved_credentials(
+    before: dict[str, Any], after: dict[str, Any], supplied: set[tuple[str, str, str]]
+) -> None:
+    """Blank, in *after*, each credential whose capability moved to another origin."""
+    for side, capability, binding_type in capabilities():
+        secret = binding_type.secret_fields()
+        if not secret:
+            continue
+        url_field = binding_type.credential_url_field or binding_type.identity_field
+        old = origin_of(before[side][capability].get(url_field, ""))
+        # No address bound yet: the overrides complete the binding, not move it.
+        if not old or old == origin_of(after[side][capability].get(url_field, "")):
+            continue
+        for field in secret:
+            if (side, capability, field) not in supplied:
+                after[side][capability][field] = ""
 
 
 def merge(base: Infrastructure, overlay: Infrastructure) -> Infrastructure:

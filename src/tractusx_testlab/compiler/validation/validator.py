@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from itertools import chain
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -36,6 +37,7 @@ from pydantic import ValidationError
 from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.compiler.validation._assertion_severity import severity_findings
 from tractusx_testlab.compiler.validation._conditions import condition_findings
+from tractusx_testlab.compiler.validation._credential_references import credential_findings
 from tractusx_testlab.compiler.validation._extension_gate import (
     entry_findings,
     experimental_warnings,
@@ -204,7 +206,10 @@ class TestValidator:
                         phase=phase,
                     )
 
-        for phase, idx, field, message in condition_findings(test, scope):
+        # A condition the run cannot evaluate, and a credential it would refuse to send.
+        for phase, idx, field, message in chain(
+            condition_findings(test, scope), credential_findings(test)
+        ):
             result.add_error(message, step_index=idx, field=field, phase=phase)
 
         return result
@@ -220,7 +225,6 @@ class TestValidator:
     ) -> None:
         effective_version = version or defaults.DATASPACE_VERSION
 
-        # Check step type is registered
         step_cls = StepRegistry.get(step_def.uses, effective_version)
         if step_cls is None:
             if step_def.uses not in StepRegistry.list_step_types():
@@ -237,10 +241,8 @@ class TestValidator:
                     phase=phase,
                 )
 
-        # Check variable references in with_ params resolve
         self._check_var_refs(step_def.with_ or {}, idx, declared, result, step_cls)
 
-        # Enforce plain-string validate inputs for inline validate assertions.
         self._validate_inline_assert_inputs(step_def, step_cls, idx, result, phase)
 
         self._validate_returns(step_def, step_cls, idx, result, phase)

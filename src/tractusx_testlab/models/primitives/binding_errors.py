@@ -179,3 +179,28 @@ class StandardConflictError(InfrastructureError):
         super().__init__(
             f"The infrastructure bound does not match what this TCK certifies against:\n{lines}"
         )
+
+
+class BindingOverrideRefusedError(InfrastructureError):
+    """Raised when a run's inputs try to change a binding the host keeps fixed.
+
+    An engine that binds a deployment itself — its own connector, the SUT a
+    tenant registered — does not let the run's inputs re-point it: an
+    ``infrastructure.engine.connector.management_url`` among a tenant's inputs
+    would carry the engine's key to wherever it names. Which sides a run may
+    override is the host's call (``TestlabConfig.binding_overrides``).
+    """
+
+    code = "BINDING_OVERRIDE_REFUSED"
+
+    def __init__(self, keys: list[str], allowed: list[str]) -> None:
+        self.keys = keys
+        self.diagnostics = {"keys": keys, "allowed_sides": allowed}
+        sides = ", ".join(allowed) if allowed else "none"
+        lines = "\n".join(f"      {key}" for key in keys)
+        super().__init__(
+            f"This run may not change these infrastructure bindings:\n{lines}\n"
+            f"  Sides a run's inputs may override here: {sides}. The deployment is "
+            "bound by the host."
+        )
+

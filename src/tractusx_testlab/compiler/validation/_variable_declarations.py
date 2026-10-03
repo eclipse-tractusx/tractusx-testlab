@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Checking that each ``env.variables`` entry declares something the run can seed.
@@ -40,7 +41,9 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Any
 
+from tractusx_testlab.compiler.validation._credential_references import misplaced_in_value
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
+from tractusx_testlab.security.credentials import CredentialMisuseError
 from tractusx_testlab.syntax import keys
 from tractusx_testlab.syntax.variables import (
     VALUE_FIELDS,
@@ -63,6 +66,10 @@ _CARRIED_SOURCES: frozenset[str] = frozenset({"value", "register"})
 #: The source of a document handed to the SUT operator, the only kind that
 #: takes ``with.instructions``.
 _REGISTER_SOURCE = "register"
+
+#: The namespace the run's infrastructure bindings are published under. Only
+#: the operator binds it; a variable of that name would re-point a binding.
+_BINDING_PREFIX = "infrastructure."
 
 #: Namespaces a variable may not name, and what to write instead. ``generate/``
 #: parses — it has since the first verb-form grammar — but nothing in the engine
@@ -102,6 +109,9 @@ def validate_variable_declarations(env_data: dict[str, Any]) -> list[str]:
             errors.append(f"env.variables[{index}] is not a mapping — write it as 'id: …' entry.")
             continue
         errors.extend(_check_entry(entry, index, seen))
+        # A credential is a header of the one request it authenticates, never a variable.
+        for where, reference in misplaced_in_value(entry, f"env.variables[{index}]"):
+            errors.append(CredentialMisuseError(reference, where).args[0])
     return errors
 
 
@@ -118,6 +128,12 @@ def _check_entry(entry: dict[str, Any], index: int, seen: set[str]) -> Iterator[
             f"happened to end with."
         )
     seen.add(var_id)
+    if var_id.startswith(_BINDING_PREFIX):
+        yield (
+            f"Variable '{var_id}' is named under '{_BINDING_PREFIX}', the deployment the "
+            "operator binds: a TCK reads it but never sets it. Give it a name of its own."
+        )
+        return
 
     uses = str(entry.get(keys.USES) or "")
     if not uses:
@@ -132,6 +148,8 @@ def _check_entry(entry: dict[str, Any], index: int, seen: set[str]) -> Iterator[
         yield _unknown_verb(var_id, uses)
         return
 
+    if keys.SECRET in entry and not isinstance(entry[keys.SECRET], bool):
+        yield f"Variable '{var_id}' has 'secret: {entry[keys.SECRET]}'. Write 'secret: true' or leave it out."
     yield from _check_source(entry, var_id)
     yield from _check_value(entry, var_id, verb)
     yield from _check_returns(entry, var_id, verb)

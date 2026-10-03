@@ -17,6 +17,7 @@ SPDX-License-Identifier: CC-BY-4.0
 
 -->
 <!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
 # YAML Syntax Cheat Sheet
@@ -370,6 +371,18 @@ env:
         value:
           type: string
 
+    # A secret the SUT operator supplies: usable like any input, shown as *** in every record
+    - id: sut_api_token
+      uses: variable/type/string
+      name: Token the SUT's API expects
+      secret: true
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
     # Constant value with a default
     - id: sut_response_timeout
       uses: variable/type/integer
@@ -417,6 +430,14 @@ env:
 
 **Reference in tests:** `${{ env.sut_dsp_url }}`, `${{ env.usage_policy }}`,
 `${{ env.api_asset }}` — the id alone, for every type.
+
+**`secret: true`** marks a variable whose value is a secret. It is read like any other — `${{ env.sut_api_token }}`
+resolves to the string — and every record of the run (trace, live events, console transcript, job API) shows it
+as `***`. An embedder reads the flag off the declaration (`Tck.all_variables()[id].secret`), in an uncompiled
+manifest and in a compiled package alike. An input whose id looks like a credential (`…secret`, `…password`,
+`…token`, `…api_key`, `…credential`, `…authorization`) is masked even without the flag. A secret input is read
+without surrounding whitespace (a trailing newline from a key file is dropped), and a number or an object is
+masked too — every string inside the object.
 
 **Handed to the SUT operator** (`with.source: register`): the TCK carries the
 document and the operator registers it in their own system before the run —

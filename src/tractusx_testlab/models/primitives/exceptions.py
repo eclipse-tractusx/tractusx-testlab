@@ -104,6 +104,25 @@ class AuthoringError(TestLabError):
     origin = "authoring"
 
 
+class SealedVariableError(AuthoringError):
+    """A test tried to write a name the run has fixed — ``infrastructure.*``.
+
+    The namespace a run's bindings are published under says what the run is
+    bound to. Once published it is read-only: a ``returns:`` that named it
+    could re-point an address the next step trusts, or swap a credential
+    handle for text.
+    """
+
+    code = "SEALED_VARIABLE"
+
+    def __init__(self, name: str) -> None:
+        self.diagnostics = {"variable": name}
+        super().__init__(
+            f"'{name}' is fixed for this run: the infrastructure bindings are the "
+            "host's to set, not a test's. Publish the value under a name of your own."
+        )
+
+
 class ExecutionError(TestLabError):
     """A step ran and did not achieve what it declared — a result about the SUT."""
 

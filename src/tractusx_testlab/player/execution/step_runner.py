@@ -45,13 +45,11 @@ from tractusx_testlab.player.execution._declared import declared_checks
 from tractusx_testlab.player.execution._step_outputs import hide_secrets, run_and_publish
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
-from tractusx_testlab.player.execution.phase import (
-    run_execution,
-    run_setup,
-    run_teardown,
-)
+from tractusx_testlab.player.execution.phase import run_execution, run_setup, run_teardown
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import resolve_params
+from tractusx_testlab.security.credentials import credential_carriers
+from tractusx_testlab.server.inbound.run_scope import acting_for
 from tractusx_testlab.steps._checks.published_names import publishes
 from tractusx_testlab.steps.assertions import AssertionEngine
 from tractusx_testlab.steps.flow._nested import NestedChecks
@@ -122,7 +120,8 @@ async def run_step(
     def report(call: Any) -> None:
         context.report_call(step_def.uses, getattr(step_def, "id", None), next(calls), call)
 
-    with wire.recording(step_name, on_call=report) as recorder:
+    # A mock the step registers or reads without naming its run is its run's.
+    with wire.recording(step_name, on_call=report) as recorder, acting_for(str(context.job.job_id)):
         result = await _run_step_guarded(
             step_instance, step_def, step_name, context, started_at, params
         )
@@ -151,14 +150,19 @@ async def _run_step_guarded(
         # and the same call is made here.
         if params is None:
             params = resolve_params(
-                step_def.with_ or {}, context, getattr(step_instance, "deferred_params", ())
+                step_def.with_ or {},
+                context,
+                getattr(step_instance, "deferred_params", ()),
+                credential_carriers(type(step_instance)),
             )
         # What the step was given, every ``${{ ... }}`` resolved: the test only
         # says which reference was written, not what it resolved to.
         inputs = dict(params)
 
         output = await invoke_extended(step_instance, params, context, step_def)
-        hide_secrets(type(step_instance), step_def, output)
+        disclosure = hide_secrets(
+            type(step_instance), step_def, output, run=str(context.job.job_id)
+        )
 
         assertion_results: list[AssertionResult] = []
         if step_def.assertions:
@@ -177,7 +181,7 @@ async def _run_step_guarded(
         finished_at = datetime.now(UTC)
         failed = AssertionEngine.has_hard_failure(assertion_results)
 
-        return StepResult(
+        result = StepResult(
             step_name=step_name,
             step_type=step_def.uses,
             status=StepStatus.FAILED if failed else StepStatus.PASSED,
@@ -191,6 +195,7 @@ async def _run_step_guarded(
             assertions=assertion_results,
             nested_declared=nested.declared,
         )
+        return wire.disclose(result, disclosure)
     except Exception as exc:
         finished_at = datetime.now(UTC)
         engine_fault = isinstance(exc, EngineError) or not isinstance(

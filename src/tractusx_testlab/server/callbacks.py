@@ -28,17 +28,22 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from datetime import UTC, datetime
 from typing import Any
 
+from tractusx_testlab.logging.wire import safe_headers
 from tractusx_testlab.models import CallbackResult
+from tractusx_testlab.server.inbound.run_scope import declared, split
 
 
 class CallbackManager:
     """Registers temporary HTTP listeners and waits for incoming callbacks.
 
     Each listener is associated with a ``path`` + ``method`` and blocks until
-    a matching request arrives or the timeout elapses.
+    a matching request arrives or the timeout elapses. The path is the key path
+    under the listening run's address (``inbound.run_scope``); a result names
+    the path as the test wrote it.
     """
 
     __slots__ = ("_awaited", "_buffered", "_listeners", "_loop", "_refused")
@@ -122,13 +127,17 @@ class CallbackManager:
         """Called by the webhook route when a request matches a listener.
 
         Returns True if a listener was waiting or the result was buffered.
+
+        The call's credentials are redacted by header name before anything is
+        kept: the mock has already admitted the caller, and what the wait
+        returns is published, traced and shown to whoever watches the run.
         """
         key = self._key(path, method)
         result = CallbackResult(
             listener_name=key,
-            path=path,
+            path=declared(path),
             method=method,
-            headers=headers,
+            headers=safe_headers(headers),
             query_params=query_params or {},
             payload=payload,
             received_at=datetime.now(UTC),
@@ -190,7 +199,7 @@ class CallbackManager:
             return False
         result = CallbackResult(
             listener_name=key,
-            path=path,
+            path=declared(path),
             method=method,
             received_at=datetime.now(UTC),
             refused=reason,
@@ -223,6 +232,26 @@ class CallbackManager:
             for method, _, path in [key.partition(":")]
         ]
 
+    def listening(self) -> list[tuple[str, str]]:
+        """``(path, method)`` of every listener slot open right now, waited on or not."""
+        return [(key.partition(":")[2], key.partition(":")[0]) for key in list(self._listeners)]
+
+    def forget_run(self, run: str) -> None:
+        """Drop all that is kept for run *run*, which has ended; other runs' stays.
+
+        Kept, it would grow with every run a long-lived process serves. An open
+        listener is cancelled on its own loop, since a future is not thread-safe.
+        """
+        for key in [key for key in list(self._listeners) if _run_of(key) == run]:
+            future = self._listeners.pop(key, None)
+            with contextlib.suppress(RuntimeError):  # its loop is closed: nothing waits
+                if future is not None:
+                    future.get_loop().call_soon_threadsafe(future.cancel)
+        for table in (self._buffered, self._refused):
+            for key in [key for key in list(table) if _run_of(key) == run]:
+                table.pop(key, None)
+        self._awaited.difference_update([key for key in list(self._awaited) if _run_of(key) == run])
+
     def clear(self) -> None:
         """Cancel all pending listeners and clear buffers."""
         for future in self._listeners.values():
@@ -253,6 +282,11 @@ def _is_stale(future: asyncio.Future[CallbackResult]) -> bool:
     if future.cancelled() or future.exception() is not None:
         return True
     return future.result().refused is not None
+
+
+def _run_of(key: str) -> str | None:
+    """The run a listener key belongs to, or ``None`` outside any run."""
+    return split(key.partition(":")[2])[0]
 
 
 def _settle(future: asyncio.Future[CallbackResult], result: CallbackResult) -> None:

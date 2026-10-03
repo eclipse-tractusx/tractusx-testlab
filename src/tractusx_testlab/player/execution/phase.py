@@ -52,6 +52,7 @@ from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
 from tractusx_testlab.player.loading.resolver import try_resolve_params
+from tractusx_testlab.security.credentials import credential_carriers
 from tractusx_testlab.steps.conditions import ConditionEvaluator
 
 # Maps a phase label to the expression namespace (e.g. "execution.ID.field").
@@ -125,7 +126,8 @@ async def run_phase(
         # steps stay as written: each resolves its own ``with:`` when it runs.
         step_cls = StepRegistry.get(step_def.uses, test.dataspace_version)
         deferred: frozenset[str] = getattr(step_cls, "deferred_params", frozenset())
-        params = try_resolve_params(step_def.with_ or {}, context, deferred)
+        carriers = credential_carriers(step_cls)
+        params = try_resolve_params(step_def.with_ or {}, context, deferred, carriers)
         monitor.on_step_started(
             job_id,
             test.definition.id,

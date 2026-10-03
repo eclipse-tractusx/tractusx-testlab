@@ -37,13 +37,14 @@ from tractusx_testlab.contracts import CallReporter, ListenerReporter, StepInvok
 from tractusx_testlab.models import Job
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
 from tractusx_testlab.player.execution._context_inbound import InboundReporting
+from tractusx_testlab.player.execution._context_seal import SealedNamespaces
 from tractusx_testlab.player.execution._step_outcomes import StepOutcomes
 from tractusx_testlab.player.execution.dataspace_access import DataspaceAccess
 from tractusx_testlab.player.execution.hold import RunHold
 from tractusx_testlab.services.instances import ServiceManager
 
 
-class StepContext(InboundReporting):
+class StepContext(InboundReporting, SealedNamespaces):
     """Mutable execution context shared across steps within a single test run."""
 
     __slots__ = (
@@ -53,6 +54,7 @@ class StepContext(InboundReporting):
         "_invoker",
         "_job",
         "_reporter",
+        "_sealed",
         "_services",
         "_step_namespace",
         "_steps",
@@ -81,6 +83,7 @@ class StepContext(InboundReporting):
         self._step_namespace: str | None = None
         self._steps = StepOutcomes()
         self._hold = RunHold()
+        self._sealed: tuple[str, ...] = ()
 
     # ------------------------------------------------------------------
     # Configuration
@@ -243,6 +246,7 @@ class StepContext(InboundReporting):
         which carry what a remote service answered, operator inputs, bindings.
         Overwriting a template makes it data too.
         """
+        self._writable(name)
         self._variables[name] = value
         self._templates.discard(name)
 
@@ -252,6 +256,7 @@ class StepContext(InboundReporting):
         Only for what the TCK package itself carries — test data files and
         static ``env`` values — whose references the author wrote.
         """
+        self._writable(name)
         self._variables[name] = value
         self._templates.add(name)
 
@@ -261,6 +266,7 @@ class StepContext(InboundReporting):
         For a value that is only in scope for a while — the item
         ``flow/for_each`` is running for — and must not outlive it.
         """
+        self._writable(name)
         self._variables.pop(name, None)
         self._templates.discard(name)
 

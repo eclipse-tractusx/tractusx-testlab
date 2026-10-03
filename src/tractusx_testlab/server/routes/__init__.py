@@ -20,10 +20,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Routes sub-package — assembles the main testlab API router."""
+"""Routes sub-package — the full testlab API router, and the inbound-only one.
 
+``router`` is everything ``testlab serve`` offers; ``inbound_router`` is the
+callback route alone, for a server that only answers a running job's mocks.
+"""
+
+from tractusx_testlab.server.routes.callbacks import inbound_router
 from tractusx_testlab.server.routes.jobs import router
 
-__all__ = ["router"]
+__all__ = ["inbound_router", "router"]

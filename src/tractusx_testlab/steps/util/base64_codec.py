@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """util/base64 — encode or decode a string with base64 / base64url.
@@ -40,6 +41,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
+from tractusx_testlab.logging.masking import mask, register_secret
 from tractusx_testlab.models import StepDefinition
 from tractusx_testlab.steps.shared_models import StoreInVariableParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepValue
@@ -128,6 +130,10 @@ class Base64Step(BaseStep[Base64Params, Base64Output]):
             result = _encode(
                 params.input, url_safe=params.url_safe, strip_padding=params.strip_padding
             )
+            # ``user:<secret>`` encoded for a basic credential holds the secret
+            # in a spelling no mask knows: what encodes a secret is one.
+            if mask(params.input) != params.input:
+                register_secret(result, run=str(context.job.job_id), declared=True)
         else:
             result = _decode(params.input, url_safe=params.url_safe)
 

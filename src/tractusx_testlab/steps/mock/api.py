@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """mock_endpoint step — registers a canned HTTP response on the mock server."""
@@ -33,6 +34,7 @@ from pydantic import Field, field_validator
 
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import Listener, StepDefinition
+from tractusx_testlab.server.inbound.run_scope import run_root, scoped
 from tractusx_testlab.server.mock_registry import (
     MockHandler,
     MockResponse,
@@ -132,7 +134,8 @@ class MockEndpointOutput(StepPayload):
             "empty for a public mock. Hidden unless the step's returns say "
             "'hidden: false'."
         ),
-        json_schema_extra={"secret": True},
+        # The run's own key, minted for the SUT operator: an author may show it.
+        json_schema_extra={"secret": True, "revealable": True},
     )
 
 
@@ -186,24 +189,32 @@ def publish_mock(
     what answers a call: a canned response, or a handler that works it out
     from the call. Everything else — the key, the listener, the published
     address — is the same for both.
+
+    The mock is the run's own: it is kept under the run's address
+    (``inbound.run_scope``), and that address is the one published, so a
+    second run registering the same path — the same TCK for another tenant —
+    registers a second mock, and neither run's caller reaches the other's.
     """
-    api_key = "" if params.public else run_key(str(context.job.job_id))
+    run = str(context.job.job_id)
+    api_key = "" if params.public else run_key(run)
 
     register_mock(
         params.path,
         params.method,
         response,
         required_header=(params.api_key_header, api_key) if api_key else None,
+        run=run,
     )
 
     # Pre-register a callback listener so wait_for_call can block on it
     callback_manager = get_callback_manager()
     if callback_manager is not None:
-        callback_manager.register(params.path, params.method)
+        callback_manager.register(scoped(run, params.path), params.method)
 
     # Where the SUT dials in, not where the server binds: the operator's
-    # ``mock_public_url`` when the SUT is on another host, else localhost.
-    base_url = _published_base_url(context)
+    # ``mock_public_url`` when the SUT is on another host, else localhost —
+    # in either case under this run's own address.
+    base_url = run_root(_published_base_url(context), run)
     full_url = f"{base_url}{params.path}"
     params.publish_url(full_url, context)
 
