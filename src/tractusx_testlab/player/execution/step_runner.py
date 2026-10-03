@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Step-level execution helpers — run individual steps, evaluate assertions, store outputs."""
@@ -236,6 +237,7 @@ async def run_test(
 ) -> TestResult:
     """Execute all steps in a test sequentially (setup → main → teardown)."""
     test_start = datetime.now(UTC)
+    context.steps.clear()
 
     step_results: list[StepResult] = []
     setup_results, setup_status = await run_setup(

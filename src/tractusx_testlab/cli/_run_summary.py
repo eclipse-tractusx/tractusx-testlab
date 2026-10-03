@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The result tables a run ends with.
@@ -157,6 +158,7 @@ def _test_failures(test) -> list[str]:
         lines += ["", f"  {typer.style('✗', fg='red')} {step.step_name or step.step_type}"]
         if step.error:
             lines += _error_lines(step.error)
+            lines += _origin_lines(step.error_origin)
         for check in failed_checks:
             lines.append(f"           Failed: {_check_label(check)} — {check.message}")
     return lines
@@ -204,6 +206,21 @@ def _error_lines(error: str) -> list[str]:
     """
     first, *rest = error.splitlines()
     return [f"           Error: {first}", *(f"                  {line}" for line in rest)]
+
+
+#: Who to go to, for a failure that is not a verdict about the SUT (ADR-0016).
+#: A verdict needs no note, and an engine fault already says so in its message.
+_ORIGIN_NOTES: dict[str, str] = {
+    "authoring": "the TCK or the run's configuration — nothing was tested",
+    "infrastructure": "the deployment — a service the run stands on",
+    "connector": "the exchange between the two connectors — either one, or the network",
+}
+
+
+def _origin_lines(origin: str | None) -> list[str]:
+    """Whose failure this is, when it is not the system under test's."""
+    note = _ORIGIN_NOTES.get(origin or "")
+    return [f"           Fix in: {note}"] if note else []
 
 
 def _check_label(check) -> str:

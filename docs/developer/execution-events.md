@@ -1,3 +1,6 @@
+<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
+<!-- It was reviewed and tested by a human committer. -->
+
 # Execution events
 
 <!-- markdownlint-disable MD013 -->
@@ -355,6 +358,13 @@ the machine-readable name the trace publishes as `errors[].code` — and
 the policy sets `POLICY_MISMATCH` and a context holding every offer it compared
 and how each differed, so a consumer renders the comparison instead of parsing
 it back out of `error`. Both are absent when the error has only its sentence.
+
+`result.error_origin` says who the failure belongs to, published as
+`errors[].origin`: `sut` for a verdict, `authoring` for a TCK or run
+configuration that is wrong (`AUTHORING_ERROR` — a mock asset id the TCK reused
+across runs, a reference to a name nothing publishes), `infrastructure` and
+`connector` for the deployment and the dataspace exchange, `engine` for TestLab
+itself (ADR-0016).
 
 #### `step_listening`
 

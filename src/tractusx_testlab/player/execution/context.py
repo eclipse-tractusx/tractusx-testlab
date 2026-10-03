@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """StepContext — the execution context passed to every step.
@@ -36,6 +37,7 @@ from tractusx_testlab.contracts import CallReporter, ListenerReporter, StepInvok
 from tractusx_testlab.models import Job
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
 from tractusx_testlab.player.execution._context_inbound import InboundReporting
+from tractusx_testlab.player.execution._step_outcomes import StepOutcomes
 from tractusx_testlab.player.execution.dataspace_access import DataspaceAccess
 from tractusx_testlab.player.execution.hold import RunHold
 from tractusx_testlab.services.instances import ServiceManager
@@ -53,6 +55,7 @@ class StepContext(InboundReporting):
         "_reporter",
         "_services",
         "_step_namespace",
+        "_steps",
         "_templates",
         "_test_cac",
         "_variables",
@@ -76,6 +79,7 @@ class StepContext(InboundReporting):
         self._listener_reporter: ListenerReporter | None = None
         self._test_cac: tuple[str, ...] = ()
         self._step_namespace: str | None = None
+        self._steps = StepOutcomes()
         self._hold = RunHold()
 
     # ------------------------------------------------------------------
@@ -199,6 +203,11 @@ class StepContext(InboundReporting):
     def step_namespace(self) -> str | None:
         """``setup``, ``execution`` or ``teardown``; ``None`` outside a phase."""
         return self._step_namespace
+
+    @property
+    def steps(self) -> StepOutcomes:
+        """What became of the running test's steps, by ``<phase>.<id>`` (``_step_outcomes``)."""
+        return self._steps
 
     # ------------------------------------------------------------------
     # Holding the run while it is paused

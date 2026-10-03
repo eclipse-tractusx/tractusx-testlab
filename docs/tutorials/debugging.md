@@ -19,6 +19,7 @@
  SPDX-License-Identifier: Apache-2.0
 -->
 <!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5). -->
+<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
 # Debugging
@@ -95,7 +96,7 @@ jq -c 'select(.type == "tck.test.step.failed") | .data.validations[] | select(.o
 
 ### A step raised
 
-When a step fails rather than a check, the failure is in `data.errors`. `origin` says whose fault it was: `sut` when the system under test answered wrongly, `engine` when TestLab itself broke.
+When a step fails rather than a check, the failure is in `data.errors`. `origin` says whose fault it was: `sut` when the system under test answered wrongly, `authoring` when the TCK or the run's configuration is wrong (nothing was tested), `infrastructure` or `connector` when the deployment or a dataspace exchange did not hold up, `engine` when TestLab itself broke.
 
 ```bash
 jq -c 'select(.type == "tck.test.step.failed") | .data.errors[]?' data/*/*.jsonl

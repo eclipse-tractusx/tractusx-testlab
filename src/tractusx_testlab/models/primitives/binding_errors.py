@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """What the operator still owes, said in one message instead of one per run.
@@ -76,8 +77,13 @@ class InfrastructureError(AuthoringError):
     mid-run (:class:`~tractusx_testlab.models.BoundServiceError`). Reported as
     infrastructure and not as a verdict, because nothing about the SUT was
     proved either way.
+
+    Its own ``code`` too, the one :class:`~tractusx_testlab.models.BoundServiceError`
+    publishes, rather than the ``AUTHORING_ERROR`` it would otherwise inherit:
+    the code and the origin say the same thing.
     """
 
+    code = "INFRASTRUCTURE_ERROR"
     origin = "infrastructure"
 
 

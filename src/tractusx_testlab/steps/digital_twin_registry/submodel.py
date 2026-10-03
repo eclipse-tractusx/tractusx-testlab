@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Submodel-server steps: uploading data under a path, and deleting it again."""
@@ -35,7 +36,7 @@ from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import (
     HttpRequest,
     HttpResponse,
-    StepConfigError,
+    InfrastructureError,
     StepDefinition,
 )
 from tractusx_testlab.steps import http_client
@@ -81,10 +82,9 @@ def _submodel_server(context: StepContext, definition: StepDefinition) -> str:
     """
     backend_base_url = (context.infrastructure.engine.dtr.submodel_base_url or "").strip()
     if not backend_base_url:
-        raise StepConfigError(
-            definition.uses,
-            "no submodel server is bound; set engine.dtr.submodel_base_url "
-            "(TESTLAB_ENGINE_DTR_SUBMODEL_BASE_URL) on the engine",
+        raise InfrastructureError(
+            f"{definition.uses}: no submodel server is bound; set "
+            "engine.dtr.submodel_base_url (TESTLAB_ENGINE_DTR_SUBMODEL_BASE_URL) on the engine"
         )
     return backend_base_url.rstrip("/")
 

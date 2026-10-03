@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Contract tests for ``digital-twin-registry/submodel/upload`` and ``digital-twin-registry/submodel/delete``.
@@ -42,7 +43,7 @@ import pytest
 from pydantic import ValidationError
 
 from tractusx_testlab.config.settings import TestlabConfig
-from tractusx_testlab.models import StepConfigError, StepDefinition
+from tractusx_testlab.models import InfrastructureError, StepDefinition
 from tractusx_testlab.models.domain.infrastructure import (
     EngineBindings,
     EngineDtrBinding,
@@ -276,7 +277,7 @@ def test_an_id_with_a_slash_is_a_path_not_an_id() -> None:
 
 @pytest.mark.asyncio
 async def test_an_engine_without_a_submodel_server_says_so() -> None:
-    with pytest.raises(StepConfigError) as error:
+    with pytest.raises(InfrastructureError) as error:
         await UploadBackendDataStep().invoke(
             {"data": {"test": True}, "semantic_id": _SEMANTIC_ID},
             _context(""),
@@ -284,6 +285,8 @@ async def test_an_engine_without_a_submodel_server_says_so() -> None:
         )
 
     assert "engine.dtr.submodel_base_url" in str(error.value)
+    # The deployment is what lacks it, not the TCK or the SUT.
+    assert error.value.origin == "infrastructure"
 
 
 def _capture_delete(monkeypatch, status: int = 204) -> dict[str, object]:
@@ -367,7 +370,7 @@ def test_surrounding_slashes_are_punctuation_on_a_delete_too(given: str, used: s
 
 @pytest.mark.asyncio
 async def test_a_delete_against_an_engine_without_a_submodel_server_says_so() -> None:
-    with pytest.raises(StepConfigError) as error:
+    with pytest.raises(InfrastructureError) as error:
         await DeleteBackendDataStep().invoke(
             {"path": "urn:uuid:abc"},
             _context(""),
@@ -375,3 +378,5 @@ async def test_a_delete_against_an_engine_without_a_submodel_server_says_so() ->
         )
 
     assert "engine.dtr.submodel_base_url" in str(error.value)
+    # The deployment is what lacks it, not the TCK or the SUT.
+    assert error.value.origin == "infrastructure"
