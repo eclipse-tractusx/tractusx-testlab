@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Shared fixtures for the test suite."""
@@ -106,6 +107,10 @@ def mock_context() -> MagicMock:
     # The namespace a phase binds and every step it runs publishes under.
     ctx.step_namespace = None
     ctx.bind_step_namespace = MagicMock(side_effect=lambda ns: setattr(ctx, "step_namespace", ns))
+    # What became of the test's steps: real, so a reference reads what ran.
+    from tractusx_testlab.player.execution._step_outcomes import StepOutcomes
+
+    ctx.steps = StepOutcomes()
 
     # The real invoker, because `flow/if` and `flow/retry` run the steps nested
     # inside them and take the runner from the context rather than importing it

@@ -16,6 +16,8 @@ https://creativecommons.org/licenses/by/4.0/legalcode.
 SPDX-License-Identifier: CC-BY-4.0
 
 -->
+<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
+<!-- It was reviewed and tested by a human committer. -->
 
 # Executing Tests
 

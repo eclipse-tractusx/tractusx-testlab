@@ -446,11 +446,17 @@ reports the deployment and says `INFRASTRUCTURE_ERROR` / `infrastructure`
 instead.
 
 A `${{ }}` reference that resolves to nothing is `authoring` unless the run
-says otherwise, and in two cases it does: a call-scoped reference
-(`*.request.body.…`) reads what the SUT's call to the mock carried, and a
-reference to the outputs of a step that published none follows from that
-step's failure — the step that stopped the test carries the origin of what
-went wrong. Both keep `sut` and, not being the author's mistake, `STEP_FAILED`.
+says otherwise, and in two cases it does. `*.request.body.…` reads what the
+SUT's call to the mock carried: `sut`, `STEP_FAILED`. And the output of a step
+that failed, or never ran because a failure stopped the test first, follows
+from that failure: it carries the failure's origin and the code that goes with
+the origin (`AUTHORING_ERROR`, `INFRASTRUCTURE_ERROR`, `CONNECTOR_ERROR`, or
+`STEP_FAILED` for `sut`) — a teardown that withdraws what setup never created,
+after setup was refused on a reused asset id, is the TCK's to fix like the
+refusal. Whether a step failed is what the runner recorded, not what the step
+published: a step with no `returns:`, one its `if:` skipped and one in the
+`flow/if` branch not taken publish nothing and did not fail, and a reference to
+their outputs is the author's.
 
 `POLICY_MISMATCH` is the first of them. The SDK reports a catalog whose offers
 were all refused as "no valid policy was found", which names neither the offers

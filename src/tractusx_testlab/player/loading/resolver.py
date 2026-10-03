@@ -97,40 +97,59 @@ def _require(expr: str, context: StepContext) -> tuple[str, object]:
         found = call_scope.lookup(name, context.has_variable, context.get_variable)
         if found is not call_scope.MISSING:
             return name, found
-    raise UnresolvedReferenceError(
-        expr, list(context.variables), origin=origin_of(expr, context.variables)
-    )
+    raise UnresolvedReferenceError(expr, list(context.variables), origin=origin_of(expr, context))
 
 
-#: The namespaces a phase publishes a step's ``returns:`` under, as
-#: ``<phase>.<step id>.<name>``. A dynamic mock's steps publish call-scoped.
-_STEP_NAMESPACES = ("execution.", "setup.", "teardown.")
+#: Where a step publishes its ``returns:``, and how many segments name the step:
+#: ``<phase>.<step id>.<name>``, and ``*.process.<step id>.<name>`` for a
+#: dynamic mock's steps.
+_STEP_NAMESPACES: tuple[tuple[str, int], ...] = (
+    ("execution.", 2),
+    ("setup.", 2),
+    ("teardown.", 2),
+    (f"{call_scope.PROCESS}.", 3),
+)
 
 
-def origin_of(expr: str, in_scope: Collection[str]) -> str:
+def _step_of(name: str) -> str | None:
+    """The step (``<phase>.<id>``) whose output *name* reads, if it reads one."""
+    for namespace, segments in _STEP_NAMESPACES:
+        if name.startswith(namespace):
+            return ".".join(name.split(".")[:segments])
+    return None
+
+
+def origin_of(expr: str, context: StepContext) -> str:
     """Who a reference that resolved to nothing belongs to (``errors[].origin``).
 
-    The compiler has checked every reference against what the TCK declares, so
-    one that names nothing at run time is usually the author's — a path into a
-    published value, a name the step does not publish. Two are not, and they
-    keep the ``sut`` every error was given before ``authoring`` existed:
+    The compiler checks a reference's root against what the TCK declares, not
+    the rest, so one that names nothing at run time is usually the author's: a
+    path into a published value, a name the step's ``returns:`` does not
+    declare, the output of a step that has no ``returns:`` or was skipped. Two
+    are not:
 
-    - A call-scoped one (``*.request.body.<field>``): it reads what the call to
-      the mock carried, and the caller — the system under test — did not send
-      it. Its root is checked at compile time; the rest is the SUT's to supply.
-    - A step's output when that step published nothing at all: it failed or
-      never ran, and is the step that stopped the test — carrying the origin of
-      what went wrong. This one only follows from it, and calling it a TCK
-      mistake would send the reader to the wrong place.
+    - What the SUT's call to a mock did not carry (``*.request.body.<field>``):
+      the caller — the system under test — did not send it. ``sut``.
+    - The output of a step that failed before publishing anything, or never ran
+      because a failure stopped the test first: this reference only follows
+      from that failure, and carries its origin — a teardown that withdraws
+      what setup never created, after setup was refused on an asset id the TCK
+      reused, is the TCK's to fix like the refusal itself.
+
+    Whether a step failed is what the runner recorded
+    (``StepContext.steps``), not inferred from what it published: a
+    step with no ``returns:`` publishes nothing and passed.
     """
     name = _name_of(expr)
-    if call_scope.is_call_scoped(name):
+    if name.startswith(f"{call_scope.REQUEST}."):
         return "sut"
-    if name.startswith(_STEP_NAMESPACES):
-        step = ".".join(name.split(".")[:2]) + "."
-        if not any(variable.startswith(step) for variable in in_scope):
-            return "sut"
-    return AuthoringError.origin
+    step = _step_of(name)
+    if step is None or any(variable.startswith(f"{step}.") for variable in context.variables):
+        return AuthoringError.origin
+    outcome = context.steps.outcome_of(step)
+    if outcome is None:
+        return context.steps.stopped_by or AuthoringError.origin
+    return outcome.origin or AuthoringError.origin
 
 
 def resolve_str(value: str, context: StepContext, _depth: int = 0) -> object:

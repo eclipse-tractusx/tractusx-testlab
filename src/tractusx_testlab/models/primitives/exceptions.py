@@ -171,6 +171,16 @@ class SkipNotAllowedError(AuthoringError):
         )
 
 
+#: The code a failure is published under when all that is known is whose it is
+#: (ADR-0016). A verdict about the SUT has none of its own: ``STEP_FAILED``.
+_CODE_OF_ORIGIN: dict[str, str | None] = {
+    AuthoringError.origin: AuthoringError.code,
+    BoundServiceError.origin: BoundServiceError.code,
+    ConnectorError.origin: ConnectorError.code,
+    EngineError.origin: "ENGINE_FAULT",
+}
+
+
 class UnresolvedReferenceError(AuthoringError):
     """Raised when a ``${{ ... }}`` reference names nothing the run can supply.
 
@@ -194,7 +204,8 @@ class UnresolvedReferenceError(AuthoringError):
 
     *origin* is given by the resolver, which can tell what the run held: a
     reference is not always the author's mistake (``resolver.origin_of``). One
-    that is not drops ``AUTHORING_ERROR`` too, and is classified by origin alone.
+    that is not drops ``AUTHORING_ERROR`` for the code that goes with its
+    origin, or none — ``STEP_FAILED`` — for ``sut``.
     """
 
     def __init__(
@@ -203,7 +214,7 @@ class UnresolvedReferenceError(AuthoringError):
         self.reference = reference
         self.available = available or []
         if origin is not None and origin != self.origin:
-            self.origin, self.code = origin, None
+            self.origin, self.code = origin, _CODE_OF_ORIGIN.get(origin)
         listed = ", ".join(sorted(self.available)[:20]) or "nothing"
         more = "" if len(self.available) <= 20 else f" (and {len(self.available) - 20} more)"
         super().__init__(

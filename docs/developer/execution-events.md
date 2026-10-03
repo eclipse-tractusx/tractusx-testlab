@@ -1,3 +1,6 @@
+<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
+<!-- It was reviewed and tested by a human committer. -->
+
 # Execution events
 
 <!-- markdownlint-disable MD013 -->

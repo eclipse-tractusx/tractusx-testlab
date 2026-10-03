@@ -127,13 +127,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   SUT's failure. It now says `origin: authoring` with code `AUTHORING_ERROR`
   (ADR-0016), and the run summary adds a `Fix in:` line under a failure that
   is not the SUT's. A reference that resolves to nothing is `authoring`
-  unless the run says otherwise: a call-scoped one (`*.request.…`) reads what
-  the SUT's call did not carry, and one to the outputs of a step that
-  published none follows from that step's failure — both stay `sut`
-  (`STEP_FAILED`). `InfrastructureError` carries `INFRASTRUCTURE_ERROR`, as
-  `BoundServiceError` does, rather than inheriting the new code; an engine
-  without a connector or a submodel server bound now raises it (it was an
-  `AuthoringError` and a `StepConfigError`).
+  unless the run says otherwise: `*.request.…` reads what the SUT's call to a
+  mock did not carry (`sut`, `STEP_FAILED`), and the output of a step that
+  failed — or never ran because a failure stopped the test — follows from that
+  failure and carries its origin, with the code that goes with it. A teardown
+  that withdraws what setup never created, after setup was refused with 409,
+  is `authoring` like the refusal. The runner records which steps passed,
+  failed or were skipped (by `if:`, or in the `flow/if` branch not taken), so
+  the output of one that passed without a `returns:` block, or was skipped, is
+  the author's mistake rather than a failure. `InfrastructureError` carries
+  `INFRASTRUCTURE_ERROR`, as `BoundServiceError` does, rather than inheriting
+  the new code; an engine without a connector or a submodel server bound now
+  raises it (it was an `AuthoringError` and a `StepConfigError`).
 - `connector/provider/create_mock_asset`'s 409 message tells the author to
   write `${{ execution.id }}`; a missing `f` prefix printed
   `${{{{ execution.id }}}}`.

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 
@@ -151,11 +152,15 @@ async def run_and_publish(
     ``${{ execution.<id>.<field> }}`` — the EDR a negotiation returned, for the
     data-plane call retried with it. A retried or looped step leaves the value
     of its latest run.
+
+    What became of the step is noted too, so a reference to an output it did
+    not publish can say whether it follows from the step's failure.
     """
     # Imported here: the step runner binds this function, so it imports this module.
     from tractusx_testlab.player.execution.step_runner import run_step
 
     step_result = await run_step(step_cls, step_def, step_name, context, params)
+    context.steps.record_result(context.step_namespace, getattr(step_def, "id", None), step_result)
     if context.step_namespace is not None:
         store_step_outputs(step_def, step_result, context, step_namespace=context.step_namespace)
     return step_result
