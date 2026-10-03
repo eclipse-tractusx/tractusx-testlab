@@ -95,12 +95,18 @@ def _shown(settings: TestlabConfig) -> dict[str, object]:
     vault = shown.get("vault")
     if isinstance(vault, dict) and vault.get("vault_token"):
         vault["vault_token"] = REDACTED_VALUE
-    infrastructure = shown.get("infrastructure") or {}
-    for side, capability, binding_type in capabilities():
-        binding = (infrastructure.get(side) or {}).get(capability)
-        for field in binding_type.secret_fields() if isinstance(binding, dict) else ():
-            if binding.get(field):
-                binding[field] = REDACTED_VALUE
+    infrastructure = shown.get("infrastructure")
+    if isinstance(infrastructure, dict):
+        for side, capability, binding_type in capabilities():
+            side_bindings = infrastructure.get(side)
+            if not isinstance(side_bindings, dict):
+                continue
+            binding = side_bindings.get(capability)
+            if not isinstance(binding, dict):
+                continue
+            for field in binding_type.secret_fields():
+                if binding.get(field):
+                    binding[field] = REDACTED_VALUE
     return shown
 
 
