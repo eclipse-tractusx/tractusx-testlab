@@ -186,7 +186,7 @@ class CreateMockAssetStep(BaseStep[CreateMockAssetParams, CreateAssetOutput]):
             raise AuthoringError(
                 f"Asset '{asset_id}' already exists on the engine connector, and the "
                 "connector keeps it as it was — with an earlier run's key, which the "
-                "mock refuses. Give the asset id the run id (${{{{ execution.id }}}}) and "
+                "mock refuses. Give the asset id the run id (${{ execution.id }}) and "
                 "withdraw it in teardown."
             )
         return output

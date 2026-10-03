@@ -15,6 +15,7 @@
 -->
 
 <!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
 # ADR-0016: Execution Trace Format — CloudEvents Hybrid Envelope
@@ -403,6 +404,7 @@ Each error object:
 | `code` | Where | `origin` | `context` |
 |--------|-------|----------|-----------|
 | `STEP_FAILED` | `data.errors[]` | `sut` | — |
+| `AUTHORING_ERROR` | `data.errors[]` | `authoring` | — |
 | `INFRASTRUCTURE_ERROR` | `data.errors[]` | `infrastructure` | — |
 | `CONNECTOR_ERROR` | `data.errors[]` | `connector` | — |
 | `ENGINE_FAULT` | `data.errors[]` | `engine` | — |
@@ -410,7 +412,7 @@ Each error object:
 | `ASSERTION_FAILED` | `data.validations[].errors[]` | — | — |
 | `TRANSPORT_FAILED` | `tck.test.step.call` `errors[]` | — | — |
 
-These four are the classification every failure gets. A failure that can say
+These five are the classification every failure gets. A failure that can say
 more names itself and carries the evidence under `context`, which is what
 separates *a verdict* from *a verdict a reader can act on*: an error the engine
 can only classify says who to go to, and one that named itself says what to
@@ -432,6 +434,23 @@ connector and talks to another and the SDK reports the failure of the pair — s
 the fault may be the SUT's connector, the one TestLab drives, or the network
 between them. Neither names a side, which is the point: they say where to start
 looking rather than who to blame.
+
+`AUTHORING_ERROR` is the one that sends the reader to the TCK. An
+`AuthoringError` — the TCK or the run's configuration is wrong, nothing was
+tested — used to inherit `sut` from the base class, so an asset id the TCK
+reused across runs, refused by the engine connector with 409, read as a failure
+of the system under test. `authoring` says fix the TCK, or the values the run
+was given; the SUT was not asked anything. Its binding-time subclass
+`InfrastructureError` — a capability with no address, an input not supplied —
+reports the deployment and says `INFRASTRUCTURE_ERROR` / `infrastructure`
+instead.
+
+A `${{ }}` reference that resolves to nothing is `authoring` unless the run
+says otherwise, and in two cases it does: a call-scoped reference
+(`*.request.body.…`) reads what the SUT's call to the mock carried, and a
+reference to the outputs of a step that published none follows from that
+step's failure — the step that stopped the test carries the origin of what
+went wrong. Both keep `sut` and, not being the author's mistake, `STEP_FAILED`.
 
 `POLICY_MISMATCH` is the first of them. The SDK reports a catalog whose offers
 were all refused as "no valid policy was found", which names neither the offers
@@ -642,10 +661,11 @@ connectors never completed rather than the SUT failing a check or TestLab having
 a bug, and the sequence numbers say the polls were readable as they happened
 rather than a minute later.
 
-The `errors[].origin` field separates a SUT verdict (`sut`) from a service that
-did not do its part (`infrastructure`, and `connector` for the dataspace
-exchange) from an engine fault (`engine`): a reader triaging a red run needs to
-know whether to fix the SUT, look at the deployment, or file a bug against
+The `errors[].origin` field separates a SUT verdict (`sut`) from a TCK or run
+configuration that is wrong (`authoring`), from a service that did not do its
+part (`infrastructure`, and `connector` for the dataspace exchange) and from an
+engine fault (`engine`): a reader triaging a red run needs to know whether to
+fix the SUT, fix the TCK, look at the deployment, or file a bug against
 TestLab, and one `FAILED` cannot say which.
 
 ## Implementation Status

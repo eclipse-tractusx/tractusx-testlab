@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Everything TestLab raises, and the four questions the hierarchy answers.
@@ -89,7 +90,18 @@ class TestLabError(Exception):
 
 
 class AuthoringError(TestLabError):
-    """The TCK or the deployment it targets is wrong; nothing was tested."""
+    """The TCK or the deployment it targets is wrong; nothing was tested.
+
+    Not a verdict, so not ``sut``: the default every error inherited, which
+    published an asset id the TCK reused across runs as a failure of the system
+    under test. ``authoring`` sends the reader to the TCK or the run's
+    configuration. A subclass that reports the deployment says
+    ``infrastructure`` instead (``InfrastructureError``); one raised *because*
+    the SUT behaved as it did says ``sut`` where it is raised.
+    """
+
+    code: str | None = "AUTHORING_ERROR"
+    origin = "authoring"
 
 
 class ExecutionError(TestLabError):
@@ -179,11 +191,19 @@ class UnresolvedReferenceError(AuthoringError):
     ``${{ execution.call.body.kind }}`` against a step that declared ``body``
     has made one specific mistake with one specific remedy, and a bare list of
     everything in scope leaves them to infer the rule from it.
+
+    *origin* is given by the resolver, which can tell what the run held: a
+    reference is not always the author's mistake (``resolver.origin_of``). One
+    that is not drops ``AUTHORING_ERROR`` too, and is classified by origin alone.
     """
 
-    def __init__(self, reference: str, available: list[str] | None = None) -> None:
+    def __init__(
+        self, reference: str, available: list[str] | None = None, *, origin: str | None = None
+    ) -> None:
         self.reference = reference
         self.available = available or []
+        if origin is not None and origin != self.origin:
+            self.origin, self.code = origin, None
         listed = ", ".join(sorted(self.available)[:20]) or "nothing"
         more = "" if len(self.available) <= 20 else f" (and {len(self.available) - 20} more)"
         super().__init__(

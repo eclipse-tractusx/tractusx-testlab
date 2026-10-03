@@ -155,8 +155,10 @@ class StepResult(BaseModel):
     error_code: str | None = None
     #: Who the failure belongs to, as the trace publishes it under
     #: ``errors[].origin`` (ADR-0016): ``sut`` for a verdict about the tested
-    #: system, ``connector`` for a dataspace exchange that did not go through and
-    #: names no single side, ``engine`` for TestLab giving up. ``None`` leaves it
+    #: system, ``authoring`` for a TCK or run configuration that is wrong,
+    #: ``infrastructure`` for a service the run stands on, ``connector`` for a
+    #: dataspace exchange that did not go through and names no single side,
+    #: ``engine`` for TestLab giving up. ``None`` leaves it
     #: to be read back off :data:`ENGINE_FAULT_PREFIX`, which is all a result
     #: written before this field carried.
     error_origin: str | None = None

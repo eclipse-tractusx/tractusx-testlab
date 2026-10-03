@@ -342,7 +342,7 @@ One CloudEvent per line. Each is self-contained: it says which TCK, which test, 
    "message":"[Connector Service]: catalog request refused, 403"}]}}
 ```
 
-`errors[].origin` tells you who to go to: `sut` means the system under test answered wrongly, `engine` means TestLab itself broke and the run says nothing about the SUT.
+`errors[].origin` tells you who to go to: `sut` means the system under test answered wrongly, `authoring` means the TCK or the run's configuration is wrong and nothing was tested, `infrastructure` and `connector` point at the deployment or the exchange between the connectors, and `engine` means TestLab itself broke and the run says nothing about the SUT.
 
 **A step that failed on the policy** — a DSP step turns down every offer whose policy is not one the test named, and says which condition turned them down. `context` carries the same comparison structurally, so a client can render it:
 

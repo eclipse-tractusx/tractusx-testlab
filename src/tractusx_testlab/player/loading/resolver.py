@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Resolving ``${{ ... }}`` references in a step's parameters.
@@ -96,7 +97,40 @@ def _require(expr: str, context: StepContext) -> tuple[str, object]:
         found = call_scope.lookup(name, context.has_variable, context.get_variable)
         if found is not call_scope.MISSING:
             return name, found
-    raise UnresolvedReferenceError(expr, list(context.variables))
+    raise UnresolvedReferenceError(
+        expr, list(context.variables), origin=origin_of(expr, context.variables)
+    )
+
+
+#: The namespaces a phase publishes a step's ``returns:`` under, as
+#: ``<phase>.<step id>.<name>``. A dynamic mock's steps publish call-scoped.
+_STEP_NAMESPACES = ("execution.", "setup.", "teardown.")
+
+
+def origin_of(expr: str, in_scope: Collection[str]) -> str:
+    """Who a reference that resolved to nothing belongs to (``errors[].origin``).
+
+    The compiler has checked every reference against what the TCK declares, so
+    one that names nothing at run time is usually the author's — a path into a
+    published value, a name the step does not publish. Two are not, and they
+    keep the ``sut`` every error was given before ``authoring`` existed:
+
+    - A call-scoped one (``*.request.body.<field>``): it reads what the call to
+      the mock carried, and the caller — the system under test — did not send
+      it. Its root is checked at compile time; the rest is the SUT's to supply.
+    - A step's output when that step published nothing at all: it failed or
+      never ran, and is the step that stopped the test — carrying the origin of
+      what went wrong. This one only follows from it, and calling it a TCK
+      mistake would send the reader to the wrong place.
+    """
+    name = _name_of(expr)
+    if call_scope.is_call_scoped(name):
+        return "sut"
+    if name.startswith(_STEP_NAMESPACES):
+        step = ".".join(name.split(".")[:2]) + "."
+        if not any(variable.startswith(step) for variable in in_scope):
+            return "sut"
+    return AuthoringError.origin
 
 
 def resolve_str(value: str, context: StepContext, _depth: int = 0) -> object:
