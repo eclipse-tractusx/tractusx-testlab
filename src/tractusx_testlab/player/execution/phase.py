@@ -47,6 +47,7 @@ from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.player.execution._not_run import missing_step_result, skipped_result
 from tractusx_testlab.player.execution._reporters import bind_reporters
+from tractusx_testlab.player.execution._step_outcomes import failure_origin
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
@@ -149,6 +150,7 @@ async def run_phase(
             skipped = skipped_result(step_name, step_def.uses, config.phase)
             # A skipped step still names its CACs: ones this run did not verify.
             skipped.cac = list(step_def.cac or context.test_cac)
+            context.steps.record(context.step_namespace, step_def.id, StepStatus.SKIPPED)
             results.append(skipped)
             monitor.on_step_completed(job_id, test.definition.id, step_def.id, skipped)
             # A step whose `if:` said no must not then run: recording SKIPPED and
@@ -167,6 +169,8 @@ async def run_phase(
             params,
         )
         if failed:
+            # What it kept from running follows from it (resolver.origin_of).
+            context.steps.record_stop(failure_origin(results[-1]))
             return results, TestStatus.FAILED
 
     return results, TestStatus.COMPLETED
@@ -189,6 +193,7 @@ async def _resolve_and_run_step(
     step_cls = StepRegistry.get(step_def.uses, test.dataspace_version)
     if step_cls is None:
         missing = missing_step_result(step_name, step_def.uses, config.phase)
+        context.steps.record_result(context.step_namespace, step_def.id, missing)
         results.append(missing)
         monitor.on_step_completed(job_id, test.definition.id, step_def.id, missing)
         return config.failure_policy == FailurePolicy.STOP

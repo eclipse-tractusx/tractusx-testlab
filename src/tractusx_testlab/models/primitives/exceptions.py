@@ -90,7 +90,18 @@ class TestLabError(Exception):
 
 
 class AuthoringError(TestLabError):
-    """The TCK or the deployment it targets is wrong; nothing was tested."""
+    """The TCK or the deployment it targets is wrong; nothing was tested.
+
+    Not a verdict, so not ``sut``: the default every error inherited, which
+    published an asset id the TCK reused across runs as a failure of the system
+    under test. ``authoring`` sends the reader to the TCK or the run's
+    configuration. A subclass that reports the deployment says
+    ``infrastructure`` instead (``InfrastructureError``); one raised *because*
+    the SUT behaved as it did says ``sut`` where it is raised.
+    """
+
+    code: str | None = "AUTHORING_ERROR"
+    origin = "authoring"
 
 
 class SealedVariableError(AuthoringError):
@@ -179,6 +190,16 @@ class SkipNotAllowedError(AuthoringError):
         )
 
 
+#: The code a failure is published under when all that is known is whose it is
+#: (ADR-0016). A verdict about the SUT has none of its own: ``STEP_FAILED``.
+_CODE_OF_ORIGIN: dict[str, str | None] = {
+    AuthoringError.origin: AuthoringError.code,
+    BoundServiceError.origin: BoundServiceError.code,
+    ConnectorError.origin: ConnectorError.code,
+    EngineError.origin: "ENGINE_FAULT",
+}
+
+
 class UnresolvedReferenceError(AuthoringError):
     """Raised when a ``${{ ... }}`` reference names nothing the run can supply.
 
@@ -199,11 +220,20 @@ class UnresolvedReferenceError(AuthoringError):
     ``${{ execution.call.body.kind }}`` against a step that declared ``body``
     has made one specific mistake with one specific remedy, and a bare list of
     everything in scope leaves them to infer the rule from it.
+
+    *origin* is given by the resolver, which can tell what the run held: a
+    reference is not always the author's mistake (``resolver.origin_of``). One
+    that is not drops ``AUTHORING_ERROR`` for the code that goes with its
+    origin, or none — ``STEP_FAILED`` — for ``sut``.
     """
 
-    def __init__(self, reference: str, available: list[str] | None = None) -> None:
+    def __init__(
+        self, reference: str, available: list[str] | None = None, *, origin: str | None = None
+    ) -> None:
         self.reference = reference
         self.available = available or []
+        if origin is not None and origin != self.origin:
+            self.origin, self.code = origin, _CODE_OF_ORIGIN.get(origin)
         listed = ", ".join(sorted(self.available)[:20]) or "nothing"
         more = "" if len(self.available) <= 20 else f" (and {len(self.available) - 20} more)"
         super().__init__(

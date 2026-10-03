@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Conditional step — runs one of two nested sequences depending on a condition."""
@@ -155,6 +156,10 @@ class IfStep(BaseStep[IfParams, IfOutput]):
         outcomes = [condition.holds() for condition in params.conditions]
         condition_result = all(outcomes) if params.match == "all" else any(outcomes)
         branch = params.then if condition_result else params.otherwise
+        # The branch not taken is skipped, as a step whose ``if:`` said no is:
+        # a reference to its outputs is the author's to guard, not a failure.
+        for untaken in params.otherwise if condition_result else params.then:
+            context.steps.record(context.step_namespace, untaken.id, StepStatus.SKIPPED)
 
         if not branch:
             # ``outputs`` is set even though it is empty: "nothing ran" is a

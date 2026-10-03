@@ -16,6 +16,8 @@ https://creativecommons.org/licenses/by/4.0/legalcode.
 SPDX-License-Identifier: CC-BY-4.0
 
 -->
+<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
+<!-- It was reviewed and tested by a human committer. -->
 
 # Functional Requirements
 
@@ -109,7 +111,7 @@ limitation noted), or **Open** (specified, not implemented).
 | FR-LOG-02 | Every run SHALL write a plain-text transcript of its console output to `<logs_dir>/<date>/<time>_<job_id>.log`. | Must | Done |
 | FR-LOG-03 | The console SHALL end with one result table per test and a run summary table. | Must | Done |
 | FR-LOG-04 | For steps that make HTTP calls, the trace SHALL record the request and response, and every call under `exchanges` when there are several. | Must | Done |
-| FR-LOG-05 | A failed step SHALL record `errors[]` with `code`, `origin` (`sut` or `engine`), `retryable`, `message` and, where available, structured `context`. | Must | Done |
+| FR-LOG-05 | A failed step SHALL record `errors[]` with `code`, `origin` (`sut`, `authoring`, `infrastructure`, `connector` or `engine`), `retryable`, `message` and, where available, structured `context`. | Must | Done |
 | FR-LOG-06 | Credential headers SHALL be redacted (`***`) in the trace and transcript. | Must | Done |
 
 ## Step Registry (FR-REG)

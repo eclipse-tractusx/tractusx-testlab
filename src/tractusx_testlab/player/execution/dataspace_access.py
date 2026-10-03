@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Reaching the dataspace services a run was seeded with.
@@ -45,7 +46,7 @@ from tractusx_testlab.contracts import (
     RegistryService,
 )
 from tractusx_testlab.models import ServiceNotFoundError, ServiceType
-from tractusx_testlab.models.primitives.exceptions import AuthoringError
+from tractusx_testlab.models.primitives.binding_errors import InfrastructureError
 from tractusx_testlab.services.instances import ServiceManager
 from tractusx_testlab.syntax import defaults
 
@@ -80,7 +81,8 @@ class DataspaceAccess:
                 self._services.get(ENGINE_PROVIDER_SERVICE, ServiceType.CONNECTOR_PROVIDER),
             )
         except ServiceNotFoundError:
-            raise AuthoringError(
+            # The deployment, not the TCK: the operator binds the engine connector.
+            raise InfrastructureError(
                 "No engine connector is bound: a step that offers something on the engine's "
                 "own connector needs infrastructure.engine.connector"
             ) from None

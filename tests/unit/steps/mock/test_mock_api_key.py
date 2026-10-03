@@ -267,8 +267,15 @@ class TestTheReflexiveAsset:
     ) -> None:
         provider.create_asset.side_effect = ValueError("HTTP 409 conflict")
 
-        with pytest.raises(AuthoringError, match="earlier run's key"):
+        with pytest.raises(AuthoringError, match="earlier run's key") as raised:
             await self._offer(context, {"asset_id": "testlab-fixed"})
+
+        # The reference the author is told to write, as they would write it —
+        # not the doubled braces a missing f-prefix left in the sentence.
+        assert "the run id (${{ execution.id }}) and" in str(raised.value)
+        assert "{{{{" not in str(raised.value)
+        # The TCK reused an id across runs: nothing about the SUT was tested.
+        assert (raised.value.origin, raised.value.code) == ("authoring", "AUTHORING_ERROR")
 
     @pytest.mark.asyncio
     async def test_a_public_mock_cannot_be_offered(

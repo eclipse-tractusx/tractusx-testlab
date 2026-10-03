@@ -77,8 +77,13 @@ class InfrastructureError(AuthoringError):
     mid-run (:class:`~tractusx_testlab.models.BoundServiceError`). Reported as
     infrastructure and not as a verdict, because nothing about the SUT was
     proved either way.
+
+    Its own ``code`` too, the one :class:`~tractusx_testlab.models.BoundServiceError`
+    publishes, rather than the ``AUTHORING_ERROR`` it would otherwise inherit:
+    the code and the origin say the same thing.
     """
 
+    code = "INFRASTRUCTURE_ERROR"
     origin = "infrastructure"
 
 
