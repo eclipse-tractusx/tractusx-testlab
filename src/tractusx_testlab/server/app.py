@@ -86,14 +86,13 @@ def create_app(config: TestlabConfig | None = None, *, mode: ServerMode | None =
         config = ConfigLoader.load()
     is_mock_only = (mode or getattr(config, "server_mode", None)) == "mock"
 
-    # A mock-only server publishes no API description either: its callers are
-    # handed the addresses they need, and nothing else is theirs to browse.
-    unpublished = {"openapi_url": None, "docs_url": None, "redoc_url": None}
     app = FastAPI(
         title="Tractus-X Testlab Player",
         version=_version(),
         description="Automated TCK execution for Tractus-X dataspace interoperability.",
-        **(unpublished if is_mock_only else {}),
+        openapi_url=None if is_mock_only else "/openapi.json",
+        docs_url=None if is_mock_only else "/docs",
+        redoc_url=None if is_mock_only else "/redoc",
     )
 
     # Shared instances — stored on app.state for FastAPI dependency injection

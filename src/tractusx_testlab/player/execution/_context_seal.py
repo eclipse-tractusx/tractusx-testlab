@@ -48,7 +48,7 @@ class SealedNamespaces:
     def seal(self, prefix: str) -> None:
         """Make every name under *prefix* read-only for the rest of the run."""
         if prefix not in self._sealed:
-            self._sealed = (*self._sealed, prefix)
+            object.__setattr__(self, "_sealed", (*self._sealed, prefix))
 
     @property
     def sealed(self) -> tuple[str, ...]:

@@ -191,4 +191,3 @@ class TestPathWalking:
 
         output = StepOutput(value={"key": _handle()})
         assert AssertionEngine.extract_path(output, "key._value") is None
-
