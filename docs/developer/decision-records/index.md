@@ -71,6 +71,7 @@ library (`src/tractusx_testlab/`) or **shared** concerns that span the system. T
 | [0018](shared/ADR-0018-unified-variables-model.md) | Unified Variables Model (Preconditions as Complex Variables) | Accepted (finalized by [0021](shared/ADR-0021-remove-precondition-concept.md)) |
 | [0021](shared/ADR-0021-remove-precondition-concept.md) | Remove the Precondition Concept in Favor of Unified Variables | Accepted |
 | [0025](shared/ADR-0025-assertions-read-declared-returns.md) | Assertions Read Declared Returns | Proposed |
+| [0027](shared/ADR-0027-call-provenance.md) | Proving the Product Made the Call — Hosted and Remote Runs | Proposed |
 
 ### Deprecated / Superseded
 
