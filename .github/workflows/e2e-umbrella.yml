@@ -1312,10 +1312,21 @@ jobs:
           run_id = (callback["request"]["body"] or {}).get("run")
           if not run_id:
               sys.exit(f"dataplane-callback: the callback did not carry the run id: {callback['request']}")
+          asset_id = f"testlab-e2e-callback-BPNL000000000002-{run_id}"
+          # The wait names no `asset`, so it announces no properties and the
+          # catalog filter falls back to the asset id.
           expected_offer = {
-              "asset_id": f"testlab-e2e-callback-BPNL000000000002-{run_id}",
+              "asset_id": asset_id,
               "dsp_url": "http://consumer-dsp.local/api/v1/dsp/2025-1",
               "participant_id": "did:web:consumer.local:identityhub:BPNL000000000002",
+              "properties": {},
+              "catalog_filters": [
+                  {
+                      "operandLeft": "https://w3id.org/edc/v0.0.1/ns/id",
+                      "operator": "=",
+                      "operandRight": asset_id,
+                  }
+              ],
           }
           if dataplane.get("via") != "dataplane" or offer != expected_offer:
               sys.exit(f"dataplane-callback: the wait announced {dataplane}, expected via=dataplane and offer {expected_offer}")
