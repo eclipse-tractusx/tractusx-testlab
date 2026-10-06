@@ -67,6 +67,10 @@ execution:
     with:
       dataplane_url: "${{ infrastructure.sut.dtr.base_url }}"
       path: "/api/v3/shell-descriptors/dXJuOnV1aWQ6dGVzdGxhYi1lMmUtYWJzZW50"
+      # The registry is called directly, not through a data plane, so no EDR:
+      # the one an earlier transfer published is bound to the provider's data
+      # plane and is refused for any other origin.
+      edr_token: ""
       method: GET
     validate:
       # The registry's own 404, asserted as a 404. This is the shape of a

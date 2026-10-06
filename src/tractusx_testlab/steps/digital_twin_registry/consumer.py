@@ -82,15 +82,15 @@ class DataplaneParams(HttpTransportParams):
             "'dataplane_url' context variable."
         ),
     )
-    edr_token: Credential | str = Field(
-        default="",
-        description="EDR authorization token; falls back to the 'edr_token' context variable.",
+    edr_token: Credential | str | None = Field(
+        default=None,
+        description="EDR token; falls back to the 'edr_token' context variable, '' sends none.",
     )
 
     def transport(self, context: StepContext) -> tuple[str, dict[str, str], float]:
         """The (base URL, headers, timeout) — the EDR handle opened for that base only."""
         base = (self.dataplane_url or context.get_str(DATAPLANE_URL)).rstrip("/")
-        held = self.edr_token or context.get_variable(EDR_TOKEN, "")
+        held = context.get_variable(EDR_TOKEN, "") if self.edr_token is None else self.edr_token
         token = reveal(held, base, context.config.credential_release)
         headers = {"Authorization": token, **self.headers}
         return base, headers, self.timeout_or(context.config.default_timeout_s)

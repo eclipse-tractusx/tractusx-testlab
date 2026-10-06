@@ -192,6 +192,13 @@ class TestOtherSteps:
         with pytest.raises(Exception, match="may only be sent to"):
             DataplaneParams(dataplane_url=_ELSEWHERE).transport(context)
 
+    def test_an_explicit_empty_token_sends_none_to_a_registry_elsewhere(self) -> None:
+        # The e2e engine-toolbox lookup: a mock registry, called with edr_token: "".
+        base, headers, _ = DataplaneParams(dataplane_url=_ELSEWHERE, edr_token="").transport(
+            _context()
+        )
+        assert (base, headers["Authorization"]) == (_ELSEWHERE, "")
+
     @pytest.mark.asyncio
     async def test_http_request_may_send_it_to_its_data_plane_even_when_bindings_are_held(
         self,

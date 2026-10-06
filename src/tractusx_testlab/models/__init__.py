@@ -99,10 +99,8 @@ from tractusx_testlab.models.primitives.exceptions import (
     ConnectorError,
     EngineError,
     ExecutionError,
-    NoAssertionsExecutedError,
     SkipNotAllowedError,
     StepConfigError,
-    StepExecutionError,
     TestLabError,
     UnresolvedReferenceError,
     VariableTypeError,
@@ -113,6 +111,10 @@ from tractusx_testlab.models.primitives.service_errors import (
     ServiceNotFoundError,
     ServiceNotReadyError,
     ServiceTypeMismatchError,
+)
+from tractusx_testlab.models.primitives.step_errors import (
+    NoAssertionsExecutedError,
+    StepExecutionError,
 )
 from tractusx_testlab.models.runtime.events import (
     AssertionResultEvent,

@@ -283,34 +283,3 @@ class VariableTypeError(AuthoringError):
             f"Write it under 'with.value' as {shape} — inline, or as JSON or YAML "
             f"text in a 'value: |' block."
         )
-
-
-class StepExecutionError(ExecutionError):
-    """Raised when a step could not achieve the output it declares.
-
-    Steps used to report this by fabricating an ``HttpResponse(status_code=500)``
-    and returning normally, which the runner recorded as PASSED — the status
-    code was invented rather than observed, and nothing downstream read it.
-    """
-
-    def __init__(self, step_type: str, reason: str) -> None:
-        self.step_type = step_type
-        super().__init__(f"{step_type}: {reason}")
-
-
-class NoAssertionsExecutedError(ExecutionError):
-    """Raised when a test declared checks and ran none of them.
-
-    Not "a TCK with no assertions is invalid" — a provisioning-only TCK is
-    legitimate. This is the narrower and unambiguous case: the author wrote
-    ``validate:`` entries and zero of them were evaluated, so the run reported
-    on a SUT it never actually checked.
-    """
-
-    def __init__(self, test: str, declared: int) -> None:
-        self.test = test
-        self.declared = declared
-        super().__init__(
-            f"Test '{test}' declared {declared} assertion(s) and executed none. "
-            f"The run cannot certify anything it did not check."
-        )

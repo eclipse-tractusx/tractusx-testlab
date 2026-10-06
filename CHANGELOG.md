@@ -137,6 +137,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- The consumer-side registry steps (`digital-twin-registry/consumer/dataplane/*`)
+  honour an explicit `edr_token: ""` as "no token", as `connector/dataplane/*`
+  already did. They read it as "not given" and sent the EDR an earlier
+  transfer published instead — which the credential hardening now refuses for
+  any other origin, so a registry called directly (a mock, a negative path)
+  failed the step.
 - `connector/provider/create_asset`, `create_mock_asset` and the wizard put
   every entry of an asset config's `properties` (and its `name`) on the asset.
   Only `dct:type`, `dct:subject`, `cx-common:version` and the semantic id
