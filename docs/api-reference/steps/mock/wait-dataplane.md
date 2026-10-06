@@ -10,7 +10,7 @@
 
 Wait for an inbound HTTP request that arrives through the engine connector's data plane.
 
-The same wait as `mock/wait/http_request`, for a mock the system under test must not call directly: a test offers an asset on the engine connector whose data address is the mock, and the SUT negotiates that asset and calls through its data plane. What differs is what the run announces — not the mock URL, which is only the data plane's target, but the offer to negotiate: the asset (by dct:type, dct:subject and version when given), and the engine connector's DSP URL and identity from the run's infrastructure binding.
+The same wait as `mock/wait/http_request`, for a mock the system under test must not call directly: a test offers an asset on the engine connector whose data address is the mock, and the SUT negotiates that asset and calls through its data plane. What differs is what the run announces — not the mock URL, which is only the data plane's target, but the offer to negotiate: the asset (by its public properties when given), and the engine connector's DSP URL and identity from the run's infrastructure binding.
 
 **Inputs**
 
@@ -18,11 +18,9 @@ The same wait as `mock/wait/http_request`, for a mock the system under test must
 |---|---|---|---|---|---|
 | `mock` | [MockInstance](#mockinstance) | yes | — | — | The mock to wait on, as returned by the step that registered it. |
 | `timeout_s` | number | no | `30.0` | — | Seconds to wait before failing. |
-| `brief` | [WaitBrief](#waitbrief) | no | `None` | — | What the run tells the person driving the system under test while it waits: a message, the steps to take in order, and labelled values to copy. Shown in place of what a viewer would otherwise derive from the listener. |
-| `asset_id` | string | yes | — | — | The asset on the engine connector whose data address is the mock — the offer the system under test negotiates to reach it. |
-| `dct_type` | string | no | `None` | — | dct:type of that asset. Announced so the system under test finds the offer by what it is, with a catalog filter, rather than by the asset id, which usually carries the run's id. |
-| `dct_subject` | string | no | `None` | — | dct:subject of that asset, when it has one. |
-| `version` | string | no | `None` | — | cx-common:version of that asset, e.g. 3.0. |
+| `action` | [WaitAction](#waitaction) | no | `None` | — | The action the system under test has to take while the run waits: 'label', 'description', 'recommendation' (the steps, in order) and 'fields' (labelled values to copy). Shown in place of what a viewer would derive from the listener. |
+| `asset_id` | string | no | `''` | — | The asset on the engine connector whose data address is the mock — the offer the system under test negotiates to reach it. Optional when 'asset' carries it. |
+| `asset` | object | no | `None` | — | That asset as configured: a 'config/connector/asset' or 'config/connector/mock_asset' value, e.g. '${{ env.ccmapi_asset }}'. Its public properties ('dct_type', 'dct_subject', 'version', 'semantic_id', 'properties') are announced, so the system under test finds the offer by what it is instead of by the asset id, which usually carries the run's id. Its 'private_properties' are never announced. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -39,7 +37,7 @@ _The inbound request a mock endpoint received._
 
 ## Nested objects
 
-### BriefField
+### ActionField
 
 One labelled value the person driving the system under test copies.
 
@@ -60,12 +58,13 @@ A registered mock, as the steps that use it later need to see it.
 | `base_mock_url` | string | yes | — | — | Root URL of the testlab mock server. |
 | `full_mock_url` | string | yes | — | — | Address the system under test calls — root plus path. |
 
-### WaitBrief
+### WaitAction
 
-What the test tells the person driving the system under test while it waits — written by the test author on the wait step (`with.brief`), in place of what a viewer would otherwise derive from the listener.
+The action the system under test has to take while a step waits — written by the test author on the wait step (`with.action`) and shown in place of what a viewer would otherwise derive from the listener.
 
 | Field | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `message` | string | no | `None` | — | The note shown first: what is being asked, and why. |
-| `steps` | list of string | no | `[]` | — | What to do, in order: one action per entry. |
-| `fields` | list of [BriefField](#brieffield) | no | `[]` | — | Values to copy, shown beside the steps, in order. |
+| `label` | string | no | `None` | — | The action's name, e.g. 'Send a certificate push'. |
+| `description` | string | no | `None` | — | What is being asked of the system under test, and why. |
+| `recommendation` | list of string | no | `[]` | — | How to do it: the steps to take, in order. A single string is one step. |
+| `fields` | list of [ActionField](#actionfield) | no | `[]` | — | Values to copy, shown beside the steps, in order. |

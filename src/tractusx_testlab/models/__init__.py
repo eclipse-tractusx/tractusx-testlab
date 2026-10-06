@@ -149,11 +149,11 @@ from tractusx_testlab.models.runtime.jobs import (
     JobMemory,
 )
 from tractusx_testlab.models.runtime.listener import (
-    BriefField,
+    ActionField,
     CatalogFilter,
     ConnectorOffer,
     Listener,
-    WaitBrief,
+    WaitAction,
 )
 from tractusx_testlab.models.runtime.results import (
     AssertionResult,
@@ -168,6 +168,7 @@ from tractusx_testlab.models.runtime.results import (
 )
 
 __all__ = [
+    "ActionField",
     # definitions
     "Assertion",
     # results
@@ -183,7 +184,6 @@ __all__ = [
     "Base64Bytes",
     "BindingOverrideRefusedError",
     "BoundServiceError",
-    "BriefField",
     "CallbackResult",
     # infrastructure bindings (operated)
     "CapabilityBinding",
@@ -286,5 +286,5 @@ __all__ = [
     "VariableSource",
     "VariableTypeError",
     "VaultConfig",
-    "WaitBrief",
+    "WaitAction",
 ]

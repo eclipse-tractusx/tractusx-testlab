@@ -18,7 +18,7 @@ This is the other half of `mock/api`: that step hands the system under test a ca
 |---|---|---|---|---|---|
 | `mock` | [MockInstance](#mockinstance) | yes | — | — | The mock to wait on, as returned by the step that registered it. |
 | `timeout_s` | number | no | `30.0` | — | Seconds to wait before failing. |
-| `brief` | [WaitBrief](#waitbrief) | no | `None` | — | What the run tells the person driving the system under test while it waits: a message, the steps to take in order, and labelled values to copy. Shown in place of what a viewer would otherwise derive from the listener. |
+| `action` | [WaitAction](#waitaction) | no | `None` | — | The action the system under test has to take while the run waits: 'label', 'description', 'recommendation' (the steps, in order) and 'fields' (labelled values to copy). Shown in place of what a viewer would derive from the listener. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -35,7 +35,7 @@ _The inbound request a mock endpoint received._
 
 ## Nested objects
 
-### BriefField
+### ActionField
 
 One labelled value the person driving the system under test copies.
 
@@ -56,12 +56,13 @@ A registered mock, as the steps that use it later need to see it.
 | `base_mock_url` | string | yes | — | — | Root URL of the testlab mock server. |
 | `full_mock_url` | string | yes | — | — | Address the system under test calls — root plus path. |
 
-### WaitBrief
+### WaitAction
 
-What the test tells the person driving the system under test while it waits — written by the test author on the wait step (`with.brief`), in place of what a viewer would otherwise derive from the listener.
+The action the system under test has to take while a step waits — written by the test author on the wait step (`with.action`) and shown in place of what a viewer would otherwise derive from the listener.
 
 | Field | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `message` | string | no | `None` | — | The note shown first: what is being asked, and why. |
-| `steps` | list of string | no | `[]` | — | What to do, in order: one action per entry. |
-| `fields` | list of [BriefField](#brieffield) | no | `[]` | — | Values to copy, shown beside the steps, in order. |
+| `label` | string | no | `None` | — | The action's name, e.g. 'Send a certificate push'. |
+| `description` | string | no | `None` | — | What is being asked of the system under test, and why. |
+| `recommendation` | list of string | no | `[]` | — | How to do it: the steps to take, in order. A single string is one step. |
+| `fields` | list of [ActionField](#actionfield) | no | `[]` | — | Values to copy, shown beside the steps, in order. |

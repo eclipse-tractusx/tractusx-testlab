@@ -44,11 +44,10 @@ from tractusx_testlab.models import (
     ExecutionError,
     Listener,
     StepDefinition,
-    WaitBrief,
 )
 from tractusx_testlab.server.inbound.run_scope import declared, scoped
 from tractusx_testlab.server.mock_registry import get_callback_manager
-from tractusx_testlab.steps.mock._models import MockInstance
+from tractusx_testlab.steps.mock._models import WaitForCallParams, WaitForDataplaneCallParams
 from tractusx_testlab.steps.mock._paused_wait import wait_through_pauses
 from tractusx_testlab.steps.shared_models import StepParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
@@ -57,59 +56,6 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 logger = logging.getLogger(__name__)
-
-_DEFAULT_TIMEOUT_S = 30.0
-
-
-class WaitForCallParams(StepParams):
-    """Input contract of ``mock/wait/http_request``.
-
-    The mock arrives as the object the step that registered it returned, not as
-    a URL or an ID to look up again: the mock already knows its own path and
-    method, so there is nothing left for this step to guess.
-    """
-
-    mock: MockInstance = Field(
-        description="The mock to wait on, as returned by the step that registered it."
-    )
-    timeout_s: float = Field(
-        default=_DEFAULT_TIMEOUT_S, gt=0, description="Seconds to wait before failing."
-    )
-    brief: WaitBrief | None = Field(
-        default=None,
-        description=(
-            "What the run tells the person driving the system under test while it waits: "
-            "a message, the steps to take in order, and labelled values to copy. Shown in "
-            "place of what a viewer would otherwise derive from the listener."
-        ),
-    )
-
-
-class WaitForDataplaneCallParams(WaitForCallParams):
-    """Input contract of ``mock/wait/dataplane/http_request``."""
-
-    asset_id: str = Field(
-        min_length=1,
-        description=(
-            "The asset on the engine connector whose data address is the mock — the "
-            "offer the system under test negotiates to reach it."
-        ),
-    )
-    dct_type: str | None = Field(
-        default=None,
-        min_length=1,
-        description=(
-            "dct:type of that asset. Announced so the system under test finds the offer "
-            "by what it is, with a catalog filter, rather than by the asset id, which "
-            "usually carries the run's id."
-        ),
-    )
-    dct_subject: str | None = Field(
-        default=None, min_length=1, description="dct:subject of that asset, when it has one."
-    )
-    version: str | None = Field(
-        default=None, min_length=1, description="cx-common:version of that asset, e.g. 3.0."
-    )
 
 
 class InboundCallOutput(StepPayload):
@@ -160,7 +106,7 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
             method=params.mock.method,
             url=params.mock.full_mock_url,
             path=params.mock.path,
-            brief=params.brief,
+            action=params.action,
         )
 
     async def execute(
@@ -220,7 +166,7 @@ class WaitForDataplaneCallStep(WaitForCallStep):
     whose data address is the mock, and the SUT negotiates that asset and calls
     through its data plane. What differs is what the run announces — not the
     mock URL, which is only the data plane's target, but the offer to negotiate:
-    the asset (by dct:type, dct:subject and version when given), and the engine
+    the asset (by its public properties when given), and the engine
     connector's DSP URL and identity from the run's infrastructure binding.
     """
 
@@ -239,11 +185,9 @@ class WaitForDataplaneCallStep(WaitForCallStep):
                 asset_id=offer.asset_id,
                 dsp_url=_text(connector.dsp_url),
                 participant_id=_text(connector.participant_id),
-                dct_type=offer.dct_type,
-                dct_subject=offer.dct_subject,
-                version=offer.version,
+                properties=ConnectorOffer.describe(offer.asset or {}),
             ),
-            brief=offer.brief,
+            action=offer.action,
         )
 
 

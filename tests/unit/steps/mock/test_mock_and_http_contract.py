@@ -479,8 +479,17 @@ class TestWaitForDataplaneCall:
             }
         ]
 
+    def test_it_needs_an_asset_id_or_an_asset_that_carries_one(self) -> None:
+        mock = {"path": _PATH, "method": "POST", "base_mock_url": "b", "full_mock_url": "f"}
+        params = WaitForDataplaneCallParams.model_validate(
+            {"mock": mock, "asset": {"asset_id": "ccmapi-offer", "dct_type": "x"}}
+        )
+        assert params.asset_id == "ccmapi-offer"
+        with pytest.raises(ValueError):
+            WaitForDataplaneCallParams.model_validate({"mock": mock, "asset": {"dct_type": "x"}})
+
     @pytest.mark.asyncio
-    async def test_it_announces_the_offer_by_what_it_is_and_the_brief(
+    async def test_it_announces_the_offer_by_what_it_is_and_the_action(
         self, context: MagicMock
     ) -> None:
         context.infrastructure = Infrastructure()
@@ -490,18 +499,25 @@ class TestWaitForDataplaneCall:
             {"path": _PATH}, context, _definition("mock/api")
         )
         manager.resolve(_KEY, "POST", {}, None)
+        ccmapi = "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
 
         await WaitForDataplaneCallStep().invoke(
             {
                 "mock": registered.value["mock"],
                 "timeout_s": 1,
-                "asset_id": "testlab-ccmapi-asset-run-1",
-                "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI",
-                "dct_subject": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi",
-                "version": "3.0",
-                "brief": {
-                    "message": "Push your certificate.",
-                    "steps": ["Find the offer.", "Negotiate it.", "POST /companycertificate/push."],
+                # A config/connector/mock_asset value, as ${{ env.ccmapi_asset }} passes it.
+                "asset": {
+                    "asset_id": "testlab-ccmapi-asset-run-1",
+                    "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI",
+                    "dct_subject": ccmapi,
+                    "version": "3.0",
+                    "properties": {"name": "TestLab CCMAPI", "cx-common:feature": "push"},
+                    "private_properties": {"secret": "never announced"},
+                },
+                "action": {
+                    "label": "Send a certificate push",
+                    "description": "Push your certificate.",
+                    "recommendation": ["Find the offer.", "Negotiate it.", "POST it."],
                     "fields": [{"label": "header.receiverBpn", "value": "BPNL000000000TLB"}],
                 },
             },
@@ -509,9 +525,20 @@ class TestWaitForDataplaneCall:
             _definition("mock/wait/dataplane/http_request"),
         )
 
-        listener = context.report_waiting.call_args.args[2]
-        dumped = listener.model_dump()
+        dumped = context.report_waiting.call_args.args[2].model_dump()
+        assert dumped["offer"]["asset_id"] == "testlab-ccmapi-asset-run-1"
+        assert "secret" not in str(dumped["offer"])
         assert dumped["offer"]["catalog_filters"] == [
+            {
+                "operandLeft": "'https://w3id.org/edc/v0.0.1/ns/name'",
+                "operator": "=",
+                "operandRight": "TestLab CCMAPI",
+            },
+            {
+                "operandLeft": "'https://w3id.org/catenax/ontology/common#feature'",
+                "operator": "=",
+                "operandRight": "push",
+            },
             {
                 "operandLeft": "'http://purl.org/dc/terms/type'.'@id'",
                 "operator": "=",
@@ -520,7 +547,7 @@ class TestWaitForDataplaneCall:
             {
                 "operandLeft": "'http://purl.org/dc/terms/subject'.'@id'",
                 "operator": "=",
-                "operandRight": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi",
+                "operandRight": ccmapi,
             },
             {
                 "operandLeft": "'https://w3id.org/catenax/ontology/common#version'",
@@ -528,14 +555,15 @@ class TestWaitForDataplaneCall:
                 "operandRight": "3.0",
             },
         ]
-        assert dumped["brief"] == {
-            "message": "Push your certificate.",
-            "steps": ["Find the offer.", "Negotiate it.", "POST /companycertificate/push."],
+        assert dumped["action"] == {
+            "label": "Send a certificate push",
+            "description": "Push your certificate.",
+            "recommendation": ["Find the offer.", "Negotiate it.", "POST it."],
             "fields": [{"label": "header.receiverBpn", "value": "BPNL000000000TLB"}],
         }
 
     @pytest.mark.asyncio
-    async def test_a_direct_wait_carries_its_brief_too(self, context: MagicMock) -> None:
+    async def test_a_direct_wait_carries_its_action_too(self, context: MagicMock) -> None:
         manager = CallbackManager()
         set_callback_manager(manager)
         registered = await MockEndpointStep().invoke(
@@ -544,14 +572,18 @@ class TestWaitForDataplaneCall:
         manager.resolve(_KEY, "POST", {}, None)
 
         await WaitForCallStep().invoke(
-            {"mock": registered.value["mock"], "timeout_s": 1, "brief": {"steps": ["Call it."]}},
+            {
+                "mock": registered.value["mock"],
+                "timeout_s": 1,
+                "action": {"recommendation": "Call it."},
+            },
             context,
             _definition("mock/wait/http_request"),
         )
 
         listener = context.report_waiting.call_args.args[2]
-        assert listener.brief.steps == ["Call it."]
-        assert listener.brief.message is None
+        assert listener.action.recommendation == ["Call it."]
+        assert listener.action.description is None
         assert listener.offer is None
 
     @pytest.mark.asyncio

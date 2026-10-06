@@ -52,6 +52,9 @@ _DEFAULT_ASSET_CONTEXT: dict[str, str] = {
     "cx-taxo": "https://w3id.org/catenax/taxonomy#",
     "dct": "http://purl.org/dc/terms/",
 }
+#: The properties the SDK writes from its own arguments (dct_type,
+#: dct_subject, version); a config's ``properties`` may name them too.
+_SPELLED_BY_THE_SDK = frozenset({"dct:type", "dct:subject", "cx-common:version"})
 #: The prefix a semantic id is written under in an asset's properties.
 _AAS_SEMANTICS = "https://admin-shell.io/aas/3/0/HasSemantics/"
 
@@ -112,14 +115,22 @@ class CreateAssetParams(StepParams):
         """
         properties = self.asset.get("properties") or {}
         context = self.asset.get("@context", self.asset.get("context"))
-        semantic_properties: dict[str, Any] | None = None
+        # Every property the config names beyond the ones the SDK spells from
+        # its own arguments goes onto the asset as written (it used to be
+        # dropped): a plain name under the EDC vocabulary, a prefixed one under
+        # the asset context.
+        extra = {key: value for key, value in properties.items() if key not in _SPELLED_BY_THE_SDK}
+        if self.asset.get("name") and "name" not in extra:
+            extra["name"] = self.asset["name"]
         semantic_id = self.asset.get("semantic_id")
         if semantic_id:
-            semantic_properties = {"aas-semantics:semanticId": {"@id": str(semantic_id)}}
+            extra["aas-semantics:semanticId"] = {"@id": str(semantic_id)}
+        if extra:
             context = {
                 **_DEFAULT_ASSET_CONTEXT,
+                "@vocab": _DEFAULT_ASSET_CONTEXT["edc"],
                 **(context if isinstance(context, dict) else {}),
-                "aas-semantics": _AAS_SEMANTICS,
+                **({"aas-semantics": _AAS_SEMANTICS} if semantic_id else {}),
             }
         return {
             "base_url": self.asset.get("base_url", ""),
@@ -128,7 +139,7 @@ class CreateAssetParams(StepParams):
                 _iri(self.asset.get("dct_subject")) or _iri(properties.get("dct:subject"))
             ),
             "version": self.asset.get("version") or properties.get("cx-common:version") or "3.0",
-            "properties": semantic_properties,
+            "properties": extra or None,
             "proxy_params": self.asset.get("proxy_params"),
             "headers": self.asset.get("headers"),
             "private_properties": self.asset.get("private_properties"),
