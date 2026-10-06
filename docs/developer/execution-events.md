@@ -410,7 +410,7 @@ the call, a person has to, and this is the line that tells them what to type.
 | `test_id` | string | |
 | `step_id` | string \| null | |
 | `step_type` | string | `mock/wait/http_request`. |
-| `listener` | `Listener` | The address the step is blocked on. `via` says how the call has to arrive: `direct` (`mock/wait/http_request` — the SUT calls `url`) or `dataplane` (`mock/wait/dataplane/http_request` — the SUT negotiates `offer.asset_id` on the engine connector at `offer.dsp_url` / `offer.participant_id` and calls through its data plane, so `url` is only the data plane's target). |
+| `listener` | `Listener` | The address the step is blocked on. `via` says how the call has to arrive: `direct` (`mock/wait/http_request` — the SUT calls `url`) or `dataplane` (`mock/wait/dataplane/http_request` — the SUT finds the offer on the engine connector at `offer.dsp_url` / `offer.participant_id` with `offer.catalog_filters` (by `offer.dct_type`, `offer.dct_subject`, `offer.version` when the step names them, else by `offer.asset_id`), negotiates it and calls through its data plane, so `url` is only the data plane's target). `brief`, when the wait step gives one, is what the test tells the person driving the SUT: `message`, `steps` in order, and `fields` (`label`, `value`) to copy; a viewer shows it in place of what it would derive from the rest. |
 | `timeout_s` | number | How long the step waits before failing. |
 
 ```json

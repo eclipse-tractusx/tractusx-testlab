@@ -148,7 +148,13 @@ from tractusx_testlab.models.runtime.jobs import (
     JobEvent,
     JobMemory,
 )
-from tractusx_testlab.models.runtime.listener import ConnectorOffer, Listener
+from tractusx_testlab.models.runtime.listener import (
+    BriefField,
+    CatalogFilter,
+    ConnectorOffer,
+    Listener,
+    WaitBrief,
+)
 from tractusx_testlab.models.runtime.results import (
     AssertionResult,
     AssertionSummary,
@@ -177,11 +183,13 @@ __all__ = [
     "Base64Bytes",
     "BindingOverrideRefusedError",
     "BoundServiceError",
+    "BriefField",
     "CallbackResult",
     # infrastructure bindings (operated)
     "CapabilityBinding",
     # infrastructure requirements (authored)
     "CapabilityRequirement",
+    "CatalogFilter",
     "ConnectorBinding",
     "ConnectorError",
     "ConnectorOffer",
@@ -278,4 +286,5 @@ __all__ = [
     "VariableSource",
     "VariableTypeError",
     "VaultConfig",
+    "WaitBrief",
 ]

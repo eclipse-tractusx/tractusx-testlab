@@ -9,6 +9,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- The wait steps let a test say what the person driving the system under test
+  has to do, and `mock/wait/dataplane/http_request` lets it say which offer to
+  find by what it is rather than by id. `with.brief` (both wait steps) takes a
+  `message`, the `steps` to take in order and labelled `fields` to copy, and
+  the run publishes it as `listener.brief`, for a viewer to show in place of
+  what it would derive from the listener. `with.dct_type`, `with.dct_subject`
+  and `with.version` describe the engine asset; they reach
+  `listener.offer`, whose new `catalog_filters` is the EDC catalog filter that
+  finds it (`'http://purl.org/dc/terms/type'.'@id'` and so on) — the asset id
+  only when none is given. A system under test should never have to look an
+  offer up by an asset id that carries the run's id.
 - `testlab compile` (and `run` and `validate`, which compile or check the
   same way) says what it is doing while it does it. It used to print nothing
   until the package was written, so a slow compile looked like a stuck one.

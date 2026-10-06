@@ -39,7 +39,13 @@ from typing import TYPE_CHECKING, Any, ClassVar, cast
 from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.models import ConnectorOffer, ExecutionError, Listener, StepDefinition
+from tractusx_testlab.models import (
+    ConnectorOffer,
+    ExecutionError,
+    Listener,
+    StepDefinition,
+    WaitBrief,
+)
 from tractusx_testlab.server.inbound.run_scope import declared, scoped
 from tractusx_testlab.server.mock_registry import get_callback_manager
 from tractusx_testlab.steps.mock._models import MockInstance
@@ -69,6 +75,14 @@ class WaitForCallParams(StepParams):
     timeout_s: float = Field(
         default=_DEFAULT_TIMEOUT_S, gt=0, description="Seconds to wait before failing."
     )
+    brief: WaitBrief | None = Field(
+        default=None,
+        description=(
+            "What the run tells the person driving the system under test while it waits: "
+            "a message, the steps to take in order, and labelled values to copy. Shown in "
+            "place of what a viewer would otherwise derive from the listener."
+        ),
+    )
 
 
 class WaitForDataplaneCallParams(WaitForCallParams):
@@ -80,6 +94,21 @@ class WaitForDataplaneCallParams(WaitForCallParams):
             "The asset on the engine connector whose data address is the mock — the "
             "offer the system under test negotiates to reach it."
         ),
+    )
+    dct_type: str | None = Field(
+        default=None,
+        min_length=1,
+        description=(
+            "dct:type of that asset. Announced so the system under test finds the offer "
+            "by what it is, with a catalog filter, rather than by the asset id, which "
+            "usually carries the run's id."
+        ),
+    )
+    dct_subject: str | None = Field(
+        default=None, min_length=1, description="dct:subject of that asset, when it has one."
+    )
+    version: str | None = Field(
+        default=None, min_length=1, description="cx-common:version of that asset, e.g. 3.0."
     )
 
 
@@ -128,7 +157,10 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
     def listener(self, params: WaitForCallParams, context: StepContext) -> Listener:
         """Where the call is expected, as the run announces it."""
         return Listener(
-            method=params.mock.method, url=params.mock.full_mock_url, path=params.mock.path
+            method=params.mock.method,
+            url=params.mock.full_mock_url,
+            path=params.mock.path,
+            brief=params.brief,
         )
 
     async def execute(
@@ -188,15 +220,15 @@ class WaitForDataplaneCallStep(WaitForCallStep):
     whose data address is the mock, and the SUT negotiates that asset and calls
     through its data plane. What differs is what the run announces — not the
     mock URL, which is only the data plane's target, but the offer to negotiate:
-    the asset, and the engine connector's DSP URL and identity from the run's
-    infrastructure binding.
+    the asset (by dct:type, dct:subject and version when given), and the engine
+    connector's DSP URL and identity from the run's infrastructure binding.
     """
 
     params_model = WaitForDataplaneCallParams
 
     def listener(self, params: WaitForCallParams, context: StepContext) -> Listener:
         # Validated against this step's own params_model, so the asset is there.
-        asset_id = cast(WaitForDataplaneCallParams, params).asset_id
+        offer = cast(WaitForDataplaneCallParams, params)
         connector = context.infrastructure.engine.connector
         return Listener(
             method=params.mock.method,
@@ -204,10 +236,14 @@ class WaitForDataplaneCallStep(WaitForCallStep):
             path=params.mock.path,
             via="dataplane",
             offer=ConnectorOffer(
-                asset_id=asset_id,
+                asset_id=offer.asset_id,
                 dsp_url=_text(connector.dsp_url),
                 participant_id=_text(connector.participant_id),
+                dct_type=offer.dct_type,
+                dct_subject=offer.dct_subject,
+                version=offer.version,
             ),
+            brief=offer.brief,
         )
 
 

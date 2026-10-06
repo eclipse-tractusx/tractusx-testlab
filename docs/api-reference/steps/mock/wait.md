@@ -18,6 +18,7 @@ This is the other half of `mock/api`: that step hands the system under test a ca
 |---|---|---|---|---|---|
 | `mock` | [MockInstance](#mockinstance) | yes | — | — | The mock to wait on, as returned by the step that registered it. |
 | `timeout_s` | number | no | `30.0` | — | Seconds to wait before failing. |
+| `brief` | [WaitBrief](#waitbrief) | no | `None` | — | What the run tells the person driving the system under test while it waits: a message, the steps to take in order, and labelled values to copy. Shown in place of what a viewer would otherwise derive from the listener. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -34,6 +35,15 @@ _The inbound request a mock endpoint received._
 
 ## Nested objects
 
+### BriefField
+
+One labelled value the person driving the system under test copies.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `label` | string | yes | — | — | What the value is, e.g. `header.receiverBpn`. |
+| `value` | string \| integer \| number \| boolean | yes | — | — | The value to copy. |
+
 ### MockInstance
 
 A registered mock, as the steps that use it later need to see it.
@@ -45,3 +55,13 @@ A registered mock, as the steps that use it later need to see it.
 | `method` | string | yes | — | — | HTTP method the mock answers. |
 | `base_mock_url` | string | yes | — | — | Root URL of the testlab mock server. |
 | `full_mock_url` | string | yes | — | — | Address the system under test calls — root plus path. |
+
+### WaitBrief
+
+What the test tells the person driving the system under test while it waits — written by the test author on the wait step (`with.brief`), in place of what a viewer would otherwise derive from the listener.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `message` | string | no | `None` | — | The note shown first: what is being asked, and why. |
+| `steps` | list of string | no | `[]` | — | What to do, in order: one action per entry. |
+| `fields` | list of [BriefField](#brieffield) | no | `[]` | — | Values to copy, shown beside the steps, in order. |

@@ -10,7 +10,7 @@
 
 Wait for an inbound HTTP request that arrives through the engine connector's data plane.
 
-The same wait as `mock/wait/http_request`, for a mock the system under test must not call directly: a test offers an asset on the engine connector whose data address is the mock, and the SUT negotiates that asset and calls through its data plane. What differs is what the run announces — not the mock URL, which is only the data plane's target, but the offer to negotiate: the asset, and the engine connector's DSP URL and identity from the run's infrastructure binding.
+The same wait as `mock/wait/http_request`, for a mock the system under test must not call directly: a test offers an asset on the engine connector whose data address is the mock, and the SUT negotiates that asset and calls through its data plane. What differs is what the run announces — not the mock URL, which is only the data plane's target, but the offer to negotiate: the asset (by dct:type, dct:subject and version when given), and the engine connector's DSP URL and identity from the run's infrastructure binding.
 
 **Inputs**
 
@@ -18,7 +18,11 @@ The same wait as `mock/wait/http_request`, for a mock the system under test must
 |---|---|---|---|---|---|
 | `mock` | [MockInstance](#mockinstance) | yes | — | — | The mock to wait on, as returned by the step that registered it. |
 | `timeout_s` | number | no | `30.0` | — | Seconds to wait before failing. |
+| `brief` | [WaitBrief](#waitbrief) | no | `None` | — | What the run tells the person driving the system under test while it waits: a message, the steps to take in order, and labelled values to copy. Shown in place of what a viewer would otherwise derive from the listener. |
 | `asset_id` | string | yes | — | — | The asset on the engine connector whose data address is the mock — the offer the system under test negotiates to reach it. |
+| `dct_type` | string | no | `None` | — | dct:type of that asset. Announced so the system under test finds the offer by what it is, with a catalog filter, rather than by the asset id, which usually carries the run's id. |
+| `dct_subject` | string | no | `None` | — | dct:subject of that asset, when it has one. |
+| `version` | string | no | `None` | — | cx-common:version of that asset, e.g. 3.0. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -35,6 +39,15 @@ _The inbound request a mock endpoint received._
 
 ## Nested objects
 
+### BriefField
+
+One labelled value the person driving the system under test copies.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `label` | string | yes | — | — | What the value is, e.g. `header.receiverBpn`. |
+| `value` | string \| integer \| number \| boolean | yes | — | — | The value to copy. |
+
 ### MockInstance
 
 A registered mock, as the steps that use it later need to see it.
@@ -46,3 +59,13 @@ A registered mock, as the steps that use it later need to see it.
 | `method` | string | yes | — | — | HTTP method the mock answers. |
 | `base_mock_url` | string | yes | — | — | Root URL of the testlab mock server. |
 | `full_mock_url` | string | yes | — | — | Address the system under test calls — root plus path. |
+
+### WaitBrief
+
+What the test tells the person driving the system under test while it waits — written by the test author on the wait step (`with.brief`), in place of what a viewer would otherwise derive from the listener.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `message` | string | no | `None` | — | The note shown first: what is being asked, and why. |
+| `steps` | list of string | no | `[]` | — | What to do, in order: one action per entry. |
+| `fields` | list of [BriefField](#brieffield) | no | `[]` | — | Values to copy, shown beside the steps, in order. |

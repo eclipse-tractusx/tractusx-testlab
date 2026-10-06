@@ -32,7 +32,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.models import ConnectorOffer, StepDefinition
 from tractusx_testlab.models.domain.capabilities import ConnectorBinding
 from tractusx_testlab.models.domain.infrastructure import EngineBindings, Infrastructure
 from tractusx_testlab.server.callbacks import CallbackManager
@@ -468,6 +468,91 @@ class TestWaitForDataplaneCall:
         # The wait itself is the plain one: same output, same arrival report.
         assert output.value["request_body"] == {"status": "RECEIVED"}
         assert context.report_received.call_args.args[2] is listener
+
+    def test_without_a_kind_the_catalog_filter_is_the_asset_id(self) -> None:
+        offer = ConnectorOffer(asset_id="ccmapi-offer")
+        assert [f.model_dump() for f in offer.catalog_filters] == [
+            {
+                "operandLeft": "https://w3id.org/edc/v0.0.1/ns/id",
+                "operator": "=",
+                "operandRight": "ccmapi-offer",
+            }
+        ]
+
+    @pytest.mark.asyncio
+    async def test_it_announces_the_offer_by_what_it_is_and_the_brief(
+        self, context: MagicMock
+    ) -> None:
+        context.infrastructure = Infrastructure()
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_KEY, "POST", {}, None)
+
+        await WaitForDataplaneCallStep().invoke(
+            {
+                "mock": registered.value["mock"],
+                "timeout_s": 1,
+                "asset_id": "testlab-ccmapi-asset-run-1",
+                "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI",
+                "dct_subject": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi",
+                "version": "3.0",
+                "brief": {
+                    "message": "Push your certificate.",
+                    "steps": ["Find the offer.", "Negotiate it.", "POST /companycertificate/push."],
+                    "fields": [{"label": "header.receiverBpn", "value": "BPNL000000000TLB"}],
+                },
+            },
+            context,
+            _definition("mock/wait/dataplane/http_request"),
+        )
+
+        listener = context.report_waiting.call_args.args[2]
+        dumped = listener.model_dump()
+        assert dumped["offer"]["catalog_filters"] == [
+            {
+                "operandLeft": "'http://purl.org/dc/terms/type'.'@id'",
+                "operator": "=",
+                "operandRight": "https://w3id.org/catenax/taxonomy#CCMAPI",
+            },
+            {
+                "operandLeft": "'http://purl.org/dc/terms/subject'.'@id'",
+                "operator": "=",
+                "operandRight": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi",
+            },
+            {
+                "operandLeft": "'https://w3id.org/catenax/ontology/common#version'",
+                "operator": "=",
+                "operandRight": "3.0",
+            },
+        ]
+        assert dumped["brief"] == {
+            "message": "Push your certificate.",
+            "steps": ["Find the offer.", "Negotiate it.", "POST /companycertificate/push."],
+            "fields": [{"label": "header.receiverBpn", "value": "BPNL000000000TLB"}],
+        }
+
+    @pytest.mark.asyncio
+    async def test_a_direct_wait_carries_its_brief_too(self, context: MagicMock) -> None:
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_KEY, "POST", {}, None)
+
+        await WaitForCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1, "brief": {"steps": ["Call it."]}},
+            context,
+            _definition("mock/wait/http_request"),
+        )
+
+        listener = context.report_waiting.call_args.args[2]
+        assert listener.brief.steps == ["Call it."]
+        assert listener.brief.message is None
+        assert listener.offer is None
 
     @pytest.mark.asyncio
     async def test_an_unbound_connector_still_names_the_asset(self, context: MagicMock) -> None:
