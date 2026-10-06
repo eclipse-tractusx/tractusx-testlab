@@ -34,6 +34,8 @@ from __future__ import annotations
 
 import json
 
+from tractusx_testlab.logging.action_banner import action_banner
+
 #: Longest inbound body echoed on the received line; the trace has the whole one.
 _MAX_BODY = 80
 
@@ -46,6 +48,9 @@ def _where(data: dict) -> str:
 
 def _call(data: dict) -> str:
     listener = data.get("listener") or {}
+    if listener.get("via") == "dataplane":
+        # The URL is only the data plane's target: never one to hand the SUT.
+        return f"— {listener.get('method', '?')} {listener.get('path', '?')} through the test suite's connector"
     return f"— call {listener.get('method', '?')} {listener.get('url', '?')}"
 
 
@@ -57,11 +62,12 @@ def listening_line(base: str, data: dict) -> str:
 
 
 def waiting_line(base: str, data: dict) -> str:
-    """The run is blocked on the address, and this is how long it will wait."""
+    """The run is blocked on the address, and this is how long it will wait —
+    the line, and under it the framed block a person acting for the SUT reads."""
     timeout = data.get("timeout_s")
     budget = f"(up to {float(timeout):.0f}s)" if timeout else ""
     parts = (base, _where(data), str(data.get("step_type", "")), _call(data), budget)
-    return " ".join(p for p in parts if p)
+    return "\n".join((" ".join(p for p in parts if p), action_banner(data)))
 
 
 def suspended_line(base: str, data: dict) -> str:

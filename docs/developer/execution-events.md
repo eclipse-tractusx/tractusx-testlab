@@ -425,7 +425,19 @@ the call, a person has to, and this is the line that tells them what to type.
 }
 ```
 
-On the console: `step.waiting [external-callback] await_call mock/wait/http_request — call POST http://localhost:8100/testlab-e2e/callback (up to 30s)`.
+On the console: `step.waiting [external-callback] await_call mock/wait/http_request — call POST http://localhost:8100/testlab-e2e/callback (up to 30s)`,
+and under it a framed block for the person who may have to act (a data-plane wait names the
+connector and the catalog filter instead of the mock URL):
+
+```
+==============================================================================
+  ACTION REQUIRED                                              waits up to 30s
+  [external-callback] await_call
+------------------------------------------------------------------------------
+  What to do:
+    1. Send POST http://localhost:8100/testlab-e2e/callback.
+==============================================================================
+```
 In the trace it is a `tck.test.step.waiting`.
 
 #### `step_suspended`

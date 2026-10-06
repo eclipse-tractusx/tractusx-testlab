@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- The console frames every wait for the system under test. Under the
+  `step.waiting` line it draws an `ACTION REQUIRED` block between `=` rules,
+  with how long the run waits, and says what to do in order: the wait's
+  `action` (label, description, recommendation, fields) when the test
+  declared one, else what the listener implies. For a data-plane wait it names
+  the test suite's connector and the catalog filter, and no longer prints the
+  mock URL, which is only the data plane's target.
 - The wait steps let a test say what the system under test has to do, and
   `mock/wait/dataplane/http_request` lets it say which offer to find by what
   it is rather than by id. `with.action` (both wait steps) takes a `label`, a
