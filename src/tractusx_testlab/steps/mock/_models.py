@@ -24,10 +24,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
+from tractusx_testlab.models.runtime.listener import WaitAction
 from tractusx_testlab.steps.shared_models import StepParams
 
 if TYPE_CHECKING:
@@ -74,3 +75,64 @@ class RequiredMockIdParams(MockIdParams):
     """For mocks that stand for a whole service, where the ID is not optional."""
 
     id: str = Field(min_length=1, description="Unique identifier for the registered mock.")
+
+
+_DEFAULT_TIMEOUT_S = 30.0
+
+
+class WaitForCallParams(StepParams):
+    """Input contract of ``mock/wait/http_request``.
+
+    The mock arrives as the object the step that registered it returned, not as
+    a URL or an ID to look up again: the mock already knows its own path and
+    method, so there is nothing left for this step to guess.
+    """
+
+    mock: MockInstance = Field(
+        description="The mock to wait on, as returned by the step that registered it."
+    )
+    timeout_s: float = Field(
+        default=_DEFAULT_TIMEOUT_S, gt=0, description="Seconds to wait before failing."
+    )
+    action: WaitAction | None = Field(
+        default=None,
+        description=(
+            "The action the system under test has to take while the run waits: 'label', "
+            "'description', 'recommendation' (the steps, in order) and 'fields' (labelled "
+            "values to copy). Shown in place of what a viewer would derive from the listener."
+        ),
+    )
+
+
+class WaitForDataplaneCallParams(WaitForCallParams):
+    """Input contract of ``mock/wait/dataplane/http_request``."""
+
+    asset_id: str = Field(
+        default="",
+        description=(
+            "The asset on the engine connector whose data address is the mock — the "
+            "offer the system under test negotiates to reach it. Optional when 'asset' "
+            "carries it."
+        ),
+    )
+    asset: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "That asset as configured: a 'config/connector/asset' or "
+            "'config/connector/mock_asset' value, e.g. '${{ env.ccmapi_asset }}'. Its "
+            "public properties ('dct_type', 'dct_subject', 'version', 'semantic_id', "
+            "'properties') are announced, so the system under test finds the offer by "
+            "what it is instead of by the asset id, which usually carries the run's id. "
+            "Its 'private_properties' are never announced."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _names_the_asset(self) -> WaitForDataplaneCallParams:
+        if isinstance(self.asset, dict) and isinstance(self.asset.get("asset"), dict):
+            self.asset = self.asset["asset"]
+        if not self.asset_id and self.asset:
+            self.asset_id = str(self.asset.get("asset_id") or "")
+        if not self.asset_id:
+            raise ValueError("name the asset: 'asset_id', or an 'asset' that carries one")
+        return self

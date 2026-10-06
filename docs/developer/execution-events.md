@@ -410,7 +410,7 @@ the call, a person has to, and this is the line that tells them what to type.
 | `test_id` | string | |
 | `step_id` | string \| null | |
 | `step_type` | string | `mock/wait/http_request`. |
-| `listener` | `Listener` | The address the step is blocked on. `via` says how the call has to arrive: `direct` (`mock/wait/http_request` — the SUT calls `url`) or `dataplane` (`mock/wait/dataplane/http_request` — the SUT negotiates `offer.asset_id` on the engine connector at `offer.dsp_url` / `offer.participant_id` and calls through its data plane, so `url` is only the data plane's target). |
+| `listener` | `Listener` | The address the step is blocked on. `via` says how the call has to arrive: `direct` (`mock/wait/http_request` — the SUT calls `url`) or `dataplane` (`mock/wait/dataplane/http_request` — the SUT finds the offer on the engine connector at `offer.dsp_url` / `offer.participant_id` with `offer.catalog_filters`, built from the asset's public `offer.properties` when the step names the asset (`with.asset`), else from `offer.asset_id`; it negotiates the offer and calls through its data plane, so `url` is only the data plane's target). `action`, when the wait step declares one, is what the test asks of the SUT: `label`, `description`, `recommendation` (the steps, in order) and `fields` (`label`, `value`) to copy; a viewer shows it in place of what it would derive from the rest. |
 | `timeout_s` | number | How long the step waits before failing. |
 
 ```json
@@ -425,7 +425,19 @@ the call, a person has to, and this is the line that tells them what to type.
 }
 ```
 
-On the console: `step.waiting [external-callback] await_call mock/wait/http_request — call POST http://localhost:8100/testlab-e2e/callback (up to 30s)`.
+On the console: `step.waiting [external-callback] await_call mock/wait/http_request — call POST http://localhost:8100/testlab-e2e/callback (up to 30s)`,
+and under it a framed block for the person who may have to act (a data-plane wait names the
+connector and the catalog filter instead of the mock URL):
+
+```
+==============================================================================
+  ACTION REQUIRED                                              waits up to 30s
+  [external-callback] await_call
+------------------------------------------------------------------------------
+  What to do:
+    1. Send POST http://localhost:8100/testlab-e2e/callback.
+==============================================================================
+```
 In the trace it is a `tck.test.step.waiting`.
 
 #### `step_suspended`

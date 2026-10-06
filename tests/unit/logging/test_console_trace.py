@@ -320,6 +320,66 @@ class TestAWaitingLine:
     def test_a_blocked_step_says_how_long_it_will_wait(self) -> None:
         assert "(up to 30s)" in render("step.waiting", _STEP_WAITING)
 
+    def test_it_frames_the_wait_so_a_person_sees_it_and_acts(self) -> None:
+        lines = render("step.waiting", _STEP_WAITING).splitlines()
+        assert lines[1] == "=" * 78 and lines[-1] == "=" * 78
+        assert lines[2].startswith("  ACTION REQUIRED") and lines[2].endswith("waits up to 30s")
+        assert "    1. Send POST http://localhost:8100/testlab-e2e/callback." in lines
+
+    def test_a_dataplane_wait_says_which_offer_and_never_the_mock_url(self) -> None:
+        waiting = {
+            **_STEP_WAITING,
+            "step_type": "mock/wait/dataplane/http_request",
+            "listener": {
+                **_STEP_WAITING["listener"],
+                "via": "dataplane",
+                "offer": {
+                    "asset_id": "testlab-ccmapi-run-1",
+                    "dsp_url": "https://engine-edc.example/api/v1/dsp",
+                    "participant_id": "did:web:engine.example:BPNL000000000TLB",
+                    "properties": {"dct:type": {"@id": "https://w3id.org/catenax/taxonomy#CCMAPI"}},
+                    "catalog_filters": [
+                        {
+                            "operandLeft": "'http://purl.org/dc/terms/type'.'@id'",
+                            "operator": "=",
+                            "operandRight": "https://w3id.org/catenax/taxonomy#CCMAPI",
+                        }
+                    ],
+                },
+            },
+        }
+        text = render("step.waiting", waiting)
+        assert "localhost:8100" not in text
+        assert "POST /testlab-e2e/callback through the test suite's connector" in text
+        assert "    connector  https://engine-edc.example/api/v1/dsp" in text
+        assert (
+            "    filter     'http://purl.org/dc/terms/type'.'@id' = "
+            "https://w3id.org/catenax/taxonomy#CCMAPI"
+        ) in text
+        assert "    2. Negotiate the offer it returns and get its EDR." in text
+
+    def test_the_test_s_action_replaces_the_derived_steps(self) -> None:
+        waiting = {
+            **_STEP_WAITING,
+            "listener": {
+                **_STEP_WAITING["listener"],
+                "action": {
+                    "label": "Send the callback",
+                    "description": "The stub stands in for the SUT.",
+                    "recommendation": ["Run the stub.", "Wait for its 200."],
+                    "fields": [{"label": "run", "value": "r-1"}],
+                },
+            },
+        }
+        lines = render("step.waiting", waiting).splitlines()
+        assert lines[2].startswith("  ACTION REQUIRED — Send the callback")
+        assert "  The stub stands in for the SUT." in lines
+        assert [line for line in lines if line.startswith("    ") and ". " in line[:8]] == [
+            "    1. Run the stub.",
+            "    2. Wait for its 200.",
+        ]
+        assert "    run  r-1" in lines
+
     def test_an_opened_endpoint_says_where_to_call_and_nothing_about_a_budget(self) -> None:
         opened = {
             "kind": "step_listening",

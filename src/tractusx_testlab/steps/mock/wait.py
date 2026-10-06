@@ -39,10 +39,15 @@ from typing import TYPE_CHECKING, Any, ClassVar, cast
 from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.models import ConnectorOffer, ExecutionError, Listener, StepDefinition
+from tractusx_testlab.models import (
+    ConnectorOffer,
+    ExecutionError,
+    Listener,
+    StepDefinition,
+)
 from tractusx_testlab.server.inbound.run_scope import declared, scoped
 from tractusx_testlab.server.mock_registry import get_callback_manager
-from tractusx_testlab.steps.mock._models import MockInstance
+from tractusx_testlab.steps.mock._models import WaitForCallParams, WaitForDataplaneCallParams
 from tractusx_testlab.steps.mock._paused_wait import wait_through_pauses
 from tractusx_testlab.steps.shared_models import StepParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
@@ -51,36 +56,6 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 logger = logging.getLogger(__name__)
-
-_DEFAULT_TIMEOUT_S = 30.0
-
-
-class WaitForCallParams(StepParams):
-    """Input contract of ``mock/wait/http_request``.
-
-    The mock arrives as the object the step that registered it returned, not as
-    a URL or an ID to look up again: the mock already knows its own path and
-    method, so there is nothing left for this step to guess.
-    """
-
-    mock: MockInstance = Field(
-        description="The mock to wait on, as returned by the step that registered it."
-    )
-    timeout_s: float = Field(
-        default=_DEFAULT_TIMEOUT_S, gt=0, description="Seconds to wait before failing."
-    )
-
-
-class WaitForDataplaneCallParams(WaitForCallParams):
-    """Input contract of ``mock/wait/dataplane/http_request``."""
-
-    asset_id: str = Field(
-        min_length=1,
-        description=(
-            "The asset on the engine connector whose data address is the mock — the "
-            "offer the system under test negotiates to reach it."
-        ),
-    )
 
 
 class InboundCallOutput(StepPayload):
@@ -128,7 +103,10 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
     def listener(self, params: WaitForCallParams, context: StepContext) -> Listener:
         """Where the call is expected, as the run announces it."""
         return Listener(
-            method=params.mock.method, url=params.mock.full_mock_url, path=params.mock.path
+            method=params.mock.method,
+            url=params.mock.full_mock_url,
+            path=params.mock.path,
+            action=params.action,
         )
 
     async def execute(
@@ -188,15 +166,15 @@ class WaitForDataplaneCallStep(WaitForCallStep):
     whose data address is the mock, and the SUT negotiates that asset and calls
     through its data plane. What differs is what the run announces — not the
     mock URL, which is only the data plane's target, but the offer to negotiate:
-    the asset, and the engine connector's DSP URL and identity from the run's
-    infrastructure binding.
+    the asset (by its public properties when given), and the engine
+    connector's DSP URL and identity from the run's infrastructure binding.
     """
 
     params_model = WaitForDataplaneCallParams
 
     def listener(self, params: WaitForCallParams, context: StepContext) -> Listener:
         # Validated against this step's own params_model, so the asset is there.
-        asset_id = cast(WaitForDataplaneCallParams, params).asset_id
+        offer = cast(WaitForDataplaneCallParams, params)
         connector = context.infrastructure.engine.connector
         return Listener(
             method=params.mock.method,
@@ -204,10 +182,12 @@ class WaitForDataplaneCallStep(WaitForCallStep):
             path=params.mock.path,
             via="dataplane",
             offer=ConnectorOffer(
-                asset_id=asset_id,
+                asset_id=offer.asset_id,
                 dsp_url=_text(connector.dsp_url),
                 participant_id=_text(connector.participant_id),
+                properties=ConnectorOffer.describe(offer.asset or {}),
             ),
+            action=offer.action,
         )
 
 

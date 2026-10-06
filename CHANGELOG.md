@@ -9,6 +9,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- The console frames every wait for the system under test. Under the
+  `step.waiting` line it draws an `ACTION REQUIRED` block between `=` rules,
+  with how long the run waits, and says what to do in order: the wait's
+  `action` (label, description, recommendation, fields) when the test
+  declared one, else what the listener implies. For a data-plane wait it names
+  the test suite's connector and the catalog filter, and no longer prints the
+  mock URL, which is only the data plane's target.
+- The wait steps let a test say what the system under test has to do, and
+  `mock/wait/dataplane/http_request` lets it say which offer to find by what
+  it is rather than by id. `with.action` (both wait steps) takes a `label`, a
+  `description`, a `recommendation` (the steps, in order; one string is one
+  step) and labelled `fields` to copy; the run publishes it as
+  `listener.action`, for a viewer to show in place of what it would derive
+  from the listener. `with.asset` takes the asset as configured — a
+  `config/connector/asset` or `config/connector/mock_asset` value such as
+  `${{ env.ccmapi_asset }}` — and makes `asset_id` optional; its public
+  properties (`dct_type`, `dct_subject`, `version`, `semantic_id` and every
+  entry of `properties`) reach `listener.offer.properties`, and the new
+  `listener.offer.catalog_filters` is the EDC catalog filter that finds the
+  offer (`'http://purl.org/dc/terms/type'.'@id'` and so on) — the asset id
+  only when no property is given. `private_properties` are never announced.
+  A system under test should never have to look an offer up by an asset id
+  that carries the run's id.
+
 - `testlab compile` (and `run` and `validate`, which compile or check the
   same way) says what it is doing while it does it. It used to print nothing
   until the package was written, so a slow compile looked like a stuck one.
@@ -119,6 +143,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   cannot fail the next one, and a mock registered again starts clean.
 
 ### Fixed
+
+- The consumer-side registry steps (`digital-twin-registry/consumer/dataplane/*`)
+  honour an explicit `edr_token: ""` as "no token", as `connector/dataplane/*`
+  already did. They read it as "not given" and sent the EDR an earlier
+  transfer published instead — which the credential hardening now refuses for
+  any other origin, so a registry called directly (a mock, a negative path)
+  failed the step.
+- `connector/provider/create_asset`, `create_mock_asset` and the wizard put
+  every entry of an asset config's `properties` (and its `name`) on the asset.
+  Only `dct:type`, `dct:subject`, `cx-common:version` and the semantic id
+  reached the connector before; anything else — a `description`, a
+  `contenttype`, a property of a kit's own — was dropped without a word. A
+  plain name is written under the EDC vocabulary (`@vocab`), a prefixed one
+  under the asset context.
 
 - A mistake in the TCK or the run's configuration is no longer reported as a
   failure of the system under test. `AuthoringError` inherited `origin: sut`,

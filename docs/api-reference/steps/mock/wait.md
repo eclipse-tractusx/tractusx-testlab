@@ -18,6 +18,7 @@ This is the other half of `mock/api`: that step hands the system under test a ca
 |---|---|---|---|---|---|
 | `mock` | [MockInstance](#mockinstance) | yes | — | — | The mock to wait on, as returned by the step that registered it. |
 | `timeout_s` | number | no | `30.0` | — | Seconds to wait before failing. |
+| `action` | [WaitAction](#waitaction) | no | `None` | — | The action the system under test has to take while the run waits: 'label', 'description', 'recommendation' (the steps, in order) and 'fields' (labelled values to copy). Shown in place of what a viewer would derive from the listener. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -34,6 +35,15 @@ _The inbound request a mock endpoint received._
 
 ## Nested objects
 
+### ActionField
+
+One labelled value the person driving the system under test copies.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `label` | string | yes | — | — | What the value is, e.g. `header.receiverBpn`. |
+| `value` | string \| integer \| number \| boolean | yes | — | — | The value to copy. |
+
 ### MockInstance
 
 A registered mock, as the steps that use it later need to see it.
@@ -45,3 +55,14 @@ A registered mock, as the steps that use it later need to see it.
 | `method` | string | yes | — | — | HTTP method the mock answers. |
 | `base_mock_url` | string | yes | — | — | Root URL of the testlab mock server. |
 | `full_mock_url` | string | yes | — | — | Address the system under test calls — root plus path. |
+
+### WaitAction
+
+The action the system under test has to take while a step waits — written by the test author on the wait step (`with.action`) and shown in place of what a viewer would otherwise derive from the listener.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `label` | string | no | `None` | — | The action's name, e.g. 'Send a certificate push'. |
+| `description` | string | no | `None` | — | What is being asked of the system under test, and why. |
+| `recommendation` | list of string | no | `[]` | — | How to do it: the steps to take, in order. A single string is one step. |
+| `fields` | list of [ActionField](#actionfield) | no | `[]` | — | Values to copy, shown beside the steps, in order. |

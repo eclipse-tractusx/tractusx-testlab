@@ -68,3 +68,33 @@ class TestSemanticId:
         definition = _definition({"base_url": "http://b"})
         assert definition["properties"] is None
         assert definition["context"] is None
+
+
+class TestFurtherProperties:
+    """A config's own properties reach the asset; they used to be dropped."""
+
+    def test_they_go_onto_the_asset_beside_what_the_sdk_spells(self) -> None:
+        definition = CreateAssetParams(
+            asset={
+                "asset_id": "a-1",
+                "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI",
+                "properties": {
+                    "dct:type": "cx-taxo:CCMAPI",
+                    "description": "CX-0135 consumer CCMAPI",
+                    "cx-common:feature": "push",
+                },
+                "private_properties": {"owner": "testlab"},
+            }
+        ).definition()
+
+        assert definition["properties"] == {
+            "description": "CX-0135 consumer CCMAPI",
+            "cx-common:feature": "push",
+        }
+        assert definition["dct_type"] == "https://w3id.org/catenax/taxonomy#CCMAPI"
+        assert definition["context"]["@vocab"] == "https://w3id.org/edc/v0.0.1/ns/"
+        assert definition["private_properties"] == {"owner": "testlab"}
+
+    def test_a_name_is_one_of_them(self) -> None:
+        definition = CreateAssetParams(asset={"name": "CCM API", "base_url": "b"}).definition()
+        assert definition["properties"] == {"name": "CCM API"}

@@ -10,7 +10,7 @@
 
 Wait for an inbound HTTP request that arrives through the engine connector's data plane.
 
-The same wait as `mock/wait/http_request`, for a mock the system under test must not call directly: a test offers an asset on the engine connector whose data address is the mock, and the SUT negotiates that asset and calls through its data plane. What differs is what the run announces — not the mock URL, which is only the data plane's target, but the offer to negotiate: the asset, and the engine connector's DSP URL and identity from the run's infrastructure binding.
+The same wait as `mock/wait/http_request`, for a mock the system under test must not call directly: a test offers an asset on the engine connector whose data address is the mock, and the SUT negotiates that asset and calls through its data plane. What differs is what the run announces — not the mock URL, which is only the data plane's target, but the offer to negotiate: the asset (by its public properties when given), and the engine connector's DSP URL and identity from the run's infrastructure binding.
 
 **Inputs**
 
@@ -18,7 +18,9 @@ The same wait as `mock/wait/http_request`, for a mock the system under test must
 |---|---|---|---|---|---|
 | `mock` | [MockInstance](#mockinstance) | yes | — | — | The mock to wait on, as returned by the step that registered it. |
 | `timeout_s` | number | no | `30.0` | — | Seconds to wait before failing. |
-| `asset_id` | string | yes | — | — | The asset on the engine connector whose data address is the mock — the offer the system under test negotiates to reach it. |
+| `action` | [WaitAction](#waitaction) | no | `None` | — | The action the system under test has to take while the run waits: 'label', 'description', 'recommendation' (the steps, in order) and 'fields' (labelled values to copy). Shown in place of what a viewer would derive from the listener. |
+| `asset_id` | string | no | `''` | — | The asset on the engine connector whose data address is the mock — the offer the system under test negotiates to reach it. Optional when 'asset' carries it. |
+| `asset` | object | no | `None` | — | That asset as configured: a 'config/connector/asset' or 'config/connector/mock_asset' value, e.g. '${{ env.ccmapi_asset }}'. Its public properties ('dct_type', 'dct_subject', 'version', 'semantic_id', 'properties') are announced, so the system under test finds the offer by what it is instead of by the asset id, which usually carries the run's id. Its 'private_properties' are never announced. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -35,6 +37,15 @@ _The inbound request a mock endpoint received._
 
 ## Nested objects
 
+### ActionField
+
+One labelled value the person driving the system under test copies.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `label` | string | yes | — | — | What the value is, e.g. `header.receiverBpn`. |
+| `value` | string \| integer \| number \| boolean | yes | — | — | The value to copy. |
+
 ### MockInstance
 
 A registered mock, as the steps that use it later need to see it.
@@ -46,3 +57,14 @@ A registered mock, as the steps that use it later need to see it.
 | `method` | string | yes | — | — | HTTP method the mock answers. |
 | `base_mock_url` | string | yes | — | — | Root URL of the testlab mock server. |
 | `full_mock_url` | string | yes | — | — | Address the system under test calls — root plus path. |
+
+### WaitAction
+
+The action the system under test has to take while a step waits — written by the test author on the wait step (`with.action`) and shown in place of what a viewer would otherwise derive from the listener.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `label` | string | no | `None` | — | The action's name, e.g. 'Send a certificate push'. |
+| `description` | string | no | `None` | — | What is being asked of the system under test, and why. |
+| `recommendation` | list of string | no | `[]` | — | How to do it: the steps to take, in order. A single string is one step. |
+| `fields` | list of [ActionField](#actionfield) | no | `[]` | — | Values to copy, shown beside the steps, in order. |
