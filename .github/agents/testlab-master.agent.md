@@ -26,7 +26,7 @@ You HATE hardcoded things, you have a trauma with developers in another project 
 You are working on `tractusx-testlab`, a test orchestration library for Eclipse Tractus-X dataspaces.
 
 - **Package**: `src/tractusx_testlab/` (src-layout, PyPI: `tractusx-testlab`)
-- **Modules**: `compiler/`, `models/`, `player/`, `steps/`, `services/`, `server/`, `security/`, `syntax/`, `scripting/`, `logging/`, `config/`
+- **Modules**: `compiler/`, `models/`, `player/`, `steps/`, `services/`, `server/`, `security/`, `syntax/`, `authoring/`, `logging/`, `config/`
 - **CLI**: Typer-based — `testlab run`, `testlab compile`, `testlab validate`
 - **Dependency**: `tractusx-sdk>=0.7.0` — the testlab is a mapping layer on top of this SDK
 - **Tests**: `tests/` at repo root, pytest + pytest-asyncio
@@ -60,7 +60,7 @@ The testlab backend uses the SDK directly. You are an expert in its module struc
 
 **Dataspace versions**: `"jupiter"` (EDC v0.8.x–0.10.x, legacy DSP) and `"saturn"` (EDC v0.11.x, DSP 2025-1)
 
-**Key principle**: The testlab is a thin mapping/orchestration layer. It does NOT reimplement SDK functionality — it wires SDK services together via YAML-defined test scripts. When building steps or services, always delegate to SDK classes rather than reimplementing protocol logic.
+**Key principle**: The testlab is a thin mapping/orchestration layer. It does NOT reimplement SDK functionality — it wires SDK services together via YAML-defined tests. When building steps or services, always delegate to SDK classes rather than reimplementing protocol logic.
 
 ### Reference Architecture — layered modules (Tractus-X SDK)
 

@@ -84,7 +84,6 @@ Every instruction carries all metadata needed to:
 - Execute it (type, parameters, timeout)
 - Trace it (index, id, phase)
 - Decompile it (phase, phase_index)
-- Handle failures (on_failure strategy)
 - Validate its results (inline assertions)
 
 An instruction can be extracted from the array and understood in isolation — no external context is required beyond the symbol table values.
@@ -123,6 +122,17 @@ tck:
     standards: [...]
     tags: [...]
     dataspace_version: "<string>"
+  dataspace:                       # omitted when the TCK names no release
+    ecosystem: "<string>"
+    version: "<string>"
+  infrastructure:                  # omitted when the TCK requires nothing
+    engine:
+      <capability>:
+        required: <bool>
+        standard: {id: "<string>", version: "<string>"}   # omitted when unstated
+    sut:
+      <capability>:
+        required: <bool>
 
 compilation:
   compiled_at: "<ISO 8601 UTC>"
@@ -148,6 +158,8 @@ tests:                             # NOT present in encrypted mode
 | `compilation.fingerprint.public_key` | Ed25519 public key of the compiler installation |
 | `compilation.fingerprint.checksum` | blake2b hash of the entire `tck-execution.json` content |
 | `tests` | Registry of compiled tests with source hashes (omitted in encrypted mode) |
+| `tck.dataspace` | The ecosystem release the TCK certifies against (ADR-0019). Written only when the TCK names one — a release nobody declared is the engine's default and is never claimed on the TCK's behalf |
+| `tck.infrastructure` | What must be bound before the package can run (ADR-0019), **resolved**: the manifest-level block when the TCK states one, otherwise the per-test blocks merged the way the player merges them. This is what makes a compiled package answer "what must I bind" without decompiling it |
 
 #### 2.2 `tck-execution.json` Schema
 
@@ -229,8 +241,7 @@ Each instruction in the `instructions` array follows this schema:
   "returns": { "<output_name>": { "type": "<type>", "class": "<class>" } },
   "validate": [ { "uses": "validate/...", "with": {...} } ],
   "phase": "setup|steps|teardown",
-  "phase_index": 0,
-  "on_failure": "abort|continue|skip_remaining"
+  "phase_index": 0
 }
 ```
 
@@ -245,7 +256,6 @@ Each instruction in the `instructions` array follows this schema:
 | `validate` | array | No | Inline assertions executed after the step. |
 | `phase` | string | Yes | Origin phase: `setup`, `steps`, or `teardown`. |
 | `phase_index` | integer | Yes | Position within the phase (for decompilation). |
-| `on_failure` | string | Yes | Failure strategy. |
 
 ---
 

@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,62 +14,55 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""TestlabPlayer — async executor that runs TCKs script-by-script, step-by-step."""
+"""TestlabPlayer — async executor that runs TCKs test-by-test, step-by-step."""
 
 from __future__ import annotations
 
+import contextlib
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
+from tractusx_testlab.authoring.test import Tck as Tck
 from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
+from tractusx_testlab.infrastructure.profiles import InfrastructureManager
+from tractusx_testlab.logging import transcript
+from tractusx_testlab.logging.masking import release_run
 from tractusx_testlab.logging.structured import StructuredLogger
-from tractusx_testlab.player.execution.infrastructure_seeder import seed_infrastructure_services
-from tractusx_testlab.models import (
-    JobStatus,
-    ScriptResult,
-    ScriptStatus,
-    TckResult as TckResult,  # SDK alias
-)
-from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.player.execution.monitor import ExecutionMonitor
-from tractusx_testlab.player.execution.mock_server import _BackgroundMockServer
-from tractusx_testlab.player.execution.step_runner import (
-    execute_teardown_steps,
-    execute_main_steps,
-    execute_setup_steps,
-    run_script,
-)
-from tractusx_testlab.player.execution._trace_formatter import (
-    build_tck_result,
-    finalize_job,
-    make_intentionally_skipped_result,
-    make_skipped_result,
-)
+from tractusx_testlab.logging.trace import ExecutionTrace
+from tractusx_testlab.models import TckResult as TckResult  # SDK alias
+from tractusx_testlab.player.execution._binding import bind_infrastructure, seal_bindings
+from tractusx_testlab.player.execution._context_seeder import require_inputs, seed_context_variables
 from tractusx_testlab.player.execution._skip import resolve_skip_ids
-from tractusx_testlab.player.execution._context_seeder import seed_context_variables
+from tractusx_testlab.player.execution._trace_formatter import open_run_records
+from tractusx_testlab.player.execution.context import StepContext
+from tractusx_testlab.player.execution.infrastructure_seeder import seed_infrastructure_services
+from tractusx_testlab.player.execution.mock_server import _BackgroundMockServer
+from tractusx_testlab.player.execution.monitor import ExecutionMonitor
+from tractusx_testlab.player.execution.session import TckSession
 from tractusx_testlab.player.jobs import JobManager
+from tractusx_testlab.player.loading._encrypted import engine_package_keys
+from tractusx_testlab.player.loading._parser import is_encrypted_package
 from tractusx_testlab.player.loading.loader import Loader
-from tractusx_testlab.player.loading.ordering import topological_sort
-from tractusx_testlab.scripting.script import Tck as Tck, TestScript
 from tractusx_testlab.server.callbacks import CallbackManager
-from tractusx_testlab.server.mock_registry import get_callback_manager, set_callback_manager
-from tractusx_testlab.services.manager import ServiceManager
-
-# Ensure built-in steps are registered
-import tractusx_testlab.steps  # noqa: F401
+from tractusx_testlab.server.mock_registry import (
+    get_callback_manager,
+    release_mocks,
+    set_callback_manager,
+)
+from tractusx_testlab.services.instances import ServiceManager
 
 
 class TestlabPlayer:
@@ -78,18 +71,51 @@ class TestlabPlayer:
     Usage::
 
         player = TestlabPlayer()
-        result = await player.run("my_tck.yaml")
+        result = await player.run("my_tck.tck")
+
+    An adopter embedding the player states the deployment it runs against by
+    handing over an :class:`InfrastructureManager` — the engine's own connector,
+    registry and submodel server, and the system under test::
+
+        player = TestlabPlayer(infrastructure=InfrastructureManager(integration))
+
+    A host that lets a person drive the run test by test (labs, ``async: true``
+    tests) opens a :class:`TckSession` with :meth:`open_session` instead.
     """
 
-    __slots__ = ("_config", "_logger", "_monitor", "_jobs", "_loader", "_mock_server")
+    __slots__ = (
+        "_config",
+        "_infrastructure",
+        "_jobs",
+        "_loader",
+        "_logger",
+        "_mock_server",
+        "_monitor",
+    )
 
-    def __init__(self, config: Optional[TestlabConfig] = None) -> None:
+    def __init__(
+        self,
+        config: TestlabConfig | None = None,
+        infrastructure: InfrastructureManager | None = None,
+    ) -> None:
+        """Build a player for *config*, running against *infrastructure*.
+
+        Both are resolved from the engine's own configuration when omitted, so
+        an embedder supplies whichever half it decides and inherits the other
+        from the config file and the environment.
+        """
         self._config = config or ConfigLoader.load()
+        self._infrastructure = infrastructure or InfrastructureManager.from_config(self._config)
         self._logger = StructuredLogger("testlab.player", logs_dir=self._config.logs_dir)
         self._monitor = ExecutionMonitor(self._logger)
         self._jobs = JobManager()
         self._loader = Loader()
-        self._mock_server: Optional[_BackgroundMockServer] = None
+        self._mock_server: _BackgroundMockServer | None = None
+
+    @property
+    def infrastructure(self) -> InfrastructureManager:
+        """The deployments this player can run against."""
+        return self._infrastructure
 
     @property
     def jobs(self) -> JobManager:
@@ -103,83 +129,153 @@ class TestlabPlayer:
     # Public API
     # ------------------------------------------------------------------
 
-    async def run(self, path: str | Path, runtime_vars: Optional[dict] = None) -> TckResult:
-        """Load and execute a TCK, returning the full result."""
-        tck = self._loader.load(Path(path))
-        return await self.run_tck(tck, runtime_vars=runtime_vars)
+    async def run(
+        self,
+        path: str | Path,
+        runtime_vars: dict | None = None,
+        job_id: str | None = None,
+    ) -> TckResult:
+        """Verify and execute the ``.tck`` package at *path* — packages only."""
+        resolved = Path(path)
+        encrypted = is_encrypted_package(resolved)
+        self._monitor.on_package_verify_start(resolved.name, encrypted=encrypted)
+        try:
+            keys = self._package_keys(resolved) if encrypted else {}
+            tck = self._loader.load(resolved, **keys)
+        except ValueError as exc:
+            self._monitor.on_package_verify_failed(resolved.name, str(exc))
+            raise
+        self._monitor.on_package_verify_passed(resolved.name, checksum="")
+        return await self.run_tck(tck, runtime_vars=runtime_vars, job_id=job_id)
+
+    def _package_keys(self, package: Path) -> dict[str, bytes]:
+        """Resolve the keys an encrypted *package* needs from this engine's config."""
+        return engine_package_keys(self._config, package)
 
     async def run_tck(
         self,
         tck: Tck,
-        runtime_vars: Optional[dict] = None,
-        job_id: Optional[str] = None,
+        runtime_vars: dict | None = None,
+        job_id: str | None = None,
     ) -> TckResult:
         """Execute a loaded Tck object.
+
+        Every test runs in manifest order, ``async: true`` ones included: a run
+        nobody drives leaves nothing for anyone to ask for.
 
         Args:
             tck: The TCK to execute.
             runtime_vars: Optional runtime variable overrides.
-            job_id: If provided, reuse an existing job instead of creating a new one.
+            job_id: Reuse the job with this id, or create one under it. The
+                server hands over a job it already queued; the CLI hands over an
+                id it committed to when it opened the transcript, before there
+                was a TCK to make a job from.
         """
-        if job_id:
-            job = self._jobs.get(job_id)
-            if job is None:
-                raise ValueError(f"Job '{job_id}' not found in job manager")
-        else:
-            job = self._jobs.create(tck.name)
-        if runtime_vars:
-            job.runtime_vars = runtime_vars
+        session = await self.open_session(tck, runtime_vars=runtime_vars, job_id=job_id)
+        try:
+            await session.run_all()
+        finally:
+            result = await session.close()
+        return result
 
+    async def open_session(
+        self,
+        tck: Tck,
+        runtime_vars: dict | None = None,
+        job_id: str | None = None,
+    ) -> TckSession:
+        """Start a run of *tck* and hold it open until the session is closed.
+
+        Everything a run does before its first test is done here; the tests run
+        when the session is asked to run them (:class:`TckSession`). A run refused
+        before it started (a missing input, an unbindable infrastructure) raises,
+        with the job failed and nothing left open.
+        """
+        job = self._jobs.get(job_id) if job_id else None
+        if job is None:
+            job = self._jobs.create(tck.id, job_id=job_id)
+        # The job's ``runtime_vars`` are written by the seeder, masked (_context_seeder).
+
+        records = contextlib.ExitStack()
+        # A CLI run opened its transcript before it had a TCK to compile, so
+        # that the compiler's output is in it too; this is a no-op there and the
+        # only transcript there is for a server or an embedder.
+        records.enter_context(
+            transcript.recording(transcript.transcript_path(self._config.logs_dir, job.job_id))
+        )
+        try:
+            return self._open_session(tck, job, runtime_vars, records)
+        except BaseException:
+            records.close()
+            raise
+
+    def _open_session(
+        self, tck: Tck, job: Any, runtime_vars: dict | None, records: contextlib.ExitStack
+    ) -> TckSession:
+        """Prepare everything the tests of *tck* need, for an already-created job."""
         self._jobs.start(job.job_id)
+        # The run's secrets stay masked, unevictable, until its records close.
+        records.callback(release_run, str(job.job_id))
+        records.callback(release_mocks, str(job.job_id))  # and its mocks are served until then
 
-        job_logger = self._logger.for_job(job.job_id)
-        monitor = self._create_job_monitor(job_logger)
-        monitor.on_job_started(job.job_id, tck.name)
+        job_logger, trace = open_run_records(self._logger, self._config, tck.id, job.job_id)
+        monitor = self._create_job_monitor(job_logger, trace)
+        monitor.on_job_started(job.job_id, tck.id)
 
         svc_mgr = ServiceManager()
-        context = StepContext(services=svc_mgr, job=job, config=self._config)
+        context = StepContext(
+            services=svc_mgr,
+            job=job,
+            config=self._config,
+            infrastructure=self._infrastructure.active,
+        )
 
-        self._ensure_callback_manager()
-
+        context.hold.bind(self._jobs, job.job_id, monitor)
         seed_context_variables(context, tck, runtime_vars)
-        seed_infrastructure_services(svc_mgr, context)
+
+        # Before the callback server: a run this engine cannot reach, or was
+        # never given its inputs, is refused before anything has started.
+        try:
+            require_inputs(context, tck)
+            bind_infrastructure(self._infrastructure, context, tck)
+        except Exception as exc:
+            self._jobs.fail(job.job_id, str(exc))
+            raise
 
         skip_ids = resolve_skip_ids(tck, runtime_vars)
+        self._ensure_callback_manager()
+        seed_infrastructure_services(svc_mgr, context)
+        seal_bindings(context)
 
-        tck_started_at = datetime.now(timezone.utc)
-        ordered_scripts = topological_sort(tck.scripts)
-        script_results = await self._execute_scripts_in_order(
-            ordered_scripts, context, job, monitor, skip_ids,
+        return TckSession(
+            tck=tck,
+            job=job,
+            context=context,
+            monitor=monitor,
+            jobs=self._jobs,
+            services=svc_mgr,
+            job_logger=job_logger,
+            trace=trace,
+            skip_ids=skip_ids,
+            records=records,
+            on_close=self._stop_mock_server,
         )
-        tck_finished_at = datetime.now(timezone.utc)
-
-        svc_mgr.teardown()
-
-        if self._mock_server is not None:
-            self._mock_server.stop()
-            self._mock_server = None
-
-        result = build_tck_result(
-            tck.name, script_results, tck_started_at, tck_finished_at,
-        )
-        finalize_job(self._jobs, job, result, monitor, job_logger)
-        return result
 
     # ------------------------------------------------------------------
     # TCK helpers
     # ------------------------------------------------------------------
 
-    def _create_job_monitor(self, job_logger: StructuredLogger) -> ExecutionMonitor:
+    def _create_job_monitor(
+        self, job_logger: StructuredLogger, trace: ExecutionTrace | None = None
+    ) -> ExecutionMonitor:
         """Create a monitor for a job, dynamically forwarding to player-level callbacks."""
-        monitor = ExecutionMonitor(job_logger)
+        monitor = ExecutionMonitor(job_logger, trace)
 
         def _forward_to_player(event: str, payload: dict) -> None:
             """Forward events to all current player-level callbacks (dynamic lookup)."""
             for cb in self._monitor._callbacks:
-                try:
+                with contextlib.suppress(RuntimeError, TypeError, ValueError):
                     cb(event, payload)
-                except (RuntimeError, TypeError, ValueError):
-                    pass
 
         monitor.add_callback(_forward_to_player)
         return monitor
@@ -196,58 +292,8 @@ class TestlabPlayer:
         )
         self._mock_server.start()
 
-    async def _execute_scripts_in_order(
-        self,
-        ordered_scripts: list[TestScript],
-        context: StepContext,
-        job: Any,
-        monitor: ExecutionMonitor,
-        skip_ids: frozenset[str],
-    ) -> list[ScriptResult]:
-        """Execute scripts respecting dependency order, skipping on unmet deps."""
-        script_results: list[ScriptResult] = []
-        completed_tests: set[str] = set()
-
-        for idx, script in enumerate(ordered_scripts):
-            # 1. Intentional skip requested by the operator.
-            if script.test_id in skip_ids:
-                skipped = make_intentionally_skipped_result(script)
-                script_results.append(skipped)
-                monitor.on_script_started(job.job_id, script.name, idx)
-                monitor.on_script_completed(job.job_id, skipped)
-                continue
-
-            # 2. Dependency skip — unmet deps produce a FAILED result.
-            unmet_deps = [dep for dep in script.depends_on if dep not in completed_tests]
-
-            if unmet_deps:
-                skipped_result = make_skipped_result(script, unmet_deps)
-                script_results.append(skipped_result)
-                monitor.on_script_started(job.job_id, script.name, idx)
-                monitor.on_script_completed(job.job_id, skipped_result)
-                continue
-
-            monitor.on_script_started(job.job_id, script.name, idx)
-            job.current_script = script.name
-
-            script_result = await run_script(script, context, job.job_id, monitor, self._jobs)
-            script_results.append(script_result)
-            monitor.on_script_completed(job.job_id, script_result)
-
-            if script_result.status == ScriptStatus.COMPLETED:
-                completed_tests.add(script.name)
-                self._propagate_script_outputs(script, context)
-
-        return script_results
-
-
-
-    @staticmethod
-    def _propagate_script_outputs(script: TestScript, context: StepContext) -> None:
-        """Promote script output variables to the shared namespace for downstream tests."""
-        outputs = getattr(script.definition, "outputs", None) or {}
-        for export_name, var_ref in outputs.items():
-            value = context.get_variable(var_ref)
-            if value is not None:
-                context.set_variable(export_name, value)
-                context.set_variable(f"!{script.name}:{export_name}", value)
+    def _stop_mock_server(self) -> None:
+        """Stop the mock server this player started for the run, if it started one."""
+        if self._mock_server is not None:
+            self._mock_server.stop()
+            self._mock_server = None

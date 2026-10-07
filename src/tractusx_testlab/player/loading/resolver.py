@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,135 +14,227 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Variable and service definition resolution for ${var} and ${{ }} references."""
+"""Resolving ``${{ ... }}`` references in a step's parameters.
+
+``${{ ... }}`` is the only reference syntax (ADR-0010).  Two older spellings —
+``${var}`` and ``@var`` — were resolved here as well, which meant the same value
+could be written three ways and the compiler only understood one of them.  They
+are gone; the compiler rejects them by name so a test written against the old
+grammar gets an error that says what to write instead.
+
+A credential (:class:`~tractusx_testlab.security.credentials.Credential`) is
+never turned into text here. It resolves only as the whole value of a key the
+step declares it can carry (``credential_params``) — the headers of
+``http/http_request`` — and anywhere else, interpolated or whole, the reference
+fails the step with ``CREDENTIAL_MISUSE``.
+"""
 
 from __future__ import annotations
 
-import re
-from typing import TYPE_CHECKING, Any
+from collections.abc import Collection
+from typing import TYPE_CHECKING
 
-from tractusx_testlab.syntax import patterns
-
-from tractusx_testlab.models.authoring.definitions import ServiceDefinition
+from tractusx_testlab.models import UnresolvedReferenceError
+from tractusx_testlab.models.primitives.exceptions import AuthoringError, TestLabError
+from tractusx_testlab.player.loading.reference_origin import _name_of, origin_of
+from tractusx_testlab.security.credentials import (
+    Credential,
+    CredentialMisuseError,
+    find_credential,
+)
+from tractusx_testlab.syntax import call_scope, patterns
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
-# V2 ${{ expr }} pattern — matches the full double-curly wrapper
-_V2_EXPR_RE = re.compile(r"\$\{\{\s*([^}]+?)\s*\}\}")
-_V2_EXPR_FULL_RE = re.compile(r"^\$\{\{\s*([^}]+?)\s*\}\}$")
+
+#: Distinguishes "no such variable" from "a variable whose value is None".
+#: ``get_variable`` returns ``None`` for both, and conflating them is what let an
+#: undefined reference look like an ordinary empty value.
+_MISSING = object()
+
+#: How deep TCK-authored content may nest references into more TCK-authored
+#: content. Test data that names test data is ordinary; a cycle is not, and
+#: used to end the run with a ``RecursionError`` no step could report.
+MAX_TEMPLATE_DEPTH = 16
 
 
-def _resolve_v2_expr(expr: str, context: "StepContext") -> object:
-    """Resolve a single normalized V2 expression against the context.
+class TemplateDepthError(AuthoringError):
+    """Raised when TCK-authored content references itself, directly or through others."""
 
-    Resolution rules:
-    - ``env.X`` → context variable ``X``
-    - ``steps.ID.FIELD``, ``setup.ID.FIELD``, ``infrastructure.X.Y…`` → flat
-      context lookup of the full dotted path (set by store_step_outputs or
-      seeded by the player).
-    - Anything else → flat context lookup as-is.
-    """
-    expr = expr.strip()
-    if expr.startswith("env."):
-        return context.get_variable(expr[4:])
-    return context.get_variable(expr)
-
-
-def resolve_str(value: str, context: "StepContext") -> object:
-    """Replace ``${{ }}``, ``${var}``, and ``@var`` references in a single string.
-
-    Priority order:
-    1. ``${{ expr }}`` (V2 double-curly) — whole-string returns raw type.
-    2. ``@var`` — whole-string returns raw type.
-    3. Inline ``@var`` and ``${var}`` — string interpolation.
-    """
-    # V2 whole-string expression → return raw value (preserving type)
-    if "${{" in value:
-        full = _V2_EXPR_FULL_RE.match(value)
-        if full:
-            resolved = _resolve_v2_expr(full.group(1), context)
-            if resolved is not None:
-                # If the resolved value is itself a composite (dict/list) containing
-                # further ${{ }} expressions (e.g. testdata files), process them now.
-                return _resolve_value(resolved, context)
-            return value
-        # Inline V2 interpolation (mixed with literal text)
-        value = _V2_EXPR_RE.sub(
-            lambda m: str(
-                r if (r := _resolve_v2_expr(m.group(1), context)) is not None else m.group(0)
-            ),
-            value,
+    def __init__(self, reference: str) -> None:
+        self.reference = reference
+        super().__init__(
+            f"'${{{{ {reference} }}}}' nests references more than {MAX_TEMPLATE_DEPTH} deep — "
+            "test data or an env value that names itself, directly or through another."
         )
 
-    # Whole-string @var → return raw value (preserving type)
-    if value.startswith("@") and patterns.AT_VAR_REF.fullmatch(value):
-        var_name = value[1:]
-        resolved = context.get_variable(var_name)
-        return resolved if resolved is not None else value
 
-    # Inline @var replacements within a larger string (e.g. "@base_url/path")
-    result = patterns.AT_VAR_REF.sub(
-        lambda m: str(context.get_variable(m.group(1), m.group(0))),
+def _require(expr: str, context: StepContext) -> tuple[str, object]:
+    """Resolve *expr* to the variable it names and that variable's value, or refuse the run.
+
+    A reference that resolved to nothing used to be replaced by its own template
+    text and handed to the step as data: a URL built from an undefined variable
+    was requested verbatim, and a BPN compared against one compared as a string
+    containing braces. Neither failed, and both produced a verdict about a system
+    that was never asked the question.
+    """
+    name = _name_of(expr)
+    if context.has_variable(name):
+        return name, context.get_variable(name)
+    # A call-scoped reference may reach into what it names (syntax.call_scope).
+    if call_scope.is_call_scoped(name):
+        found = call_scope.lookup(name, context.has_variable, context.get_variable)
+        if found is not call_scope.MISSING:
+            return name, found
+    raise UnresolvedReferenceError(expr, list(context.variables), origin=origin_of(expr, context))
+
+
+def resolve_str(
+    value: str, context: StepContext, _depth: int = 0, *, credential_ok: bool = False
+) -> object:
+    """Replace ``${{ ... }}`` references in a single string.
+
+    A reference that is the whole string returns the raw value, so a dict or a
+    list survives as itself rather than being stringified.  Mixed with literal
+    text, it interpolates.
+
+    What a reference resolves to is resolved again only when it is part of the
+    test — test data or a static ``env`` value (``StepContext.is_template``),
+    whose references the author wrote. Anything the run learned while running
+    is data and is handed over as it is: a step output carries what a remote
+    service answered, and re-reading a ``${{ ... }}`` in it let that service
+    choose what the next step is given — the operator's connector API key
+    expanded into a URL it controls.
+
+    *credential_ok* is set for the one position a credential handle may take —
+    the whole value of a header the step sends it in. Everywhere else a handle
+    is refused rather than handed over or turned into text.
+
+    Raises:
+        UnresolvedReferenceError: if any reference names nothing in scope.
+        TemplateDepthError: if authored content nests references into itself.
+        CredentialMisuseError: if a credential appears where it may not.
+    """
+    if "${{" not in value:
+        return value
+
+    full = patterns.EXPR_REF_FULL.match(value)
+    if full:
+        name, resolved = _require(full.group(1), context)
+        if not context.is_template(name):
+            return _admitted(resolved, credential_ok)
+        if _depth >= MAX_TEMPLATE_DEPTH:
+            raise TemplateDepthError(full.group(1))
+        if isinstance(resolved, str):
+            return resolve_str(resolved, context, _depth + 1, credential_ok=credential_ok)
+        return _resolve_value(resolved, context, _depth + 1)
+
+    # Interpolated text is not rescanned: `re.sub` does not read its own
+    # replacements, so whatever a reference stands for is inserted as it is.
+    return patterns.EXPR_REF.sub(
+        lambda m: _as_text(_require(m.group(1), context)[1]),
         value,
     )
 
-    # Also handle ${var} references
-    result = patterns.VAR_REF.sub(
-        lambda m: str(context.get_variable(m.group(1), m.group(0))),
-        result,
-    )
-    return result
 
-
-def _resolve_value(value: object, context: "StepContext") -> object:
-    """Recursively resolve variable references in any value type."""
-    if isinstance(value, str):
-        return resolve_str(value, context)
-    if isinstance(value, dict):
-        return resolve_params(value, context)
-    if isinstance(value, list):
-        return [_resolve_value(item, context) for item in value]
+def _admitted(value: object, credential_ok: bool) -> object:
+    """*value*, unless it is or holds a credential where none may go."""
+    if isinstance(value, Credential):
+        if credential_ok:
+            return value
+        raise CredentialMisuseError(value.name)
+    held = find_credential(value) if isinstance(value, dict | list) else None
+    if held is not None:
+        raise CredentialMisuseError(held.name, "inside a structured value")
     return value
 
 
-def resolve_params(params: dict, context: "StepContext") -> dict:
-    """Replace ``${var}`` and ``@var`` references in param values with context variables."""
-    resolved: dict[str, object] = {}
-    for key, value in params.items():
-        resolved[key] = _resolve_value(value, context)
-    return resolved
+def _as_text(value: object) -> str:
+    """*value* as interpolated text — which a credential never becomes."""
+    if isinstance(value, Credential):
+        raise CredentialMisuseError(value.name, "interpolated into a larger string")
+    return str(value)
 
 
-def resolve_service_def(svc_def: ServiceDefinition, context: "StepContext") -> ServiceDefinition:
-    """Return a copy of *svc_def* with ``${var}`` and ``@var`` references resolved."""
-    resolved_base_url = resolve_str(svc_def.base_url, context)
-    if isinstance(resolved_base_url, str):
-        base_url = resolved_base_url
-    else:
-        base_url = str(resolved_base_url)
-    resolved_auth = {
-        auth_key: resolve_str(auth_value, context) if isinstance(auth_value, str) else auth_value
-        for auth_key, auth_value in svc_def.auth.items()
+def _resolve_value(value: object, context: StepContext, _depth: int = 0) -> object:
+    """Recursively resolve variable references in any value type."""
+    if isinstance(value, str):
+        return resolve_str(value, context, _depth)
+    if isinstance(value, dict):
+        return {key: _resolve_value(item, context, _depth) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_resolve_value(item, context, _depth) for item in value]
+    return _admitted(value, credential_ok=False)
+
+
+def _resolve_carrier(value: object, context: StepContext) -> object:
+    """Resolve a value that may be — or map names to — a whole credential reference."""
+    if isinstance(value, str):
+        return resolve_str(value, context, credential_ok=True)
+    if not isinstance(value, dict):
+        return _resolve_value(value, context)
+    return {
+        key: resolve_str(item, context, credential_ok=True)
+        if isinstance(item, str)
+        else _resolve_value(item, context)
+        for key, item in value.items()
     }
-    resolved_params: dict | None = None
-    if svc_def.params:
-        resolved_params = {
-            param_key: resolve_str(param_value, context) if isinstance(param_value, str) else param_value
-            for param_key, param_value in svc_def.params.items()
-        }
-    return ServiceDefinition(
-        name=svc_def.name,
-        type=svc_def.type,
-        base_url=base_url,
-        auth=resolved_auth,
-        params=resolved_params,
-    )
+
+
+def resolve_params(
+    params: dict,
+    context: StepContext,
+    deferred: Collection[str] = (),
+    credential_params: Collection[str] = (),
+) -> dict:
+    """Resolve every ``${{ ... }}`` reference in a step's ``with:`` block.
+
+    A key in *deferred* is handed over as written. That is how a flow step
+    receives the steps nested inside it: each nested step resolves its own
+    ``with:`` when it runs, so it reads what the steps before it published —
+    and, inside ``flow/for_each``, the item it is running for, which does not
+    exist yet when the flow step itself starts.
+
+    A key in *credential_params* may be a whole credential reference — the
+    ``edr_token`` of a data-plane step — or a mapping each of whose values may
+    be one — ``http/http_request``'s ``headers``. The handles come back as
+    themselves, for the step to release.
+    """
+    return {
+        key: value
+        if key in deferred
+        else _resolve_carrier(value, context)
+        if key in credential_params
+        else _resolve_value(value, context)
+        for key, value in params.items()
+    }
+
+
+def try_resolve_params(
+    params: dict,
+    context: StepContext,
+    deferred: Collection[str] = (),
+    credential_params: Collection[str] = (),
+) -> dict | None:
+    """Resolve a ``with:`` block, or answer ``None`` rather than raise.
+
+    For the callers that resolve a block *before* running the step — the phase
+    runner, which publishes what the step is about to be given — and for which a
+    reference naming nothing is not their failure to report. They hand the
+    unresolved block on, and the step runner raises the same error where it can
+    be turned into a failed step.
+    """
+    try:
+        return resolve_params(params, context, deferred, credential_params)
+    except TestLabError:
+        return None

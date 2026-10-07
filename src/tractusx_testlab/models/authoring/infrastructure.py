@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,14 +26,11 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
-# Capability keys come from the hardcoded v1 registry (ADR-0019 §1). The mock
-# server is the engine's own built-in component and is therefore never a
-# capability — it is intentionally absent from both sides.
-CapabilityKey = Literal["connector", "dtr"]
+from tractusx_testlab.models.domain.infrastructure import capability_keys
 
 # The two bindable sides of the topology (ADR-0019 §1).
 SideKey = Literal["engine", "sut"]
@@ -54,7 +51,7 @@ class Standard(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id: str
-    version: Optional[str] = None
+    version: str | None = None
 
     def effective_version(self, dataspace_version: str) -> str:
         """Resolve the constraint version, inheriting ``dataspace.version`` when omitted."""
@@ -67,13 +64,40 @@ class CapabilityRequirement(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     required: bool
-    standard: Optional[Standard] = None
+    standard: Standard | None = None
 
 
 class InfrastructureConfig(BaseModel):
-    """The two bindable sides, each keyed by capability (ADR-0019 §1)."""
+    """The two bindable sides, each keyed by capability (ADR-0019 §1).
 
-    model_config = ConfigDict(frozen=True)
+    Which capabilities a side accepts is not restated here: it is read from the
+    binding model, which is the registry. The sides are asymmetric by design,
+    so each is checked against its own side's capabilities, and a TCK naming
+    one the engine cannot bind is refused while the manifest is parsed rather
+    than at the step that needed it.
+    """
 
-    engine: dict[CapabilityKey, CapabilityRequirement] = Field(default_factory=dict)
-    sut: dict[CapabilityKey, CapabilityRequirement] = Field(default_factory=dict)
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    engine: dict[str, CapabilityRequirement] = Field(default_factory=dict)
+    sut: dict[str, CapabilityRequirement] = Field(default_factory=dict)
+
+    @field_validator("engine", "sut")
+    @classmethod
+    def _known_capabilities(
+        cls,
+        declared: dict[str, CapabilityRequirement],
+        info: ValidationInfo,
+    ) -> dict[str, CapabilityRequirement]:
+        """Reject a capability the binding model has no field for on this side."""
+        # Set for every field validator; the annotation allows None because the
+        # same object is passed to model validators, which have no field.
+        side = info.field_name or ""
+        accepted = capability_keys(side)
+        unknown = [key for key in declared if key not in accepted]
+        if unknown:
+            raise ValueError(
+                f"Unknown capability on side '{side}': {', '.join(sorted(unknown))}. "
+                f"Accepted on this side: {', '.join(accepted)}"
+            )
+        return declared

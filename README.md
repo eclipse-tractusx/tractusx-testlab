@@ -8,31 +8,149 @@
 
 # Eclipse Tractus-X Test Lab
 
-**TestLab** is the testing framework built into the [Tractus-X SDK](https://github.com/eclipse-tractusx/tractusx-sdk). It enables you to author, compile, distribute, and execute automated test cases against dataspace connectors and industry services — without writing any Python code.
+**TestLab** is the test authoring and execution engine for Eclipse Tractus-X dataspaces. It lets you author, compile, distribute, and execute conformity tests against dataspace connectors and industry services — without writing any Python code.
 
-Test authors write **declarative YAML tests** describing the steps to execute, the services to connect to, the assertions to evaluate, and the cleanup to perform. TestLab takes care of the rest: validation, encryption, packaging, execution, and structured reporting.
+Test authors write **declarative YAML tests** describing the steps to execute, the values to check, and the cleanup to perform. TestLab validates them, packages them, runs them against real connectors and services, and records a full execution trace. It builds on the [Tractus-X SDK](https://github.com/eclipse-tractusx/tractusx-sdk) for its dataspace calls.
 
 ## Key Components
 
-- **Tests** — YAML-defined test sequences composed of reusable, predefined steps
-- **Compiler** — Validates tests at compile time and packages them into portable, encrypted-by-default `.testpkg` artifacts
-- **Player** — An async executor deployable as standalone CLI or embeddable in an existing application, with cryptographic identity for package authorization
-- **Services** — Managed SDK service lifecycle for connector, provider, and DTR instances with automatic initialization and reuse across steps
-- **Server** — FastAPI-based callback/webhook engine with dynamically mounted routes for async request/response patterns
+- **TCK** — a Test Case Kit: an `index.yaml` manifest plus the tests it lists, written in the `v1-alpha` syntax
+- **Compiler** — validates a TCK before anything runs and seals it into a portable `.tck` package, optionally signed and encrypted for specific players
+- **Player** — executes a TCK from the `testlab` CLI or embedded in your own application (`TestlabPlayer`), and writes a CloudEvents execution trace
+- **Infrastructure bindings** — the connectors and registries a run drives are bound by the operator (`testlab.config.yaml` or `TESTLAB_*` variables), never named inside a test
+- **Server** — a FastAPI app (`testlab serve`) that runs TCKs, streams live execution events over SSE, and serves the callback and mock endpoints tests listen on
 
 ## How It Works
 
-Tests can declare long-lived services that persist for the test duration (avoiding repeated initialization), configure callback endpoints to receive async responses, and leverage runtime variable resolution. These tests are compiled with strict validation, packaged into distributable artifacts, and executed by the Player — which resolves runtime variables, manages step sequencing, evaluates assertions, orchestrates managed services, and provides live execution status.
+A test is a sequence of steps from a predefined catalogue — for example `connector/provider/create_asset`, `connector/consumer/pull_data_filtered`, `digital-twin-registry/consumer/dataplane/lookup_shell` — each declaring its inputs under `with:`, the outputs it publishes under `returns:`, and the checks on those outputs under `validate:`. See the [Step Reference](docs/api-reference/steps/index.md) for every step and the [TCK Syntax](docs/tck-syntax/index.md) for the format.
 
-Tests with steps like (e.g., `provision_asset`, `negotiate_contract`, `validate_aspect_model`) can be included inside of test cases, which enable reusability and personalized configurations for different scenarios.
+## Quick Start
 
-## Getting Started
+This walkthrough takes about five minutes: install the CLI, write a one-test TCK, and run it. For other installation options, see [INSTALL.md](INSTALL.md).
 
-Please refer to the [INSTALL.md](INSTALL.md) for installation instructions.
+### 1. Install the CLI
+
+TestLab needs **Python 3.12 or newer**. Install it into a virtual environment:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install --pre tractusx-testlab
+```
+
+This puts the `testlab` command on your path. Check it works:
+
+```bash
+testlab --help
+```
+
+### 2. Write a TCK
+
+A **TCK** (Test Case Kit) is a directory holding an `index.yaml` manifest and the tests it lists. Create this layout:
+
+```text
+hello-tck/
+├── index.yaml
+└── tests/
+    └── health_check.yaml
+```
+
+`hello-tck/index.yaml`:
+
+```yaml
+syntax: v1-alpha
+kind: tck
+id: hello-tck
+metadata:
+  name: Hello TCK
+  version: "1.0"
+  description: My first TestLab TCK
+
+tests:
+  - id: health_check.yaml
+    name: Health check
+```
+
+`hello-tck/tests/health_check.yaml`:
+
+```yaml
+kind: test
+syntax: v1-alpha
+
+namespace: hello-tck
+id: health-check
+
+metadata:
+  name: Health check
+  version: "1.0"
+
+execution:
+  - id: health_check
+    uses: http/http_request          # a step from the Step Reference
+    name: Call the service
+    with:
+      method: GET
+      url: https://eclipse-tractusx.github.io/
+    returns:
+      status_code:
+        type: integer
+    validate:
+      - uses: validate/assert        # checks read the values declared under returns
+        with: { input: status_code, operator: equals, value: 200 }
+```
+
+### 3. Validate it
+
+```bash
+cd hello-tck
+testlab validate index.yaml
+```
+
+```text
+OK — index.yaml is valid (no issues)
+```
+
+A mistake in the YAML is reported here, with the file and line, before anything runs.
+
+### 4. Run it
+
+```bash
+testlab run index.yaml
+```
+
+TestLab executes each step, logs every call it makes, and ends with a summary:
+
+```text
+╔==============================================================================╗
+║                                TCK RUN SUMMARY                               ║
+╠==============================================================================╣
+║  TEST                                           RESULT      TIME             ║
+║  --------------------------------------------------------------------------  ║
+║  ✓ Health check                                   PASS      3.5s             ║
+╠==============================================================================╣
+║  RESULT: PASS  |  1 passed  0 failed  0 skipped  |  Total: 3.5s              ║
+╚==============================================================================╝
+```
+
+The console transcript is written to `./logs` and the full execution trace — every step's outputs, checks and request/response — to `./data`.
+
+### 5. Package and share it
+
+Compile the TCK into a single `.tck` package that anyone can run:
+
+```bash
+testlab compile index.yaml -o hello.tck
+testlab run hello.tck
+```
+
+> [!TIP]
+>
+> - `testlab <command> --help` lists every option, for example `--var KEY=VALUE` to override a variable at run time.
+> - To sign and encrypt packages for a specific player, see [Compiling Packages](docs/specification/walkthrough/compiling-packages.md).
 
 ## Documentation
 
-Detailed documentation is available in the [docs](docs/) directory.
+The full documentation is published at **[eclipse-tractusx.github.io/tractusx-testlab](https://eclipse-tractusx.github.io/tractusx-testlab/)**. Its sources live in the [docs](docs/) directory.
 
 ## Contributing
 

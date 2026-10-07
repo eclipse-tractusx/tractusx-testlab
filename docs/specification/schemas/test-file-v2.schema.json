@@ -94,7 +94,7 @@
         },
         "name": {
           "type": "string",
-          "description": "Human-readable step label displayed in the IDE."
+          "description": "Human-readable step label."
         },
         "with": {
           "type": "object",
@@ -129,7 +129,7 @@
         },
         "class": {
           "type": "string",
-          "description": "Semantic class for IDE variable filtering (e.g., 'uuid', 'asset_id', 'offer_id')."
+          "description": "Semantic class for variable filtering (e.g., 'uuid', 'asset_id', 'offer_id')."
         }
       }
     },

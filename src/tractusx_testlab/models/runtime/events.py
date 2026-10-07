@@ -1,0 +1,287 @@
+#################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude, Model: Claude Sonnet 5).
+## It was reviewed and tested by a human committer.
+
+"""Execution event models — typed payloads published by the ExecutionMonitor.
+
+Every event carries an explicit ``kind`` discriminator (see
+:class:`~tractusx_testlab.models.primitives.enums.EventKind`) so a consumer
+never needs to sniff ``step_type`` or other free-text fields to decide what
+happened. Payloads reuse the existing result models (``StepResult``,
+``TestResult``, ``AssertionResult``) rather than duplicating their fields.
+
+See ``docs/developer/execution-events.md`` for the full wire contract.
+"""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from tractusx_testlab.models.primitives.enums import EventKind, JobStatus
+from tractusx_testlab.models.runtime._event_base import _ExecutionEvent
+from tractusx_testlab.models.runtime.hold_events import (
+    JobHeldEvent,
+    JobRestoredEvent,
+    StepSuspendedEvent,
+)
+from tractusx_testlab.models.runtime.listener import Listener
+from tractusx_testlab.models.runtime.results import (
+    AssertionResult,
+    CallbackResult,
+    HttpExchange,
+    StepResult,
+    TestResult,
+)
+
+
+class JobStartedEvent(_ExecutionEvent):
+    """A job began executing."""
+
+    kind: Literal[EventKind.JOB_STARTED] = EventKind.JOB_STARTED
+    tck_id: str
+
+
+class JobPausedEvent(_ExecutionEvent):
+    """A running job was paused by the operator."""
+
+    kind: Literal[EventKind.JOB_PAUSED] = EventKind.JOB_PAUSED
+
+
+class JobResumedEvent(_ExecutionEvent):
+    """A paused (or waiting) job resumed execution."""
+
+    kind: Literal[EventKind.JOB_RESUMED] = EventKind.JOB_RESUMED
+
+
+class JobCompletedEvent(_ExecutionEvent):
+    """A job finished with every test completed or intentionally skipped."""
+
+    kind: Literal[EventKind.JOB_COMPLETED] = EventKind.JOB_COMPLETED
+    status: Literal[JobStatus.COMPLETED] = JobStatus.COMPLETED
+
+
+class JobFailedEvent(_ExecutionEvent):
+    """A job finished with at least one test failure, or raised an exception."""
+
+    kind: Literal[EventKind.JOB_FAILED] = EventKind.JOB_FAILED
+    status: Literal[JobStatus.FAILED] = JobStatus.FAILED
+    error: str | None = None
+
+
+class JobCancelledEvent(_ExecutionEvent):
+    """The operator cancelled the job before it reached a terminal state."""
+
+    kind: Literal[EventKind.JOB_CANCELLED] = EventKind.JOB_CANCELLED
+    status: Literal[JobStatus.CANCELLED] = JobStatus.CANCELLED
+
+
+class TestStartedEvent(_ExecutionEvent):
+    """A test within the job began executing."""
+
+    __test__ = False  # a TestLab test, not a pytest one
+    kind: Literal[EventKind.TEST_STARTED] = EventKind.TEST_STARTED
+    test_id: str
+    index: int
+    #: Which run of this test within the job, from 1. Only a session runs a
+    #: test more than once (an ``async: true`` test, run again on demand).
+    attempt: int = 1
+
+
+class TestCompletedEvent(_ExecutionEvent):
+    """A test finished; ``result.status`` carries the outcome."""
+
+    __test__ = False  # a TestLab test, not a pytest one
+    kind: Literal[EventKind.TEST_COMPLETED] = EventKind.TEST_COMPLETED
+    result: TestResult
+
+
+class TestAwaitingEvent(_ExecutionEvent):
+    """An ``async: true`` test is ready and waits for someone to run it (labs).
+
+    Published by a :class:`~tractusx_testlab.player.TckSession` once the tests
+    that run on their own are done. Nothing is running: the session does
+    nothing more until it is asked to run a test or to close.
+    """
+
+    __test__ = False  # a TestLab test, not a pytest one
+    kind: Literal[EventKind.TEST_AWAITING] = EventKind.TEST_AWAITING
+    test_id: str
+    index: int
+
+
+class StepStartedEvent(_ExecutionEvent):
+    """A step began executing."""
+
+    kind: Literal[EventKind.STEP_STARTED] = EventKind.STEP_STARTED
+    test_id: str
+    step_id: str | None = None
+    step_index: int
+    step_type: str
+    step_name: str
+    phase: str
+    #: The step's ``with:`` block with every ``${{ … }}`` reference already
+    #: substituted — what the step is about to be given, not the template the
+    #: test wrote. It falls back to the template when a reference names
+    #: nothing in scope, which is the failure the terminal event then reports.
+    inputs: dict | None = None
+
+
+class StepCallEvent(_ExecutionEvent):
+    """One call a step made, published as soon as the answer came back.
+
+    A step is not one call, and the long ones are long precisely because they
+    are many: a DSP pull is a catalog query, a negotiation and a poll loop that
+    can run for a minute. Waiting for the step's terminal event to say what it
+    had been doing all that time leaves whoever is watching with a spinner, so
+    each call is published when it completes rather than all of them at the end.
+    """
+
+    kind: Literal[EventKind.STEP_CALL] = EventKind.STEP_CALL
+    test_id: str
+    step_id: str | None = None
+    step_type: str
+    #: Position of the call within the step, from 1.
+    index: int
+    call: HttpExchange
+
+
+class StepCompletedEvent(_ExecutionEvent):
+    """A step finished with ``StepStatus.PASSED``."""
+
+    kind: Literal[EventKind.STEP_COMPLETED] = EventKind.STEP_COMPLETED
+    test_id: str
+    step_id: str | None = None
+    result: StepResult
+
+
+class StepFailedEvent(_ExecutionEvent):
+    """A step finished with ``StepStatus.FAILED`` — a hard assertion or an exception."""
+
+    kind: Literal[EventKind.STEP_FAILED] = EventKind.STEP_FAILED
+    test_id: str
+    step_id: str | None = None
+    result: StepResult
+
+
+class StepSkippedEvent(_ExecutionEvent):
+    """A step was skipped — its ``if:`` condition was false, or no implementation exists."""
+
+    kind: Literal[EventKind.STEP_SKIPPED] = EventKind.STEP_SKIPPED
+    test_id: str
+    step_id: str | None = None
+    result: StepResult
+
+
+class StepListeningEvent(_ExecutionEvent):
+    """``mock/api`` has registered an endpoint: from now on the SUT may call it.
+
+    A call that arrives before the test reaches its wait step is held for
+    it, so this is the earliest moment the address is worth announcing — and
+    the one a person driving the SUT by hand acts on.
+    """
+
+    kind: Literal[EventKind.STEP_LISTENING] = EventKind.STEP_LISTENING
+    test_id: str
+    step_id: str | None = None
+    step_type: str
+    listener: Listener
+
+
+class StepWaitingEvent(_ExecutionEvent):
+    """``mock/wait/http_request`` is blocked on an endpoint, for at most ``timeout_s``.
+
+    The run has nothing left to do but wait: the only thing that moves it
+    forward is a call to ``listener``, and if the SUT will not make it, a person
+    has to.
+    """
+
+    kind: Literal[EventKind.STEP_WAITING] = EventKind.STEP_WAITING
+    test_id: str
+    step_id: str | None = None
+    step_type: str
+    listener: Listener
+    timeout_s: float
+
+
+class StepReceivedEvent(_ExecutionEvent):
+    """The call a step was waiting for has arrived.
+
+    ``request`` is the inbound request as the mock server took it, headers and
+    body included; ``waited_ms`` is how long the wait step was blocked, which
+    is zero when the SUT called before the test got there.
+    """
+
+    kind: Literal[EventKind.STEP_RECEIVED] = EventKind.STEP_RECEIVED
+    test_id: str
+    step_id: str | None = None
+    step_type: str
+    listener: Listener
+    request: CallbackResult
+    waited_ms: int
+
+
+class AssertionResultEvent(_ExecutionEvent):
+    """One assertion was evaluated against a step's output.
+
+    Emitted for every assertion in a step's ``validate:`` block, ahead of the
+    step's own ``step_completed`` / ``step_failed`` / ``step_skipped`` event,
+    so a consumer can track individual assertion outcomes without inferring
+    them from the step's ``step_type``.
+    """
+
+    kind: Literal[EventKind.ASSERTION_RESULT] = EventKind.ASSERTION_RESULT
+    test_id: str
+    step_id: str | None = None
+    step_name: str
+    #: Position in the step's ``validate:`` block, from 0.
+    #
+    #: Two assertions on one step are otherwise indistinguishable — the same
+    #: ``uses`` twice is ordinary — so without this a consumer can only tell them
+    #: apart by arrival order, and an event id cannot name one at all.
+    index: int = 0
+    assertion: AssertionResult
+
+
+ExecutionEvent = (
+    JobStartedEvent
+    | JobPausedEvent
+    | JobResumedEvent
+    | JobHeldEvent
+    | JobRestoredEvent
+    | JobCompletedEvent
+    | JobFailedEvent
+    | JobCancelledEvent
+    | TestStartedEvent
+    | TestCompletedEvent
+    | TestAwaitingEvent
+    | StepStartedEvent
+    | StepCallEvent
+    | StepCompletedEvent
+    | StepFailedEvent
+    | StepSkippedEvent
+    | StepListeningEvent
+    | StepWaitingEvent
+    | StepSuspendedEvent
+    | StepReceivedEvent
+    | AssertionResultEvent
+)

@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,88 +14,217 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
 ## It was reviewed and tested by a human committer.
 
-"""Static validation of test scripts before compilation."""
+"""Static validation of tests before compilation."""
 
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass, field
-from typing import Optional
+from collections.abc import Callable
+from itertools import chain
+from pathlib import Path
 
-from tractusx_testlab.models import ScriptDefinitionV2, StepDefinitionV2
-from tractusx_testlab.scripting.registry import StepRegistry
-from tractusx_testlab.syntax import defaults
+from pydantic import ValidationError
 
+from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.compiler.validation._assertion_severity import severity_findings
+from tractusx_testlab.compiler.validation._conditions import condition_findings
+from tractusx_testlab.compiler.validation._credential_references import credential_findings
+from tractusx_testlab.compiler.validation._extension_gate import (
+    entry_findings,
+    experimental_warnings,
+    extension_findings,
+)
+from tractusx_testlab.compiler.validation._variable_references import (
+    call_scope_hint,
+    nested_step_ids,
+    unresolved_references,
+)
+from tractusx_testlab.compiler.validation.issues import ValidationResult
+from tractusx_testlab.infrastructure.mapping import known_keys
+from tractusx_testlab.models import StepDefinition, TckDefinition, TestDefinition
+from tractusx_testlab.steps._checks.extraction import declared_names
+from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
+from tractusx_testlab.steps.assertions.vocabulary import check_operands
+from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
+from tractusx_testlab.syntax import context_vars, defaults, diagnostics
 
-@dataclass(slots=True)
-class ValidationIssue:
-    """A single validation finding."""
-    level: str  # "error" | "warning"
-    message: str
-    step_index: Optional[int] = None
-    field: Optional[str] = None
-    phase: Optional[str] = None
-
-
-@dataclass(slots=True)
-class ValidationResult:
-    """Aggregated validation outcome."""
-    issues: list[ValidationIssue] = field(default_factory=list)
-
-    @property
-    def valid(self) -> bool:
-        return not any(issue.level == "error" for issue in self.issues)
-
-    def add_error(self, msg: str, **kw) -> None:
-        self.issues.append(ValidationIssue(level="error", message=msg, **kw))
-
-    def add_warning(self, msg: str, **kw) -> None:
-        self.issues.append(ValidationIssue(level="warning", message=msg, **kw))
-
-
-_VAR_REF = re.compile(r"\$\{(\w+)}")
+#: ``execution.id`` names the run (ADR-0010 §3.4), so no execution step may
+#: take the id its outputs would be published under.
+_RESERVED_EXECUTION_STEP_ID = context_vars.EXECUTION_ID.split(".", 1)[1]
 
 
-class ScriptValidator:
-    """Validates a ScriptDefinition for correctness before execution."""
+def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
+    """Every name a reference in *test* may legally resolve to.
 
-    def validate(self, script: ScriptDefinitionV2, version: Optional[str] = None) -> ValidationResult:
+    Assembled from the manifest's ``env`` block, the test's own step ids (those
+    nested in a flow step included), the infrastructure binding keys and
+    ``execution.id``. This is the namespace the runtime will
+    actually have, so a name missing from here is a name that will be missing
+    from the run.
+    """
+    names: set[str] = set()
+
+    env = tck.env
+    if env is not None:
+        for variable_id in _env_variable_ids(env.variables):
+            names.add(f"env.{variable_id}")
+        for testdata in env.testdata or []:
+            names.add(f"env.testdata.{testdata.id}")
+        for schema in env.schemas or []:
+            names.add(f"env.schemas.{schema.id}")
+
+    for phase, steps in (
+        ("setup", test.setup),
+        ("execution", test.execution),
+        ("teardown", test.teardown),
+    ):
+        for step in steps:
+            if step.id:
+                names.add(f"{phase}.{step.id}")
+            for nested_id in nested_step_ids(step.uses, step.with_):
+                names.add(f"{phase}.{nested_id}")
+
+    names.update(known_keys())
+    names.add(context_vars.EXECUTION_ID)
+    return frozenset(names)
+
+
+def _env_variable_ids(variables: object) -> list[str]:
+    """Ids of the manifest's declared variables, whichever shape they arrive in."""
+    if isinstance(variables, list):
+        return [str(v["id"]) for v in variables if isinstance(v, dict) and "id" in v]
+    if isinstance(variables, dict):
+        return [str(key) for key in variables]
+    return []
+
+
+class TestValidator:
+    """Validates a TestDefinition for correctness before execution."""
+
+    def validate_tck(
+        self,
+        tck: TckDefinition,
+        base_dir: Path,
+        version: str | None = None,
+        on_test: Callable[[str], None] | None = None,
+    ) -> ValidationResult:
+        """Validate all test files referenced by a TCK manifest.
+
+        *on_test* is told each test's path before it is checked, so a caller can
+        say which one a slow compile is on.
+        """
+        combined = ValidationResult(issues=experimental_warnings(tck) + entry_findings(tck))
+        for entry in tck.tests:
+            if on_test is not None:
+                on_test(f"tests/{entry.id}")
+            test_path = base_dir / "tests" / entry.id
+            if not test_path.is_file():
+                combined.add_error(f"Referenced test file not found: tests/{entry.id}")
+                continue
+            from tractusx_testlab.authoring.parser import YamlParser
+
+            try:
+                test = YamlParser.parse_test(test_path)
+            except ValidationError as exc:
+                # One issue per finding, each naming the step, the key and the
+                # line — see :mod:`tractusx_testlab.syntax.diagnostics`.
+                for finding in diagnostics.explain(exc, model=TestDefinition, source=test_path):
+                    combined.add_error(f"tests/{entry.id}: {finding}")
+                continue
+            except ValueError as exc:
+                # The file does not parse at all. The finding already names it
+                # and the line, so prefixing it again would say it twice.
+                combined.add_error(str(exc))
+                continue
+            except Exception as exc:
+                combined.add_error(f"tests/{entry.id}: failed to parse — {exc}")
+                continue
+            result = self.validate(test, version=version, scope=_scope_of(tck, test))
+            # Validate tck id and test namespace
+            if test.namespace != tck.id:
+                result.add_error(
+                    f"namespace '{test.namespace}' must match the TCK id '{tck.id}'.",
+                    field="namespace",
+                )
+            result.issues.extend(extension_findings(tck, test))
+            for issue in result.issues:
+                issue.message = f"tests/{entry.id}: {issue.message}"
+                combined.issues.append(issue)
+        return combined
+
+    def validate(
+        self,
+        test: TestDefinition,
+        version: str | None = None,
+        scope: frozenset[str] | None = None,
+    ) -> ValidationResult:
+        """Check *test*, resolving its references against *scope*.
+
+        *scope* is every name the run will be able to supply — the TCK's ``env``
+        entries, its steps' ids, and the infrastructure bindings. Passed as
+        ``None`` (a test validated on its own, with no manifest around it),
+        reference checking is skipped rather than guessed at: warning about every
+        reference in a file whose namespace is not visible is noise, and noise is
+        what got the previous check ignored.
+        """
         result = ValidationResult()
-        declared_vars: set[str] = set()
+        declared = set(scope) if scope is not None else None
 
-        # Collect variables declared in the script header (v2: in TCK env)
-        declared_vars.update(getattr(script, "variables", {}))
+        # All three phases. `teardown` used to be left out, so a teardown step
+        # could name a step type that does not exist, assert with an operand its
+        # operator never reads, or declare a `returns:` the step does not
+        # publish — and `testlab validate` answered OK. The shipped e2e TCK had
+        # exactly that: a `delete_shell_descriptor` assertion the engine would
+        # have refused, in a file the validator called clean.
+        #
+        # The label is the phase the author writes in a reference
+        # (`${{ execution.<id>.<field> }}`), not an engine-internal synonym: an
+        # error in the main phase used to be reported against "main", a word
+        # that appears nowhere in the syntax.
+        for phase, steps in (
+            ("setup", test.setup),
+            ("execution", test.execution),
+            ("teardown", test.teardown),
+        ):
+            for idx, step_def in enumerate(steps):
+                self._validate_step(step_def, idx, declared, version, result, phase=phase)
+                if phase == "execution" and step_def.id == _RESERVED_EXECUTION_STEP_ID:
+                    result.add_error(
+                        "Step id 'id' is reserved in execution: '${{ execution.id }}' is the "
+                        "id of the run. Rename the step.",
+                        step_index=idx,
+                        field="id",
+                        phase=phase,
+                    )
 
-        # Validate setup steps
-        for idx, step_def in enumerate(script.setup):
-            self._validate_step(step_def, idx, declared_vars, version, result, phase="setup")
-
-        # Validate each step
-        for idx, step_def in enumerate(script.execution):
-            self._validate_step(step_def, idx, declared_vars, version, result)
+        # A condition the run cannot evaluate, and a credential it would refuse to send.
+        for phase, idx, field, message in chain(
+            condition_findings(test, scope), credential_findings(test)
+        ):
+            result.add_error(message, step_index=idx, field=field, phase=phase)
 
         return result
 
     def _validate_step(
         self,
-        step_def: StepDefinitionV2,
+        step_def: StepDefinition,
         idx: int,
-        declared_vars: set[str],
-        version: Optional[str],
+        declared: set[str] | None,
+        version: str | None,
         result: ValidationResult,
-        phase: str = "main",
+        phase: str = "execution",
     ) -> None:
         effective_version = version or defaults.DATASPACE_VERSION
 
-        # Check step type is registered
         step_cls = StepRegistry.get(step_def.uses, effective_version)
         if step_cls is None:
             if step_def.uses not in StepRegistry.list_step_types():
@@ -112,27 +241,131 @@ class ScriptValidator:
                     phase=phase,
                 )
 
-        # Check variable references in with_ params resolve
-        self._check_var_refs(step_def.with_ or {}, idx, declared_vars, result)
+        self._check_var_refs(step_def.with_ or {}, idx, declared, result, step_cls)
 
-        # If returns is set, auto-declare the output variables
-        for key in (step_def.returns or {}):
-            declared_vars.add(key)
+        self._validate_inline_assert_inputs(step_def, step_cls, idx, result, phase)
+
+        self._validate_returns(step_def, step_cls, idx, result, phase)
+
+        # A severity the engine cannot read used to compile and then stop the run.
+        for field, problem in severity_findings(step_def, step_cls):
+            result.add_error(problem, step_index=idx, field=field, phase=phase)
+
+    def _validate_returns(
+        self,
+        step_def: StepDefinition,
+        step_cls: type | None,
+        step_idx: int,
+        result: ValidationResult,
+        phase: str,
+    ) -> None:
+        """Check every ``returns:`` name against what the step actually publishes.
+
+        A name the step never declares resolves to nothing at run time, so the
+        variable reads as empty several steps later and the failure surfaces far
+        from its cause. The step said what it produces; saying so here turns a
+        typo into a compile error instead of a mystery. A ``returns:`` name is
+        a variable the rest of the TCK will read, so it is held to the step's
+        *declared* fields — narrower than what an assertion may name, which is
+        only read out of this one output.
+        """
+        returns = step_def.returns or {}
+        if not returns or step_cls is None:
+            return
+        declared = declared_names(step_cls)
+        for name in returns:
+            if names_a_published_output(name, declared):
+                continue
+            result.add_error(
+                f"'returns' name '{name}' is not produced by step "
+                f"'{step_def.uses}'. It publishes: {', '.join(sorted(declared))}.",
+                step_index=step_idx,
+                field="returns",
+                phase=phase,
+            )
 
     def _check_var_refs(
-        self, params: dict, step_idx: int, declared: set[str], result: ValidationResult
+        self,
+        params: dict,
+        step_idx: int,
+        declared: set[str] | None,
+        result: ValidationResult,
+        step_cls: type | None = None,
     ) -> None:
-        for key, value in params.items():
-            if isinstance(value, str):
-                for match in _VAR_REF.finditer(value):
-                    var_name = match.group(1)
-                    if var_name not in declared:
-                        result.add_warning(
-                            f"Variable '${{{var_name}}}' referenced in param '{key}' "
-                            f"is not declared in this script's variables block at step {step_idx} "
-                            f"(may be provided via shared_variables, runtime_vars, or output propagation)",
-                            step_index=step_idx,
-                            field=key,
-                        )
-            elif isinstance(value, dict):
-                self._check_var_refs(value, step_idx, declared, result)
+        """Reject a reference to a name nothing in this TCK supplies.
+
+        An error rather than a warning, because at run time it is now fatal
+        (F-A02): the reference used to survive as its own template text and the
+        warning was the only hint. It said "may be provided via shared_variables,
+        runtime_vars, or output propagation" — which was true of every reference,
+        so the warning carried no information and was correctly ignored.
+        """
+        if declared is None:
+            return
+        for key, reference in unresolved_references(params, declared, step_cls):
+            result.add_error(
+                f"'${{{{ {reference} }}}}' in param '{key}' names nothing this "
+                f"TCK supplies. Available: {', '.join(sorted(declared)[:12])}"
+                f"{'…' if len(declared) > 12 else ''}.{call_scope_hint(reference)}",
+                step_index=step_idx,
+                field=key,
+            )
+
+    def _validate_inline_assert_inputs(
+        self,
+        step_def: StepDefinition,
+        step_cls: type | None,
+        step_idx: int,
+        result: ValidationResult,
+        phase: str,
+    ) -> None:
+        """Check that every assertion names a real check and a real input.
+
+        ``with.input`` must be a plain string naming something the step
+        publishes — what the *step* declares, not what the test wrote in
+        ``returns:``, which is optional and left a step without one unchecked
+        entirely. The shipped e2e TCK asserted ``input: fetch_data`` on
+        ``connector/dataplane/http_request``, a name nothing produces, and the
+        engine compared ``None`` against ``not_null`` and failed a working SUT.
+        """
+        declared = publishes(step_cls) if step_cls is not None else None
+        valid_keys = None if declared is None else set(step_def.returns or {}) | declared
+        for assertion in step_def.assertions or []:
+            params = assertion.with_ or {}
+            resolved = resolve_assertion(assertion.uses, params)
+            if isinstance(resolved, str):
+                result.add_error(
+                    resolved,
+                    step_index=step_idx,
+                    field="validate.uses",
+                    phase=phase,
+                )
+                continue
+            if resolved.operator is not None:
+                mismatch = check_operands(resolved.operator, params)
+                if mismatch:
+                    result.add_error(
+                        mismatch,
+                        step_index=step_idx,
+                        field="validate.with",
+                        phase=phase,
+                    )
+                    continue
+
+            input_value = params.get("input")
+            if not isinstance(input_value, str):
+                result.add_error(
+                    "'validate.with.input' must be a plain string.",
+                    step_index=step_idx,
+                    field="validate.with.input",
+                    phase=phase,
+                )
+                continue
+            if not names_a_published_output(input_value, valid_keys):
+                result.add_error(
+                    f"'validate.with.input' value '{input_value}' is not produced by "
+                    f"step '{step_def.uses}'. It publishes: {', '.join(sorted(valid_keys or []))}.",
+                    step_index=step_idx,
+                    field="validate.with.input",
+                    phase=phase,
+                )

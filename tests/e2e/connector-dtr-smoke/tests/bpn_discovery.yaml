@@ -1,0 +1,221 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: bpn-discovery
+
+metadata:
+  name: "Addressed by BPN"
+  version: "v1.0.0"
+  description: >
+    Every other connector test in this suite addresses the SUT by the two
+    things the infrastructure binding already knows: a DSP URL and a
+    dataspace identity. A Catena-X consumer does not usually have either. It
+    has a business partner number, and the connector is expected to turn that
+    into an identity by asking the BPN-DID resolution service the dataspace
+    runs. These three steps are the ones that take that route — discovery on
+    its own, a catalog query that discovers first, and the whole DSP flow that
+    does the same — and none of them can be exercised without a directory
+    service that actually holds the mapping. The Umbrella release deploys one
+    and seeds it with both participants, so what a green run here says is that
+    the BPN reached the directory, the directory answered with the DID, and
+    the DID was the identity the provider then presented in its own catalog.
+
+setup:
+  - id: create_access_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT catalog access policy
+    with:
+      policy: "${{ env.access_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_usage_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT contract usage policy
+    with:
+      policy: "${{ env.usage_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_asset
+    uses: connector/provider/create_asset
+    name: Create the asset the BPN-addressed queries look for
+    with:
+      asset:
+        asset_id: testlab-e2e-bpn-asset
+        base_url: "http://tck-echo.umbrella.svc.cluster.local"
+        dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+        version: "1.0"
+    returns:
+      asset_id:
+        type: string
+
+  - id: create_contract
+    uses: connector/provider/create_contract_definition
+    name: Publish the BPN-addressed asset
+    with:
+      contract_definition_id: testlab-e2e-bpn-contract
+      access_policy_id: "${{ setup.create_access_policy.policy_id }}"
+      contract_policy_id: "${{ setup.create_usage_policy.policy_id }}"
+      asset_id: "${{ setup.create_asset.asset_id }}"
+    returns:
+      contract_definition_id:
+        type: string
+
+execution:
+  # Discovery on its own, before anything is done with what it found. The
+  # address is given because this dataspace runs no Discovery Finder — only a
+  # BPN-DID directory — so what is being resolved here is the identity and the
+  # protocol version, not the endpoint. Asking for them separately is what
+  # makes the next two steps' answers attributable: if this one is right and
+  # they are wrong, the fault is in what they did with it.
+  - id: discover
+    uses: connector/consumer/discover_connector
+    name: Resolve the SUT's identity and DSP version from its BPN
+    with:
+      bpnl: "${{ env.sut_bpnl }}"
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+    returns:
+      discovery:
+        type: object
+      counter_party_address:
+        type: string
+      counter_party_id:
+        type: string
+      protocol:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: discovery, operator: not_null }
+      # The identity the directory resolved must be the one the binding names,
+      # because that is the identity the provider signs its catalog and its
+      # agreement with. A BPN resolved to anything else negotiates with
+      # somebody the provider is not.
+      - uses: validate/assert
+        with:
+          input: counter_party_id
+          operator: equals
+          value: "${{ infrastructure.sut.connector.participant_id }}"
+      - uses: validate/assert
+        with: { input: counter_party_address, operator: not_null }
+      # Saturn speaks DSP 2025-1. The version matters to the caller, not just
+      # to the handshake: a protocol message goes to the address exactly as
+      # given, so a consumer that read the wrong version here would deliver a
+      # 2025-1 message to the v0.8 handler.
+      - uses: validate/assert
+        with: { input: protocol, operator: contains, value: "2025-1" }
+
+  # The catalog query that discovers for itself. It takes no protocol, because
+  # discovery is what answers with one — passing a protocol here would be an
+  # assumption competing with the connector's own answer.
+  - id: catalog_by_bpnl
+    uses: connector/consumer/query_catalog_by_bpnl
+    name: Query the SUT catalog addressed only by its BPN
+    with:
+      bpnl: "${{ env.sut_bpnl }}"
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
+          operator: "="
+          operand_right: "${{ setup.create_asset.asset_id }}"
+    returns:
+      catalog:
+        type: object
+      datasets:
+        type: array
+    validate:
+      - uses: validate/assert
+        with: { input: catalog, operator: not_null }
+      - uses: validate/assert
+        with: { input: datasets, operator: length_equals, value: 1 }
+
+  # And the whole journey the same way. This is the step that proves discovery
+  # produced an identity a negotiation can actually be signed against: an
+  # identity that merely looked right would still fail here, at the point the
+  # provider checks who it agreed with.
+  - id: flow_by_bpnl
+    uses: connector/consumer/do_dsp_with_bpnl
+    name: Negotiate and transfer, addressed by BPN
+    with:
+      bpnl: "${{ env.sut_bpnl }}"
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
+          operator: "="
+          operand_right: "${{ setup.create_asset.asset_id }}"
+      expected_policies: "${{ env.usage_policy }}"
+    returns:
+      dataplane_url:
+        type: string
+      edr_token:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: dataplane_url, operator: not_null }
+      - uses: validate/assert
+        with: { input: edr_token, operator: not_null }
+
+  - id: fetch_data
+    uses: connector/dataplane/http_request
+    name: Fetch the payload with the EDR the BPN-addressed flow produced
+    with:
+      dataplane_url: "${{ execution.flow_by_bpnl.dataplane_url }}"
+      edr_token: "${{ execution.flow_by_bpnl.edr_token }}"
+      method: GET
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/assert
+        with: { input: body, operator: not_null }
+
+teardown:
+  - id: delete_contract
+    uses: connector/provider/delete_contract_definition
+    name: Withdraw the BPN-addressed offer
+    with:
+      contract_definition_id: "${{ setup.create_contract.contract_definition_id }}"
+
+  - id: delete_asset
+    uses: connector/provider/delete_asset
+    name: Remove the BPN-addressed asset
+    with:
+      asset_id: "${{ setup.create_asset.asset_id }}"
+
+  - id: delete_usage_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT usage policy
+    with:
+      policy_id: "${{ setup.create_usage_policy.policy_id }}"
+
+  - id: delete_access_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT access policy
+    with:
+      policy_id: "${{ setup.create_access_policy.policy_id }}"

@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,12 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Default values applied when optional YAML fields are omitted."""
@@ -38,4 +38,9 @@ VALUE_SOURCE = "INLINE"
 # -- Service defaults ---------------------------------------------------------
 SERVICE_TYPE = "CONNECTOR_CONSUMER"
 DMA_PATH = "/management"
-AAS_API_PATH = "/api/v3.0"
+# The AAS Part 2 registry API. `/api/v3.0` is the path the AAS specification
+# used before it renumbered the prefix, and the one this constant held; no
+# Tractus-X registry answers on it. The DTR's own OpenAPI document declares
+# `version_prefix` with default `v3` and an enum that admits nothing else, and
+# the registry chart's shipped test suite drives `/api/v3/shell-descriptors`.
+AAS_API_PATH = "/api/v3"
