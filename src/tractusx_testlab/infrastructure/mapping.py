@@ -1,0 +1,300 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
+
+"""The three surfaces of an infrastructure binding, all derived from one model.
+
+A binding field is written in three places — a config file, an environment
+variable, and a ``${{ }}`` reference inside a test — and all three forms are
+generated here by walking :class:`Infrastructure`. Nothing in this module
+enumerates a capability or a field by hand, so a field added to the model
+appears on every surface at once and the surfaces cannot drift apart:
+
+===================  ===========================================  ==================================================
+Surface              Form                                         Example
+===================  ===========================================  ==================================================
+Config file          ``<side>.<capability>.<field>``              ``sut.connector.dsp_url``
+Context variable     ``infrastructure.<side>.<capability>.<field>``  ``infrastructure.sut.connector.dsp_url``
+Environment          ``TESTLAB_<SIDE>_<CAPABILITY>_<FIELD>``      ``TESTLAB_SUT_CONNECTOR_DSP_URL``
+===================  ===========================================  ==================================================
+
+Environment variables are read by generating the full set of legal names and
+looking each one up, rather than by splitting names apart. The capability and
+field cannot be recovered from ``TESTLAB_ENGINE_DTR_SUBMODEL_BASE_URL`` by
+counting underscores — both halves carry them — and a generated set has no
+ambiguity to resolve.
+
+A secret field (``CapabilityBinding.secret_fields``) is projected as a
+:class:`~tractusx_testlab.security.credentials.Credential` handle, never as text.
+"""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Iterator, Mapping
+from typing import Any
+
+from tractusx_testlab.models.domain.infrastructure import (
+    CapabilityBinding,
+    Infrastructure,
+    capability_bindings,
+)
+from tractusx_testlab.models.primitives.binding_errors import UnknownBindingKeyError
+from tractusx_testlab.security.credentials import Credential, origin_of
+
+#: Prefix every infrastructure binding carries inside the variable namespace.
+CONTEXT_PREFIX = "infrastructure."
+
+#: Prefix every TestLab environment variable carries.
+ENV_PREFIX = "TESTLAB_"
+
+#: Segment count of a full context key: ``infrastructure.<side>.<cap>.<field>``.
+_KEY_SEGMENTS = 4
+
+
+def capabilities() -> tuple[tuple[str, str, type[CapabilityBinding]], ...]:
+    """Return every ``(side, capability, binding_type)`` the model declares."""
+    return capability_bindings()
+
+
+def context_key(side: str, capability: str, field: str) -> str:
+    """Return the context-variable form of one binding field."""
+    return f"{CONTEXT_PREFIX}{side}.{capability}.{field}"
+
+
+def env_key(side: str, capability: str, field: str) -> str:
+    """Return the environment-variable form of one binding field."""
+    return f"{ENV_PREFIX}{side}_{capability}_{field}".upper()
+
+
+def known_keys() -> dict[str, tuple[str, str, str]]:
+    """Return every legal context key, mapped to its ``(side, capability, field)``."""
+    return {
+        context_key(side, capability, field): (side, capability, field)
+        for side, capability, binding_type in capabilities()
+        for field in binding_type.model_fields
+    }
+
+
+def required_keys(requirements: object | None) -> list[str]:
+    """Return the context keys *requirements* obliges the operator to supply.
+
+    A TCK requires some capabilities and not others, and within a capability
+    only some fields are the operator's to give — the rest are inherited from
+    the TCK or have a working default. This is that intersection: what a
+    particular run actually asks for, which is what an error message should
+    print instead of the whole model.
+
+    Answers an empty list when there are no requirements to narrow by, so a
+    caller with nothing to say prints nothing rather than everything.
+    """
+    if requirements is None:
+        return []
+    owed: list[str] = []
+    for side, capability, binding_type in capabilities():
+        declared = getattr(requirements, side, {}) or {}
+        requirement = declared.get(capability) if isinstance(declared, dict) else None
+        if requirement is None or not getattr(requirement, "required", False):
+            continue
+        owed.extend(
+            context_key(side, capability, field) for field in binding_type.operator_fields()
+        )
+    return owed
+
+
+def _iter_bound(infrastructure: Infrastructure) -> Iterator[tuple[str, str, CapabilityBinding]]:
+    """Yield each capability of *infrastructure* that was actually bound."""
+    for side, capability, _ in capabilities():
+        binding = infrastructure.binding(side, capability)
+        if binding is not None and binding.is_bound():
+            yield side, capability, binding
+
+
+def flatten(infrastructure: Infrastructure) -> dict[str, str | Credential]:
+    """Project *infrastructure* onto the context keys a test can reference.
+
+    Only bound capabilities are projected, and only their non-empty fields: an
+    unbound connector has nothing to say, and publishing its defaults would put
+    an ``api_key_header`` in the namespace for a connector that does not exist.
+
+    A secret field is projected as a :class:`Credential` handle bound to the
+    origin of the capability's own URL, never as text. The SDK services are
+    built from the binding itself and do not read the namespace.
+    """
+    projected: dict[str, str | Credential] = {}
+    for side, capability, binding in _iter_bound(infrastructure):
+        secret = type(binding).secret_fields()
+        for field in type(binding).model_fields:
+            value = getattr(binding, field, "")
+            if value in (None, ""):
+                continue
+            key = context_key(side, capability, field)
+            projected[key] = (
+                Credential(
+                    str(value), name=key, side=side, origins=[origin_of(binding.credential_url())]
+                )
+                if field in secret
+                else str(value)
+            )
+    return projected
+
+
+def secret_keys() -> frozenset[str]:
+    """Every context key whose binding field is a credential, read off the model."""
+    return frozenset(
+        context_key(side, capability, field)
+        for side, capability, binding_type in capabilities()
+        for field in binding_type.secret_fields()
+    )
+
+
+def secret_values(infrastructure: Infrastructure) -> list[str]:
+    """The raw value of every credential *infrastructure* binds, for the masking registry."""
+    return [
+        str(getattr(binding, field))
+        for _, _, binding in _iter_bound(infrastructure)
+        for field in type(binding).secret_fields()
+        if getattr(binding, field, "")
+    ]
+
+
+def credential_headers(infrastructure: Infrastructure) -> set[str]:
+    """The header names the bound capabilities present their credentials in."""
+    return {
+        str(getattr(binding, "api_key_header", ""))
+        for _, _, binding in _iter_bound(infrastructure)
+        if getattr(binding, "api_key_header", "")
+    }
+
+
+def collect_overrides(
+    variables: Mapping[str, Any],
+    requirements: object | None = None,
+) -> dict[str, Any]:
+    """Return the binding overrides a variable store carries.
+
+    An operator supplies bindings on the CLI (``--var
+    infrastructure.sut.dtr.base_url=…``) or in a run-config, so they arrive as
+    ordinary variables and are picked back out here. Shorter keys are left
+    alone: ``infrastructure.sut.connector`` is the seeded service name, not a
+    field, and a key of the full shape naming no field is a typo the operator
+    is told about rather than one that is dropped. *requirements* is what the
+    TCK asked for, and narrows the message a typo earns to the keys that run
+    actually needs.
+    """
+    legal = known_keys()
+    needed = required_keys(requirements)
+    overrides: dict[str, Any] = {}
+    for key, value in variables.items():
+        if not isinstance(key, str) or not key.startswith(CONTEXT_PREFIX):
+            continue
+        if len(key.split(".")) != _KEY_SEGMENTS:
+            continue
+        if key not in legal:
+            raise UnknownBindingKeyError(key, sorted(legal), needed)
+        overrides[key] = value
+    return overrides
+
+
+def overrides_from_env(environ: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Return the binding overrides the environment carries, in context-key form."""
+    source = os.environ if environ is None else environ
+    overrides: dict[str, str] = {}
+    for side, capability, binding_type in capabilities():
+        for field in binding_type.model_fields:
+            value = source.get(env_key(side, capability, field))
+            if value is not None:
+                overrides[context_key(side, capability, field)] = value
+    return overrides
+
+
+def apply_overrides(
+    infrastructure: Infrastructure,
+    overrides: Mapping[str, Any],
+    *,
+    credentials_follow: bool = True,
+) -> Infrastructure:
+    """Return *infrastructure* with *overrides* applied, leaving the original untouched.
+
+    Overrides are context-keyed and always win — they are the last word an
+    operator gets, after the profile, the config file, and the environment.
+    Values are stored as text because every surface they arrive from is text,
+    and a binding field is an address or a credential either way.
+
+    With *credentials_follow* off (a run's own inputs), an override moving a
+    capability's credential URL to another origin drops its credentials unless
+    the same overrides supply them: a key registered for one host is never
+    presented to another because one address changed.
+    """
+    if not overrides:
+        return infrastructure
+
+    legal = known_keys()
+    data = infrastructure.model_dump()
+    supplied: set[tuple[str, str, str]] = set()
+    for key, value in overrides.items():
+        located = legal.get(key)
+        if located is None:
+            raise UnknownBindingKeyError(key, sorted(legal))
+        side, capability, field = located
+        data[side][capability][field] = "" if value is None else str(value)
+        supplied.add(located)
+    if not credentials_follow:
+        _strand_moved_credentials(infrastructure.model_dump(), data, supplied)
+    return Infrastructure.model_validate(data)
+
+
+def _strand_moved_credentials(
+    before: dict[str, Any], after: dict[str, Any], supplied: set[tuple[str, str, str]]
+) -> None:
+    """Blank, in *after*, each credential whose capability moved to another origin."""
+    for side, capability, binding_type in capabilities():
+        secret = binding_type.secret_fields()
+        if not secret:
+            continue
+        url_field = binding_type.credential_url_field or binding_type.identity_field
+        old = origin_of(before[side][capability].get(url_field, ""))
+        # No address bound yet: the overrides complete the binding, not move it.
+        if not old or old == origin_of(after[side][capability].get(url_field, "")):
+            continue
+        for field in secret:
+            if (side, capability, field) not in supplied:
+                after[side][capability][field] = ""
+
+
+def merge(base: Infrastructure, overlay: Infrastructure) -> Infrastructure:
+    """Return *base* with every field *overlay* states written over it.
+
+    Layering config sources means an overlay that binds only a DTR must not
+    erase the connector underneath it, so what is written is what the overlay
+    was actually given — not what it defaults to. A ``api_key_header`` nobody
+    typed is a default, and a default must never overwrite a value someone did
+    type on the layer below.
+    """
+    data = base.model_dump()
+    stated = overlay.model_dump(exclude_unset=True)
+    for side, capabilities_stated in stated.items():
+        for capability, fields_stated in (capabilities_stated or {}).items():
+            for field, value in (fields_stated or {}).items():
+                data[side][capability][field] = value
+    return Infrastructure.model_validate(data)

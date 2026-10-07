@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,20 +14,24 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from tractusx_testlab.steps.base import BaseStep
+# Import step subpackages to trigger @step registrations. Experimental steps
+# and step parameter extensions register from the extensions package.
+import tractusx_testlab.extensions.step_modules
+import tractusx_testlab.steps.connector
+import tractusx_testlab.steps.digital_twin_registry
+import tractusx_testlab.steps.flow
+import tractusx_testlab.steps.http
+import tractusx_testlab.steps.mock
+import tractusx_testlab.steps.notification
+import tractusx_testlab.steps.security
+import tractusx_testlab.steps.util
 from tractusx_testlab.steps.assertions import AssertionEngine
+from tractusx_testlab.steps.step_contract import BaseStep
 
-# Import step subpackages to trigger @step registrations
-import tractusx_testlab.steps.connector  # noqa: F401  — SDK + local connector steps
-import tractusx_testlab.steps.industry  # noqa: F401
-import tractusx_testlab.steps.pull_data  # noqa: F401  — shortcut blocks (catalog→negotiate→transfer→EDR)
-import tractusx_testlab.steps.server  # noqa: F401
-import tractusx_testlab.steps.utility  # noqa: F401
-
-__all__ = ["BaseStep", "AssertionEngine"]
+__all__ = ["AssertionEngine", "BaseStep"]

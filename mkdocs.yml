@@ -20,7 +20,10 @@
 ###############################################################
 
 site_name: Tractus-X TestLab Documentation
-site_description: Visual test authoring tool for Eclipse Tractus-X dataspaces
+site_description: Authoring, compilation and execution engine for Eclipse Tractus-X conformity tests
+# Pages serves the site from a sub-path; the 404 page needs it to load its assets
+# and to redirect version-prefixed links (overrides/404.html) back to the site root.
+site_url: https://eclipse-tractusx.github.io/tractusx-testlab/
 repo_url: https://github.com/eclipse-tractusx/tractusx-testlab
 repo_name: eclipse-tractusx/tractusx-testlab
 edit_uri: edit/main/docs/
@@ -38,18 +41,19 @@ theme:
   logo: assets/images/logo_tractus-x.svg
   custom_dir: docs/overrides
   palette:
-    - scheme: default
-      primary: custom
-      accent: orange
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
+    # The first scheme is the default: dark, with a toggle to light.
     - scheme: slate
       primary: custom
       accent: orange
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+    - scheme: default
+      primary: custom
+      accent: orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
   features:
     - navigation.tabs
     - navigation.sections
@@ -78,6 +82,10 @@ plugins:
 extra:
   version:
     provider: mike
+
+hooks:
+  # Rewrites Mermaid node colours so diagrams stay readable in the dark scheme.
+  - tools/mkdocs_mermaid_theme.py
 
 extra_css:
   - assets/stylesheets/orange-black-theme.css
@@ -120,79 +128,115 @@ nav:
   - Home:
     - Welcome: index.md
     - Overview: home/overview.md
+    - Installation: home/installation.md
+    - Documentation Map: home/documentation-map.md
   - Specification:
-    - Overview: specification/index.md
-    - Installation: specification/installation.md
-    - Specification:
-      - Concepts & Terminology: specification/specification/concepts.md
-      - Functional Requirements: specification/specification/functional-requirements.md
-      - Data Models: specification/specification/data-models.md
-      - Constraints & Verification: specification/specification/constraints.md
-      - Package Security: specification/specification/security.md
+    - Introduction: specification/index.md
+    - Concepts & Terminology: specification/specification/concepts.md
+    - Functional Requirements: specification/specification/functional-requirements.md
+    - Data Models: specification/specification/data-models.md
+    - Constraints & Verification: specification/specification/constraints.md
+    - Package Security: specification/specification/security.md
     - Walkthrough:
       - Overview: specification/walkthrough/index.md
-      - Writing Test Scripts: specification/walkthrough/writing-test-scripts.md
+      - Writing Tests: specification/walkthrough/writing-tests.md
       - Compiling Packages: specification/walkthrough/compiling-packages.md
       - Executing Tests: specification/walkthrough/executing-tests.md
-    - Reference:
-      - YAML Script Format: specification/reference/yaml-format.md
-      - Module Structure: specification/reference/module-structure.md
-      - Package Format: specification/reference/package-format.md
-      - Syntax:
-        - Overview: specification/reference/syntax/index.md
-        - Tests: specification/reference/syntax/tests.md
-        - TCKs: specification/reference/syntax/tcks.md
-        - Services: specification/reference/syntax/services.md
-        - Assertions: specification/reference/syntax/assertions.md
-        - Conditions: specification/reference/syntax/conditions.md
-        - Dependencies & Outputs: specification/reference/syntax/dependencies-and-outputs.md
-        - Advanced Step Types: specification/reference/syntax/advanced-steps.md
-        - Cheat Sheet: specification/reference/syntax/cheat-sheet.md
+  - TCK Syntax:
+    - Overview: tck-syntax/index.md
+    - Package:
+      - Package Layout: tck-syntax/package/layout.md
+      - Common Header: tck-syntax/package/common-header.md
+    - Manifest (index.yaml):
+      - Header & Metadata: tck-syntax/manifest/index.md
+      - Dataspace & Infrastructure: tck-syntax/manifest/dataspace-infrastructure.md
+      - Environment (env): tck-syntax/manifest/env.md
+      - Test Order (tests): tck-syntax/manifest/tests.md
+    - Tests & Steps:
+      - Test Files: tck-syntax/tests/test-files.md
+      - Step Anatomy: tck-syntax/steps/index.md
+      - Expressions & References: tck-syntax/steps/expressions.md
+      - Capability Naming: tck-syntax/steps/capabilities.md
+      - Validation Functions: tck-syntax/steps/validations.md
+    - Authoring:
+      - Mapping CACs to Syntax: tck-syntax/authoring/cac-mapping.md
+      - Complete Worked Example: tck-syntax/authoring/worked-example.md
+      - Authoring Checklist: tck-syntax/authoring/checklist.md
+    - Execution Logs: tck-syntax/execution-logs.md
+    - Proposed Extensions: tck-syntax/extensions.md
+    - Cheat Sheet: tck-syntax/cheat-sheet.md
   - Tutorials:
-    - Getting Started: tutorials/index.md
-    - Create a Block: tutorials/create-block.md
-    - Create a Block Category: tutorials/create-block-category.md
-    - Create a Step Executor: tutorials/create-step-executor.md
-    - Add a Service Type: tutorials/add-service-type.md
-    - Add an Assertion Type: tutorials/add-assertion-type.md
-    - Add an Example Project: tutorials/add-example-project.md
-    - Add a Template: tutorials/add-template.md
-    - Modify the Sync Flow: tutorials/modify-sync-flow.md
-    - Add a Validation Rule: tutorials/add-validation-rule.md
-    - Add a Component: tutorials/add-component.md
-    - Development Workflow: tutorials/development-workflow.md
-    - Debugging: tutorials/debugging.md
-    - CCM Conformity Testing: tutorials/ccm-conformity-testing.md
+    - Your First TCK: tutorials/index.md
     - Certificate Management:
-      - Overview: tutorials/certificate-management-ide-guide.md
+      - Overview: tutorials/certificate-management.md
       - Business Guide: tutorials/ccm-business-guide.md
       - Developer Guide: tutorials/ccm-developer-guide.md
       - Architecture Guide: tutorials/ccm-architecture-guide.md
-    - Quick Reference: tutorials/quick-reference.md
+      - Test Reference: tutorials/ccm-conformity-testing.md
+    - Extending the Engine:
+      - Create a Step: tutorials/create-a-step.md
+      - Add an Assertion Operator: tutorials/add-assertion-operator.md
+      - Add an Infrastructure Capability: tutorials/add-infrastructure-capability.md
+      - Add a Validation Rule: tutorials/add-validation-rule.md
+    - Development Workflow: tutorials/development-workflow.md
+    - Debugging: tutorials/debugging.md
+    - Answer a Call from What It Carried: tutorials/dynamic-mock.md
   - API Reference:
     - Overview: api-reference/index.md
-    - Block & Assertion Reference: api-reference/blocks.md
-    - Blocks:
-      - Mock: api-reference/blocks/mock.md
-      - Wait (Moved): api-reference/blocks/wait.md
-      - Function: api-reference/blocks/function.md
-      - Flow: api-reference/blocks/flow.md
-      - EDC Connector: api-reference/blocks/edc-connector.md
-      - Digital Twin Registry: api-reference/blocks/dtr.md
-      - HTTP: api-reference/blocks/http.md
-      - Validation: api-reference/blocks/validation.md
-      - TCK Manifest: api-reference/blocks/manifest.md
+    - Steps:
+      # >>> step reference nav, generated by `testlab docs`
+      - Overview: api-reference/steps/index.md
+      - Validations: api-reference/steps/validations.md
+      - connector:
+        - Overview: api-reference/steps/connector/index.md
+        - consumer: api-reference/steps/connector/consumer.md
+        - dataplane: api-reference/steps/connector/dataplane.md
+        - discover/digital-twin-registry: api-reference/steps/connector/discover-digital-twin-registry.md
+        - provider: api-reference/steps/connector/provider.md
+        - provider/wizard: api-reference/steps/connector/provider-wizard.md
+      - digital-twin-registry:
+        - Overview: api-reference/steps/digital-twin-registry/index.md
+        - consumer/dataplane: api-reference/steps/digital-twin-registry/consumer-dataplane.md
+        - provider: api-reference/steps/digital-twin-registry/provider.md
+        - provider/wizard: api-reference/steps/digital-twin-registry/provider-wizard.md
+        - submodel: api-reference/steps/digital-twin-registry/submodel.md
+      - flow: api-reference/steps/flow/index.md
+      - http: api-reference/steps/http/index.md
+      - labs:
+        - Overview: api-reference/steps/labs/index.md
+        - connector/provider: api-reference/steps/labs/connector-provider.md
+        - flow: api-reference/steps/labs/flow.md
+        - mock/api: api-reference/steps/labs/mock-api.md
+        - util: api-reference/steps/labs/util.md
+      - mock:
+        - Overview: api-reference/steps/mock/index.md
+        - wait/dataplane: api-reference/steps/mock/wait-dataplane.md
+        - wait: api-reference/steps/mock/wait.md
+      - notification:
+        - Overview: api-reference/steps/notification/index.md
+        - consumer: api-reference/steps/notification/consumer.md
+      - security:
+        - Overview: api-reference/steps/security/index.md
+        - oauth2: api-reference/steps/security/oauth2.md
+      - util: api-reference/steps/util/index.md
+      # <<< step reference nav
   - Developer:
     - Overview: developer/index.md
     - Product Scope: developer/product-scope.md
     - Architecture: developer/architecture.md
     - AI-Assisted Development: developer/ai-development.md
-    - State Management: developer/state-management.md
-    - Block System: developer/block-system.md
-    - Components: developer/components.md
+    - Step Contracts:
+      - Single Source of Truth: developer/step-contracts.md
+      - Contract Conflict Decisions: developer/contract-conflict-decisions.md
+      - Contract Migration Plan: developer/contract-migration-plan.md
     - Data Models: developer/data-models.md
-    - Sync Layer: developer/sync-layer.md
     - Block Lifecycle: developer/block-lifecycle.md
+    - Creating a Step: developer/creating-a-step.md
+    - Extensions (Experimental): developer/extensions.md
+    - Execution Events: developer/execution-events.md
+    - Infrastructure Bindings: developer/infrastructure-bindings.md
+    - Environment Injection Analysis: developer/environment-injection-analysis.md
+    - Step Reference Drift Report: developer/step-reference-drift-report.md
     - Decision Records:
       - Overview: developer/decision-records/index.md
       - ADR-0000 Template: developer/decision-records/ADR-0000-template.md
@@ -207,16 +251,18 @@ nav:
         - ADR-0022 TCK Static Inspection: developer/decision-records/backend/ADR-0022-tck-static-inspection.md
         - ADR-0023 Variable Scope Annotation: developer/decision-records/backend/ADR-0023-variable-scope-annotation.md
         - ADR-0024 Test-Level Skip Configuration: developer/decision-records/backend/ADR-0024-test-skip-configuration.md
+        - ADR-0026 Paused Runs Are Held: developer/decision-records/backend/ADR-0026-paused-runs-are-held.md
       - Shared:
-        - ADR-0003 SSE for Live Execution: developer/decision-records/shared/ADR-0003-sse-for-live-ide-execution.md
+        - ADR-0003 SSE for Live Execution: developer/decision-records/shared/ADR-0003-sse-for-live-execution.md
         - ADR-0008 TCK Rename: developer/decision-records/shared/ADR-0008-test-case-to-tck-rename.md
         - ADR-0009 Typed Variable Class System: developer/decision-records/shared/ADR-0009-typed-variable-class-system.md
         - ADR-0010 YAML Syntax v2: developer/decision-records/shared/ADR-0010-yaml-syntax-v2.md
         - ADR-0011 Environment and Services: developer/decision-records/shared/ADR-0011-environment-and-services.md
         - ADR-0018 Unified Variables Model: developer/decision-records/shared/ADR-0018-unified-variables-model.md
         - ADR-0021 Remove Precondition Concept: developer/decision-records/shared/ADR-0021-remove-precondition-concept.md
+        - ADR-0025 Assertions Read Declared Returns: developer/decision-records/shared/ADR-0025-assertions-read-declared-returns.md
   - Contributing:
     - Guidelines: contributing/index.md
 
 copyright: >
-  Copyright &copy; 2025 Eclipse Tractus-X Contributors
+  Copyright &copy; 2026 Eclipse Tractus-X Contributors; 2026 Catena-X Automotive Network e.V. | Licence: CC-BY-3.0

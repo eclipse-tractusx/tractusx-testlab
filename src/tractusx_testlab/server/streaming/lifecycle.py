@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 import time
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -42,12 +43,20 @@ _logger = logging.getLogger(__name__)
 def create_event_queue(monitor: ExecutionMonitor) -> asyncio.Queue[tuple[str, dict[str, Any]]]:
     """Register a callback on *monitor* that pushes events into a queue.
 
-    Returns the queue. The callback is sync-safe (uses ``put_nowait``).
+    Returns the queue. Not every event is published from the event loop: a step
+    reports each call as it comes back, and the SDK's calls come back on the
+    worker thread they were dispatched to. ``asyncio.Queue`` is not thread safe,
+    so an event raised off the loop is handed to it through the loop instead of
+    being pushed from where it was raised.
     """
     queue: asyncio.Queue[tuple[str, dict[str, Any]]] = asyncio.Queue()
+    loop = asyncio.get_event_loop()
 
     def _push_event(event: str, payload: dict[str, Any]) -> None:
-        queue.put_nowait((event, payload))
+        if threading.current_thread() is threading.main_thread():
+            queue.put_nowait((event, payload))
+        else:
+            loop.call_soon_threadsafe(queue.put_nowait, (event, payload))
 
     monitor.add_callback(_push_event)
     return queue
@@ -91,7 +100,8 @@ async def sse_event_generator(
                     event_id = event_buffer.next_id(job_id)
                     timeout_data = {"reason": "No events received within timeout"}
                     event_buffer.append(
-                        job_id, BufferedEvent(id=event_id, event="stream.timeout", data=timeout_data),
+                        job_id,
+                        BufferedEvent(id=event_id, event="stream.timeout", data=timeout_data),
                     )
                     yield format_sse(event_id, "stream.timeout", timeout_data)
                     return

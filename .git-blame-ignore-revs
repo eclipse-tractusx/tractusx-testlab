@@ -1,0 +1,11 @@
+# Revisions to skip when running `git blame`.
+#
+# Configure once per clone:
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# Only whole-tree, behaviour-free reformats belong here. A commit that
+# changes what the code does must never be listed, however mechanical it
+# looks — blame is how the next person finds the reason for a line.
+
+# style: apply ruff format across src and tests
+c27e567c554bea616d627996b4a94f3ec0bfa003

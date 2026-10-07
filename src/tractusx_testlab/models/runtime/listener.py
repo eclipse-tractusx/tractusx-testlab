@@ -1,0 +1,189 @@
+#################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
+
+"""Where a step expects the system under test to call — the ``listener`` of the
+``step_listening`` / ``step_waiting`` / ``step_received`` events.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field, computed_field, field_validator
+
+_EDC = "https://w3id.org/edc/v0.0.1/ns/"
+#: The prefixes an asset's properties are written under (the asset context
+#: ``connector/provider/create_asset`` sends), for spelling catalog filters.
+_PREFIXES: dict[str, str] = {
+    "edc": _EDC,
+    "dct": "http://purl.org/dc/terms/",
+    "cx-common": "https://w3id.org/catenax/ontology/common#",
+    "cx-taxo": "https://w3id.org/catenax/taxonomy#",
+    "aas-semantics": "https://admin-shell.io/aas/3/0/HasSemantics/",
+}
+
+
+def _filter_key(name: str) -> str | None:
+    """The EDC catalog filter key (``operandLeft``) of a property name, or None
+    for a prefix the asset context does not define."""
+    if name.startswith(("http://", "https://")):
+        return f"'{name}'"
+    prefix, sep, local = name.partition(":")
+    if not sep:
+        return f"'{_EDC}{name}'"
+    base = _PREFIXES.get(prefix)
+    return f"'{base}{local}'" if base else None
+
+
+class CatalogFilter(BaseModel):
+    """One criterion of an EDC catalog request (``querySpec.filterExpression``)."""
+
+    operandLeft: str
+    operator: Literal["="] = "="
+    operandRight: str
+
+
+class ConnectorOffer(BaseModel):
+    """The offer on the engine connector a call has to be negotiated for.
+
+    What a counter-party needs to reach a mock that sits behind the engine
+    connector: which connector to discover (``dsp_url``, ``participant_id``)
+    and which offer to negotiate there.
+
+    A system under test finds the offer by what it is — its ``properties``, as
+    ``catalog_filters`` spells them for an EDC catalog request — and not by
+    ``asset_id``, which is the test's own name for the asset and usually
+    carries the run's id.
+    """
+
+    asset_id: str
+    dsp_url: str | None = None
+    #: The connector's dataspace identity — a DID on a DCP dataspace, a BPNL
+    #: on an older one.
+    participant_id: str | None = None
+    #: The asset's public properties as the catalog shows them, keyed as the
+    #: asset declares them (``dct:type``, ``dct:subject``,
+    #: ``cx-common:version``, ``aas-semantics:semanticId`` and any other).
+    #: An IRI value is ``{"@id": …}``. Private properties never appear here.
+    properties: dict[str, Any] = Field(default_factory=dict)
+
+    @classmethod
+    def describe(cls, asset: dict[str, Any]) -> dict[str, Any]:
+        """The public properties of an asset config, as ``create_asset`` writes them.
+
+        Takes the shape of ``config/connector/asset`` and
+        ``config/connector/mock_asset``: ``dct_type``, ``dct_subject``,
+        ``version``, ``semantic_id`` and ``properties``. ``private_properties``
+        stay private.
+        """
+        found: dict[str, Any] = {}
+        for key, value in (asset.get("properties") or {}).items():
+            found[key] = value
+        for key, field, iri in (
+            ("dct:type", "dct_type", True),
+            ("dct:subject", "dct_subject", True),
+            ("cx-common:version", "version", False),
+            ("aas-semantics:semanticId", "semantic_id", True),
+        ):
+            value = asset.get(field)
+            if value:
+                found[key] = {"@id": str(value)} if iri and not isinstance(value, dict) else value
+        return found
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def catalog_filters(self) -> list[CatalogFilter]:
+        """The catalog request that finds this offer: one criterion per public
+        property with a literal or ``{"@id"}`` value, else the asset id."""
+        found: list[CatalogFilter] = []
+        for name, value in self.properties.items():
+            key = _filter_key(name)
+            if key is None:
+                continue
+            if isinstance(value, dict) and value.get("@id"):
+                found.append(
+                    CatalogFilter(operandLeft=f"{key}.'@id'", operandRight=str(value["@id"]))
+                )
+            elif isinstance(value, (str, int, float)) and not isinstance(value, bool):
+                found.append(CatalogFilter(operandLeft=key, operandRight=str(value)))
+        return found or [CatalogFilter(operandLeft=f"{_EDC}id", operandRight=self.asset_id)]
+
+
+class ActionField(BaseModel):
+    """One labelled value the person driving the system under test copies."""
+
+    label: str = Field(min_length=1, description="What the value is, e.g. `header.receiverBpn`.")
+    value: str | int | float | bool = Field(description="The value to copy.")
+
+
+class WaitAction(BaseModel):
+    """The action the system under test has to take while a step waits —
+    written by the test author on the wait step (``with.action``) and shown in
+    place of what a viewer would otherwise derive from the listener.
+
+    Every part is optional: a viewer shows what is given and derives the rest.
+    """
+
+    label: str | None = Field(
+        default=None, description="The action's name, e.g. 'Send a certificate push'."
+    )
+    description: str | None = Field(
+        default=None, description="What is being asked of the system under test, and why."
+    )
+    recommendation: list[str] = Field(
+        default_factory=list,
+        description="How to do it: the steps to take, in order. A single string is one step.",
+    )
+    fields: list[ActionField] = Field(
+        default_factory=list, description="Values to copy, shown beside the steps, in order."
+    )
+
+    @field_validator("recommendation", mode="before")
+    @classmethod
+    def _one_step(cls, value: Any) -> Any:
+        return [value] if isinstance(value, str) else value
+
+
+class Listener(BaseModel):
+    """Where the system under test is expected to call.
+
+    Published so that whoever is watching a run — or driving the SUT by hand —
+    is told the one thing they need at that moment: which method, at which
+    address. ``url`` is the address as the engine knows it; ``path`` is the
+    part of it the mock server routes on.
+    """
+
+    method: str
+    url: str
+    path: str
+    #: How the call has to arrive. ``direct``: the SUT calls ``url`` itself.
+    #: ``dataplane``: the SUT reaches the mock only through the engine
+    #: connector — it negotiates ``offer`` and calls through its data plane —
+    #: so ``url`` is the data plane's target, never an address to hand the SUT.
+    via: Literal["direct", "dataplane"] = "direct"
+    #: The offer to negotiate, when ``via`` is ``dataplane``.
+    offer: ConnectorOffer | None = None
+    #: The action the test asks of the system under test, when the wait step
+    #: declares one (``with.action``).
+    action: WaitAction | None = None

@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Context-seeding helpers — populate a StepContext before a TCK run begins.
@@ -32,11 +33,20 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
+from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
+
+from tractusx_testlab.authoring.test import Tck
+from tractusx_testlab.logging import wire
+from tractusx_testlab.logging.masking import register_secret
+from tractusx_testlab.models.primitives.binding_errors import MissingInputVariableError
+from tractusx_testlab.models.primitives.exceptions import VariableTypeError
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.scripting.script import Tck
+from tractusx_testlab.player.loading._package_paths import package_path
+from tractusx_testlab.syntax import context_vars, keys, variables
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +54,16 @@ logger = logging.getLogger(__name__)
 def seed_context_variables(
     context: StepContext,
     tck: Tck,
-    runtime_vars: Optional[dict],
+    runtime_vars: dict | None,
 ) -> None:
     """Seed context with all variable sources in priority order.
 
     Priority (lowest → highest):
     1. Shared variables with defaults.
-    2. V2 ``env.variables`` static values (``source: value``).
+    2. ``env.variables`` static values (``source: value``).
     3. Operator-supplied ``runtime_vars`` (highest — overrides everything).
+
+    ``execution.id`` is set after all three and cannot be overridden.
 
     Side effects: writes to *context* variables store and loads testdata files.
     """
@@ -64,40 +76,141 @@ def seed_context_variables(
     if shared_vars:
         for var_name, var_def in shared_vars.items():
             if var_def.default is not None:
-                context.set_variable(var_name, var_def.default)
+                context.set_template(var_name, var_def.default)
 
     seed_env_variables(context, tck)
 
     if runtime_vars:
+        declared = _declared_types(tck)
+        secret = {name for name, var in tck.all_variables().items() if var.secret}
         for key, value in runtime_vars.items():
-            context.set_variable(key, value)
+            # A variable named like a credential is treated as one whatever it declares.
+            is_secret = key in secret or wire.is_secret_key(key)
+            if is_secret and isinstance(value, str):
+                # A key read from a file ends in a newline the server never sent.
+                value = value.strip()
+            parsed = _as_declared_type(key, value, declared.get(key))
+            context.set_variable(key, parsed)
+            if is_secret:
+                register_secret(parsed, run=str(context.job.job_id), explicit=True)
+        _keep_inputs(context, runtime_vars, secret)
+
+    # Last, so no input can pose as it: the id of this run, for a test that
+    # leaves something behind in a shared system and has to name it apart from
+    # what another run of the same TCK leaves there — an asset on the engine
+    # connector, say. An engine that adopts its own job id hands it through.
+    context.set_variable(context_vars.EXECUTION_ID, context.job.job_id)
+
+
+def _keep_inputs(context: StepContext, runtime_vars: dict, secret: set[str]) -> None:
+    """Give the job the inputs it was run with, as any record shows them.
+
+    The job is read for as long as the engine runs, long after this run's
+    secrets were released, so it never holds a raw one: a secret input is
+    ``***`` whatever it holds, and the rest is redacted and masked now, while
+    the run's secrets are pinned (logging.wire).
+    """
+    context.job.runtime_vars = wire.written(
+        {key: REDACTED_VALUE if key in secret else value for key, value in runtime_vars.items()}
+    )
+
+
+def require_inputs(context: StepContext, tck: Tck) -> None:
+    """Refuse a run whose TCK declares input variables the operator did not supply.
+
+    An ``env`` variable with ``source: input`` and no default is the TCK saying
+    it cannot know this value — the twin to look up, the BPN to present. That
+    is a contract with the operator exactly as an infrastructure binding is,
+    and it is checked in the same place and at the same time: before the first
+    step, with every missing name reported at once and its description beside
+    it, rather than one at a time as an empty ``${{ env.… }}`` that fails
+    somewhere in the middle as a puzzling 404.
+    """
+    missing = {
+        name: (variable.description or "")
+        for name, variable in tck.required_variables().items()
+        if not str(context.get_variable(name, "") or "").strip()
+    }
+    if missing:
+        raise MissingInputVariableError(missing)
 
 
 def seed_env_variables(context: StepContext, tck: Tck) -> None:
-    """Seed V2 ``env.variables`` entries that carry a static ``with.value``."""
-    env = getattr(tck.definition, "env", None)
-    if env is None:
-        return
-    variables = getattr(env, "variables", None)
-    if not variables or not isinstance(variables, list):
-        return
-    for var in variables:
-        if not isinstance(var, dict):
-            continue
-        var_id = var.get("id")
-        if not var_id:
-            continue
-        with_block = var.get("with") or {}
-        value = with_block.get("value")
+    """Seed ``env.variables`` entries that carry a static ``with.value``.
+
+    One entry, one name. A variable used to be bound under its declared return
+    key as well — ``env.usage_policy.policy`` beside ``env.usage_policy`` — so
+    the same value answered to two references, only one of which the compiler
+    knew about. Every variable publishes one value, so the id is the reference.
+    """
+    for var in _declared_variables(tck):
+        value = (var.get(keys.WITH) or {}).get(keys.VALUE)
         if value is None:
             continue
-        context.set_variable(var_id, value)
-        returns = var.get("returns") or {}
-        for field_name in returns:
-            context.set_variable(f"{var_id}.{field_name}", value)
+        var_id = str(var[keys.ID])
+        context.set_template(var_id, _as_declared_type(var_id, value, _declared_type(var)))
+        if var.get(keys.SECRET) is True:
+            register_secret(value, run=str(context.job.job_id), explicit=True)
 
 
-def _resolve_asset_path(base_dir: Path, folder_name: str, source: str) -> Optional[Path]:
+def _declared_variables(tck: Tck) -> Iterator[dict]:
+    """Yield every well-formed ``env.variables`` entry the TCK declares."""
+    env = getattr(tck.definition, "env", None)
+    entries = getattr(env, "variables", None) if env is not None else None
+    if not entries or not isinstance(entries, list):
+        return
+    for entry in entries:
+        if isinstance(entry, dict) and entry.get(keys.ID):
+            yield entry
+
+
+def _declared_types(tck: Tck) -> dict[str, str]:
+    """Map each ``env`` variable's id to the type it publishes.
+
+    Read for the operator's own values too — a ``--var`` override is the same
+    variable the manifest declared, and a policy that arrived from a run config
+    is not a different kind of thing from one written into the manifest.
+    """
+    types = {str(var[keys.ID]): _declared_type(var) for var in _declared_variables(tck)}
+    return {name: declared for name, declared in types.items() if declared}
+
+
+def _declared_type(var: dict) -> str | None:
+    """Return the type a variable publishes, as its ``uses:`` verb defines it.
+
+    The verb is the single source of truth (:mod:`tractusx_testlab.syntax.variables`):
+    a ``config/connector/policy`` publishes an object whatever its ``returns:``
+    block says, and a declaration that disagrees is refused at compile time
+    rather than reinterpreted here. The declaration is read only when the verb
+    is one the catalog does not know — which the compiler also refuses, so this
+    is what a player handed an unvalidated TCK falls back to rather than a
+    second opinion about a valid one.
+    """
+    verb = variables.verb_for(str(var.get(keys.USES) or ""))
+    if verb is not None:
+        return verb.type
+    value_def = (var.get(keys.RETURNS) or {}).get(variables.VALUE_KEY)
+    if isinstance(value_def, dict) and value_def.get(keys.TYPE):
+        return str(value_def[keys.TYPE]).strip().lower()
+    return None
+
+
+def _as_declared_type(name: str, value: Any, declared: str | None) -> Any:
+    """Read *value* as the type its variable publishes, and refuse it when it is not.
+
+    The reading is :func:`~tractusx_testlab.syntax.variables.read_as_declared`,
+    the same one the compiler runs over the manifest, so a value that gets this
+    far has already been through it — this is the run reading its own seed
+    rather than trusting a package it was handed, and it says the same sentence
+    the compiler would have said.
+    """
+    parsed, problem = variables.read_as_declared(value, declared)
+    if problem is not None:
+        raise VariableTypeError(name, declared or "", problem)
+    return parsed
+
+
+def _resolve_asset_path(base_dir: Path, folder_name: str, source: str) -> Path | None:
     """Locate an asset file under *folder_name*, tolerating both package layouts.
 
     A compiled ``.tck`` archive stores assets under ``assets/<folder>/`` while a
@@ -105,14 +218,21 @@ def _resolve_asset_path(base_dir: Path, folder_name: str, source: str) -> Option
     valid inputs to the player, so try the compiled layout first and fall back
     to the raw one.  Returns ``None`` when the file exists in neither.
     """
-    for candidate in (base_dir / "assets" / folder_name / source, base_dir / folder_name / source):
+    # `source` comes from the package; it may not name a file outside it.
+    for candidate in (
+        package_path(base_dir, f"assets/{folder_name}/{source}"),
+        package_path(base_dir, f"{folder_name}/{source}"),
+    ):
         if candidate.is_file():
             return candidate
     return None
 
 
 def _load_json_assets(
-    context: StepContext, tck: Any, folder_name: str, entries: Any,
+    context: StepContext,
+    tck: Any,
+    folder_name: str,
+    entries: Any,
 ) -> None:
     """Load JSON assets from *folder_name* and seed them under ``<folder>.<id>``.
 
@@ -125,7 +245,10 @@ def _load_json_assets(
         if path is None:
             logger.warning(
                 "%s file not found, skipping: %s/%s (searched under %s)",
-                folder_name.capitalize(), folder_name, entry.source, tck.base_dir,
+                folder_name.capitalize(),
+                folder_name,
+                entry.source,
+                tck.base_dir,
             )
             continue
         try:
@@ -133,8 +256,8 @@ def _load_json_assets(
         except (json.JSONDecodeError, OSError) as exc:
             logger.warning("Failed to load %s file %s: %s", folder_name, path, exc)
             continue
-        context.set_variable(f"{folder_name}.{entry.id}", content)
-        context.set_variable(f"env.{folder_name}.{entry.id}", content)
+        context.set_template(f"{folder_name}.{entry.id}", content)
+        context.set_template(f"env.{folder_name}.{entry.id}", content)
         logger.debug("Loaded %s '%s' from %s", folder_name, entry.id, path.name)
 
 

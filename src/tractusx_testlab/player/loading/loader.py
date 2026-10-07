@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Loader — resolves YAML files, .tck archives, and .stck archives into Tck objects."""
+"""Loader — resolves a ``.tck`` archive into a :class:`Tck`."""
 
 from __future__ import annotations
 
@@ -30,21 +30,24 @@ import logging
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Optional
 
 import yaml
 from pydantic import ValidationError
 
-from tractusx_testlab.compiler.packager import Packager
-from tractusx_testlab.scripting.script import Tck as Tck, TestScript
-from tractusx_testlab.models.primitives.enums import ScriptKind
+from tractusx_testlab.authoring.test import Tck as Tck
+from tractusx_testlab.authoring.test import Test
+from tractusx_testlab.compiler import package_digest
+from tractusx_testlab.models.authoring.definitions import TestDefinition
+from tractusx_testlab.models.primitives.enums import DefinitionKind
+from tractusx_testlab.player.loading._encrypted import PAYLOAD_ENTRY, open_encrypted_package
+from tractusx_testlab.player.loading._package_paths import package_path
 from tractusx_testlab.player.loading._parser import (
-    _normalize_discriminator,
-    _SCRIPT_ADAPTER,
     _TCK_ADAPTER,
-    parse_script_file,
-    parse_tck_file,
+    _TEST_ADAPTER,
+    _normalize_discriminator,
+    parse_test_file,
 )
+from tractusx_testlab.syntax import diagnostics
 
 # Entry name for the bundled authoring YAML inside .tck ZIP archives
 _TCK_BUNDLE_ENTRY = "tck-bundle.yaml"
@@ -52,36 +55,47 @@ _TCK_BUNDLE_ENTRY = "tck-bundle.yaml"
 logger = logging.getLogger(__name__)
 
 
-def _load_test_scripts(tests: list, base_dir: Path) -> list[TestScript]:
-    """Resolve TCK ``tests:`` entries into TestScript objects.
+def _load_tests(entries: list, base_dir: Path) -> list[Test]:
+    """Resolve TCK ``tests:`` entries into Test objects.
 
     Each entry is a ``TckTestEntry`` with an ``id`` filename relative to
     ``<base_dir>/tests/``.  The ``skippable`` flag from the manifest entry is
-    forwarded to the ``TestScript`` so the player can enforce skip rules.
+    forwarded to the ``Test`` so the player can enforce skip rules, and the
+    labs ``async`` flag so a session can hold the test back until asked.
     """
-    scripts: list[TestScript] = []
+    tests: list[Test] = []
     tests_dir = base_dir / "tests"
     validation_errors = []
-    for entry in tests:
-        test_path = tests_dir / entry.id
+    for entry in entries:
+        # The id comes from the package; it may not name a file outside it.
+        test_path = package_path(tests_dir, entry.id)
         if not test_path.exists():
             logger.warning("Test file not found, skipping: %s", test_path)
             continue
         try:
-            script_def = parse_script_file(test_path)
-            scripts.append(TestScript(script_def, skippable=entry.skippable, test_id=entry.id))
-        except ValidationError as e:
+            test_def = parse_test_file(test_path)
+            tests.append(
+                Test(
+                    test_def,
+                    skippable=entry.skippable,
+                    test_id=entry.id,
+                    on_demand=entry.async_,
+                )
+            )
+        except ValidationError as exc:
             # 3. if Pydantic fails, capture exception to add filename
-            validation_errors.append(f"File: {entry.id}\n{e}")
+            findings = diagnostics.render(exc, model=TestDefinition, source=test_path)
+            validation_errors.append(f"File: {entry.id}\n{findings}")
     if validation_errors:
         separator = "\n" + "-" * 80 + "\n"
         raise ValueError(
             f"Can't run. Validation failure in {len(validation_errors)} test(s):"
             f"{separator}{separator.join(validation_errors)}"
         )
-    return scripts
+    return tests
 
-def _detect_kind(data: dict) -> ScriptKind:
+
+def _detect_kind(data: dict) -> DefinitionKind:
     """Detect the kind of a YAML document.
 
     Priority: explicit ``kind`` field → structural heuristic (``tests`` key).
@@ -91,99 +105,111 @@ def _detect_kind(data: dict) -> ScriptKind:
     has_tests_key = "tests" in data
 
     if explicit is not None:
-        kind = ScriptKind(explicit)
-        if kind == ScriptKind.TEST and has_tests_key:
+        kind = DefinitionKind(explicit)
+        if kind == DefinitionKind.TEST and has_tests_key:
             raise ValueError(
                 "YAML declares kind: test but contains a 'tests' key. "
                 "Use kind: tck for manifests that group multiple tests."
             )
-        if kind == ScriptKind.TCK and not has_tests_key:
+        if kind == DefinitionKind.TCK and not has_tests_key:
             raise ValueError(
                 "YAML declares kind: tck but is missing the 'tests' key. "
                 "A TCK must list its tests under the 'tests' key."
             )
         return kind
 
-    return ScriptKind.TCK if has_tests_key else ScriptKind.TEST
+    return DefinitionKind.TCK if has_tests_key else DefinitionKind.TEST
 
 
 class Loader:
-    """Loads a TCK from a YAML file, .tck archive, or .stck encrypted archive."""
+    """Loads a TCK from a ``.tck`` archive, plain or encrypted.
+
+    A package and nothing else. The loader used to take authoring YAML too,
+    and that branch was the one way into the player that skipped the compiler:
+    no validator, no fingerprint, and no digest to check the executed files
+    against. ``testlab run`` compiles a manifest and hands over the result.
+    """
 
     __slots__ = ()
 
     def load(
         self,
         path: Path,
-        player_private_key: Optional[bytes] = None,
-        compiler_public_key: Optional[bytes] = None,
+        player_private_key: bytes | None = None,
+        compiler_public_key: bytes | None = None,
     ) -> Tck:
-        """Load a TCK from *path*.
+        """Load a TCK from the ``.tck`` package at *path*.
 
         Uses the local parser to support testlab-extended enum values
         (assertion types, service types) that the SDK parser rejects.
+
+        Raises:
+            ValueError: If *path* is not a ``.tck`` package.
         """
-        if path.suffix == ".stck":
-            return self._load_package(path, player_private_key, compiler_public_key)
-
-        if path.suffix == ".tck":
-            return self._load_tck_package(path)
-
-        return self._load_yaml(path)
-
-    def _load_tck_package(self, path: Path) -> Tck:
-        """Load an unencrypted .tck ZIP archive.
-
-        Extracts ``tck-bundle.yaml`` from the archive and parses it
-        using the standard YAML pipeline.  The archive is extracted to
-        a temporary directory so that relative asset paths resolve.
-        """
-        if not zipfile.is_zipfile(path):
+        if path.suffix != ".tck":
             raise ValueError(
-                f"File has .tck extension but is not a valid ZIP archive: {path}"
+                f"The player executes compiled packages, and {path.name!r} is not one. "
+                f"Compile it first: `testlab compile {path} -o dist/`, then load the "
+                f".tck this produces."
             )
-        extract_dir = Path(tempfile.mkdtemp(prefix="tck_"))
-        with zipfile.ZipFile(path, "r") as zf:
-            if _TCK_BUNDLE_ENTRY not in zf.namelist():
-                raise ValueError(
-                    f"Package is missing the bundled test definition "
-                    f"({_TCK_BUNDLE_ENTRY}). Re-compile the package with "
-                    f"the latest testlab compiler."
-                )
-            zf.extractall(extract_dir)
 
-        bundle_path = extract_dir / _TCK_BUNDLE_ENTRY
-        with open(bundle_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        return self._parse_data(data, source_path=path, base_dir=extract_dir)
+        return self._load_tck_package(path, player_private_key, compiler_public_key)
 
-    def _load_package(
+    def _load_tck_package(
         self,
         path: Path,
-        player_private_key: Optional[bytes],
-        compiler_public_key: Optional[bytes],
+        player_private_key: bytes | None = None,
+        compiler_public_key: bytes | None = None,
     ) -> Tck:
-        """Load and verify a .stck archive."""
-        if player_private_key is None or compiler_public_key is None:
-            raise ValueError(
-                "player_private_key and compiler_public_key are required "
-                "to load .stck files"
-            )
-        yaml_bytes = Packager.extract_and_verify(
-            path, player_private_key, compiler_public_key,
-        )
-        data = yaml.safe_load(yaml_bytes)
-        return self._parse_data(data, source_path=path, base_dir=path.parent)
+        """Load a .tck ZIP archive — plain or encrypted (payload.enc format).
 
-    def _load_yaml(self, path: Path) -> Tck:
-        """Load a plain YAML file."""
-        with open(path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        return self._parse_data(data, source_path=path, base_dir=path.parent)
+        Both shapes arrive at the same entries: read straight from a plain
+        archive, or verified and decrypted from an encrypted one. Those are
+        checked, extracted to a temporary directory so relative asset paths
+        resolve, and ``tck-bundle.yaml`` is parsed.
+        """
+        if not zipfile.is_zipfile(path):
+            raise ValueError(f"File has .tck extension but is not a valid ZIP archive: {path}")
+
+        with zipfile.ZipFile(path, "r") as zf:
+            names = zf.namelist()
+
+        if PAYLOAD_ENTRY in names:
+            entries = open_encrypted_package(path, player_private_key, compiler_public_key)
+        else:
+            with zipfile.ZipFile(path, "r") as zf:
+                entries = {name: zf.read(name) for name in names}
+
+        if _TCK_BUNDLE_ENTRY not in entries:
+            raise ValueError(
+                f"Package is missing the bundled test definition "
+                f"({_TCK_BUNDLE_ENTRY}). Re-compile the package with "
+                f"the latest testlab compiler."
+            )
+
+        # Verified before anything is written to disk, so a package that fails
+        # never reaches a path something else might read.
+        _verify_tck_integrity(entries)
+
+        extract_dir = Path(tempfile.mkdtemp(prefix="tck_"))
+        # Every name is checked before the first byte is written: an entry
+        # named `../x` or `/home/u/.bashrc` used to be written there, before the
+        # bundle was even parsed (GHSA-5982-hx9j-38f7). A directory entry
+        # (`tests/`) carries no content and is only created.
+        targets = {name: package_path(extract_dir, name) for name in entries}
+        for name, blob in entries.items():
+            target = targets[name]
+            if name.endswith("/"):
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(blob)
+
+        data = yaml.safe_load(entries[_TCK_BUNDLE_ENTRY].decode("utf-8"))
+        return self._parse_data(data, source_path=path, base_dir=extract_dir)
 
     def _parse_data(self, data: object, source_path: Path, base_dir: Path) -> Tck:
-        """Parse raw YAML data into a Tck runtime object.
-        """
+        """Parse raw YAML data into a Tck runtime object."""
         if not isinstance(data, dict):
             raise ValueError(
                 f"Expected a YAML mapping from {source_path}, got {type(data).__name__}"
@@ -191,11 +217,24 @@ class Loader:
         kind = _detect_kind(data)
         normalized = _normalize_discriminator(data, source_path)
 
-        if kind == ScriptKind.TCK:
+        if kind == DefinitionKind.TCK:
             tck_def = _TCK_ADAPTER.validate_python(normalized)
             tck = Tck(tck_def, base_dir=base_dir)
-            tck._scripts = _load_test_scripts(tck_def.tests, base_dir)
+            tck._tests = _load_tests(tck_def.tests, base_dir)
             return tck
         else:
-            script_def = _SCRIPT_ADAPTER.validate_python(normalized)
-            return Tck.from_single_script(script_def, base_dir=base_dir)
+            test_def = _TEST_ADAPTER.validate_python(normalized)
+            return Tck.from_single_test(test_def, base_dir=base_dir)
+
+
+def _verify_tck_integrity(entries: dict[str, bytes]) -> None:
+    """Refuse a package whose contents are not the ones it was sealed with.
+
+    Delegates to :func:`~tractusx_testlab.compiler.package_digest.verify`, the
+    same function the compiler seals with. The two used to be separate
+    computations over two different sets of bytes: the digest covered
+    ``manifest.yaml``, the compiled IR and the asset digests, while the player
+    executed ``tests/*.yaml``, which was in none of them. A step appended to a
+    test file inside a compiled ``.tck`` ran with no integrity error at all.
+    """
+    package_digest.verify(entries)

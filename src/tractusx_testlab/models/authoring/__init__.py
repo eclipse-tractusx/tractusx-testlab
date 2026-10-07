@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -22,23 +22,21 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Authoring-time structures: script, step, service and TCK definitions."""
+"""Authoring-time structures: test, step, service and TCK definitions."""
 
 from tractusx_testlab.models.authoring.definitions import (
-    AssertionV2,
+    Assertion,
     EnvDefinition,
     ImportDefinition,
     MetadataDefinition,
     ReturnFieldDefinition,
     SchemaDefinition,
-    ScriptDefinition,
-    ScriptDefinitionV2,
     ServiceDefinition,
-    StepDefinitionV2,
+    StepDefinition,
     TckDefinition,
-    TckDefinitionV2,
     TckMetadataDefinition,
     TestDataDefinition,
+    TestDefinition,
     VariableDefinition,
 )
 from tractusx_testlab.models.authoring.infrastructure import (
@@ -49,7 +47,7 @@ from tractusx_testlab.models.authoring.infrastructure import (
 )
 
 __all__ = [
-    "AssertionV2",
+    "Assertion",
     "CapabilityRequirement",
     "DataspaceContext",
     "EnvDefinition",
@@ -58,14 +56,12 @@ __all__ = [
     "MetadataDefinition",
     "ReturnFieldDefinition",
     "SchemaDefinition",
-    "ScriptDefinition",
-    "ScriptDefinitionV2",
     "ServiceDefinition",
     "Standard",
-    "StepDefinitionV2",
+    "StepDefinition",
     "TckDefinition",
-    "TckDefinitionV2",
     "TckMetadataDefinition",
     "TestDataDefinition",
+    "TestDefinition",
     "VariableDefinition",
 ]

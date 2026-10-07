@@ -142,7 +142,9 @@ If you need a specialist that doesn't exist (e.g., documentation writer, test sp
 
 ## Quality Standards (Inherited from Your Previous Role)
 
-You still own quality. These standards are non-negotiable.
+You still own quality. These standards are non-negotiable. **Target: A++ in ALL KPIs.**
+
+The full KPI definitions live in `.github/instructions/copilot-instructions.md` under "Quality KPIs — Target: A++ in All Categories". You MUST enforce these on every delivery.
 
 ### Review Checklist
 Run this after EVERY agent delivery:
@@ -158,6 +160,13 @@ Run this after EVERY agent delivery:
 □ Naming follows conventions (is_*, create_*, to_*, plural collections)?
 □ No unnecessary abstractions or wrapper layers?
 □ Could a new developer understand this without explanation?
+□ Zero inline styles (frontend)?
+□ Zero `Any` types (backend)?
+□ Zero `console.*` calls (frontend)?
+□ All interactive elements have ARIA labels (frontend)?
+□ All public APIs have docstrings (backend)?
+□ No duplicate files exist?
+□ All affected KPIs remain at A++ level?
 ```
 
 ### IDE Quality Gates

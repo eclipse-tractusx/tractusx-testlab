@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -22,25 +22,23 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""SSE streaming routes for live test execution events."""
+"""SSE streaming routes for live TCK execution events."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Annotated, Any
+from typing import Annotated
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.responses import StreamingResponse
 
-from tractusx_testlab.models.authoring.definitions import TckDefinitionV2
-from tractusx_testlab.models.primitives.enums import ScriptKind
+from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.authoring.test import Tck
+from tractusx_testlab.models.primitives.enums import DefinitionKind
 from tractusx_testlab.player.execution.player import TestlabPlayer
-from tractusx_testlab.scripting.parser import YamlParser
-from tractusx_testlab.scripting.script import Tck
-
 from tractusx_testlab.server.streaming._event_buffer import EventBuffer
 from tractusx_testlab.server.streaming.lifecycle import create_event_queue, sse_event_generator
 
@@ -50,10 +48,10 @@ _logger = logging.getLogger(__name__)
 _pending_jobs: dict[str, Tck] = {}
 
 # Background task references — prevents garbage collection and logs exceptions
-_background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+_background_tasks: set[asyncio.Task] = set()
 
 
-def _on_task_done(task: asyncio.Task) -> None:  # type: ignore[type-arg]
+def _on_task_done(task: asyncio.Task) -> None:
     """Remove completed task from the tracking set and log any unhandled exceptions."""
     _background_tasks.discard(task)
     if task.cancelled():
@@ -63,7 +61,7 @@ def _on_task_done(task: asyncio.Task) -> None:  # type: ignore[type-arg]
         _logger.exception("Background task failed: %s", exc, exc_info=exc)
 
 
-streaming_router = APIRouter(prefix="/test-execution", tags=["streaming"])
+streaming_router = APIRouter(prefix="/tck-execution", tags=["streaming"])
 
 
 def _get_player(request: Request) -> TestlabPlayer:
@@ -105,19 +103,19 @@ async def _parse_and_execute_yaml(request: Request, player: TestlabPlayer) -> JS
     kind_value = data.get("kind")
     has_tests = "tests" in data
     if kind_value:
-        kind = ScriptKind(kind_value)
+        kind = DefinitionKind(kind_value)
     elif has_tests:
-        kind = ScriptKind.TCK
+        kind = DefinitionKind.TCK
     else:
-        kind = ScriptKind.TEST
+        kind = DefinitionKind.TEST
 
     try:
-        if kind == ScriptKind.TCK:
+        if kind == DefinitionKind.TCK:
             tck_def = parser.parse_tck_from_dict(data)
             tck = Tck(tck_def)
         else:
-            script_def = parser.parse_script_from_dict(data)
-            tck = Tck.from_single_script(script_def)
+            test_def = parser.parse_test_from_dict(data)
+            tck = Tck.from_single_test(test_def)
     except (ValueError, KeyError, TypeError) as exc:
         raise HTTPException(422, f"Failed to parse YAML definition: {exc}") from exc
 
@@ -172,7 +170,9 @@ async def run_yaml(
 
 
 async def _execute_tck_bg(
-    player: TestlabPlayer, tck: Tck, job_id: str,
+    player: TestlabPlayer,
+    tck: Tck,
+    job_id: str,
 ) -> None:
     """Run a TCK in the background, emitting failure events on exception."""
     try:
@@ -180,7 +180,10 @@ async def _execute_tck_bg(
     except (RuntimeError, ValueError, OSError, KeyError, TypeError) as exc:
         _logger.warning("Background execution failed for job %s: %s", job_id, type(exc).__name__)
         player.monitor._emit(
-            "job.completed", job_id=job_id, status="FAILED", error=str(exc),
+            "job.completed",
+            job_id=job_id,
+            status="FAILED",
+            error=str(exc),
         )
         player.jobs.fail(job_id, str(exc))
 

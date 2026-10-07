@@ -1,7 +1,7 @@
 ################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -29,15 +29,15 @@ the pure skip-validation logic from the execution coordinator.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from tractusx_testlab.models.primitives.exceptions import SkipNotAllowedError
 
 if TYPE_CHECKING:
-    from tractusx_testlab.scripting.script import Tck
+    from tractusx_testlab.authoring.test import Tck
 
 
-def resolve_skip_ids(tck: "Tck", runtime_vars: Optional[dict]) -> frozenset[str]:
+def resolve_skip_ids(tck: Tck, runtime_vars: dict | None) -> frozenset[str]:
     """Return the resolved set of test IDs to skip, validating each is allowed.
 
     Reads the ``skip_tests`` key from *runtime_vars* and cross-references it
@@ -62,10 +62,16 @@ def resolve_skip_ids(tck: "Tck", runtime_vars: Optional[dict]) -> frozenset[str]
     if not raw:
         return frozenset()
 
-    skip_ids: list[str] = list(raw) if not isinstance(raw, str) else [raw]
+    # A string arrives from `--var skip_tests=a,b`, where the shell cannot
+    # express a list. A comma is not legal in a test id, so splitting on it is
+    # unambiguous — and without it the whole string reads as one unknown id.
+    if isinstance(raw, str):
+        skip_ids = [part.strip() for part in raw.split(",") if part.strip()]
+    else:
+        skip_ids = [str(entry) for entry in raw]
 
-    all_test_ids = {s.test_id for s in tck.scripts}
-    skippable_ids = {s.test_id for s in tck.scripts if s.skippable}
+    all_test_ids = {s.test_id for s in tck.tests}
+    skippable_ids = {s.test_id for s in tck.tests if s.skippable}
 
     unknown = [sid for sid in skip_ids if sid not in all_test_ids]
     if unknown:

@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,13 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Compilation fingerprint — nonce, persistent Ed25519 public key, and blake2b checksum."""
@@ -32,6 +33,8 @@ import logging
 import os
 from pathlib import Path
 from typing import Any
+
+from tractusx_testlab.security.private_files import write_private_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +52,10 @@ def _load_or_create_key() -> bytes:
     if _KEY_FILE.exists():
         return _KEY_FILE.read_bytes()
 
-    _KEY_DIR.mkdir(parents=True, exist_ok=True)
     key_bytes = os.urandom(32)
-    _KEY_FILE.write_bytes(key_bytes)
-    _KEY_FILE.chmod(0o600)
+    # Created 0600, in a 0700 directory when it has to make one — never
+    # written first and narrowed after.
+    write_private_bytes(_KEY_FILE, key_bytes)
     logger.info("Generated compiler key at %s", _KEY_FILE)
     return key_bytes
 

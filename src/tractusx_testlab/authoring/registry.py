@@ -1,0 +1,153 @@
+#################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## It was reviewed and tested by a human committer.
+
+"""Version-aware registry mapping (step_type, dataspace_version) to BaseStep classes."""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tractusx_testlab.steps.step_contract import BaseStep
+
+logger = logging.getLogger(__name__)
+
+# Registry: (step_type, dataspace_version) -> BaseStep class
+_REGISTRY: dict[tuple[str, str], type[BaseStep]] = {}
+
+# Global (version-agnostic) steps: step_type -> BaseStep class
+_GLOBAL_REGISTRY: dict[str, type[BaseStep]] = {}
+
+
+class StepRegistry:
+    """Manages the mapping of step type names to BaseStep implementations."""
+
+    @staticmethod
+    def register(
+        step_type: str,
+        dataspace_version: str | None = None,
+    ):
+        """Decorator to register a BaseStep class.
+
+        Args:
+            step_type: The canonical step key used in YAML
+                (e.g., ``connector/provider/create_asset``).
+            dataspace_version: Restrict to a specific version (e.g., ``saturn``).
+                If ``None``, the step is available for all versions.
+        """
+
+        def decorator(cls: type[BaseStep]) -> type[BaseStep]:
+            # Stamp the canonical key onto the class so a step can describe its
+            # own contract (BaseStep.describe) without a registry lookup.
+            cls.step_type = step_type
+            # Stamped either way, so "runs on every release" is a value the step
+            # carries rather than the absence of one.
+            cls.dataspace_version = dataspace_version
+            if dataspace_version:
+                key = (step_type, dataspace_version)
+                _REGISTRY[key] = cls
+                logger.debug("Registered step %s for %s", step_type, dataspace_version)
+            else:
+                _GLOBAL_REGISTRY[step_type] = cls
+                logger.debug("Registered global step %s", step_type)
+            return cls
+
+        return decorator
+
+    @staticmethod
+    def get(step_type: str, dataspace_version: str) -> type[BaseStep] | None:
+        """Look up a step class by type and version.
+
+        Version-specific registrations take priority over global ones.
+        """
+        cls = _REGISTRY.get((step_type, dataspace_version))
+        if cls:
+            return cls
+        return _GLOBAL_REGISTRY.get(step_type)
+
+    @staticmethod
+    def get_any(step_type: str) -> type[BaseStep] | None:
+        """Look up a step class by type alone, whatever version registered it.
+
+        :meth:`get` answers "may this test run this step", and a step
+        registered for one dataspace version must not resolve for another — that
+        restriction is the point of the version key.  This answers the different
+        question "what does this step declare", which the documentation
+        generator, the ``returns:`` check and the nested steps of ``flow/if``
+        and ``flow/retry`` all ask without a version in hand.  Asking :meth:`get`
+        with an empty version made a version-specific step *invisible* to all of
+        them: it fell through to the global registry, found nothing, and the
+        step silently dropped out of the reference page.
+
+        Global registrations win, so a step that has both a default and a
+        version-specific implementation is described by its default one.
+        """
+        cls = _GLOBAL_REGISTRY.get(step_type)
+        if cls:
+            return cls
+        for (registered_type, _version), candidate in _REGISTRY.items():
+            if registered_type == step_type:
+                return candidate
+        return None
+
+    @staticmethod
+    def version_of(step_type: str) -> str | None:
+        """The one release *step_type* is restricted to, or ``None`` for all of them.
+
+        The restriction is a fact about the step that things outside the runtime
+        need to state — the IDE block carries it as ``dataspace_version`` so the
+        toolbox can hide the block, and the parity tool compares the two. Reading
+        it back off the registry keeps the engine the one place that decides it.
+        """
+        if step_type in _GLOBAL_REGISTRY:
+            return None
+        for (registered_type, version), _cls in _REGISTRY.items():
+            if registered_type == step_type:
+                return version
+        return None
+
+    @staticmethod
+    def has(step_type: str, dataspace_version: str) -> bool:
+        return StepRegistry.get(step_type, dataspace_version) is not None
+
+    @staticmethod
+    def list_step_types(dataspace_version: str | None = None) -> list[str]:
+        """Return all registered step type names, optionally filtered by version."""
+        types = set(_GLOBAL_REGISTRY.keys())
+        if dataspace_version:
+            types.update(entry[0] for entry in _REGISTRY if entry[1] == dataspace_version)
+        else:
+            types.update(entry[0] for entry in _REGISTRY)
+        return sorted(types)
+
+    @staticmethod
+    def clear():
+        """Remove all registrations (for testing)."""
+        _REGISTRY.clear()
+        _GLOBAL_REGISTRY.clear()
+
+
+# Convenience alias
+step = StepRegistry.register

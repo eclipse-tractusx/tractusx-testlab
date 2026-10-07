@@ -34,7 +34,7 @@ A standard TCK test suite has three block tiers plus one configuration layer:
 ```mermaid
 graph TB
     subgraph TCK["Standard TCK"]
-        subgraph Scripts["Test Scripts"]
+        subgraph Tests["Tests"]
             direction TB
             V["🔴 Validation Blocks<br/>validate/assert · validate/field<br/>validate/object · validate/schema"]
             M["🔵 Main Blocks<br/>connector/ · dtr/ · mock/"]
@@ -45,7 +45,7 @@ graph TB
 
     M -->|"returns:"| V
     O -->|"supports"| M
-    C -->|"provides env"| Scripts
+    C -->|"provides env"| Tests
 
     style V fill:#8B1A4A,color:#fff
     style M fill:#0EA5E9,color:#fff
@@ -58,7 +58,7 @@ graph TB
 - **Main Blocks** (blue) are domain-specific. They understand Tractus-X protocols (DSP, EDC Management API, AAS). They interact with connectors, registries, and mock services.
 - **Operator Blocks** (green) are generic utilities. They handle HTTP, JSON extraction, flow control, and filtering. They support main blocks without knowing about Tractus-X.
 - **Validation Blocks** (red) check results. They receive return variables from steps and assert conditions. They never execute actions — only verify.
-- **Environment Configuration** (orange) is defined in the TCK manifest. Services, variables, and schemas provide the runtime context for all test scripts.
+- **Environment Configuration** (orange) is defined in the TCK manifest. Services, variables, and schemas provide the runtime context for all tests.
 
 Data flows: Main blocks `returns:` values → Validation blocks check them. Operator blocks support main blocks (HTTP calls, retries, UUID generation). Environment config provides services and variables to all blocks via `${{ env.x }}` interpolation.
 
@@ -89,8 +89,8 @@ For detailed rationale: [ADR-0010: YAML Syntax v2](../developer/decision-records
 
 | Section | Description |
 |---------|-------------|
-| [Block & Assertion Reference](blocks.md) | Full catalog of all blocks by category |
-| [TCK Manifest](blocks/manifest.md) | Environment configuration format |
+| [Steps](steps/index.md) | Every step per category and module — inputs, outputs, the validation kinds and operators. Generated from the step contracts |
+| [TCK Syntax](../tck-syntax/index.md) | Manifest, test, phase and step syntax the steps are written in |
 
 ---
 
@@ -98,28 +98,32 @@ For detailed rationale: [ADR-0010: YAML Syntax v2](../developer/decision-records
 
 | Command | Description |
 |---------|-------------|
-| `testlab compile <source>` | Compile a TCK source directory into a `.tck` or `.stck` package |
-| `testlab run <package>` | Execute a compiled TCK package against a live dataspace |
+| `testlab compile <source>` | Compile a TCK source directory into a `.tck` package |
+| `testlab run <target>` | Execute a TCK against a live dataspace. A `.tck` package runs as given; a manifest is compiled into a throwaway package first, so nothing executes that has not compiled |
 | `testlab validate <package>` | Validate a compiled TCK package without executing steps |
-| `testlab inspect <package>` | Extract and display static metadata (name, steps, validations) without running the TCK |
+| `testlab inspect <package>` | Report what a package contains — tests, manifest, variables, infrastructure — without running it |
 
 ### `testlab inspect`
 
-Inspects a compiled `.tck` or `.stck` package and prints its static metadata without
+Inspects a compiled `.tck` package and prints its static metadata without
 executing any steps against a live environment.
 
 ```
-testlab inspect <package> [--player-keys <path>] [--compiler-pub <path>] [--variables] [--infrastructure] [--json]
+testlab inspect <package> [--player-keys <path>] [--compiler-pub <path>]
+                         [--variables] [--infrastructure] [--manifest]
+                         [--extract <dir>] [--json]
 ```
 
 | Option | Description |
 |--------|-------------|
-| `<package>` | Path to a `.tck` (plain) or `.stck` (encrypted) file |
-| `--player-keys` | Path to player RSA private key file — required for `.stck` packages |
-| `--compiler-pub` | Path to compiler RSA public key file — required for `.stck` packages |
+| `<package>` | Path to a `.tck` (plain or encrypted) file |
+| `--player-keys` | Directory holding the player identity — required if the package is encrypted |
+| `--compiler-pub` | The compiler's signing public key — required if the package is signed |
 | `--variables` | Also print the variable list (ID, source, scope, type) declared in the TCK |
 | `--infrastructure` | Also print the infrastructure requirements (capability, side, required, standard) declared in the TCK |
-| `--json` | Output a machine-readable JSON envelope instead of the human-readable table |
+| `--manifest` | Also print the manifest: identity, checksum, signer, authorized players |
+| `--extract <dir>` | Write the package's verified contents to a directory |
+| `--json` | Emit one JSON object keyed by section instead of the tables |
 
 **Default output** (human-readable table):
 
@@ -128,14 +132,14 @@ TCK: Certificate Management Conformity
   Total Steps       : 12
   Total Validations : 8
 
-  Script: request-certificate  |  ID: request_certificate.yaml  |  Skippable: No
+  Test: request-certificate  |  ID: request_certificate.yaml  |  Skippable: No
   ┌────────────────────────────────────────────────┬────────────────────────────────────────────────┬───────────┬─────────────┐
   │ Step Name                                      │ Uses                                           │ Phase     │ Validations │
   ├────────────────────────────────────────────────┼────────────────────────────────────────────────┼───────────┼─────────────┤
   │ Request certificate                            │ connector/consumer/request_certificate         │ Execution │ 2           │
   └────────────────────────────────────────────────┴────────────────────────────────────────────────┴───────────┴─────────────┘
 
-  Script: catalog_policy_validation  |  ID: catalog_policy_validation.yaml  |  Skippable: Yes
+  Test: catalog_policy_validation  |  ID: catalog_policy_validation.yaml  |  Skippable: Yes
   ┌────────────────────────────────────────────────┬────────────────────────────────────────────────┬───────────┬─────────────┐
   │ Step Name                                      │ Uses                                           │ Phase     │ Validations │
   ├────────────────────────────────────────────────┼────────────────────────────────────────────────┼───────────┼─────────────┤
@@ -151,7 +155,7 @@ TCK: Certificate Management Conformity
     "name": "Certificate Management Conformity",
     "total_steps": 12,
     "total_validations": 8,
-    "scripts": [
+    "tests": [
       {
         "name": "request-certificate",
         "test_id": "request_certificate.yaml",
@@ -200,10 +204,10 @@ models directly from the library:
 
 ```python
 from tractusx_testlab.models import (
-    TckInspectionResult, ScriptInspection, StepMeta,   # inspection
+    TckInspectionResult, TestInspection, StepMeta,   # inspection
     VariableDefinition, VariableScope, VariableSource,  # variables
     InfrastructureConfig, CapabilityRequirement,        # infrastructure
-    ScriptStatus, SkipNotAllowedError,                  # skip configuration
+    TestStatus, SkipNotAllowedError,                  # skip configuration
 )
 ```
 

@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -22,12 +22,9 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Validation sub-package — script validation and schema checking."""
+"""Validation sub-package — test validation and schema checking."""
 
-from tractusx_testlab.compiler.validation.validator import (
-    ScriptValidator,
-    ValidationIssue,
-    ValidationResult,
-)
+from tractusx_testlab.compiler.validation.issues import ValidationIssue, ValidationResult
+from tractusx_testlab.compiler.validation.validator import TestValidator
 
-__all__ = ["ScriptValidator", "ValidationIssue", "ValidationResult"]
+__all__ = ["TestValidator", "ValidationIssue", "ValidationResult"]

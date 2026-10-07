@@ -1,7 +1,7 @@
 #################################################################################
 # Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -42,14 +42,17 @@ class StepMeta(BaseModel):
     validation_count: int
 
 
-class ScriptInspection(BaseModel):
-    """Inspection result for a single script within a TCK."""
+class TestInspection(BaseModel):
+    """Inspection result for a single test within a TCK."""
 
+    __test__ = False  # a TestLab test, not a pytest one
     model_config = ConfigDict(frozen=True)
 
     name: str
     test_id: str = ""
     skippable: bool = False
+    #: The manifest entry says ``async: true`` (labs): a session runs it on demand.
+    on_demand: bool = False
     steps: tuple[StepMeta, ...]
 
 
@@ -61,4 +64,4 @@ class TckInspectionResult(BaseModel):
     name: str
     total_steps: int
     total_validations: int
-    scripts: tuple[ScriptInspection, ...]
+    tests: tuple[TestInspection, ...]
