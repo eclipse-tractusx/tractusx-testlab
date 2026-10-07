@@ -88,8 +88,8 @@ in steps/http/request.py.
 **Example — Test engineer:**
 
 ```
-@testlab-test-master The scripting parser has zero test coverage.
-Write tests for `src/tractusx_testlab/scripting/parser.py` covering
+@testlab-test-master The authoring parser has zero test coverage.
+Write tests for `src/tractusx_testlab/authoring/parser.py` covering
 valid YAML parsing, malformed input rejection, and dependency resolution.
 ```
 
@@ -230,7 +230,7 @@ When a file exceeds 300 lines, use these extraction patterns:
 | Shared constants | `package/_constants.py` |
 | Helper functions (private) | `package/_helpers.py` |
 | CLI command groups | `cli/command_group.py` |
-| Parsing sub-phases | `scripting/_builders.py` |
+| Parsing sub-phases | `authoring/_builders.py` |
 
 ## Adding a New Agent
 

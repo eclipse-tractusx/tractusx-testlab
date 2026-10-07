@@ -45,10 +45,9 @@ Testing against real Tractus-X dataspaces requires configured infrastructure ser
 
 - Certification testers must configure services once per TCK, not per test.
 - Some values are known before execution (URLs), some are entered during execution (OTP codes), some are generated (UUIDs).
-- The IDE Environment Editor must map 1:1 to the YAML `env:` block.
 - Services have different auth mechanisms (API key, OAuth2) depending on type and deployment.
 - Secrets must never leak into logs, exports, or YAML serialization.
-- Services are steps — they follow the same `uses` + `with` vocabulary as all other blocks.
+- Services are steps — they follow the same `uses` + `with` vocabulary as all other steps.
 
 ## Decision
 
@@ -144,7 +143,7 @@ Each service **implicitly generates a return variable** when declared. The varia
 - Has `type: object`
 - Has `class` derived from the `uses` action name (e.g., `service/connector_service` → class `connector_service`)
 
-This means steps that accept a `service` input can use IDE class-based filtering to show only compatible services in their dropdown. For example, a step that expects `class: connector_service` will only show connector services, not mock servers.
+This means steps that accept a `service` input can use class-based filtering (ADR-0009) to accept only compatible services. For example, a step that expects `class: connector_service` accepts connector services, not mock servers.
 
 **Referencing services in steps:**
 
@@ -198,14 +197,13 @@ For v1-alpha, all variables are static literals or expression references. Runtim
 
 ### 8. Secrets Handling
 
-Variables with `secret: true` in the IDE metadata:
+Variables with `secret: true` in their metadata:
 
 - Are masked in all log output (`***`)
 - Are stored in memory only (never written to disk during execution)
 - Are excluded from YAML export/serialization of results
-- Display as `••••••` in the IDE variable editor
 
-In the YAML, secrets are just regular variables — the `secret` flag is IDE/runtime metadata, not a YAML field.
+In the YAML, secrets are just regular variables — the `secret` flag is runtime metadata, not a YAML field.
 
 ### 9. Scoping Rule
 
@@ -355,7 +353,7 @@ tests:
 ### Positive
 
 - Services follow the same vocabulary as steps (`uses` + `with`) — one pattern to learn
-- Typed variables from services enable IDE class-based filtering in dropdowns
+- Typed variables from services enable class-based filtering of step inputs
 - Auth inside `with` means each service type fully defines its own input schema
 - `${{ metadata.dataspace_version }}` eliminates duplication across services
 - Compile-time validation catches misconfigured services before execution
@@ -371,17 +369,8 @@ tests:
 | Risk | Mitigation |
 |------|-----------|
 | Service type proliferation | Registry is curated — new types require ADR amendment |
-| Auth credentials in YAML | Secrets handling + IDE masking + never serialize to exports |
+| Auth credentials in YAML | Secrets handling + log masking + never serialize to exports |
 | Breaking change from ADR-0011 draft | No production code depends on the draft yet — clean slate |
-
-## Impact on IDE
-
-The Environment Editor maps to the `env:` block:
-
-- **Services panel**: List of services with `uses` type badge and expandable `with` configuration
-- **Variables panel**: Key-value table with secret masking toggle
-- **Add Service dialog**: type dropdown from `service/` registry, form fields from type schema
-- **Service dropdowns in steps**: Filtered by class (only show compatible services)
 
 ## Impact on Backend
 

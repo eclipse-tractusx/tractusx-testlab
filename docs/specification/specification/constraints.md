@@ -27,11 +27,11 @@ SPDX-License-Identifier: CC-BY-4.0
 | TC-02 | Async execution via native `asyncio` (no external task broker) |
 | TC-03 | Pydantic 2.6+ for model validation |
 | TC-04 | PyYAML 6.0+ for YAML parsing |
-| TC-05 | No `eval()` or dynamic code execution from YAML scripts — variable resolution limited to `${var_name}` lookups |
+| TC-05 | No `eval()` or dynamic code execution from YAML tests — variable resolution limited to `${var_name}` lookups |
 | TC-06 | Connector steps SHALL reuse existing `tractusx_sdk.dataspace` services via `ServiceFactory` — no duplication of connector logic |
 | TC-07 | `sdk_call` step operates in allowlist mode by default — only curated SDK functions may be invoked unless `allow_sdk_calls: open` is declared |
 | TC-08 | FastAPI required for callback server and Player deployment modes (already an SDK dependency) |
-| TC-09 | Callback routes are ephemeral — mounted on demand and unmounted after use. No persistent route state between script executions |
+| TC-09 | Callback routes are ephemeral — mounted on demand and unmounted after use. No persistent route state between test executions |
 | TC-10 | Managed services SHALL use `ServiceFactory` for connector services and direct instantiation for DTR/AAS services — no custom service constructors |
 | TC-11 | Python `cryptography` library required for all cryptographic operations (AES-256-GCM, RSA-OAEP, Ed25519). No custom cryptographic implementations permitted |
 | TC-12 | Player keys SHALL be stored in `~/.testlab/keys/` with `0600` file permissions (private key). Trust store keys in `~/.testlab/trusted_compilers/`. Key directories SHALL be created automatically on first use |
@@ -40,12 +40,12 @@ SPDX-License-Identifier: CC-BY-4.0
 
 | Attribute | Requirement |
 |-----------|-------------|
-| **Portability** | `.tckpkg` artifacts must be self-contained and executable on any machine with a compatible SDK version installed |
+| **Portability** | `.tck` artifacts must be self-contained and executable on any machine with a compatible SDK version installed |
 | **Extensibility** | Custom step types must be registrable without modifying SDK source code |
 | **Observability** | Execution state must be queryable in real-time at step granularity; structured logs must be machine-parseable |
-| **Safety** | Scripts parsed from untrusted sources (API, filesystem) must not allow arbitrary code execution. `sdk_call` in allowlist mode prevents access to internal SDK functions |
-| **Reliability** | Cleanup steps must execute regardless of prior failures; resource leaks are unacceptable. Managed services must be torn down even on script failure |
-| **Confidentiality** | Encrypted `.tckpkg` packages must be readable only by authorized Player instances. AES content keys must never be stored in plaintext. Private keys must be protected with appropriate file permissions |
+| **Safety** | Tests parsed from untrusted sources (API, filesystem) must not allow arbitrary code execution. `sdk_call` in allowlist mode prevents access to internal SDK functions |
+| **Reliability** | Cleanup steps must execute regardless of prior failures; resource leaks are unacceptable. Managed services must be torn down even on test failure |
+| **Confidentiality** | Encrypted `.tck` packages must be readable only by authorized Player instances. AES content keys must never be stored in plaintext. Private keys must be protected with appropriate file permissions |
 
 ---
 
@@ -53,29 +53,29 @@ SPDX-License-Identifier: CC-BY-4.0
 
 | ID | Verification | Type |
 |----|-------------|------|
-| V-01 | YAML parsing accepts valid scripts and rejects scripts missing `dataspace_version` | Unit |
+| V-01 | YAML parsing accepts valid tests and rejects tests missing `dataspace_version` | Unit |
 | V-02 | Compiler fails on undeclared `${var}` references (not marked `runtime: true`) | Unit |
-| V-03 | Compiler fails when step type doesn't exist in registry for the script's dataspace version | Unit |
+| V-03 | Compiler fails when step type doesn't exist in registry for the test's dataspace version | Unit |
 | V-04 | Compile → package → unpack round-trip produces identical `CompiledTck` | Integration |
-| V-05 | `.tckpkg` checksum is verified on load; tampered packages are rejected | Unit |
+| V-05 | `.tck` checksum is verified on load; tampered packages are rejected | Unit |
 | V-06 | SDK version mismatch emits warning but does not block execution | Unit |
 | V-07 | Player executes a compiled TCK and produces correct `TckResult` with step timings | Integration |
-| V-08 | Step failure with `on_failure: abort` stops execution and runs cleanup | Integration |
-| V-09 | Step failure with `on_failure: continue` proceeds to next step | Integration |
-| V-10 | Step failure with `on_failure: skip_rest` skips remaining steps and runs cleanup | Integration |
+| V-08 | Step failure fails the test: execution stops and teardown runs | Integration |
+| V-09 | Teardown steps keep executing after a teardown step fails | Integration |
+| V-10 | Remaining steps after a failed step are reported as skipped | Integration |
 | V-11 | Hard assertion failure causes step failure; soft assertion failure produces warning | Unit |
 | V-12 | Assertion values from inline, file, and variable sources are resolved correctly | Unit |
 | V-13 | JSON strings embedded in YAML are auto-parsed before assertion comparison | Unit |
 | V-14 | `${var}` references are resolved correctly across steps (output of step N used by step N+1) | Integration |
 | V-15 | Runtime variables override defaults at execution time | Unit |
 | V-16 | Two TCKs running concurrently have isolated contexts and no variable leakage | Integration |
-| V-17 | Script cancellation stops after current step and runs cleanup | Integration |
+| V-17 | Test cancellation stops after current step and runs cleanup | Integration |
 | V-18 | Monitor returns correct current step, status, and assertion results during execution | Integration |
-| V-19 | JSON-lines log file contains correct entries with script_id, dataspace_version, step names | Integration |
+| V-19 | JSON-lines log file contains correct entries with test_id, dataspace_version, step names | Integration |
 | V-20 | Log file is renamed with `_PASS`/`_FAIL` suffix on completion | Integration |
 | V-21 | `dataplane_call` step supports GET/POST/PUT/DELETE with custom headers, query params, and body | Integration |
 | V-22 | `dataplane_call` step auto-injects EDR authorization header | Unit |
-| V-23 | Custom step registered at runtime via `registry.register()` is available to scripts | Unit |
+| V-23 | Custom step registered at runtime via `registry.register()` is available to tests | Unit |
 | V-24 | `sdk_call` in allowlist mode rejects functions not in the allowlist | Unit |
 | V-25 | `sdk_call` in open mode (`allow_sdk_calls: open`) allows any `tractusx_sdk` function | Unit |
 | V-26 | `sdk_call` correctly invokes an SDK function and stores the return value in context | Integration |
@@ -84,7 +84,7 @@ SPDX-License-Identifier: CC-BY-4.0
 | V-29 | `init_service` step replaces an existing service and `stop_service` tears it down | Integration |
 | V-30 | Callback endpoint receives a POST, signals `asyncio.Event`, and `await_callback` step receives the payload | Integration |
 | V-31 | `await_callback` step times out correctly when no callback is received within `timeout_s` | Integration |
-| V-32 | Encrypted `.tckpkg` round-trip: compile with `--encrypt` → authorized Player decrypts and executes successfully | Integration |
+| V-32 | Encrypted `.tck` round-trip: compile with `--encrypt` → authorized Player decrypts and executes successfully | Integration |
 | V-33 | Unauthorized Player (key not in `authorized_players`) is rejected with `PackageAuthorizationError` | Unit |
 | V-34 | Tampered encrypted package (modified `payload.enc`) fails AES-256-GCM decryption | Unit |
 | V-35 | Package signed by untrusted compiler (key not in trust store) is rejected with `PackageSignatureError` | Unit |
@@ -101,7 +101,7 @@ The following diagram maps verification items to functional requirement areas:
 
 ```mermaid
 graph LR
-    subgraph "Script Authoring"
+    subgraph "Test Authoring"
         V01[V-01]
     end
 
@@ -189,45 +189,45 @@ graph LR
     V32 -.-> |FR-SEC| V33
     V38 -.-> |FR-SVC| V39
 
-    style V01 fill:#e1f5fe,stroke:#0288d1
-    style V02 fill:#fff3e0,stroke:#f57c00
-    style V03 fill:#fff3e0,stroke:#f57c00
-    style V04 fill:#e8f5e9,stroke:#388e3c
-    style V05 fill:#e8f5e9,stroke:#388e3c
-    style V06 fill:#e8f5e9,stroke:#388e3c
-    style V07 fill:#f3e5f5,stroke:#7b1fa2
-    style V08 fill:#f3e5f5,stroke:#7b1fa2
-    style V09 fill:#f3e5f5,stroke:#7b1fa2
-    style V10 fill:#f3e5f5,stroke:#7b1fa2
-    style V14 fill:#f3e5f5,stroke:#7b1fa2
-    style V15 fill:#f3e5f5,stroke:#7b1fa2
-    style V16 fill:#f3e5f5,stroke:#7b1fa2
-    style V17 fill:#f3e5f5,stroke:#7b1fa2
-    style V11 fill:#fce4ec,stroke:#c62828
-    style V12 fill:#fce4ec,stroke:#c62828
-    style V13 fill:#fce4ec,stroke:#c62828
-    style V18 fill:#fff9c4,stroke:#f9a825
-    style V19 fill:#e8eaf6,stroke:#3f51b5
-    style V20 fill:#e8eaf6,stroke:#3f51b5
-    style V21 fill:#ffccbc,stroke:#e64a19
-    style V22 fill:#ffccbc,stroke:#e64a19
-    style V23 fill:#ffccbc,stroke:#e64a19
-    style V24 fill:#dcedc8,stroke:#689f38
-    style V25 fill:#dcedc8,stroke:#689f38
-    style V26 fill:#dcedc8,stroke:#689f38
-    style V27 fill:#e8eaf6,stroke:#3f51b5
-    style V28 fill:#e8eaf6,stroke:#3f51b5
-    style V29 fill:#e8eaf6,stroke:#3f51b5
-    style V30 fill:#f3e5f5,stroke:#7b1fa2
-    style V31 fill:#f3e5f5,stroke:#7b1fa2
-    style V32 fill:#ffccbc,stroke:#bf360c
-    style V33 fill:#ffccbc,stroke:#bf360c
-    style V34 fill:#ffccbc,stroke:#bf360c
-    style V35 fill:#ffccbc,stroke:#bf360c
-    style V36 fill:#ffccbc,stroke:#bf360c
-    style V37 fill:#ffccbc,stroke:#bf360c
-    style V38 fill:#e8eaf6,stroke:#3f51b5
-    style V39 fill:#e8eaf6,stroke:#3f51b5
+    style V01 fill:#0288d133,stroke:#0288d1
+    style V02 fill:#f57c0033,stroke:#f57c00
+    style V03 fill:#f57c0033,stroke:#f57c00
+    style V04 fill:#388e3c33,stroke:#388e3c
+    style V05 fill:#388e3c33,stroke:#388e3c
+    style V06 fill:#388e3c33,stroke:#388e3c
+    style V07 fill:#7b1fa233,stroke:#7b1fa2
+    style V08 fill:#7b1fa233,stroke:#7b1fa2
+    style V09 fill:#7b1fa233,stroke:#7b1fa2
+    style V10 fill:#7b1fa233,stroke:#7b1fa2
+    style V14 fill:#7b1fa233,stroke:#7b1fa2
+    style V15 fill:#7b1fa233,stroke:#7b1fa2
+    style V16 fill:#7b1fa233,stroke:#7b1fa2
+    style V17 fill:#7b1fa233,stroke:#7b1fa2
+    style V11 fill:#c6282833,stroke:#c62828
+    style V12 fill:#c6282833,stroke:#c62828
+    style V13 fill:#c6282833,stroke:#c62828
+    style V18 fill:#f9a82533,stroke:#f9a825
+    style V19 fill:#3f51b533,stroke:#3f51b5
+    style V20 fill:#3f51b533,stroke:#3f51b5
+    style V21 fill:#e64a1933,stroke:#e64a19
+    style V22 fill:#e64a1933,stroke:#e64a19
+    style V23 fill:#e64a1933,stroke:#e64a19
+    style V24 fill:#689f3833,stroke:#689f38
+    style V25 fill:#689f3833,stroke:#689f38
+    style V26 fill:#689f3833,stroke:#689f38
+    style V27 fill:#3f51b533,stroke:#3f51b5
+    style V28 fill:#3f51b533,stroke:#3f51b5
+    style V29 fill:#3f51b533,stroke:#3f51b5
+    style V30 fill:#7b1fa233,stroke:#7b1fa2
+    style V31 fill:#7b1fa233,stroke:#7b1fa2
+    style V32 fill:#bf360c33,stroke:#bf360c
+    style V33 fill:#bf360c33,stroke:#bf360c
+    style V34 fill:#bf360c33,stroke:#bf360c
+    style V35 fill:#bf360c33,stroke:#bf360c
+    style V36 fill:#bf360c33,stroke:#bf360c
+    style V37 fill:#bf360c33,stroke:#bf360c
+    style V38 fill:#3f51b533,stroke:#3f51b5
+    style V39 fill:#3f51b533,stroke:#3f51b5
 ```
 
 ---

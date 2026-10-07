@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,58 +14,272 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Service exceptions for the Testlab module."""
+"""Everything TestLab raises, and the four questions the hierarchy answers.
+
+A conformance engine has to distinguish four outcomes that look alike from the
+outside, because only one of them is a verdict about the system under test:
+
+``AuthoringError``
+    The TCK, or the deployment it was pointed at, is wrong. Nothing was proved
+    and nothing was disproved. Raised before or instead of running a step.
+
+``ExecutionError``
+    A step ran and did not achieve what it declared. **This is a test result** —
+    the SUT did not do what the TCK requires of it.
+
+``BoundServiceError``
+    A service the run stands on did not do its part, and no one side owns it.
+    The registry did not answer, the discovery finder returned nothing, the
+    submodel server refused. Neither a verdict about the SUT nor a defect in
+    TestLab: the infrastructure is what is wrong, and it may be either party's.
+    ``ConnectorError`` is the one of these with its own name, because the
+    dataspace exchange has two ends — the SUT's connector, the one TestLab
+    drives, and the network between them — and the SDK reports the failure of
+    the pair.
+
+``EngineError``
+    TestLab itself malfunctioned. Never a verdict: a run containing one of these
+    certifies nothing, whatever its other steps reported.
+
+Collapsing them is how an engine defect gets recorded as a SUT failure, how a
+SUT failure gets excused as an engine defect, and how a provider that published
+no asset gets reported as a bug in TestLab. They are separated here so the
+runner can classify without guessing, and so an embedder can write
+``except TestLabError`` and mean it.
+"""
 
 from __future__ import annotations
 
-from tractusx_testlab.models.primitives.enums import ServiceState, ServiceType
+from typing import Any
 
 
-class ServiceNotFoundError(Exception):
-    def __init__(self, name: str):
-        self.name = name
-        super().__init__(f"Service not found: {name}")
+class TestLabError(Exception):
+    """Base class for every error TestLab raises deliberately.
+
+    An error may also *name* itself and carry the evidence behind it.
+    ``code`` is the machine-readable name the trace publishes as
+    ``errors[].code`` and ``diagnostics`` is what a reader needs in order to act
+    on it — the offers that were compared, the states that were polled — which
+    the trace publishes as ``errors[].context`` (ADR-0016). Both default to
+    nothing, so an error with only a sentence to say stays a one-line class, and
+    the sentence is still all the trace carries.
+    """
+
+    #: Machine-readable name of this failure, or ``None`` to be classified by
+    #: origin alone (``STEP_FAILED`` for a verdict, ``ENGINE_FAULT`` for a bug).
+    code: str | None = None
+
+    #: Who this failure belongs to, published as ``errors[].origin`` (ADR-0016).
+    #: Declared by the class rather than by each raise site, for the same reason
+    #: ``code`` is: an error that has nothing special to say costs nothing, and
+    #: the runner classifies what it caught without having to know about it.
+    origin: str = "sut"
+
+    #: Structured evidence for the message, published under the error's
+    #: ``context``. JSON-serialisable, because that is where it ends up.
+    diagnostics: dict[str, Any] | None = None
 
 
-class ServiceNotReadyError(Exception):
-    def __init__(self, name: str, state: ServiceState):
-        self.name = name
-        self.state = state
-        super().__init__(f"Service '{name}' is in state {state.value}, not READY")
+class AuthoringError(TestLabError):
+    """The TCK or the deployment it targets is wrong; nothing was tested.
+
+    Not a verdict, so not ``sut``: the default every error inherited, which
+    published an asset id the TCK reused across runs as a failure of the system
+    under test. ``authoring`` sends the reader to the TCK or the run's
+    configuration. A subclass that reports the deployment says
+    ``infrastructure`` instead (``InfrastructureError``); one raised *because*
+    the SUT behaved as it did says ``sut`` where it is raised.
+    """
+
+    code: str | None = "AUTHORING_ERROR"
+    origin = "authoring"
 
 
-class ServiceTypeMismatchError(Exception):
-    def __init__(self, step_type: str, expected: ServiceType, actual: ServiceType):
-        self.step_type = step_type
-        self.expected = expected
-        self.actual = actual
+class SealedVariableError(AuthoringError):
+    """A test tried to write a name the run has fixed — ``infrastructure.*``.
+
+    The namespace a run's bindings are published under says what the run is
+    bound to. Once published it is read-only: a ``returns:`` that named it
+    could re-point an address the next step trusts, or swap a credential
+    handle for text.
+    """
+
+    code = "SEALED_VARIABLE"
+
+    def __init__(self, name: str) -> None:
+        self.diagnostics = {"variable": name}
         super().__init__(
-            f"Step '{step_type}' expects {expected.value} but got {actual.value}"
+            f"'{name}' is fixed for this run: the infrastructure bindings are the "
+            "host's to set, not a test's. Publish the value under a name of your own."
         )
 
 
-class StepConfigError(Exception):
+class ExecutionError(TestLabError):
+    """A step ran and did not achieve what it declared — a result about the SUT."""
+
+
+class BoundServiceError(TestLabError):
+    """A service the run is bound to did not do its part; the deployment is open.
+
+    Neither a verdict nor an engine bug. The SDK reports a service that would
+    not answer through ``RuntimeError``, and the runner classifies an exception
+    it does not recognise as an engine fault — which sends the reader to file a
+    bug against TestLab for a registry that was down. Raised instead by
+    :func:`~tractusx_testlab.steps.sdk_call.run`, the one place every SDK call
+    crosses, so the trace says ``origin: "infrastructure"`` and triage starts
+    there.
+
+    The binding-time counterpart is
+    :class:`~tractusx_testlab.models.primitives.binding_errors.InfrastructureError`,
+    which reports the same infrastructure before a step ever runs.
+    """
+
+    code = "INFRASTRUCTURE_ERROR"
+    origin = "infrastructure"
+
+
+class ConnectorError(BoundServiceError):
+    """A dataspace exchange did not go through; which connector is open.
+
+    The infrastructure failure with two ends. A catalog carrying no matching
+    asset, a negotiation that never finalised: the SDK reports the failure of
+    the *pair* of connectors, so the fault may be the SUT's connector, the one
+    TestLab drives, or the network between them — and naming any one of the
+    three would be a guess. ``origin: "connector"`` says where to start looking
+    instead of who to blame.
+    """
+
+    code = "CONNECTOR_ERROR"
+    origin = "connector"
+
+
+class EngineError(TestLabError):
+    """TestLab malfunctioned. A run containing one of these proves nothing."""
+
+    origin = "engine"
+
+
+class StepConfigError(AuthoringError):
     def __init__(self, step_type: str, message: str):
         self.step_type = step_type
         super().__init__(f"Step config error in '{step_type}': {message}")
 
 
-class DuplicateServiceError(Exception):
-    def __init__(self, name: str):
-        self.name = name
-        super().__init__(f"Duplicate service name: {name}")
+class SkipNotAllowedError(AuthoringError):
+    """Raised when the operator requests skipping a test not marked ``skippable: true``.
+
+    The error is raised before the run starts so the operator can correct the
+    request without any test having executed.
+    """
+
+    def __init__(self, test_ids: list[str], reason: str = "not marked skippable") -> None:
+        self.test_ids = test_ids
+        ids_str = ", ".join(f"'{t}'" for t in test_ids)
+        super().__init__(
+            f"Cannot skip test(s) {ids_str}: {reason}. "
+            f"Set skippable: true on the test entry in the TCK manifest to allow skipping."
+        )
 
 
-class ServiceInitError(Exception):
-    def __init__(self, name: str, cause: Exception):
+#: The code a failure is published under when all that is known is whose it is
+#: (ADR-0016). A verdict about the SUT has none of its own: ``STEP_FAILED``.
+_CODE_OF_ORIGIN: dict[str, str | None] = {
+    AuthoringError.origin: AuthoringError.code,
+    BoundServiceError.origin: BoundServiceError.code,
+    ConnectorError.origin: ConnectorError.code,
+    EngineError.origin: "ENGINE_FAULT",
+}
+
+
+class UnresolvedReferenceError(AuthoringError):
+    """Raised when a ``${{ ... }}`` reference names nothing the run can supply.
+
+    The reference used to be left as its own template text and handed to the
+    step as data, so a URL built from an undefined variable was requested
+    verbatim and a comparison against one compared against a string containing
+    braces. Neither failed; both produced a verdict about a SUT that was never
+    asked the question.
+
+    The variables in scope are listed because the usual cause is a name that
+    exists under a different spelling, and the author cannot see the namespace
+    from the test.
+
+    When the reference reaches *into* something that is in scope, the message
+    says so and names the fix. A reference is a name, not a path: the walk into
+    a step's output happens once, in that step's ``returns:``, and the declared
+    name is what a later step reads. Someone who writes
+    ``${{ execution.call.body.kind }}`` against a step that declared ``body``
+    has made one specific mistake with one specific remedy, and a bare list of
+    everything in scope leaves them to infer the rule from it.
+
+    *origin* is given by the resolver, which can tell what the run held: a
+    reference is not always the author's mistake (``resolver.origin_of``). One
+    that is not drops ``AUTHORING_ERROR`` for the code that goes with its
+    origin, or none — ``STEP_FAILED`` — for ``sut``.
+    """
+
+    def __init__(
+        self, reference: str, available: list[str] | None = None, *, origin: str | None = None
+    ) -> None:
+        self.reference = reference
+        self.available = available or []
+        if origin is not None and origin != self.origin:
+            self.origin, self.code = origin, _CODE_OF_ORIGIN.get(origin)
+        listed = ", ".join(sorted(self.available)[:20]) or "nothing"
+        more = "" if len(self.available) <= 20 else f" (and {len(self.available) - 20} more)"
+        super().__init__(
+            f"'{reference}' resolves to nothing.{self._remedy()} In scope: {listed}{more}."
+        )
+
+    def _remedy(self) -> str:
+        """Name the fix when the reference reaches into something in scope."""
+        segments = self.reference.split(".")
+        for cut in range(len(segments) - 1, 0, -1):
+            prefix, rest = ".".join(segments[:cut]), ".".join(segments[cut:])
+            if prefix not in self.available:
+                continue
+            owner = ".".join(prefix.split(".")[2:]) or prefix
+            return (
+                f" '{prefix}' is in scope but '{rest}' is a path into its value,"
+                f" and a reference is a name rather than a path. Declare it as"
+                f" `returns: {{ {owner}.{rest}: ... }}` on the step that produces"
+                f" it, then reference '{self.reference}'."
+            )
+        return ""
+
+
+class VariableTypeError(AuthoringError):
+    """Raised when an ``env`` variable's value cannot be read as the type it declares.
+
+    ``returns.<key>.type`` is the variable's contract with every step that reads
+    it, and YAML alone cannot keep it: a policy written as a ``value: |`` block
+    is text, and it used to be seeded as text under a declaration saying
+    ``object``. Steps compensated one at a time — the connector steps parse JSON
+    out of a policy string — and the ones that did not saw a string where the
+    manifest promised a mapping.
+
+    The declaration decides instead, so this is the narrow case left over: a
+    variable declaring a structure, written as text that is not the structure it
+    declares — the text is read as YAML, so a pasted JSON document parses as
+    readily as an unindented block. It is refused where it is written rather
+    than handed on as a value that reads wrong several steps later.
+    """
+
+    def __init__(self, name: str, declared: str, reason: str) -> None:
         self.name = name
-        self.cause = cause
-        super().__init__(f"Failed to initialize service '{name}': {cause}")
+        self.declared = declared
+        shape = "a mapping" if declared == "object" else "a list"
+        super().__init__(
+            f"Variable '{name}' declares 'type: {declared}' and its value {reason}. "
+            f"Write it under 'with.value' as {shape} — inline, or as JSON or YAML "
+            f"text in a 'value: |' block."
+        )

@@ -1,6 +1,7 @@
 ################################################################################
-# Eclipse Tractus-X - Tractus-X TestLab
+# Catena-X - Test Suite
 #
+# Copyright (c) 2026 Catena-X Automotive Network e.V.
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -18,15 +19,35 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
 kind: tck
-testlab: v1-alpha
+syntax: v1-alpha
 
-id: certificate-management-tck
-namespace: ccm-v0.0.1
-name: certificate-management
+id: certificate-management-tck-v0.0.1
+
+metadata:
+  name: "Certificate Management TCK"
+  version: "v0.0.1"
+  description: >
+    Validate CCMAPI certificate management workflow per CX-0135 v3.1.0:
+    (1) Validate CX-0135 catalog policy constraints
+    (2) Request certificate from provider and validate payload
+    (3) Send feedback notification and await acknowledgment
+    (4) Verify error handling for unknown certificate types
+  authors:
+    - name: Certificate Management Expert Group
+      email: ccm-eg@catena-x.net
+      company: Catena-X Automotive Network e.V.
+  copyright_holders:
+    - "2026 Catena-X Automotive Network e.V."
+  license: LicenseRef-Proprietary
+  standards:
+    - id: CX-0135
+      version: v3.1.0
+  tags:
+    - CCM
 
 dataspace:
   ecosystem: Catena-X
@@ -36,140 +57,78 @@ infrastructure:
   engine:
     connector:
       required: true
-    dtr:
-      required: false
+      standard:
+        id: CX-0018
+        version: v4.2.0
   sut:
     connector:
       required: true
-    dtr:
-      required: true
-
-metadata:
-  name: "Certificate Management TCK"
-  version: "v0.0.1"
-  description: >
-    Validate CCMAPI certificate management workflow per CX-0135 v3.1.0:
-    (1) Request certificate from provider
-    (2) Validate certificate payload against schema
-    (3) Await provider feedback callback
-    (4) Send feedback notification and await acknowledgment
-    (5) Expose TestLab as provider and verify SUT consumer behavior
-  authors:
-    - name: Certificate Management Expert Group
-  copyright_holders:
-    - "2026 Contributors to the Eclipse Foundation"
-  license: Apache-2.0
-  standards:
-    - id: CX-0135
-      version: v3.1.0
-  tags:
-    - CCM
-  dataspace_version: saturn
+      standard:
+        id: CX-0018
+        version: v4.2.0
 
 env:
   variables:
-    - id: provider_url
+    - id: sut_counter_party_id
       uses: variable/type/string
       with:
         source: input
+        scope: sut
       returns:
         value:
           type: string
-    - id: provider_bpn
+
+    - id: sut_counter_party_address
       uses: variable/type/string
       with:
         source: input
+        scope: sut
       returns:
         value:
           type: string
-    - id: consumer_bpn
-      uses: variable/type/string
+
+    - id: ccm_usage_policy
+      uses: config/connector/policy
+      name: Required CCMAPI Usage Policy
       with:
-        source: input
+        source: value
+        value:
+          permissions:
+            - action: use
+              constraints:
+                and:
+                  - left_operand: UsagePurpose
+                    operator: isAnyOf
+                    right_operand: "cx.ccm.base:1"
+                  - left_operand: FrameworkAgreement
+                    operator: eq
+                    right_operand: "DataExchangeGovernance:1.0"
       returns:
         value:
-          type: string
-    - id: certificate_type
-      uses: variable/type/string
-      with:
-        value: iso9001
-      returns:
-        value:
-          type: string
-    - id: location_bpns
-      uses: variable/type/string
-      with:
-        source: input
-      returns:
-        value:
-          type: string
-    - id: testlab_management_url
-      uses: variable/type/string
-      with:
-        source: input
-      returns:
-        value:
-          type: string
-    - id: testlab_dsp_url
-      uses: variable/type/string
-      with:
-        source: input
-      returns:
-        value:
-          type: string
-    - id: testlab_mock_base_url
-      uses: variable/type/string
-      with:
-        source: input
-      returns:
-        value:
-          type: string
-    - id: sut_response_timeout
-      uses: variable/type/integer
-      with:
-        value: 300
-      returns:
-        value:
-          type: integer
+          type: object
+          class: Policy
+
   schemas:
-    certificate_schema:
-      file: business_partner_certificate_schema.json
-    bpc_v310_schema:
-      file: bpc-v3.1.0.json
+    - id: certificate_schema
+      source: business_partner_certificate_schema-v3.0.1.json
+
   testdata:
-    available_notification_body:
-      file: available_notification_body.json
-    certificate_available_response:
-      file: certificate_available_response.json
-    error_unknown_cert_type_body:
-      file: error_unknown_cert_type_body.json
-    expose_available_notification_body:
-      file: expose_available_notification_body.json
-    expose_certificate_data_response:
-      file: expose_certificate_data_response.json
-    push_certificate_body:
-      file: push_certificate_body.json
-    request_certificate_body:
-      file: request_certificate_body.json
-    send_feedback_body:
-      file: send_feedback_body.json
+    - id: request_certificate_body
+      source: request_certificate_body.json
+      type: application/json
+    - id: send_feedback_body
+      source: send_feedback_body.json
+      type: application/json
+    - id: error_unknown_cert_type_body
+      source: error_unknown_cert_type_body.json
+      type: application/json
 
 tests:
-  - test: catalog_policy_validation.yaml
-    description: Validate CX-0135 catalog policy constraints
-  - test: request_certificate.yaml
-    description: Request a certificate via CCMAPI
-  - test: certificate_asset_validation.yaml
-    description: Validate the exposed certificate asset and its usage policy
-  - test: validate_payload.yaml
-    description: Validate certificate payload against the schema
-  - test: push_certificate.yaml
-    description: Push a certificate and verify the feedback callback
-  - test: available_notification.yaml
-    description: Send an available notification and verify acknowledgment
-  - test: send_feedback.yaml
-    description: Send feedback notification and await acknowledgment
-  - test: expose_testlab_asset.yaml
-    description: Expose TestLab as provider and verify SUT consumer behavior
-  - test: error_handling.yaml
-    description: Verify error handling for unknown certificate types
+  - id: catalog_policy_validation.yaml
+    name: Validate CX-0135 catalog policy constraints
+  - id: request_certificate.yaml
+    name: Request a certificate via CCMAPI
+  - id: send_feedback_notification.yaml
+    name: Send a feedback notification and await acknowledgment
+  - id: error_handling.yaml
+    name: Verify error handling for unknown certificate types

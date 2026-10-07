@@ -18,7 +18,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ###############################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
 """End-to-end integration tests for the TCK parse → compile → execute pipeline."""
@@ -26,25 +26,19 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
-import json
-import sys
-from pathlib import Path
-from typing import Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import yaml
-from fastapi import APIRouter, FastAPI
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from tractusx_testlab.models.authoring.definitions import ScriptDefinition, TckDefinition
-from tractusx_testlab.models.primitives.enums import ScriptKind
-from tractusx_testlab.scripting.parser import YamlParser
-from tractusx_testlab.scripting.script import Tck, TestScript
+from tests.paths import FIXTURES_DIR, SRC_DIR
+from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.authoring.test import Tck
+from tractusx_testlab.models.authoring.definitions import TckDefinition
 
-_FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
-_SRC_DIR = str(Path(__file__).resolve().parent.parent.parent / "src")
+_SRC_DIR = str(SRC_DIR)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -55,7 +49,7 @@ _SRC_DIR = str(Path(__file__).resolve().parent.parent.parent / "src")
 @pytest.fixture()
 def simple_tck_yaml() -> str:
     """Load the simple TCK YAML fixture as a string."""
-    return (_FIXTURES_DIR / "simple_tck.yaml").read_text(encoding="utf-8")
+    return (FIXTURES_DIR / "simple_tck.yaml").read_text(encoding="utf-8")
 
 
 @pytest.fixture()
@@ -70,82 +64,52 @@ def simple_tck_data(simple_tck_yaml: str) -> dict:
 
 
 class TestTckParseCompilePipeline:
-    """Verify the full parse → TckDefinition → Tck pipeline with a real YAML fixture."""
+    """Verify the full parse → TckDefinition pipeline with a real YAML fixture."""
 
     def test_parse_tck_from_dict_returns_tck_definition(
-        self, simple_tck_data: dict,
+        self,
+        simple_tck_data: dict,
     ) -> None:
         """YamlParser.parse_tck_from_dict produces a valid TckDefinition."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)
 
         assert isinstance(definition, TckDefinition)
-        assert definition.name == "simple-ping-test"
-        assert definition.kind == ScriptKind.TCK
+        assert definition.metadata.name == "simple-ping-test"
+        assert definition.syntax == "v1-alpha"
 
-    def test_tck_definition_contains_inline_tests(
-        self, simple_tck_data: dict,
+    def test_tck_definition_contains_test_paths(
+        self,
+        simple_tck_data: dict,
     ) -> None:
-        """Inline test dicts inside ``tests:`` are parsed into ScriptDefinition objects."""
+        """``tests:`` entries are parsed as TckTestEntry models with id and name."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)
 
         assert len(definition.tests) == 1
-        test = definition.tests[0]
-        assert isinstance(test, ScriptDefinition)
-        assert test.name == "ping-http"
+        entry = definition.tests[0]
+        assert entry.id == "ping_http.yaml"
+        assert entry.name == "Make a ping"
 
-    def test_tck_definition_test_has_steps(
-        self, simple_tck_data: dict,
+    def test_tck_tests_empty_for_path_based_tck(
+        self,
+        simple_tck_data: dict,
     ) -> None:
-        """Each inline ScriptDefinition carries its steps."""
-        definition = YamlParser.parse_tck_from_dict(simple_tck_data)
-        test = definition.tests[0]
-
-        assert isinstance(test, ScriptDefinition)
-        assert len(test.steps) == 1
-        assert test.steps[0].type == "http_request"
-
-    def test_tck_scripts_not_empty(
-        self, simple_tck_data: dict,
-    ) -> None:
-        """Tck wrapper correctly wraps definition tests as TestScript objects (Bug 2 regression)."""
+        """Tck wrapper has no pre-loaded tests when tests are path-based."""
         definition = YamlParser.parse_tck_from_dict(simple_tck_data)
         tck = Tck(definition)
 
-        assert tck.scripts, "tck.scripts must not be empty — regression on Bug 2"
-        assert len(tck.scripts) == 1
-        assert isinstance(tck.scripts[0], TestScript)
-
-    def test_tck_script_has_steps(
-        self, simple_tck_data: dict,
-    ) -> None:
-        """TestScript exposes its step definitions through the definition wrapper."""
-        definition = YamlParser.parse_tck_from_dict(simple_tck_data)
-        tck = Tck(definition)
-        script = tck.scripts[0]
-
-        assert script.name == "ping-http"
-        assert script.step_count() == 1
-
-    def test_tck_total_steps(
-        self, simple_tck_data: dict,
-    ) -> None:
-        """Tck.total_steps aggregates across all scripts."""
-        definition = YamlParser.parse_tck_from_dict(simple_tck_data)
-        tck = Tck(definition)
-
-        assert tck.total_steps() == 1
+        assert tck.tests == []
 
     def test_parse_tck_from_file(self) -> None:
         """YamlParser.parse_tck loads from a file path directly."""
-        path = _FIXTURES_DIR / "simple_tck.yaml"
+        path = FIXTURES_DIR / "simple_tck.yaml"
         definition = YamlParser.parse_tck(path)
 
-        assert definition.name == "simple-ping-test"
+        assert definition.metadata.name == "simple-ping-test"
         assert len(definition.tests) == 1
 
 
 # ──────────────────────────────────────────────────────────────────────
-# HTTP endpoint integration: POST /testlab/test-execution/run
+# HTTP endpoint integration: POST /testlab/tck-execution/run
 # ──────────────────────────────────────────────────────────────────────
 
 
@@ -197,7 +161,7 @@ class TestRunYamlEndpointE2E:
     ) -> None:
         """Submitting a valid TCK YAML returns 202 with a job_id — no 422 error."""
         response = await async_client.post(
-            "/testlab/test-execution/run",
+            "/testlab/tck-execution/run",
             content=simple_tck_yaml.encode(),
         )
 
@@ -219,9 +183,9 @@ class TestRunYamlEndpointE2E:
         mock_player: MagicMock,
         simple_tck_yaml: str,
     ) -> None:
-        """The endpoint fires player.run_tck with a Tck object containing scripts."""
+        """The endpoint fires player.run_tck with a Tck object containing tests."""
         await async_client.post(
-            "/testlab/test-execution/run",
+            "/testlab/tck-execution/run",
             content=simple_tck_yaml.encode(),
         )
 
@@ -231,7 +195,7 @@ class TestRunYamlEndpointE2E:
         mock_player.run_tck.assert_called_once()
         tck_arg = mock_player.run_tck.call_args[0][0]
         assert isinstance(tck_arg, Tck)
-        assert tck_arg.scripts, "Tck passed to player must have scripts"
+        assert tck_arg.tests, "Tck passed to player must have tests"
 
     @pytest.mark.asyncio
     @pytest.mark.xfail(
@@ -247,14 +211,14 @@ class TestRunYamlEndpointE2E:
         single_test_yaml = (
             "name: bare-test\n"
             "steps:\n"
-            "  - type: http_request\n"
+            "  - type: http/http_request\n"
             "    params:\n"
             "      method: GET\n"
             "      url: http://localhost/ping\n"
         )
 
         response = await async_client.post(
-            "/testlab/test-execution/run",
+            "/testlab/tck-execution/run",
             content=single_test_yaml.encode(),
         )
 

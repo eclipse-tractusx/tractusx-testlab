@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,27 +14,40 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Data-plane interaction steps — fetch data through EDR endpoint."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import logging
+from typing import TYPE_CHECKING, Any
 
-import requests
+from pydantic import Field
+from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
 
+from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.security.credentials import reveal
+from tractusx_testlab.steps import http_client, sdk_call
+from tractusx_testlab.steps.connector._edr import Credential, issued_data_address
+from tractusx_testlab.steps.shared_models import (
+    DataAddressPayload,
+    HttpBodyOutput,
+    HttpCallParams,
+    StepParams,
+    data_address_token,
+)
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.syntax.context_vars import (
-    DATAPLANE_ENDPOINT,
+    DATAPLANE_URL,
     EDR_TOKEN,
     TRANSFER_ID,
 )
@@ -42,55 +55,200 @@ from tractusx_testlab.syntax.context_vars import (
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
+logger = logging.getLogger(__name__)
 
-@step("dataplane_call", aliases=["http_call_dataplane"])
-class DataplaneCallStep(BaseStep):
-    """Fetch data from a data-plane endpoint using an EDR token."""
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinition) -> StepOutput:
-        endpoint = params.get("dataplane_url") or params.get("url") or params.get("endpoint") or context.get_variable(DATAPLANE_ENDPOINT)
+# ---------------------------------------------------------------------------
+# connector/dataplane/http_request
+# ---------------------------------------------------------------------------
+
+
+class DataplaneCallParams(HttpCallParams):
+    """Input contract of ``connector/dataplane/http_request``.
+
+    Left alone, both the URL and the token come from whichever step completed
+    the transfer — every step publishes all of its return outputs, and the
+    steps that end a transfer all return the ``dataplane_url``/``edr_token``
+    pair under exactly these names.
+    """
+
+    dataplane_url: Any = Field(
+        default=None,
+        description=(
+            "Data-plane URL, or a data address object to read it from; falls back "
+            "to the 'dataplane_url' context variable."
+        ),
+    )
+    path: str = Field(default="", description="Path appended to the data-plane URL.")
+    edr_token: Credential | str | None = Field(
+        default=None,
+        description=(
+            "EDR authorization token; falls back to the 'edr_token' context variable "
+            "when omitted. An explicit '' asks for the call to be made with no token "
+            "at all — e.g. a negative-path test proving the endpoint is protected — "
+            "and is honoured as given rather than falling back."
+        ),
+    )
+
+    def resolved_token(self, fallback: object) -> object:
+        """The token to send, or '' if the test explicitly asked for none.
+
+        ``None`` means the test left the field out, so the context variable a
+        prior transfer published is used. An explicit ``''`` is a test asking
+        for the call to carry no token — the negative-path case a `falsy or
+        fallback` read would silently defeat by substituting a stale token from
+        an earlier step in the same run.
+        """
+        return fallback if self.edr_token is None else self.edr_token
+
+    def resolved_url(self, fallback: Any) -> str:
+        """The URL to call, resolved from whichever form the data address arrived in."""
+        endpoint = self.dataplane_url or fallback
         if isinstance(endpoint, dict):
             endpoint = endpoint.get("endpoint") or endpoint.get("baseUrl")
-        path = params.get("path", "")
-        if path:
-            endpoint = endpoint.rstrip("/") + "/" + path.lstrip("/")
-        token = params.get("edr_token") or params.get("token") or context.get_variable(EDR_TOKEN)
-        method = params.get("method", "GET").upper()
-        body = params.get("body")
-        headers = {"Authorization": token, **(params.get("headers") or {})}
-        timeout = params.get("timeout", context.config.default_timeout_s)
+        if not self.path:
+            return str(endpoint)
+        return str(endpoint).rstrip("/") + "/" + self.path.lstrip("/")
 
-        req = HttpRequest(method=method, url=endpoint, headers=headers, body=body)
-        resp = requests.request(method, endpoint, headers=headers, json=body, timeout=timeout)
 
+@step("connector/dataplane/http_request")
+class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
+    """Fetch data from a data-plane endpoint using an EDR token.
+
+    This is the far end of the DSP flow: ``do_dsp`` or ``initiate_transfer``
+    returns where the data is and how to authorize for it, and this step
+    reads exactly those two variables.
+    """
+
+    params_model = DataplaneCallParams
+    output_model = HttpBodyOutput
+
+    async def execute(
+        self, params: DataplaneCallParams, context: StepContext, definition: StepDefinition
+    ) -> StepOutput[HttpBodyOutput]:
+        url = params.resolved_url(context.get_str(DATAPLANE_URL))
+        # An EDR token is a handle that opens for its own data plane only.
+        held = params.resolved_token(context.get_variable(EDR_TOKEN, ""))
+        token = reveal(held, url, context.config.credential_release)
+        headers = {"Authorization": token, **params.headers}
+        timeout = params.timeout_or(context.config.default_timeout_s)
+
+        resp = await http_client.request(
+            params.method,
+            url,
+            headers=headers,
+            json=params.body,
+            timeout=timeout,
+            follow_redirects=not isinstance(held, Credential),
+        )
+
+        recorded = {**headers, "Authorization": REDACTED_VALUE} if token else headers
         return StepOutput(
-            value=resp.json() if resp.headers.get("content-type", "").startswith("application/json") else resp.text,
-            request=req,
+            value=HttpBodyOutput(http_client.body_of(resp)),
+            request=HttpRequest(method=params.method, url=url, headers=recorded, body=params.body),
             response=HttpResponse(
                 status_code=resp.status_code,
-                headers=dict(resp.headers),
+                headers=http_client.headers_of(resp),
                 body=resp.text,
             ),
         )
 
 
-@step("get_edr")
-class GetEdrStep(BaseStep):
-    """Retrieve the EDR entry for a completed transfer."""
+# ---------------------------------------------------------------------------
+# connector/consumer/get_edr
+# ---------------------------------------------------------------------------
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinition) -> StepOutput:
-        consumer = context.get_consumer_service()
-        transfer_id = params.get("transfer_id") or context.get_variable(TRANSFER_ID)
-        url = f"{context.get_consumer_base_url()}/v3/edrs/{transfer_id}/dataaddress"
 
-        edr = consumer.get_edr(transfer_id=transfer_id)
+class GetEdrParams(StepParams):
+    """Input contract of ``connector/consumer/get_edr``."""
 
-        if edr:
-            context.set_variable(DATAPLANE_ENDPOINT, edr.get("endpoint"))
-            context.set_variable(EDR_TOKEN, edr.get("authorization"))
+    transfer_id: str | None = Field(
+        default=None,
+        description=(
+            "Transfer process to read the EDR of; falls back to the 'transfer_id' context variable."
+        ),
+    )
+    verify: Any | None = Field(
+        default=None,
+        description="TLS verification passed through to the SDK; None keeps its default.",
+    )
 
+
+async def fetch_data_address(
+    consumer: Any, transfer_id: str | None, verify: Any = None
+) -> dict | None:
+    """Fetch the EDR data address for a transfer, or ``None`` if it cannot be read.
+
+    The one place that calls ``consumer.get_edr`` — ``connector/consumer/get_edr``
+    and ``connector/consumer/initiate_transfer`` both resolve a ``transfer_id``
+    and then call this. An unreachable connector is reported as "no data address"
+    rather than raised: the caller still has whatever else it resolved (an EDR
+    entry, a negotiation), and a 404/500 in the step's response is how a test
+    asserts on the failure.
+    """
+    if not transfer_id:
+        return None
+    try:
+        # Its tokens are handles from here on (steps.connector._edr).
+        document = await sdk_call.run(consumer.get_edr, transfer_id=transfer_id, verify=verify)
+        return issued_data_address(document)
+    except ConnectionError:
+        logger.warning("Failed to retrieve EDR data address for transfer %s", transfer_id)
+        return None
+
+
+class EdrOutput(StepPayload):
+    """Output contract of ``connector/consumer/get_edr``.
+
+    The data-plane pair is lifted out of the document so it lands under the
+    same names every transfer-completing step returns them under, and the full
+    document stays alongside for assertions on its other keys.
+    """
+
+    dataplane_url: str | None = Field(
+        default=None, description="Data-plane URL the negotiated data is fetched from."
+    )
+    edr_token: Credential | str | None = Field(
+        default=None,
+        description="Authorization token for that data-plane URL. Shown as '***' in every record.",
+        json_schema_extra={"secret": True},
+    )
+    data_address: DataAddressPayload | None = Field(
+        default=None, description="The full EDR data address document, unchanged."
+    )
+
+
+@step("connector/consumer/get_edr")
+class GetEdrStep(BaseStep[GetEdrParams, EdrOutput]):
+    """Retrieve the EDR data address for a completed transfer.
+
+    Returns the same data-plane pair as ``initiate_transfer``, so it can stand
+    in for that step when the transfer was started elsewhere — a PULL
+    ``initiate_transfer`` resolves a ``negotiation_id`` down to a ``transfer_id``
+    and then does exactly what this step does.
+    """
+
+    params_model = GetEdrParams
+    output_model = EdrOutput
+
+    async def execute(
+        self, params: GetEdrParams, context: StepContext, definition: StepDefinition
+    ) -> StepOutput[EdrOutput]:
+        consumer = context.dataspace.consumer()
+        transfer_id = params.transfer_id or context.get_str(TRANSFER_ID)
+        url = context.dataspace.consumer_endpoint_url("edrs", transfer_id, "dataaddress")
+
+        edr = await fetch_data_address(consumer, transfer_id, params.verify)
+
+        value = None
+        if edr is not None:
+            value = EdrOutput(
+                dataplane_url=edr.get("endpoint"),
+                edr_token=data_address_token(edr),
+                data_address=DataAddressPayload.of(edr),
+            )
         return StepOutput(
-            value=edr,
+            value=value,
             request=HttpRequest(method="GET", url=url),
-            response=HttpResponse(status_code=200 if edr else 404, body=edr),
+            response=HttpResponse(status_code=200, body=edr),
         )

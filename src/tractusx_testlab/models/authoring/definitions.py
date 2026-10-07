@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,144 +14,287 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Definition models — authoring / compile-time structures for scripts and TCKs."""
+"""Syntax v1-alpha authoring models — compile-time structures for tests and TCKs.
+
+All models follow the GitHub Actions-like verb-form YAML schema using ``uses``
+and ``with`` keys.  The ``syntax`` field pins the format version (``v1-alpha``).
+"""
 
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
+from tractusx_testlab.extensions import EXTENSIONS
+from tractusx_testlab.extensions.step_keys import (
+    AssertionExtensionKeys,
+    EntryExtensionKeys,
+    StepExtensionKeys,
+    TestExtensionKeys,
+)
 from tractusx_testlab.models.authoring.infrastructure import (
     DataspaceContext,
     InfrastructureConfig,
 )
-from tractusx_testlab.models.primitives.enums import (
-    AssertionSeverity,
-    FailurePolicy,
-    SdkCallMode,
-    ValueSource,
-    VariableSource,
-)
-from tractusx_testlab.models.primitives.enums import AssertionType, ScriptKind, ServiceType
+from tractusx_testlab.models.primitives.enums import ServiceType, VariableScope, VariableSource
+
+# ---------------------------------------------------------------------------
+# Shared primitive models (kept across syntax versions)
+# ---------------------------------------------------------------------------
+
+#: Every authoring model rejects keys it does not declare. Pydantic's default is
+#: ``extra="ignore"``, which silently discarded them: a ``validte:`` block was
+#: dropped and the step reported PASS with zero assertions; a ``whit:`` block was
+#: dropped and the step ran with no parameters. The reasoning was already written
+#: down one layer in, on ``StepParams``, and never applied to the models that
+#: select it: a key the author wrote and the engine ignored is how a test comes
+#: to look like it configured something it never configured.
+_STRICT = ConfigDict(populate_by_name=True, extra="forbid")
 
 
 class VariableDefinition(BaseModel):
-    """Schema for a declared variable in a test script.
+    """Schema for a declared variable."""
 
-    Carries both the legacy flat fields (``type``/``default``) and the LOCKED
-    GRAMMAR v1 verb-form fields (``source``/``generator``/``format``/
-    ``placeholder``). The addressable name is ``name`` (the entry ``id`` in
-    verb form), so ``${{ env.<name> }}`` resolves unchanged.
-    """
+    model_config = _STRICT
 
     name: str
     type: str = "str"
-    default: Optional[Any] = None
+    default: Any | None = None
     runtime: bool = False
-    description: Optional[str] = None
+    description: str | None = None
     source: VariableSource = VariableSource.VALUE
-    generator: Optional[str] = None
-    format: Optional[str] = None
-    placeholder: Optional[str] = None
-
-
-class Assertion(BaseModel):
-    """Validation rule applied to a step output."""
-
-    type: AssertionType
-    severity: AssertionSeverity = AssertionSeverity.HARD
-    source: ValueSource = ValueSource.INLINE
-    value: Optional[Any] = None
-    path: Optional[str] = Field(default=None, alias="output")
-    description: Optional[str] = None
-    schema_ref: Optional[str] = Field(default=None, alias="schema")
-    min: Optional[Any] = None
-    max: Optional[Any] = None
-    operator: Optional[str] = None
-    expected: Optional[Any] = None
-    json_path: Optional[str] = None
-    store_in_variable: Optional[str] = None
-    nested_validate: Optional[list["Assertion"]] = Field(
-        default=None, alias="validate"
-    )
-
-    model_config = {"populate_by_name": True}
-
-
-class StepDefinition(BaseModel):
-    """Compile-time definition of a single test step."""
-
-    type: str
-    name: Optional[str] = None
-    description: Optional[str] = None
-    params: dict = Field(default_factory=dict)
-    on_failure: FailurePolicy = FailurePolicy.ABORT
-    timeout_s: Optional[float] = None
-    validate: list[Assertion] = Field(default_factory=list)
-    store_in_memory: Optional[dict[str, str]] = None
-    store_in_variable: Optional[str] = None
-    if_condition: Optional[str] = Field(default=None, alias="if")
-    output_definitions: list[dict[str, str]] = Field(default_factory=list)
-
-    model_config = {"populate_by_name": True}
+    generator: str | None = None
+    format: str | None = None
+    placeholder: str | None = None
+    scope: VariableScope | None = None
+    secret: bool = False  # Masked in every record; an embedder treats it as a password.
 
 
 class ServiceDefinition(BaseModel):
-    """Declaration of an external service used by a test script."""
+    """Declaration of an external service used by tests."""
+
+    model_config = _STRICT
 
     name: str
     type: ServiceType
     base_url: str
     auth: dict = Field(default_factory=dict)
-    params: Optional[dict] = None
-
-
-class ScriptDefinition(BaseModel):
-    """Top-level definition of a test script with phases and services."""
-
-    kind: ScriptKind = ScriptKind.TEST
-    name: str
-    version: str = "1.0"
-    dataspace_version: str = "saturn"
-    dataspace: Optional[DataspaceContext] = None
-    infrastructure: Optional[InfrastructureConfig] = None
-    description: Optional[str] = None
-    import_from: Optional[str] = None
-    allow_sdk_calls: SdkCallMode = SdkCallMode.ALLOWLIST
-    outputs: dict[str, str] = Field(default_factory=dict)
-    variables: dict[str, VariableDefinition] = Field(default_factory=dict)
-    services: list[ServiceDefinition] = Field(default_factory=list)
-    setup: list[StepDefinition] = Field(default_factory=list)
-    steps: list[StepDefinition] = Field(default_factory=list)
-    teardown: list[StepDefinition] = Field(default_factory=list)
-    depends_on: list[str] = Field(default_factory=list)
+    params: dict | None = None
 
 
 class ImportDefinition(BaseModel):
-    """Reference to an external script to import into a TCK."""
+    """Reference to an external test to import into a TCK."""
+
+    model_config = _STRICT
 
     import_ref: str
-    override: Optional[dict] = None
+    override: dict | None = None
+
+
+# ---------------------------------------------------------------------------
+# Syntax v1-alpha models
+# ---------------------------------------------------------------------------
+
+
+class MetadataDefinition(BaseModel):
+    """Metadata block common to tests and TCK manifests."""
+
+    model_config = _STRICT
+
+    name: str
+    version: str = "1.0"
+    description: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+
+class ReturnFieldDefinition(BaseModel):
+    """Single output field declared in a step ``returns`` block."""
+
+    model_config = _STRICT
+
+    type: str
+    cls: str | None = Field(default=None, alias="class")
+    #: Unset leaves it to the step: a secret output (mock/api's api_key) is hidden.
+    hidden: bool | None = Field(
+        default=None, description="Mask the value in every record of the run (trace, UI, logs)."
+    )
+
+
+class Assertion(AssertionExtensionKeys):
+    """Assertion using ``uses`` / ``with`` verb-form keys.
+
+    Inherits the keys experimental extensions add (``tractusx_testlab.extensions``).
+    """
+
+    model_config = _STRICT
+
+    uses: str
+    #: What this check is for, in the author's words. Optional, and purely for
+    #: the reader of a run: a report that lists ``validate/assert`` four times
+    #: under one step says nothing about which requirement each one covers,
+    #: which is exactly what a certification result has to say. Nothing in the
+    #: engine reads it — the check itself is entirely in ``uses`` and ``with``.
+    name: str | None = None
+    with_: dict[str, Any] | None = Field(default=None, alias="with")
+
+
+class StepDefinition(StepExtensionKeys):
+    """Step definition using ``uses`` and ``with`` verb-form keys.
+
+    Inherits the keys experimental extensions add (``tractusx_testlab.extensions``).
+    """
+
+    model_config = _STRICT
+
+    id: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]{0,49}$")
+    uses: str
+    name: str | None = None
+    with_: dict[str, Any] | None = Field(default=None, alias="with")
+    returns: dict[str, ReturnFieldDefinition] | None = None
+    #: The step's checks. Named ``assertions`` in Python because a field called
+    #: ``validate`` shadows ``BaseModel.validate`` — Pydantic warned about it on
+    #: every import of this library, including every ``testlab`` invocation, and
+    #: mypy reported the override as a type error. Tests still write
+    #: ``validate:``; the aliases are what make that the only spelling anyone
+    #: outside this file sees.
+    assertions: list[Assertion] | None = Field(
+        default=None,
+        validation_alias="validate",
+        serialization_alias="validate",
+    )
+    #: Marks the step as a negative test (syntax spec §9.3): the request is one
+    #: the system under test is required to refuse.
+    #:
+    #: Declarative. What "refused correctly" means is expressed by the step's
+    #: ``validate:`` block, which is where a negative test's expectation lives —
+    #: the shipped error-handling TCK marks a step ``expects: fail`` and then
+    #: asserts ``status_code == 200`` with a well-formed rejection body, because
+    #: the refusal is an application-level answer, not a transport failure.
+    #: Inverting the step's own outcome would therefore fail exactly the runs
+    #: that are correct.
+    #:
+    #: Declared rather than merely tolerated so it survives ``extra="forbid"``
+    #: and reaches the compiled IR, where the IDE and reporting can see which
+    #: steps are negative tests.
+    expects: Literal["fail"] | None = None
+    # Runtime control fields kept for execution-engine compatibility.
+    timeout_s: float | None = None
+    if_condition: str | None = Field(default=None, alias="if")
+
+
+class TestDefinition(TestExtensionKeys):
+    """Top-level test definition."""
+
+    __test__ = False  # a TestLab test, not a pytest one
+    model_config = _STRICT
+
+    kind: Literal["test"] = "test"
+    syntax: Literal["v1-alpha"]
+    id: str = Field(
+        # Dots are allowed so an id can carry the version it was cut at,
+        # e.g. "certificate-management-tck-v0.0.1".
+        pattern=r"^[a-z][a-z0-9_.-]{0,99}$"
+    )
+    namespace: str
+    metadata: MetadataDefinition
+    setup: list[StepDefinition] = Field(default_factory=list)
+    execution: list[StepDefinition] = Field(default_factory=list)
+    teardown: list[StepDefinition] = Field(default_factory=list)
+    #: The ecosystem release and the capabilities this test needs. Both are
+    #: stated in blocks — there is no flat ``dataspace_version`` field: it was
+    #: the older spelling of ``dataspace.version`` and having two ways to say
+    #: one thing is how the two came to disagree.
+    dataspace: DataspaceContext | None = None
+    infrastructure: InfrastructureConfig | None = None
+
+
+class TckMetadataDefinition(MetadataDefinition):
+    """Metadata block for TCK manifests — extends base with certification fields."""
+
+    authors: list[dict[str, Any]] = Field(default_factory=list)
+    copyright_holders: list[str] = Field(default_factory=list)
+    license: str = "Apache-2.0"
+    standards: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class SchemaDefinition(BaseModel):
+    """A single schema entry in the TCK env block."""
+
+    model_config = _STRICT
+
+    id: str
+    source: str
+
+
+class TestDataDefinition(BaseModel):
+    """A single test data entry in the TCK env block."""
+
+    model_config = _STRICT
+
+    id: str
+    source: str
+    type: str = "application/json"
+
+
+class EnvDefinition(BaseModel):
+    """Environment block in a TCK manifest — shared variables, services, and test data."""
+
+    model_config = _STRICT
+
+    variables: Any | None = None
+    services: list[dict[str, Any]] | None = None
+    schemas: list[SchemaDefinition] | None = None
+    testdata: list[TestDataDefinition] | None = None
+
+
+class TckTestEntry(EntryExtensionKeys):
+    """A single entry in the TCK ``tests:`` list.
+
+    ``id`` is the test filename under ``tests/``; ``name`` a label for reports and
+    logs; ``skippable`` whether the operator may omit the test via ``skip_tests``.
+    The ``labs`` extension adds ``async:`` (:class:`EntryExtensionKeys`).
+    """
+
+    model_config = _STRICT
+
+    id: str = Field(pattern=r"^[a-zA-Z0-9_\-\.]+\.yaml$")
+    name: str | None = None
+    skippable: bool = False
 
 
 class TckDefinition(BaseModel):
-    """Top-level definition of a TCK package containing multiple tests."""
+    """Top-level TCK manifest definition."""
 
-    kind: ScriptKind = ScriptKind.TCK
-    name: str
-    version: str = "1.0"
-    description: Optional[str] = None
-    dataspace: Optional[DataspaceContext] = None
-    infrastructure: Optional[InfrastructureConfig] = None
-    shared_variables: Optional[dict[str, VariableDefinition]] = None
-    tests: list[Union[ScriptDefinition, str]] = Field(default_factory=list)
-    imports: list[ImportDefinition] = Field(default_factory=list)
+    model_config = _STRICT
+
+    kind: Literal["tck"] = "tck"
+    syntax: Literal["v1-alpha"]
+    id: str = Field(
+        # Dots are allowed so an id can carry the version it was cut at,
+        # e.g. "certificate-management-tck-v0.0.1".
+        pattern=r"^[a-z][a-z0-9_.-]{0,99}$"
+    )
+    metadata: TckMetadataDefinition
+    #: Experimental extensions this TCK opts into, by name. Keys and steps an
+    #: extension contributes are refused in a TCK that does not list it.
+    extensions: list[Literal[tuple(EXTENSIONS)]] = Field(default_factory=list)  # type: ignore[valid-type]
+    env: EnvDefinition | None = None
+    tests: list[TckTestEntry] = Field(default_factory=list)
+    # Transition fields — kept for compatibility with existing CCM examples.
+    dataspace: DataspaceContext | None = None
+    infrastructure: InfrastructureConfig | None = None
+
+
+# ``syntax`` is a plain ``Literal["v1-alpha"]`` on both models: there is exactly
+# one syntax version, so the field itself fail-fasts on anything else and no
+# discriminated-union routing is needed.

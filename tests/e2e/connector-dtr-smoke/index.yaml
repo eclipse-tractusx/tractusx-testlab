@@ -1,0 +1,350 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## It was reviewed and tested by a human committer.
+
+# Self-hosted smoke TCK for the `.github/workflows/e2e-umbrella.yml` pipeline.
+#
+# Purpose: exercise testlab's own compile -> validate -> run pipeline against
+# two REAL Eclipse Tractus-X EDC connectors and a real Digital Twin Registry,
+# deployed ephemerally in CI via the Tractus-X Umbrella "decentralized
+# identityhub" profile (see docs/README.md in this directory). It is not a
+# business-capability certification TCK — it certifies testlab itself.
+#
+# The connector test provisions its SUT asset, policies and contract in setup,
+# then removes them in teardown. This exercises testlab's provider steps as
+# well as the consumer-side DSP negotiation and data transfer.
+
+kind: tck
+syntax: v1-alpha
+
+id: testlab-e2e-connector-dtr-smoke
+
+metadata:
+  name: "TestLab E2E Smoke — Connector & DTR"
+  version: "v1.0.0"
+  description: >
+    Round-trips a real DSP contract negotiation and a real Digital Twin
+    Registry write/read against the two EDC connectors + DTR that
+    e2e-umbrella.yml deploys via Tractus-X Umbrella. Used as testlab's own
+    CI signal, not as a published certification TCK.
+  authors:
+    - name: TestLab Maintainers
+      email: testlab@eclipse-tractusx.org
+      company: Eclipse Tractus-X
+  copyright_holders:
+    - "2026 Contributors to the Eclipse Foundation"
+  license: Apache-2.0
+  standards:
+    - id: TESTLAB-INTERNAL
+      version: v1.0.0
+  tags:
+    - internal
+    - e2e
+    - smoke
+
+# Experimental extensions (src/tractusx_testlab/extensions). This TCK certifies
+# testlab itself, so it runs the experimental ones too: experimental_extensions.yaml
+# writes `cac:` (the `cac` extension) and `retry_on` on a data-plane call (a
+# `labs` step parameter). Every other test is untouched by them. The compiler
+# warns once per entry here; that warning is expected.
+extensions: [cac, labs]
+
+dataspace:
+  ecosystem: Catena-X
+  version: saturn
+
+infrastructure:
+  engine:
+    connector:
+      required: true
+    # The engine's own registry and, as a field of it, the submodel server its
+    # entries point at. industry_core_journey.yaml uploads a payload there and
+    # then reaches it back through the dataspace; nothing else addresses it.
+    # Both sides share one registry in this deployment, so the engine's
+    # `base_url` is the provider's — which changes nothing, because a bare
+    # registry lookup resolves to the system under test's binding first.
+    dtr:
+      required: true
+  sut:
+    connector:
+      required: true
+    dtr:
+      required: true
+
+env:
+  variables:
+    # The root of testlab's mock server as the SUT can reach it. `mock/api`
+    # reports the server at `localhost`, which is true for the engine and
+    # useless to a connector in a pod, so the address the SUT dials is the
+    # operator's to give — the workflow discovers it from the kind node's
+    # gateway. inbound_call.yaml registers an asset on the SUT with it.
+    - id: mock_server_external_url
+      uses: variable/type/string
+      name: Mock server root, as reachable from the SUT
+      description: >
+        Root URL of testlab's mock server as the SUT's data plane can reach
+        it, e.g. http://172.18.0.1:8100. Supplied by the workflow via
+        `--var mock_server_external_url=...`.
+      with:
+        source: input
+        scope: engine
+      returns:
+        value:
+          type: string
+
+    # A stand-in system under test that calls back on request, after a delay
+    # (ci/stub_caller.py). external_callback.yaml hands it the mock's address
+    # and blocks; the workflow deploys it in the cluster behind an ingress.
+    - id: stub_caller_url
+      uses: variable/type/string
+      name: Stub caller root
+      description: >
+        Root URL of the stub caller (ci/stub_caller.py) as the engine reaches
+        it, e.g. http://tck-stub.local. Supplied by the workflow via
+        `--var stub_caller_url=...`.
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    # The two participants' business partner numbers. Neither is a binding: a
+    # binding names a connector by the identity it presents on the wire, and a
+    # Saturn connector presents a DID. The BPN is what a Catena-X *caller*
+    # holds — it is what a notification header carries and what BPN-addressed
+    # discovery resolves — so it is asked for separately, of whoever operates
+    # each side.
+    - id: sut_bpnl
+      uses: variable/type/string
+      name: BPN of the system under test
+      description: >
+        Business partner number of the SUT participant, e.g. BPNL000000000001.
+        Resolved to the SUT connector's DID by the dataspace's BPN-DID
+        directory in bpn_discovery.yaml, and written into the receiver field of
+        the notifications notification_roundtrip.yaml sends.
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    - id: engine_bpnl
+      uses: variable/type/string
+      name: BPN of the engine
+      description: >
+        Business partner number of the participant testlab drives, e.g.
+        BPNL000000000002. It is the sender of every notification this suite
+        sends and one of the two spellings of the consumer's identity that
+        dtr_consumer_dataplane.yaml grants a twin's visibility to.
+      with:
+        source: input
+        scope: engine
+
+      returns:
+        value:
+          type: string
+
+    # The registry's API root as the *provider's data plane* can reach it —
+    # a cluster address, where `infrastructure.sut.dtr.base_url` is the ingress
+    # one the engine uses. dtr_consumer_dataplane.yaml registers an EDC asset
+    # with it, so that a consumer can negotiate for the registry the way
+    # Catena-X actually reads somebody else's twins. Which address that is
+    # depends on how the registry was deployed, so the operator gives it.
+    - id: dtr_internal_url
+      uses: variable/type/string
+      name: Registry API root, as reachable from the SUT's data plane
+      description: >
+        Base URL of the SUT's Digital Twin Registry API as the SUT's own data
+        plane can reach it, e.g.
+        http://provider-dtr.umbrella.svc.cluster.local:8080/api/v3. Supplied by
+        the workflow via `--var dtr_internal_url=...`.
+      with:
+        source: input
+        scope: sut
+      returns:
+        value:
+          type: string
+
+    - id: test_asset
+      uses: config/connector/asset
+      name: E2E HTTP test asset
+      with:
+        source: value
+        value:
+          asset_id: testlab-e2e-smoke-asset
+          base_url: "http://tck-echo.umbrella.svc.cluster.local"
+          dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+          version: "1.0"
+      returns:
+        value:
+          type: object
+          class: Asset
+
+    # `action: access`, not `use`: the connector reads the action to decide
+    # which half of the Catena-X policy profile a definition is held to. A
+    # policy whose permission says `use` is an offer's *usage* policy, and the
+    # profile then requires FrameworkAgreement and UsagePurpose on it — which
+    # is not what a catalog access rule says, and not what this one is for.
+    - id: access_policy
+      uses: config/connector/policy
+      name: Membership access policy
+      with:
+        source: value
+        value:
+          policy_id: testlab-e2e-smoke-access-policy
+          permissions:
+            - action: access
+              constraints:
+                - left_operand: Membership
+                  operator: eq
+                  right_operand: active
+      returns:
+        value:
+          type: object
+          class: Policy
+
+    # The reflexive asset dataplane_callback.yaml offers on the engine's own
+    # connector: only what is known before the run. The mock's address and
+    # the key it requires come from the mock, at create_mock_asset. The id
+    # carries the run id: the key is new every run, so an offer an earlier run
+    # left would forward one no mock accepts.
+    - id: callback_asset
+      uses: config/connector/mock_asset
+      name: The engine's dataplane-callback mock, offered as an asset
+      with:
+        source: value
+        value:
+          asset_id: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+          dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+          version: "1.0"
+      returns:
+        value:
+          type: object
+          class: MockAsset
+
+    - id: stepwise_asset
+      uses: config/connector/asset
+      name: A second HTTP test asset, for the step-by-step DSP journey
+      with:
+        source: value
+        value:
+          asset_id: testlab-e2e-stepwise-asset
+          base_url: "http://tck-echo.umbrella.svc.cluster.local"
+          dct_type: "https://w3id.org/catenax/taxonomy#TestData"
+          version: "1.0"
+      returns:
+        value:
+          type: object
+          class: Asset
+
+    # A usage policy the Catena-X 2025/9 profile accepts: its permission must
+    # carry at least FrameworkAgreement and UsagePurpose, or the connector
+    # refuses the definition outright. Membership rides along because a real
+    # offer carries it too.
+    - id: usage_policy
+      uses: config/connector/policy
+      name: Framework-agreement usage policy
+      with:
+        source: value
+        value:
+          policy_id: testlab-e2e-smoke-usage-policy
+          permissions:
+            - action: use
+              constraints:
+                - and:
+                    - left_operand: Membership
+                      operator: eq
+                      right_operand: active
+                    - left_operand: FrameworkAgreement
+                      operator: eq
+                      right_operand: "DataExchangeGovernance:1.0"
+                    - left_operand: UsagePurpose
+                      operator: isAnyOf
+                      right_operand:
+                        - "cx.core.digitalTwinRegistry:1"
+      returns:
+        value:
+          type: object
+          class: Policy
+
+  # The one JSON Schema the suite validates a live answer against. It is what
+  # makes `validate/schema` part of the smoke: a schema that is never applied
+  # to a real response is a step the engine could break without CI noticing.
+  schemas:
+    - id: shell_descriptor
+      source: shell_descriptor.json
+
+# Every entry is `skippable: true`. This is testlab's own CI signal rather than
+# a certification TCK, so the operator is allowed to run any subset — which is
+# also what lets the workflow execute several *combinations* of one compiled
+# package (`--var skip_tests=...`) instead of compiling a package per shape. A
+# published certification TCK would leave these false, and the engine would
+# then refuse to omit anything.
+tests:
+  - id: connector_negotiation.yaml
+    name: Negotiate and pull data across the two live EDC connectors
+    skippable: true
+  - id: dsp_step_by_step.yaml
+    name: Drive the same DSP journey as six wired steps
+    skippable: true
+  - id: dtr_roundtrip.yaml
+    name: Write and read back a shell descriptor on the SUT's Digital Twin Registry
+    skippable: true
+  - id: negative_paths.yaml
+    name: Ask for things that are not there, and check the answers say so
+    skippable: true
+  - id: inbound_call.yaml
+    name: Put a mock behind a SUT asset, and read the call the SUT's data plane makes to it
+    skippable: true
+  - id: external_callback.yaml
+    name: Block on a mock until a stand-in SUT in the cluster calls it back
+    skippable: true
+  - id: dataplane_callback.yaml
+    name: Offer a mock on the engine connector, and read the call its data plane delivers
+    skippable: true
+  - id: catalog_variants.yaml
+    name: Query the catalog four ways, and provision the provider two ways
+    skippable: true
+  - id: bpn_discovery.yaml
+    name: Address the SUT by business partner number instead of by DSP URL
+    skippable: true
+  - id: push_transfer.yaml
+    name: Have the provider deliver the data instead of fetching it
+    skippable: true
+  - id: dtr_consumer_dataplane.yaml
+    name: Read the SUT's registry as a counterparty, over a negotiated data plane
+    skippable: true
+  - id: notification_roundtrip.yaml
+    name: Send notifications through the dataspace and read them where they land
+    skippable: true
+  - id: industry_core_journey.yaml
+    name: Upload a submodel, register its twin, and pull it back as a consumer
+    skippable: true
+  - id: engine_toolbox.yaml
+    name: Run the flow, utility, OAuth2 and protocol-mock steps against real endpoints
+    skippable: true
+  - id: experimental_extensions.yaml
+    name: Run the experimental extensions — `cac:`, a `labs` retry parameter, and the `labs` loop and queries — against a live connector
+    skippable: true

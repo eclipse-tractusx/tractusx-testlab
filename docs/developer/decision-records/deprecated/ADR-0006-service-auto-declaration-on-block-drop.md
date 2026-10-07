@@ -21,7 +21,7 @@
 <!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
 <!-- It was reviewed and tested by a human committer. -->
 
-# ADR-0006: Service Auto-Declaration on Block Drop
+# ADR-0006: Service Auto-Declaration on Step Insertion
 
 ## Status
 
@@ -33,32 +33,32 @@ Deprecated
 
 ## Context
 
-Users had to manually create services via the ServiceDialog before using service-category blocks (EDC Connector, DTR, Discovery Finder). This violated the "defaults everywhere" design principle — blocks should work with minimal input. New users were confused when dropping a connector block that immediately showed errors because no service existed.
+Users had to manually declare services in a separate service dialog before using service-category steps (EDC Connector, DTR, Discovery Finder). This violated the "defaults everywhere" design principle — steps should work with minimal input. New users were confused when adding a connector step that immediately showed errors because no service existed.
 
 ## Decision
 
-Auto-declare a service on Blockly `BLOCK_CREATE` event. Logic:
+Auto-declare a service when a step is added. Logic:
 
-1. Block is dropped that requires a service (determined by block category).
-2. If a matching service already exists in the store → auto-select it on the block.
+1. A step is added that requires a service (determined by step category).
+2. If a matching service already exists → auto-select it on the step.
 3. If no matching service exists → auto-create one with defaults (empty URL, type inferred from category) and select it.
 
-The ServiceDialog remains available for manual override and advanced configuration.
+The service dialog remains available for manual override and advanced configuration.
 
 ## Consequences
 
 ### Positive
 
-- Zero-config experience for first block drop — no prerequisite dialog required.
+- Zero-config experience for the first step added — no prerequisite dialog required.
 - Follows "defaults everywhere" principle.
 - Reduces onboarding friction for new users.
 
 ### Negative
 
 - Auto-created services have empty URLs — user must configure before execution.
-- Multiple blocks of the same category share the auto-created service (may not always be desired).
+- Multiple steps of the same category share the auto-created service (may not always be desired).
 
 ### Neutral
 
-- ServiceDialog remains the mechanism for renaming, deleting, or duplicating services.
+- The service dialog remains the mechanism for renaming, deleting, or duplicating services.
 - No duplicate services are created — matching uses service type as the key.

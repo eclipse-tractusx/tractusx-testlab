@@ -1,0 +1,213 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+# One IdentityHub per participant — the topology Umbrella's
+# values-adopter-decentralized-identityhub.yaml deploys, and the one a real
+# dataspace has, where each participant operates its own hub and no operator
+# holds anyone else's keys.
+#
+# Against slim.values.yaml this costs one more pod and saves one API call:
+# every participant context is seeded by its own chart at boot, with a chosen
+# STS client secret, so nothing has to be created at runtime and both halves of
+# the dataspace could in principle be installed at once. The workflow still
+# installs them in two releases, because one deploy procedure that works for
+# both profiles is worth more than saving a `helm install`.
+#
+# Not used by CI. It is here so the difference between "IdentityHub is
+# multi-tenant" and "each participant runs one" is a values file rather than an
+# argument, and so a run against the realistic topology is one flag away:
+#
+#   helm install ... -f base.values.yaml -f hub-per-participant.values.yaml
+#
+# Switching also changes the DIDs, because a DID names the host that serves its
+# document. `provider-identityhub.local` and `consumer-identityhub.local` have
+# to be in the workflow's DATASPACE_HOSTS for this profile to resolve.
+
+_ids:
+  provider_did: &provider_did "did:web:provider-identityhub.local:BPNL000000000001"
+  consumer_did: &consumer_did "did:web:consumer-identityhub.local:BPNL000000000002"
+  trusted_issuers: &trusted_issuers
+    - "did:web:issuerservice.local:BPNL000000000003"
+
+identityhub:
+  fullnameOverride: provider-identityhub
+  identityhub:
+    didweb:
+      https: false
+    livenessProbe:
+      initialDelaySeconds: 120
+    readinessProbe:
+      initialDelaySeconds: 120
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    iatp:
+      sts:
+        oauth:
+          client:
+            enabled: true
+            id: *provider_did
+            secret: "provider"
+            secret_alias: "provider-sts-secret"
+            x_api_key: "ZGlkOndlYjpwcm92aWRlci1pZGVudGl0eWh1Yi5sb2NhbDpCUE5MMDAwMDAwMDAwMDAx.randomChars"
+    ingresses:
+      - enabled: true
+        hostname: provider-identityhub.local
+        className: nginx
+        tls:
+          enabled: false
+        endpoints:
+          - did
+          - credentials
+          - sts
+          - identity
+          - version
+          - accounts
+
+consumer-identityhub:
+  enabled: true
+  fullnameOverride: consumer-identityhub
+  identityhub:
+    didweb:
+      https: false
+    livenessProbe:
+      initialDelaySeconds: 120
+    readinessProbe:
+      initialDelaySeconds: 120
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    iatp:
+      sts:
+        oauth:
+          client:
+            # Chosen, not generated — which is what makes this profile's
+            # consumer installable without a round-trip to the hub.
+            enabled: true
+            id: *consumer_did
+            secret: "consumer"
+            secret_alias: "consumer-sts-secret"
+            x_api_key: "ZGlkOndlYjpjb25zdW1lci1pZGVudGl0eWh1Yi5sb2NhbDpCUE5MMDAwMDAwMDAwMDAy.randomChars"
+    ingresses:
+      - enabled: true
+        hostname: consumer-identityhub.local
+        className: nginx
+        tls:
+          enabled: false
+        endpoints:
+          - did
+          - credentials
+          - sts
+          - identity
+          - version
+          - accounts
+
+provider-connector:
+  fullnameOverride: provider-connector
+  participant:
+    id: "BPNL000000000001"
+    contextId: "00000000-0000-0000-0000-000000000004"
+  iatp:
+    id: *provider_did
+    trustedIssuers: *trusted_issuers
+    sts:
+      oauth:
+        token_url: "http://provider-identityhub.local/api/sts/token"
+        client:
+          id: *provider_did
+          secret_alias: "provider-sts-secret"
+  runtime:
+    env:
+      TX_EDC_IAM_IATP_CREDENTIALSERVICE_URL: "http://provider-identityhub.local/api/credentials/v1/participants/ZGlkOndlYjpwcm92aWRlci1pZGVudGl0eWh1Yi5sb2NhbDpCUE5MMDAwMDAwMDAwMDAx"
+      EDC_IAM_DID_WEB_USE_HTTPS: "false"
+      EDC_IAM_CREDENTIAL_REVOCATION_MIMETYPE: "application/json"
+    ingresses:
+      - enabled: true
+        hostname: provider-dsp.local
+        className: nginx
+        tls:
+          enabled: false
+        endpoints:
+          - protocol
+      - enabled: true
+        hostname: provider-management.local
+        className: nginx
+        tls:
+          enabled: false
+        endpoints:
+          - management
+          - control
+          - catalog
+      - enabled: true
+        hostname: provider-data.local
+        className: nginx
+        tls:
+          enabled: false
+        endpoints:
+          - public
+          - proxy
+
+consumer-connector:
+  fullnameOverride: consumer-connector
+  participant:
+    id: "BPNL000000000002"
+    contextId: "00000000-0000-0000-0000-000000000005"
+  iatp:
+    id: *consumer_did
+    trustedIssuers: *trusted_issuers
+    sts:
+      oauth:
+        token_url: "http://consumer-identityhub.local/api/sts/token"
+        client:
+          id: *consumer_did
+          secret_alias: "consumer-sts-secret"
+  runtime:
+    env:
+      TX_EDC_IAM_IATP_CREDENTIALSERVICE_URL: "http://consumer-identityhub.local/api/credentials/v1/participants/ZGlkOndlYjpjb25zdW1lci1pZGVudGl0eWh1Yi5sb2NhbDpCUE5MMDAwMDAwMDAwMDAy"
+      EDC_IAM_DID_WEB_USE_HTTPS: "false"
+      EDC_IAM_CREDENTIAL_REVOCATION_MIMETYPE: "application/json"
+    ingresses:
+      - enabled: true
+        hostname: consumer-dsp.local
+        className: nginx
+        tls:
+          enabled: false
+        endpoints:
+          - protocol
+      - enabled: true
+        hostname: consumer-management.local
+        className: nginx
+        tls:
+          enabled: false
+        endpoints:
+          - management
+          - control
+          - catalog
+      - enabled: true
+        hostname: consumer-data.local
+        className: nginx
+        tls:
+          enabled: false
+        endpoints:
+          - public
+          - proxy

@@ -18,24 +18,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 # ###############################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
 ## It was reviewed and tested by a human committer.
 
+syntax: v1-alpha
 kind: tck
-name: simple-ping-test
-version: "1.0"
-description: Minimal TCK for end-to-end compile/execute verification
+id: simple-ping-tck
+metadata:
+  name: simple-ping-test
+  version: "1.0"
+  description: Minimal TCK for end-to-end compile/execute verification
 
 tests:
-  - kind: test
-    name: ping-http
-    version: "1.0"
-    dataspace_version: saturn
-    description: Single HTTP GET to verify the parse-compile-execute pipeline
-    steps:
-      - type: http_request
-        description: Ping a local endpoint
-        params:
-          method: GET
-          url: "http://localhost:8080/health"
-          timeout: 5
+  - id: ping_http.yaml
+    name: Make a ping

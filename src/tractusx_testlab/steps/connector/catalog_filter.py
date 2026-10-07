@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -29,9 +29,17 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.scripting.registry import step
-from tractusx_testlab.steps.base import BaseStep, StepOutput
+from tractusx_testlab.authoring.registry import step
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
+from tractusx_testlab.steps import sdk_call
+from tractusx_testlab.steps.counter_party import CounterPartyParams
+from tractusx_testlab.steps.dsp_protocol import DspProtocolParams
+from tractusx_testlab.steps.shared_models import (
+    CatalogOutput,
+    FilterExpressionParams,
+    as_dataset_list,
+)
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput
 
 if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
@@ -39,51 +47,62 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@step("query_catalog_with_filters")
-class QueryCatalogWithFiltersStep(BaseStep):
-    """Query a provider's catalog with multiple filter expressions via the SDK."""
+# ---------------------------------------------------------------------------
+# connector/consumer/query_catalog_with_filters
+# ---------------------------------------------------------------------------
 
-    async def execute(self, params: dict, context: "StepContext", definition: StepDefinition) -> StepOutput:
-        consumer = context.get_consumer_service()
-        counter_party_address = params.get("counter_party_address") or params.get("provider_url", "")
-        counter_party_id = params.get("counter_party_id") or params.get("bpnl", "")
-        filter_expression = self._build_filter_expression(consumer, params.get("filters", []))
 
-        catalog = consumer.get_catalog_with_filter(
-            counter_party_id=counter_party_id,
-            counter_party_address=counter_party_address,
+class QueryCatalogWithFiltersParams(CounterPartyParams, FilterExpressionParams, DspProtocolParams):
+    """Input contract of ``connector/consumer/query_catalog_with_filters``."""
+
+
+@step("connector/consumer/query_catalog_with_filters")
+class QueryCatalogWithFiltersStep(BaseStep[QueryCatalogWithFiltersParams, CatalogOutput]):
+    """Query a provider's catalog with multiple filter expressions via the SDK.
+
+    Filter criteria are translated by the SDK's own ``get_filter_expression``,
+    so they carry whatever JSON-LD context the negotiated dataspace version
+    expects.
+    """
+
+    params_model = QueryCatalogWithFiltersParams
+    output_model = CatalogOutput
+
+    async def execute(
+        self,
+        params: QueryCatalogWithFiltersParams,
+        context: StepContext,
+        definition: StepDefinition,
+    ) -> StepOutput[CatalogOutput]:
+        consumer = context.dataspace.consumer()
+        filter_expression = [
+            consumer.get_filter_expression(
+                key=entry.operand_left, value=entry.operand_right, operator=entry.operator
+            )
+            for entry in params.filters
+        ]
+
+        party = params.counter_party(context)
+        catalog = await sdk_call.run(
+            consumer.get_catalog_with_filter,
+            counter_party_id=party.identity,
+            counter_party_address=party.address,
             filter_expression=filter_expression,
+            **params.sdk_protocol(),
         )
 
-        url = f"{counter_party_address}/catalog/request"
+        url = f"{party.address}/catalog/request"
+        request = HttpRequest(method="POST", url=url, body=params.model_dump(mode="json"))
         if not catalog:
-            logger.error("Filtered catalog request returned no result: url=%s", url)
-            return StepOutput(
-                value=None,
-                request=HttpRequest(method="POST", url=url, body=params),
-                response=HttpResponse(status_code=500, body=None),
+            raise StepExecutionError(
+                self.step_type,
+                f"the provider returned no catalog from {url}. The step declares a "
+                f"catalog and its offers, and has neither.",
             )
 
-        datasets = catalog.get("dcat:dataset", [])
-        if isinstance(datasets, dict):
-            datasets = [datasets]
-        context.set_variable("datasets", datasets)
-
+        datasets = as_dataset_list(catalog)
         return StepOutput(
-            value={"catalog": catalog, "datasets": datasets},
-            request=HttpRequest(method="POST", url=url, body=params),
+            value=CatalogOutput(catalog=catalog, datasets=datasets),
+            request=request,
             response=HttpResponse(status_code=200, body=catalog),
         )
-
-    @staticmethod
-    def _build_filter_expression(consumer: object, filters: list) -> list[dict]:
-        """Convert block-style filters to SDK filter dicts via ``get_filter_expression``."""
-        expressions: list[dict] = []
-        for entry in filters:
-            if not isinstance(entry, dict):
-                continue
-            key = entry.get("operand_left", entry.get("operandLeft", ""))
-            value = entry.get("operand_right", entry.get("operandRight", ""))
-            operator = entry.get("operator", "=")
-            expressions.append(consumer.get_filter_expression(key=key, value=value, operator=operator))
-        return expressions

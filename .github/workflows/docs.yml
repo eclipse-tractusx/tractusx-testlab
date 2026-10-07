@@ -1,0 +1,95 @@
+###############################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+###############################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## It was reviewed and tested by a human committer.
+
+# Documentation: build the MkDocs site and publish it to the `gh-pages` branch.
+#
+# GitHub Pages serves this repository from the `gh-pages` branch. That branch
+# must hold the *built* site, never the source tree: Pages runs Jekyll over
+# whatever it finds there, and Jekyll's Liquid parser chokes on the `{{ ... }}`
+# TestLab expressions in our Markdown ("Variable '{{' was not properly
+# terminated"). `mkdocs gh-deploy` writes the rendered HTML together with a
+# `.nojekyll` marker, so Pages publishes it verbatim.
+#
+# The docs dependency group is installed from poetry.lock, so the site is
+# built with the same MkDocs and Material versions that work locally.
+
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "pyproject.toml"
+      - "poetry.lock"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+# Only one deploy at a time; a newer push supersedes a queued one.
+concurrency:
+  group: gh-pages
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gh-deploy commits onto the existing gh-pages branch; it needs the
+          # full history to find it.
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-docs-${{ hashFiles('poetry.lock') }}
+          restore-keys: ${{ runner.os }}-pip-docs-
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install the docs dependency group
+        run: poetry install --no-interaction --only docs --no-root
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # --force replaces whatever is on gh-pages with this build. The branch is
+      # a build artifact, not a place anyone commits to.
+      - name: Build the site and push it to gh-pages
+        run: poetry run mkdocs gh-deploy --force --no-history

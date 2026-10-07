@@ -18,43 +18,77 @@
 
  SPDX-License-Identifier: Apache-2.0
 -->
-<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- This documentation was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
-# How to Run the Full Development Workflow
+# Development Workflow
 
-## IDE development
-
-```bash
-cd ide
-npm install              # Install dependencies
-npm run dev              # Start dev server (http://localhost:5173)
-npx tsc --noEmit         # Type check (run before committing)
-npx vite build           # Production build (run before PR)
-```
-
-## Python development
+This repository is the TestLab engine: the `tractusx_testlab` Python package, the `testlab` CLI and the server. The project uses Poetry (2.x) and Python 3.12. See [Installation](../home/installation.md) for setting up the environment.
 
 ```bash
-# Create a virtual environment (if not done)
-python3.12 -m venv .venv
-source .venv/bin/activate
-
-# Install in development mode
-pip install -e ".[dev]"
-
-# Run tests
-pytest -v
-
-# Run the CLI
-testlab validate examples/connector-ping-v1.0/tests/ping_test.yaml
-testlab compile examples/connector-ping-v1.0/tests/ping_test.yaml
+poetry install          # the package plus its dev, test and docs groups
 ```
+
+## Before you push: what CI runs
+
+CI runs the checks below, and a pull request is blocked until all of them pass. Run the same commands locally, in this order: the fast checks first, the full suite last.
+
+```bash
+poetry run ruff check src tests tools
+poetry run ruff format --check src tests
+poetry run mypy                            # every module under src/ is type-checked; there are no exemptions
+
+poetry run testlab docs --check            # the step reference matches the step models
+poetry run testlab schema --check          # the TCK JSON Schemas match the authoring models
+
+poetry run python -m pytest tests/ -q
+```
+
+When `docs --check` or `schema --check` fails, regenerate the pages with `testlab docs` or `testlab schema` and commit the result. Those files are generated; don't edit them by hand.
+
+The test suite includes guards that review would otherwise have to catch:
+
+| Guard | Fails when |
+|---|---|
+| `tests/unit/structure/test_module_layout.py` | a source file passes 300 lines or a known oversized file grows, a module is named `utils`/`helpers`/`base`/…, or a new basename is duplicated |
+| `tests/unit/steps/test_step_registration.py` | a step isn't under the package its id names, or isn't imported |
+| `tests/unit/steps/test_step_contracts.py` | a step lacks a declared input/output contract or a docstring |
+| `tests/combinations/test_assertion_matrix.py` | an assertion operator has no passing and failing case |
+
+## Run a TCK while you work
+
+```bash
+poetry run testlab validate docs/examples/certificate-management-v2/raw/index.yaml
+poetry run testlab compile  docs/examples/certificate-management-v2/raw/index.yaml --plain -o build/ccm
+poetry run testlab run      docs/examples/certificate-management-v2/raw/index.yaml
+poetry run testlab config                  # which settings were resolved, and from where
+```
+
+`testlab run` refuses to start until every capability the TCK requires is bound. Bind them in `testlab.config.yaml`, through `TESTLAB_*` environment variables, or per run with `--var infrastructure.sut.connector.dsp_url=…`; see [Infrastructure Bindings](../developer/infrastructure-bindings.md). `tests/e2e/connector-dtr-smoke/` runs against a real dataspace in CI (`.github/workflows/e2e-umbrella.yml`), not under pytest.
+
+## Tests: where a new one goes
+
+| Directory | For |
+|---|---|
+| `tests/unit/<package>/…` | one module's contract; mirrors `src/tractusx_testlab/` package for package |
+| `tests/combinations/` | steps wired into each other against in-process doubles |
+| `tests/examples/` | the shipped `docs/examples/` TCKs still parse, compile and run |
+| `tests/integration/` | the CLI → compiler → player chain |
+
+Every test directory needs an `__init__.py`. Import paths from `tests/paths.py` instead of building them from `Path(__file__)`. [tests/README.md](https://github.com/eclipse-tractusx/tractusx-testlab/blob/main/tests/README.md) has the details.
+
+## Two traps that pass locally and fail in CI
+
+- **An undeclared dependency.** The dev virtualenv holds every group and whatever the SDK pulls in, so an import that `pyproject.toml` doesn't declare still works locally. CI builds the wheel and imports every module in a clean virtualenv. To reproduce that, build with `poetry build` and install the wheel into a throwaway venv.
+- **A dependency change without its IP record.** Changing `poetry.lock` means `DEPENDENCIES` must be regenerated with the Eclipse Dash tool. The `dependencies.yml` workflow fails when it is stale or names a restricted package.
+
+## Source-file conventions
+
+Every new source file starts with the Apache-2.0 license header. AI-assisted files also carry the two-line AI notice after it. Copy both from a neighbouring file. [AGENTS.md](https://github.com/eclipse-tractusx/tractusx-testlab/blob/main/AGENTS.md) holds the full conventions: logging through `logging.getLogger(__name__)` and never `print()`, narrow `except` clauses, one canonical name per concept.
 
 ## Documentation
 
 ```bash
-pip install mkdocs-material
-mkdocs serve             # http://localhost:8000
-mkdocs build             # Build static site
+poetry run mkdocs serve          # http://localhost:8000/tractusx-testlab/
+poetry run mkdocs build --strict # also fails on broken links and pages missing from the nav
 ```

@@ -3,127 +3,102 @@ package:
   format: tck
   format_version: 1.0.0
   testlab: v1-alpha
-  checksum: blake2b:8c465bf00db621ab519fce03aba3a78f16c36e1800a192469aaef0d3380876e5
+  checksum: blake2b:9f5d2547ed683fa355278342e6aa425edbe9cf39533a2fbfec4e06b6d6291c84
 tck:
-  id: certificate-management-tck
-  namespace: ccm-v0.0.1
+  id: certificate-management-tck-v0.0.1
   metadata:
     name: Certificate Management TCK
     version: v0.0.1
     description: 'Validate CCMAPI certificate management workflow per CX-0135 v3.1.0:
-      (1) Request certificate from provider (2) Validate certificate payload against
-      schema (3) Await provider feedback callback (4) Send feedback notification and
-      await acknowledgment (5) Expose TestLab as provider and verify SUT consumer
-      behavior
+      (1) Validate CX-0135 catalog policy constraints (2) Request certificate from
+      provider and validate payload (3) Send feedback notification and await acknowledgment
+      (4) Verify error handling for unknown certificate types
 
       '
     authors:
     - name: Certificate Management Expert Group
+      email: ccm-eg@catena-x.net
+      company: Catena-X Automotive Network e.V.
     copyright_holders:
-    - 2026 Contributors to the Eclipse Foundation
-    license: Apache-2.0
+    - 2026 Catena-X Automotive Network e.V.
+    license: LicenseRef-Proprietary
     standards:
     - id: CX-0135
       version: v3.1.0
     tags:
     - CCM
-    dataspace_version: saturn
+  dataspace:
+    ecosystem: Catena-X
+    version: saturn
+  infrastructure:
+    engine:
+      connector:
+        required: true
+        standard:
+          id: CX-0018
+          version: v4.2.0
+    sut:
+      connector:
+        required: true
+        standard:
+          id: CX-0018
+          version: v4.2.0
 compilation:
-  compiled_at: '2026-06-04T20:21:59Z'
+  compiled_at: '2026-08-19T10:15:37Z'
   compiler_version: 0.5.0
   fingerprint:
-    nonce: blake2b:f482e90827a7196626f1b1fe29021140876a61f7ed1da819b2eaade4f88efc13
+    nonce: blake2b:e13aad11d6e8b8d49cb5568c9bb319ef0c7ed57385f2bf4a7761d83c65090031
     public_key: ed25519:yORG/mdbiDnJ8PQ/aLohTGahgQQ6OmWLMd389EQ0QVk=
-    digest: blake2b:a45653baeaf7b17f20234976306d7a0d22dacab0c3c099eb33efd00663278eec
+    digest: blake2b:e930e387b9083d02f5e46a445c948921216a58b5c4f842aa940dbeb012de45eb
 tests:
 - id: catalog-policy-validation
-  source_hash: blake2b:61e7aecc798f63beea6155aac755ffd00b97f22e4cbe912c545db995a1f87ca9
+  test_id: catalog_policy_validation.yaml
+  name: Validate CX-0135 catalog policy constraints
+  skippable: false
+  source_hash: blake2b:c210d631655fdaca19492405acdb70c62b74086968e4f4ea637103869c8767b5
 - id: request-certificate
-  source_hash: blake2b:f924050e391d33442ba0f238dc63d09bc04aa622391e5faed3e09756e3eadfb7
-- id: certificate-asset-validation
-  source_hash: blake2b:61cbf2ced2cd9fc65bd8dac9c4daf31705090af7826fca2b96cbb22c24ee5daa
-- id: validate-certificate-payload
-  source_hash: blake2b:0fba666319102a1890282ed1e4676f30c7a4b1504a2d5802c60946144d70133f
-- id: push-certificate
-  source_hash: blake2b:95d34b9642cd155c23bc251a3182e7d5defbd23a108b96e066e93a9381a75efc
-- id: available-notification
-  source_hash: blake2b:75cdbe077b80b01eedf92321ca50c3f82e1e1e195e0772e0b9edeabcaa8801e8
+  test_id: request_certificate.yaml
+  name: Request a certificate via CCMAPI
+  skippable: false
+  source_hash: blake2b:06c9cbf4baa0fce700e6c214a436d7ff4b725dd525ca709348c1253c2c81d0d4
 - id: send-feedback-notification
-  source_hash: blake2b:bc4e356f6f65bd1ecf084fc19e4e3716b790712a8316bd374ed437a018094a98
-- id: expose-testlab-asset
-  source_hash: blake2b:258063f85a8a34e9e0c3e58adb7d18167b9d2884b9d6294f91a43af101774acb
+  test_id: send_feedback_notification.yaml
+  name: Send a feedback notification and await acknowledgment
+  skippable: false
+  source_hash: blake2b:0f8d1762c4d08cffd33f181d63b96299dcea018b0af20cdc849ffda691e5a6c2
 - id: error-handling
-  source_hash: blake2b:421b472c872b1ad14777919adba2a665d19e99618cc91f87875594eee40e6262
+  test_id: error_handling.yaml
+  name: Verify error handling for unknown certificate types
+  skippable: false
+  source_hash: blake2b:ac1e5a36b9c30c3afc8e8d7f5cb3ea1459118a14d0e55a584231a96321349754
 assets:
   schemas:
   - id: certificate_schema
-    file: business_partner_certificate_schema.json
-    path: assets/schemas/business_partner_certificate_schema.json
+    file: business_partner_certificate_schema-v3.0.1.json
+    path: assets/schemas/business_partner_certificate_schema-v3.0.1.json
     digest: blake2b:9e6ad2bbe5bc77131e2147a9fa842c9753732ee4d77b48771a3fa5b9c5276a32
     size: 3697
     mediaType: application/json
     location: filesystem
-  - id: bpc_v310_schema
-    file: bpc-v3.1.0.json
-    path: assets/schemas/bpc-v3.1.0.json
-    digest: blake2b:a262582d32e5bb79c6d6d0580c36f3df81ca5730ca91865789c1c05b7fe76663
-    size: 1984
-    mediaType: application/json
-    location: filesystem
   testdata:
-  - id: available_notification_body
-    file: available_notification_body.json
-    path: assets/testdata/available_notification_body.json
-    digest: blake2b:179f49e8b6b63437ed52c8098f858c125445d909c9ba87a9f7e542c5fd10960a
-    size: 634
-    mediaType: application/json
-    location: filesystem
-  - id: certificate_available_response
-    file: certificate_available_response.json
-    path: assets/testdata/certificate_available_response.json
-    digest: blake2b:70d3037df2cf541e5fadd2e1ddd1791591c9190abcd11fc5a153f4ce944b44d0
-    size: 831
-    mediaType: application/json
-    location: filesystem
-  - id: error_unknown_cert_type_body
-    file: error_unknown_cert_type_body.json
-    path: assets/testdata/error_unknown_cert_type_body.json
-    digest: blake2b:0f10142cf630f80c05b3cd712519b9201fd46c45d059ae271e4bbb616024dec2
-    size: 637
-    mediaType: application/json
-    location: filesystem
-  - id: expose_available_notification_body
-    file: expose_available_notification_body.json
-    path: assets/testdata/expose_available_notification_body.json
-    digest: blake2b:fc1024f282306b677e534a531c3d2d36fb6840df35a1813eec6bd6d6fb623f82
-    size: 643
-    mediaType: application/json
-    location: filesystem
-  - id: expose_certificate_data_response
-    file: expose_certificate_data_response.json
-    path: assets/testdata/expose_certificate_data_response.json
-    digest: blake2b:183d8149f783e821df6d1d7c73bb5772a7f037dee4d9e859502e18c941830c28
-    size: 837
-    mediaType: application/json
-    location: filesystem
-  - id: push_certificate_body
-    file: push_certificate_body.json
-    path: assets/testdata/push_certificate_body.json
-    digest: blake2b:919ad09b7230e37f71f425a89959ee0fdc95f1feb07a0ba8ebd689d343b4ff0a
-    size: 1347
-    mediaType: application/json
-    location: filesystem
   - id: request_certificate_body
     file: request_certificate_body.json
     path: assets/testdata/request_certificate_body.json
-    digest: blake2b:9765664742e20dca816d59366d436c183154b41dbf7ad4f31764623d3c35e425
+    digest: blake2b:943ddd1a6ea169fe4a511a17d6344104953eafafff12eef9f82ed6fbb2adeb7d
     size: 623
     mediaType: application/json
     location: filesystem
   - id: send_feedback_body
     file: send_feedback_body.json
     path: assets/testdata/send_feedback_body.json
-    digest: blake2b:8b66d67722dd51f3005985bc8be74fb80558121b3d7f42e49e8cddf7ee727e98
-    size: 594
+    digest: blake2b:782c4a6b54cbc5fd62c7cacff41a67eecf73787e0cd3365b797d8bcd00941456
+    size: 587
+    mediaType: application/json
+    location: filesystem
+  - id: error_unknown_cert_type_body
+    file: error_unknown_cert_type_body.json
+    path: assets/testdata/error_unknown_cert_type_body.json
+    digest: blake2b:f9377ce4c300e2a1ea0d814162325f817e53e1526c7ebe796d1878867dd6c716
+    size: 621
     mediaType: application/json
     location: filesystem
