@@ -96,7 +96,7 @@ pytest-asyncio = "^0.25.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
-mkdocs-material = "^9.6.21"
+mkdocs-material = "^9.7.7"
 # Transitive dependency of mkdocs-material, pinned below 7 because backrefs 7.0
 # is under IP review (#31059) while 6.2 is approved (#26729).
 backrefs = "<7"
