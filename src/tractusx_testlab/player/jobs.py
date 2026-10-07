@@ -51,7 +51,7 @@ class JobManager:
 
     @property
     def selections(self) -> SelectionBoard:
-        """The questions the jobs put to their operator (``select_asset``), and their answers."""
+        """The questions the jobs put to their operator (``flow/select``), and their answers."""
         return self._selections
 
     def create(

@@ -97,8 +97,8 @@ class InboundReporting:
             self._listener_reporter.selecting(step_type, step_id, selection, timeout_s)
 
     def report_selected(
-        self, step_type: str, step_id: str | None, asset_id: str, waited_ms: int
+        self, step_type: str, step_id: str | None, option: Any, waited_ms: int
     ) -> None:
-        """Say which asset the operator chose, and how long the run waited for it."""
+        """Say which option the operator chose, and how long the run waited for it."""
         if self._listener_reporter is not None:
-            self._listener_reporter.selected(step_type, step_id, asset_id, waited_ms)
+            self._listener_reporter.selected(step_type, step_id, option, waited_ms)

@@ -240,28 +240,28 @@ async def resume_job(job_id: str, player: PlayerDep) -> JSONResponse:
     "/tck-execution/{job_id}/select",
     status_code=200,
     responses={
-        400: {"description": "Missing 'asset_id', or not one of the assets offered"},
+        400: {"description": "Missing 'value', or not one of the options offered"},
         404: {"description": "Job not found"},
-        409: {"description": "Job is not waiting for an asset to be selected"},
+        409: {"description": "Job is not waiting for a selection"},
     },
 )
-async def select_asset(job_id: str, request: Request, player: PlayerDep) -> JSONResponse:
-    """Answer a ``connector/query_catalog/select_asset`` step with the chosen asset.
+async def select_option(job_id: str, request: Request, player: PlayerDep) -> JSONResponse:
+    """Answer a ``flow/select`` (or ``connector/datasets/select``) step.
 
-    Body: ``{"asset_id": "...", "step_id": "..."}`` — ``step_id`` optional; when
-    given, it has to name the step that asks.
+    Body: ``{"value": "<option id>", "step_id": "..."}`` — ``step_id``
+    optional; when given, it has to name the step that asks.
     """
     if player.jobs.get(job_id) is None:
         raise HTTPException(404, f"Job '{job_id}' not found")
     body = await request.json()
-    asset_id = body.get("asset_id") if isinstance(body, dict) else None
-    if not isinstance(asset_id, str) or not asset_id:
-        raise HTTPException(400, "Provide 'asset_id'")
+    value = body.get("value") if isinstance(body, dict) else None
+    if not isinstance(value, str) or not value:
+        raise HTTPException(400, "Provide 'value'")
     step_id = body.get("step_id")
     try:
-        player.jobs.selections.answer(job_id, asset_id, step_id)
+        player.jobs.selections.answer(job_id, value, step_id)
     except LookupError as exc:
         raise HTTPException(409, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    return JSONResponse(content={"job_id": job_id, "asset_id": asset_id})
+    return JSONResponse(content={"job_id": job_id, "value": value})

@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Tests for the endpoint that answers a ``select_asset`` step."""
+"""Tests for the endpoint that answers a ``flow/select`` step."""
 
 from __future__ import annotations
 
@@ -63,30 +63,28 @@ async def test_the_answer_reaches_the_waiting_step(client: AsyncClient, jobs: Jo
     job = jobs.create("ccm-tck")
     answer = jobs.selections.ask(job.job_id, "select", ["ccmapi-1", "ccmapi-2"])
 
-    response = await client.post(
-        _url(job.job_id), json={"asset_id": "ccmapi-2", "step_id": "select"}
-    )
+    response = await client.post(_url(job.job_id), json={"value": "ccmapi-2", "step_id": "select"})
 
     assert response.status_code == 200
     assert answer.result() == "ccmapi-2"
 
 
 @pytest.mark.asyncio
-async def test_an_asset_not_offered_is_refused(client: AsyncClient, jobs: JobManager) -> None:
+async def test_an_option_not_offered_is_refused(client: AsyncClient, jobs: JobManager) -> None:
     job = jobs.create("ccm-tck")
     jobs.selections.ask(job.job_id, "select", ["ccmapi-1"])
-    response = await client.post(_url(job.job_id), json={"asset_id": "nope"})
+    response = await client.post(_url(job.job_id), json={"value": "nope"})
     assert response.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_a_job_not_asking_is_a_conflict(client: AsyncClient, jobs: JobManager) -> None:
     job = jobs.create("ccm-tck")
-    response = await client.post(_url(job.job_id), json={"asset_id": "ccmapi-1"})
+    response = await client.post(_url(job.job_id), json={"value": "ccmapi-1"})
     assert response.status_code == 409
 
 
 @pytest.mark.asyncio
 async def test_an_unknown_job_is_not_found(client: AsyncClient) -> None:
-    response = await client.post(_url("missing"), json={"asset_id": "ccmapi-1"})
+    response = await client.post(_url("missing"), json={"value": "ccmapi-1"})
     assert response.status_code == 404

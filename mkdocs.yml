@@ -191,10 +191,10 @@ nav:
         - Overview: api-reference/steps/connector/index.md
         - consumer: api-reference/steps/connector/consumer.md
         - dataplane: api-reference/steps/connector/dataplane.md
+        - datasets: api-reference/steps/connector/datasets.md
         - discover/digital-twin-registry: api-reference/steps/connector/discover-digital-twin-registry.md
         - provider: api-reference/steps/connector/provider.md
         - provider/wizard: api-reference/steps/connector/provider-wizard.md
-        - query_catalog: api-reference/steps/connector/query_catalog.md
       - digital-twin-registry:
         - Overview: api-reference/steps/digital-twin-registry/index.md
         - consumer/dataplane: api-reference/steps/digital-twin-registry/consumer-dataplane.md

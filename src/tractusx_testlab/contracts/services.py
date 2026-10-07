@@ -157,7 +157,7 @@ class ListenerReporter(Protocol):
     way. A step that opens an address says so as soon as it is open, with the
     method and the URL to call, and the step that waits on it says when the
     call came and what it carried. The operator's answer to a question
-    (``select_asset``) comes in too, and is reported the same way: asked, answered.
+    (``flow/select``) comes in too, and is reported the same way: asked, answered.
     """
 
     def listening(self, step_type: str, step_id: str | None, listener: Any) -> None: ...
@@ -200,7 +200,7 @@ class ListenerReporter(Protocol):
         self,
         step_type: str,
         step_id: str | None,
-        asset_id: str,
+        option: Any,
         waited_ms: int,
     ) -> None: ...
 

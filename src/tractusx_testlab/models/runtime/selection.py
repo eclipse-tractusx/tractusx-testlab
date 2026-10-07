@@ -22,13 +22,13 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""An asset put to the operator to choose — the ``step_selecting`` / ``step_selected`` events.
+"""A choice put to the operator — the ``step_selecting`` / ``step_selected`` events.
 
-``connector/query_catalog/select_asset`` reads a catalog that offers more than
-one asset and cannot tell on its own which one the test is about. It stops and
-asks whoever drives the run: these are the question and the answer. Kept beside
-``events`` rather than in it only for its length; ``events`` re-exports them,
-and ``ExecutionEvent`` includes them.
+``flow/select`` and the steps built on it (``connector/datasets/select``) stop
+the run when the test cannot decide on its own, and ask whoever drives it:
+these are the question and the answer. Kept beside ``events`` rather than in
+it only for its length; ``events`` re-exports them, and ``ExecutionEvent``
+includes them.
 """
 
 from __future__ import annotations
@@ -41,54 +41,54 @@ from tractusx_testlab.models.primitives.enums import EventKind
 from tractusx_testlab.models.runtime._event_base import _ExecutionEvent
 from tractusx_testlab.models.runtime.listener import WaitAction
 
+#: How a host shows the options. ``dropdown``: a plain list of labels.
+#: ``catalog_offers``: one card per asset and offer pair, each option's
+#: ``details`` carrying ``asset_id``, ``offer_id``, ``properties`` and ``policy``.
+SelectionPresentation = Literal["dropdown", "catalog_offers"]
+
 
 class SelectionOption(BaseModel):
-    """One asset the operator may choose: what it is, and on what terms it is offered."""
+    """One answer the operator may give."""
 
-    asset_id: str
-    #: The dataset's public properties as the catalog writes them — its type,
-    #: subject, version, semantic id and any other — without its offers and
-    #: distributions, which are not what the asset *is*.
-    properties: dict[str, Any] = Field(default_factory=dict)
-    #: The offers the asset is published under (``odrl:hasPolicy``), as the
-    #: catalog writes them: each with its permissions, prohibitions and
-    #: obligations. An asset is often offered more than once.
-    policies: list[dict[str, Any]] = Field(default_factory=list)
+    #: What the host answers with; unique among the options.
+    id: str
+    label: str
+    description: str | None = None
+    #: Whatever the operator needs to tell the options apart, shaped by the
+    #: selection's ``presentation``.
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
-class AssetSelection(BaseModel):
-    """A catalog's assets, put to the operator to choose exactly one."""
+class Selection(BaseModel):
+    """Options put to the operator to choose exactly one."""
 
-    #: The DSP address of the connector whose catalog was read.
-    counter_party_address: str
-    #: The connector's dataspace identity — a DID or a BPNL.
-    counter_party_id: str
+    presentation: SelectionPresentation = "dropdown"
     options: list[SelectionOption]
     #: What the test author says the choice is for (``with.action``).
     action: WaitAction | None = None
 
 
 class StepSelectingEvent(_ExecutionEvent):
-    """A step is blocked until the operator chooses one asset, for at most ``timeout_s``.
+    """A step is blocked until the operator chooses one option, for at most ``timeout_s``.
 
     Answered through the player (``JobManager.selections``) with one of the
-    options' ``asset_id``. A pause stops the clock; the question stays open.
+    options' ``id``. A pause stops the clock; the question stays open.
     """
 
     kind: Literal[EventKind.STEP_SELECTING] = EventKind.STEP_SELECTING
     test_id: str
     step_id: str | None = None
     step_type: str
-    selection: AssetSelection
+    selection: Selection
     timeout_s: float
 
 
 class StepSelectedEvent(_ExecutionEvent):
-    """The operator chose an asset; ``waited_ms`` is how long the step waited for it."""
+    """The operator chose; ``waited_ms`` is how long the step waited for it."""
 
     kind: Literal[EventKind.STEP_SELECTED] = EventKind.STEP_SELECTED
     test_id: str
     step_id: str | None = None
     step_type: str
-    asset_id: str
+    option: SelectionOption
     waited_ms: int
