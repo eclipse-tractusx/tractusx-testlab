@@ -18,7 +18,7 @@
 
  SPDX-License-Identifier: Apache-2.0
 -->
-<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6). -->
 <!-- It was reviewed and tested by a human committer. -->
 
 # API Reference
@@ -255,3 +255,47 @@ Set skippable: true on the test entry in the TCK manifest to allow skipping.
 
 For the architectural rationale see
 [ADR-0024: Test-Level Skip Configuration](../developer/decision-records/backend/ADR-0024-test-skip-configuration.md).
+
+
+## Provider resource namespaces
+
+`TestlabPlayer(resource_prefix="testlab:")` gives every provider asset, policy,
+and contract definition the ID `<resource_prefix><run-id>-<local-id>`.
+The default prefix is `testlab:`. Applications that share a connector should
+supply their own prefix when constructing the player:
+
+```python
+import asyncio
+from pathlib import Path
+
+from tractusx_testlab.player.execution.player import TestlabPlayer
+
+
+async def main():
+    player = TestlabPlayer(resource_prefix="cx-test-suite:")
+    return await player.run(Path("assessment.tck"), job_id="run-123")
+
+
+result = asyncio.run(main())
+```
+
+The job ID is the run ID. An authored asset ID `asset` becomes
+`cx-test-suite:run-123-asset`; omitted IDs are generated inside the same namespace.
+Creation steps return the actual ID, and the dataplane listener announces it.
+Use creation outputs for subsequent references and teardown. Already scoped IDs
+from this run stay unchanged. Contract definitions constrain their selectors to
+this run's namespace, including selectors based on asset type.
+
+`${{ execution.id }}` and `${{ execution.resource_prefix }}` are immutable run
+metadata. Use the latter when an asset ID must be embedded in a notification or
+mock response before creation, for example
+`${{ execution.resource_prefix }}certificate-asset`. Raw HTTP requests retain
+their authored bodies; authors must use this metadata when provisioning EDC
+resources directly through HTTP. Raw provisioning calls to the engine management
+API are refused if their IDs, policy references, or contract selectors escape
+this namespace.
+
+Cleanup steps delete the exact resource IDs supplied to them. The host application
+must run connector cleanup after completion, failure, and cancellation, including
+when execution exits before a YAML teardown. Immutable agreement history and
+assets pinned by that history may remain in EDC after offers are withdrawn.

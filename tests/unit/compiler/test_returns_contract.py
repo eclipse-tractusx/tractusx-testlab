@@ -18,7 +18,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """A ``returns:`` name must be something the step actually publishes.
@@ -122,6 +122,9 @@ class TestTheExecutionIdIsInScope:
 
     def test_an_execution_id_reference_compiles(self) -> None:
         assert self._errors_for("testlab-ccmapi-${{ execution.id }}") == []
+
+    def test_the_resource_prefix_reference_compiles(self) -> None:
+        assert self._errors_for("${{ execution.resource_prefix }}asset") == []
 
     def test_an_unknown_execution_name_does_not(self) -> None:
         assert len(self._errors_for("${{ execution.nothing }}")) == 1

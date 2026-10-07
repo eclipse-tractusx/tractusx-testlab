@@ -16,8 +16,8 @@ https://creativecommons.org/licenses/by/4.0/legalcode.
 SPDX-License-Identifier: CC-BY-4.0
 
 -->
-<!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
-<!-- This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6). -->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6). -->
 <!-- It was reviewed and tested by a human committer. -->
 
 # YAML Syntax Cheat Sheet
@@ -153,6 +153,7 @@ teardown: []
 | `${{ setup.step_id.output_name }}` | Output from a step in `setup:` |
 | `${{ metadata.dataspace_version }}` | Metadata field value |
 | `${{ execution.id }}` | The id of this run (the job id), e.g. to name what a test leaves in a shared system |
+| `${{ execution.resource_prefix }}` | The player namespace and run id, e.g. `testlab:<run-id>-`, for resource IDs embedded in payloads |
 
 ---
 

@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """Registering a policy — ``connector/provider/create_policy`` and its wizard."""
@@ -124,7 +124,7 @@ def _register_policy(
     """
     provider = context.dataspace.provider()
     url = context.dataspace.provider_endpoint_url("policies")
-    policy_id = policy_id or str(uuid.uuid4())
+    policy_id = context.resource_id(policy_id or str(uuid.uuid4()))
 
     document = as_odrl_policy(policy)
     rules = {

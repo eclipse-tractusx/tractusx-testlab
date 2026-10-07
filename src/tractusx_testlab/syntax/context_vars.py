@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """Well-known context variable names used for inter-step data passing.
@@ -35,6 +35,8 @@ prevents silent typo breakage.
 #: (ADR-0010 §3.4). Seeded by the player, known to the compiler — no manifest
 #: declares it, and no execution step may be called ``id``.
 EXECUTION_ID = "execution.id"
+EXECUTION_RESOURCE_PREFIX = "execution.resource_prefix"
+RUN_VARIABLES = (EXECUTION_ID, EXECUTION_RESOURCE_PREFIX)
 
 # Catalog query results
 CATALOG_ASSET_ID = "catalog_asset_id"
