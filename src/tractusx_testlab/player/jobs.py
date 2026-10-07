@@ -32,12 +32,13 @@ from datetime import UTC, datetime
 
 from tractusx_testlab.models import Job, JobEvent, JobMemory
 from tractusx_testlab.models.primitives.enums import JobStatus
+from tractusx_testlab.player.selections import SelectionBoard
 
 
 class JobManager:
     """Manages the lifecycle of Job objects."""
 
-    __slots__ = ("_held", "_jobs", "_pause_events", "_pause_requests")
+    __slots__ = ("_held", "_jobs", "_pause_events", "_pause_requests", "_selections")
 
     def __init__(self) -> None:
         self._jobs: dict[str, Job] = {}
@@ -46,6 +47,12 @@ class JobManager:
         # step blocked on something else (a wait for a callback) can notice it.
         self._pause_requests: dict[str, asyncio.Event] = {}
         self._held: set[str] = set()
+        self._selections = SelectionBoard()
+
+    @property
+    def selections(self) -> SelectionBoard:
+        """The questions the jobs put to their operator (``select_asset``), and their answers."""
+        return self._selections
 
     def create(
         self, tck_id: str, package_name: str | None = None, job_id: str | None = None
@@ -173,6 +180,7 @@ class JobManager:
         job = self._require(job_id)
         if job.status in (JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED):
             return
+        self._selections.close(job_id)
         if job.status == JobStatus.PAUSED:
             self.get_pause_request(job_id).clear()
             self._pause_events[job_id].set()  # Unblock execution loop

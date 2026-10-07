@@ -206,4 +206,6 @@ class EventKind(str, enum.Enum):
     STEP_WAITING = "step_waiting"
     STEP_SUSPENDED = "step_suspended"
     STEP_RECEIVED = "step_received"
+    STEP_SELECTING = "step_selecting"
+    STEP_SELECTED = "step_selected"
     ASSERTION_RESULT = "assertion_result"

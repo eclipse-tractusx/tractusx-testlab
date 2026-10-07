@@ -35,5 +35,6 @@ import tractusx_testlab.steps.connector.extract
 import tractusx_testlab.steps.connector.negotiate
 import tractusx_testlab.steps.connector.provision
 import tractusx_testlab.steps.connector.pull_data
+import tractusx_testlab.steps.connector.select_asset
 import tractusx_testlab.steps.connector.transfer
 import tractusx_testlab.steps.http.request

@@ -92,3 +92,31 @@ def received_line(base: str, data: dict) -> str:
         )
         parts.append(f"body={clipped}")
     return " ".join(p for p in parts if p)
+
+
+def selecting_line(base: str, data: dict) -> str:
+    """The run waits for the operator to choose an asset: the line, and one row per option."""
+    selection = data.get("selection") or {}
+    options = selection.get("options") or []
+    timeout = data.get("timeout_s")
+    budget = f"(up to {float(timeout):.0f}s)" if timeout else ""
+    head = (base, _where(data), str(data.get("step_type", "")), f"— choose 1 of {len(options)}")
+    rows = [" ".join(p for p in (*head, budget) if p)]
+    for option in options:
+        offers = len(option.get("policies") or [])
+        rows.append(
+            f"    {option.get('asset_id', '?')}  ({offers} offer{'s' if offers != 1 else ''})"
+        )
+    return "\n".join(rows)
+
+
+def selected_line(base: str, data: dict) -> str:
+    """The operator chose: which asset, and after how long."""
+    parts = (
+        base,
+        _where(data),
+        str(data.get("step_type", "")),
+        f"→ {data.get('asset_id', '?')}",
+        f"after {int(data.get('waited_ms') or 0)}ms",
+    )
+    return " ".join(p for p in parts if p)

@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `connector/query_catalog/select_asset` lets the operator choose the asset a
+  test is about. It reads a catalog (same `filters` and counter-party as
+  `query_catalog_with_filters`) and, when it offers more than one asset, stops
+  the run and publishes `step_selecting` (`tck.test.step.selecting` in the
+  trace): one option per asset, with its properties and the policies
+  (`odrl:hasPolicy`) it is offered under. The host answers with
+  `player.jobs.selections.answer(job_id, asset_id, step_id)`, or
+  `POST /testlab/tck-execution/{job_id}/select` on the TestLab server; the
+  step publishes `step_selected` and returns `asset_id`, `dataset`,
+  `datasets` and `selected_by`. A single asset is taken without asking unless
+  `ask_if_single`; `asset_id` names the asset up front, for an unattended run.
+  The wait honours `timeout_s` (default 300) and stops its clock while the run
+  is paused; cancelling the run withdraws the question.
+
 - The console frames every wait for the system under test. Under the
   `step.waiting` line it draws an `ACTION REQUIRED` block between `=` rules,
   with how long the run waits, and says what to do in order: the wait's

@@ -52,6 +52,7 @@ from tractusx_testlab.models.runtime.results import (
     StepResult,
     TestResult,
 )
+from tractusx_testlab.models.runtime.selection import StepSelectedEvent, StepSelectingEvent
 
 
 class JobStartedEvent(_ExecutionEvent):
@@ -283,5 +284,7 @@ ExecutionEvent = (
     | StepWaitingEvent
     | StepSuspendedEvent
     | StepReceivedEvent
+    | StepSelectingEvent
+    | StepSelectedEvent
     | AssertionResultEvent
 )

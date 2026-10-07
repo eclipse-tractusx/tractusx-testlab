@@ -43,6 +43,8 @@ import json
 from tractusx_testlab.logging.inbound_lines import (
     listening_line,
     received_line,
+    selected_line,
+    selecting_line,
     suspended_line,
     waiting_line,
 )
@@ -59,12 +61,15 @@ _STEP_OUTCOME_KINDS: frozenset[str] = frozenset(
     }
 )
 
-#: The three moments of an inbound call, each rendered by inbound_lines.
+#: The moments a run depends on something coming in — a call, or the operator's
+#: choice — each rendered by inbound_lines.
 _INBOUND_LINES = {
     EventKind.STEP_LISTENING.value: listening_line,
     EventKind.STEP_WAITING.value: waiting_line,
     EventKind.STEP_SUSPENDED.value: suspended_line,
     EventKind.STEP_RECEIVED.value: received_line,
+    EventKind.STEP_SELECTING.value: selecting_line,
+    EventKind.STEP_SELECTED.value: selected_line,
 }
 
 #: Longest wire body echoed to the console. The JSONL keeps the whole thing;
