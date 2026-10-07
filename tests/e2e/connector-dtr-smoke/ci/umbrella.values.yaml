@@ -1,0 +1,516 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## It was reviewed and tested by a human committer.
+
+# CI-only additions to values-adopter-decentralized-identityhub.yaml.
+#
+# Three things this file is responsible for:
+#
+#   1. Cutting the release down to what the TCK actually addresses. The
+#      dataspace needs two connectors, but only *one* Digital Twin Registry:
+#      the suite binds `infrastructure.sut.dtr` to the provider's, and never
+#      reaches for a second one — so the provider's registry is the shared
+#      registry for both participants. Neither `simple-data-backend` is
+#      addressed either: transfers pull from the workflow's own `tck-echo`
+#      pod, and dtr_roundtrip.yaml's submodel endpoint is a DSP href rather
+#      than a backend URL.
+#   2. Isolating each connector's DSP / management APIs onto their own ingress
+#      hostnames, so nothing else on `<participant>.local` can shadow them.
+#   3. Making the whole release survive on a 4-vCPU GitHub runner: every JVM in
+#      the release boots at the same time on a heavily contended CPU, so the
+#      stock 30s/100s liveness delays kill pods before they finish starting.
+#      The delay alone is not enough. A probe that starts late still gives up
+#      after `failureThreshold` misses — 30s at the stock six — and a JVM that
+#      is only slow is then restarted, which puts its boot back at the end of
+#      the queue on a node that is now busier than when it started. That loop
+#      never converges, and what `helm install --wait` reports 15 minutes later
+#      is a pod that never became ready. Every liveness probe this file already
+#      delays therefore also gets a threshold worth minutes rather than
+#      seconds: liveness is here to catch a runtime that has *hung*, and on
+#      this node nothing can tell "hung" from "slow" in half a minute.
+#
+# Note what this file deliberately does NOT touch: the profile's vault wiring.
+# `edc-provider.install.vault` stays `false` and the connector bundle's own
+# vault stays enabled, because the bundle is what ships
+# `post-install-vault-setup` — the hook that writes tokenSignerPrivateKey /
+# tokenSignerPublicKey / tokenEncryptionAesKey into the participant's vault.
+# Deploying the vault from `install.vault` instead gives you a vault with no
+# secrets in it, and every data-plane transfer then fails to sign its EDR.
+# The workflow's manifest validation asserts both hooks are present.
+
+edc-provider:
+  # No Postgres for this participant. The IdentityHub was the last thing on
+  # it and is in-memory now (see below); the connector never used it — the
+  # `edc` database it still renders a JDBC URL for goes unopened, because the
+  # in-memory runtime has no SQL extensions to dial it with. The DTR keeps its
+  # own database, inside the digital-twin bundle.
+  install:
+    postgresql: false
+  tractusx-identityhub:
+    identityhub:
+      # In-memory IdentityHub. The chart standing in this slot is
+      # `tractusx-identityhub-memory`, renamed to the dependency's name by the
+      # workflow's chart surgery, so this block still addresses it.
+      #
+      # The image is the `main`-branch build, not the 0.4.0 release the chart
+      # defaults to. The release cannot run in-memory: tx-identityhub's
+      # `InitialParticipantExtension` wrote the X-Api-Key and the STS client
+      # secret with the *unscoped* `vault.storeSecret` during boot, so EDC's
+      # `InMemoryVault` — partitioned by participant context — filed them
+      # under `default`, every scoped read missed, the Identity API answered
+      # 500 and the run could never request its credentials (CI, 2026-08-31
+      # and 2026-09-10). tractusx-identityhub#347 scopes the writes to the
+      # participant; it is on `main` since 2026-09-11 and in no release yet.
+      # `main` publishes as `<version>-SNAPSHOT`, a moving tag, so the pull
+      # policy has to be `Always`: the kind node cache bakes images in, and
+      # `IfNotPresent` would keep serving whichever snapshot it was built
+      # from. Move back to the chart default at the first release past 0.4.0.
+      image:
+        tag: 0.4.0-SNAPSHOT
+        pullPolicy: Always
+      livenessProbe:
+        initialDelaySeconds: 240
+        failureThreshold: 60
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+  tx-data-provider:
+    controlplanePublicUrl: "http://provider-dsp.local"
+    controlplaneManagementUrl: "http://provider-management.local"
+    # Nothing in the suite pulls from a `simple-data-backend`: transfers
+    # resolve to the workflow's own `tck-echo` pod, and dtr_roundtrip.yaml's
+    # submodel endpoint is a DSP href. The profile already switches this bundle
+    # off for the consumer and is silent about the provider, where it defaults
+    # on — so say so.
+    data-persistence-layer-bundle:
+      enabled: false
+    dataspace-connector-bundle:
+      vault:
+        # The agent injector is not used here and costs a Deployment plus two
+        # cluster-scoped MutatingWebhookConfigurations per participant.
+        injector:
+          enabled: false
+      tractusx-connector:
+        controlplane:
+          # The connector runs the single in-memory runtime instead of the
+          # Postgres + HashiCorp-Vault control plane. `edc-runtime-memory`
+          # bundles the control plane *and* the data plane, so this pod also
+          # boots the data-plane half and wants the settings that half reads;
+          # the block below is the set the upstream `tractusx-connector-memory`
+          # chart renders and this one does not.
+          #
+          # That embedded data plane is not idle: it self-registers with the
+          # control plane it shares a JVM with, and it is the *only* instance
+          # that ever reaches the control plane's selector — the data-plane pod
+          # below registers into its own in-memory store, because the runtime it
+          # runs bundles a selector of its own. So every transfer is started
+          # here, and the EDR token is minted into this pod's in-memory
+          # `AccessTokenData` store. The public base URL therefore has to
+          # address *this* pod: pointed at the data-plane pod, as it was, the
+          # consumer takes a valid token to a runtime that has never seen it and
+          # the pull fails with `AccessTokenData with ID '…' does not exist`.
+          image:
+            repository: tractusx/edc-runtime-memory
+          env:
+            WEB_HTTP_PUBLIC_PORT: "8086"
+            WEB_HTTP_PUBLIC_PATH: "/api/public"
+            EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://provider.local/api/public"
+            TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://provider.local/api/public/token"
+            # The connector's *own* credential service, spelled with the raw DID.
+            # Umbrella's profile writes this URL with the base64-encoded participant
+            # id, which EDC IdentityHub 0.16 decoded and 0.17 (Tractus-X 0.4.0) looks
+            # up verbatim, answering 404. Negotiation never notices: a counterparty
+            # finds this endpoint through the DID document, which is right. The BDRS
+            # client does, because it fetches this connector's own MembershipCredential
+            # from *this* setting to read the BPN directory, and the provider's
+            # transfer provisioning resolves the consumer's BPN through it — so every
+            # transfer sat in REQUESTED until the run's 60s gave out (run
+            # 34627069005, 2026-09-11) while the catalog and negotiation passed.
+            TX_EDC_IAM_IATP_CREDENTIALSERVICE_URL: "http://provider.local/identityhub/api/credentials/v1/participants/did:web:provider.local:identityhub:BPNL000000000001"
+            # Pin the DSP callback/audience. The chart otherwise derives them
+            # from `controlplane.ingresses[0].hostname`, and a metrics-first
+            # order would advertise `provider.local/api/v1/dsp` — a path that
+            # host does not serve — so the peer's agreement POST 404s at nginx.
+            EDC_DSP_CALLBACK_ADDRESS: "http://provider-dsp.local/api/v1/dsp"
+            EDC_OAUTH_ENDPOINT_AUDIENCE: "http://provider-dsp.local/api/v1/dsp"
+            TX_EDC_DATAPLANE_TOKEN_EXPIRY: "300"
+            TX_EDC_DATAPLANE_TOKEN_EXPIRY_TOLERANCE: "10"
+            EDC_TRANSFER_PROXY_TOKEN_SIGNER_PRIVATEKEY_ALIAS: "tokenSignerPrivateKey"
+            EDC_TRANSFER_PROXY_TOKEN_VERIFIER_PUBLICKEY_ALIAS: "tokenSignerPublicKey"
+            TX_EDC_DPF_CONSUMER_PROXY_AUTH_APIKEY: "password"
+          livenessProbe:
+            initialDelaySeconds: 240
+            failureThreshold: 60
+          endpoints:
+            default:
+              path: /api
+            management:
+              path: /management
+            control:
+              path: /control
+            protocol:
+              path: /api/v1/dsp
+            catalog:
+              path: /catalog
+            # `endpoints` only carries the names the chart's Service hard-codes,
+            # and `public` is not one of them, so the public API this pod binds
+            # on 8086 is exposed through the otherwise unused `metrics` slot:
+            # the Deployment takes its container ports and the Ingress its paths
+            # straight from this map, and the chart renders no
+            # `WEB_HTTP_METRICS_*` settings, so nothing else reads it.
+            metrics:
+              port: 8086
+              path: /api/public
+          # DSP MUST stay first: tractusx-connector builds
+          # `txdc.controlplane.url.protocol` from `ingresses[0]` unless
+          # `controlplane.url.protocol` is set, and that URL becomes
+          # EDC_DSP_CALLBACK_ADDRESS / EDC_OAUTH_ENDPOINT_AUDIENCE.
+          ingresses:
+            - enabled: true
+              hostname: provider-dsp.local
+              endpoints:
+                - protocol
+              className: nginx
+              tls:
+                enabled: false
+            - enabled: true
+              hostname: provider-management.local
+              endpoints:
+                - management
+                - control
+                - catalog
+              className: nginx
+              tls:
+                enabled: false
+            - enabled: true
+              hostname: provider.local
+              endpoints:
+                - metrics
+              className: nginx
+              tls:
+                enabled: false
+        dataplane:
+          # The same runtime in its data-plane role. The control-plane half it
+          # also boots reads these; they are copied from the control-plane pod
+          # of this participant, minus everything that would bind a port —
+          # this pod's ports are the data plane's, and the management API it
+          # would otherwise open on 8081 is where its public API already is.
+          image:
+            repository: tractusx/edc-runtime-memory
+          env:
+            TRACTUSX_EDC_PARTICIPANT_BPN: "BPNL000000000001"
+            EDC_DSP_CALLBACK_ADDRESS: "http://provider-dsp.local/api/v1/dsp"
+            # Same reason as on the control plane: this pod boots that half too.
+            TX_EDC_IAM_IATP_CREDENTIALSERVICE_URL: "http://provider.local/identityhub/api/credentials/v1/participants/did:web:provider.local:identityhub:BPNL000000000001"
+            EDC_OAUTH_PROVIDER_AUDIENCE: "idsc:IDS_CONNECTORS_ALL"
+            EDC_OAUTH_ENDPOINT_AUDIENCE: "http://provider-dsp.local/api/v1/dsp"
+            EDC_IAM_TRUSTED-ISSUER_0-ISSUER_ID: "did:web:issuerservice.local:BPNL000000000003"
+            TX_EDC_IAM_IATP_BDRS_SERVER_URL: "http://bdrs-server.tx.test/api/directory"
+            TX_EDC_IAM_IATP_BDRS_CACHE_VALIDITY: "600"
+            TX_EDC_DCP_CACHE_ENABLED: "true"
+            TX_EDC_DCP_CACHE_VALIDITY_SECONDS: "86400"
+            EDC_POLICY_VALIDATION_ENABLED: "true"
+            # Neither half of this pod should act as a connector in its own
+            # right: no catalog crawling, and no DID registration racing the
+            # control plane's.
+            EDC_CATALOG_CACHE_EXECUTION_ENABLED: "false"
+            TX_EDC_DID_SERVICE_SELF_REGISTRATION_ENABLED: "false"
+            TX_EDC_DID_SERVICE_SELF_DEREGISTRATION_ENABLED: "false"
+          livenessProbe:
+            initialDelaySeconds: 240
+            failureThreshold: 60
+    digital-twin-bundle:
+      enabled: true
+      digital-twin-registry:
+        fullnameOverride: provider-dtr
+        keycloak:
+          fullnameOverride: provider-registry-keycloak
+        registry:
+          host: provider-dtr.local
+          livenessProbe:
+            initialDelaySeconds: 240
+            failureThreshold: 60
+          dataSource:
+            url: jdbc:postgresql://provider-dtr-postgresql:5432/dtr
+          ingress:
+            # The registry is the only component in this release whose ingress
+            # carries a `tls:` section, pointing at a chart-generated self-signed
+            # certificate. ingress-nginx answers plain HTTP on a TLS-bearing host
+            # with a 308 to HTTPS, and that certificate then fails verification —
+            # `curl: (60) SSL certificate problem: self-signed certificate` in the
+            # preflight, and the same failure inside the four `testlab run`
+            # invocations, which all address the DTR over `http://`.
+            #
+            # Turning the redirect off is what makes the DTR behave like every
+            # other ingress here — plain HTTP, on hostnames that only resolve
+            # inside this job, in a cluster that lives for one run. The
+            # alternative, `registry.ingress.tls.enabled: false`, looks tidier
+            # and is a trap: in digital-twin-registry 0.11.0 that branch of
+            # registry-ingress.yaml emits a stray `[]` under `spec:`, which YAML
+            # folds into the line above it, and the ingress comes out with
+            # `ingressClassName: "nginx []"` — silently claimed by no controller
+            # at all.
+            annotations:
+              nginx.ingress.kubernetes.io/ssl-redirect: "false"
+            rules:
+              - host: provider-dtr.local
+                http:
+                  paths:
+                    - path: "/semantics/registry(/|$)(.*)"
+                      pathType: ImplementationSpecific
+      postgresql:
+        fullnameOverride: provider-dtr-postgresql
+
+edc-consumer:
+  # No Postgres for this participant. The IdentityHub was the last thing on
+  # it and is in-memory now (see below); the connector never used it — the
+  # `edc` database it still renders a JDBC URL for goes unopened, because the
+  # in-memory runtime has no SQL extensions to dial it with. The DTR keeps its
+  # own database, inside the digital-twin bundle.
+  install:
+    postgresql: false
+  tractusx-identityhub:
+    identityhub:
+      # In-memory IdentityHub. The chart standing in this slot is
+      # `tractusx-identityhub-memory`, renamed to the dependency's name by the
+      # workflow's chart surgery, so this block still addresses it.
+      #
+      # The image is the `main`-branch build, not the 0.4.0 release the chart
+      # defaults to. The release cannot run in-memory: tx-identityhub's
+      # `InitialParticipantExtension` wrote the X-Api-Key and the STS client
+      # secret with the *unscoped* `vault.storeSecret` during boot, so EDC's
+      # `InMemoryVault` — partitioned by participant context — filed them
+      # under `default`, every scoped read missed, the Identity API answered
+      # 500 and the run could never request its credentials (CI, 2026-08-31
+      # and 2026-09-10). tractusx-identityhub#347 scopes the writes to the
+      # participant; it is on `main` since 2026-09-11 and in no release yet.
+      # `main` publishes as `<version>-SNAPSHOT`, a moving tag, so the pull
+      # policy has to be `Always`: the kind node cache bakes images in, and
+      # `IfNotPresent` would keep serving whichever snapshot it was built
+      # from. Move back to the chart default at the first release past 0.4.0.
+      image:
+        tag: 0.4.0-SNAPSHOT
+        pullPolicy: Always
+      livenessProbe:
+        initialDelaySeconds: 240
+        failureThreshold: 60
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+  tx-data-provider:
+    controlplanePublicUrl: "http://consumer-dsp.local"
+    controlplaneManagementUrl: "http://consumer-management.local"
+    dataspace-connector-bundle:
+      vault:
+        injector:
+          enabled: false
+      tractusx-connector:
+        controlplane:
+          # The connector runs the single in-memory runtime instead of the
+          # Postgres + HashiCorp-Vault control plane. `edc-runtime-memory`
+          # bundles the control plane *and* the data plane, so this pod also
+          # boots the data-plane half and wants the settings that half reads;
+          # the block below is the set the upstream `tractusx-connector-memory`
+          # chart renders and this one does not.
+          #
+          # That embedded data plane is not idle: it self-registers with the
+          # control plane it shares a JVM with, and it is the *only* instance
+          # that ever reaches the control plane's selector — the data-plane pod
+          # below registers into its own in-memory store, because the runtime it
+          # runs bundles a selector of its own. So every transfer is started
+          # here, and the EDR token is minted into this pod's in-memory
+          # `AccessTokenData` store. The public base URL therefore has to
+          # address *this* pod: pointed at the data-plane pod, as it was, the
+          # consumer takes a valid token to a runtime that has never seen it and
+          # the pull fails with `AccessTokenData with ID '…' does not exist`.
+          image:
+            repository: tractusx/edc-runtime-memory
+          env:
+            WEB_HTTP_PUBLIC_PORT: "8086"
+            WEB_HTTP_PUBLIC_PATH: "/api/public"
+            EDC_DATAPLANE_API_PUBLIC_BASEURL: "http://consumer.local/api/public"
+            TX_EDC_DATAPLANE_TOKEN_REFRESH_ENDPOINT: "http://consumer.local/api/public/token"
+            # The connector's *own* credential service, spelled with the raw DID.
+            # Umbrella's profile writes this URL with the base64-encoded participant
+            # id, which EDC IdentityHub 0.16 decoded and 0.17 (Tractus-X 0.4.0) looks
+            # up verbatim, answering 404. Negotiation never notices: a counterparty
+            # finds this endpoint through the DID document, which is right. The BDRS
+            # client does, because it fetches this connector's own MembershipCredential
+            # from *this* setting to read the BPN directory, and the provider's
+            # transfer provisioning resolves the consumer's BPN through it — so every
+            # transfer sat in REQUESTED until the run's 60s gave out (run
+            # 34627069005, 2026-09-11) while the catalog and negotiation passed.
+            TX_EDC_IAM_IATP_CREDENTIALSERVICE_URL: "http://consumer.local/identityhub/api/credentials/v1/participants/did:web:consumer.local:identityhub:BPNL000000000002"
+            # Pin the DSP callback/audience. The chart otherwise derives them
+            # from `controlplane.ingresses[0].hostname`, and a metrics-first
+            # order would advertise `consumer.local/api/v1/dsp` — a path that
+            # host does not serve — so the peer's agreement POST 404s at nginx.
+            EDC_DSP_CALLBACK_ADDRESS: "http://consumer-dsp.local/api/v1/dsp"
+            EDC_OAUTH_ENDPOINT_AUDIENCE: "http://consumer-dsp.local/api/v1/dsp"
+            TX_EDC_DATAPLANE_TOKEN_EXPIRY: "300"
+            TX_EDC_DATAPLANE_TOKEN_EXPIRY_TOLERANCE: "10"
+            EDC_TRANSFER_PROXY_TOKEN_SIGNER_PRIVATEKEY_ALIAS: "tokenSignerPrivateKey"
+            EDC_TRANSFER_PROXY_TOKEN_VERIFIER_PUBLICKEY_ALIAS: "tokenSignerPublicKey"
+            TX_EDC_DPF_CONSUMER_PROXY_AUTH_APIKEY: "password"
+          livenessProbe:
+            initialDelaySeconds: 240
+            failureThreshold: 60
+          endpoints:
+            default:
+              path: /api
+            management:
+              path: /management
+            control:
+              path: /control
+            protocol:
+              path: /api/v1/dsp
+            catalog:
+              path: /catalog
+            # `endpoints` only carries the names the chart's Service hard-codes,
+            # and `public` is not one of them, so the public API this pod binds
+            # on 8086 is exposed through the otherwise unused `metrics` slot:
+            # the Deployment takes its container ports and the Ingress its paths
+            # straight from this map, and the chart renders no
+            # `WEB_HTTP_METRICS_*` settings, so nothing else reads it.
+            metrics:
+              port: 8086
+              path: /api/public
+          # DSP MUST stay first: tractusx-connector builds
+          # `txdc.controlplane.url.protocol` from `ingresses[0]` unless
+          # `controlplane.url.protocol` is set, and that URL becomes
+          # EDC_DSP_CALLBACK_ADDRESS / EDC_OAUTH_ENDPOINT_AUDIENCE.
+          ingresses:
+            - enabled: true
+              hostname: consumer-dsp.local
+              endpoints:
+                - protocol
+              className: nginx
+              tls:
+                enabled: false
+            - enabled: true
+              hostname: consumer-management.local
+              endpoints:
+                - management
+                - control
+                - catalog
+              className: nginx
+              tls:
+                enabled: false
+            - enabled: true
+              hostname: consumer.local
+              endpoints:
+                - metrics
+              className: nginx
+              tls:
+                enabled: false
+        dataplane:
+          # The same runtime in its data-plane role. The control-plane half it
+          # also boots reads these; they are copied from the control-plane pod
+          # of this participant, minus everything that would bind a port —
+          # this pod's ports are the data plane's, and the management API it
+          # would otherwise open on 8081 is where its public API already is.
+          image:
+            repository: tractusx/edc-runtime-memory
+          env:
+            TRACTUSX_EDC_PARTICIPANT_BPN: "BPNL000000000002"
+            EDC_DSP_CALLBACK_ADDRESS: "http://consumer-dsp.local/api/v1/dsp"
+            # Same reason as on the control plane: this pod boots that half too.
+            TX_EDC_IAM_IATP_CREDENTIALSERVICE_URL: "http://consumer.local/identityhub/api/credentials/v1/participants/did:web:consumer.local:identityhub:BPNL000000000002"
+            EDC_OAUTH_PROVIDER_AUDIENCE: "idsc:IDS_CONNECTORS_ALL"
+            EDC_OAUTH_ENDPOINT_AUDIENCE: "http://consumer-dsp.local/api/v1/dsp"
+            EDC_IAM_TRUSTED-ISSUER_0-ISSUER_ID: "did:web:issuerservice.local:BPNL000000000003"
+            TX_EDC_IAM_IATP_BDRS_SERVER_URL: "http://bdrs-server.tx.test/api/directory"
+            TX_EDC_IAM_IATP_BDRS_CACHE_VALIDITY: "600"
+            TX_EDC_DCP_CACHE_ENABLED: "true"
+            TX_EDC_DCP_CACHE_VALIDITY_SECONDS: "86400"
+            EDC_POLICY_VALIDATION_ENABLED: "true"
+            # Neither half of this pod should act as a connector in its own
+            # right: no catalog crawling, and no DID registration racing the
+            # control plane's.
+            EDC_CATALOG_CACHE_EXECUTION_ENABLED: "false"
+            TX_EDC_DID_SERVICE_SELF_REGISTRATION_ENABLED: "false"
+            TX_EDC_DID_SERVICE_SELF_DEREGISTRATION_ENABLED: "false"
+          livenessProbe:
+            initialDelaySeconds: 240
+            failureThreshold: 60
+
+# Both of these ask for 500m of CPU by default. On a 4-vCPU runner that is
+# ~a third of the schedulable capacity spent on two services that idle for
+# most of the run, and it crowds out the connectors.
+bdrs-server-memory:
+  server:
+    livenessProbe:
+      initialDelaySeconds: 240
+      failureThreshold: 60
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+tractusx-issuerservice:
+  # Same for the issuer's database: the in-memory image holds its holders,
+  # credential definitions and issuance processes in the process, and the one
+  # thing that did write SQL here — the claim-seeding hook below — is off.
+  install:
+    postgresql: false
+  # The claim rows this seeds go into a table only the SQL IssuerService
+  # creates, and `psql -v ON_ERROR_STOP=1` makes the missing table a failed
+  # post-install hook — which fails the whole `helm install --wait`. The
+  # in-memory image reads claims off the holder record instead, and
+  # ci/issue_credentials.py writes them there, so there is nothing left for
+  # this hook to seed.
+  attestationClaimSeeding:
+    enabled: false
+  issuerservice:
+    # In-memory IssuerService. Its BOM is the base one, which ships the
+    # `holder` attestation source and *not* the `database` one — the SQL BOM is
+    # what carries that. ci/issue_credentials.py registers the holder
+    # attestation and puts the claims on each holder record, so nothing reads
+    # the `custom_attestation_claims` table Umbrella still seeds.
+    #
+    # Same `main`-branch build as the IdentityHubs above: this runtime bundles
+    # the `super-user` seed extension that tractusx-identityhub#347 also
+    # fixed, and the two runtimes are kept on one commit. Moving tag, so the
+    # pull policy is `Always` for the same reason.
+    image:
+      repository: tractusx/issuerservice-memory
+      tag: 0.4.0-SNAPSHOT
+      pullPolicy: Always
+    # The v0.4.0 chart waits for its bundled subcharts on a TCP probe before
+    # the runtime starts — against the *default* subchart names, `<release>-
+    # vault:8200`. Umbrella names this one `umbrella-issuerservice-vault`, so
+    # the probe never connects: 60 attempts, five minutes, then a failed init
+    # and a failed `helm install --wait`. The chart's own note says to switch
+    # it off when a subchart is renamed, which is exactly this case. Nothing
+    # is lost — the vault is a `--wait`-ed dependency of the release already.
+    waitForDependencies:
+      enabled: false
+    livenessProbe:
+      initialDelaySeconds: 240
+      failureThreshold: 60
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi

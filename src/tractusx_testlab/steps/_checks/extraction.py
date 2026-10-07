@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,13 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Path extraction utilities for navigating nested dicts/lists/StepOutput objects."""
@@ -27,27 +28,23 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
+
+from tractusx_testlab.security.credentials import public_attr
 
 # Matches a path segment with a predicate filter: ``name[key=value]``
 _PREDICATE_RE = re.compile(r"^([^\[]+)\[([^=\]]+)=([^\]]*)\]$")
 _SENTINEL = object()
 
 
-def _snake_to_camel(name: str) -> str:
-    """Convert ``snake_case`` to ``camelCase``."""
-    parts = name.split("_")
-    return parts[0] + "".join(p.capitalize() for p in parts[1:])
-
-
 def _dict_get(d: dict, key: str) -> Any:
-    """Get value from dict, trying original key first, then camelCase fallback."""
-    if key in d:
-        return d[key]
-    camel = _snake_to_camel(key)
-    if camel != key and camel in d:
-        return d[camel]
-    return None
+    """Return ``d[key]``, or ``None`` when the key is not there.
+
+    Exactly the key that was written: a ``snake_case``→``camelCase`` fallback
+    made ``header.message_id`` quietly find ``messageId``. Where a document
+    carries two spellings, its model declares the alias (``authCode``, ``@id``).
+    """
+    return d.get(key)
 
 
 def _match_predicate_value(actual: Any, expected: str) -> bool:
@@ -175,32 +172,74 @@ def _resolve_path_segment(current: Any, part: str) -> Any:
     return None
 
 
-def extract_path(output: Any, path: Optional[str]) -> Any:
+#: Names every step output carries whatever it declares — the ``StepOutput``
+#: slots and the response fields a test can always assert on.
+UNIVERSAL_RETURNS = frozenset(
+    {
+        "value",
+        "request",
+        "response",
+        "status_code",
+        "headers",
+        "body",
+        "duration_ms",
+        "response_body",
+        "response_headers",
+    }
+)
+
+
+def declared_names(step_cls: Any) -> frozenset[str]:
+    """Every name a ``returns:`` block may read off *step_cls*.
+
+    A step's declared models are its public surface, so what a test can name
+    is what those models declare, plus the slots every output carries. Anything
+    else is a typo or a guess at the step's internals, and resolving it would
+    turn either into a silent ``None`` three steps later.
+    """
+    names = set(UNIVERSAL_RETURNS)
+    model = getattr(step_cls, "output_model", None)
+    fields = getattr(model, "model_fields", None) or {}
+    for name, field in fields.items():
+        names.add(name)
+        if getattr(field, "alias", None):
+            names.add(field.alias)
+    return frozenset(names)
+
+
+def extract_path(output: Any, path: str | None, declared: frozenset[str] | None = None) -> Any:
     """Extract a value from a nested dict/list/object using dot-separated *path*.
 
     Supports predicate-based array filtering: ``items[key='value']``
     selects the first element in the ``items`` list whose ``key`` field
     equals ``value``.
+
+    When *declared* is given, a first segment outside it does not resolve: the
+    step said what it produces, and a name it never declared must not quietly
+    come back from the response internals.
     """
     if path is None:
         return output
 
-    from tractusx_testlab.steps.base import StepOutput as _SO
+    from tractusx_testlab.steps.step_contract import StepOutput as _SO
+
     if isinstance(output, _SO):
-        return _extract_from_step_output(output, path)
+        return _extract_from_step_output(output, path, declared)
 
-    if isinstance(output, dict):
+    if isinstance(output, (dict, list)):
         return _traverse_dict(output, path)
-    return getattr(output, path, None)
+    return public_attr(output, path)
 
 
-def _extract_from_step_output(output: Any, path: str) -> Any:
+def _extract_from_step_output(
+    output: Any, path: str, declared: frozenset[str] | None = None
+) -> Any:
     """Extract a value from a StepOutput by resolving the first segment then traversing."""
     segments = _split_path(path)
     first = segments[0] if segments else path
     rest = ".".join(segments[1:]) if len(segments) > 1 else None
 
-    resolved = _resolve_first_segment(output, first, rest, path)
+    resolved = _resolve_first_segment(output, first, rest, path, declared)
 
     # If there's a remaining path and resolved is navigable, continue.  Lists
     # count as navigable: the remaining path may index into them (``0.id``) or
@@ -208,7 +247,7 @@ def _extract_from_step_output(output: Any, path: str) -> Any:
     if rest and resolved is not None:
         if isinstance(resolved, (dict, list)):
             return _traverse_dict(resolved, rest)
-        return getattr(resolved, rest, None)
+        return public_attr(resolved, rest)
 
     # Final fallback: full dot-path traversal on value dict
     if resolved is None and isinstance(output.value, dict):
@@ -216,7 +255,13 @@ def _extract_from_step_output(output: Any, path: str) -> Any:
     return resolved
 
 
-def _resolve_first_segment(output: Any, first: str, rest: Optional[str], full_path: str) -> Any:
+def _resolve_first_segment(
+    output: Any,
+    first: str,
+    rest: str | None,
+    full_path: str,
+    declared: frozenset[str] | None = None,
+) -> Any:
     """Resolve the first path segment against a StepOutput's various data sources."""
     # Map well-known aliases
     if first == "response_body":
@@ -231,6 +276,12 @@ def _resolve_first_segment(output: Any, first: str, rest: Optional[str], full_pa
     if resolved is not None:
         return resolved
 
+    if declared is not None and first not in declared:
+        # The step never declared this name; reaching into its response for
+        # something that happens to share the spelling is how a test ends up
+        # asserting on a value no step promised.
+        return None
+
     # Fall back through response attrs → response body dict → StepOutput slots
     return _fallback_resolution(output, first)
 
@@ -241,14 +292,16 @@ def _resolve_response_body(output: Any) -> Any:
         return output.value
     return output.response.body if output.response else None
 
+
 def _resolve_response_headers(output: Any) -> Any:
     """Resolve the 'response_headers' alias to the response's headers dict."""
     return output.response.headers if output.response else None
 
+
 def _fallback_resolution(output: Any, first: str) -> Any:
     """Try response attrs, response body dict, and StepOutput slots in order."""
     if output.response is not None:
-        resp_val = getattr(output.response, first, _SENTINEL)
+        resp_val = public_attr(output.response, first, _SENTINEL)
         if resp_val is not _SENTINEL:
             return resp_val
 
@@ -257,14 +310,14 @@ def _fallback_resolution(output: Any, first: str) -> Any:
         if body_val is not None:
             return body_val
 
-    slot_val = getattr(output, first, _SENTINEL)
+    slot_val = public_attr(output, first, _SENTINEL)
     if slot_val is not _SENTINEL:
         return slot_val
 
     return None
 
 
-def _resolve_from_value_dict(output: Any, first: str, rest: Optional[str], full_path: str) -> Any:
+def _resolve_from_value_dict(output: Any, first: str, rest: str | None, full_path: str) -> Any:
     """Try to resolve the first segment from the StepOutput.value dict."""
     # _resolve_path_segment handles both plain keys and ``name[key=value]``
     # predicates, so a filtered first segment resolves here rather than

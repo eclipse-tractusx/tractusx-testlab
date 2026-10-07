@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,19 +14,17 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
 """Optional HashiCorp Vault backend for key storage."""
 
 from __future__ import annotations
-
-from typing import Optional
 
 import requests
 
@@ -36,7 +34,7 @@ from tractusx_testlab.models import VaultConfig
 class VaultClient:
     """Thin wrapper around the HashiCorp Vault KV v2 API."""
 
-    __slots__ = ("_url", "_token", "_secret_path", "_session")
+    __slots__ = ("_secret_path", "_session", "_token", "_url")
 
     def __init__(self, config: VaultConfig) -> None:
         self._url = config.vault_url.rstrip("/")
@@ -48,7 +46,7 @@ class VaultClient:
     def _kv_url(self, key: str) -> str:
         return f"{self._url}/v1/{self._secret_path}/data/{key}"
 
-    def read_secret(self, key: str) -> Optional[dict]:
+    def read_secret(self, key: str) -> dict | None:
         """Read a secret from Vault. Returns the data dict or None."""
         resp = self._session.get(self._kv_url(key), timeout=10)
         if resp.status_code == 200:
@@ -67,12 +65,15 @@ class VaultClient:
 
     def store_key(self, name: str, private_pem: bytes, public_pem: bytes) -> None:
         """Convenience: store a key pair in Vault."""
-        self.write_secret(name, {
-            "private_key": private_pem.decode(),
-            "public_key": public_pem.decode(),
-        })
+        self.write_secret(
+            name,
+            {
+                "private_key": private_pem.decode(),
+                "public_key": public_pem.decode(),
+            },
+        )
 
-    def load_key(self, name: str) -> Optional[tuple[bytes, bytes]]:
+    def load_key(self, name: str) -> tuple[bytes, bytes] | None:
         """Convenience: load a key pair from Vault. Returns (private, public) or None."""
         data = self.read_secret(name)
         if data and "private_key" in data and "public_key" in data:

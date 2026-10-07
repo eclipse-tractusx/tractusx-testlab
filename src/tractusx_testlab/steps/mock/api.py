@@ -1,0 +1,248 @@
+#################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
+
+"""mock_endpoint step — registers a canned HTTP response on the mock server."""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any
+
+from pydantic import Field, field_validator
+
+from tractusx_testlab.authoring.registry import step
+from tractusx_testlab.models import Listener, StepDefinition
+from tractusx_testlab.server.inbound.run_scope import run_root, scoped
+from tractusx_testlab.server.mock_registry import (
+    MockHandler,
+    MockResponse,
+    get_callback_manager,
+    register_mock,
+    run_key,
+)
+from tractusx_testlab.steps.mock._models import MockIdParams, MockInstance
+from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
+
+if TYPE_CHECKING:
+    from tractusx_testlab.player.execution.context import StepContext
+
+logger = logging.getLogger(__name__)
+
+
+def _published_base_url(context: StepContext) -> str:
+    """The mock server's root as the system under test reaches it.
+
+    ``mock_public_url`` (``TESTLAB_MOCK_PUBLIC_URL``) is the operator's word
+    on the address; without it the server is assumed to share the SUT's host.
+    Read field by field rather than through the config's ``mock_base_url``
+    property so a partial config double still resolves.
+    """
+    public = getattr(context.config, "mock_public_url", None)
+    if isinstance(public, str) and public:
+        return public.rstrip("/")
+    return f"http://localhost:{context.config.server_port}"
+
+
+class MockRouteParams(MockIdParams):
+    """Where a mock listens and who it answers — what every mock step takes.
+
+    ``mock/api`` adds a canned reply to it, ``labs/mock/api/dynamic`` a reply
+    worked out per call.
+    """
+
+    path: str = Field(description="URL path to register, e.g. '/companycertificate/request'.")
+    method: str = Field(default="POST", description="HTTP method the mock answers on.")
+    api_key_header: str = Field(
+        default="x-api-key",
+        min_length=1,
+        description="Request header the run's mock API key must arrive in.",
+    )
+    public: bool = Field(
+        default=False,
+        description=(
+            "Answer anyone who has the URL, without the API key. Only for a mock an "
+            "engine step calls that cannot send a header, such as an OAuth2 token "
+            "endpoint; every other mock requires the key."
+        ),
+    )
+
+    @field_validator("method")
+    @classmethod
+    def _uppercase_method(cls, value: str) -> str:
+        """Accept ``post`` as readily as ``POST``."""
+        return value.upper()
+
+    @field_validator("path")
+    @classmethod
+    def _absolute_path(cls, value: str) -> str:
+        """The path must match the URL the SUT will call, leading slash included."""
+        return value if value.startswith("/") else f"/{value}"
+
+
+class MockEndpointParams(MockRouteParams):
+    """Input contract of ``mock/api``."""
+
+    response_status: int = Field(default=200, description="Status code the mock returns.")
+    response_body: Any = Field(
+        default_factory=dict,
+        description=(
+            "JSON body the mock returns. References are written the usual way, "
+            "'${{ ... }}', and are resolved before the step runs."
+        ),
+    )
+    response_headers: dict[str, str] = Field(
+        default_factory=dict, description="Headers the mock returns alongside the body."
+    )
+
+
+class MockEndpointOutput(StepPayload):
+    """The mock that now exists, and the two URLs a test needs from it."""
+
+    mock: MockInstance = Field(
+        description="The registered mock, as 'mock/wait/http_request' takes it."
+    )
+    base_mock_url: str = Field(description="Root URL of the testlab mock server.")
+    full_mock_url: str = Field(
+        description="Address to hand the system under test — root plus the mock's path."
+    )
+    api_key: str = Field(
+        default="",
+        description=(
+            "The key a call must carry — the run's, shared by every mock it registers; "
+            "empty for a public mock. Hidden unless the step's returns say "
+            "'hidden: false'."
+        ),
+        # The run's own key, minted for the SUT operator: an author may show it.
+        json_schema_extra={"secret": True, "revealable": True},
+    )
+
+
+@step("mock/api")
+class MockEndpointStep(BaseStep[MockEndpointParams, MockEndpointOutput]):
+    """Register a mock HTTP endpoint that returns a canned response.
+
+    ``full_mock_url`` is what a test hands to the system under test as its
+    callback address; ``mock`` is what it hands to
+    ``mock/wait/http_request``, which then blocks until the SUT calls it.
+
+    Every mock requires an API key, so none is a public API: a call without
+    it is refused with 401 and never reaches a ``mock/wait/*`` step. The key is
+    the run's, minted when the run registers its first mock and shared by all
+    of them, so one asset can front several mocks and a re-armed mock keeps it.
+    A mock behind a connector gets it from ``connector/provider/create_mock_asset``,
+    which puts it in the asset's private data address: the data plane adds it,
+    and the system under test never learns it. ``api_key`` is hidden in every
+    record of the run unless the step's ``returns:`` says ``hidden: false`` —
+    for a mock the system under test calls directly, whose operator needs it.
+    ``public`` opts a mock out, for an engine step that cannot send a header.
+    """
+
+    params_model = MockEndpointParams
+    output_model = MockEndpointOutput
+
+    async def execute(
+        self, params: MockEndpointParams, context: StepContext, definition: StepDefinition
+    ) -> StepOutput[MockEndpointOutput]:
+        # The body is a step parameter, so every ``${{ ... }}`` in it was
+        # already resolved before this step ran. A second pass used to run
+        # here for the legacy ``@name`` spelling, which is gone — and which
+        # mangled any JSON-LD value beginning with "@" on its way past.
+        response = MockResponse(
+            status_code=params.response_status,
+            body=params.response_body,
+            headers=params.response_headers,
+        )
+        return publish_mock(params, response, context, definition)
+
+
+def publish_mock(
+    params: MockRouteParams,
+    response: MockResponse | MockHandler,
+    context: StepContext,
+    definition: StepDefinition,
+) -> StepOutput[MockEndpointOutput]:
+    """Register *response* for the mock's path and tell the run where it listens.
+
+    Shared by ``mock/api`` and ``labs/mock/api/dynamic``, which differ only in
+    what answers a call: a canned response, or a handler that works it out
+    from the call. Everything else — the key, the listener, the published
+    address — is the same for both.
+
+    The mock is the run's own: it is kept under the run's address
+    (``inbound.run_scope``), and that address is the one published, so a
+    second run registering the same path — the same TCK for another tenant —
+    registers a second mock, and neither run's caller reaches the other's.
+    """
+    run = str(context.job.job_id)
+    api_key = "" if params.public else run_key(run)
+
+    register_mock(
+        params.path,
+        params.method,
+        response,
+        required_header=(params.api_key_header, api_key) if api_key else None,
+        run=run,
+    )
+
+    # Pre-register a callback listener so wait_for_call can block on it
+    callback_manager = get_callback_manager()
+    if callback_manager is not None:
+        callback_manager.register(scoped(run, params.path), params.method)
+
+    # Where the SUT dials in, not where the server binds: the operator's
+    # ``mock_public_url`` when the SUT is on another host, else localhost —
+    # in either case under this run's own address.
+    base_url = run_root(_published_base_url(context), run)
+    full_url = f"{base_url}{params.path}"
+    params.publish_url(full_url, context)
+
+    # From here on a call may arrive, so this is when whoever is watching
+    # — or driving the SUT by hand — is told where to call.
+    context.report_listening(
+        definition.uses,
+        definition.id,
+        Listener(method=params.method, url=full_url, path=params.path),
+    )
+
+    logger.info(
+        "Registered mock endpoint %s %s%s",
+        params.method,
+        params.path,
+        f" (requires {params.api_key_header})" if api_key else " (public)",
+    )
+    return StepOutput(
+        value=MockEndpointOutput(
+            mock=MockInstance(
+                endpoint_id=params.id,
+                path=params.path,
+                method=params.method,
+                base_mock_url=base_url,
+                full_mock_url=full_url,
+            ),
+            base_mock_url=base_url,
+            full_mock_url=full_url,
+            api_key=api_key,
+        )
+    )

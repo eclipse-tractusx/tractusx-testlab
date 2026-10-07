@@ -23,101 +23,122 @@
 
 # Data Models
 
-All TypeScript types live in `src/models/schema.ts`. They mirror the Python Pydantic models in `src/tractusx_testlab/models/`.
+The engine's data models are Pydantic v2 classes under `src/tractusx_testlab/models/`,
+organized into four sub-packages:
 
-## Core types
+| Sub-package | Contains |
+|-------------|----------|
+| `authoring/` | the shapes of the YAML documents an author writes (tests, TCK manifests, steps, variables, services) |
+| `runtime/` | what execution produces (results, events, jobs, inspection metadata) |
+| `primitives/` | enums and exceptions shared by everything else |
+| `domain/` | feature-specific domain models: package security and server state |
 
-### TestLabDocument
+All public models are re-exported from the package root, so
+`from tractusx_testlab.models import StepDefinition` always works regardless of the
+internal file layout.
 
-Union type representing any document the editor can open:
+## The YAML document structure
 
-```typescript
-type TestLabDocument = ScriptDefinition | TckDefinition;
+The engine compiles two document kinds, discriminated by an explicit `kind:` field
+(the Kubernetes convention) and pinned to the single syntax version `v1-alpha`.
+
+### Tests (`kind: test`)
+
+A test is the executable authoring unit. Its steps are grouped into three phases —
+`setup:`, `execution:`, `teardown:` — and every step uses the verb-form keys
+`uses:` / `with:` / `returns:`:
+
+```yaml
+kind: test
+syntax: v1-alpha
+id: catalog-smoke
+namespace: my-tck
+metadata:
+  name: "Catalog smoke test"
+  version: "1.0"
+
+execution:
+  - id: query
+    uses: connector/consumer/query_catalog
+    name: Query the SUT catalog
+    with:
+      counter_party_address: ${{ env.sut_dsp_url }}
+      counter_party_id: ${{ env.sut_bpn }}
+    returns:
+      datasets:
+        type: array
+    validate:
+      - uses: validate/assert
+        name: the SUT published at least one offer   # optional
+        with: { input: datasets, operator: not_empty }
 ```
 
-### ScriptDefinition (kind: "test")
+This maps onto `TestDefinition` and `StepDefinition`
+(`models/authoring/definitions.py`):
 
-An individual test script — the main authoring unit.
+```python
+class StepDefinition(BaseModel):
+    """Step definition using ``uses`` and ``with`` verb-form keys."""
 
-```typescript
-interface ScriptDefinition {
-  kind: "test";
-  name: string;
-  version?: string;
-  dataspace_version?: string;
-  description?: string;
-  variables?: Record<string, VariableDefinition>;
-  services?: ServiceDefinition[];
-  setup?: Step[];                          // Pre-test steps
-  steps: Step[];                           // Main test steps (required, ≥1)
-  teardown?: Step[];                       // Cleanup steps
-}
+    id: Optional[str] = Field(default=None, pattern=r"^[a-z][a-z0-9_]{0,49}$")
+    uses: str
+    name: Optional[str] = None
+    with_: Optional[dict[str, Any]] = Field(default=None, alias="with")
+    returns: Optional[dict[str, ReturnFieldDefinition]] = None
+    validate: Optional[list[Assertion]] = None
+    timeout_s: Optional[float] = None
+    if_condition: Optional[str] = Field(default=None, alias="if")
 ```
 
-### TckDefinition (kind: "tck")
+- **`uses`** is the canonical step id (`<category>/<module>/<function>`), the key the
+  [step registry](block-lifecycle.md) resolves to a Python executor class.
+- **`with`** carries the parameters, validated into the executor's declared
+  `params_model` before it runs.
+- **`returns`** declares the output fields the test reads; each entry is a
+  `ReturnFieldDefinition` (`type`, optional `class`). Assertions resolve against
+  these declared returns, and later steps reference them as
+  `${{ steps.<id>.<field> }}`.
+- **`validate`** is a list of `Assertion` entries, themselves in verb form
+  (`uses: validate/assert`, `with: {input, operator, expected}`), each with an
+  optional `name`. Nothing in the engine reads the name; the run report calls
+  the check by it, so a step carrying four `validate/assert` entries says which
+  requirement each one covers instead of listing the same id four times.
 
-A container that groups multiple tests into an execution pipeline.
+When any of this does not hold up, the author is told so by
+`syntax/diagnostics.py` rather than by Pydantic: the finding names the step by
+its id, the line the key sits on, and — for a rejected key — the keys that
+would have been accepted, with a near-miss called out as the likely typo. The
+same renderer serves the compiler, the player, the server's compile endpoint and a
+step binding its `with:` block at runtime, so one wrong key reads the same
+wherever it is caught.
 
-```typescript
-interface TckDefinition {
-  kind: "tck";
-  name: string;
-  version?: string;
-  dataspace_version?: string;
-  description?: string;
-  author?: string;
-  standards?: StandardRef[];
-  tags?: string[];
-  variables?: Record<string, VariableDefinition>;
-  tests: (ScriptDefinition | TestRef | string)[];  // Mixed entries
-}
+### TCK manifests (`kind: tck`)
+
+A TCK groups tests into a certification package. `TckDefinition` carries
+certification metadata (`authors`, `standards`, `license`, `dataspace_version`),
+an `env:` block, and the ordered `tests:` list:
+
+```python
+class TckDefinition(BaseModel):
+    kind: Literal["tck"] = "tck"
+    syntax: Literal["v1-alpha"]
+    id: str
+    metadata: TckMetadataDefinition
+    env: Optional[EnvDefinition] = None
+    tests: list[TckTestEntry] = Field(default_factory=list)
 ```
 
-The `tests` array can contain:
+Each `TckTestEntry` names a test file relative to the package's `tests/` folder,
+with an optional human-readable `name` and a `skippable` flag the operator can act
+on at runtime.
 
-- **Inline scripts**: Full `ScriptDefinition` objects (embedded tests)
-- **Test references**: `TestRef` objects pointing to other test files
-- **Include strings**: File paths for `!include` directives
+`EnvDefinition` is the shared environment: `variables`, `services`, `schemas`
+(each a `SchemaDefinition` with `id` + `source`), and `testdata` entries.
 
-### StepDefinition
+### Variables
 
-A single action in a test (e.g., "Create an Asset", "Wait for Callback").
-
-```typescript
-interface StepDefinition {
-  type: string;                            // Step type from catalog (e.g., "create_asset")
-  name: string;                            // Display name
-  params: Record<string, unknown>;         // Step-specific inputs
-  validate?: Assertion[];                    // Validation rules
-  store_in_memory?: Record<string, string>;// { varName: JSONPath or "$" }
-  on_failure?: FailurePolicy;              // "ABORT" | "CONTINUE" | "SKIP_REST"
-  timeout_s?: number;
-  if?: string;                             // Conditional expression
-}
-```
-
-### VariableDefinition
-
-Declares a variable with metadata for runtime resolution.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | `str` | yes | Variable identifier, referenced as `${{ env.<id> }}` |
-| `type` | `str` | yes | `"string"` \| `"integer"` \| `"boolean"` \| `"float"` |
-| `source` | `VariableSource` | yes | `"value"` (static default) \| `"input"` (operator-supplied) \| `"generated"` (auto-generated UUID/token) |
-| `scope` | `VariableScope \| None` | required when `source == "input"` | `"engine"` — the TestLab engine operator provides this value; `"sut"` — the SUT operator provides this value |
-| `default` | `Any \| None` | no | Default value used when `source == "value"` |
-| `description` | `str \| None` | no | Human-readable description shown in pre-run forms |
-| `placeholder` | `str \| None` | no | Example value shown in input forms |
-| `generator` | `str \| None` | no | Generator kind used when `source == "generated"` (e.g. `"uuid"`) |
-| `format` | `str \| None` | no | Expected format hint (e.g. `"uri"`, `"bpn"`) |
-
-The `scope` field was introduced by [ADR-0023](decision-records/backend/ADR-0023-variable-scope-annotation.md).
-It is **only required** for `source: input` variables and identifies which participant is
-responsible for providing the value. The compiler enforces this — a package with unscoped
-`source: input` variables cannot be compiled.
-
-Variables appear in the YAML under `env.variables` using the verb-form syntax:
+Variables are declared in the TCK's `env.variables` block, in the same verb-form
+syntax as steps:
 
 ```yaml
 env:
@@ -128,16 +149,6 @@ env:
       with:
         source: input
         scope: sut          # SUT operator provides this value
-      returns:
-        value:
-          type: string
-
-    - id: testlab_management_url
-      description: TestLab engine connector management API.
-      uses: variable/type/string
-      with:
-        source: input
-        scope: engine       # engine operator provides this value
       returns:
         value:
           type: string
@@ -153,222 +164,88 @@ env:
           type: string
 ```
 
-### Assertion
+The `source` is a `VariableSource`: `value` (static default), `input`
+(operator-supplied at runtime), or `generated` (produced by a named generator such
+as `uuid`). For `source: input` the `scope` (`VariableScope`) is **required** and
+names the participant responsible for the value — `engine` or `sut` — enforced by
+the compiler per
+[ADR-0023](decision-records/backend/ADR-0023-variable-scope-annotation.md).
+Tests reference variables as `${{ env.<id> }}`, step outputs as
+`${{ steps.<id>.<field> }}`, and deployment facts as `${{ infrastructure.* }}`.
 
-Validation rule applied to a step's output.
+### Services
 
-```typescript
-interface Assertion {
-  output: string;                          // Output name to validate
-  [operator: string]: unknown;             // Operator + expected value
-}
-```
-
-### TestRef
-
-Reference to another test file.
-
-```typescript
-interface TestRef {
-  test: string;                            // Test name
-  with?: Record<string, unknown>;          // Variable overrides
-  description?: string;
-}
-```
-
-### ServiceDefinition
-
-Configuration for an external service used by steps.
-
-```typescript
-interface ServiceDefinition {
-  name: string;
-  type: ServiceType;
-  config: Record<string, unknown>;
-  auth?: string;                           // Reference to AuthDefinition.name
-}
-```
-
-### AuthDefinition
-
-Authentication credentials.
-
-```typescript
-interface AuthDefinition {
-  name: string;
-  type: AuthType;                          // "oauth2" | "api_key"
-  config: Record<string, unknown>;
-}
-```
-
-## Enums and constants
-
-### AssertionOperator
-
-```typescript
-type AssertionOperator =
-  | "equals" | "not_equals"
-  | "contains" | "not_contains"
-  | "matches"                              // Regex
-  | "schema"                               // JSON Schema validation
-  | "not_null" | "not_empty"
-  | "greater_than" | "less_than"
-  | "greater_or_equal" | "less_or_equal"
-  | "between";                             // [min, max] range
-```
-
-### FailurePolicy
-
-```typescript
-type FailurePolicy = "ABORT" | "CONTINUE" | "SKIP_REST";
-```
-
-### ServiceType
-
-```typescript
-type ServiceType =
-  | "edc_connector_saturn" | "edc_connector_jupiter"
-  | "aas"
-  | "discovery_finder" | "edc_discovery" | "bpn_discovery";
-```
-
-### AuthType
-
-```typescript
-type AuthType = "oauth2" | "api_key";
-```
-
-### SdkCallMode
-
-```typescript
-type SdkCallMode = "ALLOWLIST" | "OPEN";
-```
-
-## Type guards
-
-```typescript
-isTest(doc: TestLabDocument): doc is ScriptDefinition
-isTck(doc: TestLabDocument): doc is TckDefinition
-isTestRef(entry: unknown): entry is TestRef
-isTemplateStep(step: Step): boolean       // step.type === "template"
-```
-
-## Factory functions
-
-```typescript
-createEmptyTck(): TckDefinition
-createEmptyTest(): ScriptDefinition
-```
-
-These create minimal valid documents with required fields.
-
-## Variable syntax
-
-Variables are referenced in YAML using the `@` prefix:
-
-```yaml
-steps:
-  - type: create_asset
-    name: Create Asset
-    params:
-      base_url: "@asset_url"
-      asset_id: "@generated_id"
-```
-
-The `@variable_name` syntax is the canonical format. Legacy formats (`${var}`, `{{var}}`) are auto-converted to `@var` during import.
-
-## store_in_memory
-
-Steps can store their outputs in memory for use by later steps:
-
-```yaml
-steps:
-  - type: create_asset
-    name: Create Asset
-    params:
-      base_url: "https://example.com"
-    store_in_memory:
-      asset_id: "$"        # Store entire output as "asset_id"
-      asset_url: "$.url"   # Store nested field as "asset_url"
-```
-
-In the IDE, `store_in_memory` is **auto-generated** from the block catalog's `outputs` definition. If a catalog block declares `outputs: [{ name: "asset_id" }]`, the serializer automatically adds `store_in_memory: { asset_id: "$" }` — the user never manually configures this.
-
----
-
-# Validation
-
-Real-time validation is implemented in `src/models/validator.ts`.
-
-## API
-
-```typescript
-validate(doc: TestLabDocument): ValidationError[]
-setKnownStepTypes(types: string[]): void
-```
-
-`setKnownStepTypes()` is called during block catalog loading to register valid step types.
-
-## ValidationError
-
-```typescript
-interface ValidationError {
-  path: string;              // JSON path (e.g., "steps[0].params.base_url")
-  message: string;
-  severity: "error" | "warning";
-  line?: number;             // 1-based line number in YAML
-}
-```
-
-## Validation rules
-
-### Document level
-
-- `name` is required
-- `kind` must be `"test"` or `"tck"`
-
-### Script (test) level
-
-- At least one step (warning if empty)
-- All services have `name`, `type`, and `config`
-
-### Step level
-
-- `type` is a known step type (from catalog)
-- `name` is present (warning if missing)
-- `on_failure` is a valid enum value (`ABORT`, `CONTINUE`, `SKIP_REST`)
-- Assertions have an `output` field and a valid operator
-
-### Variable references
-
-- `@var_name` references are checked against defined variables (from `variables:` section and `store_in_memory` in preceding steps)
-- Undefined variable references produce warnings
-
-### Test case level
-
-- At least one test entry (warning if empty)
-- Test ref names resolve to existing tests in the project
-
----
-
-# Python Backend Models
-
-The models below live in `src/tractusx_testlab/models/` and are importable directly
-from the library root:
+`ServiceDefinition` declares an external service a run talks to:
 
 ```python
-from tractusx_testlab.models import TckInspectionResult, ScriptInspection, StepMeta
+class ServiceDefinition(BaseModel):
+    name: str
+    type: ServiceType
+    base_url: str
+    auth: dict = Field(default_factory=dict)
+    params: Optional[dict] = None
 ```
 
-## `StepPhase` enum
+Steps never name a service in their `with:` block — connector services are seeded
+into the run context at runtime, and the executor picks the right one through the
+`StepContext` accessors (`get_consumer_service()`, `get_provider_service()`, …).
 
-`models/primitives/enums.py` — the execution phase a step belongs to.
+## Enums (`models/primitives/enums.py`)
 
-| Value | Meaning |
-|-------|---------|
-| `SETUP` | Pre-test steps — run before the main test body |
-| `EXECUTION` | Main test steps (the `steps:` block) |
-| `TEARDOWN` | Cleanup steps — run after the main body regardless of outcome |
+The primitives every other model shares. The most load-bearing ones:
+
+| Enum | Values | Used for |
+|------|--------|----------|
+| `StepPhase` | `SETUP`, `EXECUTION`, `TEARDOWN` | which phase a step belongs to |
+| `StepStatus` | `PENDING`, `RUNNING`, `WAITING`, `PASSED`, `FAILED`, `SKIPPED` | per-step execution status |
+| `TestStatus` | `IDLE`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `SKIPPED` | per-test and per-TCK status |
+| `JobStatus` | `QUEUED`, `RUNNING`, `WAITING`, `PAUSED`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT` | overall job lifecycle |
+| `AssertionSeverity` | `HARD`, `SOFT` | whether a failed assertion aborts or warns |
+| `VariableSource` | `value`, `input`, `generated` | how a declared variable obtains its value |
+| `VariableScope` | `engine`, `sut` | who provides a `source: input` variable |
+| `DefinitionKind` | `test`, `tck` | the document `kind:` discriminator |
+| `EventKind` | `job_started`, `step_completed`, … | discriminator on every execution event |
+
+## Runtime results (`models/runtime/results.py`)
+
+What a run produces, nested top-down:
+
+```text
+TckResult
+└── tests: list[TestResult]
+    ├── execution: list[StepResult]
+    │   ├── request / response: HttpRequest / HttpResponse
+    │   ├── exchanges: list[HttpExchange]
+    │   └── assertions: list[AssertionResult]
+    ├── assertion_summary: AssertionSummary
+    └── callback_results: list[CallbackResult]
+```
+
+`StepResult` is the workhorse: `step_name`, `step_type`, `phase` (`StepPhase`),
+`status` (`StepStatus`), timing (`started_at` / `finished_at` / `duration_s`), the
+captured `request` / `response`, the serialised `output`, an optional
+`error` / `error_traceback`, and the evaluated `assertions`. `exchanges` holds
+*every* call the step made - both the engine's own `httpx` calls and the ones
+`tractusx-sdk` made on its behalf, each naming in `context` the method that sent
+it - while `request` / `response` name the one the test is about
+([ADR-0016](decision-records/backend/ADR-0016-execution-trace-format.md)). `CallbackResult`
+records a callback received (or timed out) on a mock listener.
+
+## Execution events (`models/runtime/events.py`)
+
+Frozen event models the execution monitor publishes while a job runs —
+`JobStartedEvent`, `TestStartedEvent`, `StepCompletedEvent`,
+`AssertionResultEvent`, and so on — each carrying its `EventKind` so consumers
+(the CLI, the server's SSE stream and its clients) can dispatch on `kind` directly. The SSE wire
+name is derived from the kind by turning its underscore into a dot
+(`step_completed` → `step.completed`). See
+[Execution Events](execution-events.md) for the full catalogue.
+
+## Jobs (`models/runtime/jobs.py`)
+
+`Job` tracks one submitted execution (`job_id`, `status`, timing, the current
+test and step), with `JobMemory` as its mutable key-value store and `JobEvent`
+entries as its event log.
 
 ## Inspection models (`models/runtime/inspection.py`)
 
@@ -383,17 +260,17 @@ Metadata for a single step.
 class StepMeta(BaseModel):
     model_config = ConfigDict(frozen=True)
     step_name: str         # step.name if set, otherwise falls back to step.uses
-    uses: str              # block identifier, e.g. "connector/consumer/get_catalog"
+    uses: str              # step identifier, e.g. "connector/consumer/query_catalog"
     phase: StepPhase       # SETUP | EXECUTION | TEARDOWN
     validation_count: int  # number of validate: entries on this step
 ```
 
-### `ScriptInspection`
+### `TestInspection`
 
-Metadata for one test script within a TCK.
+Metadata for one test within a TCK.
 
 ```python
-class ScriptInspection(BaseModel):
+class TestInspection(BaseModel):
     model_config = ConfigDict(frozen=True)
     name: str
     steps: tuple[StepMeta, ...]
@@ -409,13 +286,13 @@ class TckInspectionResult(BaseModel):
     name: str
     total_steps: int
     total_validations: int
-    scripts: tuple[ScriptInspection, ...]
+    tests: tuple[TestInspection, ...]
 ```
 
 ### Usage
 
 ```python
-from tractusx_testlab.scripting import Loader
+from tractusx_testlab.authoring import Loader
 
 loader = Loader()
 tck = loader.load("my-test.tck")
@@ -425,10 +302,26 @@ print(result.name)              # "Certificate Management Conformity"
 print(result.total_steps)       # 12
 print(result.total_validations) # 8
 
-for script in result.scripts:
-    for step in script.steps:
-        print(step.uses, step.phase.value)  # "connector/consumer/get_catalog" "EXECUTION"
+for test in result.tests:
+    for step in test.steps:
+        print(step.uses, step.phase.value)  # "connector/consumer/query_catalog" "EXECUTION"
 ```
 
 See [ADR-0022: TCK Static Inspection](decision-records/backend/ADR-0022-tck-static-inspection.md)
 for the full architectural rationale.
+
+## How data flows between steps
+
+A step's declared contract is the only channel data moves through:
+
+1. **Declared returns.** Assertions and `${{ steps.<id>.<field> }}` references read
+   the fields the step's `returns:` block declares, which the executor's
+   `output_model` promises. See [Step Contracts](step-contracts.md).
+2. **Published outputs.** Every step publishes all of its return outputs: each
+   top-level output field becomes a context variable of the same name —
+   `negotiate` returns `negotiation_id`, `do_dsp` returns the `dataplane_url` /
+   `edr_token` pair, and downstream steps read exactly those.
+3. **Explicit capture.** When a test needs a value under a name of its own
+   choosing, the util steps (`util/json_path_extract`, `util/base64`,
+   `util/parse_kv`) accept a `store_in_variable` parameter naming the context
+   variable to write.

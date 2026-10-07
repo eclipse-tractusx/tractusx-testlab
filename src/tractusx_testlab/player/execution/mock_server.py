@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,12 +14,13 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Background mock server for CLI execution — starts uvicorn in a daemon thread."""
@@ -28,7 +29,6 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Optional
 
 import uvicorn
 
@@ -41,22 +41,29 @@ class _BackgroundMockServer:
     """Starts the TestLab mock server in a background daemon thread.
 
     Used by ``TestlabPlayer`` when running via CLI (no external server).
-    The server handles mock endpoint responses and callback listeners.
+    The server handles mock endpoint responses and callback listeners — and,
+    unless the config says ``server_mode: full``, nothing else: it listens on
+    every interface for the system under test to call, and a caller of a
+    run's mock has no business starting runs, uploading packages or reading
+    jobs (``server.app``). Those routes would drive a player of their own, not
+    the run this server was started for.
     """
 
-    __slots__ = ("_port", "_config", "_thread", "_server")
+    __slots__ = ("_config", "_port", "_server", "_thread")
 
     def __init__(self, port: int, config: TestlabConfig) -> None:
         self._port = port
         self._config = config
-        self._thread: Optional[threading.Thread] = None
-        self._server: Optional[uvicorn.Server] = None
+        self._thread: threading.Thread | None = None
+        self._server: uvicorn.Server | None = None
 
     def start(self) -> None:
         """Start the mock server on a background daemon thread."""
         from tractusx_testlab.server.app import create_app
 
-        app = create_app(config=self._config)
+        app = create_app(
+            config=self._config, mode="full" if self._config.server_mode == "full" else "mock"
+        )
         uv_config = uvicorn.Config(
             app,
             host="0.0.0.0",

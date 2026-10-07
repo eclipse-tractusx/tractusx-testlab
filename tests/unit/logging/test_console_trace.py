@@ -1,0 +1,406 @@
+################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5).
+## It was reviewed and tested by a human committer.
+
+
+"""What a person watching a run actually sees.
+
+The JSONL carries every field of every event. The console line is a rendering
+of the same data for someone reading it go by, and it used to render almost
+none of it: `_build_inline_message` looked for flat ``status`` / ``duration_s``
+/ ``request`` / ``response`` keys that the typed events never carried, so every
+step and assertion printed as its bare event name and the test it was in.
+"""
+
+from __future__ import annotations
+
+from tractusx_testlab.logging.console import render
+
+_ASSERTION_PASSED = {
+    "kind": "assertion_result",
+    "test_id": "wiring",
+    "step_id": "call",
+    "step_name": "wiring[call]:http/http_request",
+    "index": 1,
+    "assertion": {
+        "assertion": {
+            "uses": "validate/assert",
+            "with_": {"input": "status_code", "operator": "equals"},
+        },
+        "passed": True,
+        "expected": 200,
+        "actual": 200,
+        "message": "",
+        "severity": "HARD",
+    },
+}
+
+_STEP_WITH_EXCHANGE = {
+    "kind": "step_completed",
+    "test_id": "wiring",
+    "step_id": "call",
+    "result": {
+        "step_name": "wiring[call]:http/http_request",
+        "step_type": "http/http_request",
+        "status": "PASSED",
+        "duration_s": 0.024,
+        "request": {"method": "GET", "url": "http://sut/probe", "body": None},
+        "response": {"status_code": 200, "body": {"kind": "probe"}, "duration_ms": 0.0},
+    },
+}
+
+
+class TestAnAssertionLine:
+    def test_it_says_which_check_and_how_it_went(self) -> None:
+        line = render("assertion.result", _ASSERTION_PASSED)
+        assert line.startswith("assert.pass")
+        assert "equals(status_code)" in line
+        assert "expected=200" in line
+        assert "actual=200" in line
+
+    def test_a_failure_is_findable_by_eye(self) -> None:
+        failed = {
+            **_ASSERTION_PASSED,
+            "assertion": {
+                **_ASSERTION_PASSED["assertion"],
+                "passed": False,
+                "actual": 503,
+                "message": "expected 200, got 503",
+            },
+        }
+        line = render("assertion.result", failed)
+        assert line.startswith("assert.FAIL")
+        assert "expected 200, got 503" in line
+
+    def test_a_field_check_names_the_path_it_read(self) -> None:
+        with_path = {
+            **_ASSERTION_PASSED,
+            "assertion": {
+                **_ASSERTION_PASSED["assertion"],
+                "assertion": {
+                    "uses": "validate/field",
+                    "with_": {"input": "body", "path": "kind", "operator": "equals"},
+                },
+            },
+        }
+        assert "equals(body.kind)" in render("assertion.result", with_path)
+
+    def test_a_soft_assertion_says_so(self) -> None:
+        soft = {
+            **_ASSERTION_PASSED,
+            "assertion": {**_ASSERTION_PASSED["assertion"], "severity": "SOFT"},
+        }
+        assert "(soft)" in render("assertion.result", soft)
+
+
+class TestAStepOutcomeLine:
+    def test_it_names_the_step_its_status_and_its_duration(self) -> None:
+        line = render("step.completed", _STEP_WITH_EXCHANGE)
+        assert "call" in line
+        assert "http/http_request" in line
+        assert "PASSED" in line
+        assert "24ms" in line
+
+    def test_the_request_and_the_response_are_shown(self) -> None:
+        """A conformance verdict comes off the wire, so the wire is in the trace."""
+        line = render("step.completed", _STEP_WITH_EXCHANGE)
+        assert "→ GET http://sut/probe" in line
+        assert "← 200" in line
+        assert '{"kind": "probe"}' in line
+
+    def test_an_unmeasured_duration_is_not_printed_as_zero(self) -> None:
+        assert "in 0ms" not in render("step.completed", _STEP_WITH_EXCHANGE)
+
+    def test_a_step_that_made_no_call_shows_no_exchange(self) -> None:
+        quiet = {
+            **_STEP_WITH_EXCHANGE,
+            "result": {**_STEP_WITH_EXCHANGE["result"], "request": None, "response": None},
+        }
+        line = render("step.completed", quiet)
+        assert "→" not in line and "←" not in line
+
+    def test_a_failure_carries_its_reason(self) -> None:
+        failed = {
+            **_STEP_WITH_EXCHANGE,
+            "kind": "step_failed",
+            "result": {
+                **_STEP_WITH_EXCHANGE["result"],
+                "status": "FAILED",
+                "error": "no EDR was issued",
+            },
+        }
+        assert "no EDR was issued" in render("step.failed", failed)
+
+    def test_a_long_body_is_clipped_with_the_cut_made_visible(self) -> None:
+        big = {
+            **_STEP_WITH_EXCHANGE,
+            "result": {
+                **_STEP_WITH_EXCHANGE["result"],
+                "response": {"status_code": 200, "body": {"blob": "x" * 5000}},
+            },
+        }
+        line = render("step.completed", big)
+        assert "…(+" in line
+        assert len(line) < 1000
+
+
+_STEP_CALL = {
+    "kind": "step_call",
+    "test_id": "dtr-filterability",
+    "step_id": "pull_dtr",
+    "step_type": "connector/consumer/pull_data_filtered",
+    "index": 3,
+    "call": {
+        "context": "CatalogController.get_catalog",
+        "request": {"method": "POST", "url": "http://edc/management/v3/catalog/request"},
+        "response": {"status_code": 200, "duration_ms": 1373.2},
+    },
+    "event_id": "ic-tck/dtr-filterability/execution/pull_dtr/calls/3/tck.test.step.call/2229712",
+}
+
+
+class TestACallLine:
+    def test_it_names_the_step_the_call_and_who_made_it(self) -> None:
+        """Fourteen calls of one step used to print as fourteen identical lines."""
+        line = render("step.call", _STEP_CALL)
+        assert "pull_dtr" in line
+        assert "#3" in line
+        assert "CatalogController.get_catalog" in line
+        assert "→ POST http://edc/management/v3/catalog/request" in line
+        assert "← 200 in 1373ms" in line
+
+    def test_a_step_the_test_did_not_name_falls_back_to_what_it_is(self) -> None:
+        """The same name the event's own id is built from, so the two agree."""
+        line = render("step.call", {**_STEP_CALL, "step_id": None})
+        assert "pull_data_filtered" in line
+
+    def test_a_call_whose_transport_raised_says_so_instead_of_a_status(self) -> None:
+        refused = {
+            **_STEP_CALL,
+            "call": {
+                "context": "testlab/http_client",
+                "request": {"method": "GET", "url": "http://sut/probe"},
+                "error": "connection refused",
+            },
+        }
+        line = render("step.call", refused)
+        assert "connection refused" in line
+        assert "←" not in line
+
+    def test_the_body_is_left_to_the_trace(self) -> None:
+        """One line per call, and there are hundreds of calls in a poll loop."""
+        loud = {
+            **_STEP_CALL,
+            "call": {
+                **_STEP_CALL["call"],
+                "request": {**_STEP_CALL["call"]["request"], "body": {"blob": "x" * 5000}},
+            },
+        }
+        assert len(render("step.call", loud)) < 300
+
+
+class TestTheTracedEventId:
+    def test_a_line_names_the_event_it_was_rendered_from(self) -> None:
+        assert render("step.call", _STEP_CALL).endswith(f"id={_STEP_CALL['event_id']}")
+
+    def test_an_untraced_run_says_nothing_about_an_id(self) -> None:
+        untraced = {key: value for key, value in _STEP_CALL.items() if key != "event_id"}
+        assert "id=" not in render("step.call", untraced)
+
+    def test_the_id_goes_on_the_event_not_on_the_last_wire_line(self) -> None:
+        """A step outcome prints its request and response underneath itself."""
+        line = render("step.completed", {**_STEP_WITH_EXCHANGE, "event_id": "ic-tck/x/step.passed"})
+        head, _, rest = line.partition("\n")
+        assert head.endswith("id=ic-tck/x/step.passed")
+        assert rest.startswith("  → GET")
+
+    def test_every_kind_carries_it_including_the_ones_with_no_branch(self) -> None:
+        line = render(
+            "job.started",
+            {"kind": "job_started", "tck_id": "probe", "event_id": "probe/tck.start/ab"},
+        )
+        assert line == "job.started [probe] id=probe/tck.start/ab"
+
+
+class TestTheOtherLines:
+    def test_a_started_step_names_itself_and_its_phase(self) -> None:
+        line = render(
+            "step.started",
+            {
+                "kind": "step_started",
+                "test_id": "wiring",
+                "step_id": "call",
+                "step_type": "http/http_request",
+                "phase": "execution",
+            },
+        )
+        assert "call" in line and "http/http_request" in line and "(execution)" in line
+
+    def test_a_finished_test_reports_its_check_tally(self) -> None:
+        line = render(
+            "test.completed",
+            {
+                "kind": "test_completed",
+                "result": {
+                    "test_name": "Wiring",
+                    "status": "COMPLETED",
+                    "assertion_summary": {"total": 4, "passed": 4},
+                },
+            },
+        )
+        assert "COMPLETED" in line and "4/4 checks passed" in line
+
+    def test_an_event_with_nothing_to_add_renders_as_itself(self) -> None:
+        assert render("job.started", {"kind": "job_started", "tck_id": "probe"}) == (
+            "job.started [probe]"
+        )
+
+
+_STEP_WAITING = {
+    "kind": "step_waiting",
+    "test_id": "external-callback",
+    "step_id": "await_call",
+    "step_type": "mock/wait/http_request",
+    "listener": {
+        "method": "POST",
+        "url": "http://localhost:8100/testlab-e2e/callback",
+        "path": "/testlab-e2e/callback",
+    },
+    "timeout_s": 30.0,
+}
+
+_STEP_RECEIVED = {
+    "kind": "step_received",
+    "test_id": "external-callback",
+    "step_id": "await_call",
+    "step_type": "mock/wait/http_request",
+    "listener": _STEP_WAITING["listener"],
+    "request": {
+        "listener_name": "POST:/testlab-e2e/callback",
+        "method": "POST",
+        "path": "/testlab-e2e/callback",
+        "headers": {"content-type": "application/json"},
+        "query_params": {},
+        "payload": {"from": "stub-sut"},
+        "received_at": "2026-09-10T12:00:03.412000+00:00",
+        "timed_out": False,
+    },
+    "waited_ms": 3012,
+}
+
+
+class TestAWaitingLine:
+    """The line for the person standing in for the SUT: where to call."""
+
+    def test_it_leads_with_the_method_and_the_url_to_call(self) -> None:
+        line = render("step.waiting", _STEP_WAITING)
+        assert "call POST http://localhost:8100/testlab-e2e/callback" in line
+        assert "await_call" in line
+        assert "mock/wait/http_request" in line
+
+    def test_a_blocked_step_says_how_long_it_will_wait(self) -> None:
+        assert "(up to 30s)" in render("step.waiting", _STEP_WAITING)
+
+    def test_it_frames_the_wait_so_a_person_sees_it_and_acts(self) -> None:
+        lines = render("step.waiting", _STEP_WAITING).splitlines()
+        assert lines[1] == "=" * 78 and lines[-1] == "=" * 78
+        assert lines[2].startswith("  ACTION REQUIRED") and lines[2].endswith("waits up to 30s")
+        assert "    1. Send POST http://localhost:8100/testlab-e2e/callback." in lines
+
+    def test_a_dataplane_wait_says_which_offer_and_never_the_mock_url(self) -> None:
+        waiting = {
+            **_STEP_WAITING,
+            "step_type": "mock/wait/dataplane/http_request",
+            "listener": {
+                **_STEP_WAITING["listener"],
+                "via": "dataplane",
+                "offer": {
+                    "asset_id": "testlab-ccmapi-run-1",
+                    "dsp_url": "https://engine-edc.example/api/v1/dsp",
+                    "participant_id": "did:web:engine.example:BPNL000000000TLB",
+                    "properties": {"dct:type": {"@id": "https://w3id.org/catenax/taxonomy#CCMAPI"}},
+                    "catalog_filters": [
+                        {
+                            "operandLeft": "'http://purl.org/dc/terms/type'.'@id'",
+                            "operator": "=",
+                            "operandRight": "https://w3id.org/catenax/taxonomy#CCMAPI",
+                        }
+                    ],
+                },
+            },
+        }
+        text = render("step.waiting", waiting)
+        assert "localhost:8100" not in text
+        assert "POST /testlab-e2e/callback through the test suite's connector" in text
+        assert "    connector  https://engine-edc.example/api/v1/dsp" in text
+        assert (
+            "    filter     'http://purl.org/dc/terms/type'.'@id' = "
+            "https://w3id.org/catenax/taxonomy#CCMAPI"
+        ) in text
+        assert "    2. Negotiate the offer it returns and get its EDR." in text
+
+    def test_the_test_s_action_replaces_the_derived_steps(self) -> None:
+        waiting = {
+            **_STEP_WAITING,
+            "listener": {
+                **_STEP_WAITING["listener"],
+                "action": {
+                    "label": "Send the callback",
+                    "description": "The stub stands in for the SUT.",
+                    "recommendation": ["Run the stub.", "Wait for its 200."],
+                    "fields": [{"label": "run", "value": "r-1"}],
+                },
+            },
+        }
+        lines = render("step.waiting", waiting).splitlines()
+        assert lines[2].startswith("  ACTION REQUIRED — Send the callback")
+        assert "  The stub stands in for the SUT." in lines
+        assert [line for line in lines if line.startswith("    ") and ". " in line[:8]] == [
+            "    1. Run the stub.",
+            "    2. Wait for its 200.",
+        ]
+        assert "    run  r-1" in lines
+
+    def test_an_opened_endpoint_says_where_to_call_and_nothing_about_a_budget(self) -> None:
+        opened = {
+            "kind": "step_listening",
+            "test_id": "external-callback",
+            "step_id": "open_callback",
+            "step_type": "mock/api",
+            "listener": _STEP_WAITING["listener"],
+        }
+        line = render("step.listening", opened)
+        assert line.startswith("step.listening [external-callback] open_callback mock/api")
+        assert "call POST http://localhost:8100/testlab-e2e/callback" in line
+        assert "up to" not in line
+
+
+class TestAReceivedLine:
+    def test_it_says_what_came_in_and_how_long_the_step_waited(self) -> None:
+        line = render("step.received", _STEP_RECEIVED)
+        assert "← POST /testlab-e2e/callback" in line
+        assert "after 3012ms" in line
+        assert "stub-sut" in line
+
+    def test_a_call_without_a_body_prints_no_body(self) -> None:
+        bare = {**_STEP_RECEIVED, "request": {**_STEP_RECEIVED["request"], "payload": None}}
+        assert "body=" not in render("step.received", bare)

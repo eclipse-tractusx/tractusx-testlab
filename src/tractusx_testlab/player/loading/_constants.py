@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -31,7 +31,7 @@ K_VARIABLES, K_SETUP, K_STEPS, K_TEARDOWN = "variables", "setup", "steps", "tear
 K_OUTPUTS = "outputs"
 K_IMPORT, K_IMPORTS, K_TESTS = "import", "imports", "tests"
 K_DATASPACE_VERSION, K_ALLOW_SDK_CALLS = "dataspace_version", "allow_sdk_calls"
-K_BASE_URL, K_AUTH, K_ON_FAILURE = "base_url", "auth", "on_failure"
+K_BASE_URL, K_AUTH = "base_url", "auth"
 K_TIMEOUT_S, K_STORE_IN_MEMORY, K_IF = "timeout_s", "store_in_memory", "if"
 K_PATH, K_VALUE, K_SOURCE, K_SEVERITY = "path", "value", "source", "severity"
 

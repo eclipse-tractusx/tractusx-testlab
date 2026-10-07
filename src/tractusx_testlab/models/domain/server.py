@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,12 +14,13 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Server models — uploaded packages and vault configuration."""
@@ -27,9 +28,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from tractusx_testlab.models.primitives.enums import PackageFormat
 
@@ -40,12 +40,19 @@ class UploadedPackage(BaseModel):
     version: str
     format: PackageFormat = PackageFormat.PLAIN
     size_bytes: int = 0
-    uploaded_at: Optional[datetime] = None
+    uploaded_at: datetime | None = None
     checksum: str = ""
-    file_path: Optional[str] = None
+    file_path: str | None = None
 
 
 class VaultConfig(BaseModel):
+    """Where the vault is, and the token that opens it.
+
+    The token is left out of ``repr()`` — and so of every log line, traceback
+    and debugger view that prints the config holding it — but not out of a
+    dump: the config is rebuilt from its dump, and the vault client needs it.
+    """
+
     vault_url: str
-    vault_token: str = ""
+    vault_token: str = Field(default="", repr=False)
     vault_secret_path: str = "secret/data/testlab"

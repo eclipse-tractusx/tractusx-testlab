@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -31,27 +31,26 @@ delegating fully to Pydantic for alias resolution and model validation.
 from __future__ import annotations
 
 import logging
+import zipfile
 from pathlib import Path
 
 import yaml
 from pydantic import TypeAdapter
 
 from tractusx_testlab.models.authoring.definitions import (
-    ScriptDefinition,
-    ScriptDefinitionV2,
     TckDefinition,
-    TckDefinitionV2,
+    TestDefinition,
 )
 
 logger = logging.getLogger(__name__)
 
-_SCRIPT_ADAPTER: TypeAdapter[ScriptDefinitionV2] = TypeAdapter(ScriptDefinition)  # type: ignore[assignment]
-_TCK_ADAPTER: TypeAdapter[TckDefinitionV2] = TypeAdapter(TckDefinition)  # type: ignore[assignment]
+_TEST_ADAPTER: TypeAdapter[TestDefinition] = TypeAdapter(TestDefinition)
+_TCK_ADAPTER: TypeAdapter[TckDefinition] = TypeAdapter(TckDefinition)
 
 
 def _load_yaml(path: Path) -> dict:
     """Load a YAML file and assert it is a mapping."""
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
         raise ValueError(f"Expected a YAML mapping in {path}, got {type(data).__name__}")
@@ -62,20 +61,46 @@ def _normalize_discriminator(data: dict, path: Path) -> dict:
     """Validate that the ``syntax`` discriminator key is present."""
     if "syntax" not in data:
         raise ValueError(
-            f"Error in {path}: Missing mandatory field 'syntax'. Expected 'syntax: v2'."
+            f"Error in {path}: Missing mandatory field 'syntax'. Expected 'syntax: v1-alpha'."
         )
     return data
 
 
-def parse_script_file(path: Path) -> ScriptDefinitionV2:
-    """Load and parse a single script YAML file using strict syntax routing."""
+def parse_test_file(path: Path) -> TestDefinition:
+    """Load and parse a single test YAML file using strict syntax routing."""
     data = _load_yaml(path)
     normalized = _normalize_discriminator(data, path)
-    return _SCRIPT_ADAPTER.validate_python(normalized)
+    return _TEST_ADAPTER.validate_python(normalized)
 
 
-def parse_tck_file(path: Path) -> TckDefinitionV2:
+def parse_tck_file(path: Path) -> TckDefinition:
     """Load and parse a TCK manifest YAML file using strict syntax routing."""
     data = _load_yaml(path)
     normalized = _normalize_discriminator(data, path)
     return _TCK_ADAPTER.validate_python(normalized)
+
+
+def is_encrypted_package(path: Path) -> bool:
+    """True when the ``.tck`` at *path* holds ``payload.enc``.
+
+    Anything that is not a readable ZIP is simply not an encrypted package.
+    Whether it is a package at all is the loader's call, and it says so with an
+    error a person can act on; this only decides which of the two shapes it is.
+    """
+    try:
+        with zipfile.ZipFile(path, "r") as archive:
+            return "payload.enc" in archive.namelist()
+    except (OSError, zipfile.BadZipFile):
+        return False
+
+
+def encrypted_package_compiler_id(path: Path) -> str:
+    """The signing-key fingerprint the encrypted ``.tck`` at *path* names.
+
+    Read before the signature is checked, so it only chooses which trusted key to
+    check against. The signature covers the manifest: a forged value selects a
+    key the package was not signed with, and verification refuses it.
+    """
+    with zipfile.ZipFile(path, "r") as archive:
+        manifest = yaml.safe_load(archive.read("manifest.yaml")) or {}
+    return str(manifest.get("security", {}).get("compiler_id", ""))

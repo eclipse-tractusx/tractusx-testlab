@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -28,14 +28,16 @@ from __future__ import annotations
 def create_app(*args, **kwargs):
     """Lazy proxy to app.create_app — avoids circular import at module load."""
     from tractusx_testlab.server.app import create_app as _create_app
+
     return _create_app(*args, **kwargs)
 
 
 def __getattr__(name):
     if name == "PackageStorage":
         from tractusx_testlab.server.storage import PackageStorage
+
         return PackageStorage
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["create_app", "PackageStorage"]
+__all__ = ["PackageStorage", "create_app"]

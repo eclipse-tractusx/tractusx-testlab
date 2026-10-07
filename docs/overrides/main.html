@@ -41,8 +41,19 @@
       position: relative !important;
     }
 
+    /* Logo and title sit centred in the header, whatever flanks them. */
+    .tx-header__brand {
+      position: absolute !important;
+      left: 50% !important;
+      top: 0 !important;
+      transform: translateX(-50%) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      height: 3rem !important;
+      z-index: 1 !important;
+    }
+
     .md-header__button.md-logo {
-      order: 1 !important;
       flex: 0 0 auto !important;
       margin: 0 !important;
       padding: 0.2rem 0.1rem !important;
@@ -51,7 +62,7 @@
     }
 
     .md-header__button[for="__drawer"] {
-      order: 2 !important;
+      order: -1 !important;
       flex: 0 0 auto !important;
       margin: 0 0.2rem !important;
       display: none !important;
@@ -64,7 +75,6 @@
     }
 
     .md-header__title {
-      order: 3 !important;
       flex: 0 0 auto !important;
       margin: 0 0 0 0.15rem !important;
       overflow: visible !important;
@@ -114,15 +124,30 @@
 
     .md-search {
       order: 5 !important;
-      flex: 1 1 auto !important;
-      max-width: none !important;
-      width: auto !important;
-      margin: 0 0 0 0.75rem !important;
+      flex: 0 0 auto !important;
+    }
+
+    @media screen and (min-width: 60em) {
+      .md-search {
+        margin-left: auto !important;
+      }
     }
 
     label[for="__search"] {
       order: 4 !important;
       flex: 0 0 auto !important;
+      margin-left: auto !important;
+    }
+
+    /* Phones: drop the badge and shrink the title so it clears the icons. */
+    @media screen and (max-width: 59.984375em) {
+      .md-header__title::after {
+        display: none !important;
+      }
+
+      .md-header__title::before {
+        font-size: 0.9rem !important;
+      }
     }
 
     .md-header .md-version {

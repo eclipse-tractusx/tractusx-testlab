@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,96 +14,79 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""Compiler — orchestrates validation + compilation into encrypted .stck packages."""
+"""Compiler — validates a TCK manifest and compiles it into a package."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
-from tractusx_testlab.compiler.packager import Packager
-from tractusx_testlab.compiler.validation.validator import ScriptValidator, ValidationResult
-from tractusx_testlab.models import PackageManifest
-from tractusx_testlab.scripting.parser import YamlParser
-from tractusx_testlab.security.trust.identity import PlayerIdentity
+from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.compiler.progress import SILENT, CompileProgress
+from tractusx_testlab.compiler.validation.issues import ValidationResult
+from tractusx_testlab.compiler.validation.validator import TestValidator
 
 
 class Compiler:
-    """High-level API: parse YAML → validate → encrypt + sign → .stck."""
-    __slots__ = ("_validator", "_parser")
+    """High-level API: parse YAML → validate → compile.
 
-    def __init__(self) -> None:
-        self._validator = ScriptValidator()
+    Sealing and encryption belong to the packaging step, not here — see
+    :mod:`tractusx_testlab.cli.compile`.
+
+    *progress* hears each stage as it starts, and each test as it is checked
+    (:mod:`~tractusx_testlab.compiler.progress`); the packaging step reports
+    its own stages to the same :attr:`progress`.
+    """
+
+    __slots__ = ("_parser", "_progress", "_validator")
+
+    def __init__(self, progress: CompileProgress = SILENT) -> None:
+        self._validator = TestValidator()
         self._parser = YamlParser()
+        self._progress = progress
 
-    def validate(self, script_path: Path, version: Optional[str] = None) -> ValidationResult:
-        """Validate a YAML test script without compiling."""
-        definition = self._parser.parse_script(script_path)
-        return self._validator.validate(definition, version=version)
+    @property
+    def progress(self) -> CompileProgress:
+        """Where this compiler reports its stages."""
+        return self._progress
 
-    def compile(
-        self,
-        script_path: Path,
-        compiler_identity: PlayerIdentity,
-        recipient_keys: dict[str, bytes],
-        output_path: Optional[Path] = None,
-        version: Optional[str] = None,
-    ) -> tuple[PackageManifest, ValidationResult]:
-        """Validate and compile a script into a .tck archive.
+    def validate(self, manifest_path: Path, version: str | None = None) -> ValidationResult:
+        """Validate a YAML tck and its tests without compiling."""
+        from tractusx_testlab.compiler.validation._manifest_validation import validate_tck_manifest
 
-        Args:
-            script_path: Path to the YAML test script.
-            compiler_identity: The compiler's identity (for signing).
-            recipient_keys: {fingerprint: RSA public PEM} for each player.
-            output_path: Destination file. Defaults to ``<script_name>.tck``.
-            version: Optional connector version for version-specific validation.
-
-        Returns:
-            (manifest, validation_result) — manifest is None-free only if valid.
-
-        Raises:
-            ValueError: If validation produces errors.
-        """
-        definition = self._parser.parse_script(script_path)
-        validation_result = self._validator.validate(definition, version=version)
-
-        if not validation_result.valid:
-            raise ValueError(
-                f"Script validation failed with {sum(1 for issue in validation_result.issues if issue.level == 'error')} error(s): "
-                + "; ".join(issue.message for issue in validation_result.issues if issue.level == "error")
-            )
-
-        script_yaml = script_path.read_bytes()
-        if output_path is None:
-            output_path = script_path.with_suffix(".stck")
-
-        manifest = Packager.build(
-            script_yaml=script_yaml,
-            compiler_signing_key=compiler_identity.signing.private_bytes,
-            compiler_id=compiler_identity.signing.fingerprint,
-            recipient_public_keys=recipient_keys,
-            output_path=output_path,
-            name=definition.name,
-            version=definition.version,
+        self._progress.stage(f"Reading {manifest_path.name}")
+        definition = self._parser.parse_tck(manifest_path)
+        # Validate restrictions and rules of tck and test files
+        self._progress.stage("Checking the tests", total=len(definition.tests))
+        result = self._validator.validate_tck(
+            definition, manifest_path.parent, version=version, on_test=self._progress.item
         )
 
-        return manifest, validation_result
+        # Validate the tck and test files against JSON schemas
+        self._progress.stage("Checking the manifest and tests against the JSON schemas")
+        try:
+            manifest_data = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+            validate_tck_manifest(manifest_data, manifest_path.parent)
+        except ValueError as exc:
+            for message in _new_findings(str(exc), result):
+                result.add_error(message)
+
+        return result
 
     def compile_plain(
         self,
         manifest_path: Path,
-        output_path: Optional[Path] = None,
-        version: Optional[str] = None,
+        output_path: Path | None = None,
+        version: str | None = None,
     ) -> tuple[dict, dict]:
         """Compile a TCK manifest into manifest.yaml + tck-execution.json.
 
@@ -114,116 +97,53 @@ class Compiler:
 
         Returns:
             Tuple of (manifest_dict, execution_dict).
+
+        Raises:
+            ValueError: If semantic validation produces errors.
         """
         from tractusx_testlab.compiler.ir.builder import build_ir
+
+        validation_result = self.validate(manifest_path, version=version)
+        if not validation_result.valid:
+            raise ValueError(
+                f"Validation failed with {len(validation_result.issues)} error(s):\n"
+                + "\n".join(
+                    f"  [{i.phase or 'step'}] {i.message}" for i in validation_result.issues
+                )
+            )
 
         if output_path is None:
             output_path = manifest_path.parent / "plain"
 
-        return build_ir(
-            manifest_path=manifest_path,
-            output_path=output_path,
-            version=version,
-        )
+        self._progress.stage("Building the execution plan and packing its assets")
+        return build_ir(manifest_path=manifest_path, output_path=output_path, version=version)
 
-    def compile_tck(
-        self,
-        manifest_path: Path,
-        compiler_identity: PlayerIdentity,
-        recipient_keys: dict[str, bytes],
-        output_path: Optional[Path] = None,
-        version: Optional[str] = None,
-    ) -> tuple[PackageManifest, ValidationResult]:
-        """Compile a TCK manifest into a self-contained .tck.
 
-        Referenced script files are inlined so the resulting package
-        carries everything needed to run — no external files required.
+def _new_findings(report: str, already: ValidationResult) -> list[str]:
+    """The JSON-Schema findings that say something the model pass has not.
 
-        Args:
-            manifest_path: Path to the TCK manifest YAML.
-            compiler_identity: The compiler's identity (for signing).
-            recipient_keys: {fingerprint: RSA public PEM} for each player.
-            output_path: Destination .tck file.
-            version: Optional connector version for validation.
+    The schemas are generated from the authoring models, so the two passes state
+    one contract from two directions and agree about most of it. Reported side
+    by side, one missing file was "Referenced test file not found" twice and one
+    misspelled key was two differently-worded errors — an author counting errors
+    to know how much is wrong counted double.
 
-        Returns:
-            (manifest, validation_result)
-        """
-        with open(manifest_path, "r", encoding="utf-8") as manifest_file:
-            tck_data = yaml.safe_load(manifest_file)
-
-        inlined_tests, combined_validation = self._resolve_and_validate_test_entries(
-            tck_data.get("tests", []),
-            manifest_path.parent,
-            version,
-        )
-
-        if not combined_validation.valid:
-            errors = [issue for issue in combined_validation.issues if issue.level == "error"]
-            raise ValueError(
-                f"Validation failed with {len(errors)} error(s): "
-                + "; ".join(issue.message for issue in errors)
-            )
-
-        tck_data["tests"] = inlined_tests
-        bundled_yaml = yaml.dump(tck_data, default_flow_style=False, sort_keys=False).encode("utf-8")
-
-        if output_path is None:
-            output_path = manifest_path.with_suffix(".stck")
-
-        name = tck_data.get("name", manifest_path.stem)
-        ver = tck_data.get("version", "1.0")
-
-        manifest = Packager.build(
-            script_yaml=bundled_yaml,
-            compiler_signing_key=compiler_identity.signing.private_bytes,
-            compiler_id=compiler_identity.signing.fingerprint,
-            recipient_public_keys=recipient_keys,
-            output_path=output_path,
-            name=name,
-            version=ver,
-        )
-
-        return manifest, combined_validation
-
-    def _resolve_and_validate_test_entries(
-        self,
-        tests_raw: list,
-        base_dir: Path,
-        version: Optional[str],
-    ) -> tuple[list[dict], ValidationResult]:
-        """Resolve string file references to inline dicts and validate each entry.
-
-        Returns the list of inlined test dicts and a combined validation result.
-        """
-        inlined_tests: list[dict] = []
-        combined_validation = ValidationResult()
-
-        for entry in tests_raw:
-            script_dict = self._load_test_entry(entry, base_dir)
-            definition = YamlParser.parse_script_from_dict(script_dict)
-            validation_result = self._validator.validate(definition, version=version)
-            combined_validation.issues.extend(validation_result.issues)
-            inlined_tests.append(script_dict)
-
-        return inlined_tests, combined_validation
-
-    @staticmethod
-    def _load_test_entry(entry, base_dir: Path) -> dict:
-        """Resolve a single test entry to a dict, loading from file if it's a string reference."""
-        if isinstance(entry, dict):
-            return entry
-
-        # Strip the !include prefix if present
-        _INCLUDE_PREFIX = "!include "
-        if isinstance(entry, str) and entry.startswith(_INCLUDE_PREFIX):
-            entry = entry[len(_INCLUDE_PREFIX):].strip()
-
-        script_file = base_dir / entry
-        if not script_file.exists():
-            script_file = base_dir / "tests" / entry
-        if not script_file.exists():
-            raise FileNotFoundError(f"Referenced script not found: {entry}")
-
-        with open(script_file, "r", encoding="utf-8") as script_handle:
-            return yaml.safe_load(script_handle)
+    A file the model pass already spoke about is therefore left to it: its
+    findings name the step and the line, and the schema's cannot.
+    """
+    spoken_for = {
+        issue.message.split(":", 1)[0]
+        for issue in already.issues
+        if issue.message.startswith("tests/")
+    }
+    seen = {issue.message for issue in already.issues}
+    findings: list[str] = []
+    for line in report.splitlines():
+        if not line.startswith("  - "):
+            continue
+        message = line[4:]
+        if message in seen or any(f"in {name})" in message for name in spoken_for):
+            continue
+        seen.add(message)
+        findings.append(message)
+    return findings
