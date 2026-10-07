@@ -512,11 +512,11 @@ In the trace it is a `tck.test.step.received`.
 
 #### `step_selecting`
 
-`connector/query_catalog/select_asset` read a catalog that offers more than one
-asset and waits for the operator to choose one. The host answers through the
-player — `player.jobs.selections.answer(job_id, asset_id, step_id)`, or
-`POST /testlab/tck-execution/{job_id}/select` with `{"asset_id": …, "step_id": …}`
-on the TestLab server — with one of the options' `asset_id`. A pause stops the
+`flow/select`, or a step built on it such as `connector/datasets/select`, has
+more than one option and waits for the operator to choose one. The host answers
+through the player — `player.jobs.selections.answer(job_id, value, step_id)`, or
+`POST /testlab/tck-execution/{job_id}/select` with `{"value": …, "step_id": …}`
+on the TestLab server — with one of the options' `id`. A pause stops the
 clock and keeps the question open; when the run resumes, a fresh
 `step_selecting` carries what is left of the timeout as `timeout_s`.
 
@@ -526,9 +526,17 @@ clock and keeps the question open; when the run resumes, a fresh
 | `job_id` | string | |
 | `test_id` | string | |
 | `step_id` | string \| null | The id to send back with the answer. |
-| `step_type` | string | `connector/query_catalog/select_asset`. |
-| `selection` | `AssetSelection` | `counter_party_address`, `counter_party_id`, `options` and the test's `action`, if any. Each option is an `asset_id`, the dataset's other `properties`, and the `policies` (`odrl:hasPolicy`) it is offered under. |
+| `step_type` | string | `flow/select`, `connector/datasets/select`, … |
+| `selection` | `Selection` | `presentation`, `options` and the test's `action`, if any. Each option is an `id` (the answer), a `label`, an optional `description` and `details`. |
 | `timeout_s` | number | How long the step waits for the choice, pauses excluded. |
+
+`presentation` says how to show the options:
+
+- `dropdown` — a plain list of labels (`flow/select`); `details` is whatever the test wrote.
+- `catalog_offers` — one entry per asset × offer pair (`connector/datasets/select`).
+  `details` holds `asset_id`, `offer_id`, `offer_index`, `offer_count`, the
+  asset's `properties` (the dataset without its ids, offers and distributions)
+  and the offer's `policy` as the provider wrote it.
 
 ```json
 {
@@ -536,14 +544,17 @@ clock and keeps the question open; when the run resumes, a fresh
   "job_id": "3f1c…",
   "test_id": "certificate-push",
   "step_id": "select_ccmapi",
-  "step_type": "connector/query_catalog/select_asset",
+  "step_type": "connector/datasets/select",
   "selection": {
-    "counter_party_address": "https://sut.example/api/v1/dsp",
-    "counter_party_id": "BPNL000000000001",
+    "presentation": "catalog_offers",
     "options": [
-      {"asset_id": "ccmapi-1", "properties": {"dct:type": {"@id": "cx-taxo:CCMAPI"}},
-       "policies": [{"@id": "offer-1", "odrl:permission": {"odrl:action": {"@id": "odrl:use"}}}]},
-      {"asset_id": "ccmapi-2", "properties": {"dct:type": {"@id": "cx-taxo:CCMAPI"}}, "policies": []}
+      {"id": "ccmapi-1::offer-1", "label": "ccmapi-1", "description": "offer 1 of 1: offer-1",
+       "details": {"asset_id": "ccmapi-1", "offer_id": "offer-1", "offer_index": 1, "offer_count": 1,
+                   "properties": {"dct:type": {"@id": "cx-taxo:CCMAPI"}},
+                   "policy": {"@id": "offer-1", "odrl:permission": {"odrl:action": {"@id": "odrl:use"}}}}},
+      {"id": "ccmapi-2::offer-2", "label": "ccmapi-2", "description": "offer 1 of 1: offer-2",
+       "details": {"asset_id": "ccmapi-2", "offer_id": "offer-2", "offer_index": 1, "offer_count": 1,
+                   "properties": {"dct:type": {"@id": "cx-taxo:CCMAPI"}}, "policy": {"@id": "offer-2"}}}
     ],
     "action": null
   },
@@ -551,7 +562,7 @@ clock and keeps the question open; when the run resumes, a fresh
 }
 ```
 
-On the console: `step.selecting [certificate-push] select_ccmapi connector/query_catalog/select_asset — choose 1 of 2 (up to 300s)`, then one row per option.
+On the console: `step.selecting [certificate-push] select_ccmapi connector/datasets/select — choose 1 of 2 (up to 300s)`, then one row per option.
 In the trace it is a `tck.test.step.selecting`.
 
 #### `step_selected`
@@ -564,12 +575,12 @@ The operator chose. Published before the step returns its output.
 | `job_id` | string | |
 | `test_id` | string | |
 | `step_id` | string \| null | |
-| `step_type` | string | `connector/query_catalog/select_asset`. |
-| `asset_id` | string | The asset chosen. |
+| `step_type` | string | `flow/select`, `connector/datasets/select`, … |
+| `option` | `SelectionOption` | The option chosen, as it was offered. |
 | `waited_ms` | integer | How long the step waited for the choice, pauses excluded. |
 
-On the console: `step.selected [certificate-push] select_ccmapi connector/query_catalog/select_asset → ccmapi-1 after 5120ms`.
-In the trace it is a `tck.test.step.selected`.
+On the console: `step.selected [certificate-push] select_ccmapi connector/datasets/select → ccmapi-1 after 5120ms`.
+In the trace it is a `tck.test.step.selected` (payload `value`, `option`, `waited_ms`).
 
 ### Assertions
 

@@ -115,27 +115,26 @@ execution:
       - uses: validate/assert
         with: { input: datasets, operator: length_equals, value: 1 }
 
-  # 1b. The same catalog, through the step that lets an operator choose an
-  # asset. One asset matches, so it is taken without asking — the run is
-  # unattended.
+  # 1b. The catalog's datasets, through the step that lets an operator choose
+  # an asset and an offer. One pair is there, so it is taken without asking —
+  # the run is unattended.
   - id: selected
-    uses: connector/query_catalog/select_asset
-    name: Take the one asset the catalog offers
+    uses: connector/datasets/select
+    name: Take the one asset and offer the catalog holds
     with:
-      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
-      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
-      filters:
-        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
-          operator: "="
-          operand_right: "${{ setup.asset.asset_id }}"
+      datasets: "${{ execution.catalog.datasets }}"
     returns:
       asset_id:
         type: string
+      policy:
+        type: object
       selected_by:
         type: string
     validate:
       - uses: validate/assert
         with: { input: asset_id, operator: equals, value: "${{ setup.asset.asset_id }}" }
+      - uses: validate/assert
+        with: { input: policy, operator: not_null }
       - uses: validate/assert
         with: { input: selected_by, operator: equals, value: single }
 

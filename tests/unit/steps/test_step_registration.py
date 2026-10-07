@@ -55,7 +55,7 @@ def _step_sources() -> list[Path]:
 
 #: Step classes that are deliberately not registered: shared bases that exist
 #: only for the registered subclasses below them to inherit ``execute`` from.
-_ABSTRACT_STEP_CLASSES = {"OAuth2GetTokenStep"}
+_ABSTRACT_STEP_CLASSES = {"OAuth2GetTokenStep", "SelectionStep"}
 
 _STEP_DECORATOR = re.compile(r"^step\((['\"])(?P<step_type>.+?)\1")
 

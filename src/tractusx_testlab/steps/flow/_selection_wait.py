@@ -40,8 +40,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from tractusx_testlab.models import StepExecutionError
-from tractusx_testlab.models.runtime.selection import AssetSelection, SelectionOption
-from tractusx_testlab.steps.dsp_keys import ASSET_ID_KEYS, POLICY_KEYS, first_present
+from tractusx_testlab.models.runtime.selection import Selection, SelectionOption
 
 if TYPE_CHECKING:
     from tractusx_testlab.models import StepDefinition
@@ -49,38 +48,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-#: What a dataset carries that is not a property of the asset: its node, its
-#: offers and where to fetch it from.
-_NOT_PROPERTIES: frozenset[str] = frozenset(
-    {"@id", "@type", "@context", *POLICY_KEYS, "distribution", "dcat:distribution"}
-)
-
-
-def asset_id_of(dataset: dict) -> str | None:
-    """The id of the asset behind *dataset*, whichever DSP generation wrote it."""
-    value = first_present(dataset, ASSET_ID_KEYS)
-    return str(value) if value is not None else None
-
-
-def option_of(dataset: dict) -> SelectionOption:
-    """*dataset* as the operator is shown it: its id, its properties, its offers."""
-    policies = first_present(dataset, POLICY_KEYS)
-    if isinstance(policies, dict):
-        policies = [policies]
-    return SelectionOption(
-        asset_id=asset_id_of(dataset) or "",
-        properties={key: value for key, value in dataset.items() if key not in _NOT_PROPERTIES},
-        policies=list(policies or []),
-    )
-
 
 async def await_choice(
     context: StepContext,
     definition: StepDefinition,
-    selection: AssetSelection,
+    selection: Selection,
     timeout: float,
-) -> tuple[str, float]:
-    """The asset id the operator chose, and the seconds the step waited for it.
+) -> tuple[SelectionOption, float]:
+    """The option the operator chose, and the seconds the step waited for it.
 
     Raises ``StepExecutionError`` when nobody can be asked (a context the player
     did not bind), when the timeout runs out, and when the run is cancelled.
@@ -90,13 +65,11 @@ async def await_choice(
     if jobs is None:
         raise StepExecutionError(
             step_type,
-            "there is no operator to choose an asset: the step ran outside a player "
-            "job. Name the asset with 'asset_id' instead.",
+            "there is no operator to choose: the step ran outside a player job.",
         )
+    by_id = {option.id: option for option in selection.options}
     job_id = context.job.job_id
-    answer = jobs.selections.ask(
-        job_id, definition.id, [option.asset_id for option in selection.options]
-    )
+    answer = jobs.selections.ask(job_id, definition.id, list(by_id))
     try:
         waited = 0.0
         context.report_selecting(step_type, definition.id, selection, timeout)
@@ -109,21 +82,21 @@ async def await_choice(
             if not paused:
                 raise StepExecutionError(
                     step_type,
-                    f"no asset was chosen within {timeout:.0f}s. Offered: "
-                    f"{', '.join(option.asset_id for option in selection.options)}.",
+                    f"nothing was chosen within {timeout:.0f}s. Offered: "
+                    f"{', '.join(option.label for option in selection.options)}.",
                 )
             remaining = round(max(timeout - waited, 0.0), 3)
-            logger.info("Paused with %.0fs left to choose an asset", remaining)
+            logger.info("Paused with %.0fs left to choose", remaining)
             await context.hold.pause_point()
             if not answer.done():
                 context.report_selecting(step_type, definition.id, selection, remaining)
     finally:
         jobs.selections.close(job_id)
     if answer.cancelled():
-        raise StepExecutionError(step_type, "the run was cancelled before an asset was chosen.")
-    asset_id = answer.result()
-    context.report_selected(step_type, definition.id, asset_id, round(waited * 1000))
-    return asset_id, waited
+        raise StepExecutionError(step_type, "the run was cancelled before anything was chosen.")
+    option = by_id[answer.result()]
+    context.report_selected(step_type, definition.id, option, round(waited * 1000))
+    return option, waited
 
 
 async def _answered_or_paused(context: StepContext, answer: Any, timeout: float) -> bool:

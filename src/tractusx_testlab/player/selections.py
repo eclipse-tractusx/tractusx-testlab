@@ -25,9 +25,9 @@
 """The questions a run puts to its operator, and the answers that come back.
 
 Pause and resume are the only other things an operator tells a running job, and
-neither carries a value. ``connector/query_catalog/select_asset`` needs one: the
-asset, out of the several a catalog offers, that the test is about. The step
-asks here (:meth:`SelectionBoard.ask`) and blocks; whoever hosts the run — the
+neither carries a value. ``flow/select`` (and ``connector/datasets/select``,
+built on it) needs one: the option, out of the several it offers, the test goes
+on with. The step asks here (:meth:`SelectionBoard.ask`) and blocks; whoever hosts the run — the
 TestLab server, or an engine embedding the player — answers here
 (:meth:`SelectionBoard.answer`) when the operator has chosen.
 
@@ -45,7 +45,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class OpenQuestion:
-    """What a run is waiting to be told: which step asks, and the asset ids it accepts."""
+    """What a run is waiting to be told: which step asks, and the option ids it accepts."""
 
     step_id: str | None
     options: tuple[str, ...]
@@ -76,8 +76,8 @@ class SelectionBoard:
         question = self._open.get(job_id)
         return question if question is not None and not question.answer.done() else None
 
-    def answer(self, job_id: str, asset_id: str, step_id: str | None = None) -> None:
-        """Answer *job_id*'s open question with *asset_id*.
+    def answer(self, job_id: str, value: str, step_id: str | None = None) -> None:
+        """Answer *job_id*'s open question with the option id *value*.
 
         *step_id*, when given, has to name the step that asks: an answer
         meant for a question that has since been replaced is refused rather
@@ -85,21 +85,21 @@ class SelectionBoard:
 
         Raises:
             LookupError: the job is not waiting for a selection, or not at *step_id*.
-            ValueError: *asset_id* is not one of the options the step offered.
+            ValueError: *value* is not one of the options the step offered.
         """
         question = self.pending(job_id)
         if question is None:
-            raise LookupError(f"Job '{job_id}' is not waiting for an asset to be selected")
+            raise LookupError(f"Job '{job_id}' is not waiting for a selection")
         if step_id is not None and step_id != question.step_id:
             raise LookupError(
                 f"Job '{job_id}' is waiting for a selection at step "
                 f"'{question.step_id}', not '{step_id}'"
             )
-        if asset_id not in question.options:
+        if value not in question.options:
             raise ValueError(
-                f"'{asset_id}' is not one of the assets offered: {', '.join(question.options)}"
+                f"'{value}' is not one of the options offered: {', '.join(question.options)}"
             )
-        question.answer.set_result(asset_id)
+        question.answer.set_result(value)
 
     def close(self, job_id: str) -> None:
         """Withdraw *job_id*'s question; a step still waiting on it sees it cancelled."""

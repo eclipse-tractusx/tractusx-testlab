@@ -117,7 +117,7 @@ class ListenerReports:
             self._job_id, self._test, step_id, step_type, self._phase, selection, timeout_s
         )
 
-    def selected(self, step_type: str, step_id: str | None, asset_id: str, waited_ms: int) -> None:
+    def selected(self, step_type: str, step_id: str | None, option: Any, waited_ms: int) -> None:
         self._monitor.on_step_selected(
-            self._job_id, self._test, step_id, step_type, self._phase, asset_id, waited_ms
+            self._job_id, self._test, step_id, step_type, self._phase, option, waited_ms
         )
