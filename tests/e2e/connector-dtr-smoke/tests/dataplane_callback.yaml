@@ -165,7 +165,7 @@ setup:
       - uses: validate/assert
         with:
           input: asset_id
-          operator: equals
+          operator: contains
           value: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
 
   - id: create_contract
@@ -187,7 +187,7 @@ setup:
         assetsSelector:
           - operandLeft: "https://w3id.org/edc/v0.0.1/ns/id"
             operator: "="
-            operandRight: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+            operandRight: "${{ setup.create_asset.asset_id }}"
     validate:
       - uses: validate/assert
         with: { input: status_code, operator: equals, value: 200 }
@@ -205,7 +205,7 @@ execution:
       filters:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
           operator: "="
-          operand_right: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+          operand_right: "${{ setup.create_asset.asset_id }}"
       expected_policies: "${{ env.usage_policy }}"
     returns:
       asset_id:
@@ -217,7 +217,7 @@ execution:
         with:
           input: asset_id
           operator: equals
-          value: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+          value: "${{ setup.create_asset.asset_id }}"
       - uses: validate/assert
         with: { input: dataplane_url, operator: not_null }
 
@@ -248,7 +248,7 @@ execution:
     name: Read the callback the engine connector's data plane delivered
     with:
       mock: "${{ setup.open_callback.mock }}"
-      asset_id: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+      asset_id: "${{ setup.create_asset.asset_id }}"
       timeout_s: 30
     returns:
       request_method:
@@ -286,7 +286,7 @@ teardown:
     name: Remove this run's asset
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/assets/testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/assets/${{ setup.create_asset.asset_id }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"
 

@@ -295,7 +295,7 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: value, operator: equals, value: testlab-e2e-ic-asset }
+        with: { input: value, operator: equals, value: "${{ setup.create_asset.asset_id }}" }
 
   - id: negotiated_dsp_endpoint
     uses: util/parse_kv
@@ -336,7 +336,7 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: asset_id, operator: equals, value: testlab-e2e-ic-asset }
+        with: { input: asset_id, operator: equals, value: "${{ setup.create_asset.asset_id }}" }
       - uses: validate/assert
         with: { input: edr_token, operator: not_null }
 

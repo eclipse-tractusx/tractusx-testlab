@@ -120,7 +120,7 @@ execution:
         type: object
     validate:
       - uses: validate/assert
-        with: { input: catalog_asset_id, operator: equals, value: testlab-e2e-push-asset }
+        with: { input: catalog_asset_id, operator: equals, value: "${{ setup.create_asset.asset_id }}" }
       - uses: validate/assert
         with: { input: catalog_policy, operator: not_null }
 
