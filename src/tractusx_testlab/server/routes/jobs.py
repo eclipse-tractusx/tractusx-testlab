@@ -234,3 +234,34 @@ async def resume_job(job_id: str, player: PlayerDep) -> JSONResponse:
     player.jobs.resume(job_id)
     player.monitor.on_job_resumed(job_id)
     return JSONResponse(content={"job_id": job_id, "status": "RUNNING"})
+
+
+@router.post(
+    "/tck-execution/{job_id}/select",
+    status_code=200,
+    responses={
+        400: {"description": "Missing 'asset_id', or not one of the assets offered"},
+        404: {"description": "Job not found"},
+        409: {"description": "Job is not waiting for an asset to be selected"},
+    },
+)
+async def select_asset(job_id: str, request: Request, player: PlayerDep) -> JSONResponse:
+    """Answer a ``connector/query_catalog/select_asset`` step with the chosen asset.
+
+    Body: ``{"asset_id": "...", "step_id": "..."}`` — ``step_id`` optional; when
+    given, it has to name the step that asks.
+    """
+    if player.jobs.get(job_id) is None:
+        raise HTTPException(404, f"Job '{job_id}' not found")
+    body = await request.json()
+    asset_id = body.get("asset_id") if isinstance(body, dict) else None
+    if not isinstance(asset_id, str) or not asset_id:
+        raise HTTPException(400, "Provide 'asset_id'")
+    step_id = body.get("step_id")
+    try:
+        player.jobs.selections.answer(job_id, asset_id, step_id)
+    except LookupError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return JSONResponse(content={"job_id": job_id, "asset_id": asset_id})

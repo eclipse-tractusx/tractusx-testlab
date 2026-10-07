@@ -28,3 +28,4 @@
 | `provider` | [`connector/provider/delete_policy`](provider.md#connector-provider-delete_policy) | Delete a policy definition from the provider connector. |
 | `provider/wizard` | [`connector/provider/wizard/create_asset`](provider-wizard.md#connector-provider-wizard-create_asset) | Register an asset described field by field rather than as a document. |
 | `provider/wizard` | [`connector/provider/wizard/create_policy`](provider-wizard.md#connector-provider-wizard-create_policy) | Register an ODRL policy written as rule lists rather than as a document. |
+| `query_catalog` | [`connector/query_catalog/select_asset`](query_catalog.md#connector-query_catalog-select_asset) | Query a provider's catalog and let the operator choose one of its assets. |

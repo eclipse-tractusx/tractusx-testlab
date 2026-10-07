@@ -156,7 +156,8 @@ class ListenerReporter(Protocol):
     phase runner, used by the mock steps — for the traffic that goes the other
     way. A step that opens an address says so as soon as it is open, with the
     method and the URL to call, and the step that waits on it says when the
-    call came and what it carried.
+    call came and what it carried. The operator's answer to a question
+    (``select_asset``) comes in too, and is reported the same way: asked, answered.
     """
 
     def listening(self, step_type: str, step_id: str | None, listener: Any) -> None: ...
@@ -184,6 +185,22 @@ class ListenerReporter(Protocol):
         step_id: str | None,
         listener: Any,
         request: Any,
+        waited_ms: int,
+    ) -> None: ...
+
+    def selecting(
+        self,
+        step_type: str,
+        step_id: str | None,
+        selection: Any,
+        timeout_s: float,
+    ) -> None: ...
+
+    def selected(
+        self,
+        step_type: str,
+        step_id: str | None,
+        asset_id: str,
         waited_ms: int,
     ) -> None: ...
 

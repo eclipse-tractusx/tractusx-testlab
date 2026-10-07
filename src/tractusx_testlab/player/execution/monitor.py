@@ -67,6 +67,7 @@ from tractusx_testlab.models.runtime.events import (
     TestStartedEvent,
 )
 from tractusx_testlab.models.runtime.results import TestResult
+from tractusx_testlab.player.execution._monitor_selection import SelectionEvents
 from tractusx_testlab.player.execution._monitor_steps import StepEvents
 from tractusx_testlab.player.execution._trace_publisher import TracePublisher
 
@@ -74,7 +75,7 @@ from tractusx_testlab.player.execution._trace_publisher import TracePublisher
 CallbackFn = Callable[[str, dict[str, Any]], Any]
 
 
-class ExecutionMonitor(StepEvents):
+class ExecutionMonitor(StepEvents, SelectionEvents):
     """Publishes typed execution events, logs them, traces them, fires callbacks.
 
     The step lifecycle — the events published while a step runs — is
