@@ -25,7 +25,7 @@
 
 > **Scope:** structural-only. No behavior, no contract, no `.stck`/CLI/API change.
 > Every phase ends green on the test suite and type/lint checks. See
-> [README.md](./README.md) for shared contracts and the lockstep rule.
+> [README.md](./README.md) for the charter and the phase-status tracker.
 
 The backend already has a clean **layered** package layout (`models/ · services/ ·
 steps/ · compiler/ · player/ · server/ · …`) and zero files over 300 lines. This
@@ -155,7 +155,7 @@ core of the deep-modularity goal beyond the oversized-file triggers.
 | `compiler/` | 10 sibling files (orchestrator + IR assembly + lowering + validation + assets + expressions + fingerprint) | `ir/` (builder, helpers, assets, lowering) · `validation/` (validator, rules, expressions) · top-level orchestrator/packager/fingerprint | 6 |
 | `server/` | 9 sibling files (app + routes + compile + callbacks + streaming + buffer + registry + storage) | `routes/` (route groups: compile/run/callback) · `streaming/` (SSE formatter + lifecycle + buffer) · top-level app/storage/registry | 8 |
 | `models/` | 8 flat domain files | keep flat **unless** a file bundles groups: `enums.py` (service/phase/state enum families) and `results.py` (step + assertion + trace results) are the only nest candidates → `enums/`, `results/` | 11 |
-| `scripting/` | script + parser + registry + `_builders` | builders cluster (`_builders.py`) → `_builders/` only if it grows; otherwise leave — **guardrail check** | 10 (watch) |
+| `authoring/` | test + parser + registry + `_builders` | builders cluster (`_builders.py`) → `_builders/` only if it grows; otherwise leave — **guardrail check** | 10 (watch) |
 
 > **Guardrail reminder:** `config/`, `logging/`, `syntax/`, `security/crypto`,
 > `security/trust`, `services/participants.py`, and the already-nested `player/`,
@@ -175,27 +175,38 @@ owns one concern and exposes its public surface via a barrel `__init__.py`.
 
 ### 2.1 Layering & import rules (apply at every depth)
 
-The dependency arrows point **one way only** — inner layers never import outer ones:
+The runtime imports between the top-level packages are:
 
 ```
-syntax  ──▶  (leaf: pure constants, no testlab imports)
-models  ──▶  syntax
-config  ──▶  models, syntax
-security ─▶  models
-services ─▶  models, config, security        (SDK service wiring)
-steps   ──▶  models, services, syntax, config (NEVER imports player/server/cli)
-compiler ─▶  models, syntax, steps (registry only)
-player  ──▶  steps, services, models, config, compiler
-server  ──▶  player, compiler, services, models
-cli     ──▶  compiler, player, server, config   (thinnest layer, top of stack)
+syntax, models, contracts   leaves: no imports from other testlab packages
+infrastructure ─▶ models, syntax
+config         ─▶ infrastructure, models
+security       ─▶ models
+logging        ─▶ models
+services       ─▶ models, syntax                          (SDK service wiring)
+authoring      ─▶ models, syntax, steps                   (registry, parser, step docs)
+steps          ─▶ authoring, logging, models, syntax, server.mock_registry
+compiler       ─▶ authoring, infrastructure, models, steps, syntax
+player         ─▶ authoring, compiler, config, contracts, infrastructure,
+                  logging, models, security, server, services, steps, syntax
+server         ─▶ authoring, compiler, config, models, player, syntax
+cli            ─▶ authoring, compiler, config, infrastructure, logging,
+                  models, player, security, syntax        (`serve` loads server by import string)
 ```
 
-Rules enforced by these arrows:
+The graph has two cycles, both resolved with deferred imports: `authoring` ↔ `steps`
+(steps register through `authoring.registry.step`; the step reference renderer reads
+`BaseStep` contracts) and `player` ↔ `server` (the server app owns a `TestlabPlayer`;
+the player uses the callback manager and mock registry and starts the app in-process
+for CLI runs).
 
-- **`steps/` is the keystone** — it depends *downward* on `models`/`services`/`syntax`
-  but is imported *upward* by `compiler` (for `@step` registry validation) and
-  `player` (for execution). A step module must **never** import from `player/`,
-  `server/`, or `cli/`.
+Rules that hold across the graph:
+
+- **`steps/` is the keystone** — it is imported by `compiler` (to check `uses:`,
+  `with:`, `returns:` and `validate:` against the declared contracts) and by `player`
+  (for execution). A step refers to `StepContext` from `player` only under
+  `TYPE_CHECKING`, and reaches the server only through `server.mock_registry`
+  (mock and wait steps); it never imports `cli/`.
 - **`models/` holds no behavior** — only Pydantic data, enums, exceptions. Anything
   with logic belongs in `services`, `steps`, `compiler`, or `player`.
 - **`__init__.py` is a barrel only** at every level — it re-exports the package's
@@ -236,12 +247,16 @@ tractusx_testlab/
       _rules.py                    #     (priv) individual validation rules (was _validation.py)
       _expressions.py              #     (priv) compile-time expression checks (see §3 grammar)
 
+  contracts/                       # LEAF: Protocols stating what the engine requires of SDK services
+
+  infrastructure/                  # typed infrastructure bindings (sut / engine sides), config/env/${{ }} forms
+
   config/                          # configuration loading & settings (data + I/O only)
     __init__.py                    #   barrel: ConfigLoader, settings types
     loader.py                      #   read/merge config sources → TestlabConfig
     settings.py                    #   Pydantic settings models (no behavior)
 
-  logging/                         # structured logging — cross-cutting, depends on nothing
+  logging/                         # structured logging — cross-cutting, depends only on models
     __init__.py                    #   barrel: StructuredLogger / get_logger
     structured.py                  #   JSON/structured log formatter + adapter
 
@@ -266,9 +281,9 @@ tractusx_testlab/
     __init__.py                    #   barrel: TestlabPlayer, job API
     jobs.py                        #   in-flight job registry + status tracking
 
-    loading/                       #   run-time YAML/package → executable script
+    loading/                       #   run-time YAML/package → executable test
       __init__.py                  #     barrel: loader public surface
-      loader.py                    #     package/YAML → Script object
+      loader.py                    #     package/YAML → Test object
       _parser.py                   #     (priv) YAML → raw structures   [watch: 267L]
       _constants.py                #     (priv) loader keys/defaults
       ordering.py                  #     phase/step ordering (setup→main→teardown)
@@ -292,10 +307,10 @@ tractusx_testlab/
         main.py                    #       (new) main wrapper: stop-on-fail + gate
         teardown.py                #       (new) teardown wrapper: runs unconditionally
 
-  scripting/                       # script object model + builder DSL (author-facing)
-    __init__.py                    #   barrel: Script, registry, builders
-    script.py                      #   Script aggregate (phases, steps, metadata)
-    parser.py                      #   author YAML → Script
+  authoring/                       # test object model + builder DSL (author-facing)
+    __init__.py                    #   barrel: Test, registry, builders
+    test.py                      #   Test aggregate (phases, steps, metadata)
+    parser.py                      #   author YAML → Test
     registry.py                    #   step-type registry lookup
     _builders.py                   #   (priv) fluent builder helpers
 
@@ -471,7 +486,7 @@ No layer needs to be created, merged, or moved.
 | `server/` (9 flat files) | app + route groups + SSE + storage mixed | `server/routes/` (compile/callbacks/mock) + `server/streaming/` (lifecycle/formatter/buffer); app/storage/registry stay top-level |
 | `player/execution/player.py` (298) | orchestration + trace/result formatting | extract `_trace_formatter.py`; `player.py` keeps orchestration |
 | `models/enums.py`, `models/results.py` | bundled enum/result families | `models/enums/`, `models/results/` **only if** families separate cleanly (guardrail check) |
-| `player/loading/_parser.py` (267), `cli/compile.py` (260), `scripting/_builders.py` | near-limit / cohesive | **Watch only** (Phase 10) — split-first rule on next feature touch; no move now |
+| `player/loading/_parser.py` (267), `cli/compile.py` (260), `authoring/_builders.py` | near-limit / cohesive | **Watch only** (Phase 10) — split-first rule on next feature touch; no move now |
 
 ---
 
@@ -510,7 +525,7 @@ watch-list guard and the conditional model nesting.
 
 ### Phase 2 — `player/execution/_phase_runners.py` (P1, dedup)
 1. Create `player/execution/phases/` with `_run_phase.py` holding one private
-   `async _run_phase(*, script, phase, stop_on_failure, gate_conditions, ...)`.
+   `async _run_phase(*, test, phase, stop_on_failure, gate_conditions, ...)`.
 2. Add thin `setup.py` / `main.py` / `teardown.py` wrappers configuring policy
    (setup & main stop on failure + gate on `if_condition`; teardown unconditional);
    `phases/__init__.py` re-exports `run_setup` / `run_main` / `run_teardown`.
@@ -581,7 +596,7 @@ watch-list guard and the conditional model nesting.
 
 ### Phase 10 — Watch-list guard (P3, no-op unless touched)
 No moves now. Record the watch list (`player/loading/_parser.py` 267,
-`cli/compile.py` 260, `scripting/_builders.py` 208 + §1a) in repo memory so the
+`cli/compile.py` 260, `authoring/_builders.py` 208 + §1a) in repo memory so the
 **next** feature touching any near-limit file triggers a split-first rule rather
 than an overflow.
 
@@ -610,16 +625,15 @@ change, validated by the existing suite.
 | Package nesting breaks a public import path (Phases 5, 6, 8, 11) | Medium | Barrel `__init__.py` re-exports every previously public name; run the full suite after each move |
 | Over-nesting cohesive code into one-file packages | Low | Guardrail check per phase (§0); leave flat with a one-line reason when no seam exists |
 
-### Cross-codebase contract touch points (ship in lockstep with frontend)
+### Contract touch points
 
-These serialization ↔ YAML ↔ compiler boundaries are **contracts shared with the
-IDE**. This plan does **not** change them — but any future change here must ship
-together with the frontend agent's matching change:
+These YAML ↔ compiler ↔ package boundaries are **external contracts**. This plan
+does **not** change them, and a structural pass must leave them untouched:
 
 - **YAML v2 syntax** (`@variable_name` refs, `${{ }}` expressions) — touched
   indirectly by Phase 3 (grammar isolation). Verify no token/precedence change.
-- **Block schema** (`ide/public/blocks/**`) — step `type` strings are the join key;
-  renames are forbidden in a structural pass.
+- **Step ids** — the `@step(...)` id strings tests name in `uses:`; renames are
+  forbidden in a structural pass.
 - **TCK manifest model** — compiler input contract; untouched.
 - **`.stck` package format** — compiler output contract; untouched.
 

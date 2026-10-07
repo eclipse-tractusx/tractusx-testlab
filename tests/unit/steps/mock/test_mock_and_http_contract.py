@@ -1,0 +1,608 @@
+#################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
+
+"""Contract tests for the mock-server and plain-HTTP steps."""
+
+from __future__ import annotations
+
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from tractusx_testlab.models import ConnectorOffer, StepDefinition
+from tractusx_testlab.models.domain.capabilities import ConnectorBinding
+from tractusx_testlab.models.domain.infrastructure import EngineBindings, Infrastructure
+from tractusx_testlab.server.callbacks import CallbackManager
+from tractusx_testlab.server.inbound.run_scope import scoped
+from tractusx_testlab.server.mock_registry import (
+    clear_mocks,
+    get_mock,
+    set_callback_manager,
+)
+from tractusx_testlab.steps.http.request import HttpRequestStep
+from tractusx_testlab.steps.mock.api import MockEndpointStep
+from tractusx_testlab.steps.mock.wait import (
+    WaitForCallParams,
+    WaitForCallStep,
+    WaitForDataplaneCallParams,
+    WaitForDataplaneCallStep,
+)
+
+_PATH = "/companycertificate/notification/receive"
+_RUN = "run-1"
+#: Where the run's listener on ``_PATH`` is kept, and so where a call to it lands.
+_KEY = scoped(_RUN, _PATH)
+#: The root every mock of the run is published under on a local server.
+_ROOT = f"http://localhost:8080/runs/{_RUN}"
+
+
+def _definition(uses: str) -> StepDefinition:
+    return StepDefinition(id="s", uses=uses)
+
+
+@pytest.fixture()
+def context(mock_context: MagicMock) -> MagicMock:
+    mock_context.config.server_port = 8080
+    mock_context.config.mock_public_url = None
+    mock_context.config.default_timeout_s = 30
+    mock_context.job.job_id = _RUN
+    return mock_context
+
+
+@pytest.fixture(autouse=True)
+def _clean_registry() -> Any:
+    clear_mocks()
+    yield
+    clear_mocks()
+
+
+# ---------------------------------------------------------------------------
+# C38 / C31 — what mock/api registers and returns
+# ---------------------------------------------------------------------------
+
+
+class TestMockEndpoint:
+    @pytest.mark.asyncio
+    async def test_it_returns_the_mock_and_both_urls(self, context: MagicMock) -> None:
+        output = await MockEndpointStep().invoke(
+            {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
+        )
+
+        assert output.value["base_mock_url"] == _ROOT
+        assert output.value["full_mock_url"] == f"{_ROOT}{_PATH}"
+        assert output.value["mock"]["path"] == _PATH
+        assert output.value["mock"]["method"] == "POST"
+
+    @pytest.mark.asyncio
+    async def test_the_urls_are_published_under_mock_public_url_when_set(
+        self, context: MagicMock
+    ) -> None:
+        # The server binds locally; the SUT dials whatever the operator says.
+        context.config.mock_public_url = "https://testlab.example.com"
+
+        output = await MockEndpointStep().invoke(
+            {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
+        )
+
+        root = f"https://testlab.example.com/runs/{_RUN}"
+        assert output.value["base_mock_url"] == root
+        assert output.value["full_mock_url"] == f"{root}{_PATH}"
+        assert output.value["mock"]["full_mock_url"] == f"{root}{_PATH}"
+
+    @pytest.mark.asyncio
+    async def test_a_public_url_that_names_the_run_already_is_published_as_it_is(
+        self, context: MagicMock
+    ) -> None:
+        """An engine hands each run ``<origin>/mock/<job id>`` and serves that prefix itself."""
+        context.config.mock_public_url = f"https://engine.example.com/mock/{_RUN}"
+
+        output = await MockEndpointStep().invoke(
+            {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
+        )
+
+        assert output.value["base_mock_url"] == f"https://engine.example.com/mock/{_RUN}"
+        assert output.value["full_mock_url"] == f"https://engine.example.com/mock/{_RUN}{_PATH}"
+
+    @pytest.mark.asyncio
+    async def test_a_trailing_slash_on_mock_public_url_does_not_double_up(
+        self, context: MagicMock
+    ) -> None:
+        context.config.mock_public_url = "http://engine:8100/"
+
+        output = await MockEndpointStep().invoke(
+            {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
+        )
+
+        assert output.value["full_mock_url"] == f"http://engine:8100/runs/{_RUN}{_PATH}"
+
+    @pytest.mark.asyncio
+    async def test_the_mock_carries_the_id_it_was_registered_under(
+        self, context: MagicMock
+    ) -> None:
+        output = await MockEndpointStep().invoke(
+            {"id": "ack", "path": _PATH}, context, _definition("mock/api")
+        )
+        assert output.value["mock"]["endpoint_id"] == "ack"
+
+    @pytest.mark.asyncio
+    async def test_response_headers_are_part_of_the_canned_reply(self, context: MagicMock) -> None:
+        """C31 — a mock standing in for a real API has to answer like one."""
+        await MockEndpointStep().invoke(
+            {
+                "path": _PATH,
+                "method": "POST",
+                "response_headers": {"content-type": "application/json"},
+            },
+            context,
+            _definition("mock/api"),
+        )
+        assert get_mock(_PATH, "POST").headers == {"content-type": "application/json"}
+
+    @pytest.mark.asyncio
+    async def test_a_mock_with_no_headers_answers_with_none(self, context: MagicMock) -> None:
+        await MockEndpointStep().invoke({"path": _PATH}, context, _definition("mock/api"))
+        assert get_mock(_PATH, "POST").headers == {}
+
+    @pytest.mark.asyncio
+    async def test_a_path_without_its_leading_slash_still_matches(self, context: MagicMock) -> None:
+        output = await MockEndpointStep().invoke(
+            {"path": "callback"}, context, _definition("mock/api")
+        )
+        assert output.value["mock"]["path"] == "/callback"
+
+
+# ---------------------------------------------------------------------------
+# C17 / C39 — what mock/wait/http_request takes and hands back
+# ---------------------------------------------------------------------------
+
+
+class TestWaitForCall:
+    def test_it_takes_a_mock_and_not_a_url(self) -> None:
+        """C17 — the mock knows its own path and method; nothing to re-derive."""
+        with pytest.raises(ValueError):
+            WaitForCallParams.model_validate({"mock": "http://localhost:8080/callback"})
+
+    def test_it_takes_a_mock_and_not_an_id(self) -> None:
+        with pytest.raises(ValueError):
+            WaitForCallParams.model_validate({"mock": "ack"})
+
+    @pytest.mark.asyncio
+    async def test_it_waits_on_the_mock_it_was_given(self, context: MagicMock) -> None:
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH, "method": "POST"}, context, _definition("mock/api")
+        )
+        manager.resolve(_KEY, "POST", {"x-trace": "1"}, {"status": "RECEIVED"}, {"page": "2"})
+
+        output = await WaitForCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1},
+            context,
+            _definition("mock/wait/http_request"),
+        )
+
+        assert output.value["request_method"] == "POST"
+        assert output.value["request_path"] == _PATH
+        assert output.value["request_headers"] == {"x-trace": "1"}
+        assert output.value["request_body"] == {"status": "RECEIVED"}
+
+    @pytest.mark.asyncio
+    async def test_the_query_string_the_sut_sent_is_readable(self, context: MagicMock) -> None:
+        """C39 — a callback's query parameters are part of what arrived."""
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_KEY, "POST", {}, None, {"notificationId": "n-1"})
+
+        output = await WaitForCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1},
+            context,
+            _definition("mock/wait/http_request"),
+        )
+
+        assert output.value["request_query_params"] == {"notificationId": "n-1"}
+
+    @pytest.mark.asyncio
+    async def test_how_long_the_wait_took_is_reported(self, context: MagicMock) -> None:
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_KEY, "POST", {}, None)
+
+        output = await WaitForCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1},
+            context,
+            _definition("mock/wait/http_request"),
+        )
+
+        assert output.value["elapsed_ms"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_a_call_that_never_arrives_fails_the_step(self, context: MagicMock) -> None:
+        set_callback_manager(CallbackManager())
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+
+        with pytest.raises(RuntimeError, match="Timed out"):
+            await WaitForCallStep().invoke(
+                {"mock": registered.value["mock"], "timeout_s": 0.01},
+                context,
+                _definition("mock/wait/http_request"),
+            )
+
+
+# ---------------------------------------------------------------------------
+# C30 — query parameters on the plain HTTP step
+# ---------------------------------------------------------------------------
+
+
+def _http_response(url: str, body: object, headers: dict[str, str] | None = None) -> MagicMock:
+    """A stand-in for the httpx.Response the step now gets back.
+
+    The step reads the body through ``http_client.body_of`` and the headers
+    through ``http_client.headers_of``, so a double has to carry a content-type
+    and the raw header pairs those two read.
+    """
+    sent = {"content-type": "application/json", **(headers or {})}
+    response = MagicMock(status_code=200, url=url)
+    response.headers = MagicMock(
+        raw=[(k.encode(), v.encode()) for k, v in sent.items()],
+        **{"get.side_effect": sent.get},
+    )
+    response.json.return_value = body
+    return response
+
+
+class TestHttpRequestQueryParams:
+    @pytest.mark.asyncio
+    async def test_they_reach_the_request(self, context: MagicMock) -> None:
+        response = _http_response("https://api.example.com?a=1", {"ok": True})
+
+        with patch(
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
+            return_value=response,
+        ) as request:
+            await HttpRequestStep().invoke(
+                {"url": "https://api.example.com", "query_params": {"a": "1"}},
+                context,
+                _definition("http/http_request"),
+            )
+
+        assert request.call_args.kwargs["params"] == {"a": "1"}
+
+    @pytest.mark.asyncio
+    async def test_no_query_params_sends_none_rather_than_an_empty_mapping(
+        self, context: MagicMock
+    ) -> None:
+        response = _http_response("https://api.example.com", {})
+
+        with patch(
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
+            return_value=response,
+        ) as request:
+            await HttpRequestStep().invoke(
+                {"url": "https://api.example.com"}, context, _definition("http/http_request")
+            )
+
+        assert request.call_args.kwargs["params"] is None
+
+    @pytest.mark.asyncio
+    async def test_the_reported_url_is_the_one_actually_called(self, context: MagicMock) -> None:
+        """A request logged without its query string cannot be replayed."""
+        response = _http_response("https://api.example.com?a=1", {})
+
+        with patch(
+            "tractusx_testlab.steps.http_client.request",
+            new_callable=AsyncMock,
+            return_value=response,
+        ):
+            output = await HttpRequestStep().invoke(
+                {"url": "https://api.example.com", "query_params": {"a": "1"}},
+                context,
+                _definition("http/http_request"),
+            )
+
+        assert output.request.url == "https://api.example.com?a=1"
+
+
+# ---------------------------------------------------------------------------
+# The two moments of an inbound call are reported, with the address
+# ---------------------------------------------------------------------------
+
+
+class TestTheStepsSayWhereToCall:
+    """Where to call is told through the context, at the moment it matters."""
+
+    @pytest.mark.asyncio
+    async def test_registering_a_mock_reports_the_address_as_open(self, context: MagicMock) -> None:
+        set_callback_manager(CallbackManager())
+
+        await MockEndpointStep().invoke(
+            {"path": _PATH, "method": "post"},
+            context,
+            StepDefinition(id="open_ack", uses="mock/api"),
+        )
+
+        context.report_listening.assert_called_once()
+        step_type, step_id, listener = context.report_listening.call_args.args
+        assert (step_type, step_id) == ("mock/api", "open_ack")
+        assert listener.method == "POST"
+        assert listener.url == f"{_ROOT}{_PATH}"
+        assert listener.path == _PATH
+
+    @pytest.mark.asyncio
+    async def test_waiting_is_reported_before_the_call_and_the_call_after(
+        self, context: MagicMock
+    ) -> None:
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        context.reset_mock()
+        manager.resolve(_KEY, "POST", {"x-trace": "1"}, {"status": "RECEIVED"})
+
+        output = await WaitForCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1},
+            context,
+            StepDefinition(id="await_ack", uses="mock/wait/http_request"),
+        )
+
+        step_type, step_id, listener, timeout = context.report_waiting.call_args.args
+        assert (step_type, step_id, timeout) == ("mock/wait/http_request", "await_ack", 1)
+        assert listener.url == f"{_ROOT}{_PATH}"
+        step_type, step_id, listener, request, waited_ms = context.report_received.call_args.args
+        assert (step_type, step_id) == ("mock/wait/http_request", "await_ack")
+        assert request.payload == {"status": "RECEIVED"}
+        assert request.headers == {"x-trace": "1"}
+        assert waited_ms == output.value["elapsed_ms"]
+
+    @pytest.mark.asyncio
+    async def test_a_direct_wait_names_no_offer(self, context: MagicMock) -> None:
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_KEY, "POST", {}, None)
+
+        await WaitForCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1},
+            context,
+            _definition("mock/wait/http_request"),
+        )
+
+        listener = context.report_waiting.call_args.args[2]
+        assert listener.via == "direct"
+        assert listener.offer is None
+
+    @pytest.mark.asyncio
+    async def test_a_call_that_never_arrives_reports_no_arrival(self, context: MagicMock) -> None:
+        set_callback_manager(CallbackManager())
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+
+        with pytest.raises(RuntimeError, match="Timed out"):
+            await WaitForCallStep().invoke(
+                {"mock": registered.value["mock"], "timeout_s": 0.01},
+                context,
+                _definition("mock/wait/http_request"),
+            )
+
+        context.report_received.assert_not_called()
+
+
+class TestWaitForDataplaneCall:
+    """The same wait, announced as the offer to negotiate rather than the URL to call."""
+
+    def test_it_needs_the_asset_to_negotiate(self) -> None:
+        mock = {"path": _PATH, "method": "POST", "base_mock_url": "b", "full_mock_url": "f"}
+        with pytest.raises(ValueError):
+            WaitForDataplaneCallParams.model_validate({"mock": mock})
+        with pytest.raises(ValueError):
+            WaitForDataplaneCallParams.model_validate({"mock": mock, "asset_id": ""})
+
+    @pytest.mark.asyncio
+    async def test_it_announces_the_asset_and_the_engine_connector(
+        self, context: MagicMock
+    ) -> None:
+        context.infrastructure = Infrastructure(
+            engine=EngineBindings(
+                connector=ConnectorBinding(
+                    management_url="https://engine-edc.example/management",
+                    dsp_url="https://engine-edc.example/api/v1/dsp",
+                    participant_id="did:web:engine.example:BPNL000000000TLB",
+                )
+            )
+        )
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_KEY, "POST", {"edc-bpn": "BPNL000000000SUT"}, {"status": "RECEIVED"})
+
+        output = await WaitForDataplaneCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1, "asset_id": "ccmapi-offer"},
+            context,
+            StepDefinition(id="await_push", uses="mock/wait/dataplane/http_request"),
+        )
+
+        step_type, step_id, listener, _ = context.report_waiting.call_args.args
+        assert (step_type, step_id) == ("mock/wait/dataplane/http_request", "await_push")
+        assert listener.via == "dataplane"
+        assert listener.offer.asset_id == "ccmapi-offer"
+        assert listener.offer.dsp_url == "https://engine-edc.example/api/v1/dsp"
+        assert listener.offer.participant_id == "did:web:engine.example:BPNL000000000TLB"
+        # The wait itself is the plain one: same output, same arrival report.
+        assert output.value["request_body"] == {"status": "RECEIVED"}
+        assert context.report_received.call_args.args[2] is listener
+
+    def test_without_a_kind_the_catalog_filter_is_the_asset_id(self) -> None:
+        offer = ConnectorOffer(asset_id="ccmapi-offer")
+        assert [f.model_dump() for f in offer.catalog_filters] == [
+            {
+                "operandLeft": "https://w3id.org/edc/v0.0.1/ns/id",
+                "operator": "=",
+                "operandRight": "ccmapi-offer",
+            }
+        ]
+
+    def test_it_needs_an_asset_id_or_an_asset_that_carries_one(self) -> None:
+        mock = {"path": _PATH, "method": "POST", "base_mock_url": "b", "full_mock_url": "f"}
+        params = WaitForDataplaneCallParams.model_validate(
+            {"mock": mock, "asset": {"asset_id": "ccmapi-offer", "dct_type": "x"}}
+        )
+        assert params.asset_id == "ccmapi-offer"
+        with pytest.raises(ValueError):
+            WaitForDataplaneCallParams.model_validate({"mock": mock, "asset": {"dct_type": "x"}})
+
+    @pytest.mark.asyncio
+    async def test_it_announces_the_offer_by_what_it_is_and_the_action(
+        self, context: MagicMock
+    ) -> None:
+        context.infrastructure = Infrastructure()
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_KEY, "POST", {}, None)
+        ccmapi = "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
+
+        await WaitForDataplaneCallStep().invoke(
+            {
+                "mock": registered.value["mock"],
+                "timeout_s": 1,
+                # A config/connector/mock_asset value, as ${{ env.ccmapi_asset }} passes it.
+                "asset": {
+                    "asset_id": "testlab-ccmapi-asset-run-1",
+                    "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI",
+                    "dct_subject": ccmapi,
+                    "version": "3.0",
+                    "properties": {"name": "TestLab CCMAPI", "cx-common:feature": "push"},
+                    "private_properties": {"secret": "never announced"},
+                },
+                "action": {
+                    "label": "Send a certificate push",
+                    "description": "Push your certificate.",
+                    "recommendation": ["Find the offer.", "Negotiate it.", "POST it."],
+                    "fields": [{"label": "header.receiverBpn", "value": "BPNL000000000TLB"}],
+                },
+            },
+            context,
+            _definition("mock/wait/dataplane/http_request"),
+        )
+
+        dumped = context.report_waiting.call_args.args[2].model_dump()
+        assert dumped["offer"]["asset_id"] == "testlab-ccmapi-asset-run-1"
+        assert "secret" not in str(dumped["offer"])
+        assert dumped["offer"]["catalog_filters"] == [
+            {
+                "operandLeft": "'https://w3id.org/edc/v0.0.1/ns/name'",
+                "operator": "=",
+                "operandRight": "TestLab CCMAPI",
+            },
+            {
+                "operandLeft": "'https://w3id.org/catenax/ontology/common#feature'",
+                "operator": "=",
+                "operandRight": "push",
+            },
+            {
+                "operandLeft": "'http://purl.org/dc/terms/type'.'@id'",
+                "operator": "=",
+                "operandRight": "https://w3id.org/catenax/taxonomy#CCMAPI",
+            },
+            {
+                "operandLeft": "'http://purl.org/dc/terms/subject'.'@id'",
+                "operator": "=",
+                "operandRight": ccmapi,
+            },
+            {
+                "operandLeft": "'https://w3id.org/catenax/ontology/common#version'",
+                "operator": "=",
+                "operandRight": "3.0",
+            },
+        ]
+        assert dumped["action"] == {
+            "label": "Send a certificate push",
+            "description": "Push your certificate.",
+            "recommendation": ["Find the offer.", "Negotiate it.", "POST it."],
+            "fields": [{"label": "header.receiverBpn", "value": "BPNL000000000TLB"}],
+        }
+
+    @pytest.mark.asyncio
+    async def test_a_direct_wait_carries_its_action_too(self, context: MagicMock) -> None:
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_KEY, "POST", {}, None)
+
+        await WaitForCallStep().invoke(
+            {
+                "mock": registered.value["mock"],
+                "timeout_s": 1,
+                "action": {"recommendation": "Call it."},
+            },
+            context,
+            _definition("mock/wait/http_request"),
+        )
+
+        listener = context.report_waiting.call_args.args[2]
+        assert listener.action.recommendation == ["Call it."]
+        assert listener.action.description is None
+        assert listener.offer is None
+
+    @pytest.mark.asyncio
+    async def test_an_unbound_connector_still_names_the_asset(self, context: MagicMock) -> None:
+        context.infrastructure = Infrastructure()
+        manager = CallbackManager()
+        set_callback_manager(manager)
+        registered = await MockEndpointStep().invoke(
+            {"path": _PATH}, context, _definition("mock/api")
+        )
+        manager.resolve(_KEY, "POST", {}, None)
+
+        await WaitForDataplaneCallStep().invoke(
+            {"mock": registered.value["mock"], "timeout_s": 1, "asset_id": "ccmapi-offer"},
+            context,
+            _definition("mock/wait/dataplane/http_request"),
+        )
+
+        offer = context.report_waiting.call_args.args[2].offer
+        assert offer.asset_id == "ccmapi-offer"
+        assert offer.dsp_url is None
+        assert offer.participant_id is None

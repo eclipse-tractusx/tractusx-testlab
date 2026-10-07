@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -33,12 +33,14 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from tractusx_testlab.compiler.validation.validator import ScriptValidator
-from tractusx_testlab.models.primitives.enums import ScriptKind
-from tractusx_testlab.scripting.parser import YamlParser
+from tractusx_testlab.authoring.parser import YamlParser
+from tractusx_testlab.compiler.validation.validator import TestValidator
+from tractusx_testlab.models.authoring.definitions import TckDefinition, TestDefinition
+from tractusx_testlab.models.primitives.enums import DefinitionKind
+from tractusx_testlab.syntax import defaults, diagnostics
 
 _logger = logging.getLogger(__name__)
-_validator = ScriptValidator()
+_validator = TestValidator()
 
 compile_router = APIRouter(tags=["compile"])
 
@@ -56,20 +58,22 @@ async def compile_yaml(request: Request) -> JSONResponse:
     """
     raw = await request.body()
     if not raw:
-        return JSONResponse(content={
-            "status": "error",
-            "errors": [_error("", "Request body is empty")],
-        })
+        return JSONResponse(
+            content={
+                "status": "error",
+                "errors": [_error("", "Request body is empty")],
+            }
+        )
 
     data = _parse_yaml_body(raw)
     if isinstance(data, JSONResponse):
         return data
 
-    kind = _resolve_script_kind(data)
+    kind = _resolve_definition_kind(data)
     if isinstance(kind, JSONResponse):
         return kind
 
-    parsed = _parse_script(data, kind)
+    parsed = _parse_test(data, kind)
     if isinstance(parsed, JSONResponse):
         return parsed
 
@@ -86,64 +90,101 @@ def _parse_yaml_body(raw: bytes) -> dict | JSONResponse:
     try:
         data = yaml.safe_load(raw)
     except yaml.YAMLError as exc:
-        return JSONResponse(content={
-            "status": "error",
-            "errors": [_error("", f"Invalid YAML syntax: {exc}")],
-        })
+        return JSONResponse(
+            content={
+                "status": "error",
+                "errors": [_error("", f"Invalid YAML syntax: {exc}")],
+            }
+        )
 
     if not isinstance(data, dict):
-        return JSONResponse(content={
-            "status": "error",
-            "errors": [_error("", "YAML root must be a mapping")],
-        })
+        return JSONResponse(
+            content={
+                "status": "error",
+                "errors": [_error("", "YAML root must be a mapping")],
+            }
+        )
     return data
 
 
-def _resolve_script_kind(data: dict) -> ScriptKind | JSONResponse:
-    """Determine script kind from data, returning error response if invalid."""
+def _resolve_definition_kind(data: dict) -> DefinitionKind | JSONResponse:
+    """Determine definition kind from data, returning error response if invalid."""
     kind_value = data.get("kind")
     has_tests = "tests" in data
 
     try:
         if kind_value:
-            return ScriptKind(kind_value)
-        return ScriptKind.TCK if has_tests else ScriptKind.TEST
+            return DefinitionKind(kind_value)
+        return DefinitionKind.TCK if has_tests else DefinitionKind.TEST
     except ValueError:
-        return JSONResponse(content={
-            "status": "error",
-            "errors": [_error("kind", f"Unknown script kind: {kind_value!r}")],
-        })
+        return JSONResponse(
+            content={
+                "status": "error",
+                "errors": [_error("kind", f"Unknown definition kind: {kind_value!r}")],
+            }
+        )
 
 
-def _parse_script(data: dict, kind: ScriptKind) -> JSONResponse | object:
-    """Parse the YAML data into a script/tck definition or return error response."""
+def _parse_test(
+    data: dict,
+    kind: DefinitionKind,
+) -> JSONResponse | TestDefinition | TckDefinition:
+    """Parse the YAML data into a test/tck definition or return error response."""
     parser = YamlParser()
     try:
-        if kind == ScriptKind.TCK:
+        if kind == DefinitionKind.TCK:
             return parser.parse_tck_from_dict(data)
-        return parser.parse_script_from_dict(data)
+        return parser.parse_test_from_dict(data)
     except ValidationError as exc:
+        # The IDE shows these verbatim, so they are the authored form: the
+        # location names the step and the message names the keys that would
+        # have been accepted. See `tractusx_testlab.syntax.diagnostics`.
+        model = TckDefinition if kind == DefinitionKind.TCK else TestDefinition
         errors = [
-            _error(".".join(str(loc) for loc in e["loc"]), e["msg"])
-            for e in exc.errors()
+            _error(
+                finding.where,
+                f"{finding.message} — {finding.hint}" if finding.hint else finding.message,
+            )
+            for finding in diagnostics.explain(exc, model=model, data=data)
         ]
         return JSONResponse(content={"status": "error", "errors": errors})
     except (ValueError, KeyError, TypeError) as exc:
-        return JSONResponse(content={
-            "status": "error",
-            "errors": [_error("", f"Validation failed: {exc}")],
-        })
+        return JSONResponse(
+            content={
+                "status": "error",
+                "errors": [_error("", f"Validation failed: {exc}")],
+            }
+        )
 
 
-def _run_semantic_validation(parsed: object, kind: ScriptKind) -> list[dict[str, str]]:
+def _run_semantic_validation(
+    parsed: TestDefinition | TckDefinition,
+    kind: DefinitionKind,
+) -> list[dict[str, str]]:
     """Run semantic validation and return list of error dicts (empty if OK)."""
     errors: list[dict[str, str]] = []
 
-    if not parsed.name or not parsed.name.strip():
-        errors.append(_error("name", "Script name is required and must not be empty"))
+    name = getattr(parsed, "name", None) or (
+        parsed.metadata.name if hasattr(parsed, "metadata") else None
+    )
+    if not name or not name.strip():
+        errors.append(_error("name", "Test name is required and must not be empty"))
 
-    if kind == ScriptKind.TEST:
-        result = _validator.validate(parsed, version=parsed.dataspace_version)
+    if kind == DefinitionKind.TEST and isinstance(parsed, TestDefinition):
+        # The release comes from the test's own ``dataspace`` block when it has
+        # one, and otherwise from the default. It is not required here: a test
+        # file belongs to a TCK, and it is the manifest that declares which
+        # ecosystem release the suite certifies against — none of the shipped
+        # example's test files carry the block, and demanding it rejected
+        # correctly-authored files.
+        dataspace = getattr(parsed, "dataspace", None)
+        dataspace_version = (
+            dataspace.version
+            if dataspace is not None and dataspace.version
+            else defaults.DATASPACE_VERSION
+        )
+
+        result = _validator.validate(parsed, version=dataspace_version)
         for issue in result.issues:
             path = _build_issue_path(issue)
             errors.append(_error(path, issue.message))
@@ -155,7 +196,11 @@ def _build_issue_path(issue) -> str:
     """Build a structured path string from a validation issue."""
     path = issue.field or ""
     if issue.phase:
-        return f"{issue.phase}[{issue.step_index}].{path}" if path else f"{issue.phase}[{issue.step_index}]"
+        return (
+            f"{issue.phase}[{issue.step_index}].{path}"
+            if path
+            else f"{issue.phase}[{issue.step_index}]"
+        )
     if issue.step_index is not None:
         return f"steps[{issue.step_index}].{path}" if path else f"steps[{issue.step_index}]"
     return path

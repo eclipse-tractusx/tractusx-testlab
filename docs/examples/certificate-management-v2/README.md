@@ -26,7 +26,7 @@ This folder demonstrates the complete lifecycle of a TCK from raw YAML authoring
 ```
 certificate-management-v2/
 ├── raw/                        ← Source YAML (what the test author writes)
-│   ├── tck.yaml                  TCK definition (env, services, preconditions)
+│   ├── tck.yaml                  TCK definition (env, services)
 │   ├── tests/
 │   │   └── request-certificate.yaml   Test steps
 │   ├── schemas/
@@ -35,7 +35,7 @@ certificate-management-v2/
 │   └── testdata/
 │       └── request_certificate_body.json
 │
-├── plain/                      ← Plain compiled .tckpkg contents (development mode)
+├── plain/                      ← Plain compiled .tck contents (development mode)
 │   ├── manifest.yaml             Package metadata (allow_asset_override: true)
 │   ├── tck-execution.json        Full compiled IR (env + symbol tables + instructions)
 │   └── assets/
@@ -45,13 +45,13 @@ certificate-management-v2/
 │       └── testdata/             Resolved testdata (variables substituted)
 │           └── request_certificate_body.json
 │
-├── encrypted/                  ← Encrypted compiled .tckpkg contents (certification mode)
+├── encrypted/                  ← Encrypted compiled .tck contents (certification mode)
 │   ├── manifest.yaml             Unencrypted metadata + security block (allow_asset_override: false)
 │   ├── payload.enc               AES-256-GCM encrypted tar (tck-execution.json + assets/)
 │   └── signature.sig             Hybrid Ed25519 + ML-DSA-65 signature
 │
 └── execution/                  ← Test execution output
-    └── execution-trace.jsonl     Line-by-line execution trace (preconditions + steps + summary)
+    └── execution-trace.jsonl     Line-by-line execution trace (steps + summary)
 ```
 
 ## Lifecycle Flow
@@ -62,10 +62,10 @@ raw/tck.yaml + raw/tests/*.yaml
         ▼  (testlab compile)
 plain/manifest.yaml + plain/tck-execution.json + plain/assets/
         │
-        ▼  (testlab package --encrypt)
+        ▼  (testlab compile --encrypt)
 encrypted/manifest.yaml + encrypted/payload.enc + encrypted/signature.sig
         │
-        ▼  (testlab run *.tckpkg)
+        ▼  (testlab run *.tck)
 execution/execution-trace.jsonl
 ```
 
@@ -83,11 +83,29 @@ execution/execution-trace.jsonl
 
 ```bash
 # With default assets
-testlab run plain/
+testlab compile raw/index.yaml
 
 # With custom testdata override
-testlab run plain/ --override-assets ./my-overrides/
+testlab run certificate-management-tck-v0.0.1.tck
 ```
+
+## Running an encrypted packege
+
+```bash
+
+## Generate keys in .keys directory
+testlab keygen --output .keys/default
+
+## .keys/default
+##   |_ encryption.pem
+##   |_ encryption.pub
+##   |_ signing.pem
+##   |_ signing.pub
+
+testlab compile index.yaml --compiler-keys .keys/default --player-pub .keys/default/encryption.pub --output ccm-encrypted.tck 
+
+```
+
 
 ## Related ADRs
 

@@ -51,7 +51,7 @@ kept a backward-compatible precondition path. For the production release we want
 
 The unified-variables approach has been proven end to end: the
 `certificate-management-v2.0` example
-(`ide/public/examples/certificate-management-v2.0/`) was migrated so that every
+was migrated so that every
 test pulls its access policy from a single env variable. Zero preconditions
 remain in that example.
 
@@ -67,7 +67,7 @@ Removed:
   and any other `precondition/*` verb.
 - The `preconditions:` manifest block.
 - The `PRECONDITION` execution phase and its runner.
-- All related models, schema, IDE blocks/UI, and documentation.
+- All related models, schema, and documentation.
 
 Legacy `precondition/*` YAML is **no longer accepted**. The compiler rejects it
 rather than translating it.
@@ -77,8 +77,8 @@ rather than translating it.
 | Was (precondition) | Now (variables) |
 |--------------------|-----------------|
 | `precondition/provide` inlining a policy | A complex variable in `index.yaml` `env.variables` with `uses: config/connector/policy` |
-| Reference to the provided policy | `${{ env.<id>.policy }}` |
-| Data pulled "from a precondition" | A `connector/pull_data_filtered` step consuming `with.policy: ${{ env.<id>.policy }}` |
+| Reference to the provided policy | `${{ env.<id> }}` |
+| Data pulled "from a precondition" | A `connector/pull_data_filtered` step consuming `with.policy: ${{ env.<id> }}` |
 
 A policy is declared once:
 
@@ -91,7 +91,7 @@ env:
       with:
         value: { permissions: [ ... ] }
       returns:
-        policy:
+        value:
           type: object
           class: Policy
 ```
@@ -102,7 +102,7 @@ and referenced wherever a step needs it:
 - id: pull_data_1
   uses: connector/pull_data_filtered
   with:
-    policy: ${{ env.ccm_usage_policy.policy }}
+    policy: ${{ env.ccm_usage_policy }}
     # ...
 ```
 

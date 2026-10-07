@@ -25,31 +25,42 @@
 
 ## Overview
 
-The TestLab IDE is a single-page React application that lets users visually author dataspace integration tests using a block-based editor (Blockly). The application has three synchronized representations of the same test data:
+This repository is the **TestLab engine**: a Python library, the `testlab` CLI, and a
+FastAPI server. It validates TCKs, seals them into `.tck` packages, and executes them
+against a system under test (SUT). There is no user interface in this repository — the
+YAML test files are the interface, and any text editor produces them.
 
-1. **Block workspace** — Drag-and-drop visual editor (primary editing surface)
-2. **YAML editor** — Text-based editing with Monaco Editor
-3. **Dependency graph** — Read-only React Flow visualization
+The engine has four run-time roles:
 
-All three derive from a shared in-memory model (`TestLabDocument`) managed via Zustand.
+1. **Compiler** — validates a TCK manifest and its tests against the JSON schemas and the
+   step registry, builds the execution IR, and writes a `.tck` package, optionally signed
+   and encrypted for named players.
+2. **Player** — loads a `.tck` package (verifying and decrypting it), binds the
+   infrastructure the operator configured, seeds the SDK services, and runs the steps,
+   writing a CloudEvents execution trace.
+3. **Steps** — the `@step` executors a test names in `uses:`. Each declares its inputs and
+   outputs as Pydantic models and reaches the dataspace through `tractusx-sdk`.
+4. **Server** — hosts the HTTP API (compile, package storage, runs, job control, SSE
+   event stream), the callback endpoints, and the mock endpoints tests open for the SUT.
+
+The server runs in two ways: standalone with `testlab serve`, or started by the player in
+a background thread during `testlab run`, so that mocks and callbacks work from the CLI
+too.
 
 ## Module organization — deep modularity
 
-Both codebases — the frontend (`ide/src/`) and the backend
-(`src/tractusx_testlab/`) — follow the **same organizing principle: deep
+The engine (`src/tractusx_testlab/`) follows one organizing principle: **deep
 modularity**. The architecture is not "files split when they exceed 300 lines"; it
 is a tree in which **every concern is a module in its own right**.
 
-A module — a folder in TypeScript, a package in Python — has exactly three
-properties:
+A module — a Python package — has exactly three properties:
 
 1. **A single nameable responsibility.** If you cannot name what it does without
    the word "and", it is more than one module.
-2. **Its own barrel** as the public surface — `index.ts` for TypeScript,
-   `__init__.py` for Python. The barrel re-exports the module's public API and
-   contains no logic.
-3. **A minimal public surface.** Private helpers (`_*.py`, un-exported `.ts`) stay
-   internal and are never imported across module boundaries.
+2. **Its own barrel** as the public surface — the `__init__.py`. The barrel
+   re-exports the module's public API and contains no logic.
+3. **A minimal public surface.** Private helpers (`_*.py`) stay internal and are
+   never imported across module boundaries.
 
 Modules **nest as deep as real responsibility seams require** — sub-modules within
 sub-modules. Parent barrels re-export through their child barrels, so external
@@ -77,238 +88,135 @@ holding one stray file with no sibling concern. The boring, readable structure a
 human can navigate always wins over artificial depth.
 
 This is a **behavior-preserving** discipline: modularization changes structure
-only — never runtime behavior, generated output (YAML / `.stck`), styling, or any
+only — never runtime behavior, generated output, or any
 observable contract.
 
-### Frontend layers (`ide/src/`)
+### Engine layers (`src/tractusx_testlab/`)
 
-The frontend is feature-based. Each top-level layer exposes a barrel; imports flow
-**one way only** — `app → layout/features → store → services → models`, and any
-layer may import `shared`/`models`. Feature → feature imports are forbidden;
-features mediate through `store`.
+The runtime imports between the top-level packages are:
 
 ```
-ide/src/
-  app/        composition root: bootstrap + <App> only — no feature logic
-  layout/     app chrome (topbar, panels, status, bottom-panel, welcome)
-  features/   self-contained domain features; each owns its UI/hooks/local logic
-  store/      Zustand state slices — the only mutable app state; may import services/, models/
-  services/   pure, framework-free logic (transforms, I/O, validation) — no React, no store
-  models/     TypeScript schema types + factories — leaf layer, imports nothing internal
-  shared/     cross-cutting reusable UI, hooks, theme, ambient types — no domain knowledge
-  assets/     static assets + the single SCSS source tree (assets/styles/)
+syntax, models, contracts   leaves: no imports from other testlab packages
+infrastructure ─▶ models, syntax
+config         ─▶ infrastructure, models
+security       ─▶ models
+logging        ─▶ models
+services       ─▶ models, syntax                          (SDK service wiring)
+authoring      ─▶ models, syntax, steps                   (registry, parser, step docs)
+steps          ─▶ authoring, logging, models, syntax, server.mock_registry
+compiler       ─▶ authoring, infrastructure, models, steps, syntax
+player         ─▶ authoring, compiler, config, contracts, infrastructure,
+                  logging, models, security, server, services, steps, syntax
+server         ─▶ authoring, compiler, config, models, player, syntax
+cli            ─▶ authoring, compiler, config, infrastructure, logging,
+                  models, player, security, syntax        (`serve` loads server by import string)
 ```
 
-Features nest the same way down to the seam. The reference pattern is
-`features/block-editor/serialization/`, whose `serialize/` module splits into
-`reader/` (read a block chain into steps), `writer/` (write blocks → steps /
-policies), and `validation/` (flatten validate blocks) — each a nested module with
-its own barrel. For the complete nested end-state tree see
-[refactor-plan/ide-refactor-plan.md](refactor-plan/ide-refactor-plan.md) §2.
+Steps refer to `StepContext` from `player` only under `TYPE_CHECKING`. The graph has two
+cycles that the code resolves with deferred imports:
 
-### Backend layers (`src/tractusx_testlab/`)
+- `authoring` ↔ `steps` — steps register through `authoring.registry.step`, and the step
+  reference renderer in `authoring` reads `BaseStep` contracts.
+- `player` ↔ `server` — the server app owns a `TestlabPlayer`, and the player uses the
+  callback manager and mock registry and starts the app in-process for CLI runs.
 
-The backend is layered. Inner layers never import outer ones:
-
-```
-syntax  ──▶  (leaf: pure constants, no testlab imports)
-models  ──▶  syntax
-config  ──▶  models, syntax
-security ─▶  models
-services ─▶  models, config, security        (SDK service wiring)
-steps   ──▶  models, services, syntax, config (never imports player/server/cli)
-compiler ─▶  models, syntax, steps (registry only)
-player  ──▶  steps, services, models, config, compiler
-server  ──▶  player, compiler, services, models
-cli     ──▶  compiler, player, server, config   (thinnest layer, top of stack)
-```
-
-`steps/` is the keystone: it depends downward on `models`/`services`/`syntax` and
-is imported upward by `compiler` (for `@step` registry validation) and `player`
-(for execution).
+`steps/` is the keystone: the compiler imports it to check `uses:`, `with:`, `returns:` and
+`validate:` against the declared contracts, and the player imports it to execute.
 
 ```
 src/tractusx_testlab/
-  cli/        Typer command groups — thin; delegate, never compute
-  compiler/   compile-time: YAML → IR (ir/) → validation (validation/) → package
-  config/     configuration loading & settings (data + I/O only)
-  logging/    structured logging — cross-cutting, depends on nothing
-  models/     Pydantic data only — no behavior, no I/O
-  player/     run-time: load (loading/) → execute (execution/) → track jobs
-  scripting/  script object model + builder DSL (author-facing)
-  security/   crypto (crypto/) + identity & trust (trust/)
-  server/     FastAPI mock server: routes (routes/) + SSE streaming (streaming/)
-  services/   SDK service wiring + lifecycle (no protocol reimplementation)
-  steps/      step executors — one domain per sub-package (connector/, industry/, …)
-  syntax/     leaf: default syntax constants — no testlab imports
-  schemas/    packaged JSON-schema assets (data, no code)
+  authoring/       step registry (@step), YAML parser, Tck/Test object model, step reference renderer
+  cli/             Typer commands: compile, validate, inspect, run, serve, docs, schema, keygen, config
+  compiler/        YAML → IR (ir/) → validation (validation/) → .tck package; JSON schemas (schemas/)
+  config/          TestlabConfig settings and loading (file + TESTLAB_* environment)
+  contracts/       Protocols stating what the engine requires of SDK services
+  infrastructure/  typed infrastructure bindings (sut / engine sides) and their config, env and ${{ }} forms
+  logging/         console transcript, structured logging, CloudEvents trace, wire recording (wire/)
+  models/          Pydantic data only — authoring/, domain/, primitives/, runtime/
+  player/          loading/ (.tck → Tck) → execution/ (bind, seed, run, trace) → jobs
+  schemas/         packaged JSON-schema assets (data, no code)
+  security/        crypto/ (keygen, signing, encryption) + trust/ (identity, trust store, vault)
+  server/          FastAPI app: routes/ (jobs, compile, callbacks), streaming/ (SSE), mock registry
+  services/        SDK service instances and their lifecycle (no protocol reimplementation)
+  steps/           step executors, one domain per sub-package (connector/, digital_twin_registry/, mock/, …)
+  syntax/          leaf: syntax keys, defaults, patterns and author-facing diagnostics
 ```
 
-Each layer nests further along its seams — e.g. `steps/connector/` holds the
-EDC/DSP domain steps and nests a `dsp/` sub-package (one protocol verb per file);
-`compiler/` nests `ir/` and `validation/` sub-packages. For the complete nested
-end-state tree see
-[refactor-plan/backend-refactor-plan.md](refactor-plan/backend-refactor-plan.md) §2.
+Each package nests further along its seams — e.g. `steps/connector/` nests `provision/`,
+`compiler/` nests `ir/` and `validation/`, `player/` nests `loading/` and `execution/`.
+
+## Compile and run flow
+
+```mermaid
+flowchart LR
+    SRC["TCK directory<br/><i>index.yaml + tests</i>"] --> VAL["compiler.validation<br/><i>schema · registry · expressions</i>"]
+    VAL --> IR["compiler.ir<br/><i>manifest.yaml + tck-execution.json</i>"]
+    IR --> PKG[".tck package<br/><i>optionally signed / encrypted</i>"]
+    PKG --> LOAD["player.loading<br/><i>verify · decrypt · parse</i>"]
+    CFG["testlab.config.yaml<br/>TESTLAB_* variables"] --> BIND
+    LOAD --> BIND["player.execution<br/><i>bind infrastructure · seed SDK services</i>"]
+    BIND --> RUN["step runner<br/><i>setup → test phases → cleanup</i>"]
+    RUN --> TRACE["CloudEvents trace<br/><i>JSONL in data_dir</i>"]
+```
+
+`testlab validate` stops after validation, `testlab compile` writes the package,
+`testlab inspect` reads one back without executing it, and `testlab run` loads and executes
+it. Over HTTP the same flow is `POST /testlab/compile`, `POST /testlab/packages`, and
+`POST /testlab/run/package`.
 
 ## System diagram
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        Browser Window                            │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌───────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
-│  │ Project   │  │ Block Workspace  │  │ YAML Editor (Monaco) │  │
-│  │ Explorer  │  │ (Blockly)        │  │                      │  │
-│  │           │  │                  │  │  or                  │  │
-│  │ File tree │  │  drag/connect    │  │  Dependency Graph    │  │
-│  │ + context │  │  blocks          │  │  (React Flow)        │  │
-│  │   menus   │  │                  │  │                      │  │
-│  └─────┬─────┘  └────────┬─────────┘  └──────────┬───────────┘  │
-│        │                 │                        │              │
-│        │        workspaceToModel()        yamlToModel()          │
-│        │                 │                        │              │
-│        │                 ▼                        ▼              │
-│        │    ┌────────────────────────────────┐                   │
-│        │    │   useTestLabStore (Zustand)     │                  │
-│        │    │                                │                   │
-│        │    │   model: TestLabDocument        │                  │
-│        │    │   yaml: string                 │                   │
-│        │    │   errors: ValidationError[]     │                  │
-│        │    │   lastEditSource: "blocks"      │                  │
-│        │    │         | "yaml" | "load"       │                  │
-│        │    └────────────┬───────────────────┘                   │
-│        │                 │                                       │
-│        │          onModelChange()                                │
-│        │                 │                                       │
-│        │                 ▼                                       │
-│        │    ┌────────────────────────────────┐                   │
-│        ├───▶│   useProjectStore (Zustand)    │                   │
-│             │                                │                   │
-│             │   tests: Map<name, Script>     │                   │
-│             │   tck: TckDefinition  │                  │
-│             │   schemas: Map<name, Schema>    │                  │
-│             │   activeFile: ActiveFile        │                  │
-│             │   workspaceStates: per-file     │                  │
-│             └────────────┬───────────────────┘                   │
-│                          │                                       │
-│                   localStorage                                   │
-│                  (auto-save 1s)                                  │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    AUTHOR["TCK source<br/><i>index.yaml + test YAML</i>"]
+    CLIENT["HTTP client<br/><i>any consumer of the server API</i>"]
+
+    subgraph ENGINE["tractusx-testlab engine — this repository"]
+        direction TB
+        CLI["cli<br/><i>testlab compile · run · serve · …</i>"]
+        SERVER["server<br/><i>API · SSE · callbacks · mocks</i>"]
+        COMP["compiler<br/><i>validate → IR → .tck</i>"]
+        PLAYER["player<br/><i>load → bind → execute → trace</i>"]
+        STEPS["steps<br/><i>@step executors, declared contracts</i>"]
+        SVCS["services<br/><i>SDK service instances</i>"]
+        CLI --> COMP
+        CLI --> PLAYER
+        CLI -->|"serve"| SERVER
+        SERVER --> COMP
+        SERVER --> PLAYER
+        PLAYER -->|"background server on run"| SERVER
+        COMP -->|"contract checks"| STEPS
+        PLAYER --> STEPS
+        PLAYER -->|"seeds"| SVCS
+        STEPS -->|"mock / wait steps"| SERVER
+    end
+
+    AUTHOR --> CLI
+    CLIENT -->|"compile · upload · run · control"| SERVER
+    SERVER -.->|"SSE execution events"| CLIENT
+    STEPS -->|"HTTP via tractusx-sdk"| SUT["System under test<br/><i>EDC connector · DTR · discovery</i>"]
+    SVCS -.-> SUT
+    SUT -->|"callbacks · mock calls"| SERVER
 ```
 
-## The sync loop
+## Server API
 
-The most important mechanism to understand is the **bidirectional sync loop** between Blockly and YAML. Without proper guarding, changes from one side would trigger the other side to update, creating an infinite loop. The `lastEditSource` field prevents this.
+All named routes live under `/testlab`; the catch-all route that serves mock endpoints is
+registered last so it never shadows them.
 
-### Blocks → Model → YAML
+| Route | Purpose |
+|---|---|
+| `GET /testlab/health` | Status and installed engine version |
+| `POST /testlab/compile` | Validate and compile a TCK sent in the request |
+| `POST /testlab/packages` · `GET /testlab/packages` · `DELETE /testlab/packages/{package_id}` | Package storage |
+| `POST /testlab/run/package` | Run a stored or uploaded package as a job |
+| `POST /testlab/tck-execution/run` · `POST /testlab/tck-execution/run/yaml` | Start a run from a TCK sent in the request |
+| `GET /testlab/tck-execution/{job_id}/stream` | SSE stream of the job's execution events (resumable via `Last-Event-ID`) |
+| `GET /testlab/tck-execution` · `GET /testlab/tck-execution/{job_id}` | List jobs, read one job |
+| `POST /testlab/tck-execution/{job_id}/cancel` · `/pause` · `/resume` | Job control |
+| `/testlab/callbacks/{path}` | Callback endpoints a test listens on |
+| `/{path}` | Mock endpoints opened by `mock/*` steps; unregistered paths return 404 |
 
-```
-User drags block
-  → Blockly fires change event
-  → debounced 150ms
-  → workspaceToModel(Blockly, ws, catalog) → TestLabDocument
-  → useTestLabStore.setModelFromBlocks(model)
-    → sets lastEditSource = "blocks"
-    → validate(model)
-    → modelToYaml(model) → yaml string
-    → onModelChange callback → useProjectStore.updateTest()
-```
-
-### YAML → Model → Blocks
-
-```
-User types in Monaco
-  → debounced 500ms
-  → useTestLabStore.setModelFromYaml(yaml)
-    → yamlToModel(yaml) → TestLabDocument
-    → sets lastEditSource = "yaml"
-    → validate(model)
-    → onModelChange callback → useProjectStore.updateTest()
-  → BlocklyWorkspace model-sync effect fires (because lastEditSource === "yaml")
-    → disposes existing block chains (SETUP, STEPS, TEARDOWN)
-    → populateWorkspaceFromModel(ws, root, model, catalog)
-    → refreshes dropdown fields
-```
-
-### File switch (click in ProjectExplorer)
-
-```
-User clicks different file in explorer
-  → useProjectStore.setActiveFile(file)
-  → BlocklyWorkspace file-switch effect:
-    → saves current workspace state under old file name
-    → updates activeFileKeyRef
-  → App.tsx loads new model via useTestLabStore.loadModel()
-    → sets lastEditSource = "load"
-  → BlocklyWorkspace model-sync effect fires (because lastEditSource === "load")
-    → disposes all chains (SETUP, STEPS, TEARDOWN)
-    → populateWorkspaceFromModel() rebuilds blocks from new model
-    → refreshDropdownFields() ensures variable dropdowns show correct values
-```
-
-### Loop prevention
-
-The `lastEditSource` field is the key guard:
-
-| `lastEditSource` | Blocks react? | YAML reacts? |
-|---|---|---|
-| `"blocks"` | No (it was the source) | Yes, updates YAML text |
-| `"yaml"` | Yes, rebuilds blocks | No (it was the source) |
-| `"load"` | Yes, rebuilds blocks | Yes, updates YAML text |
-| `"none"` | No | No |
-
-Additionally, `isUpdatingFromStore` ref in BlocklyWorkspace suppresses change events while programmatically modifying blocks, preventing spurious model updates during population.
-
-## Panel layout
-
-```
-┌──────────────────────────────────────────────────────┐
-│  TopBar (44px fixed)                                 │
-│  Logo | Project Name | Import | Export | Examples    │
-├────────┬─────────────────────────┬───────────────────┤
-│Explorer│  Center Panel           │  Right Panel      │
-│(resize │  (BlocklyWorkspace      │  (YamlEditor      │
-│ 160-   │   or SchemaEditor       │   or Graph        │
-│ 500px) │   or TckDashboard) │   or hidden)      │
-│        │                         │                   │
-├────────┴─────────────────────────┴───────────────────┤
-│  StatusBar (24px fixed)                              │
-│  Errors: 0 | Warnings: 0 | Steps: 5 | File: test.y  │
-└──────────────────────────────────────────────────────┘
-```
-
-The center panel content depends on the active file type:
-
-| Active file type | Center panel | Right panel options |
-|---|---|---|
-| `test` | BlocklyWorkspace | YAML Editor, Dependency Graph |
-| `tck` | TckDashboard | YAML Editor |
-| `schema` | SchemaEditor (read-only JSON) | Hidden |
-| None | WelcomeScreen | Hidden |
-
-## Canvas state persistence
-
-Each file gets its own Blockly canvas state (block positions, detached blocks, zoom level). When switching files:
-
-1. The current canvas is serialized via `Blockly.serialization.workspaces.save()` and stored in `useProjectStore.workspaceStates[fileName]`.
-2. On return to that file, the saved state is restored via `Blockly.serialization.workspaces.load()`, preserving exact block positions.
-3. After restore, `refreshDropdownFields()` runs to ensure all dynamic dropdowns (variables, services, schemas) show current values.
-
-If no saved state exists (first time opening a file), the workspace is built from the model via `populateWorkspaceFromModel()`.
-
-## Project persistence
-
-The entire project (TCK, all tests, schemas, test order) is serialized to `localStorage` under the key `"testlab-project"`. Auto-save runs on a 1-second debounce after any model change.
-
-The project can also be exported as a ZIP file with this structure:
-
-```
-{projectName}/
-├── index.yaml              ← Test case definition
-├── tests/
-│   ├── test_one.yaml
-│   └── test_two.yaml
-└── schemas/
-    └── my-schema.json
-```
+The step reference (`testlab docs`) and the JSON schemas (`testlab schema`) are generated
+from the step contracts and authoring models, so the published reference cannot drift from
+the code.

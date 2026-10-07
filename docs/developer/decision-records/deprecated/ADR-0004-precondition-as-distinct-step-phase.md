@@ -51,7 +51,7 @@ Precondition steps use dedicated executor classes that produce `PreconditionLog`
 ### Positive
 
 - Clean phase boundary — preconditions are not conflated with setup actions.
-- Precondition results are clearly identifiable in `ScriptResult`.
+- Precondition results are clearly identifiable in `TestResult`.
 - Precondition failure skips setup and main while still running cleanup.
 
 ### Negative

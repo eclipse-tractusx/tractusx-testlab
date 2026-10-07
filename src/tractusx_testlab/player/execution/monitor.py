@@ -1,7 +1,7 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
-# Copyright (c) 2026 Catena-X Autonomotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -14,121 +14,191 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). 
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## It was reviewed and tested by a human committer.
 
-"""ExecutionMonitor — tracks step/script progress and emits callbacks."""
+"""ExecutionMonitor — the engine's single event publisher.
+
+Every part of the engine reports its transitions through the typed ``on_*``
+methods below rather than hand-building an event dict at the call site: each
+wraps its arguments in the matching model from ``models.runtime.events`` and
+publishes it under its wire name (``step_completed`` -> ``step.completed``).
+
+One transition, two records, because they have two audiences: the **log** — the
+console transcript, for a person watching — and the **trace** — CloudEvents
+JSONL per ADR-0016, for the IDE, the report and anyone debugging the wire.
+Assertions are the one place the two differ in shape: the log prints a line per
+check as it is evaluated, the trace nests them in the step's terminal event,
+because ADR-0016 requires a step result to be self-contained for its renderer.
+
+The trace is written first so the id it returns can go on the log line: a line
+about a call names the event that holds that call's headers and body.
+
+See ``docs/developer/execution-events.md`` for the full event contract.
+"""
 
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
+from tractusx_testlab.logging import wire
+from tractusx_testlab.logging.masking import mask
 from tractusx_testlab.logging.structured import StructuredLogger
-from tractusx_testlab.models import (
-    JobStatus,
-    ScriptResult,
-    StepResult,
+from tractusx_testlab.logging.trace import ExecutionTrace
+from tractusx_testlab.models.runtime.events import (
+    ExecutionEvent,
+    JobCancelledEvent,
+    JobCompletedEvent,
+    JobFailedEvent,
+    JobHeldEvent,
+    JobPausedEvent,
+    JobRestoredEvent,
+    JobResumedEvent,
+    JobStartedEvent,
+    TestAwaitingEvent,
+    TestCompletedEvent,
+    TestStartedEvent,
 )
+from tractusx_testlab.models.runtime.results import TestResult
+from tractusx_testlab.player.execution._monitor_steps import StepEvents
+from tractusx_testlab.player.execution._trace_publisher import TracePublisher
 
-
-# Callback signature: (event_name, payload_dict) -> None
+# Callback signature: (wire_event_name, payload_dict) -> None
 CallbackFn = Callable[[str, dict[str, Any]], Any]
 
 
-class ExecutionMonitor:
-    """Observes execution progress, logs structured events, and fires callbacks."""
+class ExecutionMonitor(StepEvents):
+    """Publishes typed execution events, logs them, traces them, fires callbacks.
 
-    __slots__ = ("_logger", "_callbacks", "_background_tasks")
+    The step lifecycle — the events published while a step runs — is
+    :class:`StepEvents`, in its own module; the job and test lifecycle, the
+    package verification and the publishing itself are here.
+    """
 
-    def __init__(self, logger: StructuredLogger) -> None:
-        """Initialize with a structured logger for event recording."""
+    __slots__ = ("_background_tasks", "_callbacks", "_logger", "_trace")
+
+    def __init__(self, logger: StructuredLogger, trace: ExecutionTrace | None = None) -> None:
+        """Initialize with a console logger and, optionally, an execution trace.
+
+        The trace is optional so an embedder that only wants the transcript pays
+        for nothing else; a monitor without one still logs and still fires
+        callbacks, and the ``_trace_*`` helpers below are the only code that has
+        to notice its absence.
+        """
         self._logger = logger
+        self._trace = TracePublisher(trace)
         self._callbacks: list[CallbackFn] = []
-        self._background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+        self._background_tasks: set[asyncio.Task] = set()
+
+    @property
+    def trace(self) -> ExecutionTrace | None:
+        """The CloudEvents trace this monitor writes, if it writes one."""
+        return self._trace.trace
 
     def add_callback(self, fn: CallbackFn) -> None:
         """Register a callback function to be invoked on every event."""
         self._callbacks.append(fn)
 
     # ------------------------------------------------------------------
-    # Events
+    # Job lifecycle
     # ------------------------------------------------------------------
 
-    def on_job_started(self, job_id: str, tck: str) -> None:
-        """Emit event when a job execution begins."""
-        self._emit("job.started", job_id=job_id, tck=tck)
-
-    def on_script_started(self, job_id: str, script_name: str, index: int) -> None:
-        """Emit event when a script within a job starts executing."""
-        self._emit("script.started", job_id=job_id, script=script_name, index=index)
-
-    def on_step_started(self, job_id: str, step_index: int, step_type: str, step_name: str = "", phase: str = "main") -> None:
-        """Emit event when an individual step begins execution."""
-        self._emit(
-            "step.started",
-            job_id=job_id,
-            step_index=step_index,
-            step_name=step_name,
-            step_type=step_type,
-            phase=phase,
-            status="running",
-        )
-
-    def on_step_completed(self, job_id: str, result: StepResult) -> None:
-        """Emit event when a step finishes with its result details."""
-        payload: dict[str, Any] = {
-            "job_id": job_id,
-            "step_name": result.step_name,
-            "step_type": result.step_type,
-            "phase": result.phase.value.lower(),
-            "status": result.status.value,
-            "duration_s": result.duration_s,
-        }
-        if result.request:
-            payload["request"] = result.request.model_dump(exclude_none=True)
-        if result.response:
-            payload["response"] = result.response.model_dump(exclude_none=True)
-        if result.error:
-            payload["error"] = result.error
-        self._emit("step.completed", **payload)
-
-    def on_step_waiting(self, job_id: str, step_index: int, listener_url: str) -> None:
-        """Emit event when a step is waiting for an async callback."""
-        self._emit("step.waiting", job_id=job_id, step_index=step_index, listener_url=listener_url)
-
-    def on_script_completed(self, job_id: str, result: ScriptResult) -> None:
-        """Emit event when a script finishes execution."""
-        self._emit(
-            "script.completed",
-            job_id=job_id,
-            script=result.script_name,
-            status=result.status.value,
-        )
-
-    def on_job_completed(self, job_id: str, status: JobStatus) -> None:
-        """Emit event when a job finishes with final status."""
-        self._emit("job.completed", job_id=job_id, status=status.value)
+    def on_job_started(self, job_id: str, tck_id: str) -> None:
+        event_id = self._trace.run_started(job_id, tck_id)
+        self._publish(JobStartedEvent(job_id=job_id, tck_id=tck_id), event_id)
 
     def on_job_paused(self, job_id: str) -> None:
-        """Emit event when a job is paused."""
-        self._emit("job.paused", job_id=job_id)
+        self._publish(JobPausedEvent(job_id=job_id))
 
     def on_job_resumed(self, job_id: str) -> None:
-        """Emit event when a paused job resumes."""
-        self._emit("job.resumed", job_id=job_id)
+        self._publish(JobResumedEvent(job_id=job_id))
+
+    def on_job_held(self, job_id: str, withdrawn: list[str], kept: dict[str, str]) -> None:
+        """The paused run has stopped and withdrawn its offers (``player.execution.hold``)."""
+        event_id = self._trace.run_held(withdrawn, kept)
+        self._publish(JobHeldEvent(job_id=job_id, withdrawn=withdrawn, kept=kept), event_id)
+
+    def on_job_restored(self, job_id: str, restored: list[str], lost: dict[str, str]) -> None:
+        """The held run has put its offers back and goes on."""
+        event_id = self._trace.run_restored(restored, lost)
+        self._publish(JobRestoredEvent(job_id=job_id, restored=restored, lost=lost), event_id)
+
+    def on_job_completed(self, job_id: str) -> None:
+        event_id = self._trace.run_ended(job_id, "PASSED")
+        self._publish(JobCompletedEvent(job_id=job_id), event_id)
+
+    def on_job_failed(self, job_id: str, error: str | None = None) -> None:
+        event_id = self._trace.run_ended(job_id, "FAILED", error)
+        self._publish(JobFailedEvent(job_id=job_id, error=error), event_id)
+
+    def on_job_cancelled(self, job_id: str) -> None:
+        event_id = self._trace.run_ended(job_id, "CANCELLED")
+        self._publish(JobCancelledEvent(job_id=job_id), event_id)
+
+    # ------------------------------------------------------------------
+    # Test lifecycle
+    # ------------------------------------------------------------------
+
+    def on_test_started(self, job_id: str, test: str, index: int, attempt: int = 1) -> None:
+        event_id = self._trace.test_started(test, index, attempt)
+        self._publish(
+            TestStartedEvent(job_id=job_id, test_id=test, index=index, attempt=attempt), event_id
+        )
+
+    def on_test_awaiting(self, job_id: str, test: str, index: int) -> None:
+        """An on-demand test is ready and waits for someone to run it."""
+        event_id = self._trace.test_awaiting(test, index)
+        self._publish(TestAwaitingEvent(job_id=job_id, test_id=test, index=index), event_id)
+
+    def on_test_completed(self, job_id: str, result: TestResult) -> None:
+        """Publish a test_completed event; ``result.status`` carries the outcome."""
+        # The event repeats every step, so it repeats them as they were written
+        # down: the real calls, masked.
+        record = result.model_copy(
+            update={"execution": [wire.as_recorded(step) for step in result.execution]}
+        )
+        event_id = self._trace.test_ended(result)
+        self._publish(TestCompletedEvent(job_id=job_id, result=record), event_id)
+
+    # ------------------------------------------------------------------
+    # Package verification (pre-execution — no job exists yet)
+    # ------------------------------------------------------------------
+
+    def on_package_verify_start(self, package: str, encrypted: bool) -> None:
+        self._emit("tck.package.verify.start", package=package, encrypted=encrypted)
+
+    def on_package_verify_passed(self, package: str, checksum: str) -> None:
+        """Emit event when fingerprint and checksum verification succeeds."""
+        self._emit("tck.package.verify.passed", package=package, checksum=checksum)
+
+    def on_package_verify_failed(self, package: str, error: str) -> None:
+        self._emit("tck.package.verify.failed", package=package, error=error)
 
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
 
-    def _emit(self, event: str, **payload: Any) -> None:
-        self._logger.info(event, **payload)
+    def _publish(self, event: ExecutionEvent, event_id: str | None = None) -> None:
+        """Dump a typed event and dispatch it under its canonical wire name.
+
+        *event_id* — the CloudEvent this was traced as — goes to the transcript
+        only: a consumer receives the typed event verbatim, as promised.
+        """
+        wire_event = event.kind.value.replace("_", ".", 1)
+        self._emit(wire_event, event_id=event_id, **event.model_dump(mode="json"))
+
+    def _emit(self, event: str, *, event_id: str | None = None, **payload: Any) -> None:
+        # What an embedder receives is what a viewer of it will see, so a secret
+        # the run minted is masked before either audience gets the event.
+        payload = mask(payload)
+        self._logger.info(event, event_id=event_id, **payload)
         for callback in self._callbacks:
             try:
                 result = callback(event, payload)
@@ -137,4 +207,4 @@ class ExecutionMonitor:
                     self._background_tasks.add(task)
                     task.add_done_callback(self._background_tasks.discard)
             except (RuntimeError, TypeError, ValueError) as exc:
-                self._logger.warning("Callback failed for event '%s': %s", event, exc)
+                self._logger.warning(f"Callback failed for event '{event}': {exc}")

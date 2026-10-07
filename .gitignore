@@ -143,3 +143,6 @@ mvnw.cmd
 # Allow Poetry lock
 !poetry.lock
 .refactor-visuals/
+
+# A JS bundler cache has no business in a Python library
+.vite/

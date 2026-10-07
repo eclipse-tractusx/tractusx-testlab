@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,31 +14,26 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-# Import SDK connector step modules to trigger @step registrations.
-# Each import is guarded so a missing SDK module does not break the chain.
-import logging as _logging
-
-_logger = _logging.getLogger(__name__)
-
-_SDK_CONNECTOR = "tractusx_testlab.steps.connector"
-
-for _mod in ("provision", "consume", "dataplane", "cleanup", "utils", "catalog_filter"):
-    try:
-        __import__(f"{_SDK_CONNECTOR}.{_mod}")
-    except ImportError:
-        _logger.debug("SDK connector module '%s' not available, skipping.", _mod)
-
-# Local connector steps — always import to register testlab-specific steps.
-import tractusx_testlab.steps.connector.provision  # noqa: F401
-import tractusx_testlab.steps.connector.consume  # noqa: F401
-import tractusx_testlab.steps.connector.dataplane  # noqa: F401
-import tractusx_testlab.steps.connector.catalog_filter  # noqa: F401
-import tractusx_testlab.steps.connector.cleanup  # noqa: F401
-import tractusx_testlab.steps.connector.utils  # noqa: F401
-import tractusx_testlab.steps.connector.extract  # noqa: F401
+# Every module that declares a connector step, imported so its ``@step``
+# decorators run.  Each module is named here directly rather than reached
+# through another module's imports: a step that only registers as a side effect
+# of someone else's import is a step that silently disappears when that import
+# is tidied away.
+import tractusx_testlab.steps.connector.catalog_filter
+import tractusx_testlab.steps.connector.catalog_query
+import tractusx_testlab.steps.connector.cleanup
+import tractusx_testlab.steps.connector.dataplane
+import tractusx_testlab.steps.connector.discover_connector
+import tractusx_testlab.steps.connector.do_dsp
+import tractusx_testlab.steps.connector.extract
+import tractusx_testlab.steps.connector.negotiate
+import tractusx_testlab.steps.connector.provision
+import tractusx_testlab.steps.connector.pull_data
+import tractusx_testlab.steps.connector.transfer
+import tractusx_testlab.steps.http.request

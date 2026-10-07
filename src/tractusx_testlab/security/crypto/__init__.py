@@ -1,5 +1,5 @@
 #################################################################################
-# Eclipse Tractus-X - Software Development KIT
+# Eclipse Tractus-X - Tractus-X TestLab
 #
 # Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
@@ -14,7 +14,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
-# License for the specific language govern in permissions and limitations
+# License for the specific language governing permissions and limitations
 # under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -22,7 +22,7 @@
 
 """Crypto sub-module — key generation, encryption, and signing."""
 
-from tractusx_testlab.security.crypto.encryption import encrypt_package, decrypt_package
+from tractusx_testlab.security.crypto.encryption import decrypt_package, encrypt_package
 from tractusx_testlab.security.crypto.keygen import (
     KeyPair,
     generate_ed25519_keypair,
@@ -32,10 +32,10 @@ from tractusx_testlab.security.crypto.signing import sign_bytes, verify_signatur
 
 __all__ = [
     "KeyPair",
-    "generate_rsa_keypair",
-    "generate_ed25519_keypair",
-    "encrypt_package",
     "decrypt_package",
+    "encrypt_package",
+    "generate_ed25519_keypair",
+    "generate_rsa_keypair",
     "sign_bytes",
     "verify_signature",
 ]

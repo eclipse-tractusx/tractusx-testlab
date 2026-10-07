@@ -54,18 +54,23 @@ library (`src/tractusx_testlab/`) or **shared** concerns that span the system. T
 | [0016](backend/ADR-0016-execution-trace-format.md) | Execution Trace Format | Proposed |
 | [0017](backend/ADR-0017-input-callback-endpoint.md) | Input Callback Endpoint | Proposed |
 | [0019](backend/ADR-0019-service-requirements-and-engine-bindings.md) | Service Requirements and Engine Bindings | Proposed |
+| [0022](backend/ADR-0022-tck-static-inspection.md) | TCK Static Inspection | Accepted |
+| [0023](backend/ADR-0023-variable-scope-annotation.md) | Variable Scope Annotation (`engine` / `sut`) | Accepted |
+| [0024](backend/ADR-0024-test-skip-configuration.md) | Test-Level Skip Configuration | Accepted |
+| [0026](backend/ADR-0026-paused-runs-are-held.md) | Paused Runs Are Held | Accepted |
 
 ### Shared
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| [0003](shared/ADR-0003-sse-for-live-ide-execution.md) | SSE for Live IDE Execution | Accepted |
+| [0003](shared/ADR-0003-sse-for-live-execution.md) | SSE for Live Execution | Accepted |
 | [0008](shared/ADR-0008-test-case-to-tck-rename.md) | Test-Case to TCK Rename | Accepted |
 | [0009](shared/ADR-0009-typed-variable-class-system.md) | Typed Variable Class System | Accepted |
 | [0010](shared/ADR-0010-yaml-syntax-v2.md) | YAML Syntax v2 (GHA-Inspired) | Accepted |
 | [0011](shared/ADR-0011-environment-and-services.md) | Environment Variables and Services Management | Proposed |
 | [0018](shared/ADR-0018-unified-variables-model.md) | Unified Variables Model (Preconditions as Complex Variables) | Accepted (finalized by [0021](shared/ADR-0021-remove-precondition-concept.md)) |
 | [0021](shared/ADR-0021-remove-precondition-concept.md) | Remove the Precondition Concept in Favor of Unified Variables | Accepted |
+| [0025](shared/ADR-0025-assertions-read-declared-returns.md) | Assertions Read Declared Returns | Proposed |
 
 ### Deprecated / Superseded
 
@@ -74,7 +79,6 @@ These ADRs are not published and remain as plain-text history only.
 | ADR | Title | Status |
 |-----|-------|--------|
 | 0004 | Precondition as Distinct Step Phase | Superseded by [0021](shared/ADR-0021-remove-precondition-concept.md) (not published) |
-| 0006 | Service Auto-Declaration on Block Drop | Deprecated (not published) |
 | 0007 | Precondition Execution Logs Model | Superseded by [0021](shared/ADR-0021-remove-precondition-concept.md) (not published) |
 | 0013 | Preconditions Specification | Superseded by [0021](shared/ADR-0021-remove-precondition-concept.md) (not published) |
 
@@ -82,6 +86,6 @@ These ADRs are not published and remain as plain-text history only.
 
 1. Copy `ADR-0000-template.md` to `ADR-NNNN-short-title.md` (next available number).
 2. Fill in all sections.
-3. Place the file in the correct subfolder — `frontend/`, `backend/`, or `shared/` — based on which part of the system the decision primarily affects.
+3. Place the file in the correct subfolder — `backend/` or `shared/` — based on which part of the system the decision primarily affects.
 4. Add the entry to the matching subsection in this index table, using the subfolder path (for example `[NNNN](backend/ADR-NNNN-short-title.md)`).
-5. Add the file to `mkdocs.yml` under the Decision Records nav section, in the matching `Frontend:` / `Backend:` / `Shared:` group.
+5. Add the file to `mkdocs.yml` under the Decision Records nav section, in the matching `Backend:` / `Shared:` group.
