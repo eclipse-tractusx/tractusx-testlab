@@ -27,15 +27,52 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from collections.abc import Callable, Coroutine
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 
 from tractusx_testlab.player.execution.player import TestlabPlayer
 from tractusx_testlab.server.storage import InvalidPackageNameError, PackageStorage, new_package_id
 
-packages_router = APIRouter(tags=["testlab"])
+#: Starlette before 1.3.1 ignores the ``request.form()`` field and size limits
+#: for this content type, so an upload route that parses it can be made to
+#: buffer an unbounded body (GHSA, "request.form() limits silently ignored").
+_URLENCODED_FORM = "application/x-www-form-urlencoded"
+
+
+def _is_urlencoded_form(request: Request) -> bool:
+    media_type = request.headers.get("content-type", "").split(";", 1)[0]
+    return media_type.strip().lower() == _URLENCODED_FORM
+
+
+class _NoUrlencodedFormRoute(APIRoute):
+    """Refuses urlencoded form bodies before FastAPI parses the request.
+
+    FastAPI reads an ``UploadFile`` route's body with ``request.form()`` ahead
+    of any dependency, so the refusal has to sit in the route handler itself.
+    Uploads are multipart; no package route accepts a urlencoded form.
+    """
+
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+        parse_and_handle = super().get_route_handler()
+
+        async def refuse_urlencoded_form(request: Request) -> Response:
+            if _is_urlencoded_form(request):
+                return JSONResponse(
+                    status_code=415,
+                    content={
+                        "detail": f"Expected multipart/form-data, received {_URLENCODED_FORM}"
+                    },
+                )
+            return await parse_and_handle(request)
+
+        return refuse_urlencoded_form
+
+
+packages_router = APIRouter(tags=["testlab"], route_class=_NoUrlencodedFormRoute)
 
 
 def _get_player(request: Request) -> TestlabPlayer:
@@ -62,6 +99,7 @@ StorageDep = Annotated[PackageStorage, Depends(_get_storage)]
     responses={
         400: {"description": "File must be a .tck archive named without a path"},
         413: {"description": "Package exceeds maximum upload size"},
+        415: {"description": "Body must be multipart/form-data, not a urlencoded form"},
     },
 )
 async def upload_package(
