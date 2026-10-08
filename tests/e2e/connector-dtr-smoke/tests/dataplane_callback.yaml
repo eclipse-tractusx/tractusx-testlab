@@ -37,7 +37,7 @@ metadata:
     puts it behind an asset on the *engine's* connector, which is the shape
     a callback the SUT must deliver through the dataspace takes: the offer
     lives on the test suite's connector, is visible to one business partner
-    only, and every id in it carries this run's `execution.id`, so two runs
+    only, and every id in it carries this run's `execution.resource_prefix`, so two runs
     never offer the same thing. The umbrella's only other connector is the
     SUT, which this suite cannot drive as a consumer, so the engine's own
     consumer plays the partner the access policy names — it negotiates with
@@ -90,7 +90,7 @@ setup:
           - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
           - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
         "@type": PolicyDefinition
-        "@id": "testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
+        "@id": "${{ execution.resource_prefix }}testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
         policy:
           "@type": Set
           permission:
@@ -123,7 +123,7 @@ setup:
           - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
           - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
         "@type": PolicyDefinition
-        "@id": "testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+        "@id": "${{ execution.resource_prefix }}testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
         policy:
           "@type": Set
           permission:
@@ -181,10 +181,13 @@ setup:
         "@context":
           "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
         "@type": ContractDefinition
-        "@id": "testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
-        accessPolicyId: "testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
-        contractPolicyId: "testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+        "@id": "${{ execution.resource_prefix }}testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
+        accessPolicyId: "${{ execution.resource_prefix }}testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
+        contractPolicyId: "${{ execution.resource_prefix }}testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
         assetsSelector:
+          - operandLeft: "https://w3id.org/edc/v0.0.1/ns/id"
+            operator: like
+            operandRight: "${{ execution.resource_prefix }}%"
           - operandLeft: "https://w3id.org/edc/v0.0.1/ns/id"
             operator: "="
             operandRight: "${{ setup.create_asset.asset_id }}"
@@ -277,7 +280,7 @@ teardown:
     name: Remove this run's contract definition
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/contractdefinitions/testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/contractdefinitions/${{ execution.resource_prefix }}testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"
 
@@ -295,7 +298,7 @@ teardown:
     name: Remove this run's usage policy
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/${{ execution.resource_prefix }}testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"
 
@@ -304,6 +307,6 @@ teardown:
     name: Remove this run's access policy
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/${{ execution.resource_prefix }}testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"
