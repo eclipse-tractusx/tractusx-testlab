@@ -102,9 +102,26 @@ setup:
                     - "${{ env.engine_bpnl }}"
           prohibition: []
           obligation: []
+    returns:
+      response_body:
+        type: object
     validate:
       - uses: validate/assert
         with: { input: status_code, operator: equals, value: 200 }
+
+  # Read the IDs acknowledged by EDC; later steps must not rebuild request IDs.
+  - id: access_policy_id
+    uses: util/json_path_extract
+    name: Read the created access policy ID
+    with:
+      input: "${{ setup.create_access_policy.response_body }}"
+      path: "@id"
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_empty }
 
   # The same usage policy the other tests offer from the SUT, so the pull
   # below can hold the offer to `env.usage_policy`.
@@ -142,9 +159,25 @@ setup:
                         - "cx.core.digitalTwinRegistry:1"
           prohibition: []
           obligation: []
+    returns:
+      response_body:
+        type: object
     validate:
       - uses: validate/assert
         with: { input: status_code, operator: equals, value: 200 }
+
+  - id: usage_policy_id
+    uses: util/json_path_extract
+    name: Read the created usage policy ID
+    with:
+      input: "${{ setup.create_usage_policy.response_body }}"
+      path: "@id"
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_empty }
 
   # The asset's backend is the mock server's root as a pod reaches it, and
   # the path, the method and the body travel with each call, as in
@@ -182,8 +215,8 @@ setup:
           "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
         "@type": ContractDefinition
         "@id": "${{ execution.resource_prefix }}testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
-        accessPolicyId: "${{ execution.resource_prefix }}testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
-        contractPolicyId: "${{ execution.resource_prefix }}testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+        accessPolicyId: "${{ setup.access_policy_id.value }}"
+        contractPolicyId: "${{ setup.usage_policy_id.value }}"
         assetsSelector:
           - operandLeft: "https://w3id.org/edc/v0.0.1/ns/id"
             operator: like
@@ -191,9 +224,25 @@ setup:
           - operandLeft: "https://w3id.org/edc/v0.0.1/ns/id"
             operator: "="
             operandRight: "${{ setup.create_asset.asset_id }}"
+    returns:
+      response_body:
+        type: object
     validate:
       - uses: validate/assert
         with: { input: status_code, operator: equals, value: 200 }
+
+  - id: contract_definition_id
+    uses: util/json_path_extract
+    name: Read the created contract definition ID
+    with:
+      input: "${{ setup.create_contract.response_body }}"
+      path: "@id"
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_empty }
 
 execution:
   # The partner's side of the hand-off: find the offer on the engine
@@ -280,7 +329,7 @@ teardown:
     name: Remove this run's contract definition
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/contractdefinitions/${{ execution.resource_prefix }}testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/contractdefinitions/${{ setup.contract_definition_id.value }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"
 
@@ -298,7 +347,7 @@ teardown:
     name: Remove this run's usage policy
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/${{ execution.resource_prefix }}testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/${{ setup.usage_policy_id.value }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"
 
@@ -307,6 +356,6 @@ teardown:
     name: Remove this run's access policy
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/${{ execution.resource_prefix }}testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/${{ setup.access_policy_id.value }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"

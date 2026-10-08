@@ -31,9 +31,9 @@ import yaml
 
 from combinations.connector_double import ProviderDouble
 from combinations.harness import Harness
-from combinations.http_double import HttpDouble
+from combinations.http_double import HttpDouble, Response
 from tractusx_testlab.config.settings import TestlabConfig as LabConfig
-from tractusx_testlab.models import Job, ServiceType
+from tractusx_testlab.models import Job, ServiceType, StepStatus
 from tractusx_testlab.models.domain.infrastructure import Infrastructure
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.dataspace_access import ENGINE_PROVIDER_SERVICE
@@ -76,11 +76,18 @@ def scenario() -> dict:
     return yaml.safe_load((_ROOT / "tests/dataplane_callback.yaml").read_text(encoding="utf-8"))
 
 
-@pytest.fixture(params=["cx-test-suite:run-a:", "another-engine:run-b:"])
+@pytest.fixture(params=["testlab:callback-regression:", "another-engine:run-b:"])
 def callback_harness(request: pytest.FixtureRequest, http: HttpDouble) -> Harness:
     prefix = str(request.param)
-    for collection in ("policydefinitions", "contractdefinitions"):
-        http.json_route("POST", "/management/v3/" + collection, {})
+    http.route(
+        "POST",
+        "/management/v3/policydefinitions",
+        Response(body={"@id": prefix + "returned-access"}),
+        Response(body={"@id": prefix + "returned-usage"}),
+    )
+    http.json_route(
+        "POST", "/management/v3/contractdefinitions", {"@id": prefix + "returned-contract"}
+    )
     base = http.start() + "/management"
     context = StepContext(
         services=_EngineServices(ProviderDouble()),
@@ -121,8 +128,22 @@ async def test_shipped_setup_and_teardown_use_the_guarded_run_namespace(
     access, usage, contract = (call.body for call in http.received)
     prefix = callback_harness.context.resource_prefix
     assert all(body["@id"].startswith(prefix) for body in (access, usage, contract))
-    assert contract["accessPolicyId"] == access["@id"]
-    assert contract["contractPolicyId"] == usage["@id"]
+    access_id = opened.output("access_policy_id")
+    usage_id = opened.output("usage_policy_id")
+    contract_id = opened.output("contract_definition_id")
+    assert (access_id, usage_id, contract_id) == (
+        prefix + "returned-access",
+        prefix + "returned-usage",
+        prefix + "returned-contract",
+    )
+    assert all(
+        returned != submitted["@id"]
+        for returned, submitted in zip(
+            (access_id, usage_id, contract_id), (access, usage, contract), strict=True
+        )
+    )
+    assert contract["accessPolicyId"] == access_id
+    assert contract["contractPolicyId"] == usage_id
     permission = access["policy"]["permission"]
     assert permission == [
         {
@@ -144,10 +165,10 @@ async def test_shipped_setup_and_teardown_use_the_guarded_run_namespace(
     ]
 
     expected_paths = [
-        "/management/v3/contractdefinitions/" + contract["@id"],
+        "/management/v3/contractdefinitions/" + contract_id,
         "/management/v3/assets/" + asset_id,
-        "/management/v3/policydefinitions/" + usage["@id"],
-        "/management/v3/policydefinitions/" + access["@id"],
+        "/management/v3/policydefinitions/" + usage_id,
+        "/management/v3/policydefinitions/" + access_id,
     ]
     for path in expected_paths:
         http.json_route("DELETE", path, {})
@@ -162,7 +183,34 @@ async def test_missing_asset_setup_output_cannot_be_satisfied_by_another_scenari
     callback_harness: Harness, http: HttpDouble, scenario: dict
 ) -> None:
     contract = next(step for step in scenario["setup"] if step["id"] == "create_contract")
+    callback_harness.context.set_variable(
+        "setup.access_policy_id.value", callback_harness.context.resource_prefix + "returned-access"
+    )
+    callback_harness.context.set_variable(
+        "setup.usage_policy_id.value", callback_harness.context.resource_prefix + "returned-usage"
+    )
     outcome = await callback_harness.run(contract, phase="setup")
     assert not outcome.passed
     assert "setup.create_asset.asset_id" in (outcome.error("create_contract") or "")
     assert http.received == []
+
+
+@pytest.mark.parametrize("response_body", [{}, {"@id": None}])
+async def test_invalid_creation_response_never_guesses_ids_for_contract_or_cleanup(
+    callback_harness: Harness, http: HttpDouble, scenario: dict, response_body: dict
+) -> None:
+    http.json_route("POST", "/management/v3/policydefinitions", response_body)
+    opened = await callback_harness.run(*scenario["setup"], phase="setup")
+    assert not opened.passed
+    assert opened.result("access_policy_id").status == StepStatus.FAILED
+    assert opened.result("usage_policy_id").status == StepStatus.FAILED
+    assert all(call.path != "/management/v3/contractdefinitions" for call in http.received)
+
+    policy_cleanup = [
+        step
+        for step in scenario["teardown"]
+        if step["id"] in {"delete_access_policy", "delete_usage_policy", "delete_contract"}
+    ]
+    closed = await callback_harness.run(*policy_cleanup, phase="teardown")
+    assert not closed.passed
+    assert all(call.method == "POST" for call in http.received)

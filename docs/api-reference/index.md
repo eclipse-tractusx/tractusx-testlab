@@ -295,6 +295,13 @@ resources directly through HTTP. Raw provisioning calls to the engine management
 API are refused if their IDs, policy references, or contract selectors escape
 this namespace.
 
+For raw HTTP creation, declare `returns: { response_body: { type: object } }`
+and read its `@id` with `util/json_path_extract` (`path: "@id"`). Publish the
+extracted `value` and use it unchanged for policy links and cleanup, just as
+typed creation outputs are used for filters and assertions. Do not reconstruct
+IDs from the prefix downstream; the prefix belongs in creation payloads and
+namespace selectors.
+
 Cleanup steps delete the exact resource IDs supplied to them. The host application
 must run connector cleanup after completion, failure, and cancellation, including
 when execution exits before a YAML teardown. Immutable agreement history and
