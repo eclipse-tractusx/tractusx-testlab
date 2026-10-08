@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
 ## It was reviewed and tested by a human committer.
 
 
@@ -128,10 +129,11 @@ class TestDspStepByStep:
         )
         return await harness.run(*_phase("dsp_step_by_step.yaml", "execution"))
 
-    async def test_the_file_declares_the_six_steps_the_scenario_is_named_for(self) -> None:
+    async def test_the_file_declares_the_steps_the_scenario_is_named_for(self) -> None:
         steps = _phase("dsp_step_by_step.yaml", "execution")
         assert [step["id"] for step in steps] == [
             "catalog",
+            "selected",
             "dataset",
             "negotiation",
             "transfer",

@@ -94,6 +94,11 @@ class RunHold:
         """Whether the hold belongs to a job the player runs."""
         return self._jobs is not None
 
+    @property
+    def jobs(self) -> JobManager | None:
+        """The job manager the hold is bound to — where a step asks its operator a question."""
+        return self._jobs
+
     # ------------------------------------------------------------------
     # What the run has published
     # ------------------------------------------------------------------

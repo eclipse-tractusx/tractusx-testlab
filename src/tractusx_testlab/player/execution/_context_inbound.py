@@ -84,3 +84,21 @@ class InboundReporting:
         """Say that the call arrived, and what it carried."""
         if self._listener_reporter is not None:
             self._listener_reporter.received(step_type, step_id, listener, request, waited_ms)
+
+    # ------------------------------------------------------------------
+    # Reporting a question to the operator: asked, answered
+    # ------------------------------------------------------------------
+
+    def report_selecting(
+        self, step_type: str, step_id: str | None, selection: Any, timeout_s: float
+    ) -> None:
+        """Say that the run is blocked until the operator chooses one of *selection*'s options."""
+        if self._listener_reporter is not None:
+            self._listener_reporter.selecting(step_type, step_id, selection, timeout_s)
+
+    def report_selected(
+        self, step_type: str, step_id: str | None, option: Any, waited_ms: int
+    ) -> None:
+        """Say which option the operator chose, and how long the run waited for it."""
+        if self._listener_reporter is not None:
+            self._listener_reporter.selected(step_type, step_id, option, waited_ms)

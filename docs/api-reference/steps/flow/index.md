@@ -7,6 +7,7 @@
 | — | [`flow/delay`](#flow-delay) | Pause test execution for a fixed duration. |
 | — | [`flow/if`](#flow-if) | Run one of two nested sequences depending on a set of conditions. |
 | — | [`flow/retry`](#flow-retry) | Run a nested list of steps, retrying the whole sequence on failure. |
+| — | [`flow/select`](#flow-select) | Let the operator choose one of a list of values — a dropdown in the host's UI. |
 
 ## `flow/delay` { #flow-delay }
 
@@ -71,7 +72,40 @@ _The nested steps' outputs, in order, from the attempt that finally passed._
 
 Type: list of any
 
+## `flow/select` { #flow-select }
+
+Let the operator choose one of a list of values — a dropdown in the host's UI.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `auto_select_single` | boolean | no | `True` | — | Take the only option without asking when there is just one. False asks the operator even then. |
+| `timeout_s` | number | no | `300.0` | — | Seconds to wait for the choice before failing. |
+| `action` | [WaitAction](#waitaction) | no | `None` | — | What the choice is for, shown to the operator with the options: 'label', 'description', 'recommendation' and 'fields'. |
+| `options` | list of [SelectOption](#selectoption) | yes | — | — | The options, as plain values or as {value, label, description, details}. |
+
+**Output** — the value assertions and `returns:` read
+
+_Output contract of `flow/select`._
+
+| Field | Type | Description |
+|---|---|---|
+| `selected_by` | `operator` \| `single` | 'operator' when the operator chose, 'single' when it was the only option. |
+| `value` | string | The chosen option's value. |
+| `label` | string | The chosen option's label. |
+| `details` | object | The chosen option's details. |
+
 ## Nested objects
+
+### ActionField
+
+One labelled value the person driving the system under test copies.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `label` | string | yes | — | — | What the value is, e.g. `header.receiverBpn`. |
+| `value` | string \| integer \| number \| boolean | yes | — | — | The value to copy. |
 
 ### Assertion
 
@@ -105,6 +139,17 @@ Single output field declared in a step `returns` block.
 | `class` | string | no | `None` | — |  |
 | `hidden` | boolean | no | `None` | — | Mask the value in every record of the run (trace, UI, logs). |
 
+### SelectOption
+
+One option of `flow/select`.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `value` | string | yes | — | — | What the step returns when chosen; unique. |
+| `label` | string | no | `None` | — | What the operator sees; 'value' if unset. |
+| `description` | string | no | `None` | — | A line more about the option. |
+| `details` | object | no | `{}` | — | Anything else to show beside it, and to return. |
+
 ### StepDefinition
 
 Step definition using `uses` and `with` verb-form keys.
@@ -121,3 +166,14 @@ Step definition using `uses` and `with` verb-form keys.
 | `expects` | `fail` | no | `None` | — |  |
 | `timeout_s` | number | no | `None` | — |  |
 | `if` | string | no | `None` | — |  |
+
+### WaitAction
+
+The action the system under test has to take while a step waits — written by the test author on the wait step (`with.action`) and shown in place of what a viewer would otherwise derive from the listener.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `label` | string | no | `None` | — | The action's name, e.g. 'Send a certificate push'. |
+| `description` | string | no | `None` | — | What is being asked of the system under test, and why. |
+| `recommendation` | list of string | no | `[]` | — | How to do it: the steps to take, in order. A single string is one step. |
+| `fields` | list of [ActionField](#actionfield) | no | `[]` | — | Values to copy, shown beside the steps, in order. |

@@ -9,6 +9,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `flow/select` stops the run and lets the operator choose one of `options`
+  (plain values, or `{value, label, description, details}`); it returns
+  `value`, `label`, `details` and `selected_by`. `connector/datasets/select`
+  is built on it: given the `datasets` a catalog step already returned, it
+  offers every asset × offer pair, each with the asset's properties and the
+  offer's policy, and returns `asset_id`, `offer_id`, `policy` (ready for
+  `connector/consumer/negotiate`), `dataset` and `selected_by`. Both publish
+  `step_selecting` (`tck.test.step.selecting` in the trace) with a
+  `selection` whose `presentation` (`dropdown` or `catalog_offers`) tells a
+  host how to show it. The host answers with
+  `player.jobs.selections.answer(job_id, value, step_id)`, or
+  `POST /testlab/tck-execution/{job_id}/select` with `{"value", "step_id"}`
+  on the TestLab server; the step publishes `step_selected` with the chosen
+  option. A single option is taken without asking while `auto_select_single`
+  (default true) holds. The wait honours `timeout_s` (default 300) and stops
+  its clock while the run is paused; cancelling the run withdraws the question.
+
 - The console frames every wait for the system under test. Under the
   `step.waiting` line it draws an `ACTION REQUIRED` block between `=` rules,
   with how long the run waits, and says what to do in order: the wait's

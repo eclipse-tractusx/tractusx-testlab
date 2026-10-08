@@ -20,8 +20,9 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-"""Flow-control steps: delay, retry, and conditional branching."""
+"""Flow-control steps: delay, retry, conditional branching, and the operator's choice."""
 
 import tractusx_testlab.steps.flow.conditional
 import tractusx_testlab.steps.flow.delay
 import tractusx_testlab.steps.flow.retry
+import tractusx_testlab.steps.flow.select

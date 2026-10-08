@@ -510,6 +510,78 @@ same way `step_call` shows the outbound.
 On the console: `step.received [external-callback] await_call mock/wait/http_request ← POST /testlab-e2e/callback after 3012ms body={"from": "stub-sut"}`.
 In the trace it is a `tck.test.step.received`.
 
+#### `step_selecting`
+
+`flow/select`, or a step built on it such as `connector/datasets/select`, has
+more than one option and waits for the operator to choose one. The host answers
+through the player — `player.jobs.selections.answer(job_id, value, step_id)`, or
+`POST /testlab/tck-execution/{job_id}/select` with `{"value": …, "step_id": …}`
+on the TestLab server — with one of the options' `id`. A pause stops the
+clock and keeps the question open; when the run resumes, a fresh
+`step_selecting` carries what is left of the timeout as `timeout_s`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"step_selecting"` | |
+| `job_id` | string | |
+| `test_id` | string | |
+| `step_id` | string \| null | The id to send back with the answer. |
+| `step_type` | string | `flow/select`, `connector/datasets/select`, … |
+| `selection` | `Selection` | `presentation`, `options` and the test's `action`, if any. Each option is an `id` (the answer), a `label`, an optional `description` and `details`. |
+| `timeout_s` | number | How long the step waits for the choice, pauses excluded. |
+
+`presentation` says how to show the options:
+
+- `dropdown` — a plain list of labels (`flow/select`); `details` is whatever the test wrote.
+- `catalog_offers` — one entry per asset × offer pair (`connector/datasets/select`).
+  `details` holds `asset_id`, `offer_id`, `offer_index`, `offer_count`, the
+  asset's `properties` (the dataset without its ids, offers and distributions)
+  and the offer's `policy` as the provider wrote it.
+
+```json
+{
+  "kind": "step_selecting",
+  "job_id": "3f1c…",
+  "test_id": "certificate-push",
+  "step_id": "select_ccmapi",
+  "step_type": "connector/datasets/select",
+  "selection": {
+    "presentation": "catalog_offers",
+    "options": [
+      {"id": "ccmapi-1::offer-1", "label": "ccmapi-1", "description": "offer 1 of 1: offer-1",
+       "details": {"asset_id": "ccmapi-1", "offer_id": "offer-1", "offer_index": 1, "offer_count": 1,
+                   "properties": {"dct:type": {"@id": "cx-taxo:CCMAPI"}},
+                   "policy": {"@id": "offer-1", "odrl:permission": {"odrl:action": {"@id": "odrl:use"}}}}},
+      {"id": "ccmapi-2::offer-2", "label": "ccmapi-2", "description": "offer 1 of 1: offer-2",
+       "details": {"asset_id": "ccmapi-2", "offer_id": "offer-2", "offer_index": 1, "offer_count": 1,
+                   "properties": {"dct:type": {"@id": "cx-taxo:CCMAPI"}}, "policy": {"@id": "offer-2"}}}
+    ],
+    "action": null
+  },
+  "timeout_s": 300.0
+}
+```
+
+On the console: `step.selecting [certificate-push] select_ccmapi connector/datasets/select — choose 1 of 2 (up to 300s)`, then one row per option.
+In the trace it is a `tck.test.step.selecting`.
+
+#### `step_selected`
+
+The operator chose. Published before the step returns its output.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"step_selected"` | |
+| `job_id` | string | |
+| `test_id` | string | |
+| `step_id` | string \| null | |
+| `step_type` | string | `flow/select`, `connector/datasets/select`, … |
+| `option` | `SelectionOption` | The option chosen, as it was offered. |
+| `waited_ms` | integer | How long the step waited for the choice, pauses excluded. |
+
+On the console: `step.selected [certificate-push] select_ccmapi connector/datasets/select → ccmapi-1 after 5120ms`.
+In the trace it is a `tck.test.step.selected` (payload `value`, `option`, `waited_ms`).
+
 ### Assertions
 
 #### `assertion_result`
@@ -594,10 +666,12 @@ The verdict counts each test's latest attempt.
 
 1. Add the value to `EventKind`.
 2. Add its payload model to `models/runtime/events.py` (or, for the hold's,
-   `hold_events.py`) and to the `ExecutionEvent` union.
+   `hold_events.py`; for the operator's choice, `selection.py`) and to the
+   `ExecutionEvent` union.
 3. Add the `on_*` method to `ExecutionMonitor` — the publisher is the only place
    that builds an event, so a new kind cannot be emitted from anywhere else. A
-   step-level kind goes on its `StepEvents` half (`_monitor_steps.py`).
+   step-level kind goes on its `StepEvents` half (`_monitor_steps.py`), or on
+   `SelectionEvents` (`_monitor_selection.py`) for the operator's choice.
 4. Document it here, with a field table and an example.
 
 Step 4 is not optional: this page is the contract, and a kind that is emitted but

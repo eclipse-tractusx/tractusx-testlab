@@ -115,6 +115,29 @@ execution:
       - uses: validate/assert
         with: { input: datasets, operator: length_equals, value: 1 }
 
+  # 1b. The catalog's datasets, through the step that lets an operator choose
+  # an asset and an offer. One pair is there, so it is taken without asking —
+  # the run is unattended.
+  - id: selected
+    uses: connector/datasets/select
+    name: Take the one asset and offer the catalog holds
+    with:
+      datasets: "${{ execution.catalog.datasets }}"
+    returns:
+      asset_id:
+        type: string
+      policy:
+        type: object
+      selected_by:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: asset_id, operator: equals, value: "${{ setup.asset.asset_id }}" }
+      - uses: validate/assert
+        with: { input: policy, operator: not_null }
+      - uses: validate/assert
+        with: { input: selected_by, operator: equals, value: single }
+
   # 2. Pick the offer out of the catalog document.
   - id: dataset
     uses: connector/consumer/extract_dataset

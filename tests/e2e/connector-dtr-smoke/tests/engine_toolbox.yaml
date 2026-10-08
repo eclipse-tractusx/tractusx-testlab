@@ -524,6 +524,26 @@ execution:
     with:
       seconds: 0.2
 
+  # The operator's choice, with one option: taken without asking, so the
+  # unattended run goes on.
+  - id: only_choice
+    uses: flow/select
+    name: Take the only option without asking
+    with:
+      options:
+        - value: smoke
+          label: Smoke run
+    returns:
+      value:
+        type: string
+      selected_by:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: equals, value: smoke }
+      - uses: validate/assert
+        with: { input: selected_by, operator: equals, value: single }
+
   # F. The branch, taken both ways.
 
   # The condition reads a status code an earlier call actually returned rather

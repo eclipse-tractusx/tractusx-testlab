@@ -109,3 +109,15 @@ class ListenerReports:
             request,
             waited_ms,
         )
+
+    def selecting(
+        self, step_type: str, step_id: str | None, selection: Any, timeout_s: float
+    ) -> None:
+        self._monitor.on_step_selecting(
+            self._job_id, self._test, step_id, step_type, self._phase, selection, timeout_s
+        )
+
+    def selected(self, step_type: str, step_id: str | None, option: Any, waited_ms: int) -> None:
+        self._monitor.on_step_selected(
+            self._job_id, self._test, step_id, step_type, self._phase, option, waited_ms
+        )

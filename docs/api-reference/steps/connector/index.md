@@ -18,6 +18,7 @@
 | `consumer` | [`connector/consumer/query_catalog_by_bpnl`](consumer.md#connector-consumer-query_catalog_by_bpnl) | Query the catalog using BPNL-based connector discovery. |
 | `consumer` | [`connector/consumer/query_catalog_with_filters`](consumer.md#connector-consumer-query_catalog_with_filters) | Query a provider's catalog with multiple filter expressions via the SDK. |
 | `dataplane` | [`connector/dataplane/http_request`](dataplane.md#connector-dataplane-http_request) | Fetch data from a data-plane endpoint using an EDR token. |
+| `datasets` | [`connector/datasets/select`](datasets.md#connector-datasets-select) | Let the operator choose one asset and one of its offers out of a catalog's datasets. |
 | `discover/digital-twin-registry` | [`connector/discover/digital-twin-registry/auth`](discover-digital-twin-registry.md#connector-discover-digital-twin-registry-auth) | Get authorization to a counterparty's Digital Twin Registry. |
 | `provider` | [`connector/provider/create_asset`](provider.md#connector-provider-create_asset) | Register an asset at the provider connector. |
 | `provider` | [`connector/provider/create_contract_definition`](provider.md#connector-provider-create_contract_definition) | Publish assets by binding them to an access and a contract policy. |
