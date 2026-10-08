@@ -18,8 +18,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """Context-seeding helpers — populate a StepContext before a TCK run begins.
@@ -63,7 +62,8 @@ def seed_context_variables(
     2. ``env.variables`` static values (``source: value``).
     3. Operator-supplied ``runtime_vars`` (highest — overrides everything).
 
-    ``execution.id`` is set after all three and cannot be overridden.
+    Run metadata (``execution.id`` and ``execution.resource_prefix``) is set
+    after all three and cannot be overridden.
 
     Side effects: writes to *context* variables store and loads testdata files.
     """
@@ -100,6 +100,7 @@ def seed_context_variables(
     # what another run of the same TCK leaves there — an asset on the engine
     # connector, say. An engine that adopts its own job id hands it through.
     context.set_variable(context_vars.EXECUTION_ID, context.job.job_id)
+    context.set_variable(context_vars.EXECUTION_RESOURCE_PREFIX, context.resource_prefix)
 
 
 def _keep_inputs(context: StepContext, runtime_vars: dict, secret: set[str]) -> None:

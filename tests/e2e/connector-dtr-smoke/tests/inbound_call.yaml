@@ -185,7 +185,7 @@ setup:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: asset_id, operator: equals, value: testlab-e2e-inbound-asset }
+        with: { input: asset_id, operator: contains, value: testlab-e2e-inbound-asset }
 
   - id: create_contract
     uses: connector/provider/create_contract_definition
@@ -209,7 +209,7 @@ execution:
       filters:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
           operator: "="
-          operand_right: "testlab-e2e-inbound-asset"
+          operand_right: "${{ setup.create_asset.asset_id }}"
       expected_policies: "${{ env.usage_policy }}"
     returns:
       asset_id:
@@ -220,7 +220,7 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: asset_id, operator: equals, value: "testlab-e2e-inbound-asset" }
+        with: { input: asset_id, operator: equals, value: "${{ setup.create_asset.asset_id }}" }
       - uses: validate/assert
         with: { input: dataplane_url, operator: not_null }
       - uses: validate/assert

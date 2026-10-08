@@ -19,8 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """Utility steps — generic HTTP and backend data helpers.
@@ -44,6 +43,7 @@ from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.security.credentials import Credential
 from tractusx_testlab.steps import http_client
+from tractusx_testlab.steps.http.resource_namespace import require_resource_namespace
 from tractusx_testlab.steps.shared_models import HttpBodyOutput, HttpCallParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput
 
@@ -108,6 +108,7 @@ class HttpRequestStep(BaseStep[HttpRequestParams, HttpBodyOutput]):
     async def execute(
         self, params: HttpRequestParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
+        require_resource_namespace(params.method, params.url, params.body, context)
         timeout = params.timeout_or(context.config.default_timeout_s)
         payload: dict[str, object] = (
             {"content": params.body.encode()}

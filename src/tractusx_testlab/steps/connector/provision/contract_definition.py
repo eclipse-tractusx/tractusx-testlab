@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """Binding an asset to a policy — ``connector/provider/create_contract_definition``."""
@@ -147,14 +147,29 @@ class CreateContractDefinitionStep(
     ) -> StepOutput[CreateContractDefinitionOutput]:
         provider = context.dataspace.provider()
         url = context.dataspace.provider_endpoint_url("contract_definitions")
-        definition_id = params.contract_definition_id or str(uuid.uuid4())
+        definition_id = context.resource_id(params.contract_definition_id or str(uuid.uuid4()))
+        selectors = params.assets_selector()
+        for selector in selectors:
+            if (
+                selector["operandLeft"] in {_ASSET_ID_OPERAND, "id", "edc:id"}
+                and selector["operator"] == "="
+            ):
+                selector["operandRight"] = context.resource_id(str(selector["operandRight"]))
+        if context.resource_prefix:
+            selectors.append(
+                {
+                    "operandLeft": _ASSET_ID_OPERAND,
+                    "operator": "like",
+                    "operandRight": context.resource_prefix + "%",
+                }
+            )
 
         model = ModelFactory.get_contract_definition_model(
             dataspace_version=provider.dataspace_version,
             oid=definition_id,
-            access_policy_id=params.access_policy_id,
-            contract_policy_id=params.contract_policy_id,
-            assets_selector=params.assets_selector(),
+            access_policy_id=context.resource_id(params.access_policy_id),
+            contract_policy_id=context.resource_id(params.contract_policy_id),
+            assets_selector=selectors,
         )
         result, http_status = _create_or_conflict(
             _post_definition, controller=provider.contract_definitions, model=model

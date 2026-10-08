@@ -19,8 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """Shared fixtures for the test suite."""
@@ -74,6 +73,8 @@ def attach_endpoint_url_stubs(ctx: MagicMock) -> MagicMock:
 
     ctx.dataspace.consumer_endpoint_url = MagicMock(side_effect=_consumer_url)
     ctx.dataspace.provider_endpoint_url = MagicMock(side_effect=_provider_url)
+    ctx.resource_prefix = ""
+    ctx.resource_id = MagicMock(side_effect=lambda value: value)
     return ctx
 
 

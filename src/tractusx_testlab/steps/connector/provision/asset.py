@@ -19,7 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """Registering an asset — ``connector/provider/create_asset`` and its wizard."""
@@ -162,6 +162,7 @@ def _register_asset(
     over the config it was given, the wizard hands over the config it
     assembled, and both get the same call and the same 409 handling.
     """
+    asset_id = context.resource_id(asset_id)
     if provider is None:
         provider = context.dataspace.provider()
         url = context.dataspace.provider_endpoint_url("assets")

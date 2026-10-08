@@ -126,7 +126,7 @@ execution:
       filters:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
           operator: "="
-          operand_right: "testlab-e2e-extensions-asset"
+          operand_right: "${{ setup.create_asset.asset_id }}"
       expected_policies: "${{ env.usage_policy }}"
     returns:
       asset_id:
@@ -137,7 +137,7 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: asset_id, operator: equals, value: "testlab-e2e-extensions-asset" }
+        with: { input: asset_id, operator: equals, value: "${{ setup.create_asset.asset_id }}" }
       - uses: validate/assert
         cac: ["TESTLAB-INTERNAL:v1.0.0:EXT-CAC-02"]
         with: { input: edr_token, operator: not_null }
@@ -173,7 +173,7 @@ teardown:
     uses: labs/connector/provider/query_contract_definitions
     name: Find the contract definitions offering this test's asset
     with:
-      asset_id_prefix: testlab-e2e-extensions-
+      asset_id_prefix: "${{ setup.create_asset.asset_id }}"
     returns:
       contract_definition_ids:
         type: array
@@ -228,7 +228,7 @@ teardown:
     uses: labs/connector/provider/query_assets
     name: Find this test's assets
     with:
-      id_prefix: testlab-e2e-extensions-
+      id_prefix: "${{ setup.create_asset.asset_id }}"
     returns:
       asset_ids:
         type: array
@@ -251,7 +251,7 @@ teardown:
     uses: labs/connector/provider/query_contract_definitions
     name: No contract definition offers this test's asset any more
     with:
-      asset_id_prefix: testlab-e2e-extensions-
+      asset_id_prefix: "${{ setup.create_asset.asset_id }}"
     returns:
       contract_definition_ids:
         type: array

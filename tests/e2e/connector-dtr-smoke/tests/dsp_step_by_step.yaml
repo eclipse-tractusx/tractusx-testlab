@@ -77,7 +77,7 @@ setup:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: asset_id, operator: equals, value: testlab-e2e-stepwise-asset }
+        with: { input: asset_id, operator: contains, value: testlab-e2e-stepwise-asset }
 
   - id: contract
     uses: connector/provider/create_contract_definition

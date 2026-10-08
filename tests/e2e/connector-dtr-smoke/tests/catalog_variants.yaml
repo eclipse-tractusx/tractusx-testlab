@@ -187,7 +187,7 @@ execution:
       - uses: validate/assert
         with: { input: datasets, operator: length_equals, value: 1 }
       - uses: validate/assert
-        with: { input: catalog_asset_id, operator: equals, value: testlab-e2e-catalog-asset }
+        with: { input: catalog_asset_id, operator: equals, value: "${{ setup.create_asset.asset_id }}" }
       - uses: validate/assert
         with: { input: catalog_policy, operator: not_null }
 
@@ -279,7 +279,7 @@ execution:
         type: string
     validate:
       - uses: validate/assert
-        with: { input: asset_id, operator: equals, value: testlab-e2e-wizard-asset }
+        with: { input: asset_id, operator: equals, value: "${{ setup.create_wizard_asset.asset_id }}" }
       - uses: validate/assert
         with: { input: agreement_id, operator: not_null }
       # The redacted head of the token, which exists so a run can be read in a

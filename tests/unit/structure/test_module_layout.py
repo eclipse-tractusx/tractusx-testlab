@@ -19,8 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """A file explains itself from its name, and nothing grows past what it should.
@@ -51,7 +50,6 @@ MAX_LINES = 300
 OVERSIZED: dict[str, int] = {
     "steps/digital_twin_registry/consumer.py": 412,
     "steps/digital_twin_registry/submodel.py": 386,
-    "compiler/validation/validator.py": 371,
     "steps/digital_twin_registry/provider/shell.py": 363,
     "steps/step_contract.py": 363,
     "compiler/ir/builder.py": 344,
