@@ -19,8 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4).
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """Wait steps — block until a mock endpoint receives an inbound request.
@@ -182,7 +181,7 @@ class WaitForDataplaneCallStep(WaitForCallStep):
             path=params.mock.path,
             via="dataplane",
             offer=ConnectorOffer(
-                asset_id=offer.asset_id,
+                asset_id=context.resource_id(offer.asset_id),
                 dsp_url=_text(connector.dsp_url),
                 participant_id=_text(connector.participant_id),
                 properties=ConnectorOffer.describe(offer.asset or {}),

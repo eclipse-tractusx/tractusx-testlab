@@ -1221,12 +1221,15 @@ jobs:
           traces = sorted(pathlib.Path("/data").rglob("*.jsonl"))
           if not traces:
               sys.exit("the run wrote no execution trace under /data")
-          events = [
-              json.loads(line)
+          runs = [
+              [
+                  json.loads(line)
+                  for line in trace.read_text(encoding="utf-8").splitlines()
+                  if line.strip()
+              ]
               for trace in traces
-              for line in trace.read_text(encoding="utf-8").splitlines()
-              if line.strip()
           ]
+          events = [event for run in runs for event in run]
           # Keyed by test and step: inbound-call waits three times, once per mock.
           received = {
               tuple(event["id"].split("/")[1:4:2]): event["data"]
@@ -1312,7 +1315,39 @@ jobs:
           run_id = (callback["request"]["body"] or {}).get("run")
           if not run_id:
               sys.exit(f"dataplane-callback: the callback did not carry the run id: {callback['request']}")
-          asset_id = f"testlab-e2e-callback-BPNL000000000002-{run_id}"
+          # The connector returns the asset's real id, which may be scoped.
+          # Read it independently of the announced offer, from the setup in
+          # the callback's run, not a preceding run's trace under /data.
+          callback_runs = [
+              (run, start["data"]["tck_id"])
+              for run in runs
+              for start in run
+              if start["type"] == "tck.start"
+              and start["data"].get("run_id") == run_id
+              and any(
+                  event["type"] == "tck.test.step.received"
+                  and event["id"].split("/")[:4] == [
+                      start["data"].get("tck_id"), "dataplane-callback", "execution", "await_callback"
+                  ]
+                  and event["data"] == callback
+                  for event in run
+              )
+          ]
+          if len(callback_runs) != 1:
+              sys.exit(f"dataplane-callback: expected one trace for callback run {run_id}, found {len(callback_runs)}")
+          callback_events, tck_id = callback_runs[0]
+          creations = [
+              event
+              for event in callback_events
+              if event["type"] == "tck.test.step.passed"
+              and event["source"] == "connector/provider/create_mock_asset"
+              and event["id"].split("/")[:4] == [tck_id, "dataplane-callback", "setup", "create_asset"]
+          ]
+          if len(creations) != 1:
+              sys.exit(f"dataplane-callback: expected one successful setup create_asset in run {run_id}, found {len(creations)}")
+          asset_id = (creations[0]["data"].get("outputs") or {}).get("asset_id")
+          if not isinstance(asset_id, str) or not asset_id:
+              sys.exit(f"dataplane-callback: setup create_asset in run {run_id} returned no asset_id")
           # The wait names no `asset`, so it announces no properties and the
           # catalog filter falls back to the asset id.
           expected_offer = {

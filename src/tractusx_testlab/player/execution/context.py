@@ -19,8 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """StepContext — the execution context passed to every step.
@@ -54,6 +53,7 @@ class StepContext(InboundReporting, SealedNamespaces):
         "_invoker",
         "_job",
         "_reporter",
+        "_resource_prefix",
         "_sealed",
         "_services",
         "_step_namespace",
@@ -69,8 +69,11 @@ class StepContext(InboundReporting, SealedNamespaces):
         job: Job,
         config: TestlabConfig,
         infrastructure: Infrastructure | None = None,
+        *,
+        resource_prefix: str = "",
     ) -> None:
         self._services = services
+        self._resource_prefix = resource_prefix
         self._job = job
         self._config = config
         self._infrastructure = config.infrastructure if infrastructure is None else infrastructure
@@ -94,13 +97,19 @@ class StepContext(InboundReporting, SealedNamespaces):
         return self._config
 
     @property
-    def infrastructure(self) -> Infrastructure:
-        """The deployment this run targets, after the run's own overrides.
+    def resource_prefix(self) -> str:
+        """Namespace of provider resources owned by this run."""
+        return self._resource_prefix
 
-        A step reads an engine-side address from here rather than from a
-        variable a test supplied, because where the engine's own
-        infrastructure lives is the operator's decision and not the test's.
-        """
+    def resource_id(self, local_id: str) -> str:
+        """Scope a provider resource ID once, including explicit authored IDs."""
+        if not local_id or local_id.startswith(self._resource_prefix):
+            return local_id
+        return self._resource_prefix + local_id
+
+    @property
+    def infrastructure(self) -> Infrastructure:
+        """The operator's deployment for this run, after its overrides."""
         return self._infrastructure
 
     def bind_infrastructure(self, infrastructure: Infrastructure) -> None:
@@ -261,11 +270,7 @@ class StepContext(InboundReporting, SealedNamespaces):
         self._templates.add(name)
 
     def unset_variable(self, name: str) -> None:
-        """Forget *name*, so a reference to it fails again as unresolved.
-
-        For a value that is only in scope for a while — the item
-        ``flow/for_each`` is running for — and must not outlive it.
-        """
+        """Forget *name* after its scope ends, so references fail as unresolved."""
         self._writable(name)
         self._variables.pop(name, None)
         self._templates.discard(name)
@@ -278,14 +283,7 @@ class StepContext(InboundReporting, SealedNamespaces):
         return self._variables.get(name, default)
 
     def get_str(self, name: str, default: str = "") -> str:
-        """Read a variable that a step is going to use as text.
-
-        Variables hold whatever a step published, so :meth:`get_variable`
-        returns ``object`` and every caller that wanted a URL or a token had to
-        narrow it — or, more often, not narrow it and pass ``object`` into
-        ``.rstrip()`` or an HTTP header. Narrowed once, here, with the
-        conversion made explicit rather than implied by use.
-        """
+        """Read a variable as text, falling back when it is missing or None."""
         value = self._variables.get(name, default)
         if value is None:
             return default

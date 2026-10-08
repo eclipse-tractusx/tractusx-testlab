@@ -19,8 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """TestlabPlayer — async executor that runs TCKs test-by-test, step-by-step."""
@@ -29,6 +28,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -66,21 +66,10 @@ from tractusx_testlab.services.instances import ServiceManager
 
 
 class TestlabPlayer:
-    """High-level API for executing test cases.
+    """Run packages with ``run``, or drive tests individually with ``open_session``.
 
-    Usage::
-
-        player = TestlabPlayer()
-        result = await player.run("my_tck.tck")
-
-    An adopter embedding the player states the deployment it runs against by
-    handing over an :class:`InfrastructureManager` — the engine's own connector,
-    registry and submodel server, and the system under test::
-
-        player = TestlabPlayer(infrastructure=InfrastructureManager(integration))
-
-    A host that lets a person drive the run test by test (labs, ``async: true``
-    tests) opens a :class:`TckSession` with :meth:`open_session` instead.
+    Supply an ``InfrastructureManager`` to bind an embedded deployment and a
+    ``resource_prefix`` to isolate its provider resources on shared connectors.
     """
 
     __slots__ = (
@@ -91,19 +80,23 @@ class TestlabPlayer:
         "_logger",
         "_mock_server",
         "_monitor",
+        "_resource_prefix",
     )
 
     def __init__(
         self,
         config: TestlabConfig | None = None,
         infrastructure: InfrastructureManager | None = None,
+        *,
+        resource_prefix: str = "testlab:",
     ) -> None:
         """Build a player for *config*, running against *infrastructure*.
 
-        Both are resolved from the engine's own configuration when omitted, so
-        an embedder supplies whichever half it decides and inherits the other
-        from the config file and the environment.
+        Provider resources are named ``<resource_prefix><run-id>:<local-id>``.
         """
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*:", resource_prefix):
+            raise ValueError("resource_prefix must be a namespace such as 'testlab:'")
+        self._resource_prefix = resource_prefix
         self._config = config or ConfigLoader.load()
         self._infrastructure = infrastructure or InfrastructureManager.from_config(self._config)
         self._logger = StructuredLogger("testlab.player", logs_dir=self._config.logs_dir)
@@ -191,6 +184,8 @@ class TestlabPlayer:
         before it started (a missing input, an unbindable infrastructure) raises,
         with the job failed and nothing left open.
         """
+        if job_id is not None and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", job_id):
+            raise ValueError("run id must contain only letters, numbers, dots and hyphens")
         job = self._jobs.get(job_id) if job_id else None
         if job is None:
             job = self._jobs.create(tck.id, job_id=job_id)
@@ -228,6 +223,7 @@ class TestlabPlayer:
             job=job,
             config=self._config,
             infrastructure=self._infrastructure.active,
+            resource_prefix=f"{self._resource_prefix}{job.job_id}:",
         )
 
         context.hold.bind(self._jobs, job.job_id, monitor)

@@ -37,7 +37,7 @@ metadata:
     puts it behind an asset on the *engine's* connector, which is the shape
     a callback the SUT must deliver through the dataspace takes: the offer
     lives on the test suite's connector, is visible to one business partner
-    only, and every id in it carries this run's `execution.id`, so two runs
+    only, and every id in it carries this run's `execution.resource_prefix`, so two runs
     never offer the same thing. The umbrella's only other connector is the
     SUT, which this suite cannot drive as a consumer, so the engine's own
     consumer plays the partner the access policy names — it negotiates with
@@ -90,7 +90,7 @@ setup:
           - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
           - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
         "@type": PolicyDefinition
-        "@id": "testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
+        "@id": "${{ execution.resource_prefix }}testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
         policy:
           "@type": Set
           permission:
@@ -102,9 +102,26 @@ setup:
                     - "${{ env.engine_bpnl }}"
           prohibition: []
           obligation: []
+    returns:
+      response_body:
+        type: object
     validate:
       - uses: validate/assert
         with: { input: status_code, operator: equals, value: 200 }
+
+  # Read the IDs acknowledged by EDC; later steps must not rebuild request IDs.
+  - id: access_policy_id
+    uses: util/json_path_extract
+    name: Read the created access policy ID
+    with:
+      input: "${{ setup.create_access_policy.response_body }}"
+      path: "@id"
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_empty }
 
   # The same usage policy the other tests offer from the SUT, so the pull
   # below can hold the offer to `env.usage_policy`.
@@ -123,7 +140,7 @@ setup:
           - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
           - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
         "@type": PolicyDefinition
-        "@id": "testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+        "@id": "${{ execution.resource_prefix }}testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
         policy:
           "@type": Set
           permission:
@@ -142,9 +159,25 @@ setup:
                         - "cx.core.digitalTwinRegistry:1"
           prohibition: []
           obligation: []
+    returns:
+      response_body:
+        type: object
     validate:
       - uses: validate/assert
         with: { input: status_code, operator: equals, value: 200 }
+
+  - id: usage_policy_id
+    uses: util/json_path_extract
+    name: Read the created usage policy ID
+    with:
+      input: "${{ setup.create_usage_policy.response_body }}"
+      path: "@id"
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_empty }
 
   # The asset's backend is the mock server's root as a pod reaches it, and
   # the path, the method and the body travel with each call, as in
@@ -165,7 +198,7 @@ setup:
       - uses: validate/assert
         with:
           input: asset_id
-          operator: equals
+          operator: contains
           value: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
 
   - id: create_contract
@@ -181,16 +214,35 @@ setup:
         "@context":
           "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
         "@type": ContractDefinition
-        "@id": "testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
-        accessPolicyId: "testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
-        contractPolicyId: "testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+        "@id": "${{ execution.resource_prefix }}testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
+        accessPolicyId: "${{ setup.access_policy_id.value }}"
+        contractPolicyId: "${{ setup.usage_policy_id.value }}"
         assetsSelector:
           - operandLeft: "https://w3id.org/edc/v0.0.1/ns/id"
+            operator: like
+            operandRight: "${{ execution.resource_prefix }}%"
+          - operandLeft: "https://w3id.org/edc/v0.0.1/ns/id"
             operator: "="
-            operandRight: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+            operandRight: "${{ setup.create_asset.asset_id }}"
+    returns:
+      response_body:
+        type: object
     validate:
       - uses: validate/assert
         with: { input: status_code, operator: equals, value: 200 }
+
+  - id: contract_definition_id
+    uses: util/json_path_extract
+    name: Read the created contract definition ID
+    with:
+      input: "${{ setup.create_contract.response_body }}"
+      path: "@id"
+    returns:
+      value:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: value, operator: not_empty }
 
 execution:
   # The partner's side of the hand-off: find the offer on the engine
@@ -205,7 +257,7 @@ execution:
       filters:
         - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
           operator: "="
-          operand_right: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+          operand_right: "${{ setup.create_asset.asset_id }}"
       expected_policies: "${{ env.usage_policy }}"
     returns:
       asset_id:
@@ -217,7 +269,7 @@ execution:
         with:
           input: asset_id
           operator: equals
-          value: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+          value: "${{ setup.create_asset.asset_id }}"
       - uses: validate/assert
         with: { input: dataplane_url, operator: not_null }
 
@@ -248,7 +300,7 @@ execution:
     name: Read the callback the engine connector's data plane delivered
     with:
       mock: "${{ setup.open_callback.mock }}"
-      asset_id: "testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+      asset_id: "${{ setup.create_asset.asset_id }}"
       timeout_s: 30
     returns:
       request_method:
@@ -277,7 +329,7 @@ teardown:
     name: Remove this run's contract definition
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/contractdefinitions/testlab-e2e-callback-cd-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/contractdefinitions/${{ setup.contract_definition_id.value }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"
 
@@ -286,7 +338,7 @@ teardown:
     name: Remove this run's asset
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/assets/testlab-e2e-callback-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/assets/${{ setup.create_asset.asset_id }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"
 
@@ -295,7 +347,7 @@ teardown:
     name: Remove this run's usage policy
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/testlab-e2e-callback-usage-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/${{ setup.usage_policy_id.value }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"
 
@@ -304,6 +356,6 @@ teardown:
     name: Remove this run's access policy
     with:
       method: DELETE
-      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/testlab-e2e-callback-access-${{ env.engine_bpnl }}-${{ execution.id }}"
+      url: "${{ infrastructure.engine.connector.management_url }}/v3/policydefinitions/${{ setup.access_policy_id.value }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"

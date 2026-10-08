@@ -19,9 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
-## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """Static validation of tests before compilation."""
@@ -45,11 +43,10 @@ from tractusx_testlab.compiler.validation._extension_gate import (
 )
 from tractusx_testlab.compiler.validation._variable_references import (
     call_scope_hint,
-    nested_step_ids,
     unresolved_references,
 )
 from tractusx_testlab.compiler.validation.issues import ValidationResult
-from tractusx_testlab.infrastructure.mapping import known_keys
+from tractusx_testlab.compiler.validation.scope import _scope_of
 from tractusx_testlab.models import StepDefinition, TckDefinition, TestDefinition
 from tractusx_testlab.steps._checks.extraction import declared_names
 from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
@@ -57,54 +54,7 @@ from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
 from tractusx_testlab.syntax import context_vars, defaults, diagnostics
 
-#: ``execution.id`` names the run (ADR-0010 §3.4), so no execution step may
-#: take the id its outputs would be published under.
-_RESERVED_EXECUTION_STEP_ID = context_vars.EXECUTION_ID.split(".", 1)[1]
-
-
-def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
-    """Every name a reference in *test* may legally resolve to.
-
-    Assembled from the manifest's ``env`` block, the test's own step ids (those
-    nested in a flow step included), the infrastructure binding keys and
-    ``execution.id``. This is the namespace the runtime will
-    actually have, so a name missing from here is a name that will be missing
-    from the run.
-    """
-    names: set[str] = set()
-
-    env = tck.env
-    if env is not None:
-        for variable_id in _env_variable_ids(env.variables):
-            names.add(f"env.{variable_id}")
-        for testdata in env.testdata or []:
-            names.add(f"env.testdata.{testdata.id}")
-        for schema in env.schemas or []:
-            names.add(f"env.schemas.{schema.id}")
-
-    for phase, steps in (
-        ("setup", test.setup),
-        ("execution", test.execution),
-        ("teardown", test.teardown),
-    ):
-        for step in steps:
-            if step.id:
-                names.add(f"{phase}.{step.id}")
-            for nested_id in nested_step_ids(step.uses, step.with_):
-                names.add(f"{phase}.{nested_id}")
-
-    names.update(known_keys())
-    names.add(context_vars.EXECUTION_ID)
-    return frozenset(names)
-
-
-def _env_variable_ids(variables: object) -> list[str]:
-    """Ids of the manifest's declared variables, whichever shape they arrive in."""
-    if isinstance(variables, list):
-        return [str(v["id"]) for v in variables if isinstance(v, dict) and "id" in v]
-    if isinstance(variables, dict):
-        return [str(key) for key in variables]
-    return []
+_RESERVED_EXECUTION_STEP_IDS = {name.split(".", 1)[1] for name in context_vars.RUN_VARIABLES}
 
 
 class TestValidator:
@@ -167,15 +117,7 @@ class TestValidator:
         version: str | None = None,
         scope: frozenset[str] | None = None,
     ) -> ValidationResult:
-        """Check *test*, resolving its references against *scope*.
-
-        *scope* is every name the run will be able to supply — the TCK's ``env``
-        entries, its steps' ids, and the infrastructure bindings. Passed as
-        ``None`` (a test validated on its own, with no manifest around it),
-        reference checking is skipped rather than guessed at: warning about every
-        reference in a file whose namespace is not visible is noise, and noise is
-        what got the previous check ignored.
-        """
+        """Check a test against the names available in its complete manifest scope."""
         result = ValidationResult()
         declared = set(scope) if scope is not None else None
 
@@ -197,10 +139,10 @@ class TestValidator:
         ):
             for idx, step_def in enumerate(steps):
                 self._validate_step(step_def, idx, declared, version, result, phase=phase)
-                if phase == "execution" and step_def.id == _RESERVED_EXECUTION_STEP_ID:
+                if phase == "execution" and step_def.id in _RESERVED_EXECUTION_STEP_IDS:
                     result.add_error(
-                        "Step id 'id' is reserved in execution: '${{ execution.id }}' is the "
-                        "id of the run. Rename the step.",
+                        f"Step id '{step_def.id}' is reserved in execution for the player's "
+                        "run metadata. Rename the step.",
                         step_index=idx,
                         field="id",
                         phase=phase,
@@ -259,16 +201,7 @@ class TestValidator:
         result: ValidationResult,
         phase: str,
     ) -> None:
-        """Check every ``returns:`` name against what the step actually publishes.
-
-        A name the step never declares resolves to nothing at run time, so the
-        variable reads as empty several steps later and the failure surfaces far
-        from its cause. The step said what it produces; saying so here turns a
-        typo into a compile error instead of a mystery. A ``returns:`` name is
-        a variable the rest of the TCK will read, so it is held to the step's
-        *declared* fields — narrower than what an assertion may name, which is
-        only read out of this one output.
-        """
+        """Check declared return names against the outputs the step publishes."""
         returns = step_def.returns or {}
         if not returns or step_cls is None:
             return
@@ -319,15 +252,7 @@ class TestValidator:
         result: ValidationResult,
         phase: str,
     ) -> None:
-        """Check that every assertion names a real check and a real input.
-
-        ``with.input`` must be a plain string naming something the step
-        publishes — what the *step* declares, not what the test wrote in
-        ``returns:``, which is optional and left a step without one unchecked
-        entirely. The shipped e2e TCK asserted ``input: fetch_data`` on
-        ``connector/dataplane/http_request``, a name nothing produces, and the
-        engine compared ``None`` against ``not_null`` and failed a working SUT.
-        """
+        """Validate assertion operators and the outputs they read."""
         declared = publishes(step_cls) if step_cls is not None else None
         valid_keys = None if declared is None else set(step_def.returns or {}) | declared
         for assertion in step_def.assertions or []:

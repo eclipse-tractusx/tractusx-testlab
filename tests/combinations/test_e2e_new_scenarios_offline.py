@@ -435,6 +435,7 @@ class TestIndustryCoreJourney:
         harness.seed(
             **{
                 "infrastructure.sut.connector.dsp_url": self._DSP_URL,
+                "setup.create_asset.asset_id": self._ASSET_ID,
                 "execution.read_twin.body": descriptor,
             }
         )
