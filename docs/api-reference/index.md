@@ -260,7 +260,7 @@ For the architectural rationale see
 ## Provider resource namespaces
 
 `TestlabPlayer(resource_prefix="testlab:")` gives every provider asset, policy,
-and contract definition the ID `<resource_prefix><run-id>-<local-id>`.
+and contract definition the ID `<resource_prefix><run-id>:<local-id>`.
 The default prefix is `testlab:`. Applications that share a connector should
 supply their own prefix when constructing the player:
 
@@ -280,7 +280,7 @@ result = asyncio.run(main())
 ```
 
 The job ID is the run ID. An authored asset ID `asset` becomes
-`cx-test-suite:run-123-asset`; omitted IDs are generated inside the same namespace.
+`cx-test-suite:run-123:asset`; omitted IDs are generated inside the same namespace.
 Creation steps return the actual ID, and the dataplane listener announces it.
 Use creation outputs for subsequent references and teardown. Already scoped IDs
 from this run stay unchanged. Contract definitions constrain their selectors to

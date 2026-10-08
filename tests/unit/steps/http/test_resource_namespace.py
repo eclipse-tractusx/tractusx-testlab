@@ -34,7 +34,7 @@ import pytest
 from tractusx_testlab.models import AuthoringError, StepDefinition
 from tractusx_testlab.steps.http.request import HttpRequestParams, HttpRequestStep
 
-PREFIX = "cx-test-suite:run-a-"
+PREFIX = "cx-test-suite:run-a:"
 BASE = "https://engine/management/"
 
 
@@ -59,14 +59,15 @@ async def send(context, collection, body, base=BASE):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("collection", ["assets", "policydefinitions", "contractdefinitions"])
-async def test_unscoped_creation_is_rejected_before_sending(context, collection):
+@pytest.mark.parametrize("resource_id", ["other-app-resource", "cx-test-suite:run-a-asset"])
+async def test_unscoped_creation_is_rejected_before_sending(context, collection, resource_id):
     with (
         patch(
             "tractusx_testlab.steps.http.request.http_client.request", new_callable=AsyncMock
         ) as request,
         pytest.raises(AuthoringError, match="execution.resource_prefix"),
     ):
-        await send(context, collection, {"@id": "other-app-resource"})
+        await send(context, collection, {"@id": resource_id})
     request.assert_not_awaited()
 
 
@@ -88,17 +89,17 @@ async def test_scoped_raw_asset_body_is_sent_unchanged(context, as_json_string):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("scoped_selector", [False, True])
-async def test_raw_contract_definition_requires_a_scoped_selector(context, scoped_selector):
+@pytest.mark.parametrize("selector_prefix", [None, "cx-test-suite:run-a-", PREFIX])
+async def test_raw_contract_definition_requires_a_scoped_selector(context, selector_prefix):
     body = {
         "@id": PREFIX + "offer",
         "accessPolicyId": PREFIX + "access",
         "contractPolicyId": PREFIX + "usage",
         "assetsSelector": [{"operandLeft": "dct:type", "operator": "=", "operandRight": "CCMAPI"}],
     }
-    if scoped_selector:
+    if selector_prefix:
         body["assetsSelector"].append(
-            {"operandLeft": "id", "operator": "like", "operandRight": PREFIX + "%"}
+            {"operandLeft": "id", "operator": "like", "operandRight": selector_prefix + "%"}
         )
     response = httpx.Response(
         200,
@@ -108,7 +109,7 @@ async def test_raw_contract_definition_requires_a_scoped_selector(context, scope
     with patch(
         "tractusx_testlab.steps.http.request.http_client.request", AsyncMock(return_value=response)
     ) as request:
-        if scoped_selector:
+        if selector_prefix == PREFIX:
             await send(context, "contractdefinitions", body)
             request.assert_awaited_once()
         else:

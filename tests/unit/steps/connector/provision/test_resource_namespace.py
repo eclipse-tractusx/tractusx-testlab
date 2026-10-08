@@ -48,7 +48,7 @@ from tractusx_testlab.steps.connector.provision.policy import (
     WizardCreatePolicyStep,
 )
 
-PREFIX = "cx-test-suite:run-a-"
+PREFIX = "cx-test-suite:run-a:"
 
 
 @pytest.fixture()

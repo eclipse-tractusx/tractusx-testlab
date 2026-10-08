@@ -60,12 +60,12 @@ async def test_session_resource_namespace_uses_the_run_id(tmp_path, prefix):
         )
         try:
             context = session._context
-            assert context.resource_id("asset") == (prefix or "testlab:") + "run-a-asset"
+            assert context.resource_id("asset") == (prefix or "testlab:") + "run-a:asset"
             assert context.resource_id(context.resource_id("asset")) == context.resource_id("asset")
             assert context.get_variable("execution.id") == "run-a"
             assert (
                 context.get_variable("execution.resource_prefix")
-                == (prefix or "testlab:") + "run-a-"
+                == (prefix or "testlab:") + "run-a:"
             )
         finally:
             await session.close()

@@ -92,7 +92,7 @@ class TestlabPlayer:
     ) -> None:
         """Build a player for *config*, running against *infrastructure*.
 
-        Provider resources are named ``<resource_prefix><run-id>-<local-id>``.
+        Provider resources are named ``<resource_prefix><run-id>:<local-id>``.
         """
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*:", resource_prefix):
             raise ValueError("resource_prefix must be a namespace such as 'testlab:'")
@@ -223,7 +223,7 @@ class TestlabPlayer:
             job=job,
             config=self._config,
             infrastructure=self._infrastructure.active,
-            resource_prefix=f"{self._resource_prefix}{job.job_id}-",
+            resource_prefix=f"{self._resource_prefix}{job.job_id}:",
         )
 
         context.hold.bind(self._jobs, job.job_id, monitor)
