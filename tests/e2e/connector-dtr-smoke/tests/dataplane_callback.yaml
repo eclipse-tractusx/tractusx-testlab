@@ -20,6 +20,7 @@
 ################################################################################
 
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 kind: test
@@ -321,7 +322,7 @@ execution:
 
 # Leaves the engine connector as it was found. The connector refuses to delete
 # an asset a contract agreement names, so that delete may answer 409 on a run
-# that negotiated; nothing asserts on these, and the cluster is thrown away
+# that negotiated; retirement checks are soft, and the cluster is thrown away
 # with the job either way.
 teardown:
   - id: delete_contract
@@ -332,6 +333,36 @@ teardown:
       url: "${{ infrastructure.engine.connector.management_url }}/v3/contractdefinitions/${{ setup.contract_definition_id.value }}"
       headers:
         x-api-key: "${{ infrastructure.engine.connector.api_key }}"
+
+  - id: retire_asset_agreements
+    uses: connector/provider/retire_asset_agreements
+    name: Retire the agreements created for this run's engine asset
+    with:
+      asset_id: "${{ setup.create_asset.asset_id }}"
+    returns:
+      agreement_ids:
+        type: array
+      status_code:
+        type: integer
+        class: StatusCode
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: one_of, value: [200, 204], severity: SOFT }
+
+  # Exercise the single-agreement block too, including an already-retired ID.
+  # This is cleanup only: a backend refusal remains a soft warning.
+  - id: repeat_single_retirements
+    uses: labs/flow/for_each
+    with:
+      items: "${{ teardown.retire_asset_agreements.agreement_ids }}"
+      steps:
+        - id: retire_known_agreement
+          uses: connector/provider/retire_contract_agreement
+          with:
+            agreement_id: "${{ each.item }}"
+          validate:
+            - uses: validate/assert
+              with: { input: status_code, operator: one_of, value: [200, 204, 409], severity: SOFT }
 
   - id: delete_asset
     uses: http/http_request

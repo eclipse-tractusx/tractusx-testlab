@@ -19,26 +19,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-
 ## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
-# Every module that declares a connector step, imported so its ``@step``
-# decorators run.  Each module is named here directly rather than reached
-# through another module's imports: a step that only registers as a side effect
-# of someone else's import is a step that silently disappears when that import
-# is tidied away.
-import tractusx_testlab.steps.connector.catalog_filter
-import tractusx_testlab.steps.connector.catalog_query
-import tractusx_testlab.steps.connector.cleanup
-import tractusx_testlab.steps.connector.dataplane
-import tractusx_testlab.steps.connector.datasets_select
-import tractusx_testlab.steps.connector.discover_connector
-import tractusx_testlab.steps.connector.do_dsp
-import tractusx_testlab.steps.connector.extract
-import tractusx_testlab.steps.connector.negotiate
-import tractusx_testlab.steps.connector.provision
-import tractusx_testlab.steps.connector.pull_data
-import tractusx_testlab.steps.connector.retirement
-import tractusx_testlab.steps.connector.transfer
-import tractusx_testlab.steps.http.request
+"""Provider agreement retirement blocks."""
+
+from tractusx_testlab.steps.connector.retirement import agreement, asset_agreements
+
+__all__ = ["agreement", "asset_agreements"]
