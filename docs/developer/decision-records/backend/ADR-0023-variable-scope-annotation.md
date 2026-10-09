@@ -176,3 +176,6 @@ from tractusx_testlab.models import VariableScope
   (`engine` / `sut`) that this scope annotation aligns with
 - [ADR-0022](ADR-0022-tck-static-inspection.md) — `Tck.all_variables()` returns the
   variable list enriched with scope; `testlab inspect --variables` displays it
+
+Input scope identifies the operator who supplies a value. It does not require a
+matching infrastructure capability: SUT inputs can configure an engine-only run.
