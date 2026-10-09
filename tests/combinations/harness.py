@@ -109,7 +109,7 @@ class Harness:
         for index, raw in enumerate(steps):
             step_def = StepDefinition.model_validate(raw)
             step_id = step_def.id or f"{phase}[{index}]"
-            step_cls = StepRegistry.get(step_def.uses, _ANY_VERSION)
+            step_cls = StepRegistry.get_any(step_def.uses)
             if step_cls is None:
                 raise AssertionError(
                     f"Step {step_def.uses!r} is not registered — a combination test "

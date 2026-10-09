@@ -28,6 +28,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from tractusx_sdk.dataspace.services.connector.service_factory import ServiceFactory
 
 from combinations.connector_double import ProviderDouble
 from combinations.harness import Harness
@@ -88,9 +89,19 @@ def callback_harness(request: pytest.FixtureRequest, http: HttpDouble) -> Harnes
     http.json_route(
         "POST", "/management/v3/contractdefinitions", {"@id": prefix + "returned-contract"}
     )
-    base = http.start() + "/management"
+    root = http.start()
+    base = root + "/management"
+    # Agreement retirement goes through the SDK's management adapter, so the
+    # engine provider double carries a real one aimed at the HTTP double.
+    provider = ProviderDouble()
+    provider.dma_adapter = ServiceFactory.get_connector_provider_service(
+        dataspace_version="saturn",
+        base_url=root,
+        dma_path="/management",
+        headers={"X-Api-Key": "offline-key"},
+    ).dma_adapter
     context = StepContext(
-        services=_EngineServices(ProviderDouble()),
+        services=_EngineServices(provider),
         job=Job(job_id="callback-regression"),
         config=LabConfig(),
         infrastructure=Infrastructure.model_validate(
@@ -164,19 +175,29 @@ async def test_shipped_setup_and_teardown_use_the_guarded_run_namespace(
         {"operandLeft": _EDC_ID, "operator": "=", "operandRight": asset_id},
     ]
 
-    expected_paths = [
+    deletes = [
         "/management/v3/contractdefinitions/" + contract_id,
         "/management/v3/assets/" + asset_id,
         "/management/v3/policydefinitions/" + usage_id,
         "/management/v3/policydefinitions/" + access_id,
     ]
-    for path in expected_paths:
+    for path in deletes:
         http.json_route("DELETE", path, {})
+    agreements = "/management/v3/contractagreements"
+    http.json_route("POST", agreements + "/request", [{"@id": "agreement-1", "assetId": asset_id}])
+    http.json_route("POST", agreements + "/retirements", None, status=204)
     closed = await callback_harness.run(*scenario["teardown"], phase="teardown")
     assert closed.passed, [(r.step_name, r.error) for r in closed.failures]
+    # Agreements are retired after the contract definition is withdrawn and
+    # before the asset they name is deleted: once by asset, once by ID.
     assert [(call.method, call.path) for call in http.received[3:]] == [
-        ("DELETE", path) for path in expected_paths
+        ("DELETE", deletes[0]),
+        ("POST", agreements + "/request"),
+        ("POST", agreements + "/retirements"),
+        ("POST", agreements + "/retirements"),
+        *(("DELETE", path) for path in deletes[1:]),
     ]
+    assert closed.output("retire_asset_agreements")["agreement_ids"] == ["agreement-1"]
 
 
 async def test_missing_asset_setup_output_cannot_be_satisfied_by_another_scenario(
