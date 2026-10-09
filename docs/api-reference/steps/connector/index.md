@@ -27,5 +27,7 @@
 | `provider` | [`connector/provider/delete_asset`](provider.md#connector-provider-delete_asset) | Delete an asset from the provider connector. |
 | `provider` | [`connector/provider/delete_contract_definition`](provider.md#connector-provider-delete_contract_definition) | Delete a contract definition from the provider connector. |
 | `provider` | [`connector/provider/delete_policy`](provider.md#connector-provider-delete_policy) | Delete a policy definition from the provider connector. |
+| `provider` | [`connector/provider/retire_asset_agreements`](provider.md#connector-provider-retire_asset_agreements) | Retire all engine provider agreements referencing one exact asset. |
+| `provider` | [`connector/provider/retire_contract_agreement`](provider.md#connector-provider-retire_contract_agreement) | Retire an engine provider agreement to prevent future transfers. |
 | `provider/wizard` | [`connector/provider/wizard/create_asset`](provider-wizard.md#connector-provider-wizard-create_asset) | Register an asset described field by field rather than as a document. |
 | `provider/wizard` | [`connector/provider/wizard/create_policy`](provider-wizard.md#connector-provider-wizard-create_policy) | Register an ODRL policy written as rule lists rather than as a document. |

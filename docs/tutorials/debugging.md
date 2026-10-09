@@ -136,3 +136,42 @@ jq -c '.data.errors[]? | select(.code == "POLICY_MISMATCH") | .context.offers[]'
 - **`Unknown step type` for a step you just wrote.** Check that `@step("…")` matches the id exactly and that the module is imported from its category's `__init__.py`. `tests/unit/steps/test_step_registration.py` catches both. See [Create a Step](create-a-step.md).
 - **A published output is missing.** An output field left at its default is not serialised. Pass every field you mean to publish explicitly, and a `None` value leaves the context variable unset.
 - **An SDK call hangs the run or fails without saying which service.** Call the SDK through `sdk_call.run` and HTTP through `steps.http_client.request`. A blocking call made directly inside `execute` also stalls the mock server.
+
+## Retire engine provider agreements during teardown
+
+Withdraw the asset's contract definition before retiring its agreements. Use the
+exact ID returned by asset creation. Both retirement blocks use the engine
+provider connector and require Saturn.
+
+```yaml
+teardown:
+  - id: retire_asset_agreements
+    uses: connector/provider/retire_asset_agreements
+    with:
+      asset_id: "${{ setup.create_asset.asset_id }}"
+      reason: "Assessment teardown"
+    returns:
+      status_code:
+        type: integer
+        class: StatusCode
+      retirements:
+        type: array
+    validate:
+      - uses: validate/assert
+        with:
+          input: status_code
+          operator: one_of
+          value: [200, 204]
+          severity: SOFT
+```
+
+When you already know an agreement ID, use
+`connector/provider/retire_contract_agreement` with `agreement_id` and `reason`.
+Its `status_code` and `response_body` contain the connector's actual answer.
+The asset block's `retirements` output reports every attempt. A refused retirement
+does not prevent attempts for the other agreements. A transport failure publishes
+status `0`; failed discovery also supplies an `error` diagnostic.
+
+A soft check records cleanup warnings while preserving the assessment result.
+Retirement disables future transfers, but preserves agreement history. EDC can
+still refuse asset deletion with HTTP 409. Keep asset deletion checks soft too.

@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Saturn provider blocks `connector/provider/retire_contract_agreement` and
+  `connector/provider/retire_asset_agreements` retire agreements on the engine
+  connector. Asset discovery paginates and checks the exact asset ID. Both
+  preserve refused HTTP responses and transport failures for soft teardown
+  validations. Retirement keeps agreement history; it does not guarantee asset
+  deletion. The debugging tutorial demonstrates soft retirement checks.
+
 - `flow/select` stops the run and lets the operator choose one of `options`
   (plain values, or `{value, label, description, details}`); it returns
   `value`, `label`, `details` and `selected_by`. `connector/datasets/select`

@@ -11,6 +11,8 @@
 | [`connector/provider/delete_asset`](#connector-provider-delete_asset) | Delete an asset from the provider connector. |
 | [`connector/provider/delete_contract_definition`](#connector-provider-delete_contract_definition) | Delete a contract definition from the provider connector. |
 | [`connector/provider/delete_policy`](#connector-provider-delete_policy) | Delete a policy definition from the provider connector. |
+| [`connector/provider/retire_asset_agreements`](#connector-provider-retire_asset_agreements) | Retire all engine provider agreements referencing one exact asset. |
+| [`connector/provider/retire_contract_agreement`](#connector-provider-retire_contract_agreement) | Retire an engine provider agreement to prevent future transfers. |
 
 ## `connector/provider/create_asset` { #connector-provider-create_asset }
 
@@ -154,6 +156,54 @@ _What a delete step publishes: the status the server answered it with._
 |---|---|---|
 | `status_code` | integer | HTTP status the delete was answered with. |
 
+## `connector/provider/retire_asset_agreements` { #connector-provider-retire_asset_agreements }
+
+Retire all engine provider agreements referencing one exact asset.
+
+Queries all pages before retiring any agreement, and checks each asset ID. A failed retirement does not prevent attempts for the remaining agreements. Use SOFT validations in teardown; retirement preserves agreement history.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `reason` | string | no | `'TCK execution ended'` | — | Reason recorded in the provider's retirement history. |
+| `asset_id` | string | yes | — | — | Exact engine asset ID whose provider agreements are retired. |
+
+**Output** — the value assertions and `returns:` read
+
+__
+
+| Field | Type | Description |
+|---|---|---|
+| `asset_id` | string | Exact engine asset selected for cleanup. |
+| `agreement_ids` | list of string | All matching provider agreements discovered before retirement. |
+| `retirements` | list of [RetirementResult](#retirementresult) | Actual retirement outcome for each agreement. |
+| `status_code` | integer | 204 when all succeeded or none matched; first failure status, or 0 for a transport/invalid query failure. |
+| `error` | string | Query or transport diagnostic, empty when discovery succeeded. |
+
+## `connector/provider/retire_contract_agreement` { #connector-provider-retire_contract_agreement }
+
+Retire an engine provider agreement to prevent future transfers.
+
+Agreement history remains, so retirement does not guarantee asset deletion. Refused requests retain their status and body; use SOFT validations in teardown. No HTTP response is reported as status 0, never as successful retirement.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `reason` | string | no | `'TCK execution ended'` | — | Reason recorded in the provider's retirement history. |
+| `agreement_id` | string | yes | — | — | Agreement to retire on the engine provider connector. |
+
+**Output** — the value assertions and `returns:` read
+
+__
+
+| Field | Type | Description |
+|---|---|---|
+| `agreement_id` | string | Provider agreement targeted for retirement. |
+| `status_code` | integer | Actual HTTP status; 0 means no HTTP response. |
+| `response_body` | object | Connector response or transport error. |
+
 ## Nested objects
 
 ### FilterExpression
@@ -177,3 +227,13 @@ A registered mock, as the steps that use it later need to see it.
 | `method` | string | yes | — | — | HTTP method the mock answers. |
 | `base_mock_url` | string | yes | — | — | Root URL of the testlab mock server. |
 | `full_mock_url` | string | yes | — | — | Address the system under test calls — root plus path. |
+
+### RetirementResult
+
+
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `agreement_id` | string | yes | — | — | Provider agreement targeted for retirement. |
+| `status_code` | integer | yes | — | — | Actual HTTP status; 0 means no HTTP response. |
+| `response_body` | object | no | `None` | — | Connector response or transport error. |
