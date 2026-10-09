@@ -246,13 +246,18 @@ class TestCcmVariableScopes:
 class TestInputScopeWithoutInfrastructure:
     """Input ownership does not imply a required connector or other service."""
 
-    @pytest.mark.parametrize("infrastructure", [
-        None,
-        {},
-        {"engine": {"connector": {"required": True}}},
-        {"sut": {"connector": {"required": False}}},
-    ])
-    def test_scoped_inputs_compile_without_matching_infrastructure(self, infrastructure: dict | None) -> None:
+    @pytest.mark.parametrize(
+        "infrastructure",
+        [
+            None,
+            {},
+            {"engine": {"connector": {"required": True}}},
+            {"sut": {"connector": {"required": False}}},
+        ],
+    )
+    def test_scoped_inputs_compile_without_matching_infrastructure(
+        self, infrastructure: dict | None
+    ) -> None:
         import yaml
 
         manifest = yaml.safe_load((CCM_RAW_DIR / "index.yaml").read_text(encoding="utf-8"))
