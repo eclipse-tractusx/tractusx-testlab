@@ -53,7 +53,6 @@ OVERSIZED: dict[str, int] = {
     "steps/digital_twin_registry/provider/shell.py": 363,
     "steps/step_contract.py": 363,
     "compiler/ir/builder.py": 344,
-    "compiler/validation/_manifest_validation.py": 337,
     "steps/_checks/extraction.py": 330,
     "infrastructure/profiles.py": 329,
     # One class doing one thing — publishing every transition to the log, the

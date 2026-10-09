@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
 ## It was reviewed and tested by a human committer.
 
 """TCK manifest and test file validation against JSON schemas.
@@ -66,6 +67,8 @@ def validate_tck_manifest(
     Raises:
         ValueError: If validation errors are found. Message lists ALL errors.
     """
+    # Input scope identifies who supplies a value, independently of the services
+    # the run binds. A SUT operator can provide inputs to an engine-only kit.
     env = manifest_data.get("env") or {}
 
     all_errors: list[str] = [
@@ -73,7 +76,6 @@ def validate_tck_manifest(
         *_validate_file_refs(manifest_data, base_dir),
         *validate_variable_declarations(env),
         *_validate_variable_scopes(env),
-        *_validate_scoped_sides_are_declared(env, manifest_data.get("infrastructure")),
     ]
 
     variable_ids = declared_variable_ids(env)
@@ -151,71 +153,6 @@ def _input_variables(env_data: dict[str, Any]) -> Iterator[dict[str, Any]]:
             continue
         if str((entry.get("with") or {}).get("source", "")) == "input":
             yield entry
-
-
-def _scoped_input_variables(env_data: dict[str, Any]) -> list[tuple[str, str]]:
-    """Return every ``(variable id, scope)`` pair the env block requests."""
-    return [
-        (str(entry.get("id", "?")), str(scope))
-        for entry in _input_variables(env_data)
-        if (scope := (entry.get("with") or {}).get("scope")) in _VALID_SCOPES
-    ]
-
-
-def _sides_with_a_required_capability(infrastructure: Any) -> set[str]:
-    """Return the sides that declare at least one ``required: true`` capability.
-
-    A side is only real when something is required of it. Declaring
-    ``sut: {connector: {required: false}}`` describes a capability the run does
-    not need, which is not a system anyone can be asked for a value.
-    """
-    if not isinstance(infrastructure, dict):
-        return set()
-    return {
-        str(side)
-        for side, capabilities in infrastructure.items()
-        if isinstance(capabilities, dict)
-        and any(
-            isinstance(requirement, dict) and requirement.get("required") is True
-            for requirement in capabilities.values()
-        )
-    }
-
-
-def _validate_scoped_sides_are_declared(
-    env_data: dict[str, Any],
-    infrastructure: Any,
-) -> list[str]:
-    """Reject a variable scoped to a side the ``infrastructure:`` block never declares.
-
-    ``scope: sut`` means "the operator of the system under test supplies this
-    when the run starts". If nothing is required of the SUT, there is no such
-    system in this TCK and therefore no operator to ask — the variable would sit
-    on the run-start form with no owner, and whatever the run then did with the
-    empty value would fail far from here.
-
-    The check is deliberately per-SIDE rather than per-capability: which
-    capability a given variable belongs to is not recoverable from the manifest,
-    so demanding it would mean inventing a name-to-capability registry that the
-    author could not see or extend. A side declaring nothing at all is the
-    unambiguous case, and it is the one that actually gets authored.
-
-    Skipped entirely when no TCK-level ``infrastructure:`` block is present AND
-    no variable is scoped, since per-test blocks then govern the run.
-    """
-    scoped = _scoped_input_variables(env_data)
-    if not scoped:
-        return []
-
-    declared_sides = _sides_with_a_required_capability(infrastructure)
-    return [
-        f"Variable '{var_id}' is scoped to '{scope}', but the infrastructure "
-        f"block requires no {scope} capability. Declare what the run needs "
-        f"(e.g. infrastructure.{scope}.connector.required: true), or remove "
-        f"the variable."
-        for var_id, scope in scoped
-        if scope not in declared_sides
-    ]
 
 
 @dataclass(frozen=True, slots=True)

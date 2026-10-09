@@ -161,6 +161,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Input scopes identify who supplies a value independently of infrastructure.
+  Engine-only kits can ask the SUT operator for inputs without requiring a SUT
+  connector or another SUT capability.
+
 - The consumer-side registry steps (`digital-twin-registry/consumer/dataplane/*`)
   honour an explicit `edr_token: ""` as "no token", as `connector/dataplane/*`
   already did. They read it as "not given" and sent the EDR an earlier

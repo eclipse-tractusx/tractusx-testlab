@@ -38,7 +38,6 @@ Problems show up at three moments. **Validation** means the TCK itself is wrong.
 | `Operator 'not_null' does not read 'value'` | The operand doesn't belong to that operator. Unary operators take none; `between` takes `min` and `max`. See [Validations](../api-reference/steps/validations.md). |
 | `'validate/assert' cannot be used as a standalone step` | Assertions go in the `validate:` block of the step whose output they check. |
 | `Variable 'x' has source: input but no scope declared` | Say who supplies the input: `scope: engine` (whoever runs TestLab) or `scope: sut` (the party under test). |
-| `Variable 'x' is scoped to 'sut', but the infrastructure block requires no sut capability` | Declare what the run needs, for example `infrastructure.sut.connector.required: true`, or drop the variable. |
 | `namespace '…' must match the TCK id '…'` | Every test's `namespace:` is the manifest's `id:`. |
 
 For version-specific steps, pass the dataspace generation: `testlab validate index.yaml --version saturn`.
