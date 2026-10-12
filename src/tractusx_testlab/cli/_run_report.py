@@ -64,9 +64,20 @@ def print_run_header(
 
 
 def execute_with_progress(
-    player, tck, runtime_vars: dict[str, str], total_steps: int, run_id: str | None = None
+    player,
+    tck,
+    runtime_vars: dict[str, str],
+    total_steps: int,
+    run_id: str | None = None,
+    *,
+    operator=None,
 ):
-    """Run the TCK with a rich progress bar and return the result."""
+    """Run the TCK with a rich progress bar and return the result.
+
+    With an *operator* (``cli._terminal_operator``), the run's checkpoints are
+    approved before it starts and its choices answered while it runs; the bar
+    stops while a window is up (``player.operator.run_with_operator``).
+    """
     from rich.progress import (
         BarColumn,
         Progress,
@@ -86,7 +97,17 @@ def execute_with_progress(
     ) as progress:
         task_id = progress.add_task("Starting...", total=total_steps)
         player.monitor.add_callback(_make_progress_callback(progress, task_id))
-        return asyncio.run(player.run_tck(tck, runtime_vars=runtime_vars or None, job_id=run_id))
+        if operator is None:
+            return asyncio.run(
+                player.run_tck(tck, runtime_vars=runtime_vars or None, job_id=run_id)
+            )
+        from tractusx_testlab.cli._terminal_operator import paused_display
+        from tractusx_testlab.player.operator import run_with_operator
+
+        operator.pause = lambda: paused_display(progress)
+        return asyncio.run(
+            run_with_operator(player, tck, operator, runtime_vars or None, job_id=run_id)
+        )
 
 
 def progress_console():

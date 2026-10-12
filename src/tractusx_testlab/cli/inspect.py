@@ -41,6 +41,7 @@ import typer
 
 from tractusx_testlab.cli import app
 from tractusx_testlab.cli._inspect_report import (
+    print_checkpoints,
     print_infrastructure,
     print_inspection,
     print_manifest,
@@ -78,6 +79,16 @@ def inspect(
         "--manifest",
         help="Show the package manifest: identity, checksum, signer, players.",
     ),
+    show_checkpoints: bool = typer.Option(
+        False,
+        "--checkpoints",
+        help="Show the checkpoints a run meets, in run order (ADR-0027).",
+    ),
+    skip_tests: str | None = typer.Option(
+        None,
+        "--skip-tests",
+        help="With --checkpoints: the tests the run skips, comma-separated (skip_tests).",
+    ),
     extract: Path | None = typer.Option(
         None,
         "--extract",
@@ -113,6 +124,9 @@ def inspect(
         _extract_package(package, verified_dir, extract, quiet=as_json)
 
     sections = _gather(tck, verified_dir, show_variables, show_infrastructure, show_manifest)
+    if show_checkpoints:
+        skipped = [name.strip() for name in (skip_tests or "").split(",") if name.strip()]
+        sections["checkpoints"] = list(tck.checkpoints(skipped))  # type: ignore[attr-defined]
 
     if as_json:
         typer.echo(json.dumps(sections, indent=2, default=_jsonable))
@@ -125,6 +139,8 @@ def inspect(
         print_infrastructure(tck)
     if show_manifest:
         print_manifest(sections["manifest"])
+    if show_checkpoints:
+        print_checkpoints(sections["checkpoints"])
 
 
 def _load_tck(

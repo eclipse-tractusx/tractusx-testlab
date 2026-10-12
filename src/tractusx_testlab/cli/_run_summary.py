@@ -75,6 +75,25 @@ def print_run_results(result) -> None:
     raise typer.Exit(0 if result.status == TestStatus.COMPLETED else 1)
 
 
+#: Exit codes of a run its operator stopped (``player.operator``): nothing to
+#: answer with, not approved, stopped at a choice.
+EXIT_NO_ANSWER, EXIT_DECLINED, EXIT_STOPPED = 2, 3, 4
+
+
+def stopped(exc: Exception) -> None:
+    """Say why the operator's run stopped, report what ran, and exit with its own code."""
+    from tractusx_testlab.player.operator import RunAborted
+
+    typer.echo(f"\n{exc}", err=True)
+    result = getattr(exc, "result", None)
+    if result is not None:
+        for line in render_run_results(result):
+            typer.echo(line, color=_colour_wanted())
+    if not isinstance(exc, RunAborted):
+        raise typer.Exit(EXIT_DECLINED)
+    raise typer.Exit(EXIT_STOPPED if exc.reason == "quit" else EXIT_NO_ANSWER)
+
+
 def _colour_wanted() -> bool | None:
     """Whether the report keeps its colour: the two conventions, else the terminal.
 
