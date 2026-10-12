@@ -135,7 +135,9 @@ class TestTheStates:
 
     def test_a_run_its_host_cancelled_ends_cancelled(self, checkpoint_run: Run) -> None:
         assert len(checkpoint_run.answers.of("job.cancelled")) == 1
-        assert not checkpoint_run.answers.of("job.failed") and not checkpoint_run.answers.of("job.completed")
+        assert not checkpoint_run.answers.of("job.failed") and not checkpoint_run.answers.of(
+            "job.completed"
+        )
         (end,) = [e for e in checkpoint_run.trace if e["type"] == "tck.end"]
         assert end["data"]["status"] == "CANCELLED"
 
