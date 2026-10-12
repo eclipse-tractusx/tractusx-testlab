@@ -107,6 +107,9 @@ env:
   # tables in plain text; the Actions log viewer renders ANSI colour, and
   # this keeps PASS, FAIL and SKIP green, red and yellow there.
   FORCE_COLOR: "1"
+  # Nobody is at the runner to answer `Continue? [y/N]` before a run with
+  # checkpoints (ADR-0028): approve the briefing up front.
+  TESTLAB_YES: "1"
   UMBRELLA_NAMESPACE: umbrella
   UMBRELLA_CHART_VERSION: "26.03.00"
   UMBRELLA_VALUES_REF: "umbrella-26.03.00"

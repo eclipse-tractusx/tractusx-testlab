@@ -44,7 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `Choose [1-N]` (`q` stops the run; `--choose <step_id>=<n|option id>`
   answers up front). Without a terminal and without an answer it stops instead
   of waiting. Exit codes: `2` nothing to answer with, `3` not approved, `4`
-  stopped at a choice. A run without checkpoints asks nothing. The player
+  stopped at a choice. A run without checkpoints asks nothing.
+  **Breaking for scripts and CI:** a `testlab run` without a terminal of a
+  package that has checkpoints now exits `2` unless it passes `--yes` (or sets
+  `TESTLAB_YES=1`), and `--choose` for any choice with more than one option. The player
   itself never prompts: a host that wants an operator passes one to
   `player.operator.run_with_operator`.
 - `ExecutionMonitor.add_trace_callback(fn)` calls `fn(event, payload,
