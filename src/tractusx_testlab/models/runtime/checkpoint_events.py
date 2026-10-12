@@ -56,8 +56,12 @@ class CheckpointUpdatedEvent(_ExecutionEvent):
     event that changed it — ``step_waiting``, ``step_received``,
     ``step_completed``, ``test_started``, ``job_failed`` … — and
     ``cause_sequence`` that event's ``sequence`` in the player's own trace,
-    when it writes one. A change no event of its own announces (a nested step
-    starting, a ``flow/if`` branch not taken) has neither.
+    when it writes one. A change no event of its own announces has neither: a
+    step starting to run (an ``outbound`` checkpoint is asked once its ``if:``
+    held, after ``step_started``; a nested step announces nothing), a
+    ``flow/if`` branch not taken, a step interrupted under the run (a cancel,
+    an error past its guard). A host closing a run whose player is gone names
+    the end's ``kind`` and no sequence: the player's trace has no line for it.
     """
 
     kind: Literal[EventKind.CHECKPOINT_UPDATED] = EventKind.CHECKPOINT_UPDATED

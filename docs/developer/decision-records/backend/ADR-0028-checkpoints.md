@@ -193,7 +193,10 @@ checkpoint's update count, so two updates never carry the same data) and
 writes one. A host that numbers events itself (the engine) reads `cause`: the
 cause is the last event of that kind it published, since the update follows it
 with nothing in between but other updates of the same cause. A change no event
-announces — a nested step starting, a `flow/if` branch not taken — has neither.
+announces has neither: a step starting to run (an `outbound` checkpoint is asked
+once its `if:` held, after `step_started`; a nested step announces nothing), a
+`flow/if` branch not taken, a step interrupted under the run (a cancel, an error
+past its guard — the open question turns `not_reached` with `cause: null`).
 
 The typed events are `CheckpointsPlannedEvent` and `CheckpointUpdatedEvent`;
 they reach a host's monitor callbacks like every other event, and the trace

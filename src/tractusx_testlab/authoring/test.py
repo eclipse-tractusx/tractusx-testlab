@@ -214,9 +214,11 @@ class Tck:
     def checkpoints(self, skip_tests: Collection[str] = ()) -> tuple[CheckpointEntry, ...]:
         """Every checkpoint a run with *skip_tests* meets, in run order (ADR-0028).
 
-        What the briefing before a run lists, and what the run's
-        ``checkpoints.planned`` event carries: the index of an entry here is
-        the ``index`` the run's ``checkpoint.updated`` events name it by.
+        What the briefing before a run lists, and the start of what the run's
+        ``checkpoints.planned`` event carries — the plan then lists the
+        checkpoints of the tests *skip_tests* leaves out, ``skipped``
+        (``player.checkpoints.run_plan``). The index of an entry here
+        is the ``index`` the run's ``checkpoint.updated`` events name it by.
         """
         return tuple(planned.entry for planned in collect_checkpoints(self, skip_tests))
 

@@ -729,7 +729,7 @@ ended — one per changed checkpoint.
 | `job_id` | string | |
 | `index` | integer | Its place in `checkpoints_planned`. |
 | `revision` | integer | This checkpoint's update count, from 1: two updates never carry the same data. |
-| `cause` | string \| null | The `kind` of the event that changed it; null for a change no event announces (a nested step starting, a `flow/if` branch not taken). |
+| `cause` | string \| null | The `kind` of the event that changed it; null for a change no event announces: a step starting to run (an `outbound` checkpoint is asked once its `if:` held, after `step_started`; a nested step announces nothing), a `flow/if` branch not taken, a step interrupted under the run (a cancel, an error past its guard). |
 | `cause_sequence` | integer \| null | That event's `sequence` in the player's own trace, when it writes one. A host that numbers events itself reads `cause` instead: the cause is the last event of that kind it published. |
 | `checkpoint` | checkpoint | The whole checkpoint as it reads now. |
 
