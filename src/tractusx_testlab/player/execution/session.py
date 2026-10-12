@@ -47,13 +47,13 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from tractusx_testlab.player.execution._step_outputs import forget_outputs
 from tractusx_testlab.player.execution._trace_formatter import (
     build_tck_result,
     finalize_job,
     make_intentionally_skipped_result,
     make_interrupted_result,
 )
-from tractusx_testlab.player.execution.phase import _PHASE_TO_NAMESPACE
 from tractusx_testlab.player.execution.step_runner import run_test
 
 if TYPE_CHECKING:
@@ -260,7 +260,7 @@ class TckSession:
     async def _run(self, idx: int, test: Test) -> TestResult:
         attempt = self._attempts.get(test.test_id, 0) + 1
         if attempt > 1:
-            self._forget_outputs(test)
+            forget_outputs(test, self._context)
         self._attempts[test.test_id] = attempt
         self._monitor.on_test_started(self.job_id, test.definition.id, idx, attempt)
         self._job.current_test = test.name
@@ -278,11 +278,7 @@ class TckSession:
         self._monitor.on_test_completed(self.job_id, skipped)
 
     def _end_unfinished(self) -> None:
-        """End the test the run was interrupted in: ``CANCELLED``, without starting it again.
-
-        Its result is the attempt that was cut short, so the verdict does not
-        count an earlier attempt that passed.
-        """
+        """End the test the run was interrupted in ``CANCELLED`` (that attempt counts), not again."""
         if self._unfinished is None:
             return
         test, attempt = self._unfinished
@@ -290,27 +286,6 @@ class TckSession:
         interrupted = make_interrupted_result(test)
         self._results[test.test_id] = interrupted
         self._monitor.on_test_completed(self.job_id, interrupted, attempt)
-
-    def _forget_outputs(self, test: Test) -> None:
-        """Drop what *test*'s previous attempt published under ``<phase>.<step id>.``.
-
-        Else a step failing before it publishes leaves the old value for later steps.
-        """
-        prefixes = tuple(
-            f"{_PHASE_TO_NAMESPACE[phase]}.{step.id}."
-            for phase, steps in (
-                ("setup", test.setup),
-                ("execution", test.steps),
-                ("teardown", test.teardown),
-            )
-            for step in steps
-            if getattr(step, "id", None)
-        )
-        if not prefixes:
-            return
-        for name in self._context.variables:
-            if name.startswith(prefixes):
-                self._context.unset_variable(name)
 
     def _find(self, test_id: str) -> tuple[int, Test]:
         for idx, test in enumerate(self._tck.tests):

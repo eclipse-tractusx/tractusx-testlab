@@ -36,8 +36,8 @@ The tracker is told:
 * by the phase runner and the step runner, when a step starts and ends
   (:meth:`step`, :meth:`nested`, :meth:`ended`);
 * by the monitor, right after it published the event that says so, when a
-  test starts or ends, a question is asked, paused or answered, and the run
-  ends (:meth:`test_started`, :meth:`asked`, …);
+  test starts or ends, a question is asked, paused or answered
+  (``_questions.QuestionHooks``), and the run ends (:meth:`test_started`, …);
 * by ``flow/if``, which branch it did not take (:meth:`not_taken`).
 
 Every change it makes goes out through its publisher at once, so a
@@ -49,14 +49,14 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from tractusx_testlab.authoring._checkpoints import PlannedCheckpoint
 from tractusx_testlab.models.primitives.enums import StepStatus, TestStatus
-from tractusx_testlab.models.runtime.checkpoints import CheckpointRef, CheckpointStatus
+from tractusx_testlab.models.runtime.checkpoints import CheckpointStatus
 from tractusx_testlab.player.checkpoints import _transitions
+from tractusx_testlab.player.checkpoints._questions import Cause, QuestionHooks
 from tractusx_testlab.player.checkpoints.frames import (
     StepFrame,
     StepPath,
@@ -64,14 +64,6 @@ from tractusx_testlab.player.checkpoints.frames import (
     enter,
     leave,
 )
-
-
-@dataclass(frozen=True)
-class Cause:
-    """The event that changed a checkpoint: its ``kind``, and its ``sequence`` in the trace."""
-
-    kind: str
-    sequence: int | None = None
 
 
 class CheckpointPublisher(Protocol):
@@ -84,7 +76,7 @@ class CheckpointPublisher(Protocol):
     ) -> None: ...
 
 
-class CheckpointTracker:
+class CheckpointTracker(QuestionHooks):
     """One run's checkpoints and the steps it is running.
 
     Built empty — it still numbers the runs of each step, and publishes
@@ -188,69 +180,6 @@ class CheckpointTracker:
         for index in self._under(frame.test_id, prefix):
             if self._statuses[index].state in _transitions.SUPERSEDED:
                 self._set(index, None, state="skipped")
-
-    # ------------------------------------------------------------------
-    # Questions
-    # ------------------------------------------------------------------
-
-    def asked(self, cause: Cause) -> None:
-        """The current step asked (``step_waiting``, ``step_selecting``); again after a pause.
-
-        Noted on the frame for a step that is no checkpoint too: a question put
-        again is a pause resumed, and its ``pauses`` count either way.
-        """
-        frame = current_frame()
-        if frame is None or frame.asked:
-            return
-        if frame.checkpoint is None:
-            frame.asked = True
-        else:
-            self._ask(frame, cause)
-
-    def suspended(self) -> None:
-        """The current step's question was paused; the next ask resumes it."""
-        frame = current_frame()
-        if frame is not None:
-            frame.pauses += 1
-
-    def answered(self, cause: Cause, waited_ms: int) -> None:
-        """The current step's question was answered, after *waited_ms* of it being open."""
-        frame = current_frame()
-        if frame is None or frame.checkpoint is None:
-            return
-        if not frame.asked:  # answered at once, before anything was announced
-            self._ask(frame, cause)
-        frame.answered = True
-        self._set(
-            frame.checkpoint,
-            cause,
-            state="cleared",
-            answered_at=datetime.now(UTC),
-            response_s=round(waited_ms / 1000, 3),
-        )
-
-    def refused(self, cause: Cause) -> None:
-        """A call came to the current step's question and was turned away (no key, the wrong one).
-
-        It is not an answer: the checkpoint is not ``cleared``, and stays
-        ``now`` until the step fails on it — ``failed``, the call having come.
-        """
-        frame = current_frame()
-        if frame is None or frame.checkpoint is None:
-            return
-        if not frame.asked:
-            self._ask(frame, cause)
-        frame.answered = True
-
-    def ref(self) -> CheckpointRef | None:
-        """Which checkpoint, and which attempt of it, the current step is — for its events."""
-        frame = current_frame()
-        if frame is None or frame.checkpoint is None:
-            return None
-        entry = self._statuses[frame.checkpoint]
-        return CheckpointRef(
-            index=frame.checkpoint, attempt=frame.checkpoint_attempt, direction=entry.direction
-        )
 
     # ------------------------------------------------------------------
     # Tests and the run

@@ -205,12 +205,7 @@ class ExecutionMonitor(StepEvents, InboundEvents, SelectionEvents):
     def on_test_started(
         self, job_id: str, test: str, index: int, attempt: int = 1, *, skipped: bool = False
     ) -> None:
-        """Publish a test_started event.
-
-        A *skipped* test is announced the same way (its ``test.completed``
-        says ``SKIPPED``), but nothing of it runs: its checkpoints do not start
-        over, so one ``skip_tests`` left out stays ``skipped``.
-        """
+        """Publish a test_started event; a *skipped* one's checkpoints do not start over."""
         event_id = self._trace.test_started(test, index, attempt)
         self._publish(
             TestStartedEvent(job_id=job_id, test_id=test, index=index, attempt=attempt), event_id

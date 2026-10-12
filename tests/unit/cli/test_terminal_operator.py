@@ -39,8 +39,9 @@ from collections.abc import Iterable
 
 import pytest
 
-from tractusx_testlab.cli import _terminal_operator
-from tractusx_testlab.cli._terminal_operator import TerminalOperator, parse_choices, read_stdin
+from tractusx_testlab.cli import _stdin_lines
+from tractusx_testlab.cli._stdin_lines import read_stdin
+from tractusx_testlab.cli._terminal_operator import TerminalOperator, parse_choices
 from tractusx_testlab.logging.structured import CliHandler
 from tractusx_testlab.models.runtime.checkpoints import CheckpointEntry
 from tractusx_testlab.models.runtime.selection import Selection, SelectionOption
@@ -256,7 +257,7 @@ class TestReadingStdin:
         def unselectable(*_args):
             raise OSError(10038, "not a socket")
 
-        monkeypatch.setattr(_terminal_operator.select, "select", unselectable)
+        monkeypatch.setattr(_stdin_lines.select, "select", unselectable)
         started = time.monotonic()
         assert read_stdin(0.3) is None
         assert time.monotonic() - started < 2

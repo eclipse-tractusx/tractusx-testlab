@@ -32,10 +32,9 @@ front: ``--yes`` approves the briefing (it never picks an option), and
 the value first, else the option numbered so. Without a terminal and without
 an answer given up front, nothing hangs: the run stops, naming the flag.
 
-A choice is read in slices of at most :data:`_SLICE_S`, so its deadline holds
-and so does :meth:`TerminalOperator.stop` — the run ended, or a Ctrl-C
-interrupted it — on every platform: where stdin cannot be ``select()``-ed (a
-Windows console) a daemon thread reads it instead.
+A choice is read in slices (``cli._stdin_lines``), so its deadline holds and
+so does :meth:`TerminalOperator.stop` — the run ended, or a Ctrl-C interrupted
+it — on every platform, a Windows console included.
 
 Everything shown goes to stdout, so the transcript keeps it; what the person
 typed is written after it (``Approved.``, ``Chosen: 2 beta``), since a terminal
@@ -48,18 +47,16 @@ from __future__ import annotations
 
 import contextlib
 import functools
-import queue
-import select
 import sys
 import threading
 import time
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import AbstractContextManager
-from typing import IO
 
 import typer
 
 from tractusx_testlab.cli._checkpoint_windows import briefing, choice, clock
+from tractusx_testlab.cli._stdin_lines import read_stdin
 from tractusx_testlab.logging.structured import hold_console
 from tractusx_testlab.models.runtime.checkpoints import CheckpointEntry
 from tractusx_testlab.models.runtime.selection import SelectionOption
@@ -68,86 +65,6 @@ from tractusx_testlab.player.operator import Question, RunAborted
 #: Reads one line, waiting at most the seconds given (``None``: as long as it
 #: takes); ``None`` when the time ran out, ``""`` at the end of the input.
 LineReader = Callable[[float | None], str | None]
-
-
-#: The longest a choice's read blocks before it looks at its deadline and its stop again.
-_SLICE_S = 0.2
-
-
-def read_stdin(timeout: float | None, stop: threading.Event | None = None) -> str | None:
-    """A line from stdin; ``None`` once *timeout* seconds passed, or *stop* was set, without one.
-
-    ``timeout=None`` reads as long as it takes, on the calling thread: the
-    approval, read before the event loop starts, where a Ctrl-C interrupts it.
-    """
-    if timeout is None:
-        return sys.stdin.readline()
-    deadline = time.monotonic() + max(timeout, 0.0)
-    while stop is None or not stop.is_set():
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            return None
-        line = _poll(min(remaining, _SLICE_S))
-        if line is not None:
-            return line
-    return None
-
-
-def _poll(wait: float) -> str | None:
-    """A line, if one comes within *wait* seconds."""
-    stream = sys.stdin
-    try:
-        stream.fileno()
-    except (OSError, ValueError):  # in memory (a test's input): a read never blocks
-        return stream.readline()
-    try:
-        ready, _, _ = select.select([stream], [], [], wait)
-    except (OSError, ValueError):  # not selectable (a Windows console): a thread reads it
-        return _queued(stream).get(wait)
-    return stream.readline() if ready else None
-
-
-class _QueuedStdin:
-    """A stream read line by line on a daemon thread, for one ``select()`` cannot wait on.
-
-    A daemon, so a read nobody is waiting for any more never holds the process
-    open; a line typed after its question closed goes to the next one.
-    """
-
-    def __init__(self, stream: IO[str]) -> None:
-        self.stream = stream
-        self._lines: queue.Queue[str] = queue.Queue()
-        self._reader = threading.Thread(target=self._read, name="testlab-stdin", daemon=True)
-        self._reader.start()
-
-    def _read(self) -> None:
-        while True:
-            line = self.stream.readline()
-            self._lines.put(line)
-            if line == "":  # the end of the input
-                return
-
-    def get(self, wait: float) -> str | None:
-        try:
-            line = self._lines.get(timeout=wait)
-        except queue.Empty:
-            return None
-        if line == "":
-            self._lines.put(line)  # the input stays ended for whoever asks next
-        return line
-
-
-_reader: _QueuedStdin | None = None
-_reader_lock = threading.Lock()
-
-
-def _queued(stream: IO[str]) -> _QueuedStdin:
-    """The reader of *stream*, started the first time it is needed."""
-    global _reader
-    with _reader_lock:
-        if _reader is None or _reader.stream is not stream:
-            _reader = _QueuedStdin(stream)
-        return _reader
 
 
 class TerminalOperator:
@@ -179,7 +96,7 @@ class TerminalOperator:
     def stop(self) -> None:
         """Stop asking: the run ended or was interrupted (``player.operator``).
 
-        A choice being asked returns ``None`` within :data:`_SLICE_S`, without
+        A choice being asked returns ``None`` within a read's slice, without
         saying it timed out; one asked later returns ``None`` at once.
         """
         self._stopped.set()

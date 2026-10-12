@@ -213,3 +213,29 @@ async def run_and_publish(
     if context.step_namespace is not None:
         store_step_outputs(step_def, step_result, context, step_namespace=context.step_namespace)
     return step_result
+
+
+def forget_outputs(test: Any, context: StepContext) -> None:
+    """Drop what *test*'s previous attempt published under ``<phase>.<step id>.``.
+
+    Called before a test runs again (``TckSession``): else a step failing
+    before it publishes leaves the old value for later steps.
+    """
+    # Imported here: the phase runner imports this module (lazily) in turn.
+    from tractusx_testlab.player.execution.phase import _PHASE_TO_NAMESPACE
+
+    prefixes = tuple(
+        f"{_PHASE_TO_NAMESPACE[phase]}.{step.id}."
+        for phase, steps in (
+            ("setup", test.setup),
+            ("execution", test.steps),
+            ("teardown", test.teardown),
+        )
+        for step in steps
+        if getattr(step, "id", None)
+    )
+    if not prefixes:
+        return
+    for name in context.variables:
+        if name.startswith(prefixes):
+            context.unset_variable(name)
