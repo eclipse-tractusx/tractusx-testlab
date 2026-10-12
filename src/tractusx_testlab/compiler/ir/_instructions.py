@@ -140,7 +140,7 @@ def _build_instruction(
     # entirely before this, which meant a conditional step ran unconditionally, a
     # negative test ran as a positive one, and a timeout was never applied — the
     # run did something other than what the TCK said, in silence.
-    for control in ("cac", "if", "expects", "timeout_s"):
+    for control in ("cac", "if", "expects", "timeout_s", "checkpoint"):
         if step.get(control) is not None:
             instruction[control] = step[control]
 

@@ -10,6 +10,8 @@
 
 Let the operator choose one asset and one of its offers out of a catalog's datasets.
 
+**Checkpoint** — `internal`: you choose in the Test Suite; nothing is called. Every use of the step is one; a test switches it off with `checkpoint: false`.
+
 Does not query the catalog: give it the `datasets` of the catalog step before it. Each asset and offer pair is one option; a dataset with no offer cannot be negotiated and is left out. Read `asset_id` and `policy` to negotiate the pair.
 
 **Inputs**

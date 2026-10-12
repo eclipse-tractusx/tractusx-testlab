@@ -29,6 +29,8 @@ Type: any
 
 Send a notification through the dataspace.
 
+**Checkpoint** — `outbound`, via `dataplane`: the Test Suite calls your system, which has to answer. Every use of the step is one; a test switches it off with `checkpoint: false`.
+
 Supports two modes: - **Dataplane-direct mode**: `dataplane_url`, `edr_token`, `endpoint_path`, `notification` - **SDK mode**: `notification`, `counter_party_id`, `counter_party_address`
 
 **Inputs**

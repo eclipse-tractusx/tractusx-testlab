@@ -147,6 +147,7 @@ def _test() -> dict:
                 "if": "success()",
                 "expects": "fail",
                 "timeout_s": 30.0,
+                "checkpoint": {"label": "The SUT is told", "direction": "outbound"},
                 "validate": [
                     {
                         "uses": "validate/assert/not_null",
@@ -266,6 +267,10 @@ class TestEveryStepFieldSurvives:
         assert instruction.get("expects") == "fail"
         assert instruction.get("if") == "success()"
         assert instruction.get("timeout_s") == 30.0
+        assert instruction.get("checkpoint") == {
+            "label": "The SUT is told",
+            "direction": "outbound",
+        }
 
     def test_an_assertion_keeps_the_name_the_author_gave_it(self, tmp_path) -> None:
         """It is what the report calls the check; dropped here it is gone for good."""

@@ -76,6 +76,8 @@ Type: list of any
 
 Let the operator choose one of a list of values — a dropdown in the host's UI.
 
+**Checkpoint** — `internal`: you choose in the Test Suite; nothing is called. Every use of the step is one; a test switches it off with `checkpoint: false`.
+
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
@@ -117,6 +119,17 @@ Assertion using `uses` / `with` verb-form keys.
 | `uses` | string | yes | — | — |  |
 | `name` | string | no | `None` | — |  |
 | `with` | object | no | `None` | — |  |
+
+### CheckpointMark
+
+What a test says about a step it marks a checkpoint.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `label` | string | no | `None` | — | What the run calls the checkpoint. |
+| `description` | string | no | `None` | — | What whoever acts has to do, in a sentence or two. |
+| `direction` | Direction | no | `None` | — | 'inbound', 'outbound' or 'internal' — for a step type that declares no checkpoint of its own; 'outbound' when left out. |
+| `via` | Via | no | `None` | — | 'direct' or 'dataplane': how the call travels, when it does. |
 
 ### Condition
 
@@ -166,6 +179,7 @@ Step definition using `uses` and `with` verb-form keys.
 | `expects` | `fail` | no | `None` | — |  |
 | `timeout_s` | number | no | `None` | — |  |
 | `if` | string | no | `None` | — |  |
+| `checkpoint` | boolean \| [CheckpointMark](#checkpointmark) | no | `None` | — |  |
 
 ### WaitAction
 

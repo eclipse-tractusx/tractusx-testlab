@@ -34,6 +34,7 @@ from pydantic import ValidationError
 
 from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.compiler.validation._assertion_severity import severity_findings
+from tractusx_testlab.compiler.validation._checkpoint_marks import checkpoint_findings
 from tractusx_testlab.compiler.validation._conditions import condition_findings
 from tractusx_testlab.compiler.validation._credential_references import credential_findings
 from tractusx_testlab.compiler.validation._extension_gate import (
@@ -148,9 +149,10 @@ class TestValidator:
                         phase=phase,
                     )
 
-        # A condition the run cannot evaluate, and a credential it would refuse to send.
+        # A condition the run cannot evaluate, a credential it would refuse to send,
+        # and a checkpoint mark it could not honour.
         for phase, idx, field, message in chain(
-            condition_findings(test, scope), credential_findings(test)
+            condition_findings(test, scope), credential_findings(test), checkpoint_findings(test)
         ):
             result.add_error(message, step_index=idx, field=field, phase=phase)
 

@@ -30,14 +30,16 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, Self, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, ValidationError
+from pydantic import BaseModel, ConfigDict, RootModel, ValidationError
 
 from tractusx_testlab.models import (
     HttpRequest,
     HttpResponse,
     StepDefinition,
 )
+from tractusx_testlab.models.primitives.checkpoint import Checkpoint
 from tractusx_testlab.security.credential_documents import holds_credential, restore_credentials
+from tractusx_testlab.steps.step_description import StepContract
 from tractusx_testlab.syntax import diagnostics
 
 if TYPE_CHECKING:
@@ -105,20 +107,6 @@ class StepValue[RootT](RootModel[RootT]):
     The docstring is the field description — there is only one value to
     describe, so there is nowhere else to put it.
     """
-
-
-class StepContract(BaseModel):
-    """Machine-readable description of a step's declared interface.
-
-    Produced by :meth:`BaseStep.describe` for documentation generation and
-    test validation.  Both schemas are always present, because every step
-    declares its inputs and its output.
-    """
-
-    step_type: str = ""
-    description: str = ""
-    params_schema: dict = Field(default_factory=dict)
-    output_schema: dict = Field(default_factory=dict)
 
 
 ParamsT = TypeVar("ParamsT")
@@ -190,6 +178,8 @@ class BaseStep[ParamsT, PayloadT](ABC):
     #: Dataspace release the ``@step`` decorator restricted this step to, or
     #: ``None`` when it runs on every release.
     dataspace_version: ClassVar[str | None] = None
+    #: Whether this step is a checkpoint, as its ``@step`` decorator declared (ADR-0027).
+    checkpoint: ClassVar[Checkpoint | None] = None
     #: Input contract — the keys this step accepts under ``with:``.
     params_model: ClassVar[type[StepParams]]
     #: Output contract — a :class:`StepPayload` for an object, a
@@ -315,6 +305,7 @@ class BaseStep[ParamsT, PayloadT](ABC):
             description=(cls.__doc__ or "").strip(),
             params_schema=cls.params_model.model_json_schema(),
             output_schema=cls.output_model.model_json_schema(),
+            checkpoint=cls.checkpoint,
         )
 
     async def cleanup(self, context: StepContext) -> None:  # noqa: B027

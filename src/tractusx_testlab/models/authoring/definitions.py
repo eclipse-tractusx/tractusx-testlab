@@ -42,10 +42,8 @@ from tractusx_testlab.extensions.step_keys import (
     StepExtensionKeys,
     TestExtensionKeys,
 )
-from tractusx_testlab.models.authoring.infrastructure import (
-    DataspaceContext,
-    InfrastructureConfig,
-)
+from tractusx_testlab.models.authoring.checkpoint_mark import CheckpointMark
+from tractusx_testlab.models.authoring.infrastructure import DataspaceContext, InfrastructureConfig
 from tractusx_testlab.models.primitives.enums import ServiceType, VariableScope, VariableSource
 
 # ---------------------------------------------------------------------------
@@ -190,6 +188,8 @@ class StepDefinition(StepExtensionKeys):
     # Runtime control fields kept for execution-engine compatibility.
     timeout_s: float | None = None
     if_condition: str | None = Field(default=None, alias="if")
+    #: Marks the step a checkpoint, or switches its type's off (ADR-0027).
+    checkpoint: bool | CheckpointMark | None = None
 
 
 class TestDefinition(TestExtensionKeys):

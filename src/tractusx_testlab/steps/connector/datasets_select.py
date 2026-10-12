@@ -40,6 +40,7 @@ from typing import Any
 from pydantic import Field, field_validator
 
 from tractusx_testlab.authoring.registry import step
+from tractusx_testlab.models import Checkpoint, Direction
 from tractusx_testlab.models.runtime.selection import SelectionOption
 from tractusx_testlab.steps.dsp_keys import ASSET_ID_KEYS, ID_KEY, POLICY_KEYS, first_present
 from tractusx_testlab.steps.flow.select import (
@@ -128,7 +129,7 @@ def _pairs(
     return pairs
 
 
-@step("connector/datasets/select")
+@step("connector/datasets/select", checkpoint=Checkpoint(direction=Direction.INTERNAL))
 class SelectDatasetStep(SelectionStep[SelectDatasetParams, SelectDatasetOutput]):
     """Let the operator choose one asset and one of its offers out of a catalog's datasets.
 

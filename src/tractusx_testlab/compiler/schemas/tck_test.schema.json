@@ -82,6 +82,64 @@
       "title": "CapabilityRequirement",
       "type": "object"
     },
+    "CheckpointMark": {
+      "additionalProperties": false,
+      "description": "What a test says about a step it marks a checkpoint.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What whoever acts has to do, in a sentence or two.",
+          "title": "Description"
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Direction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "'inbound', 'outbound' or 'internal' \u2014 for a step type that declares no checkpoint of its own; 'outbound' when left out."
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What the run calls the checkpoint.",
+          "title": "Label"
+        },
+        "via": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Via"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "'direct' or 'dataplane': how the call travels, when it does."
+        }
+      },
+      "title": "CheckpointMark",
+      "type": "object"
+    },
     "DataspaceContext": {
       "description": "The ecosystem context a run targets \u2014 the single source of the version.",
       "properties": {
@@ -100,6 +158,16 @@
       ],
       "title": "DataspaceContext",
       "type": "object"
+    },
+    "Direction": {
+      "description": "Which way the move at a checkpoint goes.",
+      "enum": [
+        "inbound",
+        "outbound",
+        "internal"
+      ],
+      "title": "Direction",
+      "type": "string"
     },
     "InfrastructureConfig": {
       "additionalProperties": false,
@@ -248,6 +316,21 @@
           "default": null,
           "title": "Cac"
         },
+        "checkpoint": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/$defs/CheckpointMark"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checkpoint"
+        },
         "expects": {
           "anyOf": [
             {
@@ -363,6 +446,15 @@
       ],
       "title": "StepDefinition",
       "type": "object"
+    },
+    "Via": {
+      "description": "How a call at a checkpoint reaches its counterpart.",
+      "enum": [
+        "direct",
+        "dataplane"
+      ],
+      "title": "Via",
+      "type": "string"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",

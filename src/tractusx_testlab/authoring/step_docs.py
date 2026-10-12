@@ -44,6 +44,7 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
+from tractusx_testlab.authoring.step_checkpoint_docs import render_checkpoint
 from tractusx_testlab.steps.step_contract import BaseStep, StepValue
 from tractusx_testlab.steps.step_extension import extensions_for
 
@@ -220,9 +221,9 @@ def render_step(step_cls: type[BaseStep], *, level: int = 3) -> list[str]:
         "",
         summary,
         "",
+        *render_checkpoint(step_cls.checkpoint),
     ]
-    if body:
-        lines += [body, ""]
+    lines += [body, ""] if body else []
 
     lines += ["**Inputs**", ""]
     header = ["Parameter", "Type", "Required", "Default", "Also accepts", "Description"]
