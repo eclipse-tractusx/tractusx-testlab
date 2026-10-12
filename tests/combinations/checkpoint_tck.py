@@ -175,7 +175,12 @@ class Answers:
         self.player = player
         self.loop = loop
         self.events: list[tuple[str, dict]] = []
+        self.envelopes: list[tuple[str, dict | None]] = []
         self.calls: list[threading.Thread] = []
+
+    def traced(self, event: str, payload: dict, envelope: dict | None) -> None:
+        """What a host storing the player's own ids receives (``add_trace_callback``)."""
+        self.envelopes.append((event, envelope))
 
     def __call__(self, event: str, payload: dict) -> None:
         self.events.append((event, payload))
@@ -282,6 +287,7 @@ def play(package: Path, tmp_path_factory: pytest.TempPathFactory) -> Run:
     async def play() -> Answers:
         answers = Answers(player, asyncio.get_running_loop())
         player.monitor.add_callback(answers)
+        player.monitor.add_trace_callback(answers.traced)
         session = await player.open_session(Loader().load(package))
         await session.run_scheduled()
         await session.run_test("choice")  # the same test again: a restart

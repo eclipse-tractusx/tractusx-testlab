@@ -53,6 +53,7 @@ from tractusx_testlab.logging import wire
 from tractusx_testlab.logging.masking import mask
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.logging.trace import ExecutionTrace
+from tractusx_testlab.models.primitives.enums import EventKind
 from tractusx_testlab.models.runtime.events import (
     ExecutionEvent,
     JobCancelledEvent,
@@ -76,6 +77,8 @@ from tractusx_testlab.player.execution._trace_publisher import TracePublisher
 
 # Callback signature: (wire_event_name, payload_dict) -> None
 CallbackFn = Callable[[str, dict[str, Any]], Any]
+# Trace callback signature: (wire_event_name, payload_dict, cloud_event | None) -> None
+TraceCallbackFn = Callable[[str, dict[str, Any], dict[str, Any] | None], Any]
 
 
 class ExecutionMonitor(StepEvents, InboundEvents, SelectionEvents):
@@ -95,6 +98,7 @@ class ExecutionMonitor(StepEvents, InboundEvents, SelectionEvents):
         "_logger",
         "_occurrences",
         "_trace",
+        "_trace_callbacks",
     )
 
     def __init__(self, logger: StructuredLogger, trace: ExecutionTrace | None = None) -> None:
@@ -108,6 +112,7 @@ class ExecutionMonitor(StepEvents, InboundEvents, SelectionEvents):
         self._logger = logger
         self._trace = TracePublisher(trace)
         self._callbacks: list[CallbackFn] = []
+        self._trace_callbacks: list[TraceCallbackFn] = []
         self._background_tasks: set[asyncio.Task] = set()
         self._checkpoints: CheckpointTracker | None = None
         self._occurrences: Counter[tuple[str, ...]] = Counter()
@@ -129,6 +134,23 @@ class ExecutionMonitor(StepEvents, InboundEvents, SelectionEvents):
         """Stop invoking *fn*; one never registered is ignored."""
         if fn in self._callbacks:
             self._callbacks.remove(fn)
+
+    def add_trace_callback(self, fn: TraceCallbackFn) -> None:
+        """Register *fn* for every event, with the CloudEvent the trace wrote for it.
+
+        *fn* is called as ``fn(event, payload, envelope)``: the same two as an
+        :meth:`add_callback` callback, and the ADR-0016 envelope — ``id``,
+        ``type``, ``source``, ``time``, ``sequence`` and ``data`` exactly as the
+        JSONL line has them — or ``None`` for an event the trace does not write
+        on its own (``assertion_result``, nested in its step's terminal event;
+        the package verification). A host that stores the envelope's ``id``
+        names the event as the player's trace does (ADR-0016, ADR-0028).
+        """
+        self._trace_callbacks.append(fn)
+
+    def forward_to(self, other: ExecutionMonitor) -> None:
+        """Hand every event this monitor publishes to *other*'s callbacks too, as they are then."""
+        self.add_trace_callback(other._dispatch)
 
     # ------------------------------------------------------------------
     # Job lifecycle
@@ -226,20 +248,42 @@ class ExecutionMonitor(StepEvents, InboundEvents, SelectionEvents):
     def _publish(self, event: ExecutionEvent, event_id: str | None = None) -> None:
         """Dump a typed event and dispatch it under its canonical wire name.
 
-        *event_id* — the CloudEvent this was traced as — goes to the transcript
-        only: a consumer receives the typed event verbatim, as promised.
+        *event_id* — the CloudEvent this was traced as — goes to the transcript,
+        and its envelope to the trace callbacks. An assertion is given its
+        step's id for the transcript, but not its step's envelope.
         """
         wire_event = event.kind.value.replace("_", ".", 1)
-        self._emit(wire_event, event_id=event_id, **event.model_dump(mode="json"))
+        nested = event.kind is EventKind.ASSERTION_RESULT
+        envelope = None if nested else self._trace.envelope(event_id)
+        self._emit(
+            wire_event, event_id=event_id, _envelope=envelope, **event.model_dump(mode="json")
+        )
 
-    def _emit(self, event: str, *, event_id: str | None = None, **payload: Any) -> None:
+    def _emit(
+        self,
+        event: str,
+        *,
+        event_id: str | None = None,
+        _envelope: dict[str, Any] | None = None,
+        **payload: Any,
+    ) -> None:
         # What an embedder receives is what a viewer of it will see, so a secret
         # the run minted is masked before either audience gets the event.
         payload = mask(payload)
         self._logger.info(event, event_id=event_id, **payload)
-        for callback in self._callbacks:
+        self._dispatch(event, payload, _envelope)
+
+    def _dispatch(
+        self, event: str, payload: dict[str, Any], envelope: dict[str, Any] | None
+    ) -> None:
+        """Hand an event to every callback: the plain ones, then the trace ones with *envelope*."""
+        targets: list[tuple[Callable[..., Any], tuple[Any, ...]]] = [
+            *((fn, (event, payload)) for fn in self._callbacks),
+            *((fn, (event, payload, envelope)) for fn in self._trace_callbacks),
+        ]
+        for callback, args in targets:
             try:
-                result = callback(event, payload)
+                result = callback(*args)
                 if asyncio.iscoroutine(result):
                     task = asyncio.ensure_future(result)
                     self._background_tasks.add(task)

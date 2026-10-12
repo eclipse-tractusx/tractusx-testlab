@@ -40,7 +40,7 @@ included, in the trace.
 A step's events carry its *marks* (``StepEvents.marks``): which run of the step
 this is (``attempt``), the checkpoint it is (``checkpoint``) and, for a question
 asked again after a pause, how many pauses it has been through (``pauses``) —
-what keeps two of them from writing the same data (ADR-0016, ADR-0027).
+what keeps two of them from writing the same data (ADR-0016, ADR-0028).
 """
 
 from __future__ import annotations
@@ -67,11 +67,11 @@ class TracePublisher:
     rather than nine times in the monitor.
     """
 
-    __slots__ = ("_last_sequence", "_trace")
+    __slots__ = ("_last", "_trace")
 
     def __init__(self, trace: ExecutionTrace | None = None) -> None:
         self._trace = trace
-        self._last_sequence: int | None = None
+        self._last: dict[str, Any] | None = None
 
     @property
     def trace(self) -> ExecutionTrace | None:
@@ -80,7 +80,13 @@ class TracePublisher:
     @property
     def last_sequence(self) -> int | None:
         """The ``sequence`` of the event written last, or ``None`` when not tracing."""
-        return self._last_sequence
+        return None if self._last is None else int(self._last["sequence"])
+
+    def envelope(self, event_id: str | None) -> dict[str, Any] | None:
+        """The CloudEvent written last, exactly as written, if its id is *event_id*."""
+        if event_id is None or self._last is None or self._last["id"] != event_id:
+            return None
+        return self._last
 
     def emit(
         self,
@@ -97,7 +103,7 @@ class TracePublisher:
         envelope = self._trace.emit(
             event_type, data, source=source or SOURCE_LIFECYCLE, scope=scope
         )
-        self._last_sequence = int(envelope["sequence"])
+        self._last = envelope
         return str(envelope["id"])
 
     def run_started(self, job_id: str, tck_id: str) -> str | None:
@@ -126,7 +132,7 @@ class TracePublisher:
         return self.emit("tck.restored", data)
 
     def checkpoints_planned(self, data: dict[str, Any]) -> str | None:
-        """Every checkpoint of the run, ``ahead`` (ADR-0027)."""
+        """Every checkpoint of the run, ``ahead`` (ADR-0028)."""
         return self.emit("checkpoints.planned", data, source=SOURCE_CHECKPOINTS, scope=_PLAN)
 
     def checkpoint_updated(self, index: int, data: dict[str, Any]) -> str | None:

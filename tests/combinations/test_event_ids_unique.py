@@ -95,6 +95,34 @@ def test_what_the_host_receives_never_repeats_either(checkpoint_run: Run) -> Non
     assert not [key for key, n in seen.items() if n > 1]
 
 
+def test_a_host_receives_each_event_with_the_line_the_trace_wrote_for_it(
+    checkpoint_run: Run,
+) -> None:
+    """The id a host stores is the trace file's id: one name for one event."""
+    lines = {line["sequence"]: line for line in checkpoint_run.trace}
+    received = [envelope for _, envelope in checkpoint_run.answers.envelopes if envelope]
+    assert received
+    assert all(envelope == lines[envelope["sequence"]] for envelope in received)
+    assert {e["sequence"] for e in received} == set(lines)  # every line reached the host
+
+
+def test_checkpoint_events_and_exchanges_reach_a_host_with_their_envelope(
+    checkpoint_run: Run,
+) -> None:
+    kinds = {
+        event: envelope["type"]
+        for event, envelope in checkpoint_run.answers.envelopes
+        if envelope is not None
+    }
+    assert kinds["checkpoints.planned"] == "checkpoints.planned"
+    assert kinds["checkpoint.updated"] == "checkpoint.updated"
+    assert kinds["step.received"] == "tck.test.step.received"
+    assert kinds["step.selected"] == "tck.test.step.selected"
+    assert kinds["step.completed"] == "tck.test.step.passed"
+    untraced = {event for event, envelope in checkpoint_run.answers.envelopes if envelope is None}
+    assert untraced <= {"assertion.result", "tck.package.verify.start", "tck.package.verify.passed"}
+
+
 def test_an_announcement_and_a_pause_repeated_by_the_host_are_numbered(tmp_path) -> None:
     trace = ExecutionTrace("demo-tck")
     monitor = ExecutionMonitor(StructuredLogger("t", logs_dir=tmp_path), trace)
