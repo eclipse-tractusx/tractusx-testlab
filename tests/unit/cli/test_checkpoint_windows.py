@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""The windows ``testlab run`` frames its briefing and its choices in (ADR-0027).
+"""The windows ``testlab run`` frames its briefing and its choices in (ADR-0028).
 
 Snapshots at the narrowest and the widest a window is drawn: whatever is long
 is wrapped (the briefing) or cut with an ellipsis (an option row), and the

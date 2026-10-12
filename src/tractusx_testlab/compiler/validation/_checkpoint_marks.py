@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""A step's ``checkpoint:`` mark that the run could not honour as written (ADR-0027).
+"""A step's ``checkpoint:`` mark that the run could not honour as written (ADR-0028).
 
 A step type that declares a checkpoint fixes its direction and how its call
 travels: a mark may relabel it or switch it off, not turn a wait into a call.

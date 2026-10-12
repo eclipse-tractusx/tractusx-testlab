@@ -212,7 +212,7 @@ class Tck:
         return build_inspection_result(self)
 
     def checkpoints(self, skip_tests: Collection[str] = ()) -> tuple[CheckpointEntry, ...]:
-        """Every checkpoint a run with *skip_tests* meets, in run order (ADR-0027).
+        """Every checkpoint a run with *skip_tests* meets, in run order (ADR-0028).
 
         What the briefing before a run lists, and what the run's
         ``checkpoints.planned`` event carries: the index of an entry here is

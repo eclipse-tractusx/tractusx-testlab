@@ -81,5 +81,5 @@ class StepSuspendedEvent(_StepEvent):
     listener: Listener
     remaining_s: float
     waited_ms: int
-    #: How many pauses the question has been through in this attempt (ADR-0027).
+    #: How many pauses the question has been through in this attempt (ADR-0028).
     pauses: int = 0

@@ -244,7 +244,7 @@ class TckSession:
         """Run *test* as part of the planned sequence, honouring the operator's skips."""
         async with self._lock:
             self._require_open()
-            # A cancelled run starts no further test (ADR-0027: the operator stopped it).
+            # A cancelled run starts no further test (ADR-0028: the operator stopped it).
             if test.test_id in self._skip_ids or self._jobs.is_cancelled(self.job_id):
                 self._skip(idx, test)
                 return self._results[test.test_id]

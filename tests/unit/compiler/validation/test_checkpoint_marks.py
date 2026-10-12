@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""A ``checkpoint:`` mark the run could not honour fails validation (ADR-0027)."""
+"""A ``checkpoint:`` mark the run could not honour fails validation (ADR-0028)."""
 
 from __future__ import annotations
 

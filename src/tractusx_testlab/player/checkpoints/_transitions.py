@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""What a checkpoint becomes when its step, its test or its run ends (ADR-0027).
+"""What a checkpoint becomes when its step, its test or its run ends (ADR-0028).
 
 Pure rules, kept apart from the tracker that applies them, so the state machine
 reads in one place:

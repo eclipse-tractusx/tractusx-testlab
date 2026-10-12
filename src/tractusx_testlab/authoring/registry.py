@@ -59,7 +59,7 @@ class StepRegistry:
                 (e.g., ``connector/provider/create_asset``).
             dataspace_version: Restrict to a specific version (e.g., ``saturn``).
                 If ``None``, the step is available for all versions.
-            checkpoint: Declare every use of the step a checkpoint (ADR-0027):
+            checkpoint: Declare every use of the step a checkpoint (ADR-0028):
                 ``Checkpoint(direction=Direction.INBOUND)`` for a wait on the
                 system under test, ``Checkpoint(direction=Direction.INTERNAL)``
                 for the operator's choice. A test may still switch it off (``checkpoint: false``).

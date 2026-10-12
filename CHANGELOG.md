@@ -9,6 +9,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Checkpoints (ADR-0028): the steps at which a run needs someone to act, now
+  declared by TestLab and followed by its player instead of guessed by its
+  host. A step type declares one on its decorator,
+  `@step("mock/wait/http_request", checkpoint=Checkpoint(direction=Direction.INBOUND))`,
+  with a direction: `inbound` (the system under test calls the Test Suite:
+  `mock/wait/http_request`, `mock/wait/dataplane/http_request`), `outbound`
+  (the Test Suite calls the system under test, which has to answer:
+  `notification/consumer/send`) or `internal` (the operator chooses:
+  `flow/select`, `connector/datasets/select`). The declaration is on the step
+  contract (`testlab docs --json`) and in the step reference. A test marks any
+  step with the new `checkpoint:` key (`true`, or `label`, `description`,
+  `direction`, `via`) and switches one off with `checkpoint: false`; the
+  compiler refuses a mark that changes a declared direction.
+- `Tck.checkpoints(skip_tests)` and `testlab inspect --checkpoints
+  [--skip-tests …] [--json]` list a package's checkpoints in run order, nested
+  steps included, each with `test_id`, `test_name`, `phase`, `position`,
+  `step_id`, `uses`, `direction`, `kind` (`wait`/`select`), `via`, `name`,
+  `label`, `description`, `timeout_s`, `conditional` and `repeated`.
+- The player publishes `checkpoints.planned` once after `job_started` and a
+  `checkpoint.updated` (`{index, revision, cause, cause_sequence, checkpoint}`)
+  right after every event that changes one, to its host and to its own trace,
+  with the states `ahead`, `now`, `cleared`, `timed_out`, `failed`, `skipped`
+  and `not_reached`. It knows each step's position and run, so a question
+  resumed after a pause stays one attempt, a `flow/retry` asks a new one, a
+  test run again starts its checkpoints over, and a `flow/if` branch not taken
+  is skipped when `flow/if` decides. Every exchange at a checkpoint names it
+  (`checkpoint: {index, attempt, direction}`): `step_call` for an outbound
+  call, `step_received` for an inbound one, `step_selecting`/`step_selected`
+  for a choice.
+- `testlab run` lists the run's checkpoints in a window before it starts and
+  asks `Continue? [y/N]` (no by default; `--yes`/`-y` or `TESTLAB_YES`
+  approves), and asks every choice in a window with numbered options and
+  `Choose [1-N]` (`q` stops the run; `--choose <step_id>=<n|option id>`
+  answers up front). Without a terminal and without an answer it stops instead
+  of waiting. Exit codes: `2` nothing to answer with, `3` not approved, `4`
+  stopped at a choice. A run without checkpoints asks nothing. The player
+  itself never prompts: a host that wants an operator passes one to
+  `player.operator.run_with_operator`.
+- `ExecutionMonitor.add_trace_callback(fn)` calls `fn(event, payload,
+  envelope)` with the CloudEvent the trace wrote for the event, exactly as
+  written, so a host stores the trace's own id. `logging.trace.event_id(tck,
+  scope, type, data)` and `event_digest(data)` build ids in the same grammar
+  for the events a host writes itself.
+- `step_received` (`tck.test.step.received`) carries how the Test Suite
+  answered the call, `response: {status_code, body}`, and a call the mock
+  refused is published too, with `refused`.
+
 - Saturn provider blocks `connector/provider/retire_contract_agreement` and
   `connector/provider/retire_asset_agreements` retire agreements on the engine
   connector. Asset discovery paginates and checks the exact asset ID. Both
@@ -146,6 +193,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `connector/provider/create_asset` forwards `dct_subject`.
 
 ### Changed
+
+- No two events of a run share an id (ADR-0016, amended). Every step event
+  carries its real `attempt` (a step retried, or whose test is run again,
+  counts up) and its `checkpoint`; `step_waiting`, `step_suspended` and
+  `step_selecting` carry `pauses`; `job_paused`/`job_resumed`,
+  `job_held`/`job_restored` (`tck.held`/`tck.restored`) and `test_awaiting`
+  carry an `occurrence`; `test_completed` and a re-run test's terminal trace
+  event carry the `attempt`. Should data still coincide, the trace adds
+  `occurrence` itself.
+- A cancelled job (`JobManager.cancel`) starts no further test; it used to run
+  them all. `JobManager.is_cancelled(job_id)` says so.
+- The `ACTION REQUIRED` banner of a wait is drawn with the same window as the
+  checkpoint prompts (`logging/window.py`); it looks as before.
 
 - Every `mock/api` requires an API key: a call without it is refused with 401
   and never resolves a `mock/wait/*` step. The key is the run's, shared by all

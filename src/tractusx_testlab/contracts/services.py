@@ -220,7 +220,7 @@ class StepInvoker(Protocol):
 
     *at* is where the nested step sits in the flow step: the ``with:`` key that
     carries it (``steps``, ``then``, ``else``) and its index there. The run's
-    checkpoints follow a nested step by it (ADR-0027); without it the step runs
+    checkpoints follow a nested step by it (ADR-0028); without it the step runs
     all the same, as one no checkpoint is about.
     """
 

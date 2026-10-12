@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""What a step type declares about being a checkpoint (ADR-0027).
+"""What a step type declares about being a checkpoint (ADR-0028).
 
 A checkpoint is a step at which the run has someone act, and its direction
 says who and which way:

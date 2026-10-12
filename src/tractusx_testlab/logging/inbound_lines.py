@@ -124,7 +124,7 @@ def selected_line(base: str, data: dict) -> str:
 
 
 def checkpoints_planned_line(base: str, data: dict) -> str:
-    """How many checkpoints the run will meet (ADR-0027)."""
+    """How many checkpoints the run will meet (ADR-0028)."""
     count = len(data.get("checkpoints") or [])
     return f"{base} {count} checkpoint{'s' if count != 1 else ''}"
 

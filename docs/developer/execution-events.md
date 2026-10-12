@@ -88,6 +88,28 @@ makes the id usable as a key: a consumer can address a step's outcome without
 having tracked the stream from the beginning, and re-running the same TCK
 produces the same ids for the same steps.
 
+### The player's own envelope
+
+The player writes its own trace (ADR-0016: `tck.*` types, ids ending in the
+hash of the data), and a host does not have to name the events a second time.
+Register a **trace callback** next to (or instead of) a plain one:
+
+```python
+def on_event(event: str, payload: dict, envelope: dict | None) -> None:
+    # envelope: {"specversion", "id", "source", "type", "time", "sequence", "data"}
+    # exactly as the trace's JSONL line has it — or None for an event the trace
+    # does not write on its own (assertion_result, the package verification).
+    store(event_id=envelope["id"] if envelope else None, payload=payload)
+
+player.monitor.add_trace_callback(on_event)   # plain callbacks: add_callback(fn(event, payload))
+```
+
+A host that stores `envelope["id"]` names every event as the trace file does:
+the trace id, the host's id and the id a viewer shows are one. The ids are
+unique within a run (ADR-0016's amendment); for the few events a host writes
+itself, `tractusx_testlab.logging.trace.event_id(tck_id, scope, type, data)`
+builds one in the same grammar.
+
 ## Event kinds
 
 ### Job lifecycle
@@ -242,7 +264,7 @@ Sent once per such test, after the tests that run on their own are done.
 ### Step lifecycle
 
 Every event about a step — the ones below, and `assertion_result` — carries
-two fields more than its table lists (ADR-0016, ADR-0027):
+two fields more than its table lists (ADR-0016, ADR-0028):
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -645,7 +667,7 @@ followed by `step_failed`.
 
 ### Checkpoints
 
-A checkpoint is a step at which the run has someone act (ADR-0027): the system
+A checkpoint is a step at which the run has someone act (ADR-0028): the system
 under test calls the Test Suite (`inbound`), the Test Suite calls the system
 under test, which has to answer (`outbound`), or the operator decides in the
 Test Suite (`internal`). The player follows them as it runs and publishes them

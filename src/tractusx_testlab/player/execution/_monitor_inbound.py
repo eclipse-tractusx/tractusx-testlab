@@ -28,7 +28,7 @@ An address opened for the system under test (``step_listening``), the run
 blocked on it (``step_waiting``), the wait stopped for a pause
 (``step_suspended``) and the call that arrived, with how the Test Suite
 answered it (``step_received``). At an inbound checkpoint these are its
-moments: asked, paused, answered (ADR-0027). A mixin beside ``StepEvents`` for
+moments: asked, paused, answered (ADR-0028). A mixin beside ``StepEvents`` for
 the same reason that one is: ``ExecutionMonitor`` stays the one place an event
 is built.
 """

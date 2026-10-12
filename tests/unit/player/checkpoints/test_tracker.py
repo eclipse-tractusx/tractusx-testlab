@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""The checkpoint state machine, step by step (ADR-0027).
+"""The checkpoint state machine, step by step (ADR-0028).
 
 The tracker is driven here the way the runner and the monitor drive it — a
 frame per step, the hooks in the order the events go out — with a publisher

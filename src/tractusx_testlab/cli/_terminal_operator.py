@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""The person at the terminal, as the run's operator (``player.operator``, ADR-0027).
+"""The person at the terminal, as the run's operator (``player.operator``, ADR-0028).
 
 ``testlab run`` shows the briefing before anything starts and asks
 ``Continue? [y/N]``; every choice the run puts to the operator is a window with

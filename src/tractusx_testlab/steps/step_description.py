@@ -37,7 +37,7 @@ class StepContract(BaseModel):
     Produced by :meth:`BaseStep.describe` for documentation generation and
     test validation.  Both schemas are always present, because every step
     declares its inputs and its output. ``checkpoint`` is the step type's
-    checkpoint declaration (ADR-0027), ``None`` for a step that is not one.
+    checkpoint declaration (ADR-0028), ``None`` for a step that is not one.
     """
 
     step_type: str = ""

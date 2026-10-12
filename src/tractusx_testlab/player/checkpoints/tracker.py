@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Following a run's checkpoints as it goes — exactly, from where the player stands (ADR-0027).
+"""Following a run's checkpoints as it goes — exactly, from where the player stands (ADR-0028).
 
 The engine used to fold its trace back into checkpoint states, matching events
 to steps by id and guessing at the rest. The player does not have to guess: it

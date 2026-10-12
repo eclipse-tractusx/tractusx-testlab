@@ -31,7 +31,7 @@ operator picks one option. That is two moments, asked and answered, published as
 ``StepEvents`` for the same reason that one is: ``ExecutionMonitor`` stays the
 one place an event is built.
 
-At an internal checkpoint (ADR-0027) they are its moments: what was offered,
+At an internal checkpoint (ADR-0028) they are its moments: what was offered,
 and what was chosen, each naming the checkpoint and its attempt. A question
 put again after a pause is the same attempt, ``pauses`` later.
 """

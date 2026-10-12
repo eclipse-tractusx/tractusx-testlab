@@ -82,7 +82,7 @@ def inspect(
     show_checkpoints: bool = typer.Option(
         False,
         "--checkpoints",
-        help="Show the checkpoints a run meets, in run order (ADR-0027).",
+        help="Show the checkpoints a run meets, in run order (ADR-0028).",
     ),
     skip_tests: str | None = typer.Option(
         None,

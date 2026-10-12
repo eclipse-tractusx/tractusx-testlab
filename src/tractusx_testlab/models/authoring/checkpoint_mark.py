@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""A test's ``checkpoint:`` key on a step — mark it a checkpoint, or switch it off (ADR-0027).
+"""A test's ``checkpoint:`` key on a step — mark it a checkpoint, or switch it off (ADR-0028).
 
 A step type that is a checkpoint declares it on its ``@step`` decorator. A test
 author can go further, on any step, with one key::

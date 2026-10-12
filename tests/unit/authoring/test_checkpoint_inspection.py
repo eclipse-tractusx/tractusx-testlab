@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""A package's checkpoints, read without running it (ADR-0027, ADR-0022).
+"""A package's checkpoints, read without running it (ADR-0028, ADR-0022).
 
 ``Tck.checkpoints()`` is what the engine's briefing lists before a run, and
 what the run's ``checkpoints.planned`` carries: the declarations on the step

@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""The two windows ``testlab run`` draws for a person: the briefing, and a choice (ADR-0027).
+"""The two windows ``testlab run`` draws for a person: the briefing, and a choice (ADR-0028).
 
 The briefing comes before anything runs: every checkpoint the run will ask for,
 grouped by test, each with what it asks of whom::

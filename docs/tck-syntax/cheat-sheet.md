@@ -135,9 +135,15 @@ teardown: []
       with: { input: output_name, operator: not_null }
   if: "${{ success() }}"
   timeout_s: 30.0
+  checkpoint:                       # optional: true | false | a mapping
+    label: "Your system accepts the push"
 ```
 
-**Field order:** `id` → `uses` → `name` → `with` → `returns` → `validate` → `if` → `timeout_s`
+**Field order:** `id` → `uses` → `name` → `with` → `returns` → `validate` → `if` → `timeout_s` → `checkpoint`
+
+`checkpoint:` marks a step at which the run needs someone to act (`true`), names
+one (`label`, `description`), or switches off a step type's own (`false`). See
+[Checkpoints](steps/checkpoints.md).
 
 ---
 

@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""The step reference's line about a step that is a checkpoint (ADR-0027)."""
+"""The step reference's line about a step that is a checkpoint (ADR-0028)."""
 
 from __future__ import annotations
 

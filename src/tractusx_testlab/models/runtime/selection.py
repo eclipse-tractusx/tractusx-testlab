@@ -79,7 +79,7 @@ class StepSelectingEvent(_StepEvent):
     step_type: str
     selection: Selection
     timeout_s: float
-    #: How many pauses the question has been through in this attempt (ADR-0027).
+    #: How many pauses the question has been through in this attempt (ADR-0028).
     pauses: int = 0
 
 

@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""A person in front of the run: approving its checkpoints, answering its choices (ADR-0027).
+"""A person in front of the run: approving its checkpoints, answering its choices (ADR-0028).
 
 The player never asks anyone anything on its own. A host that embeds it — the
 Catena-X engine — shows the briefing in its own UI before it starts a run and

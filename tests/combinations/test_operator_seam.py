@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Who answers a run: its host through the question board, or an operator (ADR-0027).
+"""Who answers a run: its host through the question board, or an operator (ADR-0028).
 
 The engine runs a package with ``TestlabPlayer.run_tck`` and answers a choice on
 ``JobManager.selections``: nothing is asked of anyone, nothing is read from stdin.

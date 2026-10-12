@@ -178,7 +178,7 @@ class BaseStep[ParamsT, PayloadT](ABC):
     #: Dataspace release the ``@step`` decorator restricted this step to, or
     #: ``None`` when it runs on every release.
     dataspace_version: ClassVar[str | None] = None
-    #: Whether this step is a checkpoint, as its ``@step`` decorator declared (ADR-0027).
+    #: Whether this step is a checkpoint, as its ``@step`` decorator declared (ADR-0028).
     checkpoint: ClassVar[Checkpoint | None] = None
     #: Input contract — the keys this step accepts under ``with:``.
     params_model: ClassVar[type[StepParams]]

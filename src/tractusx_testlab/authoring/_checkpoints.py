@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""A package's checkpoints, in run order, without running it (ADR-0022, ADR-0027).
+"""A package's checkpoints, in run order, without running it (ADR-0022, ADR-0028).
 
 A step is a checkpoint when its type declares one on its ``@step`` decorator,
 or when its test marks it with ``checkpoint:`` — and not when the test says

@@ -44,7 +44,7 @@ class _StepEvent(_ExecutionEvent):
     step a ``flow/retry`` runs again, or whose test is run again, says so, and
     two runs of one step never publish the same event (ADR-0016). ``checkpoint``
     names the checkpoint the step is, and which attempt of it, when it is one
-    (ADR-0027): every exchange at a checkpoint can be found by it.
+    (ADR-0028): every exchange at a checkpoint can be found by it.
     """
 
     test_id: str

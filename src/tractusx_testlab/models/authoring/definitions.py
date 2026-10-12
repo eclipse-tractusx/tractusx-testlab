@@ -188,7 +188,7 @@ class StepDefinition(StepExtensionKeys):
     # Runtime control fields kept for execution-engine compatibility.
     timeout_s: float | None = None
     if_condition: str | None = Field(default=None, alias="if")
-    #: Marks the step a checkpoint, or switches its type's off (ADR-0027).
+    #: Marks the step a checkpoint, or switches its type's off (ADR-0028).
     checkpoint: bool | CheckpointMark | None = None
 
 

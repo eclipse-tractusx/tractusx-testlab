@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""A real run of a TCK of checkpoints: what the player says about each, and when (ADR-0027).
+"""A real run of a TCK of checkpoints: what the player says about each, and when (ADR-0028).
 
 Compiled and loaded the way an operator's TCK is, run by the player with its
 own mock server, answered by a system under test and an operator acting on the

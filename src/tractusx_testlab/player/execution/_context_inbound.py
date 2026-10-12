@@ -47,7 +47,7 @@ class InboundReporting:
     __slots__ = ("_checkpoints", "_listener_reporter")
 
     # ------------------------------------------------------------------
-    # The run's checkpoints (ADR-0027)
+    # The run's checkpoints (ADR-0028)
     # ------------------------------------------------------------------
 
     def bind_checkpoints(self, tracker: CheckpointTracker) -> None:

@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""A run's checkpoints: where it has someone act, and how that went (ADR-0027).
+"""A run's checkpoints: where it has someone act, and how that went (ADR-0028).
 
 :class:`CheckpointEntry` is one checkpoint as a package states it — what
 ``Tck.checkpoints()`` and ``testlab inspect --checkpoints`` list, in run order.

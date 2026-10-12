@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""The events of a run's checkpoints — the plan once, then every change (ADR-0027).
+"""The events of a run's checkpoints — the plan once, then every change (ADR-0028).
 
 Kept beside ``events`` rather than in it only for its length; ``events``
 re-exports them, and ``ExecutionEvent`` includes them.

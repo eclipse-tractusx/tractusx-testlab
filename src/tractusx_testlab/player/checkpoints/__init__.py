@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""A run's checkpoints, followed by the player as it runs (ADR-0027)."""
+"""A run's checkpoints, followed by the player as it runs (ADR-0028)."""
 
 from tractusx_testlab.player.checkpoints.frames import StepFrame, current_frame
 from tractusx_testlab.player.checkpoints.tracker import (

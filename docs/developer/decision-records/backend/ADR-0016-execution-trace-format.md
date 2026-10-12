@@ -26,7 +26,7 @@ Agreed
 
 ## Date
 
-2026-05-28 (proposed) - 2026-08-18 (agreed, with the amendments below)
+2026-05-28 (proposed) - 2026-08-18 (agreed, with the amendments below) - 2026-10-12 (amended: one id per event, checkpoint events; see [Amendment 2026-10](#amendment-2026-10-one-id-per-event))
 
 ## Context
 
@@ -95,10 +95,12 @@ Event IDs encode structural context as path segments:
 | Variable | `<tckid>/env/variables/<varname>/<type>/<hash>` | `cert-mgmt-tck/env/variables/sut_connector/tck.variable.resolved/6f3ad5c128e4` |
 | Test lifecycle | `<tckid>/<testid>/<type>/<hash>` | `cert-mgmt-tck/catalog-policy-validation/tck.test.passed/c59034276e4a` |
 | Test step | `<tckid>/<testid>/<phase>/<stepid>/<type>/<hash>` | `cert-mgmt-tck/catalog-policy-validation/execution/pull_data_1/tck.test.step.passed/b48f2a165d39` |
+| Checkpoint plan | `<tckid>/checkpoints/<type>/<hash>` | `cert-mgmt-tck/checkpoints/checkpoints.planned/6c3c052d5971` |
+| Checkpoint | `<tckid>/checkpoints/<index>/<type>/<hash>` | `cert-mgmt-tck/checkpoints/3/checkpoint.updated/68a1884ebf25` |
 
 `<phase>` is `setup`, `execution`, or `teardown`. It is part of the path because a step id is only unique **within** a phase - a `cleanup_asset` in teardown and one in setup are different steps, and without the segment their events share a path and are told apart only by the payload hash. It also lets a reader drop a whole phase from a trace with a prefix match, which is the usual first move when a teardown is noisy and the failure is in execution.
 
-The trailing `<hash>` is a 12-character hex string (blake2b of `data`) that disambiguates emissions with otherwise identical paths.
+The trailing `<hash>` is a 12-character hex string (blake2b of `data`) that disambiguates emissions with otherwise identical paths. No two events of a run share an id: the data of an event that can repeat at one place says which one it is (see the [amendment](#amendment-2026-10-one-id-per-event)).
 
 ### The `source` Convention
 
@@ -128,6 +130,9 @@ The trailing `<hash>` is a 12-character hex string (blake2b of `data`) that disa
 | `tck.boot.failed` | `{duration_ms, errors}` | Boot failed |
 | `tck.tests.planned` | `{tests: [<test_id>, ...]}` | Ordered test execution plan |
 | `tck.end` | `{status, total, passed, failed, skipped, duration_ms, labels}` | TCK run complete |
+| `tck.held` / `tck.restored` | `{withdrawn \| restored, kept? \| lost?, occurrence}` | A paused run is on hold / goes on (ADR-0026); `occurrence` counts the holds |
+| `checkpoints.planned` | `{kind, checkpoints}` | Every checkpoint of the run, `ahead` ([ADR-0028](ADR-0028-checkpoints.md)) |
+| `checkpoint.updated` | `{kind, index, revision, cause, cause_sequence, checkpoint}` | One checkpoint changed, right after its cause ([ADR-0028](ADR-0028-checkpoints.md)) |
 
 #### Boot Requirements Event
 
@@ -241,7 +246,8 @@ Variables with no published config schema (plain primitives, infrastructure-deri
 
 | `type` | `data` shape | Description |
 |--------|-------------|-------------|
-| `tck.test.start` | `{test_id}` | Test begins |
+| `tck.test.start` | `{test_id, index, attempt?}` | Test begins; `attempt` when it is run again |
+| `tck.test.awaiting` | `{test_id, index, occurrence?}` | An on-demand test is ready; `occurrence` from the second announcement |
 | `tck.test.passed` | `{test_id, duration_ms, passed, failed, assertions}` | Test passed |
 | `tck.test.failed` | `{test_id, duration_ms, passed, failed, assertions}` | Test failed |
 | `tck.test.skipped` | `{test_id, reason}` | Test skipped |
@@ -357,7 +363,7 @@ When a step is retried:
 2. A new `tck.test.step.start` fires with `{attempt: N}`
 3. The terminal event carries `{attempt: N, ...}` indicating which attempt produced the result
 
-All attempts share the same `<tckid>/<testid>/<stepid>/` prefix — the trailing hash disambiguates.
+All attempts share the same `<tckid>/<testid>/<phase>/<stepid>/` prefix; their data differs by `attempt`, so their hashes do.
 
 ### Secret Protection
 
@@ -673,6 +679,55 @@ part (`infrastructure`, and `connector` for the dataspace exchange) and from an
 engine fault (`engine`): a reader triaging a red run needs to know whether to
 fix the SUT, fix the TCK, look at the deployment, or file a bug against
 TestLab, and one `FAILED` cannot say which.
+
+## Amendment (2026-10): one id per event
+
+**No two events of a run share an id.** The hash of `data` was meant to tell
+repeated emissions at one path apart, and did not always: a retried step's
+`tck.test.step.start` always said `attempt: 1`, its terminal event carried no
+attempt at all, a wait re-asked after a pause wrote the same
+`tck.test.step.waiting` again, and a second pause wrote the same `tck.held`.
+An id two events share names neither. So the data of an event that can repeat
+at one place now says which one it is:
+
+| Field | On | Meaning |
+|-------|----|---------|
+| `attempt` | every `tck.test.step.*` event (start, call, listening, waiting, suspended, received, selecting, selected, passed, failed, skipped) | Which run of this step within the run, from 1: a step `flow/retry` (or a loop) runs again, or whose test is run again, counts up. Counted per position, so a nested step has its own. |
+| `pauses` | `tck.test.step.waiting`, `.suspended`, `.selecting` | How many pauses the question has been through in this attempt; absent while 0. |
+| `occurrence` | `tck.held`, `tck.restored` (always), `tck.test.awaiting` (from 2) | Which hold, or which announcement, of the run this is. |
+| `attempt` | `tck.test.start`, `tck.test.passed` / `.failed` / `.skipped` | Which run of the test, from 2 (absent on the first, as before). |
+| `revision` | `checkpoint.updated` | This checkpoint's update count, from 1. |
+| `checkpoint` | step events of a checkpoint | `{index, attempt, direction}`: which checkpoint, and which attempt of it ([ADR-0028](ADR-0028-checkpoints.md)). |
+
+The typed events a host receives carry the same fields (`attempt`,
+`checkpoint`, `pauses`, `occurrence`), so the data it names its own events by
+does not repeat either.
+
+As a last resort the trace keeps the ids it issued, and an event whose id it
+already issued — its data told it apart from nothing — gets `occurrence: n`
+added before its hash is taken, as the engine's `TraceIds` does. The test
+`tests/combinations/test_event_ids_unique.py` runs a TCK that retries,
+restarts a test, pauses a wait twice, re-asks, answers and cancels, and checks
+that no id repeats and that the last resort was never needed.
+
+**The id function is public.** `tractusx_testlab.logging.trace.event_id(tck_id,
+scope, event_type, data)` builds `<tck>/<scope…>/<type>/<digest>` and
+`event_digest(data)` the digest, over `data` as written (JSON types, secrets
+masked). A host that writes an event of the run itself — the engine closing a
+run whose player is gone — names it with them. `_digest` stays as an alias.
+
+**A host receives the envelope.** `ExecutionMonitor.add_trace_callback(fn)`
+calls `fn(event, payload, envelope)` with the CloudEvent the trace wrote for
+the event — `id`, `type`, `source`, `time`, `sequence` and `data` exactly as
+the JSONL line has them — or `None` for an event the trace does not write on
+its own (`assertion_result`, which is nested in its step's terminal event; the
+package verification). The two-argument `add_callback(fn)` is unchanged. A host
+that stores the envelope's `id` names each event as the trace file does, so the
+engine's id, the trace's id and the id a viewer shows are one.
+
+**The inbound answer is recorded.** `tck.test.step.received` carries
+`response: {status_code, body}`, how the Test Suite answered the call, and a
+call the mock turned away is published as one too, with `refused`.
 
 ## Implementation Status
 

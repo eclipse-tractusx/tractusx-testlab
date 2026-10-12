@@ -22,7 +22,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""``testlab run`` asks before it starts and when the run asks (ADR-0027).
+"""``testlab run`` asks before it starts and when the run asks (ADR-0028).
 
 Exit codes: 0 passed, 2 nothing to answer with, 3 not approved, 4 stopped at a
 choice. ``--yes`` (or ``TESTLAB_YES``) approves, ``--choose`` answers up front.
