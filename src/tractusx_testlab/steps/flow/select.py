@@ -40,7 +40,13 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.models import StepDefinition, StepExecutionError, WaitAction
+from tractusx_testlab.models import (
+    Checkpoint,
+    Direction,
+    StepDefinition,
+    StepExecutionError,
+    WaitAction,
+)
 from tractusx_testlab.models.runtime.selection import (
     Selection,
     SelectionOption,
@@ -173,7 +179,7 @@ class SelectOutput(SelectionOutput):
     )
 
 
-@step("flow/select")
+@step("flow/select", checkpoint=Checkpoint(direction=Direction.INTERNAL))
 class SelectStep(SelectionStep[SelectParams, SelectOutput]):
     """Let the operator choose one of a list of values — a dropdown in the host's UI."""
 

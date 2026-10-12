@@ -111,6 +111,7 @@ executing any steps against a live environment.
 ```
 testlab inspect <package> [--player-keys <path>] [--compiler-pub <path>]
                          [--variables] [--infrastructure] [--manifest]
+                         [--checkpoints [--skip-tests <a.yaml,b.yaml>]]
                          [--extract <dir>] [--json]
 ```
 
@@ -122,6 +123,8 @@ testlab inspect <package> [--player-keys <path>] [--compiler-pub <path>]
 | `--variables` | Also print the variable list (ID, source, scope, type) declared in the TCK |
 | `--infrastructure` | Also print the infrastructure requirements (capability, side, required, standard) declared in the TCK |
 | `--manifest` | Also print the manifest: identity, checksum, signer, authorized players |
+| `--checkpoints` | Also print the checkpoints a run meets, in run order ([Checkpoints](../tck-syntax/steps/checkpoints.md)); with `--json`, a `checkpoints` list of entries |
+| `--skip-tests` | With `--checkpoints`: the tests the run skips, comma-separated, as `skip_tests` names them |
 | `--extract <dir>` | Write the package's verified contents to a directory |
 | `--json` | Emit one JSON object keyed by section instead of the tables |
 
@@ -212,6 +215,83 @@ from tractusx_testlab.models import (
 ```
 
 ---
+
+### `testlab run` — Checkpoints
+
+A run that needs someone to act — your system calling the Test Suite, the Test
+Suite calling your system, you choosing an option — lists its
+[checkpoints](../tck-syntax/steps/checkpoints.md) before anything starts, in a
+window, and asks whether to go on. A run without checkpoints asks nothing.
+
+```text
+================================================================================
+  THIS RUN NEEDS YOU AT 2 CHECKPOINTS
+--------------------------------------------------------------------------------
+  Push the certificate
+    1  await_push   inbound · your system calls us
+       1m 00s to answer · Push the certificate to the Test Suite
+  Choose the offer
+    2  pick_offer   internal · you choose
+       5m 00s to answer · only on some paths · may repeat · Pick the offer
+================================================================================
+Continue? [y/N]: y
+Approved.
+```
+
+The answer defaults to **no**: an empty answer, or anything but `y`/`yes`,
+stops the run before any test. When a step asks you to choose, the run shows
+the options in a window of their own:
+
+```text
+================================================================================
+  CHECKPOINT 2 of 2 · YOU CHOOSE                                    4m 52s left
+--------------------------------------------------------------------------------
+  Pick the offer
+
+     1  CCMAPI notification 3.0 · asset urn:uuid:7f3c… · Membership, FrameworkAgreement
+     2  CCMAPI notification 3.0 · asset urn:uuid:a91e… · Membership
+================================================================================
+Choose [1-2] (4m 52s left, q to stop): 3
+Type a number from 1 to 2, or q to stop.
+Choose [1-2] (4m 41s left, q to stop): 2
+Chosen: 2 CCMAPI notification 3.0
+```
+
+A number chooses its option; anything else asks again. `q` stops the run: the
+current test's teardown runs, no further test starts. When the step's timeout
+runs out, the checkpoint times out. Ctrl-C at either prompt stops the run at
+once; the test it interrupted ends `CANCELLED` (in the trace `tck.test.failed`
+with `status: "CANCELLED"`), and the run fails. While a window is up the run's
+own log lines wait, and follow it when it closes. The windows are drawn at the terminal's
+width (60 to 100 columns), in plain ASCII; the title is bold in a coloured
+terminal, never with `NO_COLOR`. The transcript keeps them, with what you typed.
+
+To run without a terminal, answer up front:
+
+| Option | Effect |
+|--------|--------|
+| `--yes`, `-y` (or `TESTLAB_YES=1`) | Approve the checkpoints without asking. It never answers a choice. |
+| `--choose <step_id>=<option id\|n>` | Answer the choice of step `<step_id>` with the option whose id is the value, else with option `n` (from 1). The id wins: with options `5` and `1`, `pick=1` chooses option `1`. Repeatable. |
+
+Without a terminal and without the answer, the run does not wait: it stops,
+naming the flag to pass.
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | The run passed. |
+| `1` | The run failed, or could not start. |
+| `2` | The run could not get an answer: no terminal and no `--yes` or `--choose`, the input ended (Ctrl-D) at a prompt, a `--choose` value that names no option, or the operator could not be asked. |
+| `3` | The checkpoints were not approved; no test ran. |
+| `4` | The run was stopped at a choice (`q`). |
+
+The engine and any other host using the Python API are never asked: they show
+the checkpoints in their own UI and answer a choice on `JobManager.selections`.
+`tractusx_testlab.player.operator.run_with_operator` is how a host with a
+person at hand takes part instead.
+
+```bash
+testlab run index.yaml --yes --choose pick_offer=2
+```
 
 ### `testlab run` — Skipping Optional Tests
 

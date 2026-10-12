@@ -38,7 +38,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from tractusx_testlab.models.primitives.enums import EventKind
-from tractusx_testlab.models.runtime._event_base import _ExecutionEvent
+from tractusx_testlab.models.runtime._event_base import _StepEvent
 from tractusx_testlab.models.runtime.listener import WaitAction
 
 #: How a host shows the options. ``dropdown``: a plain list of labels.
@@ -68,7 +68,7 @@ class Selection(BaseModel):
     action: WaitAction | None = None
 
 
-class StepSelectingEvent(_ExecutionEvent):
+class StepSelectingEvent(_StepEvent):
     """A step is blocked until the operator chooses one option, for at most ``timeout_s``.
 
     Answered through the player (``JobManager.selections``) with one of the
@@ -76,19 +76,17 @@ class StepSelectingEvent(_ExecutionEvent):
     """
 
     kind: Literal[EventKind.STEP_SELECTING] = EventKind.STEP_SELECTING
-    test_id: str
-    step_id: str | None = None
     step_type: str
     selection: Selection
     timeout_s: float
+    #: How many pauses the question has been through in this attempt (ADR-0028).
+    pauses: int = 0
 
 
-class StepSelectedEvent(_ExecutionEvent):
+class StepSelectedEvent(_StepEvent):
     """The operator chose; ``waited_ms`` is how long the step waited for it."""
 
     kind: Literal[EventKind.STEP_SELECTED] = EventKind.STEP_SELECTED
-    test_id: str
-    step_id: str | None = None
     step_type: str
     option: SelectionOption
     waited_ms: int

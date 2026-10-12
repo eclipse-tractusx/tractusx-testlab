@@ -60,6 +60,8 @@ omitted from the `id` (lifecycle events have no `<step-id>`).
 | `tck.test.step.passed` / `.failed` | Step verdict after validations | the capability key |
 | `tck.test.passed` / `.failed` / `.skipped` | Test case verdict | `testlab/player/lifecycle` |
 | `tck.end` | TCK run complete | `testlab/player/lifecycle` |
+| `checkpoints.planned` | The run's checkpoints, before the first test ([ADR-0028](../developer/decision-records/backend/ADR-0028-checkpoints.md)) | `testlab/player/checkpoints` |
+| `checkpoint.updated` | One checkpoint changed, right after its cause | `testlab/player/checkpoints` |
 | `tck.boot.failed` **[PROP]** | Boot preconditions not met | `testlab/player/boot` |
 | `tck.test.teardown.start` / `.passed` / `.failed` **[PROP]** | Teardown phase | `testlab/player/lifecycle` |
 

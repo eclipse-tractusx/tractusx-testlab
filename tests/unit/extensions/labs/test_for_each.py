@@ -139,7 +139,10 @@ class TestForEachStep:
     async def test_a_nested_step_is_not_resolved_before_the_loop_runs(self) -> None:
         """A MagicMock context has no 'each.item' until the loop sets one."""
         ctx = MagicMock()
-        ctx.invoke_step = run_step
+        # The runner as a flow step calls it: *at* is where the nested step sits.
+        ctx.invoke_step = lambda step_cls, step_def, name, context, *, at=None: run_step(
+            step_cls, step_def, name, context
+        )
 
         output = await ForEachStep().invoke(
             {"items": [], "steps": [_log("${{ each.item }}")]}, ctx, _loop([])

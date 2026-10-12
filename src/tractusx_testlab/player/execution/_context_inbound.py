@@ -34,12 +34,37 @@ from __future__ import annotations
 from typing import Any
 
 from tractusx_testlab.contracts import ListenerReporter
+from tractusx_testlab.player.checkpoints import CheckpointTracker
 
 
 class InboundReporting:
-    """Publishing an inbound call's moments through the phase's reporter, if one is bound."""
+    """Publishing an inbound call's moments through the phase's reporter, if one is bound.
 
-    __slots__ = ("_listener_reporter",)
+    The run's checkpoints are kept here too (:attr:`checkpoints`): they are
+    what those moments are about.
+    """
+
+    __slots__ = ("_checkpoints", "_listener_reporter")
+
+    # ------------------------------------------------------------------
+    # The run's checkpoints (ADR-0028)
+    # ------------------------------------------------------------------
+
+    def bind_checkpoints(self, tracker: CheckpointTracker) -> None:
+        """Follow the run's checkpoints with *tracker* — the player does, before the first test."""
+        self._checkpoints = tracker
+
+    @property
+    def checkpoints(self) -> CheckpointTracker:
+        """The run's checkpoints, and the step each coroutine is running.
+
+        A context the player did not bind gets one of its own, with no plan:
+        it still numbers the runs of each step, and publishes nothing.
+        """
+        tracker: CheckpointTracker | None = getattr(self, "_checkpoints", None)
+        if tracker is None:
+            tracker = self._checkpoints = CheckpointTracker()
+        return tracker
 
     # ------------------------------------------------------------------
     # Reporting an inbound call: opened, blocked on, suspended, arrived

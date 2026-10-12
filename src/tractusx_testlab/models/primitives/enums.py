@@ -209,3 +209,5 @@ class EventKind(str, enum.Enum):
     STEP_SELECTING = "step_selecting"
     STEP_SELECTED = "step_selected"
     ASSERTION_RESULT = "assertion_result"
+    CHECKPOINTS_PLANNED = "checkpoints_planned"
+    CHECKPOINT_UPDATED = "checkpoint_updated"

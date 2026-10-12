@@ -54,12 +54,21 @@ _STEP_TYPES: dict[StepStatus, str] = {
     StepStatus.SKIPPED: "tck.test.step.skipped",
 }
 
-#: Test outcome -> trace event type.
+#: Test outcome -> trace event type. A test cut short (``CANCELLED``) verified
+#: nothing and fails the run, so it is published as failed — saying it was cut
+#: short (``test_data``) — never as skipped, which is a test left out on purpose.
 _TEST_TYPES: dict[TestStatus, str] = {
     TestStatus.COMPLETED: "tck.test.passed",
     TestStatus.FAILED: "tck.test.failed",
     TestStatus.SKIPPED: "tck.test.skipped",
-    TestStatus.CANCELLED: "tck.test.skipped",
+    TestStatus.CANCELLED: "tck.test.failed",
+}
+
+#: The error a test cut short carries in its ``tck.test.failed``.
+_CANCELLED_ERROR = {
+    "code": "TEST_CANCELLED",
+    "message": "The run was interrupted in this test, which verified nothing.",
+    "retryable": False,
 }
 
 
@@ -231,7 +240,11 @@ def call_data(index: int, call: Any) -> dict[str, Any]:
 
 
 def test_data(result: TestResult) -> dict[str, Any]:
-    """The ``data`` of a terminal test event."""
+    """The ``data`` of a terminal test event.
+
+    A test cut short says so — ``status: "CANCELLED"`` and a ``TEST_CANCELLED``
+    error — so a reader tells it from a test that failed its checks.
+    """
     summary = result.assertion_summary
     data: dict[str, Any] = {
         "test_id": result.test_id or result.test_name,
@@ -249,6 +262,12 @@ def test_data(result: TestResult) -> dict[str, Any]:
     if summary:
         data["passed"] = summary.passed
         data["failed"] = summary.failed_hard + summary.failed_soft
+    errors: list[dict[str, Any]] = []
+    if result.status == TestStatus.CANCELLED:
+        data["status"] = TestStatus.CANCELLED.value
+        errors.append(dict(_CANCELLED_ERROR))
     if result.error:
-        data["errors"] = [{"code": "TEST_FAILED", "message": result.error, "retryable": False}]
+        errors.append({"code": "TEST_FAILED", "message": result.error, "retryable": False})
+    if errors:
+        data["errors"] = errors
     return data

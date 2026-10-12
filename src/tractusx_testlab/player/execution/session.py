@@ -47,12 +47,13 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from tractusx_testlab.player.execution._step_outputs import forget_outputs
 from tractusx_testlab.player.execution._trace_formatter import (
     build_tck_result,
     finalize_job,
     make_intentionally_skipped_result,
+    make_interrupted_result,
 )
-from tractusx_testlab.player.execution.phase import _PHASE_TO_NAMESPACE
 from tractusx_testlab.player.execution.step_runner import run_test
 
 if TYPE_CHECKING:
@@ -96,6 +97,7 @@ class TckSession:
         "_started_at",
         "_tck",
         "_trace",
+        "_unfinished",
     )
 
     def __init__(
@@ -130,6 +132,8 @@ class TckSession:
         self._started_at = datetime.now(UTC)
         self._closed = False
         self._result: TckResult | None = None
+        #: The test running now, and its attempt: left set when the run is interrupted in it.
+        self._unfinished: tuple[Test, int] | None = None
 
     # ------------------------------------------------------------------
     # What the session holds
@@ -207,7 +211,9 @@ class TckSession:
         """Tear the session down and deliver the verdict (latest attempts); idempotent.
 
         A test that never ran (skipped, or ``async: true`` and never asked for) is
-        skipped. The services, the mock server and the transcript are released even
+        skipped. A test the run was interrupted in (cancelled mid-test, or an
+        error the test did not catch) is not started over to be skipped: it ends
+        ``CANCELLED``, and what its checkpoints became stays as it was. The services, the mock server and the transcript are released even
         when publishing that raises (a host abandoning a cancelled run does).
         """
         async with self._lock:
@@ -218,6 +224,7 @@ class TckSession:
             self._closed = True
             try:
                 try:
+                    self._end_unfinished()
                     for idx, test in enumerate(self._tck.tests):
                         if test.test_id not in self._results:
                             self._skip(idx, test)
@@ -244,7 +251,8 @@ class TckSession:
         """Run *test* as part of the planned sequence, honouring the operator's skips."""
         async with self._lock:
             self._require_open()
-            if test.test_id in self._skip_ids:
+            # A cancelled run starts no further test (ADR-0028: the operator stopped it).
+            if test.test_id in self._skip_ids or self._jobs.is_cancelled(self.job_id):
                 self._skip(idx, test)
                 return self._results[test.test_id]
             return await self._run(idx, test)
@@ -252,41 +260,32 @@ class TckSession:
     async def _run(self, idx: int, test: Test) -> TestResult:
         attempt = self._attempts.get(test.test_id, 0) + 1
         if attempt > 1:
-            self._forget_outputs(test)
+            forget_outputs(test, self._context)
         self._attempts[test.test_id] = attempt
         self._monitor.on_test_started(self.job_id, test.definition.id, idx, attempt)
         self._job.current_test = test.name
+        self._unfinished = (test, attempt)
         result = await run_test(test, self._context, self.job_id, self._monitor, self._jobs)
+        self._unfinished = None
         self._results[test.test_id] = result
-        self._monitor.on_test_completed(self.job_id, result)
+        self._monitor.on_test_completed(self.job_id, result, attempt)
         return result
 
     def _skip(self, idx: int, test: Test) -> None:
         skipped = make_intentionally_skipped_result(test)
         self._results[test.test_id] = skipped
-        self._monitor.on_test_started(self.job_id, test.definition.id, idx)
+        self._monitor.on_test_started(self.job_id, test.definition.id, idx, skipped=True)
         self._monitor.on_test_completed(self.job_id, skipped)
 
-    def _forget_outputs(self, test: Test) -> None:
-        """Drop what *test*'s previous attempt published under ``<phase>.<step id>.``.
-
-        Else a step failing before it publishes leaves the old value for later steps.
-        """
-        prefixes = tuple(
-            f"{_PHASE_TO_NAMESPACE[phase]}.{step.id}."
-            for phase, steps in (
-                ("setup", test.setup),
-                ("execution", test.steps),
-                ("teardown", test.teardown),
-            )
-            for step in steps
-            if getattr(step, "id", None)
-        )
-        if not prefixes:
+    def _end_unfinished(self) -> None:
+        """End the test the run was interrupted in ``CANCELLED`` (that attempt counts), not again."""
+        if self._unfinished is None:
             return
-        for name in self._context.variables:
-            if name.startswith(prefixes):
-                self._context.unset_variable(name)
+        test, attempt = self._unfinished
+        self._unfinished = None
+        interrupted = make_interrupted_result(test)
+        self._results[test.test_id] = interrupted
+        self._monitor.on_test_completed(self.job_id, interrupted, attempt)
 
     def _find(self, test_id: str) -> tuple[int, Test]:
         for idx, test in enumerate(self._tck.tests):

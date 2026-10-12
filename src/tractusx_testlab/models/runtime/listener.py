@@ -187,3 +187,14 @@ class Listener(BaseModel):
     #: The action the test asks of the system under test, when the wait step
     #: declares one (``with.action``).
     action: WaitAction | None = None
+
+
+class InboundAnswer(BaseModel):
+    """How the Test Suite answered a call the system under test made to it.
+
+    The other half of an inbound exchange: the mock's canned answer, the
+    listener's acknowledgement, or the refusal of a call the mock does not admit.
+    """
+
+    status_code: int
+    body: Any = None

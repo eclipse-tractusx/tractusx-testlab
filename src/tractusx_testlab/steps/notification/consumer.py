@@ -35,7 +35,8 @@ import httpx
 from pydantic import ConfigDict, Field, model_validator
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models import Checkpoint, Direction, HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models.primitives.checkpoint import Via
 from tractusx_testlab.security.credentials import Credential, reveal
 from tractusx_testlab.steps import http_client, sdk_call
 from tractusx_testlab.steps.counter_party import CounterPartyParams
@@ -143,7 +144,10 @@ class SendNotificationOutput(StepPayload):
     )
 
 
-@step("notification/consumer/send")
+@step(
+    "notification/consumer/send",
+    checkpoint=Checkpoint(direction=Direction.OUTBOUND, via=Via.DATAPLANE),
+)
 class SendNotificationStep(BaseStep[SendNotificationParams, SendNotificationOutput]):
     """Send a notification through the dataspace.
 

@@ -30,6 +30,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from tractusx_testlab.models.primitives.checkpoint import Checkpoint
     from tractusx_testlab.steps.step_contract import BaseStep
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,8 @@ class StepRegistry:
     def register(
         step_type: str,
         dataspace_version: str | None = None,
+        *,
+        checkpoint: Checkpoint | None = None,
     ):
         """Decorator to register a BaseStep class.
 
@@ -56,6 +59,10 @@ class StepRegistry:
                 (e.g., ``connector/provider/create_asset``).
             dataspace_version: Restrict to a specific version (e.g., ``saturn``).
                 If ``None``, the step is available for all versions.
+            checkpoint: Declare every use of the step a checkpoint (ADR-0028):
+                ``Checkpoint(direction=Direction.INBOUND)`` for a wait on the
+                system under test, ``Checkpoint(direction=Direction.INTERNAL)``
+                for the operator's choice. A test may still switch it off (``checkpoint: false``).
         """
 
         def decorator(cls: type[BaseStep]) -> type[BaseStep]:
@@ -65,6 +72,9 @@ class StepRegistry:
             # Stamped either way, so "runs on every release" is a value the step
             # carries rather than the absence of one.
             cls.dataspace_version = dataspace_version
+            # Stamped on every class, so a subclass registered without one is
+            # not a checkpoint because its parent was.
+            cls.checkpoint = checkpoint
             if dataspace_version:
                 key = (step_type, dataspace_version)
                 _REGISTRY[key] = cls

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """What ADR-0016 promises a reader of an execution trace.
@@ -34,11 +35,14 @@ from __future__ import annotations
 
 import io
 import json
+from datetime import UTC, datetime
 
 from tractusx_testlab.logging.structured import StructuredLogger
-from tractusx_testlab.logging.trace import ExecutionTrace
+from tractusx_testlab.logging.trace import ExecutionTrace, event_data, event_digest, event_id
 from tractusx_testlab.models.authoring.definitions import Assertion
+from tractusx_testlab.models.primitives.checkpoint import Direction
 from tractusx_testlab.models.primitives.enums import StepPhase, StepStatus
+from tractusx_testlab.models.runtime.checkpoints import CheckpointStatus
 from tractusx_testlab.models.runtime.results import (
     ENGINE_FAULT_PREFIX,
     AssertionResult,
@@ -91,12 +95,77 @@ class TestEnvelope:
 
     def test_the_same_payload_gets_the_same_id(self, tmp_path) -> None:
         """The trace is an audit record; an id that changes per read is not one."""
+        first_run = ExecutionTrace.for_job("demo-tck", "job1", tmp_path)
+        second_run = ExecutionTrace.for_job("demo-tck", "job2", tmp_path)
+        first = first_run.emit("tck.test.start", {"test_id": "t"}, scope=("t",))
+        second = second_run.emit("tck.test.start", {"test_id": "t"}, scope=("t",))
+        first_run.close()
+        second_run.close()
+
+        assert first["id"] == second["id"]
+        assert first["id"] == event_id("demo-tck", ("t",), "tck.test.start", {"test_id": "t"})
+
+    def test_no_two_events_of_a_run_share_an_id(self, tmp_path) -> None:
+        """Data that does not tell two events apart is told apart by its occurrence."""
         trace = ExecutionTrace.for_job("demo-tck", "job1", tmp_path)
         first = trace.emit("tck.test.start", {"test_id": "t"}, scope=("t",))
         second = trace.emit("tck.test.start", {"test_id": "t"}, scope=("t",))
         trace.close()
 
-        assert first["id"] == second["id"]
+        assert first["id"] != second["id"]
+        assert second["data"] == {"test_id": "t", "occurrence": 2}
+        assert second["id"].endswith(event_digest(second["data"]))
+
+    def test_a_host_gets_the_id_the_trace_gives_for_none_fields_and_datetimes(self) -> None:
+        """``event_id`` hashes the data as the trace writes it, not as it was handed in."""
+        data = {
+            "job_id": "j",
+            "status": "CANCELLED",
+            "error": None,
+            "at": datetime(2026, 10, 12, 10, tzinfo=UTC),
+        }
+        written = ExecutionTrace("tck").emit("tck.end", data)
+        assert written["id"] == event_id("tck", (), "tck.end", data)
+        assert written["id"] == event_id("tck", (), "tck.end", written["data"])
+        assert written["id"].endswith(event_digest(data))
+        assert (
+            event_data(data)
+            == written["data"]
+            == {
+                "job_id": "j",
+                "status": "CANCELLED",
+                "at": "2026-10-12T10:00:00Z",
+            }
+        )
+
+    def test_a_model_s_none_fields_are_left_out_too_so_the_jsonl_data_gives_the_id(self) -> None:
+        """A checkpoint event embeds a model: its ``None`` fields are not written either."""
+        checkpoint = CheckpointStatus(
+            test_id="t",
+            test_name="T",
+            phase="execution",
+            position="execution/0",
+            step_id="pick",
+            uses="flow/select",
+            direction=Direction.INTERNAL,
+            kind="select",
+        )
+        data = {
+            "kind": "checkpoint_updated",
+            "index": 0,
+            "revision": 1,
+            "cause": None,
+            "checkpoint": checkpoint,
+        }
+        written = ExecutionTrace("tck").emit("checkpoint.updated", data, scope=("checkpoints", "0"))
+
+        assert "asked_at" not in written["data"]["checkpoint"]
+        assert "null" not in json.dumps(written["data"])
+        assert event_data(written["data"]) == written["data"]
+        assert written["id"] == event_id("tck", ("checkpoints", "0"), "checkpoint.updated", data)
+        assert written["id"] == event_id(
+            "tck", ("checkpoints", "0"), "checkpoint.updated", written["data"]
+        )
 
     def test_a_trace_with_nowhere_to_write_still_counts(self, tmp_path) -> None:
         trace = ExecutionTrace("demo-tck")

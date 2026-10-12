@@ -25,12 +25,13 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import Field
 
 from tractusx_testlab.authoring.registry import StepRegistry, step
 from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.models.primitives.checkpoint import NestedRun
 from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.steps.flow._nested import NestedStepFailed, first_failure, nested_checks
@@ -76,6 +77,8 @@ class RetryStep(BaseStep[RetryParams, RetryOutput]):
     params_model = RetryParams
     output_model = RetryOutput
     deferred_params = frozenset({"steps"})
+    #: The steps it carries, and how it runs them (the run's checkpoints read it).
+    nested_steps: ClassVar[dict[str, NestedRun]] = {"steps": NestedRun.REPEATED}
 
     async def execute(
         self, params: RetryParams, context: StepContext, definition: StepDefinition
@@ -124,7 +127,9 @@ async def _run_sequence(
             )
             break
 
-        result: Any = await context.invoke_step(step_cls, nested_def, step_name, context)
+        result: Any = await context.invoke_step(
+            step_cls, nested_def, step_name, context, at=("steps", idx)
+        )
         results.append(result)
         if result.status == StepStatus.FAILED:
             break

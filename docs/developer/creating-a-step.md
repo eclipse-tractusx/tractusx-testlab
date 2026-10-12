@@ -338,6 +338,34 @@ Register with a version constraint when behaviour differs by dataspace version. 
 class QueryCatalogSaturnStep(BaseStep[QueryCatalogParams, CatalogOutput]): ...
 ```
 
+A step at which the run needs someone to act declares it a **checkpoint**
+(ADR-0028) — the direction says who acts and which way:
+
+```python
+from tractusx_testlab.models import Checkpoint, Direction
+from tractusx_testlab.models.primitives.checkpoint import Via
+
+
+# The system under test calls the Test Suite, which answers.
+@step("mock/wait/http_request", checkpoint=Checkpoint(direction=Direction.INBOUND))
+
+# The Test Suite calls the system under test, which has to answer.
+@step(
+    "notification/consumer/send",
+    checkpoint=Checkpoint(direction=Direction.OUTBOUND, via=Via.DATAPLANE),
+)
+
+# The operator decides in the Test Suite; nothing is called.
+@step("flow/select", checkpoint=Checkpoint(direction=Direction.INTERNAL))
+```
+
+An `inbound` or `internal` step reports its own question and answer
+(`context.report_waiting` / `report_received`, `report_selecting` /
+`report_selected`); any other checkpoint is asked when the step starts and
+answered when it completes. A flow step that runs steps of its own says under
+which `with:` keys, and how (`nested_steps = {"steps": NestedRun.REPEATED}`),
+and passes each nested step its position: `context.invoke_step(..., at=(key, index))`.
+
 The decorator only runs if the module is imported. Add your module to its subpackage's `__init__.py`:
 
 ```python

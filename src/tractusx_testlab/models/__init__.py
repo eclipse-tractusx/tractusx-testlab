@@ -77,6 +77,7 @@ from tractusx_testlab.models.primitives.binding_errors import (
     StandardConflictError,
     UnknownBindingKeyError,
 )
+from tractusx_testlab.models.primitives.checkpoint import Checkpoint, Direction
 from tractusx_testlab.models.primitives.enums import (
     AssertionSeverity,
     DefinitionKind,  # local override — adds TCK
@@ -154,6 +155,7 @@ from tractusx_testlab.models.runtime.listener import (
     ActionField,
     CatalogFilter,
     ConnectorOffer,
+    InboundAnswer,
     Listener,
     WaitAction,
 )
@@ -192,11 +194,13 @@ __all__ = [
     # infrastructure requirements (authored)
     "CapabilityRequirement",
     "CatalogFilter",
+    "Checkpoint",
     "ConnectorBinding",
     "ConnectorError",
     "ConnectorOffer",
     "DataspaceContext",
     "DefinitionKind",
+    "Direction",
     "DtrBinding",
     "DuplicateServiceError",
     "EncryptedKeyBlock",
@@ -211,6 +215,7 @@ __all__ = [
     "HttpRequest",
     "HttpResponse",
     "ImportDefinition",
+    "InboundAnswer",
     "Infrastructure",
     "InfrastructureConfig",
     "InfrastructureError",

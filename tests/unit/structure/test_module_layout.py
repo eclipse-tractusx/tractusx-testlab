@@ -51,7 +51,7 @@ OVERSIZED: dict[str, int] = {
     "steps/digital_twin_registry/consumer.py": 412,
     "steps/digital_twin_registry/submodel.py": 386,
     "steps/digital_twin_registry/provider/shell.py": 363,
-    "steps/step_contract.py": 363,
+    "steps/step_contract.py": 354,
     "compiler/ir/builder.py": 344,
     "steps/_checks/extraction.py": 330,
     "infrastructure/profiles.py": 329,

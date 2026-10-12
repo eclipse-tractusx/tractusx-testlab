@@ -30,29 +30,28 @@ operator picks one option. That is two moments, asked and answered, published as
 ``tck.test.step.selecting`` / ``tck.test.step.selected``. A mixin beside
 ``StepEvents`` for the same reason that one is: ``ExecutionMonitor`` stays the
 one place an event is built.
+
+At an internal checkpoint (ADR-0028) they are its moments: what was offered,
+and what was chosen, each naming the checkpoint and its attempt. A question
+put again after a pause is the same attempt, ``pauses`` later.
 """
 
 from __future__ import annotations
 
-from tractusx_testlab.models.runtime.events import ExecutionEvent
 from tractusx_testlab.models.runtime.selection import (
     Selection,
     SelectionOption,
     StepSelectedEvent,
     StepSelectingEvent,
 )
-from tractusx_testlab.player.execution._trace_publisher import TracePublisher
+from tractusx_testlab.player.checkpoints import current_frame
+from tractusx_testlab.player.execution._monitor_checkpoints import CheckpointEvents
 
 
-class SelectionEvents:
+class SelectionEvents(CheckpointEvents):
     """The ``on_step_selecting`` / ``on_step_selected`` methods, mixed into the monitor."""
 
     __slots__ = ()
-
-    _trace: TracePublisher
-
-    def _publish(self, event: ExecutionEvent, event_id: str | None = None) -> None:
-        raise NotImplementedError
 
     def on_step_selecting(
         self,
@@ -69,25 +68,33 @@ class SelectionEvents:
         Published again, with what is left of the timeout, when a pause ends:
         the question is still open.
         """
+        frame = current_frame()
+        if frame is not None and frame.asked:  # only a pause puts the question again
+            self._follow("suspended")
+        attempt, ref, pauses = self._marks()
         event = StepSelectingEvent(
             job_id=job_id,
             test_id=test,
             step_id=step_id,
+            attempt=attempt,
+            checkpoint=ref,
             step_type=step_type,
             selection=selection,
             timeout_s=timeout_s,
+            pauses=pauses,
         )
-        event_id = self._trace.emit(
+        data = {"selection": event.selection.model_dump(mode="json"), "timeout_s": timeout_s}
+        event_id = self._trace.step_event(
             "tck.test.step.selecting",
-            {
-                "attempt": 1,
-                "selection": event.selection.model_dump(mode="json"),
-                "timeout_s": timeout_s,
-            },
-            source=step_type,
-            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
+            test,
+            step_id,
+            step_type,
+            phase,
+            data,
+            self._trace_marks(attempt, ref, pauses),
         )
         self._publish(event, event_id)
+        self._follow("asked", self._cause(event.kind.value))
 
     def on_step_selected(
         self,
@@ -100,23 +107,30 @@ class SelectionEvents:
         waited_ms: int,
     ) -> None:
         """Publish which option the operator chose, and how long the run waited for it."""
+        attempt, ref, pauses = self._marks()
         event = StepSelectedEvent(
             job_id=job_id,
             test_id=test,
             step_id=step_id,
+            attempt=attempt,
+            checkpoint=ref,
             step_type=step_type,
             option=option,
             waited_ms=waited_ms,
         )
-        event_id = self._trace.emit(
+        data = {
+            "value": option.id,
+            "option": event.option.model_dump(mode="json"),
+            "waited_ms": waited_ms,
+        }
+        event_id = self._trace.step_event(
             "tck.test.step.selected",
-            {
-                "attempt": 1,
-                "value": option.id,
-                "option": event.option.model_dump(mode="json"),
-                "waited_ms": waited_ms,
-            },
-            source=step_type,
-            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
+            test,
+            step_id,
+            step_type,
+            phase,
+            data,
+            self._trace_marks(attempt, ref, pauses),
         )
         self._publish(event, event_id)
+        self._follow("answered", self._cause(event.kind.value), waited_ms)

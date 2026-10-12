@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Fable 5.1).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The console lines for an inbound call: where to call, and what arrived.
@@ -118,5 +119,26 @@ def selected_line(base: str, data: dict) -> str:
         str(data.get("step_type", "")),
         f"→ {option.get('label') or option.get('id', '?')}",
         f"after {int(data.get('waited_ms') or 0)}ms",
+    )
+    return " ".join(p for p in parts if p)
+
+
+def checkpoints_planned_line(base: str, data: dict) -> str:
+    """How many checkpoints the run will meet (ADR-0028)."""
+    count = len(data.get("checkpoints") or [])
+    return f"{base} {count} checkpoint{'s' if count != 1 else ''}"
+
+
+def checkpoint_updated_line(base: str, data: dict) -> str:
+    """Which checkpoint changed, and to what: ``#3 [choice] pick internal → cleared (attempt 1)``."""
+    point = data.get("checkpoint") or {}
+    attempt = f"(attempt {point['attempts']})" if point.get("attempts") else ""
+    parts = (
+        base,
+        f"#{int(data.get('index', 0)) + 1}",
+        _where(point),
+        str(point.get("direction", "")),
+        f"→ {point.get('state', '?')}",
+        attempt,
     )
     return " ".join(p for p in parts if p)

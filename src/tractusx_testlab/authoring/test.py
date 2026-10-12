@@ -26,8 +26,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from pathlib import Path
 
+from tractusx_testlab.authoring._checkpoints import collect_checkpoints
 from tractusx_testlab.authoring._infrastructure import collect_infrastructure_requirements
 from tractusx_testlab.authoring._inspection import build_inspection_result
 from tractusx_testlab.authoring._variable_form import parse_variables_block
@@ -37,6 +39,7 @@ from tractusx_testlab.models.authoring.definitions import (
     VariableDefinition,
 )
 from tractusx_testlab.models.authoring.infrastructure import InfrastructureConfig
+from tractusx_testlab.models.runtime.checkpoints import CheckpointEntry
 from tractusx_testlab.models.runtime.inspection import TckInspectionResult
 from tractusx_testlab.syntax import defaults
 
@@ -207,6 +210,17 @@ class Tck:
             A frozen :class:`~tractusx_testlab.models.runtime.inspection.TckInspectionResult`.
         """
         return build_inspection_result(self)
+
+    def checkpoints(self, skip_tests: Collection[str] = ()) -> tuple[CheckpointEntry, ...]:
+        """Every checkpoint a run with *skip_tests* meets, in run order (ADR-0028).
+
+        What the briefing before a run lists, and the start of what the run's
+        ``checkpoints.planned`` event carries — the plan then lists the
+        checkpoints of the tests *skip_tests* leaves out, ``skipped``
+        (``player.checkpoints.run_plan``). The index of an entry here
+        is the ``index`` the run's ``checkpoint.updated`` events name it by.
+        """
+        return tuple(planned.entry for planned in collect_checkpoints(self, skip_tests))
 
     def infrastructure_requirements(self) -> InfrastructureConfig:
         """Extract consolidated infrastructure requirements from this TCK.

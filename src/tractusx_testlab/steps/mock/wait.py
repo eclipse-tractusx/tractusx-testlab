@@ -39,11 +39,14 @@ from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import (
+    Checkpoint,
     ConnectorOffer,
+    Direction,
     ExecutionError,
     Listener,
     StepDefinition,
 )
+from tractusx_testlab.models.primitives.checkpoint import Via
 from tractusx_testlab.server.inbound.run_scope import declared, scoped
 from tractusx_testlab.server.mock_registry import get_callback_manager
 from tractusx_testlab.steps.mock._models import WaitForCallParams, WaitForDataplaneCallParams
@@ -72,7 +75,7 @@ class InboundCallOutput(StepPayload):
     elapsed_ms: int = Field(description="Milliseconds spent waiting before the request arrived.")
 
 
-@step("mock/wait/http_request")
+@step("mock/wait/http_request", checkpoint=Checkpoint(direction=Direction.INBOUND))
 class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
     """Wait for an inbound HTTP request on a previously-registered mock endpoint.
 
@@ -140,6 +143,8 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
         if result.timed_out:
             raise RuntimeError(_timed_out(manager, timeout, method, key_path))
         if result.refused is not None:
+            # A call did come, and was turned away: the exchange is recorded as it went.
+            context.report_received(definition.uses, definition.id, listener, result, elapsed_ms)
             raise MockCallRefusedError(listener, result.refused, elapsed_ms)
 
         context.report_received(definition.uses, definition.id, listener, result, elapsed_ms)
@@ -156,7 +161,10 @@ class WaitForCallStep(BaseStep[WaitForCallParams, InboundCallOutput]):
         )
 
 
-@step("mock/wait/dataplane/http_request")
+@step(
+    "mock/wait/dataplane/http_request",
+    checkpoint=Checkpoint(direction=Direction.INBOUND, via=Via.DATAPLANE),
+)
 class WaitForDataplaneCallStep(WaitForCallStep):
     """Wait for an inbound HTTP request that arrives through the engine connector's data plane.
 

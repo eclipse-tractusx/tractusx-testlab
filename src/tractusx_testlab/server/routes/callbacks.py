@@ -39,6 +39,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from tractusx_testlab.models.runtime.listener import InboundAnswer
 from tractusx_testlab.server.callbacks import CallbackManager
 from tractusx_testlab.server.inbound.run_scope import declared, split
 from tractusx_testlab.server.mock_registry import (
@@ -53,6 +54,9 @@ _logger = logging.getLogger(__name__)
 
 callback_router = APIRouter(tags=["testlab"])
 
+#: What a listener without a mock answers the call it took.
+_RECEIVED = {"status": "received"}
+
 
 def refused(callbacks: CallbackManager, path: str, method: str, reason: str) -> JSONResponse:
     """Turn away a call that lacks what the mock requires, count it, and fail its wait.
@@ -66,8 +70,14 @@ def refused(callbacks: CallbackManager, path: str, method: str, reason: str) -> 
     ``refusal``): the call reached the mock, so the run has its answer and
     waiting out the timeout would only hide it.
     """
+    detail = (
+        f"{method} {declared(path)} is served only through the connector that offers "
+        "it: negotiate the offer and call through the data plane."
+    )
     callbacks.refuse(path, method)
-    ended = callbacks.reject(path, method, reason)
+    ended = callbacks.reject(
+        path, method, reason, InboundAnswer(status_code=401, body={"detail": detail})
+    )
     _logger.warning(
         "Refused %s %s: %s — it did not come through the connector whose asset "
         "carries the run's key%s",
@@ -76,15 +86,7 @@ def refused(callbacks: CallbackManager, path: str, method: str, reason: str) -> 
         reason,
         "; the wait on it fails" if ended else "",
     )
-    return JSONResponse(
-        status_code=401,
-        content={
-            "detail": (
-                f"{method} {declared(path)} is served only through the connector that offers "
-                "it: negotiate the offer and call through the data plane."
-            )
-        },
-    )
+    return JSONResponse(status_code=401, content={"detail": detail})
 
 
 def misdirected(callbacks: CallbackManager, path: str, method: str, headers: dict) -> None:
@@ -197,14 +199,22 @@ async def answer(request: Request, called: str) -> JSONResponse:
         misdirected(callbacks, path, method, headers)
         raise HTTPException(404, f"No mock or listener for {method} {called}")
 
-    matched = callbacks.resolve(path, method, headers, body, dict(request.query_params))
+    # How the call is answered goes with it, so the run keeps both halves.
+    reply = (
+        InboundAnswer(status_code=200, body=_RECEIVED)
+        if mock is None
+        else InboundAnswer(status_code=mock.status_code, body=mock.body)
+    )
+    matched = callbacks.resolve(
+        path, method, headers, body, dict(request.query_params), response=reply
+    )
     if mock is not None:
         _logger.debug("Mock matched %s %s -> %d", method, _loggable(path), mock.status_code)
         return JSONResponse(
             content=mock.body, status_code=mock.status_code, headers=mock.headers or None
         )
     if matched:
-        return JSONResponse(content={"status": "received"})
+        return JSONResponse(content=_RECEIVED)
     raise HTTPException(404, f"No mock or listener for {method} {called}")
 
 

@@ -58,12 +58,24 @@ def make_intentionally_skipped_result(test: Test) -> TestResult:
     this result uses ``TestStatus.SKIPPED`` so the overall TCK result remains
     ``COMPLETED`` when all non-skipped tests pass.
     """
+    return _not_run_result(test, TestStatus.SKIPPED)
+
+
+def make_interrupted_result(test: Test) -> TestResult:
+    """Build a CANCELLED result for a test the run was interrupted in (Ctrl-C, a host's cancel).
+
+    ``CANCELLED`` fails the TCK: a test cut short verified nothing.
+    """
+    return _not_run_result(test, TestStatus.CANCELLED)
+
+
+def _not_run_result(test: Test, status: TestStatus) -> TestResult:
     now = datetime.now(UTC)
     return TestResult(
         test_id=test.definition.id,
         test_name=test.name,
         dataspace_version=test.dataspace_version,
-        status=TestStatus.SKIPPED,
+        status=status,
         execution=[],
         started_at=now,
         finished_at=now,
@@ -124,13 +136,21 @@ def finalize_job(
 ) -> None:
     """Update job status and close both records after execution completes.
 
+    A job its host cancelled keeps that status and is published
+    ``job.cancelled``; any other is completed or failed by *result*.
+
     The job keeps the verdict as it is written down (``wire.as_kept``), masked
     now — while the run's secrets are still pinned — because the job is read
     long after newer runs may have evicted them. The caller keeps *result*.
     """
     job.result = wire.as_kept(result)
+    # A run its host cancelled (``JobManager.cancel``) ends cancelled, whatever
+    # its tests got to: ``job.cancelled``, and its open checkpoints turn
+    # ``not_reached`` for that cause (ADR-0028).
+    if jobs.is_cancelled(job.job_id) is True:
+        monitor.on_job_cancelled(job.job_id)
     # `status`, not a step tally: the verdict is the aggregate the TCK reports.
-    if result.status in _NON_FAILING_STATUSES:
+    elif result.status in _NON_FAILING_STATUSES:
         jobs.complete(job.job_id)
         monitor.on_job_completed(job.job_id)
     else:

@@ -28,8 +28,26 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from tractusx_testlab.models.runtime.checkpoints import CheckpointRef
+
 
 class _ExecutionEvent(BaseModel):
     """Fields shared by every execution event."""
 
     job_id: str
+
+
+class _StepEvent(_ExecutionEvent):
+    """Fields shared by every event about one step.
+
+    ``attempt`` says which run of the step this is within the job, from 1: a
+    step a ``flow/retry`` runs again, or whose test is run again, says so, and
+    two runs of one step never publish the same event (ADR-0016). ``checkpoint``
+    names the checkpoint the step is, and which attempt of it, when it is one
+    (ADR-0028): every exchange at a checkpoint can be found by it.
+    """
+
+    test_id: str
+    step_id: str | None = None
+    attempt: int = 1
+    checkpoint: CheckpointRef | None = None

@@ -87,6 +87,18 @@ def print_inspection(package: Path, result: object) -> None:
     typer.echo()
 
 
+def print_checkpoints(checkpoints: list) -> None:
+    """Print the checkpoints a run meets, in the window ``testlab run`` shows them in."""
+    from tractusx_testlab.cli._checkpoint_windows import briefing
+
+    if not checkpoints:
+        typer.echo("  CHECKPOINTS  none: a run of this package asks nobody anything")
+    else:
+        for line in briefing(checkpoints):
+            typer.echo(line)
+    typer.echo()
+
+
 def print_variables(tck: object) -> None:
     """Print a human-readable variables table."""
     variables = tck.all_variables()  # type: ignore[attr-defined]

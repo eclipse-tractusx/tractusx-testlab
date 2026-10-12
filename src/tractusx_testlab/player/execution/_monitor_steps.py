@@ -26,10 +26,16 @@
 """The step lifecycle half of the ExecutionMonitor.
 
 Everything a monitor publishes *about a step* — that it started, each call it
-made, the address it opened, the wait it is blocked in, the call that arrived,
-and how it ended — lives here. It is a mixin rather than a second publisher on
+made, and how it ended — lives here; the inbound moments (the address it
+opened, the wait it is blocked in, the call that arrived) are
+:class:`~tractusx_testlab.player.execution._monitor_inbound.InboundEvents`. It is a mixin rather than a second publisher on
 purpose: ``ExecutionMonitor`` stays the one place an event is built, and this
 is that place's step-shaped half (docs/developer/execution-events.md).
+
+Every event carries the step's marks (``CheckpointEvents._marks``): which run
+of the step it is, and the checkpoint it is, if it is one. The moments of a
+question — asked, paused, answered — are passed on to the run's checkpoints
+right after they are published.
 """
 
 from __future__ import annotations
@@ -40,35 +46,25 @@ from tractusx_testlab.logging import wire
 from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.events import (
     AssertionResultEvent,
-    ExecutionEvent,
     StepCallEvent,
     StepCompletedEvent,
     StepFailedEvent,
-    StepListeningEvent,
-    StepReceivedEvent,
     StepSkippedEvent,
     StepStartedEvent,
-    StepSuspendedEvent,
-    StepWaitingEvent,
 )
-from tractusx_testlab.models.runtime.results import CallbackResult, HttpExchange, StepResult
-from tractusx_testlab.player.execution._trace_publisher import TracePublisher
+from tractusx_testlab.models.runtime.results import HttpExchange, StepResult
+from tractusx_testlab.player.execution._monitor_checkpoints import CheckpointEvents
 
 
-class StepEvents:
+class StepEvents(CheckpointEvents):
     """The ``on_step_*`` methods, mixed into :class:`ExecutionMonitor`.
 
     It reads the monitor's trace publisher and hands every event to the
-    monitor's ``_publish``; both are the monitor's, declared here only so the
-    type checker can follow.
+    monitor's ``_publish``; both are the monitor's, declared on
+    :class:`CheckpointEvents` only so the type checker can follow.
     """
 
     __slots__ = ()
-
-    _trace: TracePublisher
-
-    def _publish(self, event: ExecutionEvent, event_id: str | None = None) -> None:
-        raise NotImplementedError
 
     def on_step_started(
         self,
@@ -85,15 +81,28 @@ class StepEvents:
 
         *inputs* is the step's ``with:`` block with its references resolved —
         the values the step is about to be given, not the template naming them —
-        with every credential-named input shown as ``***`` (logging.wire).
+        with every credential-named input shown as ``***`` (logging.wire). A
+        checkpoint the step does not ask for itself is asked only once the step
+        really runs — after its ``if:`` (``CheckpointTracker.begin``).
         """
         inputs = wire.redact_secrets(inputs)
-        event_id = self._trace.step_started(test, step_id, step_index, step_type, phase, inputs)
+        attempt, ref, pauses = self._marks()
+        event_id = self._trace.step_started(
+            test,
+            step_id,
+            step_index,
+            step_type,
+            phase,
+            inputs,
+            self._trace_marks(attempt, ref, pauses),
+        )
         self._publish(
             StepStartedEvent(
                 job_id=job_id,
                 test_id=test,
                 step_id=step_id,
+                attempt=attempt,
+                checkpoint=ref,
                 step_index=step_index,
                 step_type=step_type,
                 step_name=step_name,
@@ -118,13 +127,19 @@ class StepEvents:
         While the step is still running, which is the point: a DSP pull polls a
         negotiation for a minute, and the polls are what somebody watching needs
         to see (:class:`~tractusx_testlab.models.runtime.events.StepCallEvent`).
+        At an outbound checkpoint this is the exchange: what was sent, and how
+        the system under test answered.
         """
-        event_id = self._trace.step_call(test, step_id, step_type, phase, index, call)
+        attempt, ref, pauses = self._marks()
+        marks = self._trace_marks(attempt, ref, pauses)
+        event_id = self._trace.step_call(test, step_id, step_type, phase, index, call, marks)
         self._publish(
             StepCallEvent(
                 job_id=job_id,
                 test_id=test,
                 step_id=step_id,
+                attempt=attempt,
+                checkpoint=ref,
                 step_type=step_type,
                 index=index,
                 call=call,
@@ -149,11 +164,14 @@ class StepEvents:
         # call the SDK really made, masked, while the result keeps the exchange
         # the step named — which is what a ``returns:`` block reads (logging.wire).
         record = wire.as_recorded(result)
+        attempt, ref, pauses = self._marks()
 
         # The assertion lines are given the step's id on purpose: they have no
         # event of their own — ADR-0016 nests them in the terminal event, which
         # is where a reader following the id finds them.
-        event_id = self._trace.step_ended(test, step_id, record)
+        event_id = self._trace.step_ended(
+            test, step_id, record, self._trace_marks(attempt, ref, pauses)
+        )
 
         for index, assertion_result in enumerate(record.assertions):
             self._publish(
@@ -161,6 +179,8 @@ class StepEvents:
                     job_id=job_id,
                     test_id=test,
                     step_id=step_id,
+                    attempt=attempt,
+                    checkpoint=ref,
                     step_name=result.step_name,
                     index=index,
                     assertion=assertion_result,
@@ -171,118 +191,13 @@ class StepEvents:
         outcome = {StepStatus.FAILED: StepFailedEvent, StepStatus.SKIPPED: StepSkippedEvent}.get(
             result.status, StepCompletedEvent
         )
-        self._publish(
-            outcome(job_id=job_id, test_id=test, step_id=step_id, result=record), event_id
-        )
-
-    def on_step_listening(
-        self,
-        job_id: str,
-        test: str,
-        step_id: str | None,
-        step_type: str,
-        phase: str,
-        listener: Any,
-    ) -> None:
-        """Publish that an address is open for the SUT to call, and which one.
-
-        ``mock/api`` has registered the endpoint. The method and the URL are
-        the payload, because this is the moment a person driving the SUT by
-        hand needs to be told where to call
-        (:class:`~tractusx_testlab.models.runtime.events.StepListeningEvent`).
-        """
-        event = StepListeningEvent(
-            job_id=job_id, test_id=test, step_id=step_id, step_type=step_type, listener=listener
-        )
-        event_id = self._trace.step_listening(test, step_id, step_type, phase, event.listener)
-        self._publish(event, event_id)
-
-    def on_step_waiting(
-        self,
-        job_id: str,
-        test: str,
-        step_id: str | None,
-        step_type: str,
-        phase: str,
-        listener: Any,
-        timeout_s: float,
-    ) -> None:
-        """Publish that the run is now blocked on that address, for at most *timeout_s*."""
-        event = StepWaitingEvent(
+        event = outcome(
             job_id=job_id,
             test_id=test,
             step_id=step_id,
-            step_type=step_type,
-            listener=listener,
-            timeout_s=timeout_s,
-        )
-        event_id = self._trace.step_waiting(
-            test, step_id, step_type, phase, event.listener, timeout_s
+            attempt=attempt,
+            checkpoint=ref,
+            result=record,
         )
         self._publish(event, event_id)
-
-    def on_step_suspended(
-        self,
-        job_id: str,
-        test: str,
-        step_id: str | None,
-        step_type: str,
-        phase: str,
-        listener: Any,
-        remaining_s: float,
-        waited_ms: int,
-    ) -> None:
-        """Publish that a wait stopped counting for a pause, with *remaining_s* left."""
-        event = StepSuspendedEvent(
-            job_id=job_id,
-            test_id=test,
-            step_id=step_id,
-            step_type=step_type,
-            listener=listener,
-            remaining_s=remaining_s,
-            waited_ms=waited_ms,
-        )
-        event_id = self._trace.step_suspended(
-            test, step_id, step_type, phase, event.listener, remaining_s, waited_ms
-        )
-        self._publish(event, event_id)
-
-    def on_step_received(
-        self,
-        job_id: str,
-        test: str,
-        step_id: str | None,
-        step_type: str,
-        phase: str,
-        listener: Any,
-        request: CallbackResult,
-        waited_ms: int,
-    ) -> None:
-        """Publish that the call a step was waiting for has arrived.
-
-        What arrived is the SUT's to send, and it is published before the step
-        that waited on it returns — before anything learned which of it is a
-        credential. So it is redacted here, the way a recorded call is: the
-        headers, the query and the body by the names they carry (logging.wire).
-        The step itself is handed the call as it came.
-        """
-        request = request.model_copy(
-            update={
-                "headers": wire.safe_headers(request.headers),
-                "query_params": wire.redact_secrets(request.query_params),
-                "payload": wire.redact_secrets(request.payload),
-            }
-        )
-        event = StepReceivedEvent(
-            job_id=job_id,
-            test_id=test,
-            step_id=step_id,
-            step_type=step_type,
-            listener=listener,
-            request=request,
-            waited_ms=waited_ms,
-        )
-        event_id = self._trace.step_received(
-            test, step_id, step_type, phase, event.listener, request, waited_ms
-        )
-        self._publish(event, event_id)
+        self._follow("ended", result.status, self._cause(event.kind.value))

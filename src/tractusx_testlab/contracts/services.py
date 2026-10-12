@@ -217,6 +217,11 @@ class StepInvoker(Protocol):
     bodies: legal, but it hides a cycle rather than removing one, and it puts
     the player's module path inside a step. A flow step needs the *shape* of the
     runner, not the runner — so it takes this, and the player supplies itself.
+
+    *at* is where the nested step sits in the flow step: the ``with:`` key that
+    carries it (``steps``, ``then``, ``else``) and its index there. The run's
+    checkpoints follow a nested step by it (ADR-0028); without it the step runs
+    all the same, as one no checkpoint is about.
     """
 
     async def __call__(
@@ -225,4 +230,6 @@ class StepInvoker(Protocol):
         step_def: Any,
         step_name: str,
         context: Any,
+        *,
+        at: tuple[str, int] | None = None,
     ) -> Any: ...

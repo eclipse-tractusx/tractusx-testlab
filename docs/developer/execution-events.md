@@ -88,6 +88,28 @@ makes the id usable as a key: a consumer can address a step's outcome without
 having tracked the stream from the beginning, and re-running the same TCK
 produces the same ids for the same steps.
 
+### The player's own envelope
+
+The player writes its own trace (ADR-0016: `tck.*` types, ids ending in the
+hash of the data), and a host does not have to name the events a second time.
+Register a **trace callback** next to (or instead of) a plain one:
+
+```python
+def on_event(event: str, payload: dict, envelope: dict | None) -> None:
+    # envelope: {"specversion", "id", "source", "type", "time", "sequence", "data"}
+    # exactly as the trace's JSONL line has it — or None for an event the trace
+    # does not write on its own (assertion_result, the package verification).
+    store(event_id=envelope["id"] if envelope else None, payload=payload)
+
+player.monitor.add_trace_callback(on_event)   # plain callbacks: add_callback(fn(event, payload))
+```
+
+A host that stores `envelope["id"]` names every event as the trace file does:
+the trace id, the host's id and the id a viewer shows are one. The ids are
+unique within a run (ADR-0016's amendment); for the few events a host writes
+itself, `tractusx_testlab.logging.trace.event_id(tck_id, scope, type, data)`
+builds one in the same grammar.
+
 ## Event kinds
 
 ### Job lifecycle
@@ -108,11 +130,12 @@ The job began executing.
 
 #### `job_paused` / `job_resumed`
 
-The operator paused a running job, or resumed a paused one. Both carry only
-`kind` and `job_id`.
+The operator paused a running job, or resumed a paused one. Both carry
+`kind`, `job_id` and `occurrence`: which pause (or resume) of the job this is,
+from 1, so a second pause does not publish the first one's data again.
 
 ```json
-{"kind": "job_paused", "job_id": "3f1c…"}
+{"kind": "job_paused", "job_id": "3f1c…", "occurrence": 2}
 ```
 
 #### `job_held` / `job_restored`
@@ -133,6 +156,7 @@ what it created.
 | `kept` | object | `job_held`: definition id → why the connector would not delete it. Empty when all were. |
 | `restored` | string[] | `job_restored`: the contract definitions created again. |
 | `lost` | object | `job_restored`: definition id → why the connector would not take it back. |
+| `occurrence` | integer | Which hold of the job this is, from 1 (the trace's `tck.held` / `tck.restored` carry it too). |
 
 ```json
 {"kind": "job_held", "job_id": "3f1c…", "withdrawn": ["testlab-ccmapi-cd-3f1c"], "kept": {}}
@@ -168,7 +192,9 @@ In the trace they are a `tck.held` and a `tck.restored`.
 #### `job_cancelled`
 
 **Terminal.** The operator cancelled the job before it reached an outcome of its
-own.
+own. A run its host cancels with `JobManager.cancel` closes with this event
+(not `job_failed`), whatever its tests got to; its open checkpoints then turn
+`not_reached` with `cause` `job_cancelled`.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -203,6 +229,7 @@ result already carries its status and its steps.
 | `kind` | `"test_completed"` | |
 | `job_id` | string | |
 | `result` | `TestResult` | Status, every step result, timing, assertion summary. |
+| `attempt` | integer | The `attempt` the test started as: which run of it within the job, from 1. |
 
 ```json
 {
@@ -230,12 +257,25 @@ Sent once per such test, after the tests that run on their own are done.
 | `job_id` | string | |
 | `test_id` | string | The test's id. |
 | `index` | integer | Its position in the manifest, from 0. |
+| `occurrence` | integer | Which time the test is announced in the job, from 1. |
 
 ```json
-{"kind": "test_awaiting", "job_id": "3f1c…", "test_id": "push-notification", "index": 3}
+{"kind": "test_awaiting", "job_id": "3f1c…", "test_id": "push-notification", "index": 3, "occurrence": 1}
 ```
 
 ### Step lifecycle
+
+Every event about a step — the ones below, and `assertion_result` — carries
+two fields more than its table lists (ADR-0016, ADR-0028):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `attempt` | integer | Which run of this step within the job, from 1: a step a `flow/retry` (or a loop) runs again, or whose test is run again, counts up. Two runs of one step never publish the same data. |
+| `checkpoint` | `{index, attempt, direction}` \| null | The checkpoint the step is, when it is one: its `index` in `checkpoints_planned`, the `attempt` of it this run is, and its `direction` (`inbound`, `outbound`, `internal`). Every exchange at a checkpoint — the calls out (`step_call`), the call in and the answer to it (`step_received`), what was offered and what was chosen (`step_selecting`, `step_selected`) — names it here. |
+
+`step_waiting`, `step_suspended` and `step_selecting` carry `pauses` too: how
+many pauses the question has been through in this attempt. A question asked
+again after a pause is the same attempt, `pauses` later.
 
 #### `step_started`
 
@@ -489,7 +529,7 @@ same way `step_call` shows the outbound.
 | `step_id` | string \| null | |
 | `step_type` | string | `mock/wait/http_request`. |
 | `listener` | `Listener` | The address that was called. |
-| `request` | `CallbackResult` | The inbound request: `method`, `path`, `headers`, `query_params`, `payload`, `received_at`. |
+| `request` | `CallbackResult` | The inbound request: `method`, `path`, `headers`, `query_params`, `payload`, `received_at` — and `response`, how the Test Suite answered it (`status_code`, `body`). A call the mock turned away is published too, with `refused` saying why and the 401 it was answered with; the wait then fails. |
 | `waited_ms` | integer | How long the wait step was blocked. `0` when the call had arrived before the step got there. |
 
 ```json
@@ -502,8 +542,11 @@ same way `step_call` shows the outbound.
   "listener": {"method": "POST", "url": "http://localhost:8100/testlab-e2e/callback", "path": "/testlab-e2e/callback"},
   "request": {"listener_name": "POST:/testlab-e2e/callback", "path": "/testlab-e2e/callback", "method": "POST",
               "headers": {"content-type": "application/json"}, "query_params": {},
-              "payload": {"from": "stub-sut"}, "received_at": "2026-09-10T12:00:03.412Z", "timed_out": false},
-  "waited_ms": 3012
+              "payload": {"from": "stub-sut"}, "received_at": "2026-09-10T12:00:03.412Z", "timed_out": false,
+              "response": {"status_code": 202, "body": {"ack": true}}},
+  "waited_ms": 3012,
+  "attempt": 1,
+  "checkpoint": {"index": 0, "attempt": 1, "direction": "inbound"}
 }
 ```
 
@@ -624,6 +667,84 @@ assertion-shaped step types.
 A `SOFT` failure is reported here and does not fail the step; a `HARD` one is
 followed by `step_failed`.
 
+### Checkpoints
+
+A checkpoint is a step at which the run has someone act (ADR-0028): the system
+under test calls the Test Suite (`inbound`), the Test Suite calls the system
+under test, which has to answer (`outbound`), or the operator decides in the
+Test Suite (`internal`). The player follows them as it runs and publishes them
+— the same events in its own trace (`checkpoints.planned`,
+`checkpoint.updated`), with ids `<tck>/checkpoints/checkpoints.planned/<hash>`
+and `<tck>/checkpoints/<index>/checkpoint.updated/<hash>`.
+
+A checkpoint, as both events carry it:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `test_id`, `test_name` | string | The test it belongs to (its id, as the trace names it). |
+| `phase` | string | `setup`, `execution` or `teardown`. |
+| `position` | string | Where the step sits: `execution/2`, or `execution/2/then/0` for a step a flow step carries. |
+| `step_id` | string \| null | |
+| `uses` | string | The step type. |
+| `direction` | string | `inbound`, `outbound` or `internal`. |
+| `kind` | string | The engine's name for it: `wait` (`inbound`, `outbound`) or `select` (`internal`). |
+| `via` | string \| null | `direct` or `dataplane`: how the call travels. |
+| `name`, `label`, `description` | string \| null | The step's name; the test's `checkpoint:` label and description, else its `action`'s. |
+| `timeout_s` | integer \| null | The step's timeout, its default when the test gives none. |
+| `conditional` | boolean | It sits in a `flow/if` branch: the run may not ask it. |
+| `repeated` | boolean | It sits in a `flow/retry` or a loop: the run may ask it more than once. |
+| `state` | string | `ahead`, `now`, `cleared`, `timed_out`, `failed`, `skipped`, `not_reached`. |
+| `attempts` | integer | How many times it was asked. A question asked again after a pause is the same attempt. |
+| `asked_at`, `answered_at` | string \| null | The latest ask, and when that attempt was answered or ended. |
+| `response_s` | number \| null | How long the question was open until it was answered, pauses not counted. |
+
+#### `checkpoints_planned`
+
+Once, right after `job_started` and before the first test: every checkpoint the
+run will meet, in run order, each `ahead` — the list `Tck.checkpoints(skip_tests)`
+returns, index for index. The checkpoints of the tests `skip_tests` leaves out
+follow it, each `skipped`, so a test a person runs anyway is followed too. A
+checkpoint's `index` everywhere else is its place in this list. A run with no
+checkpoints publishes no plan.
+
+```json
+{"kind": "checkpoints_planned", "job_id": "3f1c…", "checkpoints": [
+  {"test_id": "push", "test_name": "Push", "phase": "execution", "position": "execution/1",
+   "step_id": "await_call", "uses": "mock/wait/http_request", "direction": "inbound", "kind": "wait",
+   "via": "direct", "name": null, "label": "Push the certificate", "description": null,
+   "timeout_s": 300, "conditional": false, "repeated": false,
+   "state": "ahead", "attempts": 0, "asked_at": null, "answered_at": null, "response_s": null}]}
+```
+
+#### `checkpoint_updated`
+
+One checkpoint changed. Published right after the event that changed it — the
+step asked (`step_waiting`, `step_selecting`; for a checkpoint its step does
+not ask itself, when the step really runs — after its `if:` — with no `cause`),
+the answer came (`step_received`, `step_selected`; a `step_received` with
+`refused` is no answer and changes nothing), the step ended, its test started again or ended, the run
+ended — one per changed checkpoint.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"checkpoint_updated"` | |
+| `job_id` | string | |
+| `index` | integer | Its place in `checkpoints_planned`. |
+| `revision` | integer | This checkpoint's update count, from 1: two updates never carry the same data. |
+| `cause` | string \| null | The `kind` of the event that changed it; null for a change no event announces: a step starting to run (an `outbound` checkpoint is asked once its `if:` held, after `step_started`; a nested step announces nothing), a `flow/if` branch not taken, a step interrupted under the run (a cancel, an error past its guard). |
+| `cause_sequence` | integer \| null | That event's `sequence` in the player's own trace, when it writes one. A host that numbers events itself reads `cause` instead: the cause is the last event of that kind it published. |
+| `checkpoint` | checkpoint | The whole checkpoint as it reads now. |
+
+```json
+{"kind": "checkpoint_updated", "job_id": "3f1c…", "index": 0, "revision": 2,
+ "cause": "step_received", "cause_sequence": 41,
+ "checkpoint": {"test_id": "push", "step_id": "await_call", "direction": "inbound", "kind": "wait",
+                "state": "cleared", "attempts": 1, "asked_at": "2026-10-12T10:00:00.120Z",
+                "answered_at": "2026-10-12T10:00:03.532Z", "response_s": 3.412, "…": "…"}}
+```
+
+On the console: `checkpoint.updated #1 [push] await_call inbound → cleared (attempt 1)`.
+
 ## Ordering
 
 Within a job, events arrive in execution order, and the `id:` sequence is
@@ -631,7 +752,9 @@ monotonic. The nesting is:
 
 ```text
 job_started
+  checkpoints_planned       (when the run has checkpoints)
   test_started
+    [checkpoint_updated]    (after any event that changed a checkpoint)
     step_started
       assertion_result        (zero or more)
     step_completed | step_failed | step_skipped

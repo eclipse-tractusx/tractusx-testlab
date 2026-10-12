@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """CLI command for executing TCKs."""
@@ -34,7 +35,9 @@ import typer
 
 from tractusx_testlab.cli import app
 from tractusx_testlab.cli._run_report import execute_with_progress, print_run_header
-from tractusx_testlab.cli._run_summary import print_run_results
+from tractusx_testlab.cli._run_summary import _colour_wanted, print_run_results, stopped
+from tractusx_testlab.cli._run_vars import build_runtime_vars
+from tractusx_testlab.cli._terminal_operator import TerminalOperator, parse_choices
 from tractusx_testlab.logging import transcript
 
 
@@ -78,13 +81,36 @@ def run(
             "outputs, checks, and request/response. Defaults to ./data."
         ),
     ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        envvar="TESTLAB_YES",
+        help="Approve the run's checkpoints without asking. It never answers a choice.",
+    ),
+    choose: list[str] | None = typer.Option(
+        None,
+        "--choose",
+        help=(
+            "Answer a choice up front: <step_id>=<option id|n>, the option with that id "
+            "first, else the one numbered so. Can be repeated."
+        ),
+    ),
 ) -> None:
-    """Load and execute a TCK, printing results to stdout."""
+    """Load and execute a TCK, printing results to stdout.
+
+    Before anything runs, the run's checkpoints are listed and approved
+    (``Continue? [y/N]``); a choice the run puts to the operator is asked at
+    the terminal. Exit codes: 0 passed, 1 failed, 2 the run could not get an
+    answer (no terminal and no ``--yes`` or ``--choose``, the input ended, a
+    ``--choose`` value naming no option, or the operator could not be asked),
+    3 not approved, 4 stopped at a choice.
+    """
     # Register all local step executors (triggers @step() decorators)
     from tractusx_testlab.config.loader import ConfigLoader
     from tractusx_testlab.player.execution.player import TestlabPlayer
 
-    runtime_vars = _build_runtime_vars(config_file, var)
+    runtime_vars = build_runtime_vars(config_file, var)
 
     # Through the loader, so `testlab.config.yaml` and every TESTLAB_* variable
     # — the engine's infrastructure bindings among them — reach a CLI run the
@@ -96,6 +122,9 @@ def run(
         },
     )
     player = TestlabPlayer(config=config)
+    operator = TerminalOperator(
+        assume_yes=yes, choices=parse_choices(choose), colour=_colour_wanted()
+    )
 
     # Opened here, before anything is compiled, because the compiler's output is
     # part of what a person reads the transcript for — as are the run header and
@@ -111,6 +140,7 @@ def run(
             player,
             runtime_vars,
             run_id,
+            operator,
             player_keys=player_keys,
             compiler_pub=compiler_pub,
         )
@@ -123,12 +153,14 @@ def _run_compiled(
     player: Any,
     runtime_vars: dict[str, str],
     run_id: str,
+    operator: TerminalOperator,
     *,
     player_keys: Path | None,
     compiler_pub: Path | None,
 ) -> None:
     """Compile if needed, execute, and report — all of it inside the transcript."""
     from tractusx_testlab.models import AuthoringError
+    from tractusx_testlab.player.operator import RunAborted, RunDeclined
 
     # Nothing executes that has not been compiled. A YAML manifest is compiled
     # into a throwaway package first, so every run — not only the ones that
@@ -152,7 +184,11 @@ def _run_compiled(
         print_run_header(target, config_file, config, runtime_vars, total_steps)
 
         try:
-            result = execute_with_progress(player, tck, runtime_vars, total_steps, run_id)
+            result = execute_with_progress(
+                player, tck, runtime_vars, total_steps, run_id, operator=operator
+            )
+        except (RunDeclined, RunAborted) as exc:
+            stopped(exc)
         except AuthoringError as exc:
             # A run that was never given what it needs — an unbound capability,
             # an unsupplied input — is a configuration outcome, not a crash.
@@ -225,53 +261,6 @@ def _reject_bare_test(target: Path) -> None:
             err=True,
         )
         raise typer.Exit(1)
-
-
-def _build_runtime_vars(
-    config_file: Path | None,
-    var_overrides: list[str] | None,
-) -> dict[str, str]:
-    """Merge variables from config file (lower priority) and --var flags (higher priority)."""
-    runtime_vars: dict[str, str] = {}
-
-    if config_file is not None:
-        runtime_vars = _load_config_variables(config_file)
-
-    if var_overrides:
-        _apply_var_overrides(runtime_vars, var_overrides)
-
-    return runtime_vars
-
-
-def _load_config_variables(config_file: Path) -> dict[str, str]:
-    """Load runtime variables from a config YAML file."""
-    import yaml as _yaml
-
-    if not config_file.exists():
-        typer.echo(f"Error: config file not found: {config_file}", err=True)
-        raise typer.Exit(1)
-
-    with open(config_file, encoding="utf-8") as config_handle:
-        config_data = _yaml.safe_load(config_handle) or {}
-
-    result: dict[str, str] = {}
-    variables = config_data.get("variables", {})
-    for var_name, var_def in variables.items():
-        if isinstance(var_def, dict) and var_def.get("default") is not None:
-            result[var_name] = str(var_def["default"])
-        elif not isinstance(var_def, dict):
-            result[var_name] = str(var_def)
-    return result
-
-
-def _apply_var_overrides(runtime_vars: dict[str, str], var_overrides: list[str]) -> None:
-    """Apply --var KEY=VALUE overrides to the runtime vars dict."""
-    for entry in var_overrides:
-        if "=" not in entry:
-            typer.echo(f"Invalid --var format (expected KEY=VALUE): {entry}", err=True)
-            raise typer.Exit(1)
-        key, value = entry.split("=", 1)
-        runtime_vars[key] = value
 
 
 def _load_tck(

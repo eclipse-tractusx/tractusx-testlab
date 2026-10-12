@@ -47,7 +47,15 @@ Every line is a self-contained CloudEvent::
 The ``id`` encodes structural context as path segments so an event says where
 it belongs without the reader tracking state across lines; the trailing 12-hex
 blake2b of ``data`` disambiguates two emissions with the same path — the second
-attempt of a retried step, most often.
+attempt of a retried step, most often. :func:`event_id` builds it, for anyone
+who writes an event of the same run outside the player (an engine closing a
+run whose player is gone).
+
+No two events of a run share an id. The data of an event that can happen twice
+at one place says which time it is — a step's ``attempt``, a pause's
+``occurrence``, a checkpoint update's ``revision`` — so its hash differs. Should
+two still coincide, the trace says which occurrence the later one is
+(``occurrence``), as the engine does for the events it numbers itself.
 """
 
 from __future__ import annotations
@@ -71,15 +79,58 @@ SOURCE_BOOT = "testlab/player/boot"
 SOURCE_VARIABLES = "testlab/player/variables"
 
 
-def _digest(data: Any) -> str:
-    """A 12-hex fingerprint of an event's payload.
+#: The data field that says which occurrence of an otherwise identical event this is.
+OCCURRENCE = "occurrence"
+
+
+def event_data(data: Any) -> Any:
+    """*data* as the trace writes it: JSON types, ``None`` fields left out, secrets masked.
+
+    Models are dumped, datetimes become ISO 8601 with ``Z``. What
+    :func:`event_digest` hashes; a host writing an event of its own into a
+    run's record writes this, so the record and the id agree. Writing it again
+    changes nothing.
+    """
+    return mask(_jsonable(data))
+
+
+def event_digest(data: Any) -> str:
+    """A 12-hex fingerprint of an event's payload — the last segment of its id.
 
     Keyed on the payload rather than on a counter so the same event re-derived
     from the same run gets the same id — the trace is meant to be an audit
-    record, and an id that changes per read is not one.
+    record, and an id that changes per read is not one. *data* is hashed as it
+    is written (:func:`event_data`), so a dict with ``None`` fields or
+    datetimes gets the id the trace gives the same event.
     """
-    encoded = json.dumps(data, sort_keys=True, default=str, separators=(",", ":"))
+    return _hash(event_data(data))
+
+
+def _hash(payload: Any) -> str:
+    """The digest of a payload already in its written form (:func:`event_data`)."""
+    encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
     return hashlib.blake2b(encoded.encode("utf-8"), digest_size=6).hexdigest()
+
+
+#: The name the engine imported before :func:`event_digest` was public.
+_digest = event_digest
+
+
+def event_id(tck_id: str, scope: tuple[str, ...], event_type: str, data: Any) -> str:
+    """An event's id (ADR-0016): ``<tck>/<scope…>/<event type>/<digest of data>``.
+
+    The one grammar every event of a run is named in — the player's own, and
+    any its host writes into the same run — e.g.
+    ``event_id("ccm-tck", ("checkpoints", "3"), "checkpoint.updated", data)``.
+    *data* is taken as the trace writes it (:func:`event_data`): the id is the
+    one :meth:`ExecutionTrace.emit` gives the same event.
+    """
+    return _id(tck_id, scope, event_type, event_data(data))
+
+
+def _id(tck_id: str, scope: tuple[str, ...], event_type: str, payload: Any) -> str:
+    """:func:`event_id` of a payload already in its written form."""
+    return "/".join((tck_id or "tck", *scope, event_type, _hash(payload)))
 
 
 class ExecutionTrace:
@@ -94,7 +145,7 @@ class ExecutionTrace:
     at every call site.
     """
 
-    __slots__ = ("_handle", "_lock", "_path", "_sequence", "_tck_id")
+    __slots__ = ("_handle", "_issued", "_lock", "_path", "_sequence", "_tck_id")
 
     def __init__(self, tck_id: str, path: Path | None = None) -> None:
         self._tck_id = tck_id or "tck"
@@ -102,6 +153,7 @@ class ExecutionTrace:
         self._sequence = 0
         self._lock = threading.Lock()
         self._handle: IO[str] | None = None
+        self._issued: set[str] = set()
         if path is not None:
             # Every call the run made, in full: 0600, in 0700 directories.
             self._handle = open_private(path)
@@ -144,13 +196,20 @@ class ExecutionTrace:
         A secret the run minted is masked here, on the way in, so neither the
         file nor the envelope handed back ever holds it (logging.masking).
         """
-        payload = mask(_jsonable(data))
+        payload = event_data(data)
         with self._lock:
             self._sequence += 1
             sequence = self._sequence
+            identifier = _id(self._tck_id, scope, event_type, payload)
+            occurrence = 1
+            while identifier in self._issued:  # the data did not tell them apart
+                occurrence += 1
+                payload = {**payload, OCCURRENCE: occurrence}
+                identifier = _id(self._tck_id, scope, event_type, payload)
+            self._issued.add(identifier)
             envelope = {
                 "specversion": SPEC_VERSION,
-                "id": "/".join((self._tck_id, *scope, event_type, _digest(payload))),
+                "id": identifier,
                 "source": source,
                 "type": event_type,
                 "time": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
@@ -170,9 +229,15 @@ class ExecutionTrace:
 
 
 def _jsonable(value: Any) -> Any:
-    """Coerce pydantic models, enums and datetimes into plain JSON types."""
+    """Coerce pydantic models, enums and datetimes into plain JSON types, ``None`` fields left out.
+
+    A model's dump is coerced again, so a model's ``None`` fields are left out
+    as a dict's are: the written form holds no ``None`` field at any depth, and
+    coercing it again gives it back unchanged — the id a reader recomputes
+    from the JSONL is the id the trace wrote.
+    """
     if hasattr(value, "model_dump"):
-        return value.model_dump(mode="json")
+        return _jsonable(value.model_dump(mode="json"))
     if isinstance(value, dict):
         return {key: _jsonable(item) for key, item in value.items() if item is not None}
     if isinstance(value, list):

@@ -27,12 +27,13 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import Field
 
 from tractusx_testlab.authoring.registry import StepRegistry, step
 from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.models.primitives.checkpoint import NestedRun
 from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.steps.flow._nested import (
@@ -104,6 +105,8 @@ class ForEachStep(BaseStep[ForEachParams, ForEachOutput]):
     #: Handed over unresolved by the runner (``resolve_params``): the nested
     #: steps resolve their own ``with:`` once per item.
     deferred_params = frozenset({"steps"})
+    #: Run once per item, so a checkpoint among them may be asked more than once.
+    nested_steps: ClassVar[dict[str, NestedRun]] = {"steps": NestedRun.REPEATED}
     #: What the compiler lets a nested step read that exists nowhere else.
     body_references = frozenset({EACH_ITEM, EACH_INDEX})
 
@@ -179,7 +182,9 @@ async def _run_sequence(
             )
             break
 
-        result = await context.invoke_step(step_cls, nested_def, step_name, context)
+        result = await context.invoke_step(
+            step_cls, nested_def, step_name, context, at=("steps", idx)
+        )
         results.append(result)
         if result.status == StepStatus.FAILED:
             break

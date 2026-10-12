@@ -10,6 +10,8 @@
 
 Wait for an inbound HTTP request that arrives through the engine connector's data plane.
 
+**Checkpoint** — `inbound`, via `dataplane`: your system calls the Test Suite, which answers. Every use of the step is one; a test switches it off with `checkpoint: false`.
+
 The same wait as `mock/wait/http_request`, for a mock the system under test must not call directly: a test offers an asset on the engine connector whose data address is the mock, and the SUT negotiates that asset and calls through its data plane. What differs is what the run announces — not the mock URL, which is only the data plane's target, but the offer to negotiate: the asset (by its public properties when given), and the engine connector's DSP URL and identity from the run's infrastructure binding.
 
 **Inputs**

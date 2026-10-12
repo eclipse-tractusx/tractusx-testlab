@@ -35,9 +35,9 @@ plane). Plain ASCII, so it survives every terminal and CI log.
 
 from __future__ import annotations
 
+from tractusx_testlab.logging.window import window
+
 _WIDTH = 78
-_RULE = "=" * _WIDTH
-_THIN = "-" * _WIDTH
 
 
 def _literal(value: object) -> str:
@@ -88,10 +88,8 @@ def action_banner(data: dict) -> str:
     timeout = data.get("timeout_s")
     title = f"ACTION REQUIRED — {action['label']}" if action.get("label") else "ACTION REQUIRED"
     budget = f"waits up to {float(timeout):.0f}s" if timeout else ""
-    pad = max(1, _WIDTH - 2 - len(title) - len(budget))
-    rows = [_RULE, f"  {title}{' ' * pad}{budget}".rstrip()]
     where = f"[{data.get('test_id', '')}] {data.get('step_id') or ''}".rstrip()
-    rows += [f"  {where}", _THIN]
+    rows: list[str] = []
     if action.get("description"):
         rows += [f"  {action['description']}", ""]
     offer = listener.get("offer")
@@ -108,5 +106,6 @@ def action_banner(data: dict) -> str:
             f"    {field.get('label', '')!s:<{width}}  {_literal(field.get('value'))}"
             for field in fields
         ]
-    rows.append(_RULE)
-    return "\n".join(rows)
+    # A URL to call, an id to copy: kept whole, never cut to the frame.
+    framed = window(title, rows, aside=budget, heading=[f"  {where}"], width=_WIDTH, cut=False)
+    return "\n".join(framed)
