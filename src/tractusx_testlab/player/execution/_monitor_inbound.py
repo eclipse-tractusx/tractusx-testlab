@@ -190,15 +190,22 @@ class InboundEvents(CheckpointEvents):
         What arrived is the SUT's to send, and it is published before the step
         that waited on it returns — before anything learned which of it is a
         credential. So it is redacted here, the way a recorded call is: the
-        headers, the query and the body by the names they carry (logging.wire).
-        The step itself is handed the call as it came. At an inbound checkpoint
-        this is the exchange, and it answers the question.
+        headers, the query and the body by the names they carry (logging.wire),
+        and the Test Suite's answer body the same way — a mock answering a token
+        endpoint answers with one. The step itself is handed the call as it
+        came. At an inbound checkpoint this is the exchange, and it answers the
+        question — unless the call was turned away (``refused``), which is no
+        answer: the checkpoint is not cleared, and the step fails on it.
         """
+        answer = request.response
         request = request.model_copy(
             update={
                 "headers": wire.safe_headers(request.headers),
                 "query_params": wire.redact_secrets(request.query_params),
                 "payload": wire.redact_secrets(request.payload),
+                "response": None
+                if answer is None
+                else answer.model_copy(update={"body": wire.redact_secrets(answer.body)}),
             }
         )
         attempt, ref, pauses = self._marks()
@@ -223,4 +230,7 @@ class InboundEvents(CheckpointEvents):
             self._trace_marks(attempt, ref, pauses),
         )
         self._publish(event, event_id)
-        self._follow("answered", self._cause(event.kind.value), waited_ms)
+        if request.refused is not None:
+            self._follow("refused", self._cause(event.kind.value))
+        else:
+            self._follow("answered", self._cause(event.kind.value), waited_ms)

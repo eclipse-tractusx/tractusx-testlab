@@ -699,8 +699,11 @@ A checkpoint, as both events carry it:
 #### `checkpoints_planned`
 
 Once, right after `job_started` and before the first test: every checkpoint the
-run will meet, in run order, each `ahead`. A checkpoint's `index` everywhere
-else is its place in this list. A run with no checkpoints publishes no plan.
+run will meet, in run order, each `ahead` — the list `Tck.checkpoints(skip_tests)`
+returns, index for index. The checkpoints of the tests `skip_tests` leaves out
+follow it, each `skipped`, so a test a person runs anyway is followed too. A
+checkpoint's `index` everywhere else is its place in this list. A run with no
+checkpoints publishes no plan.
 
 ```json
 {"kind": "checkpoints_planned", "job_id": "3f1c…", "checkpoints": [
@@ -714,9 +717,10 @@ else is its place in this list. A run with no checkpoints publishes no plan.
 #### `checkpoint_updated`
 
 One checkpoint changed. Published right after the event that changed it — the
-step asked (`step_waiting`, `step_selecting`, or `step_started` for a checkpoint
-its step does not ask itself), the answer came (`step_received`,
-`step_selected`), the step ended, its test started again or ended, the run
+step asked (`step_waiting`, `step_selecting`; for a checkpoint its step does
+not ask itself, when the step really runs — after its `if:` — with no `cause`),
+the answer came (`step_received`, `step_selected`; a `step_received` with
+`refused` is no answer and changes nothing), the step ended, its test started again or ended, the run
 ended — one per changed checkpoint.
 
 | Field | Type | Description |

@@ -82,7 +82,8 @@ class StepEvents(CheckpointEvents):
         *inputs* is the step's ``with:`` block with its references resolved —
         the values the step is about to be given, not the template naming them —
         with every credential-named input shown as ``***`` (logging.wire). A
-        checkpoint the step does not ask for itself is asked now.
+        checkpoint the step does not ask for itself is asked only once the step
+        really runs — after its ``if:`` (``CheckpointTracker.begin``).
         """
         inputs = wire.redact_secrets(inputs)
         attempt, ref, pauses = self._marks()
@@ -110,7 +111,6 @@ class StepEvents(CheckpointEvents):
             ),
             event_id,
         )
-        self._follow("begin")
 
     def on_step_call(
         self,

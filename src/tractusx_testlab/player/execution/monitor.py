@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """ExecutionMonitor — the engine's single event publisher.
@@ -201,12 +202,21 @@ class ExecutionMonitor(StepEvents, InboundEvents, SelectionEvents):
     # Test lifecycle
     # ------------------------------------------------------------------
 
-    def on_test_started(self, job_id: str, test: str, index: int, attempt: int = 1) -> None:
+    def on_test_started(
+        self, job_id: str, test: str, index: int, attempt: int = 1, *, skipped: bool = False
+    ) -> None:
+        """Publish a test_started event.
+
+        A *skipped* test is announced the same way (its ``test.completed``
+        says ``SKIPPED``), but nothing of it runs: its checkpoints do not start
+        over, so one ``skip_tests`` left out stays ``skipped``.
+        """
         event_id = self._trace.test_started(test, index, attempt)
         self._publish(
             TestStartedEvent(job_id=job_id, test_id=test, index=index, attempt=attempt), event_id
         )
-        self._follow("test_started", test, self._cause("test_started"))
+        if not skipped:
+            self._follow("test_started", test, self._cause("test_started"))
 
     def on_test_awaiting(self, job_id: str, test: str, index: int) -> None:
         """An on-demand test is ready and waits for someone to run it."""

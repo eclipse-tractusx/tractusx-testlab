@@ -83,15 +83,32 @@ SOURCE_VARIABLES = "testlab/player/variables"
 OCCURRENCE = "occurrence"
 
 
+def event_data(data: Any) -> Any:
+    """*data* as the trace writes it: JSON types, ``None`` fields left out, secrets masked.
+
+    Models are dumped, datetimes become ISO 8601 with ``Z``. What
+    :func:`event_digest` hashes; a host writing an event of its own into a
+    run's record writes this, so the record and the id agree. Writing it again
+    changes nothing.
+    """
+    return mask(_jsonable(data))
+
+
 def event_digest(data: Any) -> str:
     """A 12-hex fingerprint of an event's payload — the last segment of its id.
 
     Keyed on the payload rather than on a counter so the same event re-derived
     from the same run gets the same id — the trace is meant to be an audit
     record, and an id that changes per read is not one. *data* is hashed as it
-    is written: JSON types, secrets masked.
+    is written (:func:`event_data`), so a dict with ``None`` fields or
+    datetimes gets the id the trace gives the same event.
     """
-    encoded = json.dumps(data, sort_keys=True, default=str, separators=(",", ":"))
+    return _hash(event_data(data))
+
+
+def _hash(payload: Any) -> str:
+    """The digest of a payload already in its written form (:func:`event_data`)."""
+    encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
     return hashlib.blake2b(encoded.encode("utf-8"), digest_size=6).hexdigest()
 
 
@@ -105,8 +122,15 @@ def event_id(tck_id: str, scope: tuple[str, ...], event_type: str, data: Any) ->
     The one grammar every event of a run is named in — the player's own, and
     any its host writes into the same run — e.g.
     ``event_id("ccm-tck", ("checkpoints", "3"), "checkpoint.updated", data)``.
+    *data* is taken as the trace writes it (:func:`event_data`): the id is the
+    one :meth:`ExecutionTrace.emit` gives the same event.
     """
-    return "/".join((tck_id or "tck", *scope, event_type, event_digest(data)))
+    return _id(tck_id, scope, event_type, event_data(data))
+
+
+def _id(tck_id: str, scope: tuple[str, ...], event_type: str, payload: Any) -> str:
+    """:func:`event_id` of a payload already in its written form."""
+    return "/".join((tck_id or "tck", *scope, event_type, _hash(payload)))
 
 
 class ExecutionTrace:
@@ -172,16 +196,16 @@ class ExecutionTrace:
         A secret the run minted is masked here, on the way in, so neither the
         file nor the envelope handed back ever holds it (logging.masking).
         """
-        payload = mask(_jsonable(data))
+        payload = event_data(data)
         with self._lock:
             self._sequence += 1
             sequence = self._sequence
-            identifier = event_id(self._tck_id, scope, event_type, payload)
+            identifier = _id(self._tck_id, scope, event_type, payload)
             occurrence = 1
             while identifier in self._issued:  # the data did not tell them apart
                 occurrence += 1
                 payload = {**payload, OCCURRENCE: occurrence}
-                identifier = event_id(self._tck_id, scope, event_type, payload)
+                identifier = _id(self._tck_id, scope, event_type, payload)
             self._issued.add(identifier)
             envelope = {
                 "specversion": SPEC_VERSION,

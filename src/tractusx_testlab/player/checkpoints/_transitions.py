@@ -35,6 +35,9 @@ reads in one place:
   question still open, ``not_reached`` if it was never asked; a step that
   stopped because the run was cancelled leaves an open question
   ``not_reached``, as does a step interrupted without an outcome;
+* a ``flow/if`` branch not taken: what it carries is ``skipped`` — also a
+  failure an earlier run of the flow step left there (a retry that took the
+  other branch);
 * a checkpoint a flow step carries and never reached follows the flow step:
   ``skipped`` when it completed or was skipped, ``not_reached`` when it failed;
 * its **test** ended without reaching it: ``skipped`` when the test passed or
@@ -54,6 +57,10 @@ from tractusx_testlab.player.checkpoints.frames import StepFrame
 
 #: States a run that ended leaves no checkpoint in.
 OPEN = frozenset({"ahead", "now"})
+#: States a ``flow/if`` branch not taken this time turns to ``skipped``: not
+#: asked yet, or failed in an earlier run of the flow step that a later one
+#: did not need (a retry that took the other branch).
+SUPERSEDED = frozenset({"ahead", "failed", "timed_out", "not_reached"})
 #: Test outcomes that ran without failing.
 _TEST_PASSED = frozenset({TestStatus.COMPLETED, TestStatus.SKIPPED})
 

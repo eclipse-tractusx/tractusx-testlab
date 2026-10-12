@@ -58,12 +58,24 @@ def make_intentionally_skipped_result(test: Test) -> TestResult:
     this result uses ``TestStatus.SKIPPED`` so the overall TCK result remains
     ``COMPLETED`` when all non-skipped tests pass.
     """
+    return _not_run_result(test, TestStatus.SKIPPED)
+
+
+def make_interrupted_result(test: Test) -> TestResult:
+    """Build a CANCELLED result for a test the run was interrupted in (Ctrl-C, a host's cancel).
+
+    ``CANCELLED`` fails the TCK: a test cut short verified nothing.
+    """
+    return _not_run_result(test, TestStatus.CANCELLED)
+
+
+def _not_run_result(test: Test, status: TestStatus) -> TestResult:
     now = datetime.now(UTC)
     return TestResult(
         test_id=test.definition.id,
         test_name=test.name,
         dataspace_version=test.dataspace_version,
-        status=TestStatus.SKIPPED,
+        status=status,
         execution=[],
         started_at=now,
         finished_at=now,

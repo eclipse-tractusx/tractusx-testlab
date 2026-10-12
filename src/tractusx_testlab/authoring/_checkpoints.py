@@ -88,6 +88,23 @@ def collect_checkpoints(tck: Tck, skip_tests: Collection[str] = ()) -> list[Plan
     ]
 
 
+def skipped_checkpoints(tck: Tck, skip_tests: Collection[str]) -> list[PlannedCheckpoint]:
+    """The checkpoints :func:`collect_checkpoints` leaves out for *skip_tests*, in run order.
+
+    A run plans them after the others, already ``skipped`` (``player.checkpoints``):
+    a test ``skip_tests`` names is still run when a person asks for it
+    (``TckSession.run_test``), and its checkpoints are then followed too —
+    without moving the index of any checkpoint the briefing listed.
+    """
+    skipped = set(skip_tests)
+    return [
+        planned
+        for test in tck.tests
+        if skipped & {test.test_id, test.definition.id}
+        for planned in _of_test(test)
+    ]
+
+
 def effective_checkpoint(definition: StepDefinition) -> tuple[Checkpoint, bool] | None:
     """The checkpoint *definition* is, and whether its step asks for itself; ``None`` if none.
 

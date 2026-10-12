@@ -137,6 +137,10 @@ async def _resolve_and_run_step(
         monitor.on_step_completed(job_id, test.definition.id, step_def.id, missing)
         return config.failure_policy == FailurePolicy.STOP
 
+    # Only now does the step run: a checkpoint it does not ask for itself is
+    # asked here, not at ``step.start`` — a step whose `if:` said no, or whose
+    # type is missing, was never asked.
+    context.checkpoints.begin()
     step_result = await run_and_publish(step_cls, step_def, step_name, context, params)
     step_result.phase = config.phase
     results.append(step_result)

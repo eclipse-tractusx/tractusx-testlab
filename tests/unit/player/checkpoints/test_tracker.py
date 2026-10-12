@@ -231,3 +231,83 @@ def test_an_unbound_tracker_numbers_runs_and_publishes_nothing() -> None:
             assert frame.attempt == attempt
             tracker.asked(_ASKED)
     assert tracker.checkpoints == []
+
+
+def test_a_branch_not_taken_on_a_retry_supersedes_the_failure_an_earlier_attempt_left() -> None:
+    """flow/retry { flow/if { then: [W1], else: [W2] } }: attempt 1 took ``then``, attempt 2 ``else``."""
+    then = _planned(("execution", 0, "steps", 0, "then", 0))
+    other = _planned(("execution", 0, "steps", 0, "else", 0))
+    tracker, published = _tracker(then, other)
+    with tracker.step("t", ("execution", 0)):
+        for taken, untaken in (("then", "else"), ("else", "then")):
+            with tracker.nested(("steps", 0)):
+                tracker.not_taken(untaken)
+                with tracker.nested((taken, 0)):
+                    tracker.asked(_ASKED)
+                    if taken == "else":
+                        tracker.answered(_ANSWERED, 10)
+                        tracker.ended(StepStatus.PASSED)
+                    else:
+                        tracker.ended(StepStatus.FAILED)
+                tracker.ended(StepStatus.PASSED if taken == "else" else StepStatus.FAILED)
+        tracker.ended(StepStatus.PASSED)
+    tracker.test_ended("t", TestStatus.COMPLETED, Cause("test_completed"))
+    assert published.states(0) == ["now", "timed_out", "skipped"]
+    assert published.states(1) == ["skipped", "now", "cleared"]
+
+
+def test_a_branch_not_taken_keeps_an_earlier_answer() -> None:
+    then = _planned(("execution", 0, "steps", 0, "then", 0))
+    tracker, published = _tracker(then)
+    with tracker.step("t", ("execution", 0)):
+        with tracker.nested(("steps", 0)):
+            with tracker.nested(("then", 0)):
+                tracker.asked(_ASKED)
+                tracker.answered(_ANSWERED, 10)
+                tracker.ended(StepStatus.PASSED)
+        with tracker.nested(("steps", 0)):
+            tracker.not_taken("then")
+    assert published.states() == ["now", "cleared"]
+
+
+def test_a_call_turned_away_is_no_answer_and_fails_its_checkpoint() -> None:
+    tracker, published = _tracker(_planned(("execution", 0)))
+    with tracker.step("t", ("execution", 0)):
+        tracker.asked(_ASKED)
+        tracker.refused(_ANSWERED)
+        tracker.ended(StepStatus.FAILED)
+    assert published.states() == ["now", "failed"]
+    assert published.updates[-1][3].response_s is None
+
+
+def test_a_call_turned_away_before_the_ask_was_announced_still_asks() -> None:
+    tracker, published = _tracker(_planned(("execution", 0)))
+    with tracker.step("t", ("execution", 0)):
+        tracker.refused(_ANSWERED)
+        tracker.ended(StepStatus.FAILED)
+    assert published.states() == ["now", "failed"]
+
+
+def test_left_out_checkpoints_are_planned_after_the_others_skipped_and_still_followed() -> None:
+    kept = _planned(("execution", 0), test="kept")
+    left = _planned(("execution", 0), Direction.INTERNAL, test="left")
+    published = _Published()
+    tracker = CheckpointTracker([kept], published, left_out=[left])
+    tracker.plan()
+    (plan,) = published.plans
+    assert [(c.test_id, c.state) for c in plan] == [("kept", "ahead"), ("left", "skipped")]
+    tracker.test_started("left", Cause("test_started"))  # run on demand
+    with tracker.step("left", ("execution", 0)):
+        assert tracker.ref() is not None and tracker.ref().index == 1
+        tracker.asked(Cause("step_selecting"))
+        tracker.answered(Cause("step_selected"), 5)
+        tracker.ended(StepStatus.PASSED)
+    assert published.states(1) == ["ahead", "now", "cleared"]
+
+
+def test_a_question_that_is_no_checkpoint_is_still_noted_as_asked() -> None:
+    tracker, published = _tracker()
+    with tracker.step("t", ("execution", 0)) as frame:
+        tracker.asked(Cause("step_selecting"))
+        assert frame.asked
+    assert published.updates == []

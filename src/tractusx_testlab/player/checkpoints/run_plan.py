@@ -29,7 +29,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from typing import TYPE_CHECKING
 
-from tractusx_testlab.authoring._checkpoints import collect_checkpoints
+from tractusx_testlab.authoring._checkpoints import collect_checkpoints, skipped_checkpoints
 from tractusx_testlab.player.checkpoints.tracker import CheckpointTracker
 
 if TYPE_CHECKING:
@@ -46,7 +46,12 @@ def follow_checkpoints(
     tck: Tck,
     skip_tests: Collection[str],
 ) -> CheckpointTracker:
-    """Follow the checkpoints of *tck*'s run, less *skip_tests*, and publish them ``ahead``.
+    """Follow the checkpoints of *tck*'s run and publish them: ``ahead``, *skip_tests*' ``skipped``.
+
+    The plan starts with ``Tck.checkpoints(skip_tests)`` — the briefing's list,
+    same indexes — and ends with the checkpoints of the tests *skip_tests*
+    names, already ``skipped``: a person may still run one of those tests
+    (``TckSession.run_test``), and what it asks is then followed too.
 
     The tracker is bound to the run's context, where the runner opens a frame
     for every step, and to its monitor, which tells it what happens and
@@ -57,6 +62,7 @@ def follow_checkpoints(
         collect_checkpoints(tck, skip_tests),
         monitor.checkpoint_publisher(job_id),
         lambda: jobs.is_cancelled(job_id),
+        skipped_checkpoints(tck, skip_tests),
     )
     context.bind_checkpoints(tracker)
     monitor.follow_checkpoints(tracker)

@@ -51,6 +51,7 @@ from tractusx_testlab.player.execution._trace_formatter import (
     build_tck_result,
     finalize_job,
     make_intentionally_skipped_result,
+    make_interrupted_result,
 )
 from tractusx_testlab.player.execution.phase import _PHASE_TO_NAMESPACE
 from tractusx_testlab.player.execution.step_runner import run_test
@@ -96,6 +97,7 @@ class TckSession:
         "_started_at",
         "_tck",
         "_trace",
+        "_unfinished",
     )
 
     def __init__(
@@ -130,6 +132,8 @@ class TckSession:
         self._started_at = datetime.now(UTC)
         self._closed = False
         self._result: TckResult | None = None
+        #: The test running now, and its attempt: left set when the run is interrupted in it.
+        self._unfinished: tuple[Test, int] | None = None
 
     # ------------------------------------------------------------------
     # What the session holds
@@ -207,7 +211,9 @@ class TckSession:
         """Tear the session down and deliver the verdict (latest attempts); idempotent.
 
         A test that never ran (skipped, or ``async: true`` and never asked for) is
-        skipped. The services, the mock server and the transcript are released even
+        skipped. A test the run was interrupted in (cancelled mid-test, or an
+        error the test did not catch) is not started over to be skipped: it ends
+        ``CANCELLED``, and what its checkpoints became stays as it was. The services, the mock server and the transcript are released even
         when publishing that raises (a host abandoning a cancelled run does).
         """
         async with self._lock:
@@ -218,6 +224,7 @@ class TckSession:
             self._closed = True
             try:
                 try:
+                    self._end_unfinished()
                     for idx, test in enumerate(self._tck.tests):
                         if test.test_id not in self._results:
                             self._skip(idx, test)
@@ -257,7 +264,9 @@ class TckSession:
         self._attempts[test.test_id] = attempt
         self._monitor.on_test_started(self.job_id, test.definition.id, idx, attempt)
         self._job.current_test = test.name
+        self._unfinished = (test, attempt)
         result = await run_test(test, self._context, self.job_id, self._monitor, self._jobs)
+        self._unfinished = None
         self._results[test.test_id] = result
         self._monitor.on_test_completed(self.job_id, result, attempt)
         return result
@@ -265,8 +274,22 @@ class TckSession:
     def _skip(self, idx: int, test: Test) -> None:
         skipped = make_intentionally_skipped_result(test)
         self._results[test.test_id] = skipped
-        self._monitor.on_test_started(self.job_id, test.definition.id, idx)
+        self._monitor.on_test_started(self.job_id, test.definition.id, idx, skipped=True)
         self._monitor.on_test_completed(self.job_id, skipped)
+
+    def _end_unfinished(self) -> None:
+        """End the test the run was interrupted in: ``CANCELLED``, without starting it again.
+
+        Its result is the attempt that was cut short, so the verdict does not
+        count an earlier attempt that passed.
+        """
+        if self._unfinished is None:
+            return
+        test, attempt = self._unfinished
+        self._unfinished = None
+        interrupted = make_interrupted_result(test)
+        self._results[test.test_id] = interrupted
+        self._monitor.on_test_completed(self.job_id, interrupted, attempt)
 
     def _forget_outputs(self, test: Test) -> None:
         """Drop what *test*'s previous attempt published under ``<phase>.<step id>.``.

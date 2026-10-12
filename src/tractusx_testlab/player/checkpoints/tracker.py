@@ -89,7 +89,10 @@ class CheckpointTracker:
 
     Built empty — it still numbers the runs of each step, and publishes
     nothing — for a context made outside the player; the player builds one
-    with the run's plan and publisher (:meth:`for_run`).
+    with the run's plan and publisher (``run_plan.follow_checkpoints``).
+    *left_out* are the checkpoints of the tests ``skip_tests`` names: planned
+    after the others, already ``skipped``, so a person running one of those
+    tests anyway (``TckSession.run_test``) is still followed.
     """
 
     __slots__ = ("_cancelled", "_planned", "_publisher", "_revisions", "_runs", "_statuses")
@@ -99,9 +102,15 @@ class CheckpointTracker:
         planned: list[PlannedCheckpoint] | None = None,
         publisher: CheckpointPublisher | None = None,
         cancelled: Callable[[], bool] = lambda: False,
+        left_out: list[PlannedCheckpoint] | None = None,
     ) -> None:
-        self._planned = list(planned or [])
-        self._statuses = [CheckpointStatus(**item.entry.model_dump()) for item in self._planned]
+        kept, skipped = list(planned or []), list(left_out or [])
+        self._planned = kept + skipped
+        self._statuses = [
+            CheckpointStatus(**item.entry.model_dump(), state="skipped" if left else "ahead")
+            for left, items in ((False, kept), (True, skipped))
+            for item in items
+        ]
         self._revisions = [0] * len(self._planned)
         self._publisher = publisher
         self._cancelled = cancelled
@@ -113,7 +122,7 @@ class CheckpointTracker:
         return list(self._statuses)
 
     def plan(self) -> None:
-        """Publish the plan: every checkpoint, ``ahead``. Once, before the first test."""
+        """Publish the plan: every checkpoint ``ahead``, the left-out ones ``skipped``. Once."""
         if self._publisher is not None and self._planned:
             self._publisher.planned(list(self._statuses))
 
@@ -164,13 +173,20 @@ class CheckpointTracker:
             self._end(frame, outcome, cause)
 
     def not_taken(self, branch: str) -> None:
-        """The current flow step did not take *branch*: what it carries is not needed."""
+        """The current flow step did not take *branch*: what it carries is not needed.
+
+        Nothing in *branch* has run in this run of the flow step yet, so a
+        failure found there was left by an earlier run of it — an earlier
+        attempt of the ``flow/retry`` or iteration of the loop it sits in. The
+        run that counts did not need it: it is ``skipped`` too, not left failed
+        for a run that recovered. One that was ``cleared`` stays answered.
+        """
         frame = current_frame()
         if frame is None:
             return
         prefix = (*frame.path, branch)
         for index in self._under(frame.test_id, prefix):
-            if self._statuses[index].state == "ahead":
+            if self._statuses[index].state in _transitions.SUPERSEDED:
                 self._set(index, None, state="skipped")
 
     # ------------------------------------------------------------------
@@ -178,9 +194,17 @@ class CheckpointTracker:
     # ------------------------------------------------------------------
 
     def asked(self, cause: Cause) -> None:
-        """The current step asked (``step_waiting``, ``step_selecting``); again after a pause."""
+        """The current step asked (``step_waiting``, ``step_selecting``); again after a pause.
+
+        Noted on the frame for a step that is no checkpoint too: a question put
+        again is a pause resumed, and its ``pauses`` count either way.
+        """
         frame = current_frame()
-        if frame is not None and frame.checkpoint is not None and not frame.asked:
+        if frame is None or frame.asked:
+            return
+        if frame.checkpoint is None:
+            frame.asked = True
+        else:
             self._ask(frame, cause)
 
     def suspended(self) -> None:
@@ -204,6 +228,19 @@ class CheckpointTracker:
             answered_at=datetime.now(UTC),
             response_s=round(waited_ms / 1000, 3),
         )
+
+    def refused(self, cause: Cause) -> None:
+        """A call came to the current step's question and was turned away (no key, the wrong one).
+
+        It is not an answer: the checkpoint is not ``cleared``, and stays
+        ``now`` until the step fails on it — ``failed``, the call having come.
+        """
+        frame = current_frame()
+        if frame is None or frame.checkpoint is None:
+            return
+        if not frame.asked:
+            self._ask(frame, cause)
+        frame.answered = True
 
     def ref(self) -> CheckpointRef | None:
         """Which checkpoint, and which attempt of it, the current step is — for its events."""

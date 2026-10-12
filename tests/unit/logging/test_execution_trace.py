@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """What ADR-0016 promises a reader of an execution trace.
@@ -34,9 +35,10 @@ from __future__ import annotations
 
 import io
 import json
+from datetime import UTC, datetime
 
 from tractusx_testlab.logging.structured import StructuredLogger
-from tractusx_testlab.logging.trace import ExecutionTrace, event_digest, event_id
+from tractusx_testlab.logging.trace import ExecutionTrace, event_data, event_digest, event_id
 from tractusx_testlab.models.authoring.definitions import Assertion
 from tractusx_testlab.models.primitives.enums import StepPhase, StepStatus
 from tractusx_testlab.models.runtime.results import (
@@ -111,6 +113,28 @@ class TestEnvelope:
         assert first["id"] != second["id"]
         assert second["data"] == {"test_id": "t", "occurrence": 2}
         assert second["id"].endswith(event_digest(second["data"]))
+
+    def test_a_host_gets_the_id_the_trace_gives_for_none_fields_and_datetimes(self) -> None:
+        """``event_id`` hashes the data as the trace writes it, not as it was handed in."""
+        data = {
+            "job_id": "j",
+            "status": "CANCELLED",
+            "error": None,
+            "at": datetime(2026, 10, 12, 10, tzinfo=UTC),
+        }
+        written = ExecutionTrace("tck").emit("tck.end", data)
+        assert written["id"] == event_id("tck", (), "tck.end", data)
+        assert written["id"] == event_id("tck", (), "tck.end", written["data"])
+        assert written["id"].endswith(event_digest(data))
+        assert (
+            event_data(data)
+            == written["data"]
+            == {
+                "job_id": "j",
+                "status": "CANCELLED",
+                "at": "2026-10-12T10:00:00Z",
+            }
+        )
 
     def test_a_trace_with_nowhere_to_write_still_counts(self, tmp_path) -> None:
         trace = ExecutionTrace("demo-tck")

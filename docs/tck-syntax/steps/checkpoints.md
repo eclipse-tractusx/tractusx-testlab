@@ -105,7 +105,7 @@ the fields. A checkpoint goes through these states:
 | `cleared` | Answered, and the step completed. |
 | `timed_out` | Nobody answered in time. |
 | `failed` | The step failed after the answer. |
-| `skipped` | Not needed: a `flow/if` branch not taken, a choice of one option. |
+| `skipped` | Not needed: a `flow/if` branch not taken, a choice of one option, a test left out with `skip_tests`. |
 | `not_reached` | The run stopped before it. |
 
 A checkpoint in a `flow/if` branch is `conditional`; one in a `flow/retry` or

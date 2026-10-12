@@ -712,9 +712,14 @@ that no id repeats and that the last resort was never needed.
 
 **The id function is public.** `tractusx_testlab.logging.trace.event_id(tck_id,
 scope, event_type, data)` builds `<tck>/<scope…>/<type>/<digest>` and
-`event_digest(data)` the digest, over `data` as written (JSON types, secrets
-masked). A host that writes an event of the run itself — the engine closing a
-run whose player is gone — names it with them. `_digest` stays as an alias.
+`event_digest(data)` the digest, over `data` as written: both first pass it
+through `event_data(data)`, the trace's own normalisation (models dumped,
+datetimes as ISO 8601 with `Z`, `None` fields left out, secrets masked), so
+`event_id(...)` is the id `ExecutionTrace.emit` gives the same event, whether
+the host hands in a dict with `None` fields and datetimes or the `data` read
+back from the JSONL. A host that writes an event of the run itself — the
+engine closing a run whose player is gone — names it with them, and writes
+`event_data(data)` as its `data`. `_digest` stays as an alias.
 
 **A host receives the envelope.** `ExecutionMonitor.add_trace_callback(fn)`
 calls `fn(event, payload, envelope)` with the CloudEvent the trace wrote for
@@ -727,7 +732,10 @@ engine's id, the trace's id and the id a viewer shows are one.
 
 **The inbound answer is recorded.** `tck.test.step.received` carries
 `response: {status_code, body}`, how the Test Suite answered the call, and a
-call the mock turned away is published as one too, with `refused`.
+call the mock turned away is published as one too, with `refused`. The answer
+body is redacted by name like the request it answers (`logging.wire`): a mock
+answering a token endpoint does not put the token in the trace, the envelope
+or a callback.
 
 ## Implementation Status
 
