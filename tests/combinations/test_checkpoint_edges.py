@@ -31,6 +31,7 @@ skips, and a test ``skip_tests`` left out that a person runs anyway.
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,7 @@ import yaml
 
 from combinations.mock_server_double import free_port
 from tractusx_testlab.config.settings import TestlabConfig
+from tractusx_testlab.logging.trace import event_data, event_digest
 from tractusx_testlab.models import TestStatus
 from tractusx_testlab.player import TestlabPlayer
 from tractusx_testlab.player.loading.loader import Loader
@@ -174,6 +176,40 @@ def test_a_test_interrupted_mid_run_ends_cancelled_and_keeps_what_its_checkpoint
     assert len(host.of("test.started")) == 1
     (completed,) = host.of("test.completed")
     assert completed["result"]["status"] == TestStatus.CANCELLED.value
+
+    # The trace tells it from a test left out on purpose: failed, cut short.
+    lines = _trace(tmp_path)
+    ends = [
+        line for line in lines if line["type"].startswith("tck.test.") and "test_id" in line["data"]
+    ]
+    (end,) = [line for line in ends if line["type"] != "tck.test.start"]
+    assert end["type"] == "tck.test.failed"
+    assert end["data"]["status"] == "CANCELLED"
+    assert [error["code"] for error in end["data"]["errors"]] == ["TEST_CANCELLED"]
+
+
+def test_every_id_of_a_checkpoint_run_is_the_hash_of_its_data_as_written(
+    tmp_path: Path, player: TestlabPlayer
+) -> None:
+    """The JSONL holds no ``None`` (a checkpoint's ``asked_at`` included), and its ids recompute."""
+    tck = Loader().load(_package(tmp_path, {"one": [_select("only", "a", "b")]}))
+    _Host(player, {"only": "a"})
+    asyncio.run(player.run_tck(tck))
+
+    lines = _trace(tmp_path)
+    (plan,) = [line for line in lines if line["type"] == "checkpoints.planned"]
+    assert "asked_at" not in plan["data"]["checkpoints"][0]
+    assert any(line["type"] == "checkpoint.updated" for line in lines)
+    for line in lines:
+        digest = line["id"].rsplit("/", 1)[1]
+        assert digest == event_digest(line["data"]), line["type"]
+        assert event_data(line["data"]) == line["data"]
+        assert "null" not in json.dumps(line["data"])
+
+
+def _trace(root: Path) -> list[dict[str, Any]]:
+    (path,) = (root / "data").rglob("*.jsonl")
+    return [json.loads(line) for line in path.read_text("utf-8").splitlines()]
 
 
 def test_a_checkpoint_whose_if_says_no_was_never_asked(

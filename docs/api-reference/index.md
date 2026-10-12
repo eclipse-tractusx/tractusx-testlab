@@ -260,7 +260,8 @@ Chosen: 2 CCMAPI notification 3.0
 A number chooses its option; anything else asks again. `q` stops the run: the
 current test's teardown runs, no further test starts. When the step's timeout
 runs out, the checkpoint times out. Ctrl-C at either prompt stops the run at
-once; the test it interrupted ends `CANCELLED`. While a window is up the run's
+once; the test it interrupted ends `CANCELLED` (in the trace `tck.test.failed`
+with `status: "CANCELLED"`), and the run fails. While a window is up the run's
 own log lines wait, and follow it when it closes. The windows are drawn at the terminal's
 width (60 to 100 columns), in plain ASCII; the title is bold in a coloured
 terminal, never with `NO_COLOR`. The transcript keeps them, with what you typed.

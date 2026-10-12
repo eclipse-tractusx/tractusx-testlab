@@ -40,7 +40,9 @@ from datetime import UTC, datetime
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.logging.trace import ExecutionTrace, event_data, event_digest, event_id
 from tractusx_testlab.models.authoring.definitions import Assertion
+from tractusx_testlab.models.primitives.checkpoint import Direction
 from tractusx_testlab.models.primitives.enums import StepPhase, StepStatus
+from tractusx_testlab.models.runtime.checkpoints import CheckpointStatus
 from tractusx_testlab.models.runtime.results import (
     ENGINE_FAULT_PREFIX,
     AssertionResult,
@@ -134,6 +136,35 @@ class TestEnvelope:
                 "status": "CANCELLED",
                 "at": "2026-10-12T10:00:00Z",
             }
+        )
+
+    def test_a_model_s_none_fields_are_left_out_too_so_the_jsonl_data_gives_the_id(self) -> None:
+        """A checkpoint event embeds a model: its ``None`` fields are not written either."""
+        checkpoint = CheckpointStatus(
+            test_id="t",
+            test_name="T",
+            phase="execution",
+            position="execution/0",
+            step_id="pick",
+            uses="flow/select",
+            direction=Direction.INTERNAL,
+            kind="select",
+        )
+        data = {
+            "kind": "checkpoint_updated",
+            "index": 0,
+            "revision": 1,
+            "cause": None,
+            "checkpoint": checkpoint,
+        }
+        written = ExecutionTrace("tck").emit("checkpoint.updated", data, scope=("checkpoints", "0"))
+
+        assert "asked_at" not in written["data"]["checkpoint"]
+        assert "null" not in json.dumps(written["data"])
+        assert event_data(written["data"]) == written["data"]
+        assert written["id"] == event_id("tck", ("checkpoints", "0"), "checkpoint.updated", data)
+        assert written["id"] == event_id(
+            "tck", ("checkpoints", "0"), "checkpoint.updated", written["data"]
         )
 
     def test_a_trace_with_nowhere_to_write_still_counts(self, tmp_path) -> None:

@@ -249,8 +249,8 @@ Variables with no published config schema (plain primitives, infrastructure-deri
 | `tck.test.start` | `{test_id, index, attempt?}` | Test begins; `attempt` when it is run again |
 | `tck.test.awaiting` | `{test_id, index, occurrence?}` | An on-demand test is ready; `occurrence` from the second announcement |
 | `tck.test.passed` | `{test_id, duration_ms, passed, failed, assertions}` | Test passed |
-| `tck.test.failed` | `{test_id, duration_ms, passed, failed, assertions}` | Test failed |
-| `tck.test.skipped` | `{test_id, reason}` | Test skipped |
+| `tck.test.failed` | `{test_id, duration_ms, passed, failed, assertions, status?, errors?}` | Test failed, or was cut short: a test the run was interrupted in (Ctrl-C, a host's cancel) ends `CANCELLED`, published as `tck.test.failed` with `status: "CANCELLED"` and an error coded `TEST_CANCELLED` — it verified nothing, and fails the run |
+| `tck.test.skipped` | `{test_id, reason}` | Test skipped, never cut short |
 
 #### Test Setup Events
 
@@ -714,10 +714,12 @@ that no id repeats and that the last resort was never needed.
 scope, event_type, data)` builds `<tck>/<scope…>/<type>/<digest>` and
 `event_digest(data)` the digest, over `data` as written: both first pass it
 through `event_data(data)`, the trace's own normalisation (models dumped,
-datetimes as ISO 8601 with `Z`, `None` fields left out, secrets masked), so
-`event_id(...)` is the id `ExecutionTrace.emit` gives the same event, whether
-the host hands in a dict with `None` fields and datetimes or the `data` read
-back from the JSONL. A host that writes an event of the run itself — the
+datetimes as ISO 8601 with `Z`, `None` fields left out at every depth — a
+dumped model's too — secrets masked). The written `data` therefore holds no
+`None` field, and normalising it again changes nothing, so `event_id(...)` is
+the id `ExecutionTrace.emit` gives the same event, whether the host hands in a
+dict or a model with `None` fields and datetimes, or the `data` read back from
+the JSONL. A host that writes an event of the run itself — the
 engine closing a run whose player is gone — names it with them, and writes
 `event_data(data)` as its `data`. `_digest` stays as an alias.
 

@@ -235,9 +235,10 @@ The engine's states, and its rules, made exact
   same way.
 - A test the run was interrupted in — cancelled mid-test (Ctrl-C, a host
   dropping a run), or an error the test did not catch — is not started again
-  to be skipped when the session closes: it ends `CANCELLED`, and its
-  checkpoints keep what they became (`cleared` stays `cleared`; the open
-  question is `not_reached`).
+  to be skipped when the session closes: it ends `CANCELLED` — in the trace
+  `tck.test.failed` with `status: "CANCELLED"` and a `TEST_CANCELLED` error,
+  never `tck.test.skipped` — and its checkpoints keep what they became
+  (`cleared` stays `cleared`; the open question is `not_reached`).
 - `response_s` is how long the question was open until it was answered —
   `waited_ms` of the answer, so the time the run was paused does not count.
 - When the run ends, whatever is still `ahead` or `now` is `not_reached`.

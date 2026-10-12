@@ -54,7 +54,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   envelope)` with the CloudEvent the trace wrote for the event, exactly as
   written, so a host stores the trace's own id. `logging.trace.event_id(tck,
   scope, type, data)` and `event_digest(data)` build ids in the same grammar
-  for the events a host writes itself.
+  for the events a host writes itself. Both hash `data` as the trace writes
+  it (`event_data(data)`): `None` fields are left out at every depth, a
+  model's too, so the JSONL `data` recomputes to its own id.
+- A test a run was interrupted in ends `CANCELLED` and fails the run; the
+  trace publishes it as `tck.test.failed` with `status: "CANCELLED"` and a
+  `TEST_CANCELLED` error (it was `tck.test.skipped`).
 - `step_received` (`tck.test.step.received`) carries how the Test Suite
   answered the call, `response: {status_code, body}`, and a call the mock
   refused is published too, with `refused`.

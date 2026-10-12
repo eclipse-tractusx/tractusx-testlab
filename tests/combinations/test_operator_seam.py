@@ -62,7 +62,7 @@ _SELECT = {"id": "pick", "uses": "flow/select", "with": {"options": ["a", "b"], 
 _LOG = {"id": "note", "uses": "util/log", "with": {"message": "no checkpoint here"}}
 
 
-def _package(root: Path, *tests: tuple[str, list[dict]]) -> Path:
+def _package(root: Path, *tests: tuple[str, list[dict]], skippable: tuple[str, ...] = ()) -> Path:
     from tractusx_testlab.cli.compile import compile as compile_command
 
     (root / "src" / "tests").mkdir(parents=True)
@@ -79,7 +79,14 @@ def _package(root: Path, *tests: tuple[str, list[dict]]) -> Path:
             "license": "Apache-2.0",
             "standards": [{"id": "TESTLAB-INTERNAL", "version": "v1.0.0"}],
         },
-        "tests": [{"id": f"{test_id}.yaml", "name": test_id} for test_id, _ in tests],
+        "tests": [
+            {
+                "id": f"{test_id}.yaml",
+                "name": test_id,
+                **({"skippable": True} if test_id in skippable else {}),
+            }
+            for test_id, _ in tests
+        ],
     }
     (root / "src" / "index.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
     for test_id, steps in tests:
@@ -175,6 +182,35 @@ def test_an_operator_approves_then_answers_through_the_same_board(
     (question,) = operator.questions
     assert (question.number, question.total, question.step_id) == (1, 1, "pick")
     assert [o.id for o in question.selection.options] == ["a", "b"]
+
+
+def test_a_question_counts_the_checkpoints_briefed_not_those_skip_tests_left_out(
+    tmp_path: Path, player: TestlabPlayer
+) -> None:
+    """The run's plan goes on with the left-out test's checkpoint (``skipped``); "of N" does not."""
+    later = {**_SELECT, "id": "later"}
+    package = _package(
+        tmp_path, ("choose", [_SELECT]), ("left_out", [later]), skippable=("left_out",)
+    )
+    tck = Loader().load(package)
+    planned: list[dict] = []
+    player.monitor.add_callback(
+        lambda event, payload: (
+            planned.extend(payload["checkpoints"]) if event == "checkpoints.planned" else None
+        )
+    )
+    operator = _Operator()
+    runtime_vars = {"skip_tests": ["left_out.yaml"]}
+    result = asyncio.run(run_with_operator(player, tck, operator, runtime_vars))
+
+    assert result.status == TestStatus.COMPLETED
+    assert [[e.step_id for e in seen] for seen in operator.approved] == [["pick"]]
+    assert [(c["step_id"], c["state"]) for c in planned] == [
+        ("pick", "ahead"),
+        ("later", "skipped"),
+    ]
+    (question,) = operator.questions
+    assert (question.number, question.total, question.step_id) == (1, 1, "pick")
 
 
 def test_a_run_not_approved_starts_nothing(tmp_path: Path, player: TestlabPlayer) -> None:

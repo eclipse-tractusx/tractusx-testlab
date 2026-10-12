@@ -229,9 +229,15 @@ class ExecutionTrace:
 
 
 def _jsonable(value: Any) -> Any:
-    """Coerce pydantic models, enums and datetimes into plain JSON types."""
+    """Coerce pydantic models, enums and datetimes into plain JSON types, ``None`` fields left out.
+
+    A model's dump is coerced again, so a model's ``None`` fields are left out
+    as a dict's are: the written form holds no ``None`` field at any depth, and
+    coercing it again gives it back unchanged — the id a reader recomputes
+    from the JSONL is the id the trace wrote.
+    """
     if hasattr(value, "model_dump"):
-        return value.model_dump(mode="json")
+        return _jsonable(value.model_dump(mode="json"))
     if isinstance(value, dict):
         return {key: _jsonable(item) for key, item in value.items() if item is not None}
     if isinstance(value, list):
