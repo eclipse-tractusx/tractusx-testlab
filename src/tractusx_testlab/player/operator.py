@@ -32,10 +32,14 @@ neither prompts, nor reads stdin, nor writes to stdout.
 
 A host that has a person at hand instead — ``testlab run`` in a terminal —
 gives :func:`run_with_operator` an :class:`Operator`. It is shown the run's
-checkpoints before anything starts, and the run starts only if it approves;
-and every time a step asks the operator to choose, it is asked, on a worker
-thread, and its answer goes to the same question board the engine answers on.
-The run itself cannot tell the two apart.
+checkpoints before anything starts, and the run starts only if it approves
+(:func:`approve_run` — before the event loop, where a Ctrl-C at the prompt
+stops the process at once); and every time a step asks the operator to choose,
+it is asked, on a worker thread, and its answer goes to the same question
+board the engine answers on. The run itself cannot tell the two apart. When
+the run ends or is interrupted while a question is still being asked, the
+operator is told to stop asking (``Operator.stop``), so no prompt outlives
+the run.
 """
 
 from __future__ import annotations
@@ -62,8 +66,10 @@ class RunDeclined(Exception):
 class RunAborted(Exception):
     """The operator stopped the run at a choice.
 
-    ``reason`` is ``quit`` when they asked to, ``no_answer`` when there was no
-    way to ask them and no answer given up front.
+    ``reason`` is ``quit`` when they asked to; ``no_answer`` when the run could
+    not get an answer — no terminal and none given up front, the input ended,
+    or an answer given up front that names no option; ``error`` when the
+    operator could not be asked at all.
     """
 
     def __init__(self, message: str, reason: str = "quit") -> None:
@@ -92,7 +98,12 @@ class Question:
 
 
 class Operator(Protocol):
-    """Whoever approves a run's checkpoints and answers its choices."""
+    """Whoever approves a run's checkpoints and answers its choices.
+
+    It may also have a ``stop()`` method: called, from the event loop, when
+    the run ends or is interrupted while :meth:`choose` is still asking, which
+    should then return ``None`` promptly and say nothing more.
+    """
 
     def approve(self, checkpoints: Sequence[CheckpointEntry]) -> bool:
         """Whether the run may start, having been shown *checkpoints* (never empty)."""
@@ -106,22 +117,38 @@ class Operator(Protocol):
         ...
 
 
+def approve_run(tck: Tck, operator: Operator, runtime_vars: dict | None = None) -> None:
+    """Show *operator* the checkpoints a run of *tck* meets; raise :class:`RunDeclined` if not approved.
+
+    Blocks while the operator decides, so a host calls it before it starts its
+    event loop (``testlab run`` does): a prompt read on the loop's thread
+    cannot be interrupted by the loop's Ctrl-C handler. A run without
+    checkpoints is not asked about.
+    """
+    checkpoints = tck.checkpoints(resolve_skip_ids(tck, runtime_vars))
+    if checkpoints and not operator.approve(checkpoints):
+        raise RunDeclined(f"The run of {tck.name} was not approved; no test ran.")
+
+
 async def run_with_operator(
     player: TestlabPlayer,
     tck: Tck,
     operator: Operator,
     runtime_vars: dict | None = None,
     job_id: str | None = None,
+    *,
+    approved: bool = False,
 ) -> TckResult:
     """Run *tck* as :meth:`TestlabPlayer.run_tck` does, with *operator* approving and choosing.
 
     Raises :class:`RunDeclined` before anything starts when the operator does
     not approve, and :class:`RunAborted` after the run was stopped at a choice.
+    *approved* says :func:`approve_run` was already called, before the loop.
     """
-    checkpoints = tck.checkpoints(resolve_skip_ids(tck, runtime_vars))
-    if checkpoints and not operator.approve(checkpoints):
-        raise RunDeclined(f"The run of {tck.name} was not approved; no test ran.")
-    desk = _Desk(player, operator, asyncio.get_running_loop())
+    if not approved:
+        approve_run(tck, operator, runtime_vars)
+    briefed = len(tck.checkpoints(resolve_skip_ids(tck, runtime_vars)))
+    desk = _Desk(player, operator, asyncio.get_running_loop(), briefed)
     player.monitor.add_callback(desk)
     try:
         result = await player.run_tck(tck, runtime_vars=runtime_vars, job_id=job_id)
@@ -141,6 +168,9 @@ class _Desk:
     player: TestlabPlayer
     operator: Operator
     loop: asyncio.AbstractEventLoop
+    #: How many checkpoints the briefing listed: the run's plan goes on with
+    #: those of the tests ``skip_tests`` left out, which this run never asks.
+    briefed: int = 0
     planned: list[CheckpointEntry] = field(default_factory=list)
     asking: dict[str, asyncio.Future[Any]] = field(default_factory=dict)
     aborted: RunAborted | None = None
@@ -160,7 +190,7 @@ class _Desk:
             selection=Selection.model_validate(payload["selection"]),
             timeout_s=float(payload["timeout_s"]),
             number=None if index is None else index + 1,
-            total=len(self.planned),
+            total=self.briefed or len(self.planned),
             entry=self.planned[index] if index is not None and index < len(self.planned) else None,
         )
         asked = self.loop.run_in_executor(None, self.operator.choose, question)
@@ -184,6 +214,14 @@ class _Desk:
                 return
 
     async def settle(self) -> None:
-        """Wait for a question still being asked, so no thread outlives the run."""
-        if self.asking:
-            await asyncio.wait(list(self.asking.values()))
+        """Stop a question still being asked and wait for it, so no thread outlives the run.
+
+        The run is over, or was interrupted: nothing would take the answer, and
+        a prompt left waiting for its own deadline would hold the process open.
+        """
+        if not self.asking:
+            return
+        stop = getattr(self.operator, "stop", None)
+        if callable(stop):
+            stop()
+        await asyncio.wait(list(self.asking.values()))

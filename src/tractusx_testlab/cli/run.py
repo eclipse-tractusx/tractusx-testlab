@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """CLI command for executing TCKs."""
@@ -90,16 +91,20 @@ def run(
     choose: list[str] | None = typer.Option(
         None,
         "--choose",
-        help="Answer a choice up front: <step_id>=<n|option id>. Can be repeated.",
+        help=(
+            "Answer a choice up front: <step_id>=<option id|n>, the option with that id "
+            "first, else the one numbered so. Can be repeated."
+        ),
     ),
 ) -> None:
     """Load and execute a TCK, printing results to stdout.
 
     Before anything runs, the run's checkpoints are listed and approved
     (``Continue? [y/N]``); a choice the run puts to the operator is asked at
-    the terminal. Exit codes: 0 passed, 1 failed, 2 nothing to answer with
-    (no terminal, no ``--yes`` or ``--choose``), 3 not approved, 4 stopped at
-    a choice.
+    the terminal. Exit codes: 0 passed, 1 failed, 2 the run could not get an
+    answer (no terminal and no ``--yes`` or ``--choose``, the input ended, a
+    ``--choose`` value naming no option, or the operator could not be asked),
+    3 not approved, 4 stopped at a choice.
     """
     # Register all local step executors (triggers @step() decorators)
     from tractusx_testlab.config.loader import ConfigLoader

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Rendering a run for a person watching it.
@@ -76,7 +77,9 @@ def execute_with_progress(
 
     With an *operator* (``cli._terminal_operator``), the run's checkpoints are
     approved before it starts and its choices answered while it runs; the bar
-    stops while a window is up (``player.operator.run_with_operator``).
+    stops while a window is up (``player.operator.run_with_operator``). The
+    approval is asked before the event loop starts, so a Ctrl-C at
+    ``Continue? [y/N]`` stops the process at once instead of waiting for Enter.
     """
     from rich.progress import (
         BarColumn,
@@ -102,11 +105,14 @@ def execute_with_progress(
                 player.run_tck(tck, runtime_vars=runtime_vars or None, job_id=run_id)
             )
         from tractusx_testlab.cli._terminal_operator import paused_display
-        from tractusx_testlab.player.operator import run_with_operator
+        from tractusx_testlab.player.operator import approve_run, run_with_operator
 
         operator.pause = lambda: paused_display(progress)
+        approve_run(tck, operator, runtime_vars or None)
         return asyncio.run(
-            run_with_operator(player, tck, operator, runtime_vars or None, job_id=run_id)
+            run_with_operator(
+                player, tck, operator, runtime_vars or None, job_id=run_id, approved=True
+            )
         )
 
 

@@ -28,26 +28,39 @@
 ``Continue? [y/N]``; every choice the run puts to the operator is a window with
 numbered options and ``Choose [1-N]``. Both are answered at the terminal, or up
 front: ``--yes`` approves the briefing (it never picks an option), and
-``--choose <step_id>=<n|option id>`` answers a choice. Without a terminal and
-without an answer given up front, nothing hangs: the run stops, naming the flag.
+``--choose <step_id>=<option id|n>`` answers a choice — an option whose id is
+the value first, else the option numbered so. Without a terminal and without
+an answer given up front, nothing hangs: the run stops, naming the flag.
+
+A choice is read in slices of at most :data:`_SLICE_S`, so its deadline holds
+and so does :meth:`TerminalOperator.stop` — the run ended, or a Ctrl-C
+interrupted it — on every platform: where stdin cannot be ``select()``-ed (a
+Windows console) a daemon thread reads it instead.
 
 Everything shown goes to stdout, so the transcript keeps it; what the person
 typed is written after it (``Approved.``, ``Chosen: 2 beta``), since a terminal
-echoes input itself and the transcript would otherwise not have it.
+echoes input itself and the transcript would otherwise not have it. While a
+window is up, the run's own log lines wait (``logging.structured.hold_console``),
+so they never land inside it.
 """
 
 from __future__ import annotations
 
 import contextlib
+import functools
+import queue
 import select
 import sys
+import threading
 import time
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import AbstractContextManager
+from typing import IO
 
 import typer
 
 from tractusx_testlab.cli._checkpoint_windows import briefing, choice, clock
+from tractusx_testlab.logging.structured import hold_console
 from tractusx_testlab.models.runtime.checkpoints import CheckpointEntry
 from tractusx_testlab.models.runtime.selection import SelectionOption
 from tractusx_testlab.player.operator import Question, RunAborted
@@ -57,16 +70,84 @@ from tractusx_testlab.player.operator import Question, RunAborted
 LineReader = Callable[[float | None], str | None]
 
 
-def read_stdin(timeout: float | None) -> str | None:
-    """A line from stdin, or ``None`` once *timeout* seconds passed without one."""
-    if timeout is not None:
-        try:
-            ready, _, _ = select.select([sys.stdin], [], [], max(timeout, 0.0))
-        except (OSError, ValueError):  # not a selectable stream: read as it comes
-            ready = [sys.stdin]
-        if not ready:
+#: The longest a choice's read blocks before it looks at its deadline and its stop again.
+_SLICE_S = 0.2
+
+
+def read_stdin(timeout: float | None, stop: threading.Event | None = None) -> str | None:
+    """A line from stdin; ``None`` once *timeout* seconds passed, or *stop* was set, without one.
+
+    ``timeout=None`` reads as long as it takes, on the calling thread: the
+    approval, read before the event loop starts, where a Ctrl-C interrupts it.
+    """
+    if timeout is None:
+        return sys.stdin.readline()
+    deadline = time.monotonic() + max(timeout, 0.0)
+    while stop is None or not stop.is_set():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
             return None
-    return sys.stdin.readline()
+        line = _poll(min(remaining, _SLICE_S))
+        if line is not None:
+            return line
+    return None
+
+
+def _poll(wait: float) -> str | None:
+    """A line, if one comes within *wait* seconds."""
+    stream = sys.stdin
+    try:
+        stream.fileno()
+    except (OSError, ValueError):  # in memory (a test's input): a read never blocks
+        return stream.readline()
+    try:
+        ready, _, _ = select.select([stream], [], [], wait)
+    except (OSError, ValueError):  # not selectable (a Windows console): a thread reads it
+        return _queued(stream).get(wait)
+    return stream.readline() if ready else None
+
+
+class _QueuedStdin:
+    """A stream read line by line on a daemon thread, for one ``select()`` cannot wait on.
+
+    A daemon, so a read nobody is waiting for any more never holds the process
+    open; a line typed after its question closed goes to the next one.
+    """
+
+    def __init__(self, stream: IO[str]) -> None:
+        self.stream = stream
+        self._lines: queue.Queue[str] = queue.Queue()
+        self._reader = threading.Thread(target=self._read, name="testlab-stdin", daemon=True)
+        self._reader.start()
+
+    def _read(self) -> None:
+        while True:
+            line = self.stream.readline()
+            self._lines.put(line)
+            if line == "":  # the end of the input
+                return
+
+    def get(self, wait: float) -> str | None:
+        try:
+            line = self._lines.get(timeout=wait)
+        except queue.Empty:
+            return None
+        if line == "":
+            self._lines.put(line)  # the input stays ended for whoever asks next
+        return line
+
+
+_reader: _QueuedStdin | None = None
+_reader_lock = threading.Lock()
+
+
+def _queued(stream: IO[str]) -> _QueuedStdin:
+    """The reader of *stream*, started the first time it is needed."""
+    global _reader
+    with _reader_lock:
+        if _reader is None or _reader.stream is not stream:
+            _reader = _QueuedStdin(stream)
+        return _reader
 
 
 class TerminalOperator:
@@ -77,7 +158,7 @@ class TerminalOperator:
         *,
         assume_yes: bool = False,
         choices: dict[str, str] | None = None,
-        read_line: LineReader = read_stdin,
+        read_line: LineReader | None = None,
         is_terminal: Callable[[], bool] = lambda: sys.stdin.isatty(),
         colour: bool | None = None,
         width: int | None = None,
@@ -85,13 +166,23 @@ class TerminalOperator:
     ) -> None:
         self._assume_yes = assume_yes
         self._choices = dict(choices or {})
-        self._read_line = read_line
+        self._stopped = threading.Event()
+        self._read_line = read_line or functools.partial(read_stdin, stop=self._stopped)
         self._is_terminal = is_terminal
         self._colour = colour
         self._width = width
         self._now = now
-        #: Stops whatever else draws on the terminal while a window is up.
-        self.pause: Callable[[], AbstractContextManager[None]] = contextlib.nullcontext
+        #: Stops whatever else draws on the terminal while a window is up: the
+        #: run's log lines wait (``hold_console``); the CLI adds its progress bar.
+        self.pause: Callable[[], AbstractContextManager[None]] = hold_console
+
+    def stop(self) -> None:
+        """Stop asking: the run ended or was interrupted (``player.operator``).
+
+        A choice being asked returns ``None`` within :data:`_SLICE_S`, without
+        saying it timed out; one asked later returns ``None`` at once.
+        """
+        self._stopped.set()
 
     def approve(self, checkpoints: Sequence[CheckpointEntry]) -> bool:
         with self.pause():
@@ -114,6 +205,8 @@ class TerminalOperator:
     def choose(self, question: Question) -> str | None:
         options = question.selection.options
         deadline = self._now() + question.timeout_s
+        if self._stopped.is_set():
+            return None
         with self.pause():
             self._show(choice(question, question.timeout_s, self._width))
             given = self._choices.get(question.step_id or "")
@@ -136,6 +229,9 @@ class TerminalOperator:
                 return None
             self._say(f"Choose [1-{len(options)}] ({clock(remaining)} left, q to stop): ", False)
             line = self._read_line(remaining)
+            if self._stopped.is_set():  # the run is over: nothing takes the answer
+                self._say("")
+                return None
             if line is None:
                 self._say("")
                 self._timed_out(question)
@@ -153,8 +249,13 @@ class TerminalOperator:
             self._say(f"Type a number from 1 to {len(options)}, or q to stop.")
 
     def _given(self, question: Question, given: str) -> str:
+        """The option ``--choose`` names: the one with that id, else the one numbered so.
+
+        The id first, so a pipeline that names options by id gets that option
+        even when the id is a number that is also another option's position.
+        """
         options = question.selection.options
-        chosen = _numbered(options, given) or next((o for o in options if o.id == given), None)
+        chosen = next((o for o in options if o.id == given), None) or _numbered(options, given)
         if chosen is None:
             raise RunAborted(
                 f"--choose {question.step_id}={given} names no option at {_where(question)}: "
@@ -189,24 +290,28 @@ def _where(question: Question) -> str:
 
 
 def parse_choices(entries: Sequence[str] | None) -> dict[str, str]:
-    """``--choose`` entries (``<step_id>=<n|option id>``) by step id."""
+    """``--choose`` entries (``<step_id>=<option id|n>``) by step id."""
     choices: dict[str, str] = {}
     for entry in entries or []:
         step_id, separator, value = entry.partition("=")
         if not separator or not step_id or not value:
-            raise typer.BadParameter(f"expected <step_id>=<n|option id>, got {entry!r}")
+            raise typer.BadParameter(f"expected <step_id>=<option id|n>, got {entry!r}")
         choices[step_id.strip()] = value.strip()
     return choices
 
 
 @contextlib.contextmanager
 def paused_display(progress: object) -> Iterator[None]:
-    """Stop a live progress display while a window is up, and start it again after."""
+    """Hold the run's log lines and stop a live progress display while a window is up.
+
+    Both start again after it, the held lines first, in the order they came.
+    """
     stop, start = getattr(progress, "stop", None), getattr(progress, "start", None)
-    if callable(stop):
-        stop()
-    try:
-        yield
-    finally:
-        if callable(start):
-            start()
+    with hold_console():
+        if callable(stop):
+            stop()
+        try:
+            yield
+        finally:
+            if callable(start):
+                start()

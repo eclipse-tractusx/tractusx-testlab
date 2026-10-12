@@ -75,8 +75,9 @@ def print_run_results(result) -> None:
     raise typer.Exit(0 if result.status == TestStatus.COMPLETED else 1)
 
 
-#: Exit codes of a run its operator stopped (``player.operator``): nothing to
-#: answer with, not approved, stopped at a choice.
+#: Exit codes of a run its operator stopped (``player.operator``): no answer to
+#: be had (no terminal and none up front, the input ended, a ``--choose`` naming
+#: no option, the operator could not be asked), not approved, stopped at a choice.
 EXIT_NO_ANSWER, EXIT_DECLINED, EXIT_STOPPED = 2, 3, 4
 
 

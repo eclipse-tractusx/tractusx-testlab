@@ -24,7 +24,7 @@
 
 """``testlab run`` asks before it starts and when the run asks (ADR-0028).
 
-Exit codes: 0 passed, 2 nothing to answer with, 3 not approved, 4 stopped at a
+Exit codes: 0 passed, 2 the run could not get an answer, 3 not approved, 4 stopped at a
 choice. ``--yes`` (or ``TESTLAB_YES``) approves, ``--choose`` answers up front.
 """
 

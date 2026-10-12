@@ -30,11 +30,18 @@ when, is scripted here: no terminal, no waiting.
 
 from __future__ import annotations
 
+import logging
+import os
+import sys
+import threading
+import time
 from collections.abc import Iterable
 
 import pytest
 
-from tractusx_testlab.cli._terminal_operator import TerminalOperator, parse_choices
+from tractusx_testlab.cli import _terminal_operator
+from tractusx_testlab.cli._terminal_operator import TerminalOperator, parse_choices, read_stdin
+from tractusx_testlab.logging.structured import CliHandler
 from tractusx_testlab.models.runtime.checkpoints import CheckpointEntry
 from tractusx_testlab.models.runtime.selection import Selection, SelectionOption
 from tractusx_testlab.player.operator import Question, RunAborted
@@ -177,6 +184,124 @@ class TestAChoice:
         operator, _ = _operator([""])
         with pytest.raises(RunAborted, match="input ended"):
             operator.choose(_QUESTION)
+
+
+class TestAChoiceGivenUpFront:
+    _NUMERIC = Question(
+        job_id="job",
+        step_id="pick",
+        selection=Selection(
+            options=[SelectionOption(id="5", label="Five"), SelectionOption(id="1", label="One")]
+        ),
+        timeout_s=60,
+    )
+
+    def test_an_option_id_wins_over_a_position(self) -> None:
+        operator, _ = _operator(terminal=False, choices={"pick": "1"})
+        assert operator.choose(self._NUMERIC) == "1"
+
+    def test_a_number_that_is_no_option_id_is_a_position(self) -> None:
+        operator, _ = _operator(terminal=False, choices={"pick": "2"})
+        assert operator.choose(self._NUMERIC) == "1"
+
+
+class TestAStoppedOperator:
+    """The run ended, or a Ctrl-C interrupted it, while a choice was being asked."""
+
+    @pytest.fixture
+    def silent_stdin(self, monkeypatch):
+        """stdin as a pipe nobody writes to: a read waits until it is told to stop."""
+        read_end, write_end = os.pipe()
+        stream = os.fdopen(read_end, "r")
+        monkeypatch.setattr(sys, "stdin", stream)
+        yield write_end
+        os.close(write_end)
+        stream.close()
+
+    def test_a_choice_being_asked_returns_at_once_and_does_not_say_it_timed_out(
+        self, silent_stdin: int, capsys
+    ) -> None:
+        operator = TerminalOperator(is_terminal=lambda: True, colour=False, width=60)
+        answer: list[str | None] = []
+        asking = threading.Thread(target=lambda: answer.append(operator.choose(_QUESTION)))
+        asking.start()
+        time.sleep(0.3)
+        started = time.monotonic()
+        operator.stop()
+        asking.join(5)
+        assert not asking.is_alive() and answer == [None]
+        assert time.monotonic() - started < 2
+        assert "No choice in time" not in capsys.readouterr().out
+
+    def test_a_choice_asked_after_the_stop_is_not_asked(self, capsys) -> None:
+        operator, asked = _operator(["1\n"])
+        operator.stop()
+        assert operator.choose(_QUESTION) is None
+        assert asked == [] and capsys.readouterr().out == ""
+
+
+class TestReadingStdin:
+    @pytest.fixture
+    def pipe(self, monkeypatch):
+        read_end, write_end = os.pipe()
+        stream = os.fdopen(read_end, "r")
+        monkeypatch.setattr(sys, "stdin", stream)
+        yield write_end
+        os.close(write_end)
+        stream.close()
+
+    def test_the_timeout_holds_where_stdin_cannot_be_selected(self, pipe: int, monkeypatch) -> None:
+        """A Windows console: ``select()`` refuses it, and a thread reads it instead."""
+
+        def unselectable(*_args):
+            raise OSError(10038, "not a socket")
+
+        monkeypatch.setattr(_terminal_operator.select, "select", unselectable)
+        started = time.monotonic()
+        assert read_stdin(0.3) is None
+        assert time.monotonic() - started < 2
+        os.write(pipe, b"2\n")
+        assert read_stdin(2) == "2\n"
+
+    def test_a_stop_ends_a_read(self, pipe: int) -> None:
+        stop = threading.Event()
+        threading.Timer(0.2, stop.set).start()
+        started = time.monotonic()
+        assert read_stdin(30, stop) is None
+        assert time.monotonic() - started < 2
+
+
+def test_the_runs_log_lines_wait_until_the_window_closes(capsys) -> None:
+    """A line logged on another thread while a window is drawn follows the window."""
+    logger = logging.getLogger("testlab.test.window")
+    logger.propagate = False
+    logger.setLevel(logging.INFO)
+    handler = CliHandler()  # stdout, resolved at write time: what capsys captures
+    logger.addHandler(handler)
+    drawn = threading.Event()
+
+    def read(timeout: float | None) -> str | None:
+        drawn.set()
+        logged.wait(5)
+        return "1\n"
+
+    logged = threading.Event()
+    operator = TerminalOperator(read_line=read, is_terminal=lambda: True, colour=False, width=60)
+    asking = threading.Thread(target=operator.choose, args=(_QUESTION,))
+    try:
+        asking.start()
+        assert drawn.wait(5)
+        logger.info("checkpoint.updated in between")
+        logged.set()
+        asking.join(5)
+    finally:
+        logger.removeHandler(handler)
+    lines = capsys.readouterr().out.splitlines()
+    rules = [i for i, line in enumerate(lines) if line.startswith("=====")]
+    logged_at = next(i for i, line in enumerate(lines) if "in between" in line)
+    assert len(rules) == 2
+    assert lines[rules[-1] + 1].startswith("Choose [1-2]")
+    assert "in between" not in lines[rules[-1] + 1] and logged_at > rules[-1] + 1
 
 
 def test_choose_entries_are_read_by_step_id() -> None:

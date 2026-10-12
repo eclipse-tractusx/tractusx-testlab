@@ -35,6 +35,8 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import threading
+import time
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -47,7 +49,13 @@ from tractusx_testlab.models import TestStatus
 from tractusx_testlab.models.runtime.checkpoints import CheckpointEntry
 from tractusx_testlab.player import TestlabPlayer
 from tractusx_testlab.player.loading.loader import Loader
-from tractusx_testlab.player.operator import Question, RunAborted, RunDeclined, run_with_operator
+from tractusx_testlab.player.operator import (
+    Question,
+    RunAborted,
+    RunDeclined,
+    approve_run,
+    run_with_operator,
+)
 from tractusx_testlab.server.mock_registry import clear_callback_manager, clear_mocks
 
 _SELECT = {"id": "pick", "uses": "flow/select", "with": {"options": ["a", "b"], "timeout_s": 10}}
@@ -194,3 +202,42 @@ def test_an_operator_who_stops_ends_the_run_and_no_further_test_starts(
     result = stopped.value.result
     assert result is not None
     assert [test.status for test in result.tests] == [TestStatus.FAILED, TestStatus.SKIPPED]
+
+
+class _SlowOperator(_Operator):
+    """Still asking when the step's own timeout ends the question: it waits to be stopped."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.stopped = threading.Event()
+
+    def choose(self, question: Question) -> str | None:
+        self.questions.append(question)
+        self.stopped.wait(30)
+        return None
+
+    def stop(self) -> None:
+        self.stopped.set()
+
+
+def test_a_question_still_asked_when_the_run_ends_is_stopped_not_waited_for(
+    tmp_path: Path, player: TestlabPlayer
+) -> None:
+    quick = {**_SELECT, "with": {"options": ["a", "b"], "timeout_s": 1}}
+    tck = Loader().load(_package(tmp_path, ("choose", [quick])))
+    operator = _SlowOperator()
+    started = time.monotonic()
+    result = asyncio.run(run_with_operator(player, tck, operator))
+    assert operator.stopped.is_set()
+    assert time.monotonic() - started < 15
+    assert result.status == TestStatus.FAILED
+
+
+def test_an_approval_given_before_the_loop_is_not_asked_again(
+    tmp_path: Path, player: TestlabPlayer
+) -> None:
+    tck = Loader().load(_package(tmp_path, ("choose", [_SELECT])))
+    operator = _Operator()
+    approve_run(tck, operator)
+    asyncio.run(run_with_operator(player, tck, operator, approved=True))
+    assert len(operator.approved) == 1

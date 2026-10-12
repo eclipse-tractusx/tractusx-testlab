@@ -40,6 +40,9 @@ from __future__ import annotations
 
 import logging
 import sys
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import IO
 
@@ -77,6 +80,56 @@ def _readable(record: logging.LogRecord) -> logging.LogRecord:
     return record
 
 
+class _ConsoleHold:
+    """While a window is up, console log lines from every other thread wait.
+
+    A window (``logging.window``) is drawn row by row on the thread that asks
+    the person — a worker thread, for a choice — while the run goes on logging
+    on the event loop. Unheld, a ``checkpoint.updated`` line lands between the
+    window's rule and its title, on screen and in the transcript. Held lines
+    are written when the window closes, in the order they came.
+    """
+
+    __slots__ = ("_depth", "_held", "_lock", "_owner", "_window")
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        #: One window at a time: a second waits for the first to close.
+        self._window = threading.RLock()
+        self._owner: int | None = None
+        self._depth = 0
+        self._held: list[tuple[logging.Handler, logging.LogRecord]] = []
+
+    @contextmanager
+    def __call__(self) -> Iterator[None]:
+        with self._window:
+            with self._lock:
+                self._owner = threading.get_ident()
+                self._depth += 1
+            try:
+                yield
+            finally:
+                with self._lock:
+                    self._depth -= 1
+                    held: list[tuple[logging.Handler, logging.LogRecord]] = []
+                    if self._depth == 0:
+                        self._owner, held, self._held = None, self._held, []
+                for handler, record in held:
+                    handler.handle(record)
+
+    def keeps(self, handler: logging.Handler, record: logging.LogRecord) -> bool:
+        """Whether *record* waits for the window to close (kept), rather than being written now."""
+        with self._lock:
+            if self._owner is None or self._owner == threading.get_ident():
+                return False
+            self._held.append((handler, record))
+            return True
+
+
+#: Hold the console's log lines while a window is up: ``with hold_console(): ...``.
+hold_console = _ConsoleHold()
+
+
 class CliHandler(logging.StreamHandler):
     """StreamHandler that formats structuredLogger records as human-readable text.
     Attach to any logger like a normal handler::
@@ -112,6 +165,8 @@ class CliHandler(logging.StreamHandler):
         return None
 
     def emit(self, record: logging.LogRecord) -> None:
+        if hold_console.keeps(self, record):  # a window is up: after it
+            return
         super().emit(_readable(record))
 
 
