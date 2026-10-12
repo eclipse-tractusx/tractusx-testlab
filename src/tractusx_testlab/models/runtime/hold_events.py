@@ -33,7 +33,7 @@ from __future__ import annotations
 from typing import Literal
 
 from tractusx_testlab.models.primitives.enums import EventKind
-from tractusx_testlab.models.runtime._event_base import _ExecutionEvent
+from tractusx_testlab.models.runtime._event_base import _ExecutionEvent, _StepEvent
 from tractusx_testlab.models.runtime.listener import Listener
 
 
@@ -49,6 +49,8 @@ class JobHeldEvent(_ExecutionEvent):
     kind: Literal[EventKind.JOB_HELD] = EventKind.JOB_HELD
     withdrawn: list[str] = []
     kept: dict[str, str] = {}
+    #: Which time this happens in the job, from 1, so a second one is not the first again.
+    occurrence: int = 1
 
 
 class JobRestoredEvent(_ExecutionEvent):
@@ -61,9 +63,11 @@ class JobRestoredEvent(_ExecutionEvent):
     kind: Literal[EventKind.JOB_RESTORED] = EventKind.JOB_RESTORED
     restored: list[str] = []
     lost: dict[str, str] = {}
+    #: Which time this happens in the job, from 1, so a second one is not the first again.
+    occurrence: int = 1
 
 
-class StepSuspendedEvent(_ExecutionEvent):
+class StepSuspendedEvent(_StepEvent):
     """A wait stopped counting because its job was paused.
 
     ``remaining_s`` is what is left of its timeout, and what it waits for once
@@ -73,9 +77,9 @@ class StepSuspendedEvent(_ExecutionEvent):
     """
 
     kind: Literal[EventKind.STEP_SUSPENDED] = EventKind.STEP_SUSPENDED
-    test_id: str
-    step_id: str | None = None
     step_type: str
     listener: Listener
     remaining_s: float
     waited_ms: int
+    #: How many pauses the question has been through in this attempt (ADR-0027).
+    pauses: int = 0

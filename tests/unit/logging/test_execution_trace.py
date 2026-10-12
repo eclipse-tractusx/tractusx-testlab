@@ -36,7 +36,7 @@ import io
 import json
 
 from tractusx_testlab.logging.structured import StructuredLogger
-from tractusx_testlab.logging.trace import ExecutionTrace
+from tractusx_testlab.logging.trace import ExecutionTrace, event_digest, event_id
 from tractusx_testlab.models.authoring.definitions import Assertion
 from tractusx_testlab.models.primitives.enums import StepPhase, StepStatus
 from tractusx_testlab.models.runtime.results import (
@@ -91,12 +91,26 @@ class TestEnvelope:
 
     def test_the_same_payload_gets_the_same_id(self, tmp_path) -> None:
         """The trace is an audit record; an id that changes per read is not one."""
+        first_run = ExecutionTrace.for_job("demo-tck", "job1", tmp_path)
+        second_run = ExecutionTrace.for_job("demo-tck", "job2", tmp_path)
+        first = first_run.emit("tck.test.start", {"test_id": "t"}, scope=("t",))
+        second = second_run.emit("tck.test.start", {"test_id": "t"}, scope=("t",))
+        first_run.close()
+        second_run.close()
+
+        assert first["id"] == second["id"]
+        assert first["id"] == event_id("demo-tck", ("t",), "tck.test.start", {"test_id": "t"})
+
+    def test_no_two_events_of_a_run_share_an_id(self, tmp_path) -> None:
+        """Data that does not tell two events apart is told apart by its occurrence."""
         trace = ExecutionTrace.for_job("demo-tck", "job1", tmp_path)
         first = trace.emit("tck.test.start", {"test_id": "t"}, scope=("t",))
         second = trace.emit("tck.test.start", {"test_id": "t"}, scope=("t",))
         trace.close()
 
-        assert first["id"] == second["id"]
+        assert first["id"] != second["id"]
+        assert second["data"] == {"test_id": "t", "occurrence": 2}
+        assert second["id"].endswith(event_digest(second["data"]))
 
     def test_a_trace_with_nowhere_to_write_still_counts(self, tmp_path) -> None:
         trace = ExecutionTrace("demo-tck")

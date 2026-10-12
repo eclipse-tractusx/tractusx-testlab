@@ -197,7 +197,13 @@ class TestASession:
             assert [result.test_id for result in results] == ["ping"]
             assert not service.calls_to("POST", "/push")
             assert _of(events, "test.awaiting") == [
-                {"kind": "test_awaiting", "job_id": session.job_id, "test_id": "push", "index": 0}
+                {
+                    "kind": "test_awaiting",
+                    "job_id": session.job_id,
+                    "test_id": "push",
+                    "index": 0,
+                    "occurrence": 1,
+                }
             ]
         finally:
             await session.close()

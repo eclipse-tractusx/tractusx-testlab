@@ -38,7 +38,11 @@ from __future__ import annotations
 from typing import Literal
 
 from tractusx_testlab.models.primitives.enums import EventKind, JobStatus
-from tractusx_testlab.models.runtime._event_base import _ExecutionEvent
+from tractusx_testlab.models.runtime._event_base import _ExecutionEvent, _StepEvent
+from tractusx_testlab.models.runtime.checkpoint_events import (
+    CheckpointsPlannedEvent,
+    CheckpointUpdatedEvent,
+)
 from tractusx_testlab.models.runtime.hold_events import (
     JobHeldEvent,
     JobRestoredEvent,
@@ -66,12 +70,16 @@ class JobPausedEvent(_ExecutionEvent):
     """A running job was paused by the operator."""
 
     kind: Literal[EventKind.JOB_PAUSED] = EventKind.JOB_PAUSED
+    #: Which time this happens in the job, from 1, so a second one is not the first again.
+    occurrence: int = 1
 
 
 class JobResumedEvent(_ExecutionEvent):
     """A paused (or waiting) job resumed execution."""
 
     kind: Literal[EventKind.JOB_RESUMED] = EventKind.JOB_RESUMED
+    #: Which time this happens in the job, from 1, so a second one is not the first again.
+    occurrence: int = 1
 
 
 class JobCompletedEvent(_ExecutionEvent):
@@ -114,6 +122,8 @@ class TestCompletedEvent(_ExecutionEvent):
     __test__ = False  # a TestLab test, not a pytest one
     kind: Literal[EventKind.TEST_COMPLETED] = EventKind.TEST_COMPLETED
     result: TestResult
+    #: Which run of this test within the job, from 1 — the ``attempt`` it started as.
+    attempt: int = 1
 
 
 class TestAwaitingEvent(_ExecutionEvent):
@@ -128,14 +138,14 @@ class TestAwaitingEvent(_ExecutionEvent):
     kind: Literal[EventKind.TEST_AWAITING] = EventKind.TEST_AWAITING
     test_id: str
     index: int
+    #: Which time this test is announced in the job, from 1.
+    occurrence: int = 1
 
 
-class StepStartedEvent(_ExecutionEvent):
+class StepStartedEvent(_StepEvent):
     """A step began executing."""
 
     kind: Literal[EventKind.STEP_STARTED] = EventKind.STEP_STARTED
-    test_id: str
-    step_id: str | None = None
     step_index: int
     step_type: str
     step_name: str
@@ -147,7 +157,7 @@ class StepStartedEvent(_ExecutionEvent):
     inputs: dict | None = None
 
 
-class StepCallEvent(_ExecutionEvent):
+class StepCallEvent(_StepEvent):
     """One call a step made, published as soon as the answer came back.
 
     A step is not one call, and the long ones are long precisely because they
@@ -158,42 +168,34 @@ class StepCallEvent(_ExecutionEvent):
     """
 
     kind: Literal[EventKind.STEP_CALL] = EventKind.STEP_CALL
-    test_id: str
-    step_id: str | None = None
     step_type: str
     #: Position of the call within the step, from 1.
     index: int
     call: HttpExchange
 
 
-class StepCompletedEvent(_ExecutionEvent):
+class StepCompletedEvent(_StepEvent):
     """A step finished with ``StepStatus.PASSED``."""
 
     kind: Literal[EventKind.STEP_COMPLETED] = EventKind.STEP_COMPLETED
-    test_id: str
-    step_id: str | None = None
     result: StepResult
 
 
-class StepFailedEvent(_ExecutionEvent):
+class StepFailedEvent(_StepEvent):
     """A step finished with ``StepStatus.FAILED`` — a hard assertion or an exception."""
 
     kind: Literal[EventKind.STEP_FAILED] = EventKind.STEP_FAILED
-    test_id: str
-    step_id: str | None = None
     result: StepResult
 
 
-class StepSkippedEvent(_ExecutionEvent):
+class StepSkippedEvent(_StepEvent):
     """A step was skipped — its ``if:`` condition was false, or no implementation exists."""
 
     kind: Literal[EventKind.STEP_SKIPPED] = EventKind.STEP_SKIPPED
-    test_id: str
-    step_id: str | None = None
     result: StepResult
 
 
-class StepListeningEvent(_ExecutionEvent):
+class StepListeningEvent(_StepEvent):
     """``mock/api`` has registered an endpoint: from now on the SUT may call it.
 
     A call that arrives before the test reaches its wait step is held for
@@ -202,13 +204,11 @@ class StepListeningEvent(_ExecutionEvent):
     """
 
     kind: Literal[EventKind.STEP_LISTENING] = EventKind.STEP_LISTENING
-    test_id: str
-    step_id: str | None = None
     step_type: str
     listener: Listener
 
 
-class StepWaitingEvent(_ExecutionEvent):
+class StepWaitingEvent(_StepEvent):
     """``mock/wait/http_request`` is blocked on an endpoint, for at most ``timeout_s``.
 
     The run has nothing left to do but wait: the only thing that moves it
@@ -217,14 +217,14 @@ class StepWaitingEvent(_ExecutionEvent):
     """
 
     kind: Literal[EventKind.STEP_WAITING] = EventKind.STEP_WAITING
-    test_id: str
-    step_id: str | None = None
     step_type: str
     listener: Listener
     timeout_s: float
+    #: How many pauses the question has been through in this attempt (ADR-0027).
+    pauses: int = 0
 
 
-class StepReceivedEvent(_ExecutionEvent):
+class StepReceivedEvent(_StepEvent):
     """The call a step was waiting for has arrived.
 
     ``request`` is the inbound request as the mock server took it, headers and
@@ -233,15 +233,13 @@ class StepReceivedEvent(_ExecutionEvent):
     """
 
     kind: Literal[EventKind.STEP_RECEIVED] = EventKind.STEP_RECEIVED
-    test_id: str
-    step_id: str | None = None
     step_type: str
     listener: Listener
     request: CallbackResult
     waited_ms: int
 
 
-class AssertionResultEvent(_ExecutionEvent):
+class AssertionResultEvent(_StepEvent):
     """One assertion was evaluated against a step's output.
 
     Emitted for every assertion in a step's ``validate:`` block, ahead of the
@@ -251,8 +249,6 @@ class AssertionResultEvent(_ExecutionEvent):
     """
 
     kind: Literal[EventKind.ASSERTION_RESULT] = EventKind.ASSERTION_RESULT
-    test_id: str
-    step_id: str | None = None
     step_name: str
     #: Position in the step's ``validate:`` block, from 0.
     #
@@ -287,4 +283,6 @@ ExecutionEvent = (
     | StepSelectingEvent
     | StepSelectedEvent
     | AssertionResultEvent
+    | CheckpointsPlannedEvent
+    | CheckpointUpdatedEvent
 )

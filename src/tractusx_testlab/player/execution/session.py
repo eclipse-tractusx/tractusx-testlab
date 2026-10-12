@@ -244,7 +244,8 @@ class TckSession:
         """Run *test* as part of the planned sequence, honouring the operator's skips."""
         async with self._lock:
             self._require_open()
-            if test.test_id in self._skip_ids:
+            # A cancelled run starts no further test (ADR-0027: the operator stopped it).
+            if test.test_id in self._skip_ids or self._jobs.is_cancelled(self.job_id):
                 self._skip(idx, test)
                 return self._results[test.test_id]
             return await self._run(idx, test)
@@ -258,7 +259,7 @@ class TckSession:
         self._job.current_test = test.name
         result = await run_test(test, self._context, self.job_id, self._monitor, self._jobs)
         self._results[test.test_id] = result
-        self._monitor.on_test_completed(self.job_id, result)
+        self._monitor.on_test_completed(self.job_id, result, attempt)
         return result
 
     def _skip(self, idx: int, test: Test) -> None:

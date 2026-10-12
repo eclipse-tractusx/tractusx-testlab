@@ -36,6 +36,11 @@ in the run the event happened — or ``None`` when this engine is not tracing. T
 monitor prints it on the matching transcript line, which is what lets a reader
 take a line off the console and find the whole event, headers and bodies
 included, in the trace.
+
+A step's events carry its *marks* (``StepEvents.marks``): which run of the step
+this is (``attempt``), the checkpoint it is (``checkpoint``) and, for a question
+asked again after a pause, how many pauses it has been through (``pauses``) —
+what keeps two of them from writing the same data (ADR-0016, ADR-0027).
 """
 
 from __future__ import annotations
@@ -62,14 +67,20 @@ class TracePublisher:
     rather than nine times in the monitor.
     """
 
-    __slots__ = ("_trace",)
+    __slots__ = ("_last_sequence", "_trace")
 
     def __init__(self, trace: ExecutionTrace | None = None) -> None:
         self._trace = trace
+        self._last_sequence: int | None = None
 
     @property
     def trace(self) -> ExecutionTrace | None:
         return self._trace
+
+    @property
+    def last_sequence(self) -> int | None:
+        """The ``sequence`` of the event written last, or ``None`` when not tracing."""
+        return self._last_sequence
 
     def emit(
         self,
@@ -86,6 +97,7 @@ class TracePublisher:
         envelope = self._trace.emit(
             event_type, data, source=source or SOURCE_LIFECYCLE, scope=scope
         )
+        self._last_sequence = int(envelope["sequence"])
         return str(envelope["id"])
 
     def run_started(self, job_id: str, tck_id: str) -> str | None:
@@ -97,19 +109,31 @@ class TracePublisher:
             data["errors"] = [{"code": "RUN_FAILED", "message": error, "retryable": False}]
         return self.emit("tck.end", data)
 
-    def run_held(self, withdrawn: list[str], kept: dict[str, str]) -> str | None:
+    def run_held(self, withdrawn: list[str], kept: dict[str, str], occurrence: int) -> str | None:
         """The paused run has stopped: the offers it withdrew, and any it could not."""
-        data: dict[str, Any] = {"withdrawn": withdrawn}
+        data: dict[str, Any] = {"withdrawn": withdrawn, "occurrence": occurrence}
         if kept:
             data["kept"] = kept
         return self.emit("tck.held", data)
 
-    def run_restored(self, restored: list[str], lost: dict[str, str]) -> str | None:
+    def run_restored(
+        self, restored: list[str], lost: dict[str, str], occurrence: int
+    ) -> str | None:
         """The held run goes on: the offers it put back, and any it could not."""
-        data: dict[str, Any] = {"restored": restored}
+        data: dict[str, Any] = {"restored": restored, "occurrence": occurrence}
         if lost:
             data["lost"] = lost
         return self.emit("tck.restored", data)
+
+    def checkpoints_planned(self, data: dict[str, Any]) -> str | None:
+        """Every checkpoint of the run, ``ahead`` (ADR-0027)."""
+        return self.emit("checkpoints.planned", data, source=SOURCE_CHECKPOINTS, scope=_PLAN)
+
+    def checkpoint_updated(self, index: int, data: dict[str, Any]) -> str | None:
+        """One checkpoint changed; its scope is its place in the plan."""
+        return self.emit(
+            "checkpoint.updated", data, source=SOURCE_CHECKPOINTS, scope=(*_PLAN, str(index))
+        )
 
     def test_started(self, test: str, index: int, attempt: int = 1) -> str | None:
         data: dict[str, Any] = {"test_id": test, "index": index}
@@ -118,12 +142,18 @@ class TracePublisher:
             data["attempt"] = attempt
         return self.emit("tck.test.start", data, scope=(test,))
 
-    def test_awaiting(self, test: str, index: int) -> str | None:
-        return self.emit("tck.test.awaiting", {"test_id": test, "index": index}, scope=(test,))
+    def test_awaiting(self, test: str, index: int, occurrence: int = 1) -> str | None:
+        data: dict[str, Any] = {"test_id": test, "index": index}
+        if occurrence > 1:
+            data["occurrence"] = occurrence
+        return self.emit("tck.test.awaiting", data, scope=(test,))
 
-    def test_ended(self, result: TestResult) -> str | None:
+    def test_ended(self, result: TestResult, attempt: int = 1) -> str | None:
         test_id = result.test_id or result.test_name
-        return self.emit(test_event_type(result.status), test_data(result), scope=(test_id,))
+        data = test_data(result)
+        if attempt > 1:
+            data["attempt"] = attempt
+        return self.emit(test_event_type(result.status), data, scope=(test_id,))
 
     def step_started(
         self,
@@ -133,6 +163,7 @@ class TracePublisher:
         step_type: str,
         phase: str,
         inputs: dict[str, Any] | None = None,
+        marks: dict[str, Any] | None = None,
     ) -> str | None:
         """The step is about to run, and this is what it is about to be given.
 
@@ -143,7 +174,7 @@ class TracePublisher:
         reference that names nothing in scope leaves the block as written; the
         terminal event reports that as the step's failure.
         """
-        data: dict[str, Any] = {"attempt": 1, "index": step_index, "phase": phase}
+        data: dict[str, Any] = {**_marks(marks), "index": step_index, "phase": phase}
         if inputs:
             data["inputs"] = inputs
         return self.emit(
@@ -161,6 +192,7 @@ class TracePublisher:
         phase: str,
         index: int,
         call: Any,
+        marks: dict[str, Any] | None = None,
     ) -> str | None:
         """One call the step made, published while the step is still running.
 
@@ -171,106 +203,87 @@ class TracePublisher:
         """
         return self.emit(
             "tck.test.step.call",
-            call_data(index, call),
+            {**_marks(marks), **call_data(index, call)},
             source=step_type,
-            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1], "calls", str(index)),
+            scope=(*_step_scope(test, phase, step_id, step_type), "calls", str(index)),
         )
 
-    def step_ended(self, test: str, step_id: str | None, result: StepResult) -> str | None:
+    def step_ended(
+        self,
+        test: str,
+        step_id: str | None,
+        result: StepResult,
+        marks: dict[str, Any] | None = None,
+    ) -> str | None:
         """One terminal event carrying the checks, the wire, and the error.
 
         No separate assertion events: ADR-0016 nests them in ``validations``.
         """
         return self.emit(
             step_event_type(result.status),
-            step_data(result),
+            {**step_data(result), **_marks(marks)},
             source=result.step_type,
             scope=(test, result.phase.value.lower(), step_id or result.step_name),
         )
 
-    def step_listening(
+    def step_event(
         self,
+        event_type: str,
         test: str,
         step_id: str | None,
         step_type: str,
         phase: str,
-        listener: Any,
+        data: dict[str, Any],
+        marks: dict[str, Any] | None = None,
     ) -> str | None:
-        """An address is open for the SUT to call — the method and URL are the data."""
+        """A moment of a running step — an address opened, a wait, a question, an answer.
+
+        ``tck.test.step.listening``, ``.waiting``, ``.suspended``, ``.received``,
+        ``.selecting`` and ``.selected`` share their path: the step's.
+        """
         return self.emit(
-            "tck.test.step.listening",
-            {"attempt": 1, "listener": listener.model_dump(mode="json")},
+            event_type,
+            {**_marks(marks), **data},
             source=step_type,
-            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
+            scope=_step_scope(test, phase, step_id, step_type),
         )
 
-    def step_waiting(
-        self,
-        test: str,
-        step_id: str | None,
-        step_type: str,
-        phase: str,
-        listener: Any,
-        timeout_s: float,
-    ) -> str | None:
-        """The run is blocked on that address, for at most *timeout_s* seconds."""
-        return self.emit(
-            "tck.test.step.waiting",
-            {"attempt": 1, "listener": listener.model_dump(mode="json"), "timeout_s": timeout_s},
-            source=step_type,
-            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
-        )
 
-    def step_suspended(
-        self,
-        test: str,
-        step_id: str | None,
-        step_type: str,
-        phase: str,
-        listener: Any,
-        remaining_s: float,
-        waited_ms: int,
-    ) -> str | None:
-        """The wait stopped counting for a pause, with *remaining_s* of its timeout left."""
-        return self.emit(
-            "tck.test.step.suspended",
-            {
-                "attempt": 1,
-                "listener": listener.model_dump(mode="json"),
-                "remaining_s": remaining_s,
-                "waited_ms": waited_ms,
-            },
-            source=step_type,
-            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
-        )
+#: ``source`` of the checkpoint events, and the scope their ids start with.
+SOURCE_CHECKPOINTS = "testlab/player/checkpoints"
+_PLAN = ("checkpoints",)
 
-    def step_received(
-        self,
-        test: str,
-        step_id: str | None,
-        step_type: str,
-        phase: str,
-        listener: Any,
-        request: Any,
-        waited_ms: int,
-    ) -> str | None:
-        """The call arrived: the inbound request, as evidence, while the step runs."""
-        data: dict[str, Any] = {
-            "attempt": 1,
-            "listener": listener.model_dump(mode="json"),
-            "request": {
-                "method": request.method,
-                "path": request.path,
-                "headers": request.headers,
-                "query_params": request.query_params,
-                "body": request.payload,
-            },
-            "received_at": request.received_at.isoformat() if request.received_at else None,
-            "waited_ms": waited_ms,
-        }
-        return self.emit(
-            "tck.test.step.received",
-            data,
-            source=step_type,
-            scope=(test, phase, step_id or step_type.rsplit("/", 1)[-1]),
-        )
+
+def _marks(marks: dict[str, Any] | None) -> dict[str, Any]:
+    """A step event's marks; a step run outside a frame is the first run of it."""
+    return marks or {"attempt": 1}
+
+
+def _step_scope(test: str, phase: str, step_id: str | None, step_type: str) -> tuple[str, ...]:
+    """Where a step's events sit: by its id, else by what it *is*."""
+    return (test, phase, step_id or step_type.rsplit("/", 1)[-1])
+
+
+def received_data(listener: Any, request: Any, waited_ms: int) -> dict[str, Any]:
+    """What ``tck.test.step.received`` carries: both halves of the inbound exchange.
+
+    ``request`` is how the system under test called, ``response`` how the Test
+    Suite answered it, and ``refused`` why the call was turned away, if it was.
+    """
+    data: dict[str, Any] = {
+        "listener": listener.model_dump(mode="json"),
+        "request": {
+            "method": request.method,
+            "path": request.path,
+            "headers": request.headers,
+            "query_params": request.query_params,
+            "body": request.payload,
+        },
+        "received_at": request.received_at.isoformat() if request.received_at else None,
+        "waited_ms": waited_ms,
+    }
+    if getattr(request, "response", None) is not None:
+        data["response"] = request.response.model_dump(mode="json", exclude_none=True)
+    if getattr(request, "refused", None):
+        data["refused"] = request.refused
+    return data

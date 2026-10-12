@@ -27,12 +27,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from tractusx_testlab.authoring.registry import StepRegistry, step
 from tractusx_testlab.models import StepDefinition
+from tractusx_testlab.models.primitives.checkpoint import NestedRun
 from tractusx_testlab.models.primitives.enums import StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
 from tractusx_testlab.steps._checks.extraction import extract_path
@@ -149,6 +150,11 @@ class IfStep(BaseStep[IfParams, IfOutput]):
     params_model = IfParams
     output_model = IfOutput
     deferred_params = frozenset({"then", "else"})
+    #: The steps it carries, and how it runs them (the run's checkpoints read it).
+    nested_steps: ClassVar[dict[str, NestedRun]] = {
+        "then": NestedRun.CONDITIONAL,
+        "else": NestedRun.CONDITIONAL,
+    }
 
     async def execute(
         self, params: IfParams, context: StepContext, definition: StepDefinition
@@ -160,6 +166,8 @@ class IfStep(BaseStep[IfParams, IfOutput]):
         # a reference to its outputs is the author's to guard, not a failure.
         for untaken in params.otherwise if condition_result else params.then:
             context.steps.record(context.step_namespace, untaken.id, StepStatus.SKIPPED)
+        # And what it carries is not needed: its checkpoints are skipped now.
+        context.checkpoints.not_taken("else" if condition_result else "then")
 
         if not branch:
             # ``outputs`` is set even though it is empty: "nothing ran" is a
@@ -213,7 +221,9 @@ async def _run_sequence(
             )
             break
 
-        result = await context.invoke_step(step_cls, nested_def, step_name, context)
+        result = await context.invoke_step(
+            step_cls, nested_def, step_name, context, at=(label, idx)
+        )
         results.append(result)
         if result.status == StepStatus.FAILED:
             break

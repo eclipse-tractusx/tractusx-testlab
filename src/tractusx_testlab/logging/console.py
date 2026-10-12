@@ -41,6 +41,8 @@ from __future__ import annotations
 import json
 
 from tractusx_testlab.logging.inbound_lines import (
+    checkpoint_updated_line,
+    checkpoints_planned_line,
     listening_line,
     received_line,
     selected_line,
@@ -70,6 +72,8 @@ _INBOUND_LINES = {
     EventKind.STEP_RECEIVED.value: received_line,
     EventKind.STEP_SELECTING.value: selecting_line,
     EventKind.STEP_SELECTED.value: selected_line,
+    EventKind.CHECKPOINTS_PLANNED.value: checkpoints_planned_line,
+    EventKind.CHECKPOINT_UPDATED.value: checkpoint_updated_line,
 }
 
 #: Longest wire body echoed to the console. The JSONL keeps the whole thing;

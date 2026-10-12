@@ -37,23 +37,21 @@ miss another.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Any
 
-from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.authoring.test import Test
-from tractusx_testlab.models import StepStatus, TestStatus
+from tractusx_testlab.models import TestStatus
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.results import StepResult
-from tractusx_testlab.player.execution._not_run import missing_step_result, skipped_result
+from tractusx_testlab.player.execution._phase_step import (
+    FailurePolicy,
+    run_phase_step,
+    steps_for_phase,
+)
 from tractusx_testlab.player.execution._reporters import bind_reporters
 from tractusx_testlab.player.execution._step_outcomes import failure_origin
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.jobs import JobManager
-from tractusx_testlab.player.loading.resolver import try_resolve_params
-from tractusx_testlab.security.credentials import credential_carriers
-from tractusx_testlab.steps.conditions import ConditionEvaluator
 
 # Maps a phase label to the expression namespace (e.g. "execution.ID.field").
 #
@@ -69,13 +67,6 @@ _PHASE_TO_NAMESPACE: dict[str, str] = {
     "execution": "execution",
     "teardown": "teardown",
 }
-
-
-class FailurePolicy(Enum):
-    """Determines behavior on step failure."""
-
-    STOP = auto()
-    CONTINUE = auto()
 
 
 @dataclass(frozen=True)
@@ -99,7 +90,7 @@ async def run_phase(
     config: PhaseConfig,
 ) -> tuple[list[StepResult], TestStatus]:
     """Execute a sequence of steps according to the given phase configuration."""
-    steps_source = _get_steps_for_phase(test, config.phase)
+    steps_source = steps_for_phase(test, config.phase)
     results: list[StepResult] = []
 
     # A call is published while the step that made it is still running, and this
@@ -116,113 +107,18 @@ async def run_phase(
         if config.use_pause_gate and jobs is not None:
             await context.hold.gate(jobs, job_id)
 
-        step_name = _format_step_name(
-            test.definition.id, step_idx, step_def.uses, config.phase_label, step_def.id
-        )
-        # Resolved before the event rather than inside the runner: ``step.start``
-        # reports what the step is about to be given, not the ``${{ }}`` it was
-        # written with. ``None`` (a reference naming nothing) publishes the block
-        # as written and leaves the failure to the runner. A flow step's nested
-        # steps stay as written: each resolves its own ``with:`` when it runs.
-        step_cls = StepRegistry.get(step_def.uses, test.dataspace_version)
-        deferred: frozenset[str] = getattr(step_cls, "deferred_params", frozenset())
-        carriers = credential_carriers(step_cls)
-        params = try_resolve_params(step_def.with_ or {}, context, deferred, carriers)
-        monitor.on_step_started(
-            job_id,
-            test.definition.id,
-            step_def.id,
-            step_idx,
-            step_def.uses,
-            step_name,
-            config.phase_label,
-            step_def.with_ if params is None else params,
-        )
-
-        if config.use_pause_gate and jobs is not None:
-            jobs.set_current_step(job_id, step_name)
-
-        if config.evaluate_conditions and not ConditionEvaluator.should_run(
-            step_def.if_condition,
-            results,
-            context,
-        ):
-            skipped = skipped_result(step_name, step_def.uses, config.phase)
-            # A skipped step still names its CACs: ones this run did not verify.
-            skipped.cac = list(step_def.cac or context.test_cac)
-            context.steps.record(context.step_namespace, step_def.id, StepStatus.SKIPPED)
-            results.append(skipped)
-            monitor.on_step_completed(job_id, test.definition.id, step_def.id, skipped)
-            # A step whose `if:` said no must not then run: recording SKIPPED and
-            # executing it anyway is the one outcome the condition rules out.
-            continue
-
-        failed = await _resolve_and_run_step(
-            test,
-            step_def,
-            step_name,
-            context,
-            job_id,
-            monitor,
-            config,
-            results,
-            params,
-        )
+        # The step runs in a frame of its own: which run of it this is, and the
+        # checkpoint it is, go on everything it publishes (player.checkpoints).
+        with context.checkpoints.step(test.definition.id, (config.phase_label, step_idx)):
+            failed = await run_phase_step(
+                test, step_idx, step_def, context, job_id, monitor, jobs, config, results
+            )
         if failed:
             # What it kept from running follows from it (resolver.origin_of).
             context.steps.record_stop(failure_origin(results[-1]))
             return results, TestStatus.FAILED
 
     return results, TestStatus.COMPLETED
-
-
-async def _resolve_and_run_step(
-    test: Test,
-    step_def: Any,
-    step_name: str,
-    context: StepContext,
-    job_id: str,
-    monitor: ExecutionMonitor,
-    config: PhaseConfig,
-    results: list[StepResult],
-    params: dict[str, Any] | None = None,
-) -> bool:
-    """Resolve step class, execute, store outputs. Returns True if phase should abort."""
-    from tractusx_testlab.player.execution._step_outputs import run_and_publish
-
-    step_cls = StepRegistry.get(step_def.uses, test.dataspace_version)
-    if step_cls is None:
-        missing = missing_step_result(step_name, step_def.uses, config.phase)
-        context.steps.record_result(context.step_namespace, step_def.id, missing)
-        results.append(missing)
-        monitor.on_step_completed(job_id, test.definition.id, step_def.id, missing)
-        return config.failure_policy == FailurePolicy.STOP
-
-    step_result = await run_and_publish(step_cls, step_def, step_name, context, params)
-    step_result.phase = config.phase
-    results.append(step_result)
-    monitor.on_step_completed(job_id, test.definition.id, step_def.id, step_result)
-
-    return step_result.status == StepStatus.FAILED and config.failure_policy == FailurePolicy.STOP
-
-
-def _get_steps_for_phase(test: Test, phase: StepPhase) -> list:
-    """Return the step definitions list for the given phase."""
-    if phase == StepPhase.SETUP:
-        return test.definition.setup
-    if phase == StepPhase.TEARDOWN:
-        return test.definition.teardown
-    return test.definition.execution
-
-
-def _format_step_name(
-    test_name: str, idx: int, step_type: str, phase_label: str, step_id: str | None = None
-) -> str:
-    """Format a step identifier using step id when available, index otherwise."""
-    step_ref = step_id if step_id else f"{idx}"
-    if phase_label == "execution":
-        return f"{test_name}[{step_ref}]:{step_type}"
-    return f"{test_name}[{phase_label}:{step_ref}]:{step_type}"
 
 
 # ---------------------------------------------------------------------------

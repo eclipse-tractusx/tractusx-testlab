@@ -39,6 +39,7 @@ from tractusx_testlab.models.primitives.enums import (
     StepStatus,
     TestStatus,
 )
+from tractusx_testlab.models.runtime.listener import InboundAnswer
 
 #: Marks a ``StepResult.error`` whose failure came from TestLab, not from the SUT.
 #:
@@ -193,6 +194,8 @@ class CallbackResult(BaseModel):
     #: Why the call that ended the wait was turned away — no key, the wrong
     #: key, the wrong address — or ``None`` for the call the wait was for.
     refused: str | None = None
+    #: How the Test Suite answered the call (ADR-0027), when it was answered.
+    response: InboundAnswer | None = None
 
 
 class AssertionSummary(BaseModel):

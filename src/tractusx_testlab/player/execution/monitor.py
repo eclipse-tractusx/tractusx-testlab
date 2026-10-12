@@ -45,6 +45,7 @@ See ``docs/developer/execution-events.md`` for the full event contract.
 from __future__ import annotations
 
 import asyncio
+from collections import Counter
 from collections.abc import Callable
 from typing import Any
 
@@ -67,6 +68,8 @@ from tractusx_testlab.models.runtime.events import (
     TestStartedEvent,
 )
 from tractusx_testlab.models.runtime.results import TestResult
+from tractusx_testlab.player.checkpoints import CheckpointTracker
+from tractusx_testlab.player.execution._monitor_inbound import InboundEvents
 from tractusx_testlab.player.execution._monitor_selection import SelectionEvents
 from tractusx_testlab.player.execution._monitor_steps import StepEvents
 from tractusx_testlab.player.execution._trace_publisher import TracePublisher
@@ -75,15 +78,24 @@ from tractusx_testlab.player.execution._trace_publisher import TracePublisher
 CallbackFn = Callable[[str, dict[str, Any]], Any]
 
 
-class ExecutionMonitor(StepEvents, SelectionEvents):
+class ExecutionMonitor(StepEvents, InboundEvents, SelectionEvents):
     """Publishes typed execution events, logs them, traces them, fires callbacks.
 
     The step lifecycle — the events published while a step runs — is
-    :class:`StepEvents`, in its own module; the job and test lifecycle, the
+    :class:`StepEvents`, :class:`InboundEvents` and :class:`SelectionEvents`,
+    each in its own module, and the run's checkpoints are followed by their
+    common base (``_monitor_checkpoints``); the job and test lifecycle, the
     package verification and the publishing itself are here.
     """
 
-    __slots__ = ("_background_tasks", "_callbacks", "_logger", "_trace")
+    __slots__ = (
+        "_background_tasks",
+        "_callbacks",
+        "_checkpoints",
+        "_logger",
+        "_occurrences",
+        "_trace",
+    )
 
     def __init__(self, logger: StructuredLogger, trace: ExecutionTrace | None = None) -> None:
         """Initialize with a console logger and, optionally, an execution trace.
@@ -97,15 +109,26 @@ class ExecutionMonitor(StepEvents, SelectionEvents):
         self._trace = TracePublisher(trace)
         self._callbacks: list[CallbackFn] = []
         self._background_tasks: set[asyncio.Task] = set()
+        self._checkpoints: CheckpointTracker | None = None
+        self._occurrences: Counter[tuple[str, ...]] = Counter()
 
     @property
     def trace(self) -> ExecutionTrace | None:
         """The CloudEvents trace this monitor writes, if it writes one."""
         return self._trace.trace
 
+    def follow_checkpoints(self, tracker: CheckpointTracker) -> None:
+        """Tell *tracker* what the run does from now on — the player binds the run's own."""
+        self._checkpoints = tracker
+
     def add_callback(self, fn: CallbackFn) -> None:
         """Register a callback function to be invoked on every event."""
         self._callbacks.append(fn)
+
+    def remove_callback(self, fn: CallbackFn) -> None:
+        """Stop invoking *fn*; one never registered is ignored."""
+        if fn in self._callbacks:
+            self._callbacks.remove(fn)
 
     # ------------------------------------------------------------------
     # Job lifecycle
@@ -116,32 +139,41 @@ class ExecutionMonitor(StepEvents, SelectionEvents):
         self._publish(JobStartedEvent(job_id=job_id, tck_id=tck_id), event_id)
 
     def on_job_paused(self, job_id: str) -> None:
-        self._publish(JobPausedEvent(job_id=job_id))
+        occurrence = self._occurrence("job_paused", job_id)
+        self._publish(JobPausedEvent(job_id=job_id, occurrence=occurrence))
 
     def on_job_resumed(self, job_id: str) -> None:
-        self._publish(JobResumedEvent(job_id=job_id))
+        occurrence = self._occurrence("job_resumed", job_id)
+        self._publish(JobResumedEvent(job_id=job_id, occurrence=occurrence))
 
     def on_job_held(self, job_id: str, withdrawn: list[str], kept: dict[str, str]) -> None:
         """The paused run has stopped and withdrawn its offers (``player.execution.hold``)."""
-        event_id = self._trace.run_held(withdrawn, kept)
-        self._publish(JobHeldEvent(job_id=job_id, withdrawn=withdrawn, kept=kept), event_id)
+        occurrence = self._occurrence("job_held", job_id)
+        event_id = self._trace.run_held(withdrawn, kept, occurrence)
+        event = JobHeldEvent(job_id=job_id, withdrawn=withdrawn, kept=kept, occurrence=occurrence)
+        self._publish(event, event_id)
 
     def on_job_restored(self, job_id: str, restored: list[str], lost: dict[str, str]) -> None:
         """The held run has put its offers back and goes on."""
-        event_id = self._trace.run_restored(restored, lost)
-        self._publish(JobRestoredEvent(job_id=job_id, restored=restored, lost=lost), event_id)
+        occurrence = self._occurrence("job_restored", job_id)
+        event_id = self._trace.run_restored(restored, lost, occurrence)
+        event = JobRestoredEvent(job_id=job_id, restored=restored, lost=lost, occurrence=occurrence)
+        self._publish(event, event_id)
 
     def on_job_completed(self, job_id: str) -> None:
         event_id = self._trace.run_ended(job_id, "PASSED")
         self._publish(JobCompletedEvent(job_id=job_id), event_id)
+        self._follow("job_ended", self._cause("job_completed"))
 
     def on_job_failed(self, job_id: str, error: str | None = None) -> None:
         event_id = self._trace.run_ended(job_id, "FAILED", error)
         self._publish(JobFailedEvent(job_id=job_id, error=error), event_id)
+        self._follow("job_ended", self._cause("job_failed"))
 
     def on_job_cancelled(self, job_id: str) -> None:
         event_id = self._trace.run_ended(job_id, "CANCELLED")
         self._publish(JobCancelledEvent(job_id=job_id), event_id)
+        self._follow("job_ended", self._cause("job_cancelled"))
 
     # ------------------------------------------------------------------
     # Test lifecycle
@@ -152,21 +184,26 @@ class ExecutionMonitor(StepEvents, SelectionEvents):
         self._publish(
             TestStartedEvent(job_id=job_id, test_id=test, index=index, attempt=attempt), event_id
         )
+        self._follow("test_started", test, self._cause("test_started"))
 
     def on_test_awaiting(self, job_id: str, test: str, index: int) -> None:
         """An on-demand test is ready and waits for someone to run it."""
-        event_id = self._trace.test_awaiting(test, index)
-        self._publish(TestAwaitingEvent(job_id=job_id, test_id=test, index=index), event_id)
+        occurrence = self._occurrence("test_awaiting", job_id, test)
+        event_id = self._trace.test_awaiting(test, index, occurrence)
+        event = TestAwaitingEvent(job_id=job_id, test_id=test, index=index, occurrence=occurrence)
+        self._publish(event, event_id)
 
-    def on_test_completed(self, job_id: str, result: TestResult) -> None:
+    def on_test_completed(self, job_id: str, result: TestResult, attempt: int = 1) -> None:
         """Publish a test_completed event; ``result.status`` carries the outcome."""
         # The event repeats every step, so it repeats them as they were written
         # down: the real calls, masked.
         record = result.model_copy(
             update={"execution": [wire.as_recorded(step) for step in result.execution]}
         )
-        event_id = self._trace.test_ended(result)
-        self._publish(TestCompletedEvent(job_id=job_id, result=record), event_id)
+        event_id = self._trace.test_ended(result, attempt)
+        self._publish(TestCompletedEvent(job_id=job_id, result=record, attempt=attempt), event_id)
+        test_id = result.test_id or result.test_name
+        self._follow("test_ended", test_id, result.status, self._cause("test_completed"))
 
     # ------------------------------------------------------------------
     # Package verification (pre-execution — no job exists yet)

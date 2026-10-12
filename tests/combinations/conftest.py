@@ -26,9 +26,11 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
 
+from combinations import checkpoint_tck
 from combinations.harness import Harness, build_context
 from combinations.http_double import HttpDouble
 
@@ -47,3 +49,17 @@ def http() -> Generator[HttpDouble, None, None]:
         yield double
     finally:
         double.stop()
+
+
+@pytest.fixture(scope="session")
+def checkpoint_package(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The TCK of checkpoints (``checkpoint_tck``), compiled."""
+    return checkpoint_tck.compile_package(tmp_path_factory.mktemp("checkpoint-tck"))
+
+
+@pytest.fixture(scope="session")
+def checkpoint_run(
+    checkpoint_package: Path, tmp_path_factory: pytest.TempPathFactory
+) -> checkpoint_tck.Run:
+    """One real run of it, answered by a system under test and an operator."""
+    return checkpoint_tck.play(checkpoint_package, tmp_path_factory)

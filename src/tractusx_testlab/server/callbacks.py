@@ -33,7 +33,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from tractusx_testlab.logging.wire import safe_headers
-from tractusx_testlab.models import CallbackResult
+from tractusx_testlab.models import CallbackResult, InboundAnswer
 from tractusx_testlab.server.inbound.run_scope import declared, split
 
 
@@ -123,6 +123,7 @@ class CallbackManager:
         headers: dict,
         payload: Any,
         query_params: dict | None = None,
+        response: InboundAnswer | None = None,
     ) -> bool:
         """Called by the webhook route when a request matches a listener.
 
@@ -141,6 +142,7 @@ class CallbackManager:
             query_params=query_params or {},
             payload=payload,
             received_at=datetime.now(UTC),
+            response=response,
         )
 
         future = self._listeners.get(key)
@@ -179,7 +181,9 @@ class CallbackManager:
         """How many calls on *path*/*method* the mock has turned away."""
         return self._refused.get(self._key(path, method), 0)
 
-    def reject(self, path: str, method: str, reason: str) -> bool:
+    def reject(
+        self, path: str, method: str, reason: str, response: InboundAnswer | None = None
+    ) -> bool:
         """End the wait on *path*/*method* with a call that was turned away, and why.
 
         A call that did not come through the connector, or carried another
@@ -191,7 +195,7 @@ class CallbackManager:
         buffered, since the address outlives the run that opened it and a
         stray call after the run would otherwise fail the next one. Delivered
         on the loop the listener belongs to, whichever thread refused the call.
-        Returns whether a wait was ended.
+        Returns whether a wait was ended; *response* is how the route answered.
         """
         key = self._key(path, method)
         future = self._listeners.get(key)
@@ -203,6 +207,7 @@ class CallbackManager:
             method=method,
             received_at=datetime.now(UTC),
             refused=reason,
+            response=response,
         )
         loop = future.get_loop()
         try:

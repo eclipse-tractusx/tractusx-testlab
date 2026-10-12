@@ -188,6 +188,11 @@ class JobManager:
         job.finished_at = datetime.now(UTC)
         self._event(job, "lifecycle", "Job cancelled")
 
+    def is_cancelled(self, job_id: str) -> bool:
+        """Whether *job_id* was cancelled: it starts nothing more."""
+        job = self._jobs.get(job_id)
+        return job is not None and job.status == JobStatus.CANCELLED
+
     def hold(self, job_id: str, held: bool) -> None:
         """Record whether *job_id* is on hold: paused, with its offers and mocks withdrawn.
 

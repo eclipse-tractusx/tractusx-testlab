@@ -43,7 +43,10 @@ def _context() -> MagicMock:
     with.
     """
     ctx = MagicMock()
-    ctx.invoke_step = run_step
+    # The runner as a flow step calls it: *at* is where the nested step sits.
+    ctx.invoke_step = lambda step_cls, step_def, name, context, *, at=None: run_step(
+        step_cls, step_def, name, context
+    )
     return ctx
 
 

@@ -183,6 +183,8 @@ async def run_and_publish(
     step_name: str,
     context: StepContext,
     params: dict[str, Any] | None = None,
+    *,
+    at: tuple[str, int] | None = None,
 ) -> StepResult:
     """Run one step and publish its ``returns:`` under the phase *context* is bound to.
 
@@ -196,12 +198,17 @@ async def run_and_publish(
     of its latest run.
 
     What became of the step is noted too, so a reference to an output it did
-    not publish can say whether it follows from the step's failure.
+    not publish can say whether it follows from the step's failure. A nested
+    step — *at* its flow step's ``with:`` key and index — runs in a frame of its
+    own, and its checkpoint, if it is one, ends with it (``player.checkpoints``).
     """
     # Imported here: the step runner binds this function, so it imports this module.
     from tractusx_testlab.player.execution.step_runner import run_step
 
-    step_result = await run_step(step_cls, step_def, step_name, context, params)
+    with context.checkpoints.nested(at) as frame:
+        step_result = await run_step(step_cls, step_def, step_name, context, params)
+        if frame is not None:
+            context.checkpoints.ended(step_result.status)
     context.steps.record_result(context.step_namespace, getattr(step_def, "id", None), step_result)
     if context.step_namespace is not None:
         store_step_outputs(step_def, step_result, context, step_namespace=context.step_namespace)

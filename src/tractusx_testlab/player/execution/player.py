@@ -43,6 +43,7 @@ from tractusx_testlab.logging.masking import release_run
 from tractusx_testlab.logging.structured import StructuredLogger
 from tractusx_testlab.logging.trace import ExecutionTrace
 from tractusx_testlab.models import TckResult as TckResult  # SDK alias
+from tractusx_testlab.player.checkpoints.run_plan import follow_checkpoints
 from tractusx_testlab.player.execution._binding import bind_infrastructure, seal_bindings
 from tractusx_testlab.player.execution._context_seeder import require_inputs, seed_context_variables
 from tractusx_testlab.player.execution._skip import resolve_skip_ids
@@ -242,6 +243,7 @@ class TestlabPlayer:
         self._ensure_callback_manager()
         seed_infrastructure_services(svc_mgr, context)
         seal_bindings(context)
+        follow_checkpoints(context, monitor, self._jobs, tck, skip_ids)  # ADR-0027
 
         return TckSession(
             tck=tck,
