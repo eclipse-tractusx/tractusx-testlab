@@ -152,7 +152,11 @@ inside flow steps. `label` and `description` are the mark's, else the step's
 is the step's own, or its parameter model's default when the test gives none.
 
 The player plans a run with the same function, so the list a briefing shows is
-the list the run reports on, index for index.
+the list the run reports on, index for index. The run's plan then goes on with
+the checkpoints of the tests `skip_tests` leaves out, already `skipped`: a
+person may still run such a test on demand (`TckSession.run_test`), and what
+it asks is then followed like any other checkpoint — at an index after the
+briefing's, so no briefed index moves.
 
 ### 4. The player follows them and publishes two events
 
@@ -167,7 +171,7 @@ the run ends. What it changes goes out at once:
 
 | Event (wire, trace `type`) | `data.kind` | When |
 |----------------------------|-------------|------|
-| `checkpoints.planned` | `checkpoints_planned` | Once, after `job_started`, before the first test. Every checkpoint, `ahead`. |
+| `checkpoints.planned` | `checkpoints_planned` | Once, after `job_started`, before the first test. Every checkpoint `ahead`; those of the tests `skip_tests` leaves out follow, `skipped`. |
 | `checkpoint.updated` | `checkpoint_updated` | Right after the event that changed a checkpoint. One per changed checkpoint. |
 
 `checkpoint.updated` keeps the engine's contract and adds `revision` (this
@@ -215,13 +219,25 @@ The engine's states, and its rules, made exact
 
 - An `inbound` or `internal` checkpoint is asked by its step (`step_waiting`,
   `step_selecting`) and answered by it (`step_received`, `step_selected`).
-  Any other checkpoint is asked when its step starts and answered when it
-  completes.
+  Any other checkpoint is asked when its step really runs — after `step_start`
+  and its `if:`, so a step whose `if:` says no, or whose type is missing, was
+  never asked (`skipped`, `not_reached`, `attempts` unchanged) — and answered
+  when it completes.
+- A call the mock turned away (`step_received` with `refused`) is no answer:
+  the checkpoint stays `now`, and is `failed` when its step fails on it.
 - `attempts` counts the asks. A question asked again after a pause is the
   same attempt: the frame says so, the event says how many pauses it has been
   through (`pauses`). A `flow/retry` that runs a checkpoint again asks a new
   attempt; so does a test run again, which first sets its checkpoints back to
-  `ahead` (attempts go on counting).
+  `ahead` (attempts go on counting). A test that is skipped is announced
+  (`test_started`, then `test_completed` `SKIPPED`) without starting its
+  checkpoints over. A question that is no checkpoint counts its pauses the
+  same way.
+- A test the run was interrupted in — cancelled mid-test (Ctrl-C, a host
+  dropping a run), or an error the test did not catch — is not started again
+  to be skipped when the session closes: it ends `CANCELLED`, and its
+  checkpoints keep what they became (`cleared` stays `cleared`; the open
+  question is `not_reached`).
 - `response_s` is how long the question was open until it was answered —
   `waited_ms` of the answer, so the time the run was paused does not count.
 - When the run ends, whatever is still `ahead` or `now` is `not_reached`.
@@ -307,9 +323,23 @@ Chosen: 2 CCMAPI notification 3.0
 - `Choose [1-N]` re-asks on anything but a number in range; `q` stops the run
   (its teardown runs, no further test starts); when the step's timeout runs
   out, the checkpoint times out as on any other path.
-  `--choose <step_id>=<n|option id>` answers up front; `--yes` never chooses.
-- Exit codes: `0` passed, `1` failed, `2` nothing to answer with, `3` not
-  approved, `4` stopped at a choice. A run with no checkpoints asks nothing.
+  `--choose <step_id>=<option id|n>` answers up front — the option with that
+  id first, else the option numbered so; `--yes` never chooses.
+- Exit codes: `0` passed, `1` failed, `2` the run could not get an answer (no
+  terminal and no `--yes`/`--choose`, the input ended, a `--choose` value that
+  names no option, or the operator could not be asked), `3` not approved, `4`
+  stopped at a choice. A run with no checkpoints asks nothing.
+- The briefing is asked before the event loop starts (`approve_run`), so a
+  Ctrl-C at `Continue? [y/N]` ends the process at once. A choice is read in
+  slices of 0.2 s — on a daemon thread where stdin cannot be `select()`-ed, a
+  Windows console — so its deadline holds everywhere, and when the run ends or
+  is interrupted while it is asked, the operator is stopped (`Operator.stop`)
+  instead of being waited for: no prompt outlives the run, and none says it
+  timed out when it was interrupted.
+- While a window is up, the console's log lines from other threads wait
+  (`logging.structured.hold_console`) and are written when it closes, so a
+  `checkpoint.updated` line never lands inside the frame — on screen or in the
+  transcript.
 - What is shown goes to stdout, so the transcript has it; what the person typed
   is written back after it (`Approved.`, `Chosen: 2 …`).
 
@@ -320,7 +350,7 @@ Chosen: 2 CCMAPI notification 3.0
 | Matched a nested step without an id by its `uses`, in order. | Knows its position from its frame. |
 | Treated a repeated ask as a new attempt unless a `step_suspended` came first or the new timeout was shorter. | A re-ask in the same frame is the same attempt; a new frame (retry, restart) is a new one. |
 | Closed a nested checkpoint when the flow step carrying it ended, as the flow step ended. | Closes it when the nested step itself ends, with its own outcome. A `flow/retry` checkpoint therefore shows each attempt: `now`, `timed_out`, `now`, `cleared`. |
-| Marked a `flow/if` branch not taken `skipped` when the flow step completed, `not_reached` when it failed. | Marks it `skipped` the moment `flow/if` decides, whatever happens after. |
+| Marked a `flow/if` branch not taken `skipped` when the flow step completed, `not_reached` when it failed. | Marks it `skipped` the moment `flow/if` decides, whatever happens after — also a failure an earlier run of the same `flow/if` left there (a `flow/retry` whose next attempt took the other branch); a `cleared` one stays answered. |
 | Called a select that failed while asked `failed`. | `timed_out` when nobody answered, `not_reached` when the run was cancelled. |
 | Took `response_s` as `answered_at - asked_at`. | Takes the answer's `waited_ms`: pauses do not count. |
 | Inferred "cancelled" from the end of the stream. | Reads the job's status (`JobManager.is_cancelled`); a cancelled run starts no further test, and their checkpoints are `not_reached`. |

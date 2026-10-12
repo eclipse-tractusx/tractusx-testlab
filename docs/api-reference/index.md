@@ -259,7 +259,9 @@ Chosen: 2 CCMAPI notification 3.0
 
 A number chooses its option; anything else asks again. `q` stops the run: the
 current test's teardown runs, no further test starts. When the step's timeout
-runs out, the checkpoint times out. The windows are drawn at the terminal's
+runs out, the checkpoint times out. Ctrl-C at either prompt stops the run at
+once; the test it interrupted ends `CANCELLED`. While a window is up the run's
+own log lines wait, and follow it when it closes. The windows are drawn at the terminal's
 width (60 to 100 columns), in plain ASCII; the title is bold in a coloured
 terminal, never with `NO_COLOR`. The transcript keeps them, with what you typed.
 
@@ -268,7 +270,7 @@ To run without a terminal, answer up front:
 | Option | Effect |
 |--------|--------|
 | `--yes`, `-y` (or `TESTLAB_YES=1`) | Approve the checkpoints without asking. It never answers a choice. |
-| `--choose <step_id>=<n\|option id>` | Answer the choice of step `<step_id>` with option `n` (from 1) or the option with that id. Repeatable. |
+| `--choose <step_id>=<option id\|n>` | Answer the choice of step `<step_id>` with the option whose id is the value, else with option `n` (from 1). The id wins: with options `5` and `1`, `pick=1` chooses option `1`. Repeatable. |
 
 Without a terminal and without the answer, the run does not wait: it stops,
 naming the flag to pass.
@@ -277,7 +279,7 @@ naming the flag to pass.
 |-----------|---------|
 | `0` | The run passed. |
 | `1` | The run failed, or could not start. |
-| `2` | There was nothing to answer with: no terminal and no `--yes` or `--choose`. |
+| `2` | The run could not get an answer: no terminal and no `--yes` or `--choose`, the input ended (Ctrl-D) at a prompt, a `--choose` value that names no option, or the operator could not be asked. |
 | `3` | The checkpoints were not approved; no test ran. |
 | `4` | The run was stopped at a choice (`q`). |
 
