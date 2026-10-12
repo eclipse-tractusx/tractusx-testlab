@@ -236,6 +236,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- A run its host cancels (`JobManager.cancel`, as the server's cancel route,
+  the CLI's operator abort and the Test Suite engine do) closes with
+  `job_cancelled` instead of `job_failed`, so its checkpoints turn
+  `not_reached` for that cause and the trace ends `tck.end` `CANCELLED`.
+
 - Input scopes identify who supplies a value independently of infrastructure.
   Engine-only kits can ask the SUT operator for inputs without requiring a SUT
   connector or another SUT capability.

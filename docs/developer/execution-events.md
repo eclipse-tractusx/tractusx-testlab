@@ -192,7 +192,9 @@ In the trace they are a `tck.held` and a `tck.restored`.
 #### `job_cancelled`
 
 **Terminal.** The operator cancelled the job before it reached an outcome of its
-own.
+own. A run its host cancels with `JobManager.cancel` closes with this event
+(not `job_failed`), whatever its tests got to; its open checkpoints then turn
+`not_reached` with `cause` `job_cancelled`.
 
 | Field | Type | Description |
 |-------|------|-------------|

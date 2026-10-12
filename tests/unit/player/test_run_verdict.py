@@ -117,3 +117,13 @@ class TestTheVerdictIsTheStatus:
         )
         assert result.status == TestStatus.FAILED
         assert result.steps_passed == 0
+
+    def test_a_run_its_host_cancelled_ends_cancelled(self) -> None:
+        """``JobManager.cancel`` before the session closes: ``job.cancelled``, not a failure."""
+        jobs, monitor, logger = MagicMock(), MagicMock(), MagicMock()
+        jobs.is_cancelled.return_value = True
+        finalize_job(jobs, MagicMock(), self._mostly_passing(), monitor, logger)
+
+        monitor.on_job_cancelled.assert_called_once()
+        monitor.on_job_failed.assert_not_called()
+        jobs.fail.assert_not_called()
