@@ -152,6 +152,11 @@ async def test_asset_query_paginates_filters_exactly_deduplicates_and_continues_
     assert specs[0]["filterExpression"] == [
         {"operandLeft": "assetId", "operator": "=", "operandRight": ASSET}
     ]
+    # Agreements have no createdAt, the SDK's default sort field: the
+    # connector's SQL store fails on it with HTTP 500.
+    assert all(
+        (spec["sortField"], spec["sortOrder"]) == ("contractSigningDate", "ASC") for spec in specs
+    )
     assert all(
         request.url.startswith("https://engine/management/v3/contractagreements/")
         for request in requests
