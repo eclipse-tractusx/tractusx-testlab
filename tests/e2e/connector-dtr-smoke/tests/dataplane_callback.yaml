@@ -322,8 +322,10 @@ execution:
 
 # Leaves the engine connector as it was found. The connector refuses to delete
 # an asset a contract agreement names, so that delete may answer 409 on a run
-# that negotiated; retirement checks are soft, and the cluster is thrown away
-# with the job either way.
+# that negotiated, and the cluster is thrown away with the job either way.
+# Retirement checks are hard here, unlike in a published TCK's teardown: this
+# run always negotiates the engine asset, and soft checks let a 500 on every
+# agreement query pass unnoticed.
 teardown:
   - id: delete_contract
     uses: http/http_request
@@ -345,12 +347,18 @@ teardown:
       status_code:
         type: integer
         class: StatusCode
+      error:
+        type: string
     validate:
       - uses: validate/assert
-        with: { input: status_code, operator: one_of, value: [200, 204], severity: SOFT }
+        with: { input: error, operator: equals, value: "" }
+      - uses: validate/assert
+        with: { input: agreement_ids, operator: not_empty }
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 204 }
 
-  # Exercise the single-agreement block too, including an already-retired ID.
-  # This is cleanup only: a backend refusal remains a soft warning.
+  # Exercise the single-agreement block too: every ID was just retired, so the
+  # connector must answer 409 Conflict.
   - id: repeat_single_retirements
     uses: labs/flow/for_each
     with:
@@ -362,7 +370,7 @@ teardown:
             agreement_id: "${{ each.item }}"
           validate:
             - uses: validate/assert
-              with: { input: status_code, operator: one_of, value: [200, 204, 409], severity: SOFT }
+              with: { input: status_code, operator: equals, value: 409 }
 
   - id: delete_asset
     uses: http/http_request
