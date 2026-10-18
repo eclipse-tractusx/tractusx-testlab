@@ -185,7 +185,13 @@ async def test_shipped_setup_and_teardown_use_the_guarded_run_namespace(
         http.json_route("DELETE", path, {})
     agreements = "/management/v3/contractagreements"
     http.json_route("POST", agreements + "/request", [{"@id": "agreement-1", "assetId": asset_id}])
-    http.json_route("POST", agreements + "/retirements", None, status=204)
+    # The connector answers 409 Conflict for an agreement already retired.
+    http.route(
+        "POST",
+        agreements + "/retirements",
+        Response(status=204, body=None),
+        Response(status=409, body=[{"type": "ObjectConflict"}]),
+    )
     closed = await callback_harness.run(*scenario["teardown"], phase="teardown")
     assert closed.passed, [(r.step_name, r.error) for r in closed.failures]
     # Agreements are retired after the contract definition is withdrawn and

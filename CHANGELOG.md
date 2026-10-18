@@ -236,6 +236,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- `connector/provider/retire_asset_agreements` no longer fails every time with
+  HTTP 500. Its agreement query sorted by the SDK default `createdAt`, which a
+  contract agreement does not have: the connector's SQL store cannot translate
+  it and answered with a servlet error page, so no agreement was ever retired.
+  The query now sorts by `contractSigningDate`, oldest first.
+
 - A run its host cancels (`JobManager.cancel`, as the server's cancel route,
   the CLI's operator abort and the Test Suite engine do) closes with
   `job_cancelled` instead of `job_failed`, so its checkpoints turn

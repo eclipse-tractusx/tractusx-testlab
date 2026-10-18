@@ -31,7 +31,8 @@ tests use every one of the 56 steps in the engine's catalogue
 `validate/assert`, `validate/field` and `validate/schema` — so no step ships
 without having been run once against something real. The dataplane callback
 test retires its engine asset agreements in teardown, then exercises retirement
-by agreement ID. Both cleanup checks are soft; agreement history can remain.
+by agreement ID. Both retirement checks are hard: the query must find the
+run's agreements, retire each with 204, and a repeat must answer 409.
 
 - `connector_negotiation.yaml` — provisions an asset + policies on the SUT
   (provider) connector, then drives the engine (consumer) connector through

@@ -51,6 +51,13 @@ if TYPE_CHECKING:
     from tractusx_testlab.player.execution.context import StepContext
 
 _AGREEMENTS = "/v3/contractagreements"
+# The SDK query spec sorts by "createdAt" unless told otherwise. A contract
+# agreement has no such property: the SQL store cannot translate it and the
+# connector answers 500 with a servlet error page instead of the page asked
+# for. The signing date is an agreement property, and oldest first keeps the
+# offsets stable while agreements are signed during the walk.
+_SORT_FIELD = "contractSigningDate"
+_SORT_ORDER = "ASC"
 _PAGE_SIZE = 100
 _MAX_PAGES = 1000
 _EDC = "https://w3id.org/edc/v0.0.1/ns/"
@@ -124,6 +131,8 @@ def query_agreements(
             dataspace_version="saturn",
             offset=page_number * _PAGE_SIZE,
             limit=_PAGE_SIZE,
+            sort_field=_SORT_FIELD,
+            sort_order=_SORT_ORDER,
             filter_expression=[
                 {"operandLeft": "assetId", "operator": "=", "operandRight": asset_id}
             ],
