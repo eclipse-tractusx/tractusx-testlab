@@ -157,18 +157,18 @@ def _load_tck(
     there is no path here that reports on bytes nothing verified.
     """
     from tractusx_testlab.player.loading.loader import Loader
+    from tractusx_testlab.security.trust.identity import PlayerKeys, decryption_keys
 
-    priv = pub = None
+    keys: PlayerKeys = {}
+    pub = None
     if player_keys is not None:
-        from tractusx_testlab.security.crypto.keygen import load_private_key
-
-        priv = load_private_key(player_keys / "encryption.pem")
+        keys = decryption_keys(player_keys)
     if compiler_pub is not None:
         from tractusx_testlab.security.crypto.keygen import load_public_key
 
         pub = load_public_key(compiler_pub)
 
-    tck = Loader().load(package, player_private_key=priv, compiler_public_key=pub)
+    tck = Loader().load(package, compiler_public_key=pub, **keys)
     # Set for every archive the loader extracts; a bare YAML resolves beside itself.
     return tck, tck.base_dir or package.parent
 

@@ -31,6 +31,7 @@ from tractusx_testlab.security.crypto.encryption import decrypt_package, encrypt
 from tractusx_testlab.security.crypto.keygen import (
     KeyPair,
     generate_ed25519_keypair,
+    generate_mlkem_keypair,
     generate_rsa_keypair,
 )
 from tractusx_testlab.security.crypto.signing import sign_bytes, verify_signature
@@ -48,6 +49,7 @@ __all__ = [
     "decrypt_package",
     "encrypt_package",
     "generate_ed25519_keypair",
+    "generate_mlkem_keypair",
     "generate_rsa_keypair",
     "sign_bytes",
     "verify_signature",

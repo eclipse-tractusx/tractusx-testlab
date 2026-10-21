@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Opening an encrypted ``.tck`` — verify what is readable, then decrypt the rest.
@@ -43,14 +44,21 @@ import yaml
 from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.player.loading._parser import encrypted_package_compiler_id
-from tractusx_testlab.security.crypto.encryption import decrypt_package, wrapped_key_for
+from tractusx_testlab.security.crypto.encryption import content_key_for, decrypt_payload
 from tractusx_testlab.security.crypto.signing import package_signing_message, verify_signature
+from tractusx_testlab.security.trust.identity import ENCRYPTION_KEY, PlayerKeys, decryption_keys
 from tractusx_testlab.security.trust.trust_store import TrustStore
 
 #: Archive entries of an encrypted package.
 MANIFEST_ENTRY = "manifest.yaml"
 PAYLOAD_ENTRY = "payload.enc"
 SIGNATURE_ENTRY = "signature.sig"
+
+
+class PackageKeys(PlayerKeys, total=False):
+    """The keys ``Loader.load`` opens an encrypted package with: the player's and the compiler's."""
+
+    compiler_public_key: bytes
 
 
 def verify_manifest(path: Path, compiler_public_key: bytes | None) -> dict:
@@ -97,8 +105,15 @@ def open_encrypted_package(
     path: Path,
     player_private_key: bytes | None,
     compiler_public_key: bytes | None,
+    player_kem_private_key: bytes | None = None,
+    *,
+    require_hybrid: bool = False,
 ) -> dict[str, bytes]:
     """Verify, decrypt and unpack the encrypted package at *path*.
+
+    *player_kem_private_key* is the player's ML-KEM-768 key, needed when the
+    package is sealed for it with the hybrid wrap; *require_hybrid* refuses one
+    sealed with RSA-OAEP alone (ADR-0012).
 
     Returns the decrypted entries keyed by archive path, sealed-checksum verified
     and shown to be the content the signed manifest describes.
@@ -113,8 +128,10 @@ def open_encrypted_package(
 
     with zipfile.ZipFile(path, "r") as archive:
         blob = base64.b64decode(archive.read(PAYLOAD_ENTRY))
-    enc_key = wrapped_key_for(players, player_private_key)
-    tar_bytes = decrypt_package(enc_key, blob[:12], blob[12:], player_private_key)
+    content_key = content_key_for(
+        players, player_private_key, player_kem_private_key, require_hybrid=require_hybrid
+    )
+    tar_bytes = decrypt_payload(content_key, blob[:12], blob[12:])
 
     with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:gz") as tf:
         entries = {
@@ -145,7 +162,7 @@ def _require_described_content(manifest: dict, entries: dict[str, bytes]) -> Non
         )
 
 
-def engine_package_keys(config: TestlabConfig, package: Path) -> dict[str, bytes]:
+def engine_package_keys(config: TestlabConfig, package: Path) -> PackageKeys:
     """Resolve the keys an encrypted *package* needs from this engine's config.
 
     A server cannot be handed a player's private key per request, and should
@@ -153,7 +170,7 @@ def engine_package_keys(config: TestlabConfig, package: Path) -> dict[str, bytes
     and the compilers it accepts in ``trust_store_dir``. The CLI passes the
     same two keys explicitly with ``--player-keys`` and ``--compiler-pub``.
     """
-    private_key = config.keys_dir / "encryption.pem"
+    private_key = config.keys_dir / f"{ENCRYPTION_KEY}.pem"
     if not private_key.is_file():
         raise ValueError(
             f"Package {package.name!r} is encrypted, and this engine has no player "
@@ -171,7 +188,6 @@ def engine_package_keys(config: TestlabConfig, package: Path) -> dict[str, bytes
             f"into {config.trust_store_dir}."
         )
 
-    return {
-        "player_private_key": private_key.read_bytes(),
-        "compiler_public_key": compiler_key,
-    }
+    keys = PackageKeys(compiler_public_key=compiler_key)
+    keys.update(decryption_keys(config.keys_dir))
+    return keys

@@ -202,6 +202,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- `cryptography` is required at 48.0.0 or later, the first release whose
+  wheels provide ML-KEM.
+- `encrypt_for_recipients` returns the `authorized_players` entries (dicts)
+  instead of `(player_id, encrypted_key)` pairs, and takes the players' ML-KEM
+  keys as an optional third argument.
 - No two events of a run share an id (ADR-0016, amended). Every step event
   carries its real `attempt` (a step retried, or whose test is run again,
   counts up) and its `checkpoint`; `step_waiting`, `step_suspended` and
@@ -338,6 +343,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   of its latest run.
 
 ### Security
+
+- Post-quantum hybrid key wrap for encrypted packages (ADR-0012, amended). `testlab
+  keygen` issues an ML-KEM-768 pair (`encryption_pq.pem` / `encryption_pq.pub`)
+  with every identity, and adds one to an identity that has none. A Player
+  whose `<name>_pq.pub` lies beside the `<name>.pub` passed to `--player-pub`
+  gets the content key under a key derived with HKDF-SHA256 from an RSA-OAEP
+  secret and an ML-KEM-768 secret (`alg: hybrid:RSA-OAEP-SHA256+ML-KEM-768`), so a
+  package recorded today cannot be opened by breaking RSA alone ("harvest now,
+  decrypt later"). Players without an ML-KEM-768 key keep the RSA-OAEP wrap,
+  and every package compiled before opens as before. `Loader.load` and
+  `open_encrypted_package` take `player_kem_private_key` and `require_hybrid`;
+  the engine reads `encryption_pq.pem` from `keys_dir`, and
+  `require_pq_encryption` (`TESTLAB_REQUIRE_PQ_ENCRYPTION`) refuses packages
+  without the hybrid wrap.
 
 - Hardened credential handling. A credential field of an infrastructure
   binding (`infrastructure.<side>.connector.api_key`) is published to a test

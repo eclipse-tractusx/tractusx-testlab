@@ -15,6 +15,7 @@
 -->
 
 <!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
 # ADR-0012: Compilation and Packaging
@@ -326,14 +327,14 @@ security:
   signature_algorithm: "hybrid:Ed25519+ML-DSA-65"
   compiler_id: "compiler:blake2b:a1b2c3d4e5f67890abcdef1234567890a1b2c3d4e5f67890abcdef1234567890a1b2c3d4e5f67890abcdef1234567890a1b2c3d4e5f67890abcdef1234567890"
   authorized_players:
-    - player_id: "player:blake2b:d4e5f6a1b2c3789012345678abcdef90d4e5f6a1b2c3789012345678abcdef90d4e5f6a1b2c3789012345678abcdef90d4e5f6a1b2c3789012345678abcdef90"
-      encrypted_key:
-        rsa: "base64:kL9mQxR2vN8pT5wZ3aY7jE1uH4cF6bD0sI2gW9oK3nM8xV5lQ7rJ4tA1yU6iP0hB3eN9mC2wX5zR8fG4dL7kO1="
-        ml_kem: "base64:qR3tY7uI9oP1aS2dF4gH6jK8lZ0xC5vB7nM3wE9rT1yU4iO6pA8sD2fG5hJ7kL0zX3cV9bN1mQ4wE6rT8yU2i="
-    - player_id: "player:blake2b:f6a1b2c3d4e5678901234567abcdef01f6a1b2c3d4e5678901234567abcdef01f6a1b2c3d4e5678901234567abcdef01f6a1b2c3d4e5678901234567abcdef01"
-      encrypted_key:
-        rsa: "base64:pW7nK4vR1xZ8mT3qY6jE9uH2cF5bD0sI7gL4oA3kN8xV1lQ5rJ2tM9yU6iP0hB3eC8wX1zR4fG7dS5kO2nL6="
-        ml_kem: "base64:mN5bV2cX8zL0kJ3hG7fD1sA9pO4iU6yT8rE2wQ5nM7bV1cX3zL9kJ0hG4fD6sA2pO8iU5yT7rE3wQ1nM9bV4c="
+    - player_id: "d4e5f6a1…"            # SHA-256 of the Player's encryption.pub
+      alg: "hybrid:RSA-OAEP-SHA256+ML-KEM-768"
+      rsa_ciphertext: "kL9mQxR2…"       # RSA-OAEP-encrypted random secret
+      kem_key_id: "4f1c09d2…"           # SHA-256 of the Player's encryption_pq.pub
+      kem_ciphertext: "qR3tY7uI…"       # ML-KEM-768 ciphertext
+      wrapped_key: "3vR8aQ2m…"          # nonce ‖ AES-256-GCM-wrapped content key
+    - player_id: "f6a1b2c3…"            # a Player without an ML-KEM-768 key
+      encrypted_key: "pW7nK4vR…"        # RSA-OAEP-wrapped content key
 ```
 
 #### Manifest Fields
@@ -352,13 +353,16 @@ security:
 | `security` | `object?` | Present only in encrypted packages |
 | `security.format` | `string` | Encryption format: `"encrypted-v1"` |
 | `security.algorithm` | `string` | Content encryption: `"AES-256-GCM"` |
-| `security.key_derivation` | `string` | Hybrid key wrapping: `"hybrid:RSA-OAEP-SHA256+ML-KEM-768"` |
+| `security.key_derivation` | `string` | Every key wrap the entries use, comma-separated: `"hybrid:RSA-OAEP-SHA256+ML-KEM-768"`, `"RSA-OAEP-SHA256"`, or both |
 | `security.signature_algorithm` | `string` | Hybrid signing: `"hybrid:Ed25519+ML-DSA-65"` |
 | `security.compiler_id` | `string` | Compiler's public key BLAKE2b-512 fingerprint |
 | `security.authorized_players[].player_id` | `string` | Player's public key BLAKE2b-512 fingerprint |
-| `security.authorized_players[].encrypted_key` | `object` | AES key wrapped with both RSA-OAEP and ML-KEM-768 |
-| `security.authorized_players[].encrypted_key.rsa` | `string` | AES key encrypted with Player's RSA public key (base64) |
-| `security.authorized_players[].encrypted_key.ml_kem` | `string` | AES key encapsulated with Player's ML-KEM-768 public key (base64) |
+| `security.authorized_players[].alg` | `string?` | `"hybrid:RSA-OAEP-SHA256+ML-KEM-768"`; absent for the RSA-OAEP wrap ([Hybrid Key Wrap](#hybrid-key-wrap)) |
+| `security.authorized_players[].rsa_ciphertext` | `string` | Hybrid: random secret, RSA-OAEP-SHA256-encrypted for the Player (base64) |
+| `security.authorized_players[].kem_key_id` | `string` | Hybrid: SHA-256 of the Player's ML-KEM-768 public key PEM |
+| `security.authorized_players[].kem_ciphertext` | `string` | Hybrid: ML-KEM-768 ciphertext for the Player (base64) |
+| `security.authorized_players[].wrapped_key` | `string` | Hybrid: nonce ‖ content key under the HKDF-derived key, AES-256-GCM (base64) |
+| `security.authorized_players[].encrypted_key` | `string` | RSA-OAEP only: content key RSA-OAEP-SHA256-encrypted for the Player (base64) |
 
 ### 5. Encryption and Signing
 
@@ -368,16 +372,122 @@ security:
 2. Generate a random 256-bit AES key
 3. Create a tar archive of `tests/` and `assets/`
 4. Encrypt the tar archive with AES-256-GCM → `payload.enc`
-5. For each `--authorize-player` public key:
-   - Load Player's RSA public key from PEM file
-   - Encrypt the AES key with RSA-OAEP (SHA-256 padding) → `encrypted_key.rsa`
-   - Load Player's ML-KEM-768 encapsulation key from PEM file
-   - Encapsulate the AES key with ML-KEM-768 → `encrypted_key.ml_kem`
-   - Record as `{player_id: blake2b_fingerprint, encrypted_key: {rsa: ..., ml_kem: ...}}`
+5. For each `--player-pub` public key, wrap the AES key with the [hybrid key wrap](#hybrid-key-wrap) when the
+   Player's ML-KEM-768 key lies beside it, else with RSA-OAEP-SHA256 alone
 6. Build `manifest.yaml` with metadata + `security` block (no secret material)
 7. Compute BLAKE2b-512 checksum over the original (unencrypted) tests and assets
-8. Sign (`manifest.yaml` bytes ‖ `payload.enc` bytes) with both Ed25519 AND ML-DSA-65 signing keys → `signature.sig` (contains both signatures)
+8. Sign (`manifest.yaml` bytes ‖ `payload.enc` bytes) with both Ed25519 AND ML-DSA-65 signing keys → `signature.sig` (contains both signatures). *Implemented: Ed25519 only; ML-DSA-65 is still proposed — see [Hybrid Key Wrap](#hybrid-key-wrap).*
 9. Package `manifest.yaml`, `payload.enc`, `signature.sig` into ZIP archive
+
+#### Hybrid Key Wrap
+
+*Amendment, 2026-10-21.* The workflow above first described the hybrid as two independent copies of the content
+key — RSA-OAEP-encrypted, and "encapsulated" with ML-KEM-768 — checked against each other. That cannot be built
+as written, and would not be hybrid if it were: ML-KEM encapsulates a random secret of its own, not a chosen key,
+and a copy of the content key under RSA alone opens the package for whoever breaks RSA. A quantum computer breaks
+RSA from the public key, so a package recorded today would open once one exists ("harvest now, decrypt later").
+The format that shipped until then wrapped with RSA-OAEP only. This section fixes the hybrid as implemented: one
+key-encryption key derived from **both** secrets, so recovering the content key takes breaking RSA *and* ML-KEM —
+the hybrid BSI TR-02102-1 asks for while post-quantum schemes mature.
+
+A Player identity has an optional ML-KEM-768 pair, `encryption_pq.pem` (PKCS#8, the seed-only form of RFC 9935)
+and `encryption_pq.pub` (SPKI PEM). `testlab keygen` writes it with every new identity and adds it to an existing
+one without touching the other keys. `cryptography` 48.0.0 is the first release whose wheels provide ML-KEM.
+
+##### The wrap
+
+For a Player with an ML-KEM-768 key, the Compiler:
+
+1. RSA-OAEP-SHA256-encrypts a fresh random 32-byte `rsa_secret` → `rsa_ciphertext`;
+2. encapsulates against the Player's ML-KEM-768 key → `kem_secret`, `kem_ciphertext`;
+3. derives `KEK = HKDF-SHA256(ikm = rsa_secret ‖ kem_secret, salt = none, info)` with
+
+    ```text
+    info = "tractusx-testlab/tck-key-wrap/v2" 0x00 ‖ SHA-256(rsa_ciphertext)
+           ‖ SHA-256(kem_ciphertext) ‖ kem_key_id
+    ```
+
+4. encrypts the content key under `KEK` with AES-256-GCM, a fresh 12-byte nonce and the
+   associated data `hybrid:RSA-OAEP-SHA256+ML-KEM-768` → `wrapped_key = nonce ‖ ciphertext`.
+
+The entry in `security.authorized_players` is
+
+```yaml
+- player_id: <SHA-256 of encryption.pub>
+  alg: hybrid:RSA-OAEP-SHA256+ML-KEM-768
+  rsa_ciphertext: <base64>
+  kem_key_id: <SHA-256 of encryption_pq.pub>
+  kem_ciphertext: <base64>
+  wrapped_key: <base64>
+```
+
+Concatenating both shared secrets as the HKDF input is the combiner NIST SP 800-56C
+and SP 800-227 describe. Recovering the content key takes both secrets, so it takes
+breaking RSA **and** ML-KEM. Binding both ciphertexts and the ML-KEM key into `info`
+keeps a secret from being replayed under another ciphertext or key. `kem_key_id` lets
+a Player say which ML-KEM key a package was sealed for when it holds another one.
+
+The manifest is signed as before (`manifest.yaml ‖ payload.enc`), so the new fields
+are covered by the Compiler's Ed25519 signature. `security.key_derivation` lists every
+wrap the entries use, for example `RSA-OAEP-SHA256, hybrid:RSA-OAEP-SHA256+ML-KEM-768`.
+
+##### Format 1 stays
+
+An entry without `alg` is the RSA-OAEP wrap (`player_id`, `encrypted_key`), byte for
+byte what packages carried before. The Compiler writes it for a Player with no ML-KEM
+key, and the Player reads it as before. One package may mix both kinds of entry.
+
+##### How keys reach the Compiler and the Player
+
+- **Compiler:** `--player-pub <dir>/<name>.pub` pairs with `<dir>/<name>_pq.pub`. The
+  hybrid key travels in the same directory as the RSA key, so there is no second flag
+  to forget. Pairing by the file's own name keeps a collection of several Players'
+  keys from handing one Player another's ML-KEM key.
+- **Player (CLI):** `--player-keys <dir>` reads `encryption_pq.pem` when it is there.
+- **Player (engine):** `engine_package_keys` reads it from `keys_dir`.
+- **API:** `Loader.load` and `open_encrypted_package` take `player_kem_private_key`.
+
+##### A Player may require the hybrid wrap
+
+`require_hybrid` on `Loader.load` / `open_encrypted_package`, and
+`require_pq_encryption` (`TESTLAB_REQUIRE_PQ_ENCRYPTION`) for an engine, refuse a
+package whose entry for this Player is RSA-OAEP only. It is off by default, so packages
+compiled before this amendment keep loading.
+
+##### Consequences
+
+- Packages compiled for a Player with an ML-KEM-768 key cannot be opened by breaking
+  RSA alone. Their entries grow by about 1.7 KB per Player, most of it the base64 of
+  the 1088-byte ML-KEM-768 ciphertext.
+- An older testlab cannot open a hybrid entry: it looks for `encrypted_key` and finds
+  none. A Compiler that must serve such Players leaves their `_pq.pub` out.
+- `cryptography` is required at 48.0.0 or later.
+- `encrypt_for_recipients` returns the manifest entries instead of
+  `(player_id, encrypted_key)` pairs.
+- A package compiled before this amendment stays RSA-only until it is recompiled. A
+  catalogue that keeps packages (an engine) re-seals them to give them the hybrid wrap.
+
+##### Dual signatures (Ed25519 + ML-DSA-65)
+
+Still proposed, not implemented. A forged signature needs a quantum computer at the time of forging, not a
+recording made today, so the "harvest now" argument that makes the key wrap urgent does not apply; a package can be
+re-signed once ML-DSA-65 is added. Adding it changes the signature entry, the trust store (a Compiler's ML-DSA key
+next to its Ed25519 key) and every verification path, and is left to its own change.
+
+##### Alternatives considered
+
+- **ML-KEM-768 alone.** Simpler, but it would bet the confidentiality of every package
+  on a scheme deployed for a short time. BSI and ANSSI recommend hybrid.
+- **HPKE (RFC 9180) with a hybrid KEM (X25519 + ML-KEM-768).** A standard construction
+  that `cryptography` is starting to expose. Its hybrid KEM is not yet a stable,
+  released API, and it would need a new X25519 key in every identity while the RSA key
+  stays for format 1. Worth revisiting once the hybrid HPKE KEMs are final.
+- **ML-KEM-1024.** NIST category 5, against category 3 for ML-KEM-768. The RSA-4096
+  half and the package's AES-256 already set the bar; ML-KEM-768 is what TLS
+  (X25519MLKEM768) and BSI's recommendation use by default.
+- **A second CLI flag for the ML-KEM key.** Explicit, but a Compiler that forgets it
+  silently produces RSA-only packages. The `<name>_pq.pub` convention cannot be
+  forgotten.
 
 #### Key Types
 
@@ -446,9 +556,10 @@ testlab decompile my-tck.tckpkg --output my-tck/
 
 1. Read `security.authorized_players` — find own `player_id`
 2. If not found → `PackageAuthorizationError: 'Player not authorized'`
-3. RSA-OAEP decrypt the AES content key using Player's RSA private key (`encrypted_key.rsa`)
-4. ML-KEM-768 decapsulate the AES content key using Player's PQ decapsulation key (`encrypted_key.ml_kem`)
-5. Verify both decrypted keys match — reject if mismatch (`PackageDecryptionError`)
+3. Hybrid entry: RSA-OAEP decrypt `rsa_ciphertext` (RSA private key), ML-KEM-768 decapsulate `kem_ciphertext`
+   (`encryption_pq.pem`), derive the key-encryption key with HKDF-SHA256 from both, AES-256-GCM unwrap `wrapped_key`
+4. RSA-OAEP entry: RSA-OAEP decrypt `encrypted_key`; refused when the Player requires the hybrid wrap
+5. A tampered ciphertext, or another Player's key, fails the AES-GCM unwrap (`PackageDecryptionError`)
 6. AES-256-GCM decrypt `payload.enc`
 7. Load trusted compiler keys from `~/.testlab/trusted_compilers/`
 8. Verify both Ed25519 AND ML-DSA-65 signatures in `signature.sig` — reject if either is invalid

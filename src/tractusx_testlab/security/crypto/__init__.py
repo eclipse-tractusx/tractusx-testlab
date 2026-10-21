@@ -20,21 +20,32 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-"""Crypto sub-module — key generation, encryption, and signing."""
+"""Crypto sub-module — key generation, encryption, key wrapping, and signing."""
 
-from tractusx_testlab.security.crypto.encryption import decrypt_package, encrypt_package
+from tractusx_testlab.security.crypto.encryption import (
+    content_key_for,
+    decrypt_package,
+    decrypt_payload,
+    encrypt_package,
+)
+from tractusx_testlab.security.crypto.key_wrap import HYBRID_ALG
 from tractusx_testlab.security.crypto.keygen import (
     KeyPair,
     generate_ed25519_keypair,
+    generate_mlkem_keypair,
     generate_rsa_keypair,
 )
 from tractusx_testlab.security.crypto.signing import sign_bytes, verify_signature
 
 __all__ = [
+    "HYBRID_ALG",
     "KeyPair",
+    "content_key_for",
     "decrypt_package",
+    "decrypt_payload",
     "encrypt_package",
     "generate_ed25519_keypair",
+    "generate_mlkem_keypair",
     "generate_rsa_keypair",
     "sign_bytes",
     "verify_signature",

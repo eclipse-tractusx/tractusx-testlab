@@ -62,6 +62,10 @@ class TestlabConfig(BaseSettings):
 
     keys_dir: Path = Field(default=_DEFAULT_BASE / "keys")
     trust_store_dir: Path = Field(default=_DEFAULT_BASE / "trusted_compilers")
+    #: Refuse an encrypted package sealed for this player with RSA-OAEP alone,
+    #: accepting only the post-quantum hybrid wrap (ADR-0012). Off by default:
+    #: packages compiled before the hybrid wrap keep loading.
+    require_pq_encryption: bool = False
     storage_dir: Path = Field(default=_DEFAULT_BASE / "packages")
     #: Where the console transcript of a run is written — the same lines the
     #: operator watches go by, kept as text.

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Security models — encryption key blocks, package manifests, and Base64 type helpers."""
@@ -53,8 +54,21 @@ Base64Bytes = Annotated[
 
 
 class EncryptedKeyBlock(BaseModel):
+    """One authorized player's copy of the content key (ADR-0012).
+
+    Without ``alg``, ``encrypted_key`` is the content key RSA-OAEP-wrapped. With
+    ``alg: hybrid:RSA-OAEP-SHA256+ML-KEM-768``, the content key is ``wrapped_key``
+    (AES-256-GCM, nonce first) under a key derived from the RSA-OAEP-wrapped
+    ``rsa_ciphertext`` and the ML-KEM-768 ``kem_ciphertext``.
+    """
+
     player_id: str
-    encrypted_key: Base64Bytes
+    alg: str | None = None
+    encrypted_key: Base64Bytes | None = None
+    rsa_ciphertext: Base64Bytes | None = None
+    kem_key_id: str | None = None
+    kem_ciphertext: Base64Bytes | None = None
+    wrapped_key: Base64Bytes | None = None
 
 
 class SecurityBlock(BaseModel):

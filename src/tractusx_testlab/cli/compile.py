@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The ``testlab compile`` command — YAML in, a ``.tck`` package out."""
@@ -82,7 +83,10 @@ def compile(
         None,
         "--player-pub",
         "-p",
-        help="Path(s) to player RSA public key(s) (encryption.pub). Can be repeated.",
+        help=(
+            "Path(s) to player RSA public key(s) (encryption.pub). Can be repeated. "
+            "An ML-KEM-768 key beside one (<name>_pq.pub) adds the post-quantum hybrid wrap."
+        ),
     ),
     output: Path | None = typer.Option(
         None,
