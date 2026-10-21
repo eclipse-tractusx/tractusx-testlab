@@ -202,6 +202,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- `certifi` is 2026.10.19. The Dash IP check on main now asks the Eclipse IP
+  team to review any restricted dependency itself, with the GitLab token from
+  the `DASH_GITLAB_API_TOKEN` repository secret.
 - `cryptography` is required at 48.0.0 or later, the first release whose
   wheels provide ML-KEM.
 - `encrypt_for_recipients` returns the `authorized_players` entries (dicts)

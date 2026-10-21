@@ -12,7 +12,7 @@ pypi/pypi/-/attrs/26.1.0, MIT, approved, #28356
 pypi/pypi/-/babel/2.18.0, CC0-1.0 AND BSD-3-Clause AND Unicode-3.0, approved, #26751
 pypi/pypi/-/backrefs/6.2, MIT AND LicenseRef-scancode-unicode, approved, #26729
 pypi/pypi/-/build/1.4.4, MIT, approved, #26761
-pypi/pypi/-/certifi/2026.4.22, MPL-2.0, approved, #28311
+pypi/pypi/-/certifi/2026.10.19, , restricted, clearlydefined
 pypi/pypi/-/cffi/2.0.0, MIT-0 AND MIT, approved, #25733
 pypi/pypi/-/charset-normalizer/3.4.7, MIT AND (LGPL-2.1-only AND MIT) AND LGPL-2.1-only AND CC-BY-SA-3.0, approved, #19391
 pypi/pypi/-/click/8.1.8, BSD-2-Clause AND BSD-3-Clause, approved, clearlydefined
