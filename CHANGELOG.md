@@ -202,9 +202,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
-- `certifi` is 2026.10.19. The Dash IP check on main now asks the Eclipse IP
-  team to review any restricted dependency itself, with the GitLab token from
-  the `DASH_GITLAB_API_TOKEN` repository secret.
+- `certifi` is 2026.10.19. A new workflow, "Update DEPENDENCIES", runs after
+  every change to `poetry.lock` on main and once a day: it asks the Eclipse IP
+  team to review any restricted dependency, with the GitLab token from the
+  `DASH_GITLAB_API_TOKEN` repository secret, and opens or updates a pull
+  request with the regenerated `DEPENDENCIES` (listing the review requests)
+  whenever the file differs from main, so an approval reaches main without
+  anyone watching the review. The Dash IP check itself only checks again.
 - `cryptography` is required at 48.0.0 or later, the first release whose
   wheels provide ML-KEM.
 - `encrypt_for_recipients` returns the `authorized_players` entries (dicts)

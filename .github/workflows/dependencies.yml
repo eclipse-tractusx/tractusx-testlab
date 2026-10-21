@@ -23,11 +23,8 @@
 # Dash license tool and compared with the committed DEPENDENCIES file, so a
 # change to the lock file that is not reflected in DEPENDENCIES fails CI.
 #
-# On main (after a merge, or when run by hand) restricted entries are also
-# submitted to the Eclipse IP team for review, with the GitLab token stored in
-# the DASH_GITLAB_API_TOKEN repository secret. Pull requests never get it:
-# dependabot and fork PRs have no access to repository secrets, so the review
-# is requested once the change lands on main.
+# Requesting IP reviews and keeping DEPENDENCIES current is the job of
+# `dependencies-update.yml`; this workflow only checks.
 
 name: "Eclipse DASH IP Check"
 
@@ -106,25 +103,6 @@ jobs:
             echo "Dash wrote no summary; the license lookup failed. Re-run the job."
             exit 1
           fi
-
-      # Dash finds the review requests it already opened, so running this on
-      # every push to main does not file duplicates.
-      - name: Request IP review for restricted dependencies
-        if: github.event_name != 'pull_request'
-        env:
-          GITLAB_API_TOKEN: ${{ secrets.DASH_GITLAB_API_TOKEN }}
-        run: |
-          if ! grep -q 'restricted' $DEP_FILE; then
-            echo "No restricted dependencies, nothing to review."
-            exit 0
-          fi
-          if [ -z "$GITLAB_API_TOKEN" ]; then
-            echo "::warning::Restricted dependencies found but the DASH_GITLAB_API_TOKEN secret is not set; no IP review was requested."
-            exit 0
-          fi
-          java -jar ./dash.jar PACKAGE -project automotive.tractusx -timeout 300 \
-            -repo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
-            -review -token "$GITLAB_API_TOKEN"
 
       - name: Check if dependencies were changed
         run: |
