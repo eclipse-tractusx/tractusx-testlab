@@ -286,7 +286,8 @@ sequenceDiagram
 ## Package Security
 
 Compiled `.tck` packages can be signed and encrypted so only authorized Players can open them: AES-256-GCM content
-encryption, the content key wrapped with RSA-OAEP-SHA256 for each Player, and an Ed25519 Compiler signature. See
+encryption, the content key wrapped for each Player with RSA-OAEP-SHA256 — combined with ML-KEM-768 when the Player
+has a post-quantum key — and an Ed25519 Compiler signature. See
 [Package Security](security.md).
 
 ## Failure Handling
@@ -341,7 +342,7 @@ flowchart TD
 | **Transcript** | The plain-text copy of a run's console output. |
 | **Skippable test** | A test whose manifest entry says `skippable: true`, which the operator may omit with `skip_tests`. |
 | **Encrypted package** | A `.tck` whose content is encrypted for a list of authorized Players and signed by the Compiler. |
-| **Identity** | A `testlab keygen` key set: `encryption.{pem,pub}` (RSA-4096) and `signing.{pem,pub}` (Ed25519). |
+| **Identity** | A `testlab keygen` key set: `encryption.{pem,pub}` (RSA-4096), `encryption_pq.{pem,pub}` (ML-KEM-768) and `signing.{pem,pub}` (Ed25519). |
 | **Package storage** | The server directory (`<storage_dir>/packages/`) where uploaded packages are kept by `package_id`. |
 | **Configuration** | `TestlabConfig`: settings resolved from defaults, `testlab.config.yaml`, `TESTLAB_*` environment variables, and CLI overrides, in that order. |
 

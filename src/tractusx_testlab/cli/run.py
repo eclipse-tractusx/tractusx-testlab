@@ -270,17 +270,17 @@ def _load_tck(
 ):
     """Load a TCK from a YAML manifest or a .tck package, plain or encrypted."""
     from tractusx_testlab.player.loading.loader import Loader
+    from tractusx_testlab.security.trust.identity import PlayerKeys, decryption_keys
 
     loader = Loader()
 
-    priv = pub = None
+    keys: PlayerKeys = {}
+    pub = None
     if player_keys:
-        from tractusx_testlab.security.crypto.keygen import load_private_key
-
-        priv = load_private_key(player_keys / "encryption.pem")
+        keys = decryption_keys(player_keys)
     if compiler_pub:
         from tractusx_testlab.security.crypto.keygen import load_public_key
 
         pub = load_public_key(compiler_pub)
 
-    return loader.load(target, player_private_key=priv, compiler_public_key=pub)
+    return loader.load(target, compiler_public_key=pub, **keys)

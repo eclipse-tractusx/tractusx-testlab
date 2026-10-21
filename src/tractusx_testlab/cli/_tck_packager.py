@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Building an encrypted ``.tck`` — the payload.enc + signature.sig format.
@@ -45,9 +46,10 @@ from tractusx_testlab.cli._compile_report import compile_or_exit, compiled
 from tractusx_testlab.compiler import package_digest
 from tractusx_testlab.compiler.compiler import Compiler
 from tractusx_testlab.security.crypto.encryption import encrypt_for_recipients
+from tractusx_testlab.security.crypto.key_wrap import key_derivation_of
 from tractusx_testlab.security.crypto.keygen import _fingerprint
 from tractusx_testlab.security.crypto.signing import package_signing_message, sign_bytes
-from tractusx_testlab.security.trust.identity import PlayerIdentity
+from tractusx_testlab.security.trust.identity import PlayerIdentity, pq_public_key_beside
 
 # Archive entry name for the bundled authoring YAML
 TCK_BUNDLE_ENTRY = "tck-bundle.yaml"
@@ -57,12 +59,10 @@ def embed_bundle_yaml(manifest_path: Path, output_dir: Path) -> None:
     """Embed manifest + test files in the output dir for runtime loading."""
     import shutil
 
-    import yaml as _yaml
-
     with open(manifest_path, encoding="utf-8") as f:
-        tck_data = _yaml.safe_load(f)
+        tck_data = yaml.safe_load(f)
 
-    bundled = _yaml.dump(tck_data, default_flow_style=False, sort_keys=False)
+    bundled = yaml.dump(tck_data, default_flow_style=False, sort_keys=False)
     (output_dir / TCK_BUNDLE_ENTRY).write_text(bundled, encoding="utf-8")
 
     # Copy referenced test files into tests/ subdirectory
@@ -120,19 +120,16 @@ def create_tar_bytes(entries: dict[str, bytes]) -> bytes:
 def build_encrypted_payload(
     tar_bytes: bytes,
     recipient_keys: dict[str, bytes],
+    recipient_kem_keys: dict[str, bytes] | None = None,
 ) -> tuple[str, list[dict]]:
-    """Encrypt *tar_bytes* with a single AES key wrapped for each recipient.
+    """Encrypt *tar_bytes* once; ``(base64(nonce + ciphertext), authorized_players)``.
 
-    Returns:
-        (payload_b64, authorized_players) where payload_b64 = base64(nonce + ciphertext)
+    A recipient also in *recipient_kem_keys* gets the hybrid key wrap (ADR-0012).
     """
-    nonce, ciphertext, key_blocks = encrypt_for_recipients(tar_bytes, recipient_keys)
-    payload_b64 = base64.b64encode(nonce + ciphertext).decode()
-    authorized_players = [
-        {"player_id": pid, "encrypted_key": base64.b64encode(enc_key).decode()}
-        for pid, enc_key in key_blocks
-    ]
-    return payload_b64, authorized_players
+    nonce, ciphertext, players = encrypt_for_recipients(
+        tar_bytes, recipient_keys, recipient_kem_keys
+    )
+    return base64.b64encode(nonce + ciphertext).decode(), players
 
 
 def build_redacted_manifest(
@@ -163,7 +160,7 @@ def build_redacted_manifest(
         },
         "security": {
             "algorithm": "AES-256-GCM",
-            "key_derivation": "RSA-OAEP-SHA256",
+            "key_derivation": key_derivation_of(authorized_players),
             "compiler_id": compiler_id,
             "authorized_players": authorized_players,
         },
@@ -208,11 +205,14 @@ def _seal_and_encrypt(
     """
     compiler_identity = PlayerIdentity.load(compiler_keys)
     recipient_keys: dict[str, bytes] = {}
+    recipient_kem_keys: dict[str, bytes] = {}
     for pub_path in player_pub:
-        pub_bytes = pub_path.read_bytes()
-        fp = _fingerprint(pub_bytes)
+        fp = _fingerprint(pub_bytes := pub_path.read_bytes())
         recipient_keys[fp] = pub_bytes
-        typer.echo(f"  Authorized player: {pub_path.name} ({fp[:16]}...)")
+        if (kem_bytes := pq_public_key_beside(pub_path)) is not None:
+            recipient_kem_keys[fp] = kem_bytes
+        wrap = "RSA-OAEP + ML-KEM-768" if kem_bytes else "RSA-OAEP only"
+        typer.echo(f"  Authorized player: {pub_path.name} ({fp[:16]}..., {wrap})")
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
@@ -224,7 +224,7 @@ def _seal_and_encrypt(
 
     sealed_manifest = yaml.safe_load(entries[package_digest.MANIFEST_ENTRY])
     payload_b64, authorized_players = build_encrypted_payload(
-        create_tar_bytes(entries), recipient_keys
+        create_tar_bytes(entries), recipient_keys, recipient_kem_keys
     )
     redacted = build_redacted_manifest(
         sealed_manifest, compiler_identity.signing.fingerprint, authorized_players

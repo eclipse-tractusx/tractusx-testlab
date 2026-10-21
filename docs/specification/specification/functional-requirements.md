@@ -183,11 +183,12 @@ The core connector and data-plane steps are:
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-SEC-01 | `testlab keygen` SHALL generate an RSA-4096 encryption pair and an Ed25519 signing pair into `<out-dir>/<label>/`. | Must | Done |
-| FR-SEC-02 | Given `--compiler-keys` and one or more `--player-pub`, the Compiler SHALL encrypt the content with AES-256-GCM, wrap the key with RSA-OAEP-SHA256 for each Player, and sign with the Compiler's Ed25519 key. Supplying only one of the two SHALL be an error. | Must | Done |
-| FR-SEC-03 | The encrypted package's `manifest.yaml` SHALL stay readable and carry `security.compiler_id` and `authorized_players[{player_id, encrypted_key}]`, without test files or asset paths. The Compiler's signature SHALL cover it together with `payload.enc`. | Must | Done |
+| FR-SEC-01 | `testlab keygen` SHALL generate an RSA-4096 and an ML-KEM-768 encryption pair and an Ed25519 signing pair into `<out-dir>/<label>/`, and add the ML-KEM-768 pair to an existing identity that lacks it. | Must | Done |
+| FR-SEC-02 | Given `--compiler-keys` and one or more `--player-pub`, the Compiler SHALL encrypt the content with AES-256-GCM, wrap the key for each Player — with RSA-OAEP-SHA256 + ML-KEM-768 (ADR-0012) when the Player's `<name>_pq.pub` lies beside its `<name>.pub`, else with RSA-OAEP-SHA256 — and sign with the Compiler's Ed25519 key. Supplying only one of the two SHALL be an error. | Must | Done |
+| FR-SEC-03 | The encrypted package's `manifest.yaml` SHALL stay readable and carry `security.compiler_id` and `authorized_players[{player_id, encrypted_key}]` (RSA-OAEP) or `authorized_players[{player_id, alg, rsa_ciphertext, kem_key_id, kem_ciphertext, wrapped_key}]` (hybrid), without test files or asset paths. The Compiler's signature SHALL cover it together with `payload.enc`. | Must | Done |
 | FR-SEC-04 | The Player SHALL refuse an encrypted package without `--player-keys`, without `--compiler-pub`, without a signature, or with a signature that does not verify. | Must | Done |
 | FR-SEC-05 | The Player SHALL decrypt with the key block matching its own fingerprint and load the TCK. | Must | Done |
+| FR-SEC-05a | With `require_pq_encryption`, the Player SHALL refuse a package whose key block for it is RSA-OAEP only. | Should | Done |
 | FR-SEC-06 | Players SHALL accept packages from Compilers in a trust store, and keys MAY be kept in HashiCorp Vault. | Could | Partial — the server Player reads its identity from `keys_dir` and trusted Compilers from `trust_store_dir`; `vault` is not wired in |
 
 ---

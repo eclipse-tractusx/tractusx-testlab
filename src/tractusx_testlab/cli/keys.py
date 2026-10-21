@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """CLI command for key-pair generation."""
@@ -53,19 +54,30 @@ def keygen(
         help="Regenerate keys even if they already exist.",
     ),
 ) -> None:
-    """Generate RSA (encryption) + Ed25519 (signing) key pairs for a player identity."""
-    from tractusx_testlab.security.trust.identity import PlayerIdentity
+    """Generate RSA + ML-KEM-768 (encryption) and Ed25519 (signing) key pairs for an identity.
+
+    Run on an existing identity that has no ML-KEM-768 pair yet, it adds one and
+    keeps the others: packages compiled for the player from then on get the
+    post-quantum hybrid key wrap (ADR-0012).
+    """
+    from tractusx_testlab.security.crypto.keygen import save_keypair
+    from tractusx_testlab.security.trust.identity import PQ_ENCRYPTION_KEY, PlayerIdentity
 
     key_dir = out_dir / label
     if not override_keys and key_dir.is_dir() and any(key_dir.iterdir()):
-        identity = PlayerIdentity.load(key_dir)
+        loaded = PlayerIdentity.load(key_dir)
+        identity = loaded.with_pq_encryption()
         typer.echo(f"Reusing existing keys in {key_dir}/")
+        if identity.pq_encryption is not None and loaded.pq_encryption is None:
+            save_keypair(identity.pq_encryption, key_dir, PQ_ENCRYPTION_KEY)
+            typer.echo(f"Added the ML-KEM-768 pair to {key_dir}/")
     else:
         identity = PlayerIdentity.generate()
         identity.save(key_dir)
         typer.echo(f"Keys saved to {key_dir}/")
 
-    typer.echo("  encryption.pem / encryption.pub  (RSA-4096)")
-    typer.echo("  signing.pem    / signing.pub     (Ed25519)")
+    typer.echo("  encryption.pem    / encryption.pub     (RSA-4096)")
+    typer.echo("  encryption_pq.pem / encryption_pq.pub  (ML-KEM-768)")
+    typer.echo("  signing.pem       / signing.pub        (Ed25519)")
     typer.echo(f"  Encryption fingerprint: {identity.encryption.fingerprint[:32]}...")
     typer.echo(f"  Signing    fingerprint: {identity.signing.fingerprint[:32]}...")

@@ -50,7 +50,8 @@ dependencies = [
     "jsonschema (>=4.20.0,<5.0.0)",
     # F-E02 — imported directly by src/ and previously undeclared, resolving
     # only because a transitive dependency happened to supply them.
-    "cryptography (>=42.0.0)",
+    # 48.0.0 is the first release whose wheels provide ML-KEM (ADR-0029).
+    "cryptography (>=48.0.0)",
     "rich (>=13.0.0)",
     # Slated for removal in P4, which standardises every step on httpx; declared
     # meanwhile so the dependency set describes the code as it actually is.

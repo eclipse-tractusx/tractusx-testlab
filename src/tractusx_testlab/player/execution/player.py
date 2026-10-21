@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """TestlabPlayer — async executor that runs TCKs test-by-test, step-by-step."""
@@ -54,7 +55,7 @@ from tractusx_testlab.player.execution.mock_server import _BackgroundMockServer
 from tractusx_testlab.player.execution.monitor import ExecutionMonitor
 from tractusx_testlab.player.execution.session import TckSession
 from tractusx_testlab.player.jobs import JobManager
-from tractusx_testlab.player.loading._encrypted import engine_package_keys
+from tractusx_testlab.player.loading._encrypted import PackageKeys, engine_package_keys
 from tractusx_testlab.player.loading._parser import is_encrypted_package
 from tractusx_testlab.player.loading.loader import Loader
 from tractusx_testlab.server.callbacks import CallbackManager
@@ -134,15 +135,17 @@ class TestlabPlayer:
         encrypted = is_encrypted_package(resolved)
         self._monitor.on_package_verify_start(resolved.name, encrypted=encrypted)
         try:
-            keys = self._package_keys(resolved) if encrypted else {}
-            tck = self._loader.load(resolved, **keys)
+            keys: PackageKeys = self._package_keys(resolved) if encrypted else {}
+            tck = self._loader.load(
+                resolved, **keys, require_hybrid=self._config.require_pq_encryption
+            )
         except ValueError as exc:
             self._monitor.on_package_verify_failed(resolved.name, str(exc))
             raise
         self._monitor.on_package_verify_passed(resolved.name, checksum="")
         return await self.run_tck(tck, runtime_vars=runtime_vars, job_id=job_id)
 
-    def _package_keys(self, package: Path) -> dict[str, bytes]:
+    def _package_keys(self, package: Path) -> PackageKeys:
         """Resolve the keys an encrypted *package* needs from this engine's config."""
         return engine_package_keys(self._config, package)
 

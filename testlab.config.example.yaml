@@ -23,6 +23,7 @@
 # -- Where the engine keeps things -------------------------------------------
 keys_dir: ~/.testlab/keys                 # this player's identity
 trust_store_dir: ~/.testlab/trusted_compilers
+require_pq_encryption: false             # true: refuse packages without the post-quantum key wrap
 storage_dir: ~/.testlab/packages          # uploaded .tck packages
 logs_dir: ~/.testlab/logs
 

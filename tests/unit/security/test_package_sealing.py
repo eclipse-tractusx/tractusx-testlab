@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """The code that decides whether a package is authentic, tested.
@@ -31,6 +32,8 @@ that is the code whose failure is least visible and most consequential.
 """
 
 from __future__ import annotations
+
+import base64
 
 import pytest
 
@@ -109,7 +112,7 @@ class TestEncryption:
         nonce, ciphertext, blocks = encrypt_for_recipients(
             _PAYLOAD, {"first": first_pub, "second": second_pub}
         )
-        wrapped = dict(blocks)
+        wrapped = {b["player_id"]: base64.b64decode(b["encrypted_key"]) for b in blocks}
 
         assert decrypt_package(wrapped["first"], nonce, ciphertext, first_priv) == _PAYLOAD
         assert decrypt_package(wrapped["second"], nonce, ciphertext, second_priv) == _PAYLOAD

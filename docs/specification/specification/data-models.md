@@ -128,7 +128,12 @@ classDiagram
 
     class EncryptedKeyBlock {
         +str player_id
-        +bytes encrypted_key
+        +str alg?
+        +bytes encrypted_key?
+        +bytes rsa_ciphertext?
+        +str kem_key_id?
+        +bytes kem_ciphertext?
+        +bytes wrapped_key?
     }
 
     class SecurityBlock {
@@ -180,6 +185,7 @@ classDiagram
     class TestlabConfig {
         +Path keys_dir = "~/.testlab/keys/"
         +Path trust_store_dir = "~/.testlab/trusted_compilers/"
+        +bool require_pq_encryption = false
         +Path storage_dir = "~/.testlab/packages/"
         +int server_port = 8100
         +str mock_public_url?
@@ -387,7 +393,12 @@ One entry per authorized Player in a package's `security.authorized_players` lis
 | Field | Type | Description |
 |-------|------|-------------|
 | `player_id` | `str` | Fingerprint-based Player identifier |
-| `encrypted_key` | `bytes` | AES-256 content key encrypted with this Player's RSA public key via RSA-OAEP-SHA256 |
+| `alg` | `str?` | `"hybrid:RSA-OAEP-SHA256+ML-KEM-768"` for the post-quantum hybrid wrap ([ADR-0012](../../developer/decision-records/backend/ADR-0012-compilation-and-packaging.md#hybrid-key-wrap)); absent for RSA-OAEP |
+| `encrypted_key` | `bytes?` | RSA-OAEP only: AES-256 content key encrypted with this Player's RSA public key via RSA-OAEP-SHA256 |
+| `rsa_ciphertext` | `bytes?` | Hybrid: a random 32-byte secret, RSA-OAEP-SHA256-encrypted |
+| `kem_key_id` | `str?` | Hybrid: SHA-256 of the Player's ML-KEM-768 public key PEM |
+| `kem_ciphertext` | `bytes?` | Hybrid: the ML-KEM-768 ciphertext |
+| `wrapped_key` | `bytes?` | Hybrid: 12-byte nonce ‖ the AES-256 content key, AES-256-GCM-encrypted under the HKDF-SHA256 key derived from both secrets |
 
 ### SecurityBlock
 
@@ -397,7 +408,7 @@ Top-level security metadata in `manifest.yaml` for encrypted packages.
 |-------|------|-------------|
 | `format` | `str` | Always `"encrypted-v1"` for the current encryption scheme |
 | `algorithm` | `str` | Content encryption algorithm: `"AES-256-GCM"` |
-| `key_derivation` | `str` | Key wrapping algorithm: `"RSA-OAEP-SHA256"` |
+| `key_derivation` | `str` | Every key wrap its entries use, comma-separated: `"RSA-OAEP-SHA256"`, `"hybrid:RSA-OAEP-SHA256+ML-KEM-768"`, or both |
 | `compiler_id` | `str` | Fingerprint-based Compiler identifier (`compiler:sha256:<hex>`) |
 | `authorized_players` | `list[EncryptedKeyBlock]` | One key block per authorized Player |
 

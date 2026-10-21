@@ -20,71 +20,39 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""AES-256-GCM symmetric encryption with RSA-OAEP key wrapping for packages."""
+"""AES-256-GCM payload encryption, its content key wrapped for each player.
+
+How the content key is wrapped — RSA-OAEP, or RSA-OAEP + ML-KEM-768 — is
+:mod:`~tractusx_testlab.security.crypto.key_wrap`'s; this module encrypts the
+payload once and asks it for one entry per authorized player.
+"""
 
 from __future__ import annotations
 
 import base64
 import os
+from collections.abc import Mapping
 
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from tractusx_testlab.security.crypto.key_wrap import (
+    HYBRID_ALG,
+    oaep,
+    rsa_private_key,
+    rsa_public_key,
+    unwrap_hybrid,
+    unwrap_rsa,
+    wrap_hybrid,
+    wrap_rsa,
+)
 
 # AES-256 key length
 _AES_KEY_LEN = 32
 # GCM nonce length (96 bits recommended by NIST)
 _NONCE_LEN = 12
-
-
-def _oaep() -> padding.OAEP:
-    """The OAEP configuration every wrap and unwrap in this module uses.
-
-    Stated once: a package encrypted under one padding and decrypted under
-    another fails with a bare ``ValueError`` that says nothing about which half
-    disagreed.
-    """
-    return padding.OAEP(
-        mgf=padding.MGF1(algorithm=hashes.SHA256()),
-        algorithm=hashes.SHA256(),
-        label=None,
-    )
-
-
-def _rsa_public_key(public_pem: bytes) -> RSAPublicKey:
-    """Load *public_pem*, refusing anything that is not an RSA key.
-
-    ``load_pem_public_key`` returns whichever key type the PEM held, and every
-    caller here goes straight on to RSA-OAEP.  Handed an Ed25519 key — the
-    other key type this project issues, and the neighbouring one in a player's
-    key directory — the call would fail with ``AttributeError: 'Ed25519PublicKey'
-    object has no attribute 'encrypt'`` from inside the crypto library.  Naming
-    the mistake here is the same guard :mod:`~tractusx_testlab.security.crypto.signing`
-    already applies to its Ed25519 keys.
-    """
-    key = serialization.load_pem_public_key(public_pem)
-    if not isinstance(key, RSAPublicKey):
-        raise TypeError(
-            f"Expected an RSA public key for package encryption, got "
-            f"{type(key).__name__}. Encryption keys are 'encryption.pub'; "
-            f"'signing.pub' is the Ed25519 key used to sign, not to encrypt."
-        )
-    return key
-
-
-def _rsa_private_key(private_pem: bytes) -> RSAPrivateKey:
-    """Load *private_pem*, refusing anything that is not an RSA key."""
-    key = serialization.load_pem_private_key(private_pem, password=None)
-    if not isinstance(key, RSAPrivateKey):
-        raise TypeError(
-            f"Expected an RSA private key to decrypt this package, got "
-            f"{type(key).__name__}. Decryption keys are 'encryption.pem'; "
-            f"'signing.pem' is the Ed25519 key used to sign, not to decrypt."
-        )
-    return key
 
 
 def encrypt_package(plaintext: bytes, recipient_public_pem: bytes) -> tuple[bytes, bytes, bytes]:
@@ -99,40 +67,58 @@ def encrypt_package(plaintext: bytes, recipient_public_pem: bytes) -> tuple[byte
     aesgcm = AESGCM(aes_key)
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)
 
-    encrypted_key = _rsa_public_key(recipient_public_pem).encrypt(aes_key, _oaep())
+    encrypted_key = rsa_public_key(recipient_public_pem).encrypt(aes_key, oaep())
     return encrypted_key, nonce, ciphertext
 
 
 def encrypt_for_recipients(
     plaintext: bytes,
-    recipient_public_pems: dict[str, bytes],
-) -> tuple[bytes, bytes, list[tuple[str, bytes]]]:
+    recipient_public_pems: Mapping[str, bytes],
+    recipient_kem_pems: Mapping[str, bytes] | None = None,
+) -> tuple[bytes, bytes, list[dict[str, str]]]:
     """Encrypt *plaintext* once and wrap the AES key for each recipient.
 
+    *recipient_public_pems* maps each player id to its RSA ``encryption.pub``;
+    a player that also has an ML-KEM-768 key in *recipient_kem_pems* (same id)
+    gets the hybrid wrap, any other the RSA-OAEP one.
+
     Returns:
-        (nonce, ciphertext, [(player_id, encrypted_aes_key), ...])
+        (nonce, ciphertext, authorized_players) — one manifest entry per player,
+        ``player_id`` first, the wrap's fields after it.
     """
+    kem_pems = recipient_kem_pems or {}
+    unknown = set(kem_pems) - set(recipient_public_pems)
+    if unknown:
+        raise ValueError(
+            f"ML-KEM keys were given for players with no RSA encryption key: "
+            f"{', '.join(sorted(p[:16] for p in unknown))}."
+        )
     aes_key = os.urandom(_AES_KEY_LEN)
     nonce = os.urandom(_NONCE_LEN)
     ciphertext = AESGCM(aes_key).encrypt(nonce, plaintext, None)
-    key_blocks: list[tuple[str, bytes]] = []
+    authorized_players = []
     for player_id, pub_pem in recipient_public_pems.items():
-        enc_key = _rsa_public_key(pub_pem).encrypt(aes_key, _oaep())
-        key_blocks.append((player_id, enc_key))
-    return nonce, ciphertext, key_blocks
+        kem_pem = kem_pems.get(player_id)
+        wrap = wrap_hybrid(aes_key, pub_pem, kem_pem) if kem_pem else wrap_rsa(aes_key, pub_pem)
+        authorized_players.append({"player_id": player_id, **wrap})
+    return nonce, ciphertext, authorized_players
 
 
 def decrypt_package(
     encrypted_key: bytes, nonce: bytes, ciphertext: bytes, private_pem: bytes
 ) -> bytes:
     """Unwrap AES key with RSA-OAEP, then decrypt AES-256-GCM ciphertext."""
-    aes_key = _rsa_private_key(private_pem).decrypt(encrypted_key, _oaep())
-    aesgcm = AESGCM(aes_key)
-    return aesgcm.decrypt(nonce, ciphertext, None)
+    aes_key = rsa_private_key(private_pem).decrypt(encrypted_key, oaep())
+    return decrypt_payload(aes_key, nonce, ciphertext)
 
 
-def wrapped_key_for(authorized_players: list[dict], private_pem: bytes) -> bytes:
-    """Return the content key wrapped for the holder of *private_pem*.
+def decrypt_payload(content_key: bytes, nonce: bytes, ciphertext: bytes) -> bytes:
+    """Decrypt an AES-256-GCM payload with its already unwrapped *content_key*."""
+    return AESGCM(content_key).decrypt(nonce, ciphertext, None)
+
+
+def _entry_for(authorized_players: list[dict], private_pem: bytes) -> dict:
+    """The entry of *authorized_players* listed under the fingerprint of *private_pem*.
 
     Each authorized player has its own copy of the key, wrapped with its own
     public key and listed under its fingerprint. The loader used to unwrap the
@@ -144,10 +130,51 @@ def wrapped_key_for(authorized_players: list[dict], private_pem: bytes) -> bytes
     fingerprint = fingerprint_of_private_key(private_pem)
     for player in authorized_players:
         if player.get("player_id") == fingerprint:
-            return base64.b64decode(player["encrypted_key"])
+            return player
     authorized = ", ".join(str(p.get("player_id", ""))[:16] for p in authorized_players)
     raise ValueError(
         f"This package was not compiled for this player: the key fingerprint "
         f"{fingerprint[:16]} is not among the authorized players ({authorized}). "
         f"Ask the compiler to add this player's encryption.pub with --player-pub."
     )
+
+
+def wrapped_key_for(authorized_players: list[dict], private_pem: bytes) -> bytes:
+    """Return the content key RSA-OAEP-wrapped for the holder of *private_pem* (format 1 only).
+
+    A hybrid entry has no such key: open it with :func:`content_key_for`.
+    """
+    entry = _entry_for(authorized_players, private_pem)
+    if "encrypted_key" not in entry:
+        raise ValueError(
+            f"This player's key is wrapped with {entry.get('alg')}; use content_key_for."
+        )
+    return base64.b64decode(entry["encrypted_key"])
+
+
+def content_key_for(
+    authorized_players: list[dict],
+    private_pem: bytes,
+    kem_private_pem: bytes | None = None,
+    *,
+    require_hybrid: bool = False,
+) -> bytes:
+    """Unwrap the content key the package holds for the player of *private_pem*.
+
+    The entry's ``alg`` decides: the hybrid wrap needs *kem_private_pem* too, an
+    entry without ``alg`` is RSA-OAEP. With *require_hybrid*, an RSA-only entry
+    is refused — for a player that will not open what a quantum computer could.
+    """
+    entry = _entry_for(authorized_players, private_pem)
+    alg = entry.get("alg")
+    if alg == HYBRID_ALG:
+        return unwrap_hybrid(entry, private_pem, kem_private_pem)
+    if alg is not None:
+        raise ValueError(f"Unknown key wrap {alg!r} for this player; expected {HYBRID_ALG}.")
+    if require_hybrid:
+        raise ValueError(
+            f"This package is sealed for this player with RSA-OAEP only, and this player "
+            f"requires the post-quantum hybrid wrap ({HYBRID_ALG}). Recompile it for the "
+            f"player's encryption.pub with its encryption_pq.pub beside it."
+        )
+    return unwrap_rsa(entry, private_pem)

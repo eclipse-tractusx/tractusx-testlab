@@ -33,7 +33,7 @@ SPDX-License-Identifier: CC-BY-4.0
 | TC-08 | FastAPI required for callback server and Player deployment modes (already an SDK dependency) |
 | TC-09 | Callback routes are ephemeral — mounted on demand and unmounted after use. No persistent route state between test executions |
 | TC-10 | Managed services SHALL use `ServiceFactory` for connector services and direct instantiation for DTR/AAS services — no custom service constructors |
-| TC-11 | Python `cryptography` library required for all cryptographic operations (AES-256-GCM, RSA-OAEP, Ed25519). No custom cryptographic implementations permitted |
+| TC-11 | Python `cryptography` library required for all cryptographic operations (AES-256-GCM, RSA-OAEP, ML-KEM-768, HKDF-SHA256, Ed25519; `cryptography` 48.0.0 or later for ML-KEM). No custom cryptographic implementations permitted |
 | TC-12 | Player keys SHALL be stored in `~/.testlab/keys/` with `0600` file permissions (private key). Trust store keys in `~/.testlab/trusted_compilers/`. Key directories SHALL be created automatically on first use |
 
 ## Quality Attributes

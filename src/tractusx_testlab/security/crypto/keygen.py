@@ -23,7 +23,7 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""RSA and Ed25519 key pair generation for package encryption and signing."""
+"""RSA, ML-KEM-768 and Ed25519 key pair generation for package encryption and signing."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
+from cryptography.hazmat.primitives.asymmetric import ed25519, mlkem, rsa
 
 from tractusx_testlab.security.private_files import make_private_dirs, write_private_bytes
 
@@ -66,10 +66,10 @@ def fingerprint_of_private_key(private_pem: bytes) -> str:
     return _fingerprint(public_bytes)
 
 
-def generate_rsa_keypair(key_size: int = 4096) -> KeyPair:
-    """Generate an RSA key pair (for AES key wrapping)."""
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
-
+def _keypair_of(
+    private_key: rsa.RSAPrivateKey | ed25519.Ed25519PrivateKey | mlkem.MLKEM768PrivateKey,
+) -> KeyPair:
+    """*private_key* as PKCS#8 PEM, its public key as SPKI PEM, and their fingerprint."""
     private_bytes = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
@@ -84,26 +84,25 @@ def generate_rsa_keypair(key_size: int = 4096) -> KeyPair:
         public_bytes=public_bytes,
         fingerprint=_fingerprint(public_bytes),
     )
+
+
+def generate_rsa_keypair(key_size: int = 4096) -> KeyPair:
+    """Generate an RSA key pair (for AES key wrapping)."""
+    return _keypair_of(rsa.generate_private_key(public_exponent=65537, key_size=key_size))
+
+
+def generate_mlkem_keypair() -> KeyPair:
+    """Generate an ML-KEM-768 key pair (FIPS 203), the post-quantum half of the hybrid key wrap.
+
+    The private key is PKCS#8 in the seed-only form of RFC 9935 (the 64-byte
+    seed it is expanded from), the public key SPKI.
+    """
+    return _keypair_of(mlkem.MLKEM768PrivateKey.generate())
 
 
 def generate_ed25519_keypair() -> KeyPair:
     """Generate an Ed25519 key pair (for package signing)."""
-    private_key = ed25519.Ed25519PrivateKey.generate()
-
-    private_bytes = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-    public_bytes = private_key.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-    return KeyPair(
-        private_bytes=private_bytes,
-        public_bytes=public_bytes,
-        fingerprint=_fingerprint(public_bytes),
-    )
+    return _keypair_of(ed25519.Ed25519PrivateKey.generate())
 
 
 def save_keypair(kp: KeyPair, directory: Path, name: str) -> None:

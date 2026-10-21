@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Loader — resolves a ``.tck`` archive into a :class:`Tck`."""
@@ -137,8 +138,16 @@ class Loader:
         path: Path,
         player_private_key: bytes | None = None,
         compiler_public_key: bytes | None = None,
+        player_kem_private_key: bytes | None = None,
+        *,
+        require_hybrid: bool = False,
     ) -> Tck:
         """Load a TCK from the ``.tck`` package at *path*.
+
+        An encrypted package is opened with the player's keys: the RSA
+        *player_private_key*, and *player_kem_private_key* (ML-KEM-768) when it
+        is sealed for the player with the hybrid wrap. *require_hybrid* refuses
+        one sealed with RSA-OAEP alone (ADR-0012).
 
         Uses the local parser to support testlab-extended enum values
         (assertion types, service types) that the SDK parser rejects.
@@ -153,13 +162,22 @@ class Loader:
                 f".tck this produces."
             )
 
-        return self._load_tck_package(path, player_private_key, compiler_public_key)
+        return self._load_tck_package(
+            path,
+            player_private_key,
+            compiler_public_key,
+            player_kem_private_key,
+            require_hybrid=require_hybrid,
+        )
 
     def _load_tck_package(
         self,
         path: Path,
         player_private_key: bytes | None = None,
         compiler_public_key: bytes | None = None,
+        player_kem_private_key: bytes | None = None,
+        *,
+        require_hybrid: bool = False,
     ) -> Tck:
         """Load a .tck ZIP archive — plain or encrypted (payload.enc format).
 
@@ -175,7 +193,13 @@ class Loader:
             names = zf.namelist()
 
         if PAYLOAD_ENTRY in names:
-            entries = open_encrypted_package(path, player_private_key, compiler_public_key)
+            entries = open_encrypted_package(
+                path,
+                player_private_key,
+                compiler_public_key,
+                player_kem_private_key,
+                require_hybrid=require_hybrid,
+            )
         else:
             with zipfile.ZipFile(path, "r") as zf:
                 entries = {name: zf.read(name) for name in names}

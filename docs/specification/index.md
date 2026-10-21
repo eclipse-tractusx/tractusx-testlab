@@ -67,7 +67,7 @@ Tests declare the infrastructure they require, whose SDK services the Player ini
 | G-12 | Provide managed service lifecycle — the SDK services a test's required infrastructure needs (connector consumer, connector provider, DTR) are initialized once and reused across steps |
 | G-13 | Support async callback/webhook patterns — tests can start a lightweight listener on an ephemeral endpoint, send a request, and await a response via `asyncio.Event` with configurable timeout |
 | G-14 | Support dual deployment modes for the Player — standalone CLI (`testlab run`, `testlab serve`) and embeddable library API (`TestlabPlayer`) |
-| G-15 | Secure `.tck` artifacts via hybrid encryption (AES-256-GCM + RSA-OAEP) and Ed25519 signing, ensuring compiled packages can only be decrypted and executed by authorized Player instances |
+| G-15 | Secure `.tck` artifacts via hybrid encryption (AES-256-GCM, the key wrapped with RSA-OAEP + ML-KEM-768) and Ed25519 signing, ensuring compiled packages can only be decrypted and executed by authorized Player instances |
 | G-16 | Provide transparent service-step binding — no step names its service; the Player seeds the SDK services at runtime from the bound infrastructure and injects the correct, pre-initialized instance into each step |
 
 ## Non-Goals (Future Scope)
