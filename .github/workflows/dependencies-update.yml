@@ -1,0 +1,158 @@
+# Copyright (c) 2026 Catena-X Automotive Network e.V.
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
+
+# Keeps DEPENDENCIES in step with poetry.lock on main. Each run regenerates the
+# file with Dash, asks the Eclipse IP team to review whatever is restricted
+# (with the GitLab token in the DASH_GITLAB_API_TOKEN repository secret), and
+# opens or updates one pull request on `chore/update-dependencies` when the
+# file differs from main. It runs after every change to the lock file and once
+# a day, so an approved review turns into a pull request without anyone
+# watching the IP Lab issue. When the file matches main again, the branch is
+# deleted and the pull request closes.
+
+name: "Update DEPENDENCIES"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - poetry.lock
+      - pyproject.toml
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: dependencies-update
+  cancel-in-progress: false
+
+env:
+  DEP_FILE: DEPENDENCIES
+
+jobs:
+  update-dependencies:
+    name: Regenerate DEPENDENCIES
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The package list is resolved exactly as in `dependencies.yml`, so the
+      # file this job proposes is the one the check expects.
+      - name: Install Poetry
+        run: "pip install --only-binary :all: poetry==2.1.2"
+
+      - name: Install dependencies
+        run: poetry sync --no-root --no-interaction
+
+      - name: List packages
+        run: |
+          poetry run pip list --format=freeze \
+            | grep -Ev "^(pip|setuptools|wheel|virtualenv|distlib|pkg_resources)==" \
+            | awk -F'==' '{print "pypi/pypi/-/" $1 "/" $2}' \
+            | awk '!seen[$0]++' > PACKAGE
+
+      - name: Generate dependencies file
+        run: |
+          curl --proto '=https' --tlsv1.2 -L --output ./dash.jar 'https://repo.eclipse.org/service/rest/v1/search/assets/download?repository=dash-maven2-releases&maven.groupId=org.eclipse.dash&maven.artifactId=org.eclipse.dash.licenses&maven.baseVersion=1.1.0&maven.extension=jar'
+          java -jar ./dash.jar PACKAGE -project automotive.tractusx -timeout 300 -summary $DEP_FILE || true
+          if [ ! -s "$DEP_FILE" ]; then
+            echo "Dash wrote no summary; the license lookup failed. Re-run the job."
+            exit 1
+          fi
+
+      # Dash finds the review requests it already opened and logs their links
+      # again, so a daily run never files duplicates and the pull request body
+      # always lists every open request. Dash submits only a few per run; the
+      # next run submits the rest.
+      - name: Request IP review for restricted dependencies
+        env:
+          GITLAB_API_TOKEN: ${{ secrets.DASH_GITLAB_API_TOKEN }}
+        run: |
+          : > reviews.txt
+          if ! grep -q 'restricted' $DEP_FILE; then
+            echo "No restricted dependencies, nothing to review."
+            exit 0
+          fi
+          if [ -z "$GITLAB_API_TOKEN" ]; then
+            echo "::warning::Restricted dependencies found but the DASH_GITLAB_API_TOKEN secret is not set; no IP review was requested."
+            echo "missing-token" > reviews.txt
+            exit 0
+          fi
+          java -jar ./dash.jar PACKAGE -project automotive.tractusx -timeout 300 \
+            -repo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            -review -token "$GITLAB_API_TOKEN" 2>&1 | tee review.log || true
+          grep -oE 'https://gitlab\.eclipse\.org/[^ ]+/issues/[0-9]+' review.log | sort -u > reviews.txt || true
+
+      - name: Write pull request body
+        run: |
+          {
+            echo "Dash regenerated \`$DEP_FILE\` from \`poetry.lock\` on main."
+            echo
+            restricted=$(grep 'restricted' $DEP_FILE || true)
+            if [ -n "$restricted" ]; then
+              echo "### Waiting for IP review"
+              echo
+              echo '```'
+              echo "$restricted"
+              echo '```'
+              echo
+              if grep -q 'missing-token' reviews.txt; then
+                echo "No review was requested: the \`DASH_GITLAB_API_TOKEN\` secret is not set."
+              elif [ -s reviews.txt ]; then
+                echo "Review requests:"
+                sed 's/^/- /' reviews.txt
+              else
+                echo "Dash reported no review request; see the [workflow run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
+              fi
+              echo
+              echo "This pull request is updated every day. Merge it once nothing is waiting for review."
+            else
+              echo "Every dependency is approved."
+            fi
+            echo
+            echo "Pull requests opened by this workflow do not start other workflows. Close and reopen it to run the checks."
+          } > pr-body.md
+
+      - name: Open or update pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: ${{ env.DEP_FILE }}
+          branch: chore/update-dependencies
+          delete-branch: true
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          commit-message: "chore(deps): update DEPENDENCIES"
+          title: "chore(deps): update DEPENDENCIES"
+          body-path: pr-body.md
