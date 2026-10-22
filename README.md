@@ -20,6 +20,10 @@ Test authors write **declarative YAML tests** describing the steps to execute, t
 - **Infrastructure bindings** — the connectors and registries a run drives are bound by the operator (`testlab.config.yaml` or `TESTLAB_*` variables), never named inside a test
 - **Server** — a FastAPI app (`testlab serve`) that runs TCKs, streams live execution events over SSE, and serves the callback and mock endpoints tests listen on
 
+## Documentation
+
+The full documentation is published at **[eclipse-tractusx.github.io/tractusx-testlab](https://eclipse-tractusx.github.io/tractusx-testlab/)**. Its sources live in the [docs](docs/) directory.
+
 ## How It Works
 
 A test is a sequence of steps from a predefined catalogue — for example `connector/provider/create_asset`, `connector/consumer/pull_data_filtered`, `digital-twin-registry/consumer/dataplane/lookup_shell` — each declaring its inputs under `with:`, the outputs it publishes under `returns:`, and the checks on those outputs under `validate:`. See the [Step Reference](docs/api-reference/steps/index.md) for every step and the [TCK Syntax](docs/tck-syntax/index.md) for the format.
@@ -147,10 +151,6 @@ testlab run hello.tck
 >
 > - `testlab <command> --help` lists every option, for example `--var KEY=VALUE` to override a variable at run time.
 > - To sign and encrypt packages for a specific player, see [Compiling Packages](docs/specification/walkthrough/compiling-packages.md).
-
-## Documentation
-
-The full documentation is published at **[eclipse-tractusx.github.io/tractusx-testlab](https://eclipse-tractusx.github.io/tractusx-testlab/)**. Its sources live in the [docs](docs/) directory.
 
 ## Contributing
 
