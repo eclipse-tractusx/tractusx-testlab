@@ -248,3 +248,52 @@ class TestTheExecutionId:
         assert resolve_str("testlab-ccmapi-${{ execution.id }}", context) == (
             "testlab-ccmapi-variable-types-test"
         )
+
+
+class TestOneOfGroupIsTheListOfItsAlternatives:
+    """``${{ env.<group> }}`` reads every alternative of a ``with.one_of`` group."""
+
+    @staticmethod
+    def _alternative(var_id: str, constraint: str) -> dict:
+        entry = _variable(
+            var_id,
+            "config/connector/policy",
+            {"permission": [{"action": "use", "constraint": [{"leftOperand": constraint}]}]},
+            {"value": {"type": "object", "class": "Policy"}},
+        )
+        entry["with"] = {**entry["with"], "source": "register", "one_of": "usage_policy"}
+        return entry
+
+    def test_the_group_holds_each_alternative_in_manifest_order(self) -> None:
+        context = _context()
+
+        seed_env_variables(
+            context,
+            _tck(
+                self._alternative("without_membership", "UsagePurpose"),
+                self._alternative("with_membership", "Membership"),
+            ),
+        )
+
+        group = resolve_str("${{ env.usage_policy }}", context)
+        assert [policy["permission"][0]["constraint"][0]["leftOperand"] for policy in group] == [
+            "UsagePurpose",
+            "Membership",
+        ]
+
+    def test_an_alternative_the_operator_supplied_is_the_one_the_group_holds(self) -> None:
+        context = _context()
+        seed_env_variables(
+            context,
+            _tck(
+                self._alternative("without_membership", "UsagePurpose"),
+                self._alternative("with_membership", "Membership"),
+            ),
+        )
+
+        context.set_variable(
+            "with_membership", {"permission": [{"action": "use", "constraint": []}]}
+        )
+
+        group = resolve_str("${{ env.usage_policy }}", context)
+        assert group[1] == {"permission": [{"action": "use", "constraint": []}]}

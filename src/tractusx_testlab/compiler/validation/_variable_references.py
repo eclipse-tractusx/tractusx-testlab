@@ -40,16 +40,18 @@ from typing import Any
 
 from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.syntax import call_scope, keys, patterns
+from tractusx_testlab.syntax.one_of import one_of_groups
 
 
 def declared_variable_ids(env_data: dict[str, Any]) -> frozenset[str]:
-    """The ids of every variable the manifest declares."""
+    """The ids of every variable the manifest declares, ``with.one_of`` groups included."""
     variables = env_data.get("variables")
     if not isinstance(variables, list):
         return frozenset()
-    return frozenset(
+    declared = {
         str(entry[keys.ID]) for entry in variables if isinstance(entry, dict) and entry.get(keys.ID)
-    )
+    }
+    return frozenset(declared | set(one_of_groups(variables)))
 
 
 def validate_variable_references(

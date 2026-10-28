@@ -46,6 +46,7 @@ from tractusx_testlab.models.primitives.exceptions import VariableTypeError
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.loading._package_paths import package_path
 from tractusx_testlab.syntax import context_vars, keys, variables
+from tractusx_testlab.syntax.one_of import group_value, one_of_groups
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +153,11 @@ def seed_env_variables(context: StepContext, tck: Tck) -> None:
         context.set_template(var_id, _as_declared_type(var_id, value, _declared_type(var)))
         if var.get(keys.SECRET) is True:
             register_secret(value, run=str(context.job.job_id), explicit=True)
+    # A ``with.one_of`` group is the list of its alternatives. It is a template
+    # of references rather than a copy of their values, so an alternative the
+    # operator supplied with ``--var`` is the one the group holds.
+    for group, members in one_of_groups(_declared_variables(tck)).items():
+        context.set_template(group, group_value(members))
 
 
 def _declared_variables(tck: Tck) -> Iterator[dict]:

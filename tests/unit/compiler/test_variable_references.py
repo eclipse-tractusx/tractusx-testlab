@@ -124,3 +124,18 @@ class TestReferencesIntoAVariable:
         ids = declared_variable_ids(_env(_policy()))
 
         assert validate_variable_references(test_data, ids, "tests/check.yaml") == []
+
+
+class TestOneOfGroupIsDeclared:
+    def test_a_group_is_a_name_a_test_may_reference(self) -> None:
+        def alternative(var_id: str) -> dict[str, Any]:
+            entry = _policy()
+            entry["id"] = var_id
+            entry["with"] = {**entry["with"], "source": "register", "one_of": "ccm_usage_policy"}
+            return entry
+
+        declared = declared_variable_ids(
+            _env(alternative("default_policy"), alternative("membership_policy"))
+        )
+
+        assert declared == {"default_policy", "membership_policy", "ccm_usage_policy"}

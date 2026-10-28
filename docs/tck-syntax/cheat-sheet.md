@@ -471,6 +471,46 @@ knows exactly what the SUT should answer with:
           type: object
 ```
 
+**One of several** (`with.one_of`): when the standard allows more than one
+document for the same purpose — a usage policy with or without a membership
+constraint — declare each as its own registered variable and name the group
+they are alternatives in. The operator registers one of them; the engine offers
+them as one choice, `with.default: true` first. The group is a variable too:
+`${{ env.<group> }}` is the list of the alternatives' values, in manifest
+order, so a test that accepts any of them names the group:
+
+```yaml
+    - id: usage_policy_default
+      uses: config/connector/policy
+      name: Without Membership
+      with:
+        source: register
+        one_of: usage_policy
+        default: true
+        value: { … }
+      returns:
+        value:
+          type: object
+          class: Policy
+    - id: usage_policy_membership
+      uses: config/connector/policy
+      name: With Membership
+      with:
+        source: register
+        one_of: usage_policy
+        value: { … }
+      returns:
+        value:
+          type: object
+          class: Policy
+
+# in a test
+      expected_policies: ${{ env.usage_policy }}
+```
+
+A group has at least two alternatives of one `uses`, at most one default, and a
+name no variable has. Only a `source: register` document is an alternative.
+
 ---
 
 ## Failure Handling
