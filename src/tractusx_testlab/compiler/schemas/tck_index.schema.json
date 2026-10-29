@@ -1,6 +1,49 @@
 {
   "$comment": "Generated from TckDefinition by `testlab schema`. Do not edit: the models in tractusx_testlab.models.authoring.definitions are the source of truth, and `testlab schema --check` fails the build if this file no longer matches them.",
   "$defs": {
+    "ApiDefinition": {
+      "additionalProperties": false,
+      "description": "An OpenAPI document the TCK carries under ``apis/`` (ADR-0030).\n\nIt says what an API is, never how it is reached: there is no base URL,\nconnector or credential here, because the steps of a test decide that.",
+      "properties": {
+        "id": {
+          "description": "Name a test references the document by: '${{ env.apis.<id> }}'.",
+          "pattern": "^[a-z][a-z0-9_]{0,49}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "source": {
+          "description": "File name under the package's apis/ folder.",
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "enum": [
+                "application/vnd.oai.openapi",
+                "application/vnd.oai.openapi+json",
+                "application/yaml",
+                "application/json"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Media type the file is read as. Omitted: application/vnd.oai.openapi for .yaml/.yml, application/vnd.oai.openapi+json for .json.",
+          "title": "Type"
+        }
+      },
+      "required": [
+        "id",
+        "source"
+      ],
+      "title": "ApiDefinition",
+      "type": "object"
+    },
     "CapabilityRequirement": {
       "description": "One capability requirement: an explicit ``required`` flag plus an optional standard.",
       "properties": {
@@ -47,8 +90,23 @@
     },
     "EnvDefinition": {
       "additionalProperties": false,
-      "description": "Environment block in a TCK manifest \u2014 shared variables, services, and test data.",
+      "description": "Environment block in a TCK manifest \u2014 shared variables, services, and files.",
       "properties": {
+        "apis": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ApiDefinition"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Apis"
+        },
         "schemas": {
           "anyOf": [
             {
