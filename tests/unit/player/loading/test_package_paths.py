@@ -41,7 +41,7 @@ from pathlib import Path
 import pytest
 
 from tractusx_testlab.compiler import package_digest
-from tractusx_testlab.player.execution._context_seeder import _resolve_asset_path
+from tractusx_testlab.player.execution._env_assets import _resolve_asset_path
 from tractusx_testlab.player.loading._package_paths import UnsafePackagePathError, package_path
 from tractusx_testlab.player.loading.loader import _TCK_BUNDLE_ENTRY, Loader
 
