@@ -1,0 +1,41 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TestLab e2e echo mock",
+    "version": "1.0.0",
+    "description": "The endpoint tests/api_files.yaml opens on TestLab's mock server, as an API file. Every mock requires the run's API key, which this document declares as its security scheme.",
+    "license": { "name": "Apache-2.0", "identifier": "Apache-2.0" }
+  },
+  "paths": {
+    "/testlab-e2e/api-files/echo": {
+      "get": {
+        "operationId": "getEcho",
+        "security": [{ "mockKey": [] }],
+        "responses": {
+          "200": {
+            "description": "The canned echo",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Echo" } }
+            }
+          },
+          "401": { "description": "The run's API key is missing or wrong" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Echo": {
+        "type": "object",
+        "required": ["ok", "served_by"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "served_by": { "type": "string" }
+        }
+      }
+    },
+    "securitySchemes": {
+      "mockKey": { "type": "apiKey", "in": "header", "name": "x-api-key" }
+    }
+  }
+}

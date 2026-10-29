@@ -263,11 +263,11 @@ def _resolve_first_segment(
     declared: frozenset[str] | None = None,
 ) -> Any:
     """Resolve the first path segment against a StepOutput's various data sources."""
-    # Map well-known aliases
-    if first == "response_body":
-        resolved = _resolve_response_body(output)
-    elif first == "response_headers":
-        resolved = _resolve_response_headers(output)
+    # Well-known aliases, unless the step publishes a field of that name itself
+    own = isinstance(output.value, dict) and first in output.value
+    if first in ("response_body", "response_headers") and not own:
+        alias = _resolve_response_body if first == "response_body" else _resolve_response_headers
+        resolved = alias(output)
     elif isinstance(output.value, dict):
         resolved = _resolve_from_value_dict(output, first, rest, full_path)
     else:

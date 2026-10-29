@@ -34,6 +34,7 @@ three pieces of information, so nothing downstream has to care which was used.
 from __future__ import annotations
 
 import enum
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from tractusx_testlab.models.primitives import AssertionSeverity
@@ -52,6 +53,8 @@ class AssertionKind(enum.Enum):
     FIELD = "field"
     #: ``validate/schema`` — validate the value at ``input`` against a JSON Schema.
     SCHEMA = "schema"
+    #: A check an extension registered under its own ``uses`` (:func:`register_validation`).
+    REGISTERED = "registered"
 
 
 _PREFIX_TO_KIND = {
@@ -59,6 +62,55 @@ _PREFIX_TO_KIND = {
     "validate/field": AssertionKind.FIELD,
     "validate/schema": AssertionKind.SCHEMA,
 }
+
+
+#: What a registered check is handed besides the subject and its ``with:``: a
+#: reader of the run's variables, e.g. the API documents bound under ``apis.<id>``.
+VariableReader = Callable[[str], object]
+
+
+@dataclass(frozen=True)
+class CheckOutcome:
+    """What a registered check found: the verdict, why, and what to record."""
+
+    passed: bool
+    message: str
+    expected: object = None
+    actual: object = None
+
+
+@dataclass(frozen=True)
+class RegisteredValidation:
+    """A ``validate:`` check an extension contributes under its own ``uses``.
+
+    *input_optional*: the check reads the step's whole output when ``input`` is
+    left out (``labs/validate/api_response`` under an API call step).
+    """
+
+    uses: str
+    evaluate: Callable[[object, dict, VariableReader | None], CheckOutcome]
+    input_optional: bool = False
+    #: What it checks, and the ``with:`` keys it reads — the reference page's row.
+    checks: str = ""
+    reads: str = ""
+
+
+_REGISTERED: dict[str, RegisteredValidation] = {}
+
+
+def register_validation(check: RegisteredValidation) -> None:
+    """Make *check* a ``validate:`` entry; its module registers it when imported."""
+    _REGISTERED[check.uses] = check
+
+
+def registered_validation(uses: str) -> RegisteredValidation | None:
+    """The check an extension registered under *uses*, if any."""
+    return _REGISTERED.get(uses)
+
+
+def registered_validations() -> list[RegisteredValidation]:
+    """Every registered check, by ``uses``."""
+    return [_REGISTERED[uses] for uses in sorted(_REGISTERED)]
 
 
 @dataclass(frozen=True)
@@ -82,6 +134,8 @@ def resolve(uses: str, params: dict) -> ResolvedAssertion | str:
     kind = _PREFIX_TO_KIND.get(uses)
     if kind is not None:
         return _resolve_known_prefix(kind, params)
+    if uses in _REGISTERED:
+        return ResolvedAssertion(kind=AssertionKind.REGISTERED, operator=None)
 
     prefix, _, suffix = uses.rpartition("/")
     kind = _PREFIX_TO_KIND.get(prefix)

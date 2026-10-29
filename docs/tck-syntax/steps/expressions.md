@@ -7,6 +7,7 @@ Values are interpolated with `${{ … }}`.
 | `${{ env.<var-id> }}` | A manifest variable's value, whatever its type | `${{ env.ccm_usage_policy }}` |
 | `${{ env.schemas.<schema-id> }}` | A declared JSON Schema | `${{ env.schemas.certificate_schema }}` |
 | `${{ env.testdata.<testdata-id> }}` | A declared test data file's content | `${{ env.testdata.send_feedback_body }}` |
+| `${{ env.apis.<api-id> }}` | A declared API file: the parsed OpenAPI document, read-only, whole ([API Files](../package/api-files.md)) | `${{ env.apis.ich }}` |
 | `${{ execution.<step-id>.<return-key> }}` | A prior step's declared return | `${{ execution.pull_notification_endpoint.edr_token }}` |
 | `${{ setup.<step-id>.<return-key> }}` **[PROP]** | A setup step's return | `${{ setup.create_asset.asset_id }}` |
 | `${{ infrastructure.<engine\|sut>.<capability>.<field> }}` | A field of the bound deployment. A credential field (`api_key`) is a handle, not text — see [Credential references](#credential-references) | `${{ infrastructure.sut.connector.dsp_url }}` |

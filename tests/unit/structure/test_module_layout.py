@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """A file explains itself from its name, and nothing grows past what it should.
@@ -52,7 +53,7 @@ OVERSIZED: dict[str, int] = {
     "steps/digital_twin_registry/submodel.py": 386,
     "steps/digital_twin_registry/provider/shell.py": 363,
     "steps/step_contract.py": 354,
-    "compiler/ir/builder.py": 344,
+    "compiler/ir/builder.py": 315,
     "steps/_checks/extraction.py": 330,
     "infrastructure/profiles.py": 329,
     # One class doing one thing — publishing every transition to the log, the

@@ -46,7 +46,11 @@ from tractusx_testlab.authoring.step_docs import (
     summary_and_body,
 )
 from tractusx_testlab.steps.assertions.operators import TABLE, Arity
-from tractusx_testlab.steps.assertions.vocabulary import DEFAULT_OPERATOR, AssertionKind
+from tractusx_testlab.steps.assertions.vocabulary import (
+    DEFAULT_OPERATOR,
+    AssertionKind,
+    registered_validations,
+)
 from tractusx_testlab.steps.step_contract import BaseStep
 
 
@@ -192,8 +196,12 @@ def render_validations(*, level: int = 2, condition_href: str = "#condition") ->
         "|---|---|---|",
     ]
     for kind in AssertionKind:
+        if kind is AssertionKind.REGISTERED:
+            continue  # each registered check is a row of its own, below
         checks, keys = _ASSERTION_KINDS[kind]
         lines.append(f"| `validate/{kind.value}` | {checks} | {keys} |")
+    for check in registered_validations():
+        lines.append(f"| `{check.uses}` | {check.checks} | {check.reads} |")
 
     lines += [
         "",

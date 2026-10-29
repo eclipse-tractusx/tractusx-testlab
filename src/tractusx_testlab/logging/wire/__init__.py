@@ -50,6 +50,7 @@ from tractusx_testlab.logging.wire.records import (
     safe_headers,
 )
 from tractusx_testlab.logging.wire.redaction import (
+    mask_secret_inputs,
     redact_secrets,
     redact_url,
     written,
@@ -72,6 +73,7 @@ __all__ = [
     "disclose",
     "is_secret_header",
     "is_secret_key",
+    "mask_secret_inputs",
     "recording",
     "redact_secrets",
     "redact_url",

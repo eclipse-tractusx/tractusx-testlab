@@ -19,7 +19,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
 
 """Security steps: obtaining and handling authorization credentials."""
 
+import tractusx_testlab.steps.security.api_key
+import tractusx_testlab.steps.security.basic
 import tractusx_testlab.steps.security.oauth2

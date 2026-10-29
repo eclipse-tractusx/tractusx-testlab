@@ -4,7 +4,7 @@
 
 Every step a test can name in `uses:`, with the parameters it accepts under `with:` and the output fields it publishes — the names `returns:`, `validate:` and later steps read. The reference is generated from the steps' declared Pydantic models, so it cannot drift from the implementation. For where these blocks sit in a test file, see the [TCK syntax](../../tck-syntax/index.md).
 
-67 steps. The checks a step's outputs are held to are listed under [Validations](validations.md).
+74 steps. The checks a step's outputs are held to are listed under [Validations](validations.md).
 
 ## Categories and modules
 
@@ -22,13 +22,17 @@ Every step a test can name in `uses:`, with the parameters it accepts under `wit
 | `digital-twin-registry` | `submodel` | [`delete`](digital-twin-registry/submodel.md#digital-twin-registry-submodel-delete), [`upload`](digital-twin-registry/submodel.md#digital-twin-registry-submodel-upload) |
 | `flow` | — | [`delay`](flow/index.md#flow-delay), [`if`](flow/index.md#flow-if), [`retry`](flow/index.md#flow-retry), [`select`](flow/index.md#flow-select) |
 | `http` | — | [`http_request`](http/index.md#http-http_request) |
+| `labs` | `connector/dataplane` | [`api_request`](labs/connector-dataplane.md#labs-connector-dataplane-api_request) |
 | `labs` | `connector/provider` | [`query_assets`](labs/connector-provider.md#labs-connector-provider-query_assets), [`query_contract_definitions`](labs/connector-provider.md#labs-connector-provider-query_contract_definitions), [`query_policies`](labs/connector-provider.md#labs-connector-provider-query_policies) |
 | `labs` | `flow` | [`for_each`](labs/flow.md#labs-flow-for_each) |
+| `labs` | `http` | [`api_request`](labs/http.md#labs-http-api_request), [`api_sweep`](labs/http.md#labs-http-api_sweep) |
 | `labs` | `mock/api` | [`dynamic`](labs/mock-api.md#labs-mock-api-dynamic) |
 | `labs` | `util` | [`now`](labs/util.md#labs-util-now) |
+| `labs` | `validate` | [`api_errors`](labs/validate.md#labs-validate-api_errors), [`api_response`](labs/validate.md#labs-validate-api_response) |
 | `mock` | — | [`api`](mock/index.md#mock-api), [`discovery`](mock/index.md#mock-discovery), [`dtr`](mock/index.md#mock-dtr) |
 | `mock` | `wait/dataplane` | [`http_request`](mock/wait-dataplane.md#mock-wait-dataplane-http_request) |
 | `mock` | `wait` | [`http_request`](mock/wait.md#mock-wait-http_request) |
 | `notification` | `consumer` | [`discover_assets`](notification/consumer.md#notification-consumer-discover_assets), [`send`](notification/consumer.md#notification-consumer-send) |
+| `security` | — | [`api_key`](security/index.md#security-api_key), [`basic`](security/index.md#security-basic) |
 | `security` | `oauth2` | [`client_credentials`](security/oauth2.md#security-oauth2-client_credentials), [`password`](security/oauth2.md#security-oauth2-password), [`refresh_token`](security/oauth2.md#security-oauth2-refresh_token) |
 | `util` | — | [`base64`](util/index.md#util-base64), [`generate_uuid`](util/index.md#util-generate_uuid), [`json_path_extract`](util/index.md#util-json_path_extract), [`log`](util/index.md#util-log), [`parse_kv`](util/index.md#util-parse_kv), [`validate_path`](util/index.md#util-validate_path) |

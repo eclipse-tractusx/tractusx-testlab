@@ -1,0 +1,254 @@
+###############################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+###############################################################
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+## It was reviewed and tested by a human committer.
+
+kind: test
+syntax: v1-alpha
+
+namespace: testlab-e2e-connector-dtr-smoke
+id: api-steps
+
+metadata:
+  name: "API steps"
+  version: "v1.0.0"
+  description: >
+    The labs steps that read an API file (ADR-0030 §5), against the Digital
+    Twin Registry the umbrella deployed and the registry's own OpenAPI
+    document. Each answer is checked against the operation it answered —
+    status, media type, body schema — directly, through the SUT's data plane
+    after a filtered negotiation, and over a small GET-only sweep; the error
+    answers are then judged together. Every call is deterministic: the
+    registry's self-description, and a shell id it has never held.
+
+setup:
+  - id: create_access_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT catalog access policy
+    with:
+      policy: "${{ env.access_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  - id: create_usage_policy
+    uses: connector/provider/create_policy
+    name: Create the SUT contract usage policy
+    with:
+      policy: "${{ env.usage_policy }}"
+    returns:
+      policy_id:
+        type: string
+
+  # The registry behind an asset of its own, so the negotiation below has
+  # exactly one offer to pick: the filter names this asset and nothing else.
+  - id: create_dtr_asset
+    uses: connector/provider/create_asset
+    name: Publish the SUT's registry as a catalog asset for the API steps
+    with:
+      asset:
+        asset_id: testlab-e2e-api-steps-dtr-asset
+        base_url: "${{ env.dtr_internal_url }}"
+        dct_type: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
+        version: "3.0"
+        proxy_params:
+          proxyPath: "true"
+          proxyMethod: "true"
+          proxyBody: "true"
+          proxyQueryParams: "true"
+    returns:
+      asset_id:
+        type: string
+
+  - id: create_contract
+    uses: connector/provider/create_contract_definition
+    name: Offer the registry asset under both policies
+    with:
+      contract_definition_id: testlab-e2e-api-steps-dtr-contract
+      access_policy_id: "${{ setup.create_access_policy.policy_id }}"
+      contract_policy_id: "${{ setup.create_usage_policy.policy_id }}"
+      asset_id: "${{ setup.create_dtr_asset.asset_id }}"
+    returns:
+      contract_definition_id:
+        type: string
+
+execution:
+  # A. Directly: the registry's own operations, by operationId.
+
+  - id: dtr_description
+    uses: labs/http/api_request
+    name: Ask the registry for its self-description, checked against its document
+    with:
+      api: "${{ env.apis.dtr }}"
+      operation: GetSelfDescription
+      base_url: "${{ infrastructure.sut.dtr.base_url }}/api/v3"
+      expect: 200
+    returns:
+      status_code:
+        type: integer
+    validate:
+      - uses: labs/validate/api_response
+      - uses: validate/field
+        with: { input: response_body, path: profiles, operator: not_empty }
+
+  # A shell id the registry has never held (base64url of
+  # urn:uuid:testlab-e2e-absent, as negative_paths.yaml uses it): a
+  # documented 404 whose body must be the document's Result.
+  - id: dtr_unknown_shell
+    uses: labs/http/api_request
+    name: Read a shell the registry has never held, and check the documented 404
+    with:
+      api: "${{ env.apis.dtr }}"
+      operation: "GET /shell-descriptors/{aasIdentifier}"
+      base_url: "${{ infrastructure.sut.dtr.base_url }}/api/v3"
+      path_params:
+        aasIdentifier: dXJuOnV1aWQ6dGVzdGxhYi1lMmUtYWJzZW50
+      expect: 404
+    validate:
+      - uses: labs/validate/api_response
+        with: { expect: 404 }
+
+  # B. Through the SUT's data plane, after a negotiation whose filter names
+  # the registry asset above.
+
+  - id: pull_registry
+    uses: connector/consumer/pull_data_filtered
+    name: Negotiate the registry asset, and only that asset
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      filters:
+        - operand_left: "https://w3id.org/edc/v0.0.1/ns/id"
+          operator: "="
+          operand_right: "${{ setup.create_dtr_asset.asset_id }}"
+      expected_policies: "${{ env.usage_policy }}"
+    returns:
+      dataplane_url:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: dataplane_url, operator: not_null }
+
+  # dataplane_url and edr_token come from pull_registry, unwritten.
+  - id: dataplane_description
+    uses: labs/connector/dataplane/api_request
+    name: Ask for the self-description through the data plane
+    with:
+      api: "${{ env.apis.dtr }}"
+      operation: GetSelfDescription
+      expect: 200
+    validate:
+      - uses: labs/validate/api_response
+        with: { data_plane: true }
+
+  # No token at all: the data plane must refuse, and the check reports the
+  # refusal as the data plane's — the registry was never asked.
+  - id: dataplane_without_token
+    uses: labs/connector/dataplane/api_request
+    name: Call through the data plane without an EDR token
+    with:
+      api: "${{ env.apis.dtr }}"
+      operation: GetSelfDescription
+      edr_token: ""
+      expect: 4XX
+    validate:
+      - uses: labs/validate/api_response
+        with: { data_plane: true, expect: 4XX }
+
+  # C. A sweep: two GET operations, each checked as above. The by-id read
+  # gets the absent shell, so both a 200 and a documented 404 are swept.
+  - id: dtr_sweep
+    uses: labs/http/api_sweep
+    name: Sweep two GET operations of the registry
+    with:
+      api: "${{ env.apis.dtr }}"
+      base_url: "${{ infrastructure.sut.dtr.base_url }}/api/v3"
+      operations:
+        - GetSelfDescription
+        - GetAssetAdministrationShellDescriptorById
+      params:
+        aasIdentifier: dXJuOnV1aWQ6dGVzdGxhYi1lMmUtYWJzZW50
+      concurrency: 2
+      budget_s: 60
+    returns:
+      called:
+        type: integer
+      failed:
+        type: integer
+    validate:
+      - uses: validate/assert
+        with: { input: called, operator: equals, value: 2 }
+      - uses: validate/assert
+        with: { input: failed, operator: equals, value: 0 }
+
+  # D. The registry's error answers, judged together: the direct 404 and the
+  # sweep's. The data plane's own refusal is not the registry's and is left out.
+  - id: dtr_errors
+    uses: labs/validate/api_errors
+    name: Judge the registry's error answers together
+    with:
+      steps: [dtr_unknown_shell, dtr_sweep]
+    returns:
+      errors:
+        type: integer
+    validate:
+      - uses: validate/assert
+        with: { input: errors, operator: equals, value: 2 }
+
+  # E. The opt-out of the empty-filter guard. Any offer the SUT lists under
+  # the usage policy will do here — the step only proves the guard lets an
+  # explicit "any" through; offer_guard.yaml proves it refuses a silent one.
+  - id: any_offer
+    uses: connector/consumer/pull_data_filtered
+    name: Negotiate any offer, said so explicitly
+    with:
+      counter_party_address: "${{ infrastructure.sut.connector.dsp_url }}"
+      counter_party_id: "${{ infrastructure.sut.connector.participant_id }}"
+      allow_any_offer: true
+      expected_policies: "${{ env.usage_policy }}"
+    validate:
+      - uses: validate/assert
+        with: { input: dataplane_url, operator: not_null }
+
+teardown:
+  - id: delete_contract
+    uses: connector/provider/delete_contract_definition
+    name: Withdraw the registry offer
+    with:
+      contract_definition_id: "${{ setup.create_contract.contract_definition_id }}"
+
+  - id: delete_dtr_asset
+    uses: connector/provider/delete_asset
+    name: Remove the registry asset
+    with:
+      asset_id: "${{ setup.create_dtr_asset.asset_id }}"
+
+  - id: delete_usage_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT usage policy
+    with:
+      policy_id: "${{ setup.create_usage_policy.policy_id }}"
+
+  - id: delete_access_policy
+    uses: connector/provider/delete_policy
+    name: Remove the SUT access policy
+    with:
+      policy_id: "${{ setup.create_access_policy.policy_id }}"

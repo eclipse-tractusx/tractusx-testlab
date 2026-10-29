@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Context-seeding helpers — populate a StepContext before a TCK run begins.
@@ -30,10 +31,8 @@ do not start services, open network connections, or mutate any other state.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Iterator
-from pathlib import Path
 from typing import Any
 
 from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
@@ -43,8 +42,8 @@ from tractusx_testlab.logging import wire
 from tractusx_testlab.logging.masking import register_secret
 from tractusx_testlab.models.primitives.binding_errors import MissingInputVariableError
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
+from tractusx_testlab.player.execution._env_assets import load_env_assets
 from tractusx_testlab.player.execution.context import StepContext
-from tractusx_testlab.player.loading._package_paths import package_path
 from tractusx_testlab.syntax import context_vars, keys, variables
 from tractusx_testlab.syntax.one_of import group_value, one_of_groups
 
@@ -66,12 +65,12 @@ def seed_context_variables(
     Run metadata (``execution.id`` and ``execution.resource_prefix``) is set
     after all three and cannot be overridden.
 
-    Side effects: writes to *context* variables store and loads testdata files.
+    Side effects: writes to *context* variables store and loads testdata,
+    schema and API files.
     """
     if tck.base_dir is not None:
         context.set_variable("_tck_root", str(tck.base_dir))
-        _load_testdata(context, tck)
-        _load_schemas(context, tck)
+        load_env_assets(context, tck)
 
     shared_vars = getattr(tck.definition, "shared_variables", None) or {}
     if shared_vars:
@@ -215,66 +214,3 @@ def _as_declared_type(name: str, value: Any, declared: str | None) -> Any:
     if problem is not None:
         raise VariableTypeError(name, declared or "", problem)
     return parsed
-
-
-def _resolve_asset_path(base_dir: Path, folder_name: str, source: str) -> Path | None:
-    """Locate an asset file under *folder_name*, tolerating both package layouts.
-
-    A compiled ``.tck`` archive stores assets under ``assets/<folder>/`` while a
-    raw authoring directory keeps them in a top-level ``<folder>/``.  Both are
-    valid inputs to the player, so try the compiled layout first and fall back
-    to the raw one.  Returns ``None`` when the file exists in neither.
-    """
-    # `source` comes from the package; it may not name a file outside it.
-    for candidate in (
-        package_path(base_dir, f"assets/{folder_name}/{source}"),
-        package_path(base_dir, f"{folder_name}/{source}"),
-    ):
-        if candidate.is_file():
-            return candidate
-    return None
-
-
-def _load_json_assets(
-    context: StepContext,
-    tck: Any,
-    folder_name: str,
-    entries: Any,
-) -> None:
-    """Load JSON assets from *folder_name* and seed them under ``<folder>.<id>``.
-
-    Each asset is bound to both ``<folder>.<id>`` and ``env.<folder>.<id>`` so
-    that ``${{ env.<folder>.<id> }}`` and the bare ``${{ <folder>.<id> }}`` form
-    both resolve.
-    """
-    for entry in entries:
-        path = _resolve_asset_path(tck.base_dir, folder_name, entry.source)
-        if path is None:
-            logger.warning(
-                "%s file not found, skipping: %s/%s (searched under %s)",
-                folder_name.capitalize(),
-                folder_name,
-                entry.source,
-                tck.base_dir,
-            )
-            continue
-        try:
-            content = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError) as exc:
-            logger.warning("Failed to load %s file %s: %s", folder_name, path, exc)
-            continue
-        context.set_template(f"{folder_name}.{entry.id}", content)
-        context.set_template(f"env.{folder_name}.{entry.id}", content)
-        logger.debug("Loaded %s '%s' from %s", folder_name, entry.id, path.name)
-
-
-def _load_testdata(context: StepContext, tck: Any) -> None:
-    """Seed context with testdata files declared in the TCK ``env.testdata`` block."""
-    env_def = getattr(tck.definition, "env", None)
-    _load_json_assets(context, tck, "testdata", getattr(env_def, "testdata", None) or [])
-
-
-def _load_schemas(context: StepContext, tck: Any) -> None:
-    """Seed context with JSON Schema files declared in the TCK ``env.schemas`` block."""
-    env_def = getattr(tck.definition, "env", None)
-    _load_json_assets(context, tck, "schemas", getattr(env_def, "schemas", None) or [])

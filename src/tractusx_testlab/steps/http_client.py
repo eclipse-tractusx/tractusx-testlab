@@ -46,6 +46,7 @@ from tractusx_sdk.dataspace.tools import trace_call
 from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
 
 from tractusx_testlab.logging import wire
+from tractusx_testlab.models.primitives.exceptions import ExecutionError
 
 
 async def request(
@@ -61,6 +62,7 @@ async def request(
     timeout: float | None = None,
     follow_redirects: bool = True,
     secret_headers: Collection[str] = (),
+    max_response_bytes: int | None = None,
 ) -> httpx.Response:
     """Make one HTTP request without blocking the event loop.
 
@@ -78,6 +80,11 @@ async def request(
 
     *secret_headers* names headers carrying a credential under a name the
     tracer would not recognise; they are recorded as ``***`` and sent as given.
+
+    *max_response_bytes* bounds the decoded body: it is read in chunks and the
+    call fails with :class:`ResponseTooLargeError` past the limit, so a server
+    cannot make the run hold an unbounded answer — or a compressed one that
+    expands to it.
     """
     traced_headers = (
         {k: REDACTED_VALUE if k in secret_headers else v for k, v in headers.items()}
@@ -93,19 +100,71 @@ async def request(
             body=json if json is not None else data or content,
             context=wire.ENGINE_CONTEXT,
         ) as call:
-            response = await client.request(
-                method.upper(),
-                url,
-                headers=headers,
-                params=params,
-                json=json,
-                data=data,
-                content=content,
-                auth=auth,
-                timeout=timeout,
-            )
+            if max_response_bytes is None:
+                response = await client.request(
+                    method.upper(),
+                    url,
+                    headers=headers,
+                    params=params,
+                    json=json,
+                    data=data,
+                    content=content,
+                    auth=auth,
+                    timeout=timeout,
+                )
+            else:
+                sent = client.build_request(
+                    method.upper(),
+                    url,
+                    headers=headers,
+                    params=params,
+                    json=json,
+                    data=data,
+                    content=content,
+                    timeout=timeout,
+                )
+                response = await _bounded(client, sent, auth, max_response_bytes)
             call.set_response(response)
         return response
+
+
+class ResponseTooLargeError(ExecutionError):
+    """The server answered with more than the step reads."""
+
+    code = "RESPONSE_TOO_LARGE"
+
+    def __init__(self, url: str, limit: int) -> None:
+        self.diagnostics = {"url": url, "limit_bytes": limit}
+        super().__init__(f"The answer from {url} is larger than {limit} bytes; it was not read.")
+
+
+async def _bounded(
+    client: httpx.AsyncClient,
+    sent: httpx.Request,
+    auth: tuple[str, str] | None,
+    limit: int,
+) -> httpx.Response:
+    """Send *sent* and read at most *limit* decoded bytes of the answer."""
+    streamed = await client.send(sent, auth=auth, stream=True)
+    chunks: list[bytes] = []
+    size = 0
+    try:
+        async for chunk in streamed.aiter_bytes():
+            size += len(chunk)
+            if size > limit:
+                raise ResponseTooLargeError(str(sent.url), limit)
+            chunks.append(chunk)
+    finally:
+        await streamed.aclose()
+    # The body is decoded already, so the headers that described the encoding go.
+    headers = [
+        (name, value)
+        for name, value in streamed.headers.raw
+        if name.lower() not in (b"content-encoding", b"content-length", b"transfer-encoding")
+    ]
+    return httpx.Response(
+        streamed.status_code, headers=headers, content=b"".join(chunks), request=sent
+    )
 
 
 def body_of(response: httpx.Response) -> Any:
