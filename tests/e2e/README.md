@@ -130,8 +130,13 @@ run's agreements, retire each with 204, and a repeat must answer 409.
   the header its API key goes in, `security/api_key` places the run's key
   there, and the keyed mock must let the call through. Each step reads one
   value from a document, and the run writes the document down by its summary
-  (`api_document`: version, title, sha256), never whole — which the workflow
-  checks on the trace. `tests/combinations/test_e2e_api_files_offline.py`
+  (`api_document`: version, title, sha256), never whole. The workflow's
+  `Verify the API files and auth steps in the execution trace` fails the job
+  unless every step of this test and the four API key and Basic steps of
+  `engine_toolbox.yaml` passed exactly once, both documents are recorded by
+  summary, and no event carries the registry's document
+  (`tests/unit/ci/test_e2e_api_files_verifier.py` runs that check against
+  traces the player's own publisher writes). `tests/combinations/test_e2e_api_files_offline.py`
   runs the same file without a cluster, with a loopback stand-in answering
   for the registry.
 - `experimental_extensions.yaml` — the experimental extensions, which the
