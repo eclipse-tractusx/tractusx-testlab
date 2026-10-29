@@ -31,13 +31,15 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
-from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
 
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
-from tractusx_testlab.security.credentials import reveal
 from tractusx_testlab.steps import http_client, sdk_call
 from tractusx_testlab.steps.connector._edr import Credential, issued_data_address
+from tractusx_testlab.steps.connector.dataplane_access import (
+    DataplaneAddressParams,
+    call_dataplane,
+)
 from tractusx_testlab.steps.shared_models import (
     DataAddressPayload,
     HttpBodyOutput,
@@ -48,7 +50,6 @@ from tractusx_testlab.steps.shared_models import (
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 from tractusx_testlab.syntax.context_vars import (
     DATAPLANE_URL,
-    EDR_TOKEN,
     TRANSFER_ID,
 )
 
@@ -63,52 +64,20 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class DataplaneCallParams(HttpCallParams):
+class DataplaneCallParams(HttpCallParams, DataplaneAddressParams):
     """Input contract of ``connector/dataplane/http_request``.
 
-    Left alone, both the URL and the token come from whichever step completed
-    the transfer — every step publishes all of its return outputs, and the
-    steps that end a transfer all return the ``dataplane_url``/``edr_token``
-    pair under exactly these names.
+    The URL and the token are those of :class:`DataplaneAddressParams`.
     """
 
-    dataplane_url: Any = Field(
-        default=None,
-        description=(
-            "Data-plane URL, or a data address object to read it from; falls back "
-            "to the 'dataplane_url' context variable."
-        ),
-    )
     path: str = Field(default="", description="Path appended to the data-plane URL.")
-    edr_token: Credential | str | None = Field(
-        default=None,
-        description=(
-            "EDR authorization token; falls back to the 'edr_token' context variable "
-            "when omitted. An explicit '' asks for the call to be made with no token "
-            "at all — e.g. a negative-path test proving the endpoint is protected — "
-            "and is honoured as given rather than falling back."
-        ),
-    )
-
-    def resolved_token(self, fallback: object) -> object:
-        """The token to send, or '' if the test explicitly asked for none.
-
-        ``None`` means the test left the field out, so the context variable a
-        prior transfer published is used. An explicit ``''`` is a test asking
-        for the call to carry no token — the negative-path case a `falsy or
-        fallback` read would silently defeat by substituting a stale token from
-        an earlier step in the same run.
-        """
-        return fallback if self.edr_token is None else self.edr_token
 
     def resolved_url(self, fallback: Any) -> str:
         """The URL to call, resolved from whichever form the data address arrived in."""
-        endpoint = self.dataplane_url or fallback
-        if isinstance(endpoint, dict):
-            endpoint = endpoint.get("endpoint") or endpoint.get("baseUrl")
+        endpoint = self.resolved_endpoint(fallback)
         if not self.path:
-            return str(endpoint)
-        return str(endpoint).rstrip("/") + "/" + self.path.lstrip("/")
+            return endpoint
+        return endpoint.rstrip("/") + "/" + self.path.lstrip("/")
 
 
 @step("connector/dataplane/http_request")
@@ -127,22 +96,17 @@ class DataplaneCallStep(BaseStep[DataplaneCallParams, HttpBodyOutput]):
         self, params: DataplaneCallParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[HttpBodyOutput]:
         url = params.resolved_url(context.get_str(DATAPLANE_URL))
-        # An EDR token is a handle that opens for its own data plane only.
-        held = params.resolved_token(context.get_variable(EDR_TOKEN, ""))
-        token = reveal(held, url, context.config.credential_release)
-        headers = {"Authorization": token, **params.headers}
-        timeout = params.timeout_or(context.config.default_timeout_s)
-
-        resp = await http_client.request(
-            params.method,
+        exchange = await call_dataplane(
+            context,
+            params,
             url,
-            headers=headers,
+            method=params.method,
+            headers=params.headers,
+            timeout=params.timeout_or(context.config.default_timeout_s),
             json=params.body,
-            timeout=timeout,
-            follow_redirects=not isinstance(held, Credential),
         )
+        resp, recorded = exchange.response, exchange.recorded_headers
 
-        recorded = {**headers, "Authorization": REDACTED_VALUE} if token else headers
         return StepOutput(
             value=HttpBodyOutput(http_client.body_of(resp)),
             request=HttpRequest(method=params.method, url=url, headers=recorded, body=params.body),

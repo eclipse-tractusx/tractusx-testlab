@@ -173,6 +173,7 @@ async def _run_step_guarded(
                     _resolve_assertions(step_def.assertions, context),
                     output,
                     publishes(type(step_instance)),
+                    context.get_variable,
                 )
             ]
 

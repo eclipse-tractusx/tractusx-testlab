@@ -16,13 +16,13 @@ This is the far end of the DSP flow: `do_dsp` or `initiate_transfer` returns whe
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
+| `dataplane_url` | any | no | `None` | — | Data-plane URL, or a data address object to read it from; falls back to the 'dataplane_url' context variable. |
+| `edr_token` | Credential \| string | no | `None` | — | EDR authorization token; falls back to the 'edr_token' context variable when omitted. An explicit '' asks for the call to be made with no token at all — e.g. a negative-path test proving the endpoint is protected — and is honoured as given rather than falling back. |
 | `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
 | `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `method` | string | no | `'GET'` | — | HTTP method. |
 | `body` | any | no | `None` | — | Request body; dicts are sent as JSON. |
-| `dataplane_url` | any | no | `None` | — | Data-plane URL, or a data address object to read it from; falls back to the 'dataplane_url' context variable. |
 | `path` | string | no | `''` | — | Path appended to the data-plane URL. |
-| `edr_token` | Credential \| string | no | `None` | — | EDR authorization token; falls back to the 'edr_token' context variable when omitted. An explicit '' asks for the call to be made with no token at all — e.g. a negative-path test proving the endpoint is protected — and is honoured as given rather than falling back. |
 
 **Experimental inputs** — extension `labs`, needs `extensions: [labs]`
 

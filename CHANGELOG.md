@@ -40,6 +40,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   document declares and calls the mock with the key placed where its document
   says; the workflow checks the trace records both documents by summary.
   `tests/combinations/test_e2e_api_files_offline.py` runs it without a cluster.
+- `http_client.request(max_response_bytes=…)` reads at most that many decoded
+  bytes of an answer and fails with `RESPONSE_TOO_LARGE` past it.
 - `security/api_key`: places an API key (`key`, hidden) under `name` (default
   `X-Api-Key`) `in` a header (default), a query parameter or a cookie, and
   returns `api_key` (`class: AuthToken`) and the `headers`, `query` and
