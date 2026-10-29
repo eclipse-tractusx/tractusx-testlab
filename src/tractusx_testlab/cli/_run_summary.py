@@ -44,10 +44,12 @@ it.
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 
 import typer
 
 from tractusx_testlab.cli._result_box import NAME_WIDTH, Row, Table, box
+from tractusx_testlab.logging.masking import mask
 from tractusx_testlab.models.primitives.enums import StepStatus, TestStatus
 
 #: How each outcome is drawn: icon, the word in the RESULT column, its colour.
@@ -117,7 +119,15 @@ def render_run_results(result) -> list[str]:
     Kept apart from printing so a test can check the layout and the colouring
     without capturing a terminal: ``typer.unstyle`` on a line gives the text.
     """
-    tables = [*(_test_table(test) for test in result.tests), _run_table(result)]
+    # Every name is masked before it is measured. The terminal masks secrets in
+    # whatever it is handed (logging.transcript), so a name that holds one
+    # (a step called oauth_password in a run whose API key is "password") would
+    # otherwise be padded at its full length and printed shorter, pulling its
+    # row's right border in.
+    tables = [
+        _masked(table)
+        for table in [*(_test_table(test) for test in result.tests), _run_table(result)]
+    ]
     # One width for the whole report, so the boxes line up under each other:
     # the SDK's, or as wide as the longest name in any of them needs.
     name_width = max([NAME_WIDTH, *(len(row.name) for table in tables for row in table.rows)])
@@ -129,6 +139,15 @@ def render_run_results(result) -> list[str]:
             lines += _assertion_notes(test)
     lines.append("")
     return lines
+
+
+def _masked(table: Table) -> Table:
+    """*table* with its title and row names as the terminal will print them."""
+    return replace(
+        table,
+        title=mask(table.title),
+        rows=[replace(row, name=mask(row.name)) for row in table.rows],
+    )
 
 
 def _test_table(test) -> Table:

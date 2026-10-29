@@ -248,6 +248,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- The end-of-run result tables keep their right border when a step or test
+  name contains a registered secret. The terminal masks secrets in what it
+  prints, so `oauth_password` in a run whose connector API key is `password`
+  was padded at full length and printed as `oauth_***`, pulling that row's
+  border in. Names are now masked before the table is laid out.
 - `connector/provider/retire_asset_agreements` no longer fails every time with
   HTTP 500. Its agreement query sorted by the SDK default `createdAt`, which a
   contract agreement does not have: the connector's SQL store cannot translate
