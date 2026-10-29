@@ -103,6 +103,11 @@ on:
       - "src/tractusx_testlab/openapi/**"
       - "src/tractusx_testlab/steps/security/**"
       - "src/tractusx_testlab/cli/**"
+      # The labs steps that call and check API operations (ADR-0030 §5), and
+      # the shared pieces under them: the answer checks, the HTTP client.
+      - "src/tractusx_testlab/extensions/**"
+      - "src/tractusx_testlab/steps/assertions/**"
+      - "src/tractusx_testlab/steps/http_client.py"
       - "tests/e2e/**"
       - ".github/workflows/e2e-umbrella.yml"
       - ".github/workflows/build-kind-node-cache.yml"
@@ -1488,6 +1493,88 @@ jobs:
           print("api-files: env.apis resolved, the registry announced its document's profile, the keyed call passed")
           print(f"api-files: both API files recorded by summary; largest event {largest} bytes")
           print("engine-toolbox: security/api_key and security/basic passed against the mock server")
+          PY
+
+      # api_steps.yaml calls the registry with the labs API steps and checks
+      # every answer against the registry's own OpenAPI document. A green
+      # step says the checks held; this says they ran, on what, and with what
+      # verdict — each step passed with its own source, every api_response
+      # check passed (the data-plane refusal classified as the data plane's),
+      # the sweep called both operations and judged both, api_errors saw the
+      # two registry errors, and the document was recorded by summary only.
+      - name: Verify the API steps in the execution trace
+        run: |
+          poetry run python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          lines = [
+              line
+              for trace in sorted(pathlib.Path("/data").rglob("*.jsonl"))
+              for line in trace.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          ours = [
+              (line, event)
+              for line, event in ((line, json.loads(line)) for line in lines)
+              if event["id"].split("/")[1] == "api-steps"
+          ]
+          if not ours:
+              sys.exit("api-steps: the test wrote no events")
+
+          def ended(step):
+              found = [
+                  event
+                  for _, event in ours
+                  if event["type"] in ("tck.test.step.passed", "tck.test.step.failed")
+                  and event["id"].split("/")[2] == "execution"
+                  and event["id"].split("/")[3] == step
+              ]
+              if len(found) != 1:
+                  sys.exit(f"api-steps: {step} ended {len(found)} times, expected once")
+              return found[0]
+
+          expected = {
+              "dtr_description": "labs/http/api_request",
+              "dtr_unknown_shell": "labs/http/api_request",
+              "dataplane_description": "labs/connector/dataplane/api_request",
+              "dataplane_without_token": "labs/connector/dataplane/api_request",
+              "dtr_sweep": "labs/http/api_sweep",
+              "dtr_errors": "labs/validate/api_errors",
+              "any_offer": "connector/consumer/pull_data_filtered",
+          }
+          for step, source in expected.items():
+              event = ended(step)
+              if event["type"] != "tck.test.step.passed":
+                  sys.exit(f"api-steps: {step} did not pass: {event['data'].get('errors') or event['data'].get('validations')}")
+              if event["source"] != source:
+                  sys.exit(f"api-steps: {step} ran {event['source']}, expected {source}")
+              checks = [v for v in event["data"]["validations"] if v["source"] == "labs/validate/api_response"]
+              if step.startswith(("dtr_d", "dtr_u", "dataplane_")) and not checks:
+                  sys.exit(f"api-steps: {step} has no labs/validate/api_response check")
+              if not all(v["outputs"]["passed"] for v in checks):
+                  sys.exit(f"api-steps: a response check of {step} failed: {checks}")
+              api = ((event["data"].get("inputs") or {}).get("api") or {}).get("api_document")
+              if source.startswith("labs/http") or source.startswith("labs/connector"):
+                  if not api or api.get("id") != "dtr":
+                      sys.exit(f"api-steps: {step} does not record the API by its summary: {event['data'].get('inputs')}")
+
+          outputs = {step: ended(step)["data"]["outputs"] for step in expected}
+          if outputs["dtr_unknown_shell"]["status_code"] != 404:
+              sys.exit(f"api-steps: the absent shell answered {outputs['dtr_unknown_shell']['status_code']}, expected 404")
+          if outputs["dataplane_without_token"]["status_code"] not in (401, 403):
+              sys.exit(f"api-steps: the data plane let a call without a token through: {outputs['dataplane_without_token']['status_code']}")
+          rows = {row["operation"]: (row["verdict"], row["status"]) for row in outputs["dtr_sweep"]["results"]}
+          want = {"GetSelfDescription": ("passed", 200), "GetAssetAdministrationShellDescriptorById": ("passed", 404)}
+          if rows != want:
+              sys.exit(f"api-steps: the sweep produced {rows}, expected {want}")
+          verdict = outputs["dtr_errors"]
+          if not verdict["passed"] or verdict["errors"] != 2:
+              sys.exit(f"api-steps: api_errors judged {verdict}, expected two errors and no problem")
+          if any("x-semanticIds" in line for line, _ in ours):
+              sys.exit("api-steps: the registry's document was written whole into the trace")
+          print("api-steps: every labs API step ran, every answer matched the registry's document")
           PY
 
       # offer_guard.yaml negotiates without a filter, which the run must

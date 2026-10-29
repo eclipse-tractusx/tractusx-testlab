@@ -66,6 +66,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   are cached per document (bounded LRU); a warm check of an ICH answer takes
   ~40 µs. A data-plane call without an earlier step that publishes
   `dataplane_url` and `edr_token` is warned at compile time.
+- The e2e suite runs every new step against the umbrella's registry and its own
+  OpenAPI document (`api_steps.yaml`), and the workflow reads the trace back for
+  their verdicts; `test_e2e_api_steps_offline.py` mirrors it and runs the
+  workflow's verifier on its results.
 - `http_client.request(max_response_bytes=…)` reads at most that many decoded
   bytes of an answer and fails with `RESPONSE_TOO_LARGE` past it.
 - `security/api_key`: places an API key (`key`, hidden) under `name` (default
