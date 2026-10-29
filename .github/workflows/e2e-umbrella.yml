@@ -1502,7 +1502,7 @@ jobs:
                --var "stub_caller_url=${STUB_CALLER_URL}" \
                --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
                --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-               --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,api_files.yaml,experimental_extensions.yaml" \
+               --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,api_files.yaml,experimental_extensions.yaml,api_steps.yaml" \
                --logs-dir logs/e2e/offer-guard \
                --data-dir /data; then
             echo "::error::a negotiation without filters ran; the offer guard must refuse it"
@@ -1557,7 +1557,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,experimental_extensions.yaml,api_files.yaml,offer_guard.yaml" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,experimental_extensions.yaml,api_files.yaml,api_steps.yaml,offer_guard.yaml" \
             --logs-dir logs/e2e/registry \
             --data-dir /data
 
@@ -1574,7 +1574,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,experimental_extensions.yaml,api_files.yaml,offer_guard.yaml" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,experimental_extensions.yaml,api_files.yaml,api_steps.yaml,offer_guard.yaml" \
             --logs-dir logs/e2e/engine-only \
             --data-dir /data
 

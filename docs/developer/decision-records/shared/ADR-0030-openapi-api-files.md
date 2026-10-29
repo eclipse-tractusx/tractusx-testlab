@@ -28,12 +28,22 @@ Proposed
 
 ## Implementation status
 
-Built: §1–3 and §6 — `env.apis`, `${{ env.apis.<id> }}`, the compile-time
-checks (`tractusx_testlab.openapi`), and `security/api_key` /
-`security/basic`. Not built: §4 (schemas as types) and §5 (the `labs` steps).
-A step handed a whole document keeps it, and every record of the run names it
-by its summary (`api_document`: `openapi`, `title`, `version`, `sha256`)
-instead of copying it.
+Built: §1–3, §5 and §6 — `env.apis`, `${{ env.apis.<id> }}`, the compile-time
+checks (`tractusx_testlab.openapi`), `security/api_key` / `security/basic`, and
+the `labs` steps `labs/http/api_request`, `labs/connector/dataplane/api_request`,
+`labs/validate/api_response`, `labs/validate/api_errors` and
+`labs/http/api_sweep` (operation index, request building and answer checks in
+`tractusx_testlab.openapi.operations` / `.conformance`). Not built: §4 (schemas
+as types) and `labs/mock/api_from_spec`. A step handed a whole document keeps it,
+and every record of the run names it by its summary (`api_document`: `id`,
+`openapi`, `title`, `version`, `sha256`) instead of copying it.
+
+§5 as built differs from the table in three places: the call steps return
+`response_body` / `response_headers` (the names a `validate:` block already
+reads) and take `expect`; `labs/validate/api_errors` judges a test's error
+answers together (one format, no leaks, no 5xx for a client error) rather than
+one answer against its declared error; and the sweep takes `params`, `bodies`,
+`include_writes`, `concurrency` and `budget_s`.
 
 ## Context
 

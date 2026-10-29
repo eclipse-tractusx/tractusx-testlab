@@ -342,7 +342,11 @@ class SubmodelDiffStep(BaseStep[SubmodelDiffParams, SubmodelDiffOutput]):
    that package has a `labs/` id.
 4. The step shows up in `testlab docs` like any other step. Say in its docstring that it is experimental.
 
-A TCK can use it only with `extensions: [labs]`.
+A TCK can use it only with `extensions: [labs]`. That holds for a `labs/` check in a `validate:` list too
+(`labs/validate/api_response`): a `validate:` entry's `uses` is held to the same prefix.
+
+A `labs/` check usable under `validate:` registers itself with the assertion vocabulary
+(`steps.assertions.register_validation`), with whether it needs `input` and the row the reference page shows for it.
 
 ## Graduating or removing an extension
 

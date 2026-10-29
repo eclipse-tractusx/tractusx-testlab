@@ -189,7 +189,7 @@ def test_the_full_suite_runs_both_tests() -> None:
     """The full run is the one the verifiers read; it skips only the test meant to fail."""
     manifest = yaml.safe_load((_E2E / "index.yaml").read_text(encoding="utf-8"))
     listed = {entry["id"] for entry in manifest["tests"]}
-    assert {"api_files.yaml", "engine_toolbox.yaml"} <= listed
+    assert {"api_files.yaml", "engine_toolbox.yaml", "api_steps.yaml"} <= listed
     (full,) = [s for s in _workflow_steps() if s.get("name") == "testlab run — full suite"]
     skipped = re.search(r"skip_tests=([^\"]+)\"", full["run"]).group(1)  # type: ignore[union-attr]
     assert skipped == "offer_guard.yaml"

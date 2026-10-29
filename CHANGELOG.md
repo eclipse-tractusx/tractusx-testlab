@@ -40,6 +40,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   document declares and calls the mock with the key placed where its document
   says; the workflow checks the trace records both documents by summary.
   `tests/combinations/test_e2e_api_files_offline.py` runs it without a cluster.
+- `labs` steps that call and check operations of an API file (ADR-0030 §5),
+  under `extensions: [labs]`. `labs/http/api_request` calls one operation —
+  named by `operationId` or `METHOD /path`, checked at compile time — at
+  `base_url` (default: a literal first server URL, never a templated one) and
+  returns `status_code`, `response_body`, `response_headers` and `operation`
+  (`{api, id, method, path}`); `expect` (a status, `4XX`, `success`, `error`)
+  fails the step on another answer. `labs/connector/dataplane/api_request` does
+  the same through a data plane with the EDR from context (`edr_token: ''` for
+  none). `labs/validate/api_response` — under `validate:` or as a step — checks
+  the status (exact, class, `default`), `expect`, the media type, the body
+  against its schema (3.0 schemas with 3.0's meaning) and required headers,
+  reporting every problem with its JSON pointer, keyword, schema location and a
+  clipped, masked value; `data_plane: true` reports 401/403/502/504 as the data
+  plane's. `labs/validate/api_errors` judges a test's error answers together:
+  one format (declared, `schema` or RFC 9457), no leaks (stack traces,
+  exception classes, SQL, file paths, private addresses, internal hosts) and no
+  5xx for a request sent wrong on purpose. `labs/http/api_sweep` calls many
+  operations — GET and HEAD by default, a write only when listed and
+  `include_writes: true` — with bounded concurrency (4, at most 16), a
+  per-call timeout and an overall budget, one result row per operation.
+  Requests are built before anything is sent: path values percent-encoded per
+  segment, CR/LF/NUL refused in headers and parameters, redirects not followed,
+  answers capped at 10 MiB decoded. Operation indexes and compiled validators
+  are cached per document (bounded LRU); a warm check of an ICH answer takes
+  ~40 µs. A data-plane call without an earlier step that publishes
+  `dataplane_url` and `edr_token` is warned at compile time.
 - `http_client.request(max_response_bytes=…)` reads at most that many decoded
   bytes of an answer and fails with `RESPONSE_TOO_LARGE` past it.
 - `security/api_key`: places an API key (`key`, hidden) under `name` (default

@@ -33,6 +33,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.compiler.validation._api_steps import api_step_findings
 from tractusx_testlab.compiler.validation._assertion_severity import severity_findings
 from tractusx_testlab.compiler.validation._checkpoint_marks import checkpoint_findings
 from tractusx_testlab.compiler.validation._conditions import condition_findings
@@ -52,7 +53,7 @@ from tractusx_testlab.compiler.validation.issues import ValidationResult
 from tractusx_testlab.compiler.validation.scope import _scope_of
 from tractusx_testlab.models import StepDefinition, TckDefinition, TestDefinition
 from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
-from tractusx_testlab.steps.assertions.vocabulary import check_operands
+from tractusx_testlab.steps.assertions.vocabulary import check_operands, registered_validation
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
 from tractusx_testlab.syntax import context_vars, defaults, diagnostics
 
@@ -107,7 +108,9 @@ class TestValidator:
                     f"namespace '{test.namespace}' must match the TCK id '{tck.id}'.",
                     field="namespace",
                 )
-            result.issues.extend(extension_findings(tck, test))
+            result.issues.extend(
+                extension_findings(tck, test) + api_step_findings(tck, test, base_dir)
+            )
             for issue in result.issues:
                 issue.message = f"tests/{entry.id}: {issue.message}"
                 combined.issues.append(issue)
@@ -260,6 +263,9 @@ class TestValidator:
                     continue
 
             input_value = params.get("input")
+            registered = registered_validation(assertion.uses)
+            if input_value is None and registered is not None and registered.input_optional:
+                continue
             if not isinstance(input_value, str):
                 result.add_error(
                     "'validate.with.input' must be a plain string.",

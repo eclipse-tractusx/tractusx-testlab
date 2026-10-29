@@ -207,10 +207,13 @@ nav:
       - http: api-reference/steps/http/index.md
       - labs:
         - Overview: api-reference/steps/labs/index.md
+        - connector/dataplane: api-reference/steps/labs/connector-dataplane.md
         - connector/provider: api-reference/steps/labs/connector-provider.md
         - flow: api-reference/steps/labs/flow.md
+        - http: api-reference/steps/labs/http.md
         - mock/api: api-reference/steps/labs/mock-api.md
         - util: api-reference/steps/labs/util.md
+        - validate: api-reference/steps/labs/validate.md
       - mock:
         - Overview: api-reference/steps/mock/index.md
         - wait/dataplane: api-reference/steps/mock/wait-dataplane.md

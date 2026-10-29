@@ -363,6 +363,9 @@ tests:
   - id: experimental_extensions.yaml
     name: Run the experimental extensions — `cac:`, a `labs` retry parameter, and the `labs` loop and queries — against a live connector
     skippable: true
+  - id: api_steps.yaml
+    name: Call the registry's own operations from its API file — directly, through the data plane and as a sweep — and check every answer against the document
+    skippable: true
   # Meant to fail: the workflow runs it alone and requires the refusal.
   - id: offer_guard.yaml
     name: Refuse a negotiation that names no offer

@@ -144,6 +144,9 @@ def _uses_of(extension: Extension, step: dict[str, Any]) -> list[tuple[str, str]
         if isinstance(check, dict):
             keys = sorted(extension.validation_keys & check.keys())
             used += [(f"validate.{key}", f"'{key}:' on a validation") for key in keys]
+            check_uses = str(check.get("uses", ""))
+            if extension.step_prefix and check_uses.startswith(extension.step_prefix):
+                used.append(("validate.uses", f"The check '{check_uses}'"))
     uses = str(step.get("uses", ""))
     params = step.get("with") or {}
     for extension_cls in extensions_for(uses):
