@@ -42,6 +42,8 @@ from tractusx_testlab.compiler.validation._extension_gate import (
     experimental_warnings,
     extension_findings,
 )
+from tractusx_testlab.compiler.validation._offer_filters import offer_filter_warnings
+from tractusx_testlab.compiler.validation._returns_names import returns_findings
 from tractusx_testlab.compiler.validation._variable_references import (
     call_scope_hint,
     unresolved_references,
@@ -49,7 +51,6 @@ from tractusx_testlab.compiler.validation._variable_references import (
 from tractusx_testlab.compiler.validation.issues import ValidationResult
 from tractusx_testlab.compiler.validation.scope import _scope_of
 from tractusx_testlab.models import StepDefinition, TckDefinition, TestDefinition
-from tractusx_testlab.steps._checks.extraction import declared_names
 from tractusx_testlab.steps._checks.published_names import names_a_published_output, publishes
 from tractusx_testlab.steps.assertions.vocabulary import check_operands
 from tractusx_testlab.steps.assertions.vocabulary import resolve as resolve_assertion
@@ -155,6 +156,8 @@ class TestValidator:
             condition_findings(test, scope), credential_findings(test), checkpoint_findings(test)
         ):
             result.add_error(message, step_index=idx, field=field, phase=phase)
+        for phase, idx, field, message in offer_filter_warnings(test):
+            result.add_warning(message, step_index=idx, field=field, phase=phase)
 
         return result
 
@@ -189,35 +192,12 @@ class TestValidator:
 
         self._validate_inline_assert_inputs(step_def, step_cls, idx, result, phase)
 
-        self._validate_returns(step_def, step_cls, idx, result, phase)
+        for problem in returns_findings(step_def, step_cls):
+            result.add_error(problem, step_index=idx, field="returns", phase=phase)
 
         # A severity the engine cannot read used to compile and then stop the run.
         for field, problem in severity_findings(step_def, step_cls):
             result.add_error(problem, step_index=idx, field=field, phase=phase)
-
-    def _validate_returns(
-        self,
-        step_def: StepDefinition,
-        step_cls: type | None,
-        step_idx: int,
-        result: ValidationResult,
-        phase: str,
-    ) -> None:
-        """Check declared return names against the outputs the step publishes."""
-        returns = step_def.returns or {}
-        if not returns or step_cls is None:
-            return
-        declared = declared_names(step_cls)
-        for name in returns:
-            if names_a_published_output(name, declared):
-                continue
-            result.add_error(
-                f"'returns' name '{name}' is not produced by step "
-                f"'{step_def.uses}'. It publishes: {', '.join(sorted(declared))}.",
-                step_index=step_idx,
-                field="returns",
-                phase=phase,
-            )
 
     def _check_var_refs(
         self,

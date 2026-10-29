@@ -363,3 +363,7 @@ tests:
   - id: experimental_extensions.yaml
     name: Run the experimental extensions — `cac:`, a `labs` retry parameter, and the `labs` loop and queries — against a live connector
     skippable: true
+  # Meant to fail: the workflow runs it alone and requires the refusal.
+  - id: offer_guard.yaml
+    name: Refuse a negotiation that names no offer
+    skippable: true

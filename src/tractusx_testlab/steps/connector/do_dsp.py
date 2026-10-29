@@ -37,10 +37,10 @@ from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector import policy_mismatch
 from tractusx_testlab.steps.connector._edr import Credential, edr_token
 from tractusx_testlab.steps.connector.discover_connector import discovery_address
+from tractusx_testlab.steps.connector.offer_guard import OfferFilterParams
 from tractusx_testlab.steps.connector.policies import ExpectedPoliciesParams
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.shared_models import (
-    FilterExpressionParams,
     StepParams,
 )
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
@@ -74,7 +74,7 @@ class DspFlowOutput(StepPayload):
 # ---------------------------------------------------------------------------
 
 
-class DoDspParams(CounterPartyParams, FilterExpressionParams, ExpectedPoliciesParams):
+class DoDspParams(CounterPartyParams, OfferFilterParams, ExpectedPoliciesParams):
     """Input contract of ``connector/consumer/do_dsp``."""
 
     expected_policies: list[dict] = Field(
@@ -102,6 +102,7 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
     async def execute(
         self, params: DoDspParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
+        params.require_offer_filter()
         consumer = context.dataspace.consumer()
         party = params.counter_party(context)
         # Every flow step turns down offers by policy, and the SDK reports only
@@ -123,7 +124,7 @@ class DoDspStep(BaseStep[DoDspParams, DspFlowOutput]):
 # ---------------------------------------------------------------------------
 
 
-class DoDspWithBpnlParams(FilterExpressionParams, ExpectedPoliciesParams):
+class DoDspWithBpnlParams(OfferFilterParams, ExpectedPoliciesParams):
     """Input contract of ``connector/consumer/do_dsp_with_bpnl``.
 
     Unlike ``do_dsp``, the optional fields stay ``None`` rather than defaulting
@@ -164,6 +165,7 @@ class DoDspWithBpnlStep(BaseStep[DoDspWithBpnlParams, DspFlowOutput]):
     async def execute(
         self, params: DoDspWithBpnlParams, context: StepContext, definition: StepDefinition
     ) -> StepOutput[DspFlowOutput]:
+        params.require_offer_filter()
         consumer = context.dataspace.consumer()
         with policy_mismatch.explained(params.counter_party_address or params.bpnl):
             endpoint, token = await sdk_call.run(

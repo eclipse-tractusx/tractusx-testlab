@@ -1199,6 +1199,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
+            --var "skip_tests=offer_guard.yaml" \
             --logs-dir logs/e2e/full \
             --data-dir /data
 
@@ -1489,6 +1490,58 @@ jobs:
           print("engine-toolbox: security/api_key and security/basic passed against the mock server")
           PY
 
+      # offer_guard.yaml negotiates without a filter, which the run must
+      # refuse before asking for a catalog. Run alone, it has to fail — and
+      # fail with the guard's own code, not with anything a dataspace said.
+      - name: testlab run — a negotiation without filters is refused
+        run: |
+          if poetry run testlab run "${TCK_OUT}" \
+               --config "${TCK_CONFIG}" \
+               --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+               --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
+               --var "stub_caller_url=${STUB_CALLER_URL}" \
+               --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
+               --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
+               --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,api_files.yaml,experimental_extensions.yaml" \
+               --logs-dir logs/e2e/offer-guard \
+               --data-dir /data; then
+            echo "::error::a negotiation without filters ran; the offer guard must refuse it"
+            exit 1
+          fi
+          echo "the unfiltered negotiation was refused, as it must be"
+
+      - name: Verify the offer guard's refusal in the execution trace
+        run: |
+          poetry run python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          events = [
+              json.loads(line)
+              for trace in sorted(pathlib.Path("/data").rglob("*.jsonl"))
+              for line in trace.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          step = [
+              event
+              for event in events
+              if event["id"].split("/")[1] == "offer-guard"
+              and len(event["id"].split("/")) > 3
+              and event["id"].split("/")[3] == "unfiltered_pull"
+          ]
+          ended = [event for event in step if event["type"] == "tck.test.step.failed"]
+          if len(ended) != 1:
+              sys.exit(f"offer-guard: unfiltered_pull failed {len(ended)} times, expected once: {[e['type'] for e in step]}")
+          codes = [error.get("code") for error in ended[0]["data"].get("errors") or []]
+          if codes != ["OFFER_FILTER_MISSING"]:
+              sys.exit(f"offer-guard: the step failed with {codes}, expected ['OFFER_FILTER_MISSING']")
+          calls = [event for event in step if event["type"] == "tck.test.step.call"]
+          if calls:
+              sys.exit(f"offer-guard: the refused step still made {len(calls)} call(s)")
+          print("offer-guard: refused with OFFER_FILTER_MISSING before any call")
+          PY
+
       # The two runs below re-execute a subset of the same package. They add
       # nothing to test coverage — the full suite already ran every test —
       # but they check two things the full suite cannot: that a test needing
@@ -1504,7 +1557,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,experimental_extensions.yaml,api_files.yaml" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,experimental_extensions.yaml,api_files.yaml,offer_guard.yaml" \
             --logs-dir logs/e2e/registry \
             --data-dir /data
 
@@ -1521,7 +1574,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,experimental_extensions.yaml,api_files.yaml" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,experimental_extensions.yaml,api_files.yaml,offer_guard.yaml" \
             --logs-dir logs/e2e/engine-only \
             --data-dir /data
 

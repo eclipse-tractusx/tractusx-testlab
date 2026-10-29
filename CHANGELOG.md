@@ -249,6 +249,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **A negotiating step without filters is refused.** `pull_data_filtered`,
+  `pull_data_filtered_by_policy`, `do_dsp` and `do_dsp_with_bpnl` negotiate the
+  first offer that passes their `filters`; with none, that was whatever the
+  provider listed first — another test's asset, a leftover, a different one
+  tomorrow — reported on as if it were the asset meant. Such a step now fails
+  before asking for the catalog (`OFFER_FILTER_MISSING`, origin `authoring`)
+  unless it says `allow_any_offer: true`, and `testlab validate` warns about it.
+  None of the 61 such steps in the production compatibility kits, and none in
+  this repository's TCKs, is without filters.
+
 - `certifi` is 2026.10.19. A new workflow, "Update DEPENDENCIES", runs after
   every change to `poetry.lock` on main and once a day: it asks the Eclipse IP
   team to review any restricted dependency, with the GitLab token from the
