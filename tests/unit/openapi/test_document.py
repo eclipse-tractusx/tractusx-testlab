@@ -42,6 +42,7 @@ from tractusx_testlab.openapi import (
     load_api_document,
     ref_walk,
 )
+from tractusx_testlab.openapi import document as loader
 
 _YAML = "application/vnd.oai.openapi"
 _JSON = "application/vnd.oai.openapi+json"
@@ -307,3 +308,22 @@ class TestCache:
         _problems(path)
         _write(tmp_path, _spec())
         assert load_api_document(path, _JSON).openapi == "3.0.3"
+
+    def test_the_cache_is_bounded_by_the_bytes_it_holds(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        first = _write(tmp_path, _spec(), "a.json")
+        second = _write(tmp_path, _spec(), "b.json")
+        monkeypatch.setattr(loader, "CACHE_BYTES", first.stat().st_size)
+        kept = load_api_document(first, _JSON)
+        load_api_document(second, _JSON)  # evicts the first: both do not fit
+        assert load_api_document(first, _JSON) is not kept
+
+    def test_the_cache_is_bounded_by_the_documents_it_holds(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(loader, "CACHE_SIZE", 1)
+        first, second = _write(tmp_path, _spec(), "a.json"), _write(tmp_path, _spec(), "b.json")
+        kept = load_api_document(first, _JSON)
+        load_api_document(second, _JSON)
+        assert load_api_document(first, _JSON) is not kept

@@ -63,8 +63,11 @@ MAX_API_FILE_BYTES = 5 * 1024 * 1024
 #: The OpenAPI versions an API file may declare (ADR-0030).
 SUPPORTED_VERSIONS = re.compile(r"^3\.[01]\.\d+(?:-[0-9A-Za-z.-]+)?$")
 
-#: How many parsed documents a process keeps.
+#: How many parsed documents a process keeps, and how many bytes of source
+#: they may add up to: a parsed document takes several times its file size in
+#: memory, and an engine process runs one package after another.
 CACHE_SIZE = 16
+CACHE_BYTES = 16 * 1024 * 1024
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +76,8 @@ class ApiDocument:
 
     sha256: str
     openapi: str
+    #: Size of the file it was read from, in bytes.
+    size: int
     #: The document, read-only; what ``${{ env.apis.<id> }}`` resolves to.
     content: FrozenDict
 
@@ -90,6 +95,7 @@ class ApiDocumentError(AuthoringError):
 
 _lock = threading.Lock()
 _cache: OrderedDict[tuple[str, str], ApiDocument] = OrderedDict()
+_cached_bytes = 0
 
 
 def load_api_document(path: Path, media_type: str) -> ApiDocument:
@@ -106,17 +112,28 @@ def load_api_document(path: Path, media_type: str) -> ApiDocument:
             _cache.move_to_end(key)
             return cached
     document = _checked(data, media_type, key[1])
-    with _lock:
-        _cache[key] = document
-        while len(_cache) > CACHE_SIZE:
-            _cache.popitem(last=False)
+    _remember(key, document)
     return document
+
+
+def _remember(key: tuple[str, str], document: ApiDocument) -> None:
+    """Cache *document*, evicting the least recently used past either bound."""
+    global _cached_bytes
+    with _lock:
+        if key in _cache:
+            return
+        _cache[key] = document
+        _cached_bytes += document.size
+        while len(_cache) > 1 and (len(_cache) > CACHE_SIZE or _cached_bytes > CACHE_BYTES):
+            _cached_bytes -= _cache.popitem(last=False)[1].size
 
 
 def forget_api_documents() -> None:
     """Drop every cached document. For tests; a process never needs to."""
+    global _cached_bytes
     with _lock:
         _cache.clear()
+        _cached_bytes = 0
 
 
 def _read(path: Path) -> bytes:
@@ -147,7 +164,9 @@ def _checked(data: bytes, media_type: str, digest: str) -> ApiDocument:
         raise ApiDocumentError([str(exc)]) from None
     if problems:
         raise ApiDocumentError(problems)
-    return ApiDocument(sha256=digest, openapi=value["openapi"], content=freeze(value))
+    return ApiDocument(
+        sha256=digest, openapi=value["openapi"], size=len(data), content=freeze(value)
+    )
 
 
 def _version_problems(document: dict[str, Any]) -> list[str]:
