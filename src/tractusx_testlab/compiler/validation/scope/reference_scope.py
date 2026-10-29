@@ -28,6 +28,7 @@ from tractusx_testlab.compiler.validation._variable_references import nested_ste
 from tractusx_testlab.infrastructure.mapping import known_keys
 from tractusx_testlab.models import TckDefinition, TestDefinition
 from tractusx_testlab.syntax import context_vars
+from tractusx_testlab.syntax.one_of import one_of_groups
 
 
 def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
@@ -67,9 +68,14 @@ def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
 
 
 def _env_variable_ids(variables: object) -> list[str]:
-    """Ids of the manifest's declared variables, whichever shape they arrive in."""
+    """Ids of the manifest's declared variables, whichever shape they arrive in.
+
+    A ``with.one_of`` group is one of them: it publishes the list of its
+    alternatives (:mod:`tractusx_testlab.syntax.one_of`).
+    """
     if isinstance(variables, list):
-        return [str(v["id"]) for v in variables if isinstance(v, dict) and "id" in v]
+        ids = [str(v["id"]) for v in variables if isinstance(v, dict) and "id" in v]
+        return ids + list(one_of_groups(variables))
     if isinstance(variables, dict):
         return [str(key) for key in variables]
     return []

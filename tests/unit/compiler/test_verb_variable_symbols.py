@@ -119,3 +119,31 @@ class TestVerbVariableSymbols:
 
         assert symbols["env.region"]["type"] == "string"
         assert symbols["env.retries"]["type"] == "integer"
+
+
+class TestOneOfGroupSymbols:
+    """A ``with.one_of`` group is a symbol: an array of what its alternatives publish."""
+
+    @staticmethod
+    def _alternative(var_id: str) -> dict:
+        entry = _policy_variable()
+        entry["id"] = var_id
+        entry["with"] = {**entry["with"], "source": "register", "one_of": "usage_policy"}
+        return entry
+
+    def test_the_group_is_an_array_of_the_alternatives_class(self) -> None:
+        symbols = build_global_symbols(
+            {
+                "variables": [
+                    self._alternative("without_membership"),
+                    self._alternative("with_membership"),
+                ]
+            }
+        )
+
+        group = symbols["env.usage_policy"]
+        assert group["type"] == "array"
+        assert group["class"] == "Policy"
+        assert group["one_of"] == ["without_membership", "with_membership"]
+        assert "env.without_membership" in symbols
+        assert "env.with_membership" in symbols

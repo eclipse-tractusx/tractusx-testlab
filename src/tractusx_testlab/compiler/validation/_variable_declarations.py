@@ -42,6 +42,11 @@ from collections.abc import Iterator
 from typing import Any
 
 from tractusx_testlab.compiler.validation._credential_references import misplaced_in_value
+from tractusx_testlab.compiler.validation._register_declarations import (
+    check_alternative,
+    check_instructions,
+    check_one_of_groups,
+)
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
 from tractusx_testlab.security.credentials import CredentialMisuseError
 from tractusx_testlab.syntax import keys
@@ -62,10 +67,6 @@ _SOURCES: frozenset[str] = frozenset({"input", "value", "generated", "register"}
 
 #: The sources whose value is written in the manifest.
 _CARRIED_SOURCES: frozenset[str] = frozenset({"value", "register"})
-
-#: The source of a document handed to the SUT operator, the only kind that
-#: takes ``with.instructions``.
-_REGISTER_SOURCE = "register"
 
 #: The namespace the run's infrastructure bindings are published under. Only
 #: the operator binds it; a variable of that name would re-point a binding.
@@ -112,6 +113,7 @@ def validate_variable_declarations(env_data: dict[str, Any]) -> list[str]:
         # A credential is a header of the one request it authenticates, never a variable.
         for where, reference in misplaced_in_value(entry, f"env.variables[{index}]"):
             errors.append(CredentialMisuseError(reference, where).args[0])
+    errors.extend(check_one_of_groups(variables, seen))
     return errors
 
 
@@ -181,7 +183,8 @@ def _check_source(entry: dict[str, Any], var_id: str) -> Iterator[str]:
         )
         return
 
-    yield from _check_instructions(with_block, var_id, source)
+    yield from check_instructions(with_block, var_id, source)
+    yield from check_alternative(with_block, var_id, source)
 
     # ``value`` is the default: an entry naming no source carries its own value.
     if source is None or str(source) in _CARRIED_SOURCES:
@@ -193,30 +196,6 @@ def _check_source(entry: dict[str, Any], var_id: str) -> Iterator[str]:
                 f"'with.value', or 'with.source: input' to have it supplied at "
                 f"run start."
             )
-
-
-def _check_instructions(with_block: dict[str, Any], var_id: str, source: Any) -> Iterator[str]:
-    """Check ``with.instructions``: text, on a document handed to the SUT operator.
-
-    The instructions are what the engine shows beside a ``source: register``
-    document — where to register it, and how the run will read it back. On a
-    variable the engine keeps to itself nobody would read them, so they are a
-    sign the source was forgotten rather than something to ignore.
-    """
-    if keys.INSTRUCTIONS not in with_block:
-        return
-    instructions = with_block[keys.INSTRUCTIONS]
-    if not isinstance(instructions, str) or not instructions.strip():
-        yield (
-            f"Variable '{var_id}' has 'with.instructions' that are not text. Write "
-            f"what the SUT operator has to do with the document, as a sentence."
-        )
-    if str(source) != _REGISTER_SOURCE:
-        yield (
-            f"Variable '{var_id}' has 'with.instructions' but is not handed to the "
-            f"SUT operator. Instructions are shown beside a document they register "
-            f"themselves — add 'with.source: register', or drop them."
-        )
 
 
 def _check_value(entry: dict[str, Any], var_id: str, verb: VariableVerb) -> Iterator[str]:

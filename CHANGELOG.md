@@ -138,6 +138,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   tells a host serving a run's mocks to turn them away. A paused run that is
   cancelled puts its definitions back first, so its teardown deletes them as
   usual.
+- `with.one_of` on a `with.source: register` variable: the group of
+  documents it is an alternative in, of which the SUT operator registers one
+  (a usage policy with or without a membership constraint).
+  `with.default: true` marks the alternative an engine offers first. The group
+  is a variable: `${{ env.<group> }}` is the list of the alternatives' values,
+  in manifest order, so `expected_policies` accepts any of them; an alternative
+  supplied with `--var` is the one the group holds. Its symbol is an `array`
+  of the alternatives' class, with their ids under `one_of`. The compiler
+  rejects a group of one, alternatives of different verbs, more than one
+  default, a group named like a variable, and `one_of`/`default` on a variable
+  that is not registered.
 - `with.instructions` on a `with.source: register` variable: what the SUT
   operator has to do with the document the TCK hands them — where to register
   it, and how the run will read it back. `source: register` now reads as the

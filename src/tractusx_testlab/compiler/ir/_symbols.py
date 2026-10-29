@@ -29,6 +29,7 @@ from __future__ import annotations
 from typing import Any
 
 from tractusx_testlab.compiler.ir._instructions import _infer_type
+from tractusx_testlab.syntax.one_of import group_value, one_of_groups
 from tractusx_testlab.syntax.variables import VALUE_KEY, VariableVerb, verb_for
 
 # Source tag recorded on every symbol that originates from the env.variables block.
@@ -98,6 +99,30 @@ def _collect_verb_variable_symbols(
         if declared_class:
             symbol["class"] = declared_class
         symbols[f"env.{var_id}"] = symbol
+    _collect_one_of_group_symbols(variables, symbols)
+
+
+def _collect_one_of_group_symbols(
+    variables: list[dict[str, Any]],
+    symbols: dict[str, Any],
+) -> None:
+    """Add each ``with.one_of`` group: an array of what its alternatives publish.
+
+    The class is the alternatives' own — a group of policies is a list of
+    ``Policy`` — so a consumer checking an input that takes policies accepts
+    ``${{ env.<group> }}`` as readily as one alternative.
+    """
+    for group, members in one_of_groups(variables).items():
+        symbol: dict[str, Any] = {
+            "source": _VARIABLES_SOURCE,
+            "type": "array",
+            "default": group_value(members),
+            "one_of": [str(member["id"]) for member in members],
+        }
+        declared_class = _declared_class(members[0], verb_for(str(members[0].get("uses", ""))))
+        if declared_class:
+            symbol["class"] = declared_class
+        symbols[f"env.{group}"] = symbol
 
 
 def _base_variable_type(returns: dict[str, Any], value: Any, verb: VariableVerb | None) -> str:

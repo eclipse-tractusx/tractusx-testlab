@@ -122,6 +122,11 @@ SCOPE = "scope"
 INSTRUCTIONS = "instructions"
 # Marks a variable whose value every record of the run shows as ``***``.
 SECRET = "secret"
+# Names the group of ``source: register`` documents the operator registers
+# one of (see :mod:`tractusx_testlab.syntax.one_of`).
+ONE_OF = "one_of"
+# Marks the alternative of a ``one_of`` group the operator is offered first.
+DEFAULT = "default"
 
 # -- Test case entry ----------------------------------------------------------
 TEST = "test"

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """What a manifest may declare under ``env.variables``.
@@ -263,3 +264,106 @@ class TestTheValueMustReadAsTheDeclaredType:
         entry = _string(**{"with": {"value": '[{"name": "digitalTwinType"}]'}})
 
         assert validate_variable_declarations(_env(entry)) == []
+
+
+def _alternative(
+    var_id: str, group: Any = "usage_policy_group", **with_extra: Any
+) -> dict[str, Any]:
+    entry = _policy(id=var_id)
+    entry["with"] = {**entry["with"], "source": "register", "one_of": group, **with_extra}
+    return entry
+
+
+class TestOneOfGroups:
+    """``with.one_of``: documents the SUT operator registers one of."""
+
+    def test_a_group_of_alternatives_with_one_default_passes(self) -> None:
+        env = _env(
+            _alternative("without_membership", default=True), _alternative("with_membership")
+        )
+
+        assert validate_variable_declarations(env) == []
+
+    def test_a_group_needs_no_default(self) -> None:
+        env = _env(_alternative("without_membership"), _alternative("with_membership"))
+
+        assert validate_variable_declarations(env) == []
+
+    def test_one_of_must_name_a_group(self) -> None:
+        errors = validate_variable_declarations(
+            _env(_alternative("a", group=["x"]), _alternative("b"), _alternative("c"))
+        )
+
+        assert len(errors) == 1
+        assert "not a name" in errors[0]
+
+    def test_a_group_name_a_reference_cannot_spell_is_rejected(self) -> None:
+        errors = validate_variable_declarations(
+            _env(_alternative("a", group="usage-policy"), _alternative("b", group="usage-policy"))
+        )
+
+        assert len(errors) == 2
+        assert all("reference can spell" in error for error in errors)
+
+    def test_only_a_document_to_register_is_an_alternative(self) -> None:
+        entry = _alternative("a")
+        entry["with"]["source"] = "value"
+
+        errors = validate_variable_declarations(_env(entry, _alternative("b")))
+
+        assert len(errors) == 1
+        assert "source: register" in errors[0]
+
+    def test_a_default_must_be_a_boolean(self) -> None:
+        errors = validate_variable_declarations(
+            _env(_alternative("a", default="yes"), _alternative("b"))
+        )
+
+        assert len(errors) == 1
+        assert "'with.default: yes'" in errors[0]
+
+    def test_a_default_outside_a_group_is_rejected(self) -> None:
+        entry = _policy()
+        entry["with"] = {**entry["with"], "source": "register", "default": True}
+
+        errors = validate_variable_declarations(_env(entry))
+
+        assert len(errors) == 1
+        assert "no 'with.one_of' group" in errors[0]
+
+    def test_a_group_of_one_is_rejected(self) -> None:
+        errors = validate_variable_declarations(_env(_alternative("lonely")))
+
+        assert len(errors) == 1
+        assert "one alternative, 'lonely'" in errors[0]
+
+    def test_a_group_may_not_share_a_variables_name(self) -> None:
+        errors = validate_variable_declarations(
+            _env(
+                _alternative("a", group="usage_policy"),
+                _alternative("b", group="usage_policy"),
+                _policy(),
+            )
+        )
+
+        assert len(errors) == 1
+        assert "has the name of a variable" in errors[0]
+
+    def test_alternatives_share_one_verb(self) -> None:
+        asset = _alternative("b")
+        asset["uses"] = "config/connector/asset"
+        asset["returns"] = {"value": {"type": "object", "class": "Asset"}}
+        asset["with"]["value"] = {"asset_id": "x"}
+
+        errors = validate_variable_declarations(_env(_alternative("a"), asset))
+
+        assert len(errors) == 1
+        assert "mixes" in errors[0]
+
+    def test_a_group_has_at_most_one_default(self) -> None:
+        errors = validate_variable_declarations(
+            _env(_alternative("a", default=True), _alternative("b", default=True))
+        )
+
+        assert len(errors) == 1
+        assert "more than one default: a, b" in errors[0]
