@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.8).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Symbol-table construction for the IR builder (global env + per-test symbols)."""
@@ -40,7 +41,7 @@ def build_global_symbols(
 ) -> dict[str, Any]:
     """Build the global_symbols dict for all env-level symbols.
 
-    Contains variables, services, schemas, and testdata.
+    Contains variables, services, schemas, testdata and API files.
     No `produced_by` field — globals are always available.
     """
     symbols: dict[str, Any] = {}
@@ -48,6 +49,7 @@ def build_global_symbols(
     _collect_service_symbols(env_raw.get("services", []), symbols)
     _collect_simple_symbols(env_raw.get("schemas"), "env.schemas", "object", symbols)
     _collect_simple_symbols(env_raw.get("testdata"), "env.testdata", "object", symbols)
+    _collect_simple_symbols(env_raw.get("apis"), "env.apis", "object", symbols)
     return symbols
 
 

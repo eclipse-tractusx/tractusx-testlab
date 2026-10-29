@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Compile-time names supplied by the manifest, its steps and the player."""
@@ -49,6 +50,8 @@ def _scope_of(tck: TckDefinition, test: TestDefinition) -> frozenset[str]:
             names.add(f"env.testdata.{testdata.id}")
         for schema in env.schemas or []:
             names.add(f"env.schemas.{schema.id}")
+        for api in env.apis or []:
+            names.add(f"env.apis.{api.id}")
 
     for phase, steps in (
         ("setup", test.setup),
