@@ -20,6 +20,7 @@
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
 ## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """TCK manifest and test file validation against JSON schemas.
@@ -42,6 +43,7 @@ from typing import Any
 
 import yaml
 
+from tractusx_testlab.compiler.validation._api_files import api_file_findings
 from tractusx_testlab.compiler.validation._variable_declarations import (
     validate_variable_declarations,
 )
@@ -74,6 +76,7 @@ def validate_tck_manifest(
     all_errors: list[str] = [
         *collect_errors(validator_for("tck_index.schema.json"), manifest_data, "index.yaml"),
         *_validate_file_refs(manifest_data, base_dir),
+        *api_file_findings(env, base_dir),
         *validate_variable_declarations(env),
         *_validate_variable_scopes(env),
     ]

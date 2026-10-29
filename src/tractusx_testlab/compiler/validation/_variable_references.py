@@ -42,6 +42,9 @@ from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.syntax import call_scope, keys, patterns
 from tractusx_testlab.syntax.one_of import one_of_groups
 
+#: The ``env:`` collections a reference names a file of: ``env.<collection>.<id>``.
+_ENV_FILE_COLLECTIONS = ("testdata", "schemas", "apis")
+
 
 def declared_variable_ids(env_data: dict[str, Any]) -> frozenset[str]:
     """The ids of every variable the manifest declares, ``with.one_of`` groups included."""
@@ -67,14 +70,26 @@ def validate_variable_references(
     resolves neither — so both are answered here, at the line that has to
     change, rather than as an unresolved reference in the middle of a test.
     """
+    references = list(_references_in(test_data))
     return [
         f"{source_label}: '${{{{ {reference} }}}}' reaches into variable "
         f"'{var_id}' for '{field}'. A variable is one value and its id names all "
         f"of it — write '${{{{ env.{var_id} }}}}'."
-        for reference in _references_in(test_data)
+        for reference in references
         for var_id, field in [_env_field(reference)]
         if var_id in variable_ids and field
+    ] + [
+        f"{source_label}: '${{{{ {reference} }}}}' reaches into API file '{api_id}'. "
+        f"A step is handed the whole document — write '${{{{ env.apis.{api_id} }}}}'."
+        for reference in references
+        if (api_id := _api_reached_into(reference))
     ]
+
+
+def _api_reached_into(reference: str) -> str:
+    """The API id ``env.apis.<id>.<more…>`` reaches into, else ``""``."""
+    parts = reference.strip().split(".")
+    return parts[2] if len(parts) > 3 and parts[:2] == ["env", "apis"] else ""
 
 
 def _env_field(reference: str) -> tuple[str, str]:
@@ -114,7 +129,7 @@ def root_of(reference: str) -> str:
         return ".".join(parts[: call_scope.ROOT_SEGMENTS])
     if parts[0] == "infrastructure":
         return ".".join(parts[:4])
-    if parts[0] == "env" and len(parts) > 1 and parts[1] in ("testdata", "schemas"):
+    if parts[0] == "env" and len(parts) > 1 and parts[1] in _ENV_FILE_COLLECTIONS:
         return ".".join(parts[:3])
     return ".".join(parts[:2]) if len(parts) > 1 else reference
 

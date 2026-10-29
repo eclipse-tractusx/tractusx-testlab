@@ -40,13 +40,13 @@ from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
 from tractusx_testlab.steps import sdk_call
 from tractusx_testlab.steps.connector import policy_mismatch
 from tractusx_testlab.steps.connector._edr import Credential, edr_token
+from tractusx_testlab.steps.connector.offer_guard import OfferFilterParams
 from tractusx_testlab.steps.connector.policies import ExpectedPoliciesParams
 from tractusx_testlab.steps.counter_party import CounterPartyParams
 from tractusx_testlab.steps.dsp_keys import ID_KEY
 from tractusx_testlab.steps.shared_models import (
     DEFAULT_MAX_WAIT,
     DEFAULT_POLL_INTERVAL,
-    FilterExpressionParams,
     as_dataset_list,
 )
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
@@ -63,7 +63,7 @@ _TRANSFER_PROCESS_ID_KEY = "transferProcessId"
 # -- Declared interface -------------------------------------------------------
 
 
-class PullDataParams(CounterPartyParams, FilterExpressionParams):
+class PullDataParams(CounterPartyParams, OfferFilterParams):
     """What both pull-data shortcuts take.
 
     They run the whole DSP flow in one step, so they need everything the
@@ -122,6 +122,7 @@ async def _do_dsp_flow(
     policies: list[dict] | None,
 ) -> tuple[PullDataOutput, HttpRequest, HttpResponse]:
     """Execute the full DSP flow via the SDK and describe what it produced."""
+    params.require_offer_filter()
     consumer = context.dataspace.consumer()
     filter_expression = params.sdk_filter_expression()
     party = params.counter_party(context)

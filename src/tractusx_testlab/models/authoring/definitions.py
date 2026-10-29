@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from tractusx_testlab.extensions import EXTENSIONS
 from tractusx_testlab.extensions.step_keys import (
@@ -43,6 +43,12 @@ from tractusx_testlab.extensions.step_keys import (
     TestExtensionKeys,
 )
 from tractusx_testlab.models.authoring.checkpoint_mark import CheckpointMark
+from tractusx_testlab.models.authoring.env_files import (
+    STRICT,
+    ApiDefinition,
+    SchemaDefinition,
+    TestDataDefinition,
+)
 from tractusx_testlab.models.authoring.infrastructure import DataspaceContext, InfrastructureConfig
 from tractusx_testlab.models.primitives.enums import ServiceType, VariableScope, VariableSource
 
@@ -50,14 +56,8 @@ from tractusx_testlab.models.primitives.enums import ServiceType, VariableScope,
 # Shared primitive models (kept across syntax versions)
 # ---------------------------------------------------------------------------
 
-#: Every authoring model rejects keys it does not declare. Pydantic's default is
-#: ``extra="ignore"``, which silently discarded them: a ``validte:`` block was
-#: dropped and the step reported PASS with zero assertions; a ``whit:`` block was
-#: dropped and the step ran with no parameters. The reasoning was already written
-#: down one layer in, on ``StepParams``, and never applied to the models that
-#: select it: a key the author wrote and the engine ignored is how a test comes
-#: to look like it configured something it never configured.
-_STRICT = ConfigDict(populate_by_name=True, extra="forbid")
+#: Every authoring model rejects keys it does not declare (see ``env_files.STRICT``).
+_STRICT = STRICT
 
 
 class VariableDefinition(BaseModel):
@@ -227,27 +227,8 @@ class TckMetadataDefinition(MetadataDefinition):
     standards: list[dict[str, Any]] = Field(default_factory=list)
 
 
-class SchemaDefinition(BaseModel):
-    """A single schema entry in the TCK env block."""
-
-    model_config = _STRICT
-
-    id: str
-    source: str
-
-
-class TestDataDefinition(BaseModel):
-    """A single test data entry in the TCK env block."""
-
-    model_config = _STRICT
-
-    id: str
-    source: str
-    type: str = "application/json"
-
-
 class EnvDefinition(BaseModel):
-    """Environment block in a TCK manifest — shared variables, services, and test data."""
+    """Environment block in a TCK manifest — shared variables, services, and files."""
 
     model_config = _STRICT
 
@@ -255,6 +236,7 @@ class EnvDefinition(BaseModel):
     services: list[dict[str, Any]] | None = None
     schemas: list[SchemaDefinition] | None = None
     testdata: list[TestDataDefinition] | None = None
+    apis: list[ApiDefinition] | None = None
 
 
 class TckTestEntry(EntryExtensionKeys):

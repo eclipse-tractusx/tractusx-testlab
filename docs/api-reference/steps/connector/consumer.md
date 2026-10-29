@@ -54,6 +54,7 @@ Returns the resulting data-plane address so `connector/dataplane/http_request` c
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
+| `allow_any_offer` | boolean | no | `False` | — | Negotiate the first offer the catalog lists when no 'filters' are given. Off by default: without filters the step is refused, since any asset the provider lists first would be negotiated. |
 | `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
 | `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `expected_policies` | list of object | no | `[]` | — | ODRL policies the negotiation is allowed to accept, as the raw policy document, the testlab simplified spelling, JSON text, or the whole 'config/connector/policy' variable that holds one. |
@@ -78,6 +79,7 @@ Returns the same data-plane address as `do_dsp`.
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
+| `allow_any_offer` | boolean | no | `False` | — | Negotiate the first offer the catalog lists when no 'filters' are given. Off by default: without filters the step is refused, since any asset the provider lists first would be negotiated. |
 | `bpnl` | string | yes | — | — | BPN used to discover the counter-party's connector. |
 | `counter_party_address` | string | no | `None` | — | DSP endpoint to discover against, as its root or as the versioned endpoint the SUT binding carries — a trailing version path is dropped, since discovery is what appends it. When omitted it is resolved from the BPN alone. |
 | `expected_policies` | list of object | no | `None` | — | ODRL policies the negotiation is allowed to accept, as the raw policy document, the testlab simplified spelling, JSON text, or the whole 'config/connector/policy' variable that holds one. |
@@ -206,6 +208,7 @@ Run the full DSP flow in one step, optionally constrained to one policy.
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
+| `allow_any_offer` | boolean | no | `False` | — | Negotiate the first offer the catalog lists when no 'filters' are given. Off by default: without filters the step is refused, since any asset the provider lists first would be negotiated. |
 | `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
 | `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `max_wait` | number | no | `60.0` | — | Seconds to wait for the transfer to complete. |
@@ -239,6 +242,7 @@ Unlike `pull_data_filtered`, where `expected_policies` is optional and "no polic
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
 | `filters` | list of [FilterExpression](#filterexpression) | no | `[]` | — | Filter criteria applied to the catalog request. |
+| `allow_any_offer` | boolean | no | `False` | — | Negotiate the first offer the catalog lists when no 'filters' are given. Off by default: without filters the step is refused, since any asset the provider lists first would be negotiated. |
 | `counter_party_address` | string | no | `''` | — | DSP endpoint of the counter-party connector; defaults to the bound SUT connector's 'dsp_url'. |
 | `counter_party_id` | string | no | `''` | — | Dataspace identity of the counter-party; defaults to the bound SUT connector's 'participant_id'. |
 | `max_wait` | number | no | `60.0` | — | Seconds to wait for the transfer to complete. |

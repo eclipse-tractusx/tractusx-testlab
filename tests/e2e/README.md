@@ -25,8 +25,9 @@ cluster is created and destroyed within the job.
 ## What runs
 
 `tests/e2e/connector-dtr-smoke/` is a small TCK, purpose-built as testlab's
-own CI signal (not a published certification TCK). Between them its fifteen
-tests use every one of the 56 steps in the engine's catalogue
+own CI signal (not a published certification TCK). Between them its eighteen
+tests use every one of the 74 steps in the engine's catalogue (63, and the 11
+under `labs/`)
 (`docs/api-reference/steps/`) and all three validation kinds —
 `validate/assert`, `validate/field` and `validate/schema` — so no step ships
 without having been run once against something real. The dataplane callback
@@ -114,10 +115,49 @@ run's agreements, retire each with 204, and a repeat must answer 409.
   link was decorative, because nothing else in the deployment could produce
   that document.
 - `engine_toolbox.yaml` — everything that needs no dataspace at all: the flow
-  steps, the utility steps, the OAuth2 steps and the two protocol-aware mocks,
+  steps, the utility steps, the OAuth2, API key and Basic steps and the two
+  protocol-aware mocks,
   driven against the mock server the run starts rather than left uncovered. It
   takes no connector, no registry and no operator input, so it runs unchanged
   in any deployment.
+- `api_files.yaml` — the manifest's two API files (`env.apis`, ADR-0030),
+  read at run time and held against what they describe. `apis/` carries the
+  Digital Twin Registry's own OpenAPI document — the 0.11.0 one, the registry
+  this deployment runs — with its `type` declared, and a small JSON document
+  for the echo mock whose `type` is inferred. The registry's document names
+  the service profile it implements, and the deployed registry's
+  `GET /api/v3/description` must list that profile; the mock's document names
+  the header its API key goes in, `security/api_key` places the run's key
+  there, and the keyed mock must let the call through. Each step reads one
+  value from a document, and the run writes the document down by its summary
+  (`api_document`: version, title, sha256), never whole. The workflow's
+  `Verify the API files and auth steps in the execution trace` fails the job
+  unless every step of this test and the four API key and Basic steps of
+  `engine_toolbox.yaml` passed exactly once, both documents are recorded by
+  summary, and no event carries the registry's document
+  (`tests/unit/ci/test_e2e_api_files_verifier.py` runs that check against
+  traces the player's own publisher writes). `tests/combinations/test_e2e_api_files_offline.py`
+  runs the same file without a cluster, with a loopback stand-in answering
+  for the registry.
+- `api_steps.yaml` — the `labs` steps that read an API file (ADR-0030 §5),
+  against the umbrella's registry and its own OpenAPI document.
+  `labs/http/api_request` asks for the registry's self-description and for a
+  shell it has never held, and `labs/validate/api_response` under each checks
+  the answer against the operation: status, media type and body schema — the
+  404's body against the document's `Result`. A `pull_data_filtered` whose
+  filter names this test's own registry asset publishes the EDR, and
+  `labs/connector/dataplane/api_request` asks again through the SUT's data
+  plane, once with the token and once with `edr_token: ''`, whose refusal the
+  check (`data_plane: true`) reports as the data plane's. `labs/http/api_sweep`
+  sweeps two GET operations (one answering 200, one a documented 404), and
+  `labs/validate/api_errors` judges the registry's two error answers
+  together. A last pull negotiates with `allow_any_offer: true` — the explicit
+  opt-out of the empty-filter guard. `tests/combinations/test_e2e_api_steps_offline.py`
+  runs the same file without a cluster and feeds its results, as a trace, to
+  the workflow's own verifier.
+- `offer_guard.yaml` — a negotiation with no filter, which the run must refuse
+  before asking for a catalog (`OFFER_FILTER_MISSING`). It is meant to fail,
+  so the full suite skips it and a run of its own requires the failure.
 - `experimental_extensions.yaml` — the experimental extensions, which the
   manifest enables with `extensions: [cac, labs]` (and which the compiler
   therefore warns about twice). A step and one of its checks carry `cac:`
@@ -131,7 +171,7 @@ run's agreements, retire each with 204, and a repeat must answer 409.
   `labs/mock/api/dynamic` and `labs/util/now`; every other test uses no
   extension.
 
-The workflow runs the full suite, every test, on every event — pull requests
+The workflow runs the full suite, every test but `offer_guard.yaml`, on every event — pull requests
 included. The cluster bring-up is where the job's minutes go and a run takes
 seconds, so nothing is trimmed for a pull request. After the run, a step reads
 the trace back and fails unless every `tck.test.step.received` event is there
@@ -144,7 +184,14 @@ offer for a plain wait, `via: dataplane` and this run's asset with the engine
 connector's DSP URL and DID for the dataplane one. A second trace check covers the
 experimental extensions: `fetch_with_retry` must have published exactly two
 `tck.test.step.call` events, and `pull_data`'s terminal event must carry its
-`cac` on the step and, resolved, on each of its checks. Two subset runs of the same compiled
+`cac` on the step and, resolved, on each of its checks. A third covers the API
+steps: each must have passed under its own step type, every
+`labs/validate/api_response` check must have held, the tokenless data-plane
+call must have been refused with 401 or 403, the sweep must have judged both
+operations, `api_errors` must have seen exactly the two registry errors, and
+no event may carry the registry's document. Then `offer_guard.yaml` runs on
+its own: the run must fail, and its trace must show the step refused with
+`OFFER_FILTER_MISSING` before making any call. Two subset runs of the same compiled
 package follow — the registry alone, and `engine_toolbox.yaml` alone — plus a
 selection the manifest does not permit, which must be refused. The subsets add
 no coverage; they check that a test needing no connector journey runs without

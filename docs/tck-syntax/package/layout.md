@@ -36,6 +36,7 @@ certificate-management-v2.0/
 | `tests/` | Test case declarations imported by `index.yaml`. |
 | `testdata/` | Data usable across tests. **Does not need to be JSON** — hence the `type:` field on each entry. |
 | `schemas/` | JSON Schemas used to validate requests and responses. |
+| `apis/` | OpenAPI 3.0/3.1 documents of the APIs under test, one self-contained file each, declared under `env.apis` — see [API Files](api-files.md). |
 
 **Compilation** produces a single `.tck` archive, optimised for execution, with optional encryption.
 

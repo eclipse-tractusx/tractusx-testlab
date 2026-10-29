@@ -42,7 +42,7 @@ from tractusx_testlab.authoring.step_docs import (
 )
 from tractusx_testlab.authoring.step_pages import render_nav, render_pages
 from tractusx_testlab.steps.assertions.operators import OPERATORS
-from tractusx_testlab.steps.assertions.vocabulary import AssertionKind
+from tractusx_testlab.steps.assertions.vocabulary import AssertionKind, registered_validations
 
 _GENERATED_DIR = DOCS_DIR / "api-reference" / "steps"
 
@@ -172,7 +172,14 @@ class TestPageStructure:
     def test_every_assertion_kind_is_documented(self) -> None:
         page = render_catalog(["util/base64"])
         for kind in AssertionKind:
+            if kind is AssertionKind.REGISTERED:
+                continue
             assert f"| `validate/{kind.value}` |" in page
+
+    def test_every_registered_check_is_documented(self) -> None:
+        page = render_catalog(["util/base64"])
+        for check in registered_validations():
+            assert f"| `{check.uses}` |" in page and check.checks in page
 
 
 class TestPages:

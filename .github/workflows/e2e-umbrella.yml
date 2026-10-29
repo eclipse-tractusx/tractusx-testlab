@@ -20,6 +20,7 @@
 ###############################################################
 
 ## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 # E2E: testlab's compile -> validate -> run pipeline against a REAL,
@@ -97,7 +98,16 @@ on:
       - "src/tractusx_testlab/services/**"
       - "src/tractusx_testlab/player/**"
       - "src/tractusx_testlab/compiler/**"
+      # API files (env.apis): the loader, and the auth steps api_files.yaml
+      # and engine_toolbox.yaml drive. The files themselves are under tests/e2e/.
+      - "src/tractusx_testlab/openapi/**"
+      - "src/tractusx_testlab/steps/security/**"
       - "src/tractusx_testlab/cli/**"
+      # The labs steps that call and check API operations (ADR-0030 §5), and
+      # the shared pieces under them: the answer checks, the HTTP client.
+      - "src/tractusx_testlab/extensions/**"
+      - "src/tractusx_testlab/steps/assertions/**"
+      - "src/tractusx_testlab/steps/http_client.py"
       - "tests/e2e/**"
       - ".github/workflows/e2e-umbrella.yml"
       - ".github/workflows/build-kind-node-cache.yml"
@@ -1167,26 +1177,17 @@ jobs:
           poetry run testlab inspect "${TCK_OUT}" --variables --infrastructure
           poetry run testlab inspect "${TCK_OUT}" --json > logs/inspect.json
           poetry run python - <<'PY'
-          import json, pathlib, sys
+          import json, os, pathlib, sys
+
+          import yaml
 
           report = json.loads(pathlib.Path("logs/inspect.json").read_text())["inspection"]
-          expected = {
-              "bpn_discovery.yaml",
-              "catalog_variants.yaml",
-              "connector_negotiation.yaml",
-              "dataplane_callback.yaml",
-              "dsp_step_by_step.yaml",
-              "dtr_consumer_dataplane.yaml",
-              "dtr_roundtrip.yaml",
-              "engine_toolbox.yaml",
-              "experimental_extensions.yaml",
-              "external_callback.yaml",
-              "inbound_call.yaml",
-              "industry_core_journey.yaml",
-              "negative_paths.yaml",
-              "notification_roundtrip.yaml",
-              "push_transfer.yaml",
-          }
+          # The manifest is the source of truth: a test added to it is expected in
+          # the package without a second list here to keep in step.
+          manifest = yaml.safe_load(pathlib.Path(os.environ["TCK_INDEX"]).read_text())
+          expected = {test["id"] for test in manifest["tests"]}
+          if not expected:
+              sys.exit(f"{os.environ['TCK_INDEX']} declares no tests")
           found = {test["test_id"] for test in report["tests"]}
           if found != expected:
               sys.exit(f"package carries {sorted(found)}, manifest declared {sorted(expected)}")
@@ -1203,6 +1204,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
+            --var "skip_tests=offer_guard.yaml" \
             --logs-dir logs/e2e/full \
             --data-dir /data
 
@@ -1431,6 +1433,202 @@ jobs:
           print("experimental-extensions: cac is on the step event and resolved on each check")
           PY
 
+      # The API files (env.apis, ADR-0030) and the two auth steps beside them
+      # pass behind the same banner as everything else, and a test the
+      # manifest stopped listing — or a step a refactor dropped — would not
+      # turn the banner red. The trace says what ran: every step below must
+      # have passed exactly once, the steps handed an API document must
+      # record it by its summary (`api_document`), and no event of
+      # api_files.yaml may carry the registry's document itself — 74 KiB that
+      # would otherwise be copied into every event of every step handed it.
+      - name: Verify the API files and auth steps in the execution trace
+        run: |
+          poetry run python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          lines = [
+              line
+              for trace in sorted(pathlib.Path("/data").rglob("*.jsonl"))
+              for line in trace.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          events = [(line, json.loads(line)) for line in lines]
+
+          def ended(test, step):
+              return [
+                  event
+                  for _, event in events
+                  if event["type"] in ("tck.test.step.passed", "tck.test.step.failed")
+                  and event["id"].split("/")[1] == test
+                  and event["id"].split("/")[3] == step
+              ]
+
+          required = {
+              "api-files": ("dtr_profile", "dtr_description", "mock_key_header", "mock_key", "call_echo"),
+              "engine-toolbox": ("mock_key", "call_with_key", "basic_auth", "call_with_basic"),
+          }
+          for test, steps in required.items():
+              for step in steps:
+                  found = ended(test, step)
+                  if len(found) != 1:
+                      sys.exit(f"{test}: {step} ended {len(found)} times, expected once")
+                  if found[0]["type"] != "tck.test.step.passed":
+                      sys.exit(f"{test}: {step} did not pass: {found[0]['data'].get('error')}")
+
+          for step in ("dtr_profile", "mock_key_header"):
+              (event,) = ended("api-files", step)
+              summary = ((event["data"].get("inputs") or {}).get("input") or {}).get("api_document")
+              if not isinstance(summary, dict) or set(summary) != {"id", "openapi", "title", "version", "sha256"}:
+                  sys.exit(f"api-files: {step} does not record its API file by summary: {event['data'].get('inputs')}")
+
+          ours = [line for line, event in events if event["id"].split("/")[1] == "api-files"]
+          leaked = [json.loads(line)["id"] for line in ours if "x-semanticIds" in line]
+          if leaked:
+              sys.exit(f"api-files: the registry's API file was written whole into {leaked}")
+          largest = max(len(line) for line in ours)
+          if largest > 16_384:
+              sys.exit(f"api-files: an event of the test is {largest} bytes; a document was copied into it")
+          print("api-files: env.apis resolved, the registry announced its document's profile, the keyed call passed")
+          print(f"api-files: both API files recorded by summary; largest event {largest} bytes")
+          print("engine-toolbox: security/api_key and security/basic passed against the mock server")
+          PY
+
+      # api_steps.yaml calls the registry with the labs API steps and checks
+      # every answer against the registry's own OpenAPI document. A green
+      # step says the checks held; this says they ran, on what, and with what
+      # verdict — each step passed with its own source, every api_response
+      # check passed (the data-plane refusal classified as the data plane's),
+      # the sweep called both operations and judged both, api_errors saw the
+      # two registry errors, and the document was recorded by summary only.
+      - name: Verify the API steps in the execution trace
+        run: |
+          poetry run python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          lines = [
+              line
+              for trace in sorted(pathlib.Path("/data").rglob("*.jsonl"))
+              for line in trace.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          ours = [
+              (line, event)
+              for line, event in ((line, json.loads(line)) for line in lines)
+              if event["id"].split("/")[1] == "api-steps"
+          ]
+          if not ours:
+              sys.exit("api-steps: the test wrote no events")
+
+          def ended(step):
+              found = [
+                  event
+                  for _, event in ours
+                  if event["type"] in ("tck.test.step.passed", "tck.test.step.failed")
+                  and event["id"].split("/")[2] == "execution"
+                  and event["id"].split("/")[3] == step
+              ]
+              if len(found) != 1:
+                  sys.exit(f"api-steps: {step} ended {len(found)} times, expected once")
+              return found[0]
+
+          expected = {
+              "dtr_description": "labs/http/api_request",
+              "dtr_unknown_shell": "labs/http/api_request",
+              "dataplane_description": "labs/connector/dataplane/api_request",
+              "dataplane_without_token": "labs/connector/dataplane/api_request",
+              "dtr_sweep": "labs/http/api_sweep",
+              "dtr_errors": "labs/validate/api_errors",
+              "any_offer": "connector/consumer/pull_data_filtered",
+          }
+          for step, source in expected.items():
+              event = ended(step)
+              if event["type"] != "tck.test.step.passed":
+                  sys.exit(f"api-steps: {step} did not pass: {event['data'].get('errors') or event['data'].get('validations')}")
+              if event["source"] != source:
+                  sys.exit(f"api-steps: {step} ran {event['source']}, expected {source}")
+              checks = [v for v in event["data"]["validations"] if v["source"] == "labs/validate/api_response"]
+              if step.startswith(("dtr_d", "dtr_u", "dataplane_")) and not checks:
+                  sys.exit(f"api-steps: {step} has no labs/validate/api_response check")
+              if not all(v["outputs"]["passed"] for v in checks):
+                  sys.exit(f"api-steps: a response check of {step} failed: {checks}")
+              api = ((event["data"].get("inputs") or {}).get("api") or {}).get("api_document")
+              if source.startswith("labs/http") or source.startswith("labs/connector"):
+                  if not api or api.get("id") != "dtr":
+                      sys.exit(f"api-steps: {step} does not record the API by its summary: {event['data'].get('inputs')}")
+
+          outputs = {step: ended(step)["data"]["outputs"] for step in expected}
+          if outputs["dtr_unknown_shell"]["status_code"] != 404:
+              sys.exit(f"api-steps: the absent shell answered {outputs['dtr_unknown_shell']['status_code']}, expected 404")
+          if outputs["dataplane_without_token"]["status_code"] not in (401, 403):
+              sys.exit(f"api-steps: the data plane let a call without a token through: {outputs['dataplane_without_token']['status_code']}")
+          rows = {row["operation"]: (row["verdict"], row["status"]) for row in outputs["dtr_sweep"]["results"]}
+          want = {"GetSelfDescription": ("passed", 200), "GetAssetAdministrationShellDescriptorById": ("passed", 404)}
+          if rows != want:
+              sys.exit(f"api-steps: the sweep produced {rows}, expected {want}")
+          verdict = outputs["dtr_errors"]
+          if not verdict["passed"] or verdict["errors"] != 2:
+              sys.exit(f"api-steps: api_errors judged {verdict}, expected two errors and no problem")
+          if any("x-semanticIds" in line for line, _ in ours):
+              sys.exit("api-steps: the registry's document was written whole into the trace")
+          print("api-steps: every labs API step ran, every answer matched the registry's document")
+          PY
+
+      # offer_guard.yaml negotiates without a filter, which the run must
+      # refuse before asking for a catalog. Run alone, it has to fail — and
+      # fail with the guard's own code, not with anything a dataspace said.
+      - name: testlab run — a negotiation without filters is refused
+        run: |
+          if poetry run testlab run "${TCK_OUT}" \
+               --config "${TCK_CONFIG}" \
+               --var "infrastructure.sut.dtr.base_url=${DTR_BASE_URL}" \
+               --var "mock_server_external_url=${MOCK_SERVER_EXTERNAL_URL}" \
+               --var "stub_caller_url=${STUB_CALLER_URL}" \
+               --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
+               --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
+               --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,api_files.yaml,experimental_extensions.yaml,api_steps.yaml" \
+               --logs-dir logs/e2e/offer-guard \
+               --data-dir /data; then
+            echo "::error::a negotiation without filters ran; the offer guard must refuse it"
+            exit 1
+          fi
+          echo "the unfiltered negotiation was refused, as it must be"
+
+      - name: Verify the offer guard's refusal in the execution trace
+        run: |
+          poetry run python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          events = [
+              json.loads(line)
+              for trace in sorted(pathlib.Path("/data").rglob("*.jsonl"))
+              for line in trace.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          step = [
+              event
+              for event in events
+              if event["id"].split("/")[1] == "offer-guard"
+              and len(event["id"].split("/")) > 3
+              and event["id"].split("/")[3] == "unfiltered_pull"
+          ]
+          ended = [event for event in step if event["type"] == "tck.test.step.failed"]
+          if len(ended) != 1:
+              sys.exit(f"offer-guard: unfiltered_pull failed {len(ended)} times, expected once: {[e['type'] for e in step]}")
+          codes = [error.get("code") for error in ended[0]["data"].get("errors") or []]
+          if codes != ["OFFER_FILTER_MISSING"]:
+              sys.exit(f"offer-guard: the step failed with {codes}, expected ['OFFER_FILTER_MISSING']")
+          calls = [event for event in step if event["type"] == "tck.test.step.call"]
+          if calls:
+              sys.exit(f"offer-guard: the refused step still made {len(calls)} call(s)")
+          print("offer-guard: refused with OFFER_FILTER_MISSING before any call")
+          PY
+
       # The two runs below re-execute a subset of the same package. They add
       # nothing to test coverage — the full suite already ran every test —
       # but they check two things the full suite cannot: that a test needing
@@ -1446,7 +1644,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,experimental_extensions.yaml" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,engine_toolbox.yaml,experimental_extensions.yaml,api_files.yaml,api_steps.yaml,offer_guard.yaml" \
             --logs-dir logs/e2e/registry \
             --data-dir /data
 
@@ -1463,7 +1661,7 @@ jobs:
             --var "stub_caller_url=${STUB_CALLER_URL}" \
             --var "dtr_internal_url=${DTR_INTERNAL_URL}" \
             --var "infrastructure.engine.dtr.base_url=${DTR_BASE_URL}" \
-            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,experimental_extensions.yaml" \
+            --var "skip_tests=connector_negotiation.yaml,dsp_step_by_step.yaml,dtr_roundtrip.yaml,negative_paths.yaml,inbound_call.yaml,external_callback.yaml,dataplane_callback.yaml,catalog_variants.yaml,bpn_discovery.yaml,push_transfer.yaml,dtr_consumer_dataplane.yaml,notification_roundtrip.yaml,industry_core_journey.yaml,experimental_extensions.yaml,api_files.yaml,api_steps.yaml,offer_guard.yaml" \
             --logs-dir logs/e2e/engine-only \
             --data-dir /data
 
