@@ -44,7 +44,7 @@ from urllib.parse import parse_qsl, unquote_plus, urlencode, urlsplit, urlunspli
 
 from tractusx_sdk.dataspace.tools.tracing import REDACTED_VALUE
 
-from tractusx_testlab.logging.masking import mask
+from tractusx_testlab.logging.masking import mask, register_secret
 from tractusx_testlab.logging.wire.secret_names import (
     SECRET_HEADERS,
     forget_secret_headers,
@@ -60,6 +60,7 @@ __all__ = [
     "forget_secret_headers",
     "is_secret_header",
     "is_secret_key",
+    "mask_secret_inputs",
     "redact_secrets",
     "redact_url",
     "register_secret_header",
@@ -140,3 +141,22 @@ def _redacted_pair(pair: str) -> str:
 def written(value: Any) -> Any:
     """*value* as any record a reader is handed shows it: redacted by key, masked by value."""
     return mask(redact_secrets(value))
+
+
+def mask_secret_inputs(step_cls: type | None, params: dict[str, Any] | None, run: str) -> None:
+    """Mask what a step is given under a ``with:`` key its contract marks secret.
+
+    A parameter field marked ``json_schema_extra={"secret": True}`` — the key
+    ``security/api_key`` places, the password ``security/basic`` encodes — may
+    hold a credential under a name that does not say so (``key``), which
+    redaction by name misses. Its value is registered as soon as the step's
+    parameters are resolved: before ``step.start`` publishes them, before a
+    refusal of the value echoes it, and pinned to the run like every explicit
+    secret.
+    """
+    fields = getattr(getattr(step_cls, "params_model", None), "model_fields", None) or {}
+    for name, field in fields.items():
+        extra = field.json_schema_extra
+        key = field.validation_alias if isinstance(field.validation_alias, str) else name
+        if isinstance(extra, dict) and extra.get("secret") and params and key in params:
+            register_secret(params[key], run=run, explicit=True)

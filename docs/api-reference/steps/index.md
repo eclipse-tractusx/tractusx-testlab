@@ -4,7 +4,7 @@
 
 Every step a test can name in `uses:`, with the parameters it accepts under `with:` and the output fields it publishes — the names `returns:`, `validate:` and later steps read. The reference is generated from the steps' declared Pydantic models, so it cannot drift from the implementation. For where these blocks sit in a test file, see the [TCK syntax](../../tck-syntax/index.md).
 
-67 steps. The checks a step's outputs are held to are listed under [Validations](validations.md).
+69 steps. The checks a step's outputs are held to are listed under [Validations](validations.md).
 
 ## Categories and modules
 
@@ -30,5 +30,6 @@ Every step a test can name in `uses:`, with the parameters it accepts under `wit
 | `mock` | `wait/dataplane` | [`http_request`](mock/wait-dataplane.md#mock-wait-dataplane-http_request) |
 | `mock` | `wait` | [`http_request`](mock/wait.md#mock-wait-http_request) |
 | `notification` | `consumer` | [`discover_assets`](notification/consumer.md#notification-consumer-discover_assets), [`send`](notification/consumer.md#notification-consumer-send) |
+| `security` | — | [`api_key`](security/index.md#security-api_key), [`basic`](security/index.md#security-basic) |
 | `security` | `oauth2` | [`client_credentials`](security/oauth2.md#security-oauth2-client_credentials), [`password`](security/oauth2.md#security-oauth2-password), [`refresh_token`](security/oauth2.md#security-oauth2-refresh_token) |
 | `util` | — | [`base64`](util/index.md#util-base64), [`generate_uuid`](util/index.md#util-generate_uuid), [`json_path_extract`](util/index.md#util-json_path_extract), [`log`](util/index.md#util-log), [`parse_kv`](util/index.md#util-parse_kv), [`validate_path`](util/index.md#util-validate_path) |

@@ -155,6 +155,7 @@ async def _run_step_guarded(
                 getattr(step_instance, "deferred_params", ()),
                 credential_carriers(type(step_instance)),
             )
+        wire.mask_secret_inputs(type(step_instance), params, str(context.job.job_id))
         # What the step was given, every ``${{ ... }}`` resolved: the test only
         # says which reference was written, not what it resolved to.
         inputs = dict(params)

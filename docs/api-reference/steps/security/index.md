@@ -4,6 +4,55 @@
 
 | Module | Step | Summary |
 |---|---|---|
+| — | [`security/api_key`](#security-api_key) | Place an API key in a header, a query parameter or a cookie. |
+| — | [`security/basic`](#security-basic) | Build the `Authorization` header of HTTP Basic authentication. |
 | `oauth2` | [`security/oauth2/client_credentials`](oauth2.md#security-oauth2-client_credentials) | Obtain a token as the client itself — the machine-to-machine grant. |
 | `oauth2` | [`security/oauth2/password`](oauth2.md#security-oauth2-password) | Obtain a token on behalf of a resource owner by username and password. |
 | `oauth2` | [`security/oauth2/refresh_token`](oauth2.md#security-oauth2-refresh_token) | Exchange a refresh token for a fresh access token. |
+
+## `security/api_key` { #security-api_key }
+
+Place an API key in a header, a query parameter or a cookie.
+
+For an API whose OpenAPI `apiKey` security scheme names where the key goes. `headers` plugs into `http/http_request`'s `headers` and `query` into its `query_params` unchanged; a cookie is sent as a `Cookie` header, so `headers` carries it too. Nothing is called. The key is hidden in every record of the run, and no `returns:` can show it.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `key` | string | yes | — | — | The API key, at least 4 characters. Hidden in every record of the run. |
+| `name` | string | no | `'X-Api-Key'` | — | Name of the header, query parameter or cookie the API reads the key from. |
+| `in` | `header` \| `query` \| `cookie` | no | `'header'` | — | Where the key is sent: as a header, a query parameter or a cookie. |
+
+**Output** — the value assertions and `returns:` read
+
+_The key, and where to put it — each map ready to hand a request step._
+
+| Field | Type | Description |
+|---|---|---|
+| `api_key` | string | The API key. Hidden in every record of the run. |
+| `headers` | object | Headers to send: '{name: key}' for in: header, 'Cookie: name=key' for in: cookie, empty for in: query. |
+| `query` | object | Query parameters to send: '{name: key}' for in: query, else empty. |
+| `cookies` | object | Cookies to send: '{name: key}' for in: cookie, else empty. |
+
+## `security/basic` { #security-basic }
+
+Build the `Authorization` header of HTTP Basic authentication.
+
+For an API whose OpenAPI `http` security scheme says `scheme: basic` (RFC 7617). `headers` plugs into `http/http_request`'s `headers` unchanged. Nothing is called. The password and the header are hidden in every record of the run, and no `returns:` can show them.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `username` | string | yes | — | — | User id. May not contain a colon (RFC 7617). |
+| `password` | string | yes | — | — | Password. Hidden in every record of the run. |
+
+**Output** — the value assertions and `returns:` read
+
+_The `Authorization` value, alone and as a header map ready to hand a request step._
+
+| Field | Type | Description |
+|---|---|---|
+| `authorization` | string | 'Basic <base64(username:password)>'. Hidden in every record of the run. |
+| `headers` | object | '{Authorization: Basic …}', for a request step's 'headers'. |

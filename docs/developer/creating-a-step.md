@@ -18,6 +18,8 @@
 
  SPDX-License-Identifier: Apache-2.0
 -->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
+<!-- It was reviewed and tested by a human committer. -->
 
 # Creating a Step
 
@@ -203,6 +205,22 @@ json_schema: Any = Field(
     description="A JSON Schema document the payload is validated against.",
 )
 ```
+
+### A parameter that holds a credential
+
+A parameter named like a credential (`password`, `client_secret`, `…token`) is redacted by its name in every record.
+One that is not — `security/api_key`'s `key` — says so on the field, and the runner masks its value as soon as the
+step's inputs are resolved: before `step.start` publishes them, and before a refusal of the value can echo it.
+
+```python
+key: str = Field(
+    min_length=MIN_EXPLICIT_LENGTH,  # shorter values cannot be masked
+    description="The API key. Hidden in every record of the run.",
+    json_schema_extra={"secret": True},
+)
+```
+
+Never quote a credential in a validator's message: say what is wrong with it, not what it is.
 
 ## Declaring the output
 
