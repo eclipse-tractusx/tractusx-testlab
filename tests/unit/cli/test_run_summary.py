@@ -36,6 +36,7 @@ import pytest
 import typer
 
 from tractusx_testlab.cli._run_summary import print_run_results, render_run_results
+from tractusx_testlab.logging.masking import mask, register_secret, release_run
 from tractusx_testlab.models.authoring.definitions import Assertion
 from tractusx_testlab.models.primitives.enums import StepStatus, TestStatus
 from tractusx_testlab.models.runtime.results import (
@@ -250,3 +251,31 @@ class TestPrinting:
         with pytest.raises(typer.Exit) as exit_info:
             print_run_results(result)
         assert exit_info.value.exit_code == 0
+
+
+class TestSecretsInNames:
+    """A name that holds a registered secret is laid out as the terminal prints it."""
+
+    @pytest.fixture(autouse=True)
+    def _secret_in_a_name(self):
+        # The e2e umbrella's connector API key is "password", and its toolbox has a
+        # step called oauth_password: the terminal masks the word inside the name.
+        register_secret("password", run="summary-run", explicit=True)
+        yield
+        release_run("summary-run")
+
+    def _report(self) -> list[str]:
+        result = _result()
+        result.tests[0].execution.append(_step("oauth_password", StepStatus.PASSED, duration_s=0.1))
+        result.tests[0].test_name = "provision with the password grant"
+        return _plain(render_run_results(result))
+
+    def test_the_masked_name_is_what_the_row_shows(self) -> None:
+        lines = self._report()
+        assert any("oauth_***" in line for line in lines)
+        assert not any("password" in line for line in lines)
+
+    def test_every_box_line_keeps_its_width_after_the_terminal_masks_it(self) -> None:
+        for line in self._report():
+            if line.startswith(("║", "╔", "╠", "╚")):
+                assert len(mask(line)) == 80, repr(mask(line))
