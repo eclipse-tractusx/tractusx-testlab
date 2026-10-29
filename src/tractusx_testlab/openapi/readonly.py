@@ -85,6 +85,30 @@ class FrozenList(list[Any]):
         return FrozenList, (list(self),)
 
 
+class RecordedDocument(FrozenDict):
+    """A read-only document that a record of the run names instead of copying.
+
+    A step handed a whole API document keeps all of it, but every record of
+    the run — its inputs on ``step.start``, the step's result in the trace, the
+    job a host keeps — would otherwise carry every byte of it, once per event,
+    for every step it is handed to. :attr:`summary` is what they carry instead
+    (``logging.wire.redaction`` reads it through :meth:`__recorded__`).
+    """
+
+    __slots__ = ("summary",)
+
+    def __init__(self, content: dict[str, Any], summary: dict[str, Any]) -> None:
+        super().__init__(content)
+        self.summary = summary
+
+    def __recorded__(self) -> dict[str, Any]:
+        """What a record of the run shows for this document."""
+        return dict(self.summary)
+
+    def __reduce__(self) -> tuple[type[RecordedDocument], tuple[dict[str, Any], dict[str, Any]]]:  # type: ignore[override]
+        return RecordedDocument, (dict(self), self.summary)
+
+
 def freeze(value: Any) -> Any:
     """*value* with every mapping and sequence in it made read-only.
 

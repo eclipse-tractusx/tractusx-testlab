@@ -20,6 +20,7 @@
 ###############################################################
 
 ## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 # E2E: testlab's compile -> validate -> run pipeline against a REAL,
@@ -1429,6 +1430,56 @@ jobs:
 
           print("experimental-extensions: retry_on made 2 calls through the SUT's data plane")
           print("experimental-extensions: cac is on the step event and resolved on each check")
+          PY
+
+      # api_files.yaml hands two whole API documents (env.apis, ADR-0030) to
+      # the steps that read them. A green step cannot say what the run wrote
+      # down about them; the trace can. Every event of the test must name a
+      # document by its summary, and none may carry the registry's document —
+      # 74 KiB that would otherwise be copied into every event of every step
+      # handed it.
+      - name: Verify the API files in the execution trace
+        run: |
+          poetry run python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          lines = [
+              line
+              for trace in sorted(pathlib.Path("/data").rglob("*.jsonl"))
+              for line in trace.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          events = [
+              (line, json.loads(line))
+              for line in lines
+          ]
+          ours = [
+              (line, event)
+              for line, event in events
+              if event["id"].split("/")[1] == "api-files"
+          ]
+          if not ours:
+              sys.exit("api-files: the test wrote no events")
+          for step in ("dtr_profile", "mock_key_header"):
+              passed = [
+                  event
+                  for _, event in ours
+                  if event["type"] == "tck.test.step.passed" and event["id"].split("/")[3] == step
+              ]
+              if len(passed) != 1:
+                  sys.exit(f"api-files: {step} passed {len(passed)} times, expected once")
+              summary = ((passed[0]["data"].get("inputs") or {}).get("input") or {}).get("api_document")
+              if not summary or set(summary) != {"openapi", "title", "version", "sha256"}:
+                  sys.exit(f"api-files: {step} does not record its document by summary: {passed[0]['data'].get('inputs')}")
+          leaked = [event["id"] for line, event in ours if "x-semanticIds" in line]
+          if leaked:
+              sys.exit(f"api-files: the registry's document was written whole into {leaked}")
+          largest = max(len(line) for line, _ in ours)
+          if largest > 16_384:
+              sys.exit(f"api-files: an event of the test is {largest} bytes; a document was copied into it")
+          print(f"api-files: both documents recorded by summary; largest event {largest} bytes")
           PY
 
       # The two runs below re-execute a subset of the same package. They add

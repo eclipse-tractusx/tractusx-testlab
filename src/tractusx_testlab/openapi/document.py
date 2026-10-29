@@ -52,7 +52,7 @@ from typing import Any
 
 from tractusx_testlab.models.primitives.exceptions import AuthoringError
 from tractusx_testlab.openapi.parsing import ParseError, parse
-from tractusx_testlab.openapi.readonly import FrozenDict, freeze
+from tractusx_testlab.openapi.readonly import RecordedDocument, freeze
 from tractusx_testlab.openapi.ref_walk import DocumentShapeError, reference_problems
 
 #: Largest API file a TCK may carry: 5 MiB. The published Catena-X and partner
@@ -78,8 +78,9 @@ class ApiDocument:
     openapi: str
     #: Size of the file it was read from, in bytes.
     size: int
-    #: The document, read-only; what ``${{ env.apis.<id> }}`` resolves to.
-    content: FrozenDict
+    #: The document, read-only; what ``${{ env.apis.<id> }}`` resolves to. A
+    #: record of the run shows its summary instead of its content.
+    content: RecordedDocument
 
 
 class ApiDocumentError(AuthoringError):
@@ -164,8 +165,20 @@ def _checked(data: bytes, media_type: str, digest: str) -> ApiDocument:
         raise ApiDocumentError([str(exc)]) from None
     if problems:
         raise ApiDocumentError(problems)
+    info = value["info"]
+    summary = {
+        "api_document": {
+            "openapi": value["openapi"],
+            "title": info["title"],
+            "version": info["version"],
+            "sha256": digest,
+        }
+    }
     return ApiDocument(
-        sha256=digest, openapi=value["openapi"], size=len(data), content=freeze(value)
+        sha256=digest,
+        openapi=value["openapi"],
+        size=len(data),
+        content=RecordedDocument(freeze(value), summary),
     )
 
 

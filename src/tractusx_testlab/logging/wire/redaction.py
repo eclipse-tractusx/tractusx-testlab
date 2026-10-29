@@ -75,6 +75,9 @@ _URL = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.\-]*://\S+$")
 def redact_secrets(value: Any) -> Any:
     """*value* with every credential-named field replaced by the tracer's marker.
 
+    A value with a ``__recorded__()`` method is replaced by what it returns —
+    an API document by its summary — before anything else is looked at.
+
     Walks dicts and lists; an urlencoded form body is parsed, redacted and put
     back together, and a URL has its credential-named query parameters
     redacted (:func:`redact_url`). A JSON body arrives already parsed (the
@@ -82,6 +85,11 @@ def redact_secrets(value: Any) -> Any:
     redaction is by name, and a string has none.
     """
     if isinstance(value, dict):
+        # A document that names itself in a record (an API file the step was
+        # handed, ADR-0030) is written down as that name, not copied whole.
+        recorded = getattr(value, "__recorded__", None) if type(value) is not dict else None
+        if callable(recorded):
+            return redact_secrets(recorded())
         return {
             key: REDACTED_VALUE if _holds_credential(key, item) else redact_secrets(item)
             for key, item in value.items()

@@ -40,7 +40,22 @@ The project maintains the following source code repositories:
 
 This project leverages the following third party content.
 
-None
+Test fixtures only — OpenAPI documents vendored unchanged except where noted,
+each keeping its own license header:
+
+* `tests/e2e/connector-dtr-smoke/apis/aas-registry-openapi.yaml` — the Asset
+  Administration Shell Registry API of Eclipse Tractus-X
+  sldt-digital-twin-registry v0.11.0
+  (https://github.com/eclipse-tractusx/sldt-digital-twin-registry,
+  `backend/src/main/resources/static/aas-registry-openapi.yaml`), Apache-2.0.
+  It is derived from the IDTA "Specification of the Asset Administration
+  Shell: Part 2" (CC-BY-4.0, Industrial Digital Twin Association). Two
+  external `$ref`s were pointed at the document's own components so the file
+  is self-contained; the file header records the change.
+* `tests/fixtures/openapi/industry-core-hub.yaml` — the backend API of Eclipse
+  Tractus-X Industry Core Hub
+  (https://github.com/eclipse-tractusx/industry-core-hub,
+  `docs/api/openAPI.yaml`), Apache-2.0, unchanged.
 
 ## Cryptography
 

@@ -89,6 +89,14 @@ document to a step and let the step read it.
 ```
 
 The document is data, not part of the test: a `${{ … }}` written in one of its descriptions is text.
+Every record of the run — the step's inputs on `step.start`, the trace, the report, the job a host keeps — names a
+document by its summary instead of copying it:
+
+```json
+{"input": {"api_document": {"openapi": "3.0.3", "title": "DotAAS Part 2 | …", "version": "V3.1.0_SSP-001", "sha256": "15fa0d64…"}}}
+```
+
+Keep what a step extracts from a document small: the extracted value is an ordinary output and is recorded as it is.
 
 ## Authenticating as the API's security scheme says
 

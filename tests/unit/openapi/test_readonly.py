@@ -36,7 +36,8 @@ import pytest
 import yaml
 from pydantic import BaseModel
 
-from tractusx_testlab.openapi import FrozenDict, FrozenList, freeze
+from tractusx_testlab.logging import wire
+from tractusx_testlab.openapi import FrozenDict, FrozenList, RecordedDocument, freeze
 
 
 def _document() -> Any:
@@ -109,3 +110,56 @@ def test_an_alias_shared_by_the_parser_stays_shared() -> None:
 
 def test_a_scalar_is_returned_as_it_is() -> None:
     assert freeze("text") == "text"
+
+
+class TestRecordedDocument:
+    """A run keeps a whole API document; a record of the run names it."""
+
+    def _document(self) -> RecordedDocument:
+        return RecordedDocument(
+            freeze({"openapi": "3.0.3", "paths": {"/a": {}}}), {"api_document": {"sha256": "x"}}
+        )
+
+    def test_it_reads_as_the_document(self) -> None:
+        document = self._document()
+        assert document["paths"] == {"/a": {}}
+        with pytest.raises(TypeError, match="read-only"):
+            document["x"] = 1
+
+    def test_a_record_carries_the_summary(self) -> None:
+        inputs = {"input": self._document(), "path": "info.version"}
+        assert wire.written(inputs) == {
+            "input": {"api_document": {"sha256": "x"}},
+            "path": "info.version",
+        }
+
+    def test_it_survives_copying_and_pickling_with_its_summary(self) -> None:
+        document = self._document()
+        assert copy.deepcopy(document) is document
+        restored = pickle.loads(pickle.dumps(document))
+        assert restored.summary == document.summary
+        assert restored == document
+
+    def test_a_job_kept_after_the_run_carries_the_summary(self) -> None:
+        from datetime import UTC, datetime
+
+        from tractusx_testlab.models import StepStatus, TckResult, TestResult
+        from tractusx_testlab.models.primitives.enums import TestStatus
+        from tractusx_testlab.models.runtime.results import StepResult
+
+        now = datetime.now(UTC)
+        step = StepResult(
+            step_name="s",
+            step_type="util/json_path_extract",
+            status=StepStatus.PASSED,
+            started_at=now,
+            finished_at=now,
+            duration_s=0,
+            inputs={"input": self._document()},
+        )
+        result = TckResult(
+            tck_id="t",
+            tests=[TestResult(test_id="t", status=TestStatus.COMPLETED, execution=[step])],
+        )
+        kept = wire.as_kept(result)
+        assert kept.tests[0].execution[0].inputs == {"input": {"api_document": {"sha256": "x"}}}

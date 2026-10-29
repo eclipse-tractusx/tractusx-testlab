@@ -31,7 +31,7 @@ from tractusx_testlab.openapi.document import (
     forget_api_documents,
     load_api_document,
 )
-from tractusx_testlab.openapi.readonly import FrozenDict, FrozenList, freeze
+from tractusx_testlab.openapi.readonly import FrozenDict, FrozenList, RecordedDocument, freeze
 
 __all__ = [
     "MAX_API_FILE_BYTES",
@@ -39,6 +39,7 @@ __all__ = [
     "ApiDocumentError",
     "FrozenDict",
     "FrozenList",
+    "RecordedDocument",
     "forget_api_documents",
     "freeze",
     "load_api_document",

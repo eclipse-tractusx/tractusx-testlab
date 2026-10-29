@@ -28,6 +28,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`${{ env.apis.<id>.paths… }}`) and a variable called `apis` are refused.
   Parsed documents are cached by path and SHA-256. `tractusx_testlab.openapi`
   (`load_api_document`, `ApiDocument`, `ApiDocumentError`) is the one reader.
+- A step handed a whole API document keeps it, while every record of the run
+  (inputs on `step.start`, trace, report, kept job) names it by a summary
+  `{"api_document": {openapi, title, version, sha256}}` instead of copying it
+  (`openapi.RecordedDocument`; a value with `__recorded__()` is written as what
+  it returns).
+- The e2e suite carries two API files: the Digital Twin Registry 0.11.0
+  OpenAPI document (typed) and a JSON document for an echo mock (inferred).
+  `api_files.yaml` checks the deployed registry announces the profile its
+  document declares and calls the mock with the key placed where its document
+  says; the workflow checks the trace records both documents by summary.
+  `tests/combinations/test_e2e_api_files_offline.py` runs it without a cluster.
 - `security/api_key`: places an API key (`key`, hidden) under `name` (default
   `X-Api-Key`) `in` a header (default), a query parameter or a cookie, and
   returns `api_key` (`class: AuthToken`) and the `headers`, `query` and

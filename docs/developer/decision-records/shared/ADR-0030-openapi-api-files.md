@@ -31,8 +31,9 @@ Proposed
 Built: §1–3 and §6 — `env.apis`, `${{ env.apis.<id> }}`, the compile-time
 checks (`tractusx_testlab.openapi`), and `security/api_key` /
 `security/basic`. Not built: §4 (schemas as types) and §5 (the `labs` steps).
-Until §5 ships, a step handed a document records it whole in its inputs, as
-it records any value.
+A step handed a whole document keeps it, and every record of the run names it
+by its summary (`api_document`: `openapi`, `title`, `version`, `sha256`)
+instead of copying it.
 
 ## Context
 

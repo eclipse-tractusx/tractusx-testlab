@@ -25,8 +25,9 @@ cluster is created and destroyed within the job.
 ## What runs
 
 `tests/e2e/connector-dtr-smoke/` is a small TCK, purpose-built as testlab's
-own CI signal (not a published certification TCK). Between them its fifteen
-tests use every one of the 56 steps in the engine's catalogue
+own CI signal (not a published certification TCK). Between them its sixteen
+tests use every one of the 69 steps in the engine's catalogue (63, and the 6
+under `labs/`)
 (`docs/api-reference/steps/`) and all three validation kinds —
 `validate/assert`, `validate/field` and `validate/schema` — so no step ships
 without having been run once against something real. The dataplane callback
@@ -114,10 +115,25 @@ run's agreements, retire each with 204, and a repeat must answer 409.
   link was decorative, because nothing else in the deployment could produce
   that document.
 - `engine_toolbox.yaml` — everything that needs no dataspace at all: the flow
-  steps, the utility steps, the OAuth2 steps and the two protocol-aware mocks,
+  steps, the utility steps, the OAuth2, API key and Basic steps and the two
+  protocol-aware mocks,
   driven against the mock server the run starts rather than left uncovered. It
   takes no connector, no registry and no operator input, so it runs unchanged
   in any deployment.
+- `api_files.yaml` — the manifest's two API files (`env.apis`, ADR-0030),
+  read at run time and held against what they describe. `apis/` carries the
+  Digital Twin Registry's own OpenAPI document — the 0.11.0 one, the registry
+  this deployment runs — with its `type` declared, and a small JSON document
+  for the echo mock whose `type` is inferred. The registry's document names
+  the service profile it implements, and the deployed registry's
+  `GET /api/v3/description` must list that profile; the mock's document names
+  the header its API key goes in, `security/api_key` places the run's key
+  there, and the keyed mock must let the call through. Each step reads one
+  value from a document, and the run writes the document down by its summary
+  (`api_document`: version, title, sha256), never whole — which the workflow
+  checks on the trace. `tests/combinations/test_e2e_api_files_offline.py`
+  runs the same file without a cluster, with a loopback stand-in answering
+  for the registry.
 - `experimental_extensions.yaml` — the experimental extensions, which the
   manifest enables with `extensions: [cac, labs]` (and which the compiler
   therefore warns about twice). A step and one of its checks carry `cac:`
