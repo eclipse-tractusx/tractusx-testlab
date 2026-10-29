@@ -31,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - A step handed a whole API document keeps it, while every record of the run
   (inputs on `step.start`, trace, report, kept job) names it by a summary
   `{"api_document": {openapi, title, version, sha256}}` instead of copying it
+  (with the `id` it is declared under once it is bound to a run)
   (`openapi.RecordedDocument`; a value with `__recorded__()` is written as what
   it returns).
 - The e2e suite carries two API files: the Digital Twin Registry 0.11.0

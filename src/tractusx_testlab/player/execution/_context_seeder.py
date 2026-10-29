@@ -44,7 +44,7 @@ from tractusx_testlab.logging import wire
 from tractusx_testlab.logging.masking import register_secret
 from tractusx_testlab.models.primitives.binding_errors import MissingInputVariableError
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
-from tractusx_testlab.openapi import ApiDocumentError, load_api_document
+from tractusx_testlab.openapi import ApiDocumentError, BoundApiDocument, load_api_document
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.loading._package_paths import package_path
 from tractusx_testlab.syntax import context_vars, keys, variables
@@ -279,13 +279,12 @@ def _load_schemas(context: StepContext, tck: Any) -> None:
 
 
 def _load_apis(context: StepContext, tck: Any) -> None:
-    """Bind each ``env.apis`` document, read-only, for ``${{ env.apis.<id> }}`` (ADR-0030).
+    """Bind each ``env.apis`` document for ``${{ env.apis.<id> }}`` (ADR-0030).
 
-    Under ``apis.<id>``, the name that reference reads (``env.`` names the
-    manifest, not a context variable). As data, not as a template: the document is somebody else's text, and a
-    ``${{`` in one of its descriptions is not a reference the author wrote. A
-    file the compiler would have refused is logged and left unbound, so a test
-    that names it fails at that step with an unresolved reference.
+    Under ``apis.<id>``, read-only and tagged with its id and digest
+    (:class:`BoundApiDocument`); as data, not as a template — a ``${{`` in the
+    document is not a reference the author wrote. A file the compiler would
+    have refused is logged and left unbound: a step naming it fails unresolved.
     """
     env_def = getattr(tck.definition, "env", None)
     for api in getattr(env_def, "apis", None) or []:
@@ -297,4 +296,5 @@ def _load_apis(context: StepContext, tck: Any) -> None:
         except ApiDocumentError as exc:
             logger.error("API file apis/%s (env.apis[%s]) %s", api.source, api.id, exc)
             continue
-        context.set_variable(f"apis.{api.id}", document.content)
+        bound = BoundApiDocument(document.content, api.id, document.sha256)
+        context.set_variable(f"apis.{api.id}", bound)

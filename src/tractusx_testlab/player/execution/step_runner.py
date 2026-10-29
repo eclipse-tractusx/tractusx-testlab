@@ -41,6 +41,7 @@ from tractusx_testlab.models.runtime.results import (
     StepResult,
     TestResult,
 )
+from tractusx_testlab.openapi import recorded
 from tractusx_testlab.player.execution._declared import declared_checks
 from tractusx_testlab.player.execution._step_outputs import hide_secrets, run_and_publish
 from tractusx_testlab.player.execution.context import StepContext
@@ -156,9 +157,8 @@ async def _run_step_guarded(
                 credential_carriers(type(step_instance)),
             )
         wire.mask_secret_inputs(type(step_instance), params, str(context.job.job_id))
-        # What the step was given, every ``${{ ... }}`` resolved: the test only
-        # says which reference was written, not what it resolved to.
-        inputs = dict(params)
+        # What the step was given, resolved; an API file by its id, not whole.
+        inputs = recorded(dict(params))
 
         output = await invoke_extended(step_instance, params, context, step_def)
         disclosure = hide_secrets(

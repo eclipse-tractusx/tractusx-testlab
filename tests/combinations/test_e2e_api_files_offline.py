@@ -148,7 +148,7 @@ class TestApiFiles:
     async def test_a_document_is_recorded_by_its_summary(self, outcome, step_id: str) -> None:
         record = wire.written(wire.as_recorded(outcome.result(step_id)).model_dump(mode="json"))
         summary = record["inputs"]["input"]["api_document"]
-        assert set(summary) == {"openapi", "title", "version", "sha256"}
+        assert set(summary) == {"id", "openapi", "title", "version", "sha256"}
         assert len(json.dumps(record)) < 2_000
 
     @pytest.mark.asyncio

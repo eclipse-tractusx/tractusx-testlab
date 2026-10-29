@@ -45,7 +45,7 @@ from tractusx_testlab.logging.masking import forget_secrets
 from tractusx_testlab.logging.trace import ExecutionTrace
 from tractusx_testlab.models.primitives.enums import StepPhase, StepStatus
 from tractusx_testlab.models.runtime.results import StepResult
-from tractusx_testlab.openapi import forget_api_documents, load_api_document
+from tractusx_testlab.openapi import BoundApiDocument, forget_api_documents, load_api_document
 from tractusx_testlab.player.execution._trace_publisher import TracePublisher
 
 _WORKFLOW = REPO_ROOT / ".github/workflows/e2e-umbrella.yml"
@@ -87,15 +87,17 @@ def _verify(script: str) -> None:
 
 
 def _documents() -> dict[str, Any]:
+    """Both API files as a run binds them: read-only, under the id the manifest gives."""
     apis = _E2E / "apis"
-    return {
-        "dtr": load_api_document(
-            apis / "aas-registry-openapi.yaml", "application/vnd.oai.openapi"
-        ).content,
-        "testlab_mock": load_api_document(
-            apis / "testlab-mock.json", "application/vnd.oai.openapi+json"
-        ).content,
+    files = {
+        "dtr": ("aas-registry-openapi.yaml", "application/vnd.oai.openapi"),
+        "testlab_mock": ("testlab-mock.json", "application/vnd.oai.openapi+json"),
     }
+    bound = {}
+    for api_id, (source, media_type) in files.items():
+        loaded = load_api_document(apis / source, media_type)
+        bound[api_id] = BoundApiDocument(loaded.content, api_id, loaded.sha256)
+    return bound
 
 
 def _write_trace(

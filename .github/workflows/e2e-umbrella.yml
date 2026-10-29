@@ -1474,7 +1474,7 @@ jobs:
           for step in ("dtr_profile", "mock_key_header"):
               (event,) = ended("api-files", step)
               summary = ((event["data"].get("inputs") or {}).get("input") or {}).get("api_document")
-              if not isinstance(summary, dict) or set(summary) != {"openapi", "title", "version", "sha256"}:
+              if not isinstance(summary, dict) or set(summary) != {"id", "openapi", "title", "version", "sha256"}:
                   sys.exit(f"api-files: {step} does not record its API file by summary: {event['data'].get('inputs')}")
 
           ours = [line for line, event in events if event["id"].split("/")[1] == "api-files"]

@@ -109,6 +109,57 @@ class RecordedDocument(FrozenDict):
         return RecordedDocument, (dict(self), self.summary)
 
 
+class BoundApiDocument(RecordedDocument):
+    """An API file as a test names it: ``${{ env.apis.<id> }}`` (ADR-0030).
+
+    The read-only document, plus the id the TCK declared it under and the
+    digest of its file, so a step handed one knows which API it calls without
+    being told twice. A record of the run shows its summary with the id added
+    (``{"api_document": {"id", "openapi", "title", "version", "sha256"}}``).
+    """
+
+    __slots__ = ("api_id", "sha256")
+
+    def __init__(self, content: dict[str, Any], api_id: str, sha256: str) -> None:
+        own = getattr(content, "summary", None)
+        described = (
+            dict(own["api_document"]) if isinstance(own, dict) and "api_document" in own else {}
+        )
+        described.setdefault("openapi", str(content.get("openapi", "")))
+        described["sha256"] = sha256
+        super().__init__(content, {"api_document": {"id": api_id, **described}})
+        self.api_id = api_id
+        self.sha256 = sha256
+
+    def __reduce__(self) -> tuple[Any, ...]:
+        return BoundApiDocument, (
+            RecordedDocument(dict(self), self.summary),
+            self.api_id,
+            self.sha256,
+        )
+
+
+def recorded(value: Any) -> Any:
+    """*value* as a record shows it: every :class:`RecordedDocument` in it by its summary.
+
+    Walks the mappings and sequences a step's parameters are made of, and
+    returns *value* itself when nothing in it is a document — the common case
+    costs no copy. A frozen document's own content is not walked.
+    """
+    if isinstance(value, RecordedDocument):
+        return value.__recorded__()
+    if isinstance(value, FrozenDict | FrozenList):
+        return value
+    if isinstance(value, dict):
+        mapped = {key: recorded(item) for key, item in value.items()}
+        return mapped if any(mapped[key] is not value[key] for key in value) else value
+    if isinstance(value, list):
+        items = [recorded(item) for item in value]
+        changed = any(new is not old for new, old in zip(items, value, strict=True))
+        return items if changed else value
+    return value
+
+
 def freeze(value: Any) -> Any:
     """*value* with every mapping and sequence in it made read-only.
 
@@ -157,3 +208,7 @@ for _dumper in (
 ):
     _dumper.add_representer(FrozenDict, yaml.representer.SafeRepresenter.represent_dict)
     _dumper.add_representer(FrozenList, yaml.representer.SafeRepresenter.represent_list)
+    _dumper.add_representer(
+        BoundApiDocument,
+        lambda dumper, document: dumper.represent_dict(document.__recorded__()),
+    )

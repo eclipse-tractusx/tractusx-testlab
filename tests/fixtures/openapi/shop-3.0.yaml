@@ -1,0 +1,141 @@
+#################################################################################
+# Eclipse Tractus-X - Tractus-X TestLab
+#
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#################################################################################
+# This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
+# It was reviewed and tested by a human committer.
+
+# A small OpenAPI 3.0 document for the labs API step tests: every 3.0 schema
+# difference (nullable, boolean exclusiveMinimum, $ref with siblings), ranges
+# (4XX), default, two media types for one status, a required response header,
+# path-item parameters, a write, and a non-JSON answer.
+
+openapi: 3.0.3
+info:
+  title: Shop
+  version: "1.0"
+servers:
+  - url: https://shop.example/api/v1
+paths:
+  /materials/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string}
+    get:
+      operationId: getMaterial
+      tags: [materials]
+      parameters:
+        - {name: X-Tenant, in: header, required: false, schema: {type: string}}
+        - {name: lang, in: query, schema: {type: string}}
+      responses:
+        "200":
+          description: The material.
+          headers:
+            X-Rate-Limit:
+              required: true
+              schema: {type: integer}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Material"}
+        "4XX":
+          $ref: "#/components/responses/Problem"
+        default:
+          description: Anything else.
+    delete:
+      operationId: deleteMaterial
+      tags: [materials]
+      responses:
+        "204": {description: Deleted.}
+        "404": {$ref: "#/components/responses/Problem"}
+  /materials:
+    get:
+      operationId: listMaterials
+      tags: [materials]
+      parameters:
+        - {name: limit, in: query, required: true, schema: {type: integer}}
+      responses:
+        "200":
+          description: Materials.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/Material"}
+    post:
+      operationId: createMaterial
+      tags: [materials]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Material"}
+      responses:
+        "201": {description: Created.}
+        "400": {$ref: "#/components/responses/Problem"}
+  /health:
+    get:
+      operationId: health
+      tags: [ops]
+      responses:
+        "200":
+          description: Up.
+          content:
+            text/plain:
+              schema: {type: string}
+components:
+  schemas:
+    Material:
+      type: object
+      required: [id, share]
+      properties:
+        id: {type: string}
+        share: {type: number, nullable: true, minimum: 0, exclusiveMinimum: true}
+        grade:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Grade"
+        supplier:
+          $ref: "#/components/schemas/Supplier"
+          description: ignored beside a $ref in OpenAPI 3.0
+    Grade:
+      type: string
+      enum: [A, B]
+    Supplier:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string}
+    Problem:
+      type: object
+      required: [title, status]
+      properties:
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+  responses:
+    Problem:
+      description: A problem.
+      content:
+        application/problem+json:
+          schema: {$ref: "#/components/schemas/Problem"}
+        application/json:
+          schema: {$ref: "#/components/schemas/Problem"}
