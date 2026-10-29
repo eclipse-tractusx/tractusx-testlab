@@ -26,6 +26,14 @@ Proposed
 
 2026-10-29
 
+## Implementation status
+
+Built: §1–3 and §6 — `env.apis`, `${{ env.apis.<id> }}`, the compile-time
+checks (`tractusx_testlab.openapi`), and `security/api_key` /
+`security/basic`. Not built: §4 (schemas as types) and §5 (the `labs` steps).
+Until §5 ships, a step handed a document records it whole in its inputs, as
+it records any value.
+
 ## Context
 
 A test that calls an HTTP API checks the answer against a JSON Schema, and that

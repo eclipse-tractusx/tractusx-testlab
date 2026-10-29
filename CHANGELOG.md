@@ -9,6 +9,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- API files (ADR-0030): a TCK carries the OpenAPI document of an API it tests,
+  unchanged, under `apis/` and declares it in `env.apis` as `{id, source, type}`.
+  `type` is `application/vnd.oai.openapi` (YAML) or
+  `application/vnd.oai.openapi+json` (JSON), inferred from `.yaml`/`.yml`/`.json`
+  when omitted, or `application/yaml` / `application/json`. An entry carries no
+  base URL, connector or credential: the steps of a test decide how the API is
+  reached. `testlab validate` and `testlab compile` check every file without
+  touching the network and report each problem as `API file apis/<source>
+  (env.apis[<id>]) …`: the file stays inside `apis/`, is at most 5 MiB, parses as
+  its type (safe YAML without non-JSON tags or duplicate keys, strict JSON), is
+  OpenAPI 3.0.x or 3.1.x (Swagger 2.0 is refused with what to do), and every
+  `$ref` is internal, resolves and is not circular; aliases are bounded to
+  1,000,000 nodes and nesting to 128 levels. The file is packed under
+  `assets/apis/`, listed in the manifest with its digest and media type, and
+  `${{ env.apis.<id> }}` resolves to the parsed document, read-only and shared,
+  as data (a `${{` inside it is text). A reference into the document
+  (`${{ env.apis.<id>.paths… }}`) and a variable called `apis` are refused.
+  Parsed documents are cached by path and SHA-256. `tractusx_testlab.openapi`
+  (`load_api_document`, `ApiDocument`, `ApiDocumentError`) is the one reader.
+- `security/api_key`: places an API key (`key`, hidden) under `name` (default
+  `X-Api-Key`) `in` a header (default), a query parameter or a cookie, and
+  returns `api_key` (`class: AuthToken`) and the `headers`, `query` and
+  `cookies` maps `http/http_request` takes as they are (`headers`,
+  `query_params`); a cookie is also its `Cookie` header.
+- `security/basic`: builds RFC 7617's `Authorization: Basic …` from `username`
+  and `password` (hidden) and returns `authorization` (`class: AuthToken`) and
+  `headers`.
+- A step parameter whose field is marked `json_schema_extra={"secret": True}`
+  is masked from the moment the step's inputs are resolved — before
+  `step.start` publishes them and before a refusal of the value can echo it —
+  so a credential under a name that does not say so (`key`) is hidden like one
+  that does (`logging.wire.mask_secret_inputs`).
+
 - Checkpoints (ADR-0028): the steps at which a run needs someone to act, now
   declared by TestLab and followed by its player instead of guessed by its
   host. A step type declares one on its decorator,

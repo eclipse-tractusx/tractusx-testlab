@@ -19,6 +19,7 @@
  SPDX-License-Identifier: Apache-2.0
 -->
 <!-- This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6). -->
+<!-- This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5). -->
 <!-- It was reviewed and tested by a human committer. -->
 
 # Data Models
@@ -133,7 +134,12 @@ with an optional human-readable `name` and a `skippable` flag the operator can a
 on at runtime.
 
 `EnvDefinition` is the shared environment: `variables`, `services`, `schemas`
-(each a `SchemaDefinition` with `id` + `source`), and `testdata` entries.
+(each a `SchemaDefinition` with `id` + `source`), `testdata` entries, and `apis`
+(each an `ApiDefinition` with `id`, `source` and a `type` inferred from the
+extension when omitted — ADR-0030). The three file entries live in
+`models/authoring/env_files.py`; an API file is loaded by
+`tractusx_testlab.openapi.load_api_document`, the one reader the compiler and the
+player share.
 
 ### Variables
 

@@ -147,6 +147,7 @@ nav:
     - Package:
       - Package Layout: tck-syntax/package/layout.md
       - Common Header: tck-syntax/package/common-header.md
+      - API Files (env.apis): tck-syntax/package/api-files.md
     - Manifest (index.yaml):
       - Header & Metadata: tck-syntax/manifest/index.md
       - Dataspace & Infrastructure: tck-syntax/manifest/dataspace-infrastructure.md
