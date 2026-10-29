@@ -1172,26 +1172,17 @@ jobs:
           poetry run testlab inspect "${TCK_OUT}" --variables --infrastructure
           poetry run testlab inspect "${TCK_OUT}" --json > logs/inspect.json
           poetry run python - <<'PY'
-          import json, pathlib, sys
+          import json, os, pathlib, sys
+
+          import yaml
 
           report = json.loads(pathlib.Path("logs/inspect.json").read_text())["inspection"]
-          expected = {
-              "bpn_discovery.yaml",
-              "catalog_variants.yaml",
-              "connector_negotiation.yaml",
-              "dataplane_callback.yaml",
-              "dsp_step_by_step.yaml",
-              "dtr_consumer_dataplane.yaml",
-              "dtr_roundtrip.yaml",
-              "engine_toolbox.yaml",
-              "experimental_extensions.yaml",
-              "external_callback.yaml",
-              "inbound_call.yaml",
-              "industry_core_journey.yaml",
-              "negative_paths.yaml",
-              "notification_roundtrip.yaml",
-              "push_transfer.yaml",
-          }
+          # The manifest is the source of truth: a test added to it is expected in
+          # the package without a second list here to keep in step.
+          manifest = yaml.safe_load(pathlib.Path(os.environ["TCK_INDEX"]).read_text())
+          expected = {test["id"] for test in manifest["tests"]}
+          if not expected:
+              sys.exit(f"{os.environ['TCK_INDEX']} declares no tests")
           found = {test["test_id"] for test in report["tests"]}
           if found != expected:
               sys.exit(f"package carries {sorted(found)}, manifest declared {sorted(expected)}")
