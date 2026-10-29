@@ -77,7 +77,7 @@ requires-poetry = ">=2.0"
 
 [tool.poetry.group.dev.dependencies]
 build = "^1.2.2"
-setuptools = "^78.1.1"
+setuptools = "^84.1.0"
 # ruff, mypy and mypy's runtime librt are held at the newest versions the
 # Eclipse IP team has approved (Dash tickets #26742, #26728 and #26735). Every
 # ruff 0.16 release and every mypy 2.x release is under review in IPLab
