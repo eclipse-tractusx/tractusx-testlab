@@ -20,9 +20,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Asset entry builders — enriched manifest asset metadata."""
+"""Asset builders — the IR's references to package files, and the manifest's entries for them.
+
+A package carries three folders of files its ``env:`` block names:
+``schemas/``, ``testdata/`` and ``apis/`` (ADR-0030). The IR refers to each
+file by id (``{id: {asset_key, type}}``); the manifest lists each with its
+digest, size and media type.
+"""
 
 from __future__ import annotations
 
@@ -34,8 +41,49 @@ from tractusx_testlab.compiler.ir._instructions import (
     compute_source_hash,
     infer_testdata_type,
 )
+from tractusx_testlab.models.authoring.env_files import ApiDefinition
 
 logger = logging.getLogger(__name__)
+
+#: The package folders a compiled package copies under ``assets/``.
+ASSET_FOLDERS = ("schemas", "testdata", "apis")
+
+
+def build_schema_refs(env_raw: dict[str, Any]) -> dict[str, Any]:
+    """The IR's ``schemas`` block: each JSON Schema file by id."""
+    schemas_raw = env_raw.get("schemas", {})
+    if isinstance(schemas_raw, list):
+        return {
+            entry.get("id", ""): {"asset_key": entry.get("source", ""), "type": "application/json"}
+            for entry in schemas_raw
+        }
+    return {
+        name: {"asset_key": schema.get("file", ""), "type": "application/json"}
+        for name, schema in schemas_raw.items()
+    }
+
+
+def build_testdata_refs(env_raw: dict[str, Any]) -> dict[str, Any]:
+    """The IR's ``testdata`` block: each test data file by id, with its media type."""
+    testdata_raw = env_raw.get("testdata", {})
+    if isinstance(testdata_raw, list):
+        return {
+            entry.get("id", ""): {
+                "asset_key": entry.get("source", ""),
+                "type": entry.get("type", infer_testdata_type(entry.get("source", ""))),
+            }
+            for entry in testdata_raw
+        }
+    return {
+        name: {"asset_key": td.get("file", ""), "type": infer_testdata_type(td.get("file", ""))}
+        for name, td in testdata_raw.items()
+    }
+
+
+def build_api_refs(env_raw: dict[str, Any]) -> dict[str, Any]:
+    """The IR's ``apis`` block: each API file by id, with its declared or inferred type."""
+    apis = [ApiDefinition.model_validate(entry) for entry in env_raw.get("apis") or []]
+    return {api.id: {"asset_key": api.source, "type": api.type} for api in apis}
 
 
 def build_asset_entries(
@@ -51,7 +99,7 @@ def build_asset_entries(
         if not file_path.is_file():
             logger.warning("Asset file not found, skipping: %s", file_path)
             continue
-        mime = "application/json" if folder_name == "schemas" else infer_testdata_type(asset_key)
+        mime = _media_type(folder_name, asset_key, entry)
         entries.append(
             {
                 "id": asset_id,
@@ -64,3 +112,12 @@ def build_asset_entries(
             }
         )
     return entries
+
+
+def _media_type(folder_name: str, asset_key: str, entry: dict[str, Any]) -> str:
+    """The media type a file of *folder_name* is listed with in the manifest."""
+    if folder_name == "schemas":
+        return "application/json"
+    if folder_name == "apis":
+        return str(entry["type"])
+    return infer_testdata_type(asset_key)

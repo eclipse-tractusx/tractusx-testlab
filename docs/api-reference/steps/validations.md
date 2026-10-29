@@ -11,6 +11,7 @@ A step's `validate:` entries check the outputs it published. `input` names one o
 | `validate/assert` | Compare the output named by `input` under `operator`. | `input`, `operator`, operands, `severity` |
 | `validate/field` | Compare the value at `path` inside the output named by `input` under `operator`. | `input`, `path`, `operator`, operands, `severity` |
 | `validate/schema` | Validate the output named by `input` against the JSON Schema given as `schema`. | `input`, `schema`, `severity` |
+| `labs/validate/api_response` | **Experimental (labs).** Check an API answer against what its operation documents: status, `expect`, Content-Type, body schema, required headers. Without `input`, the answer of the API call step it is under. | `input`, `api`, `operation`, `expect`, `data_plane`, `severity` |
 
 ## Operators
 

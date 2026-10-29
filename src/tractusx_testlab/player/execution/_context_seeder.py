@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Context-seeding helpers — populate a StepContext before a TCK run begins.
@@ -43,6 +44,7 @@ from tractusx_testlab.logging import wire
 from tractusx_testlab.logging.masking import register_secret
 from tractusx_testlab.models.primitives.binding_errors import MissingInputVariableError
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
+from tractusx_testlab.openapi import ApiDocumentError, BoundApiDocument, load_api_document
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.loading._package_paths import package_path
 from tractusx_testlab.syntax import context_vars, keys, variables
@@ -65,12 +67,14 @@ def seed_context_variables(
     Run metadata (``execution.id`` and ``execution.resource_prefix``) is set
     after all three and cannot be overridden.
 
-    Side effects: writes to *context* variables store and loads testdata files.
+    Side effects: writes to *context* variables store and loads testdata,
+    schema and API files.
     """
     if tck.base_dir is not None:
         context.set_variable("_tck_root", str(tck.base_dir))
         _load_testdata(context, tck)
         _load_schemas(context, tck)
+        _load_apis(context, tck)
 
     shared_vars = getattr(tck.definition, "shared_variables", None) or {}
     if shared_vars:
@@ -272,3 +276,25 @@ def _load_schemas(context: StepContext, tck: Any) -> None:
     """Seed context with JSON Schema files declared in the TCK ``env.schemas`` block."""
     env_def = getattr(tck.definition, "env", None)
     _load_json_assets(context, tck, "schemas", getattr(env_def, "schemas", None) or [])
+
+
+def _load_apis(context: StepContext, tck: Any) -> None:
+    """Bind each ``env.apis`` document for ``${{ env.apis.<id> }}`` (ADR-0030).
+
+    Under ``apis.<id>``, read-only and tagged with its id and digest
+    (:class:`BoundApiDocument`); as data, not as a template — a ``${{`` in the
+    document is not a reference the author wrote. A file the compiler would
+    have refused is logged and left unbound: a step naming it fails unresolved.
+    """
+    env_def = getattr(tck.definition, "env", None)
+    for api in getattr(env_def, "apis", None) or []:
+        path = _resolve_asset_path(tck.base_dir, "apis", api.source)
+        try:
+            if path is None:
+                raise ApiDocumentError(["is not in the package"])
+            document = load_api_document(path, str(api.type))
+        except ApiDocumentError as exc:
+            logger.error("API file apis/%s (env.apis[%s]) %s", api.source, api.id, exc)
+            continue
+        bound = BoundApiDocument(document.content, api.id, document.sha256)
+        context.set_variable(f"apis.{api.id}", bound)

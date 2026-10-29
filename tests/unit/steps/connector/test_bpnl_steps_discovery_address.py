@@ -92,7 +92,7 @@ class TestDoDspWithBpnl:
         self, ctx: MagicMock, consumer: MagicMock
     ) -> None:
         await DoDspWithBpnlStep().invoke(
-            {"bpnl": _BPNL, "counter_party_address": _VERSIONED},
+            {"allow_any_offer": True, "bpnl": _BPNL, "counter_party_address": _VERSIONED},
             ctx,
             StepDefinition(id="d", uses="connector/consumer/do_dsp_with_bpnl"),
         )

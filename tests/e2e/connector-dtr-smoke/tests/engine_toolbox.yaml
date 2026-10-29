@@ -33,7 +33,7 @@ metadata:
   version: "v1.0.0"
   description: >
     Everything in the engine's catalogue that needs no dataspace at all — the
-    flow steps, the utility steps, the OAuth2 steps and the two protocol-aware
+    flow steps, the utility steps, the OAuth2, API key and Basic steps and the two protocol-aware
     mocks — driven here against real endpoints rather than left uncovered. The
     server the OAuth2 steps post their form to is the mock server this run
     starts, so a token is fetched over HTTP and parsed off a real response;
@@ -227,6 +227,68 @@ execution:
         with: { input: token_type, operator: equals, value: "Bearer" }
       - uses: validate/assert
         with: { input: expires_in, operator: equals, value: 3600 }
+
+  # A2. The API key and Basic steps (ADR-0030).
+
+  # Neither step calls anything: each builds what a request carries. What is
+  # worth proving live is that the map it returns goes into http/http_request
+  # as it is and is accepted by a server that checks it. The mock server
+  # refuses a call without the run's key (401), so the key placed by
+  # security/api_key — in the header the mock reads — is what lets this through.
+  - id: mock_key
+    uses: security/api_key
+    name: Place the mock server's key in the header it reads
+    with:
+      key: "${{ setup.mock_root.api_key }}"
+      name: x-api-key
+    returns:
+      headers:
+        type: object
+
+  - id: call_with_key
+    uses: http/http_request
+    name: Call the keyed mock with the headers security/api_key built
+    with:
+      url: "${{ setup.mock_root.full_mock_url }}"
+      method: GET
+      headers: "${{ execution.mock_key.headers }}"
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
+      - uses: validate/field
+        with: { input: value, path: served_by, operator: equals, value: testlab-mock }
+
+  # RFC 7617's encoding is the whole of security/basic, so the header is
+  # compared byte for byte, then sent to the public token endpoint to show the
+  # map plugs into a request as it is.
+  - id: basic_auth
+    uses: security/basic
+    name: Build the Basic Authorization header
+    with:
+      username: testlab-e2e-user
+      password: testlab-e2e-password
+    returns:
+      authorization:
+        type: string
+      headers:
+        type: object
+    validate:
+      - uses: validate/assert
+        with:
+          input: authorization
+          operator: equals
+          value: "Basic dGVzdGxhYi1lMmUtdXNlcjp0ZXN0bGFiLWUyZS1wYXNzd29yZA=="
+
+  - id: call_with_basic
+    uses: http/http_request
+    name: Send the Basic header to the public token endpoint
+    with:
+      url: "${{ setup.token_endpoint.full_mock_url }}"
+      method: POST
+      headers: "${{ execution.basic_auth.headers }}"
+    validate:
+      - uses: validate/assert
+        with: { input: status_code, operator: equals, value: 200 }
 
   # B. The discovery mock.
 

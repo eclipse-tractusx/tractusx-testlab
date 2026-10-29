@@ -4,9 +4,14 @@
 
 | Module | Step | Summary |
 |---|---|---|
+| `connector/dataplane` | [`labs/connector/dataplane/api_request`](connector-dataplane.md#labs-connector-dataplane-api_request) | Call one operation of an API file through a data plane, and return its answer. |
 | `connector/provider` | [`labs/connector/provider/query_assets`](connector-provider.md#labs-connector-provider-query_assets) | List the ids of the assets the provider connector holds. |
 | `connector/provider` | [`labs/connector/provider/query_contract_definitions`](connector-provider.md#labs-connector-provider-query_contract_definitions) | List the contract definitions the provider connector holds. |
 | `connector/provider` | [`labs/connector/provider/query_policies`](connector-provider.md#labs-connector-provider-query_policies) | List the ids of the policy definitions the provider connector holds. |
 | `flow` | [`labs/flow/for_each`](flow.md#labs-flow-for_each) | Run a nested list of steps once for every item of a list. |
+| `http` | [`labs/http/api_request`](http.md#labs-http-api_request) | Call one operation of an API file directly, and return its answer. |
+| `http` | [`labs/http/api_sweep`](http.md#labs-http-api_sweep) | Call many operations of an API file and check every answer against the document. |
 | `mock/api` | [`labs/mock/api/dynamic`](mock-api.md#labs-mock-api-dynamic) | Register a mock that runs steps for every call and answers with what they worked out. |
 | `util` | [`labs/util/now`](util.md#labs-util-now) | Read the current time, in UTC. |
+| `validate` | [`labs/validate/api_errors`](validate.md#labs-validate-api_errors) | Judge the error answers of a test's API calls together. |
+| `validate` | [`labs/validate/api_response`](validate.md#labs-validate-api_response) | Check an answer against what its operation documents in the API file. |

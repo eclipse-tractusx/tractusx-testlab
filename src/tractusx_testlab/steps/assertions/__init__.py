@@ -35,7 +35,11 @@ from tractusx_testlab.steps.assertions.operators import (
 from tractusx_testlab.steps.assertions.vocabulary import (
     DEFAULT_OPERATOR,
     AssertionKind,
+    CheckOutcome,
+    RegisteredValidation,
     ResolvedAssertion,
+    register_validation,
+    registered_validation,
     resolve,
 )
 
@@ -47,7 +51,11 @@ __all__ = [
     "AssertOperator",
     "AssertionEngine",
     "AssertionKind",
+    "CheckOutcome",
+    "RegisteredValidation",
     "ResolvedAssertion",
     "apply_operator",
+    "register_validation",
+    "registered_validation",
     "resolve",
 ]

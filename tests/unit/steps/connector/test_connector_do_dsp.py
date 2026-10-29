@@ -88,6 +88,7 @@ class TestDoDspStep:
         # Act
         await DoDspStep().invoke(
             raw_params={
+                "allow_any_offer": True,
                 "counter_party_id": "BPNL000000000001",
                 "counter_party_address": "https://provider.example.com/dsp",
             },
@@ -111,6 +112,7 @@ class TestDoDspStep:
         # Act
         output = await DoDspStep().invoke(
             raw_params={
+                "allow_any_offer": True,
                 "counter_party_id": "BPNL000000000001",
                 "counter_party_address": "https://provider.example.com/dsp",
             },
@@ -132,6 +134,7 @@ class TestDoDspStep:
 
         output = await DoDspStep().invoke(
             raw_params={
+                "allow_any_offer": True,
                 "counter_party_id": "BPNL000000000001",
                 "counter_party_address": "https://provider.example.com/dsp",
             },
@@ -158,6 +161,7 @@ class TestDoDspStep:
         with pytest.raises(StepExecutionError, match="endpoint"):
             await DoDspStep().invoke(
                 raw_params={
+                    "allow_any_offer": True,
                     "counter_party_id": "BPNL000000000001",
                     "counter_party_address": "https://provider.example.com/dsp",
                 },
@@ -208,6 +212,7 @@ class TestDoDspStep:
         with pytest.raises(StepExecutionError):
             await DoDspStep().invoke(
                 raw_params={
+                    "allow_any_offer": True,
                     "counter_party_id": "BPNL000000000001",
                     "counter_party_address": "https://provider.example.com/dsp",
                 },
@@ -231,7 +236,7 @@ class TestDoDspWithBpnlStep:
         ctx.dataspace.consumer.return_value = consumer
 
         output = await DoDspWithBpnlStep().invoke(
-            raw_params={"bpnl": "BPNL000000000001"},
+            raw_params={"allow_any_offer": True, "bpnl": "BPNL000000000001"},
             context=ctx,
             definition=definition,
         )
@@ -288,7 +293,7 @@ class TestDoDspWithBpnlStep:
 
         with pytest.raises(StepExecutionError, match="endpoint"):
             await DoDspWithBpnlStep().invoke(
-                raw_params={"bpnl": "BPNL000000000001"},
+                raw_params={"allow_any_offer": True, "bpnl": "BPNL000000000001"},
                 context=ctx,
                 definition=definition,
             )

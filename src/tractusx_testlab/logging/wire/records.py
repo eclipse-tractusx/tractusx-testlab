@@ -155,6 +155,9 @@ def _kept_step(step: StepResult) -> StepResult:
     disclosure = _disclosure_of(step)
     return step.model_copy(
         update={
+            # Redacted before the dump, which would turn a document that names
+            # itself in a record (an API file) into a plain copy of itself.
+            "inputs": redact_secrets(step.inputs),
             "output": _withheld(step.output, disclosure),
             "assertions": [_safe_check(check, disclosure) for check in step.assertions],
         }

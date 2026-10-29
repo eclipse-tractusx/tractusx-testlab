@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """IR Builder — compiles TCK manifests into manifest.yaml + tck-execution.json."""
@@ -38,13 +39,16 @@ import yaml
 
 from tractusx_testlab.authoring._infrastructure import as_requirements, merge_requirements
 from tractusx_testlab.compiler._fingerprint import build_fingerprint
-from tractusx_testlab.compiler.ir._assets import build_asset_entries
+from tractusx_testlab.compiler.ir._assets import (
+    ASSET_FOLDERS,
+    build_api_refs,
+    build_asset_entries,
+    build_schema_refs,
+    build_testdata_refs,
+)
 from tractusx_testlab.compiler.ir._compilation import build_compiled_tests, iter_test_entries
 from tractusx_testlab.compiler.ir._instructions import (
     compute_source_hash,
-)
-from tractusx_testlab.compiler.ir._instructions import (
-    infer_testdata_type as _infer_testdata_type,
 )
 from tractusx_testlab.compiler.ir._symbols import build_global_symbols
 from tractusx_testlab.compiler.validation._expressions import resolve_expression
@@ -79,14 +83,16 @@ def build_ir(
     env_raw = manifest_data.get("env", {})
     global_symbols = build_global_symbols(env_raw)
     services = _build_services(env_raw)
-    schemas = _build_schemas(env_raw)
-    testdata = _build_testdata(env_raw)
+    schemas = build_schema_refs(env_raw)
+    testdata = build_testdata_refs(env_raw)
+    apis = build_api_refs(env_raw)
 
     execution_dict: dict[str, Any] = {
         "global_symbols": global_symbols,
         "services": services,
         "schemas": schemas,
         "testdata": testdata,
+        "apis": apis,
         "tests": tests_list,
         "compiled_tests": compiled_tests,
     }
@@ -111,6 +117,7 @@ def build_ir(
 
     schema_assets = build_asset_entries(base_dir, "schemas", schemas)
     testdata_assets = build_asset_entries(base_dir, "testdata", testdata)
+    api_assets = build_asset_entries(base_dir, "apis", apis)
 
     manifest_dict: dict[str, Any] = {
         "kind": "manifest",
@@ -129,10 +136,11 @@ def build_ir(
         "assets": {
             "schemas": schema_assets,
             "testdata": testdata_assets,
+            "apis": api_assets,
         },
     }
 
-    all_asset_entries = schema_assets + testdata_assets
+    all_asset_entries = schema_assets + testdata_assets + api_assets
     package_checksum = _compute_package_checksum(
         manifest_dict,
         execution_json_bytes,
@@ -189,9 +197,9 @@ def _load_manifest(manifest_path: Path) -> dict[str, Any]:
 
 
 def _copy_assets(base_dir: Path, output_path: Path) -> None:
-    """Copy schemas/ and testdata/ from the source TCK into output/assets/."""
+    """Copy schemas/, testdata/ and apis/ from the source TCK into output/assets/."""
     assets_dir = output_path / "assets"
-    for folder_name in ("schemas", "testdata"):
+    for folder_name in ASSET_FOLDERS:
         src_folder = base_dir / folder_name
         if not src_folder.is_dir():
             continue
@@ -206,43 +214,6 @@ def _build_services(env_raw: dict[str, Any]) -> list[dict[str, Any]]:
     """Build the root-level services list (instantiation recipes)."""
     services_raw = env_raw.get("services", [])
     return [_build_service_entry(svc) for svc in services_raw]
-
-
-def _build_schemas(env_raw: dict[str, Any]) -> dict[str, Any]:
-    """Build the root-level schemas dict (asset references)."""
-    schemas_raw = env_raw.get("schemas", {})
-    if isinstance(schemas_raw, list):
-        return {
-            entry.get("id", ""): {
-                "asset_key": entry.get("source", ""),
-                "type": "application/json",
-            }
-            for entry in schemas_raw
-        }
-    return {
-        name: {"asset_key": schema.get("file", ""), "type": "application/json"}
-        for name, schema in schemas_raw.items()
-    }
-
-
-def _build_testdata(env_raw: dict[str, Any]) -> dict[str, Any]:
-    """Build the root-level testdata dict (asset references)."""
-    testdata_raw = env_raw.get("testdata", {})
-    if isinstance(testdata_raw, list):
-        return {
-            entry.get("id", ""): {
-                "asset_key": entry.get("source", ""),
-                "type": entry.get("type", _infer_testdata_type(entry.get("source", ""))),
-            }
-            for entry in testdata_raw
-        }
-    return {
-        name: {
-            "asset_key": td.get("file", ""),
-            "type": _infer_testdata_type(td.get("file", "")),
-        }
-        for name, td in testdata_raw.items()
-    }
 
 
 def _build_service_entry(svc: dict[str, Any]) -> dict[str, Any]:

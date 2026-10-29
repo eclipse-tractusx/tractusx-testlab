@@ -9,6 +9,83 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- API files (ADR-0030): a TCK carries the OpenAPI document of an API it tests,
+  unchanged, under `apis/` and declares it in `env.apis` as `{id, source, type}`.
+  `type` is `application/vnd.oai.openapi` (YAML) or
+  `application/vnd.oai.openapi+json` (JSON), inferred from `.yaml`/`.yml`/`.json`
+  when omitted, or `application/yaml` / `application/json`. An entry carries no
+  base URL, connector or credential: the steps of a test decide how the API is
+  reached. `testlab validate` and `testlab compile` check every file without
+  touching the network and report each problem as `API file apis/<source>
+  (env.apis[<id>]) …`: the file stays inside `apis/`, is at most 5 MiB, parses as
+  its type (safe YAML without non-JSON tags or duplicate keys, strict JSON), is
+  OpenAPI 3.0.x or 3.1.x (Swagger 2.0 is refused with what to do), and every
+  `$ref` is internal, resolves and is not circular; aliases are bounded to
+  1,000,000 nodes and nesting to 128 levels. The file is packed under
+  `assets/apis/`, listed in the manifest with its digest and media type, and
+  `${{ env.apis.<id> }}` resolves to the parsed document, read-only and shared,
+  as data (a `${{` inside it is text). A reference into the document
+  (`${{ env.apis.<id>.paths… }}`) and a variable called `apis` are refused.
+  Parsed documents are cached by path and SHA-256. `tractusx_testlab.openapi`
+  (`load_api_document`, `ApiDocument`, `ApiDocumentError`) is the one reader.
+- A step handed a whole API document keeps it, while every record of the run
+  (inputs on `step.start`, trace, report, kept job) names it by a summary
+  `{"api_document": {openapi, title, version, sha256}}` instead of copying it
+  (with the `id` it is declared under once it is bound to a run)
+  (`openapi.RecordedDocument`; a value with `__recorded__()` is written as what
+  it returns).
+- The e2e suite carries two API files: the Digital Twin Registry 0.11.0
+  OpenAPI document (typed) and a JSON document for an echo mock (inferred).
+  `api_files.yaml` checks the deployed registry announces the profile its
+  document declares and calls the mock with the key placed where its document
+  says; the workflow checks the trace records both documents by summary.
+  `tests/combinations/test_e2e_api_files_offline.py` runs it without a cluster.
+- `labs` steps that call and check operations of an API file (ADR-0030 §5),
+  under `extensions: [labs]`. `labs/http/api_request` calls one operation —
+  named by `operationId` or `METHOD /path`, checked at compile time — at
+  `base_url` (default: a literal first server URL, never a templated one) and
+  returns `status_code`, `response_body`, `response_headers` and `operation`
+  (`{api, id, method, path}`); `expect` (a status, `4XX`, `success`, `error`)
+  fails the step on another answer. `labs/connector/dataplane/api_request` does
+  the same through a data plane with the EDR from context (`edr_token: ''` for
+  none). `labs/validate/api_response` — under `validate:` or as a step — checks
+  the status (exact, class, `default`), `expect`, the media type, the body
+  against its schema (3.0 schemas with 3.0's meaning) and required headers,
+  reporting every problem with its JSON pointer, keyword, schema location and a
+  clipped, masked value; `data_plane: true` reports 401/403/502/504 as the data
+  plane's. `labs/validate/api_errors` judges a test's error answers together:
+  one format (declared, `schema` or RFC 9457), no leaks (stack traces,
+  exception classes, SQL, file paths, private addresses, internal hosts) and no
+  5xx for a request sent wrong on purpose. `labs/http/api_sweep` calls many
+  operations — GET and HEAD by default, a write only when listed and
+  `include_writes: true` — with bounded concurrency (4, at most 16), a
+  per-call timeout and an overall budget, one result row per operation.
+  Requests are built before anything is sent: path values percent-encoded per
+  segment, CR/LF/NUL refused in headers and parameters, redirects not followed,
+  answers capped at 10 MiB decoded. Operation indexes and compiled validators
+  are cached per document (bounded LRU); a warm check of an ICH answer takes
+  ~40 µs. A data-plane call without an earlier step that publishes
+  `dataplane_url` and `edr_token` is warned at compile time.
+- The e2e suite runs every new step against the umbrella's registry and its own
+  OpenAPI document (`api_steps.yaml`), and the workflow reads the trace back for
+  their verdicts; `test_e2e_api_steps_offline.py` mirrors it and runs the
+  workflow's verifier on its results.
+- `http_client.request(max_response_bytes=…)` reads at most that many decoded
+  bytes of an answer and fails with `RESPONSE_TOO_LARGE` past it.
+- `security/api_key`: places an API key (`key`, hidden) under `name` (default
+  `X-Api-Key`) `in` a header (default), a query parameter or a cookie, and
+  returns `api_key` (`class: AuthToken`) and the `headers`, `query` and
+  `cookies` maps `http/http_request` takes as they are (`headers`,
+  `query_params`); a cookie is also its `Cookie` header.
+- `security/basic`: builds RFC 7617's `Authorization: Basic …` from `username`
+  and `password` (hidden) and returns `authorization` (`class: AuthToken`) and
+  `headers`.
+- A step parameter whose field is marked `json_schema_extra={"secret": True}`
+  is masked from the moment the step's inputs are resolved — before
+  `step.start` publishes them and before a refusal of the value can echo it —
+  so a credential under a name that does not say so (`key`) is hidden like one
+  that does (`logging.wire.mask_secret_inputs`).
+
 - Checkpoints (ADR-0028): the steps at which a run needs someone to act, now
   declared by TestLab and followed by its player instead of guessed by its
   host. A step type declares one on its decorator,
@@ -201,6 +278,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `connector/provider/create_asset` forwards `dct_subject`.
 
 ### Changed
+
+- **A negotiating step without filters is refused.** `pull_data_filtered`,
+  `pull_data_filtered_by_policy`, `do_dsp` and `do_dsp_with_bpnl` negotiate the
+  first offer that passes their `filters`; with none, that was whatever the
+  provider listed first — another test's asset, a leftover, a different one
+  tomorrow — reported on as if it were the asset meant. Such a step now fails
+  before asking for the catalog (`OFFER_FILTER_MISSING`, origin `authoring`)
+  unless it says `allow_any_offer: true`, and `testlab validate` warns about it.
+  None of the 61 such steps in the production compatibility kits, and none in
+  this repository's TCKs, is without filters.
 
 - `certifi` is 2026.10.19. A new workflow, "Update DEPENDENCIES", runs after
   every change to `poetry.lock` on main and once a day: it asks the Eclipse IP

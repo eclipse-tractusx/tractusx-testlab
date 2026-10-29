@@ -34,6 +34,7 @@ from tractusx_testlab.models import (
     StepResult,
 )
 from tractusx_testlab.models.authoring.definitions import Assertion
+from tractusx_testlab.openapi.readonly import recorded
 from tractusx_testlab.steps._checks import check_schema_validation
 from tractusx_testlab.steps._checks.extraction import extract_path
 from tractusx_testlab.steps._checks.published_names import names_a_published_output
@@ -41,9 +42,12 @@ from tractusx_testlab.steps.assertions.operators import RANGE_OPERATORS, apply_o
 from tractusx_testlab.steps.assertions.vocabulary import (
     AssertionKind,
     ResolvedAssertion,
+    VariableReader,
     check_severity,
+    registered_validation,
     resolve,
 )
+from tractusx_testlab.steps.step_contract import StepOutput
 
 
 class AssertionEngine:
@@ -51,7 +55,10 @@ class AssertionEngine:
 
     @staticmethod
     def evaluate(
-        assertions: list[Assertion], output: object, declared: frozenset[str] | None = None
+        assertions: list[Assertion],
+        output: object,
+        declared: frozenset[str] | None = None,
+        variables: VariableReader | None = None,
     ) -> list[AssertionResult]:
         """Evaluate every ``validate:`` entry against the output the step produced.
 
@@ -59,15 +66,21 @@ class AssertionEngine:
         names something else is reported as a broken assertion rather than
         silently extracting ``None`` and comparing that — which reads as the SUT
         failing the check, when what actually happened is that the check was
-        never pointed at anything.
+        never pointed at anything. *variables* reads the run's variables, for a
+        check an extension registered (``labs/validate/api_response`` finds its
+        API document there).
         """
         return [
-            AssertionEngine._evaluate_one(assertion, output, declared) for assertion in assertions
+            AssertionEngine._evaluate_one(assertion, output, declared, variables)
+            for assertion in assertions
         ]
 
     @staticmethod
     def _evaluate_one(
-        assertion: Assertion, output: object, declared: frozenset[str] | None = None
+        assertion: Assertion,
+        output: object,
+        declared: frozenset[str] | None = None,
+        variables: VariableReader | None = None,
     ) -> AssertionResult:
         params = assertion.with_ or {}
         # A severity that names nothing cannot soften its own failure, so it is
@@ -103,6 +116,9 @@ class AssertionEngine:
                 severity=severity,
             )
 
+        if resolved.kind is AssertionKind.REGISTERED:
+            return AssertionEngine._registered(assertion, output, params, severity, variables)
+
         actual = AssertionEngine._extract_subject(output, params, resolved)
         expected = AssertionEngine._resolve_expected(params, resolved)
         passed, message = AssertionEngine._check(resolved, actual, expected)
@@ -113,6 +129,33 @@ class AssertionEngine:
             expected=expected,
             actual=actual,
             message="" if passed else message,
+            severity=severity,
+        )
+
+    @staticmethod
+    def _registered(
+        assertion: Assertion,
+        output: object,
+        params: dict,
+        severity: AssertionSeverity,
+        variables: VariableReader | None,
+    ) -> AssertionResult:
+        """Run a check an extension registered; it says what to record."""
+        check = registered_validation(assertion.uses)
+        if check is None:  # resolve() only answers REGISTERED for a registered one
+            raise LookupError(assertion.uses)
+        if params.get("input") is not None:
+            subject = extract_path(output, params["input"])
+        else:  # the step's whole output, as its declared fields
+            subject = output.value if isinstance(output, StepOutput) else output
+        outcome = check.evaluate(subject, params, variables)
+        return AssertionResult(
+            # An API document handed in as ``api`` is recorded by its id, not whole.
+            assertion=assertion.model_copy(update={"with_": recorded(params)}),
+            passed=outcome.passed,
+            expected=outcome.expected,
+            actual=outcome.actual,
+            message="" if outcome.passed else outcome.message,
             severity=severity,
         )
 

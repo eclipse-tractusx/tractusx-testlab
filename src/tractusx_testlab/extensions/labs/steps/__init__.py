@@ -29,6 +29,6 @@ and this package is imported through :mod:`tractusx_testlab.extensions.step_modu
 so ``labs/`` steps register with the rest.
 """
 
-from tractusx_testlab.extensions.labs.steps import dynamic_mock, for_each, now, provider_query
+from tractusx_testlab.extensions.labs.steps import api, dynamic_mock, for_each, now, provider_query
 
-__all__ = ["dynamic_mock", "for_each", "now", "provider_query"]
+__all__ = ["api", "dynamic_mock", "for_each", "now", "provider_query"]

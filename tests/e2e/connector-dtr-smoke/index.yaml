@@ -20,6 +20,7 @@
 ################################################################################
 
 ## This code was partially generated using artificial intelligence (AI) (Tool: Codex, Model: GPT-5.6 Sol).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 # Self-hosted smoke TCK for the `.github/workflows/e2e-umbrella.yml` pipeline.
@@ -296,6 +297,17 @@ env:
     - id: shell_descriptor
       source: shell_descriptor.json
 
+  # Two API files (ADR-0030), read by api_files.yaml. The Digital Twin
+  # Registry's own OpenAPI document — the 0.11.0 one, the registry this
+  # deployment runs — declares its type; the mock's is JSON and has its type
+  # inferred from the extension, so both ways of stating one are compiled.
+  apis:
+    - id: dtr
+      source: aas-registry-openapi.yaml
+      type: application/vnd.oai.openapi
+    - id: testlab_mock
+      source: testlab-mock.json
+
 # Every entry is `skippable: true`. This is testlab's own CI signal rather than
 # a certification TCK, so the operator is allowed to run any subset — which is
 # also what lets the workflow execute several *combinations* of one compiled
@@ -345,6 +357,16 @@ tests:
   - id: engine_toolbox.yaml
     name: Run the flow, utility, OAuth2 and protocol-mock steps against real endpoints
     skippable: true
+  - id: api_files.yaml
+    name: Read the API files at run time, and hold them against the services they describe
+    skippable: true
   - id: experimental_extensions.yaml
     name: Run the experimental extensions — `cac:`, a `labs` retry parameter, and the `labs` loop and queries — against a live connector
+    skippable: true
+  - id: api_steps.yaml
+    name: Call the registry's own operations from its API file — directly, through the data plane and as a sweep — and check every answer against the document
+    skippable: true
+  # Meant to fail: the workflow runs it alone and requires the refusal.
+  - id: offer_guard.yaml
+    name: Refuse a negotiation that names no offer
     skippable: true

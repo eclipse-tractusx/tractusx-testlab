@@ -34,6 +34,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Any
 
 from tractusx_testlab.authoring.registry import StepRegistry
+from tractusx_testlab.logging import wire
 from tractusx_testlab.models import StepStatus
 from tractusx_testlab.models.primitives.enums import StepPhase
 from tractusx_testlab.models.runtime.results import StepResult
@@ -81,6 +82,7 @@ async def run_phase_step(
     deferred: frozenset[str] = getattr(step_cls, "deferred_params", frozenset())
     carriers = credential_carriers(step_cls)
     params = try_resolve_params(step_def.with_ or {}, context, deferred, carriers)
+    wire.mask_secret_inputs(step_cls, params, str(context.job.job_id))
     monitor.on_step_started(
         job_id,
         test.definition.id,

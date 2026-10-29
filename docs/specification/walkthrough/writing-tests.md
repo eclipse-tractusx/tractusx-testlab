@@ -143,6 +143,8 @@ Key points:
       `config/connector/policy` / `config/connector/asset` for the two connector documents (`class: Policy` / `class: Asset`).
 - `schemas` and `testdata` are lists of `{ id, source }` entries — `source` is the file name under `schemas/` or
   `testdata/` — referenced as `${{ env.schemas.<id> }}` and `${{ env.testdata.<id> }}`.
+- `apis` (optional, not used here) lists OpenAPI documents under `apis/` the same way, referenced as
+  `${{ env.apis.<id> }}` — see [API Files](../../tck-syntax/package/api-files.md).
 - `tests` lists the test files in execution order. `id` is the file name; `name` and `skippable` are optional.
 
 ## Step 2 — Write Your First Test
@@ -289,6 +291,7 @@ All references use the `${{ }}` expression syntax:
 | `${{ env.<id> }}` | A manifest variable's value |
 | `${{ env.testdata.<id> }}` | A testdata file's content |
 | `${{ env.schemas.<id> }}` | A schema file's content |
+| `${{ env.apis.<id> }}` | An API file: the parsed OpenAPI document, read-only |
 | `${{ setup.<step-id>.<output> }}` | A setup step's output (same test) |
 | `${{ execution.<step-id>.<output> }}` | An earlier execution step's output (same test) |
 | `${{ infrastructure.<engine\|sut>.<capability>.<field> }}` | A bound infrastructure value. A credential (`…connector.api_key`) may only be the whole value of an `http/http_request` header sent to that binding's own origin; traces show it as `***` ([rules](../../tck-syntax/steps/expressions.md#credential-references)) |

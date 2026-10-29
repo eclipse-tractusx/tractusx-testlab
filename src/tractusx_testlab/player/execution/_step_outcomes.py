@@ -37,6 +37,7 @@ from dataclasses import dataclass
 
 from tractusx_testlab.models import StepStatus
 from tractusx_testlab.models.runtime.results import ENGINE_FAULT_PREFIX, StepResult
+from tractusx_testlab.openapi.exchanges import ApiExchangeJournal
 
 
 @dataclass(frozen=True)
@@ -66,16 +67,19 @@ class StepOutcomes:
     context lives for the whole run, and two tests may give a step the same id.
     """
 
-    __slots__ = ("_outcomes", "_stopped_by")
+    __slots__ = ("_outcomes", "_stopped_by", "api_exchanges")
 
     def __init__(self) -> None:
         self._outcomes: dict[str, StepOutcome] = {}
         self._stopped_by: str | None = None
+        #: The answers the test's API call steps received (``labs/validate/api_errors``).
+        self.api_exchanges = ApiExchangeJournal()
 
     def clear(self) -> None:
         """Forget the test before."""
         self._outcomes.clear()
         self._stopped_by = None
+        self.api_exchanges.clear()
 
     def record(
         self,
