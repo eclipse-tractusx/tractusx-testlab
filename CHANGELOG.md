@@ -10,21 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - `discovery/connectors_by_bpn`: looks up a business partner's connector
-  endpoints from its BPN, the way a Catena-X consumer (CCM, for one) must. It
-  asks the Discovery Finder for the `bpn` discovery service, then that EDC
-  Discovery for the BPN, and publishes `connector_endpoints`,
-  `counter_party_address` (the first endpoint, ready for
-  `connector/consumer/discover_connector` to resolve the protocol),
-  `edc_discovery_url` and the raw `discovery` document. `edc_discovery_url`
-  skips the finder, `discovery_finder_url` overrides the binding and
-  `access_token` the engine's own token. A BPN the service holds no endpoint
-  for, a finder with no `bpn` service or a refusal fails the step, naming the
-  service asked.
+  endpoints from its BPN, the way a Catena-X consumer (CCM, for one) must. The
+  step sends no request itself: it builds the SDK's `DiscoveryFinderService`
+  and `ConnectorDiscoveryService` from `infrastructure.engine.discovery` and
+  publishes what they answer — `connector_endpoints`, `counter_party_address`
+  (the first endpoint, ready for `connector/consumer/discover_connector` to
+  resolve the protocol) and `edc_discovery_url`. `discovery_finder_url`
+  overrides the binding's finder (a mock's). A BPN the service holds no
+  endpoint for fails the step; a finder, EDC Discovery or IdP that does not
+  answer is reported as the infrastructure's failure (`BoundServiceError`).
 - `infrastructure.engine.discovery`: the dataspace's Discovery Finder
-  (`finder_url`) and the engine's technical user for it (`token_url`,
-  `client_id`, `client_secret`, `scope`), with the client-credentials token
-  fetched by the step. `client_secret` is a secret field, projected as a
-  handle and masked.
+  (`finder_url`) and the engine's technical user for it — `auth_url`, `realm`,
+  `client_id`, `client_secret`, the SDK's `OAuth2Manager` arguments. Without
+  `auth_url` no token is asked for. `client_secret` is a secret field,
+  projected as a handle and masked.
 - `mock/discovery` also serves the Discovery Finder search
   (`POST /api/v1.0/administration/connectors/discovery/search`), answering a
   `bpn` lookup with the mock EDC Discovery's own address, and publishes
@@ -368,6 +367,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- The CLI's background mock server is listening before the run's first step:
+  `start()` returned while uvicorn was still binding, so a step calling one of
+  the run's own mocks at once (a discovery lookup against `mock/discovery`) was
+  refused a connection.
 - The end-of-run result tables keep their right border when a step or test
   name contains a registered secret. The terminal masks secrets in what it
   prints, so `oauth_password` in a run whose connector API key is `password`

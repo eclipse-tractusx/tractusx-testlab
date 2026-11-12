@@ -10,19 +10,15 @@
 
 Look up a business partner's connector endpoints from its BPN.
 
-Asks the Discovery Finder for the EDC Discovery, then the EDC Discovery for the BPN. A BPN the service holds no connector for fails the step, naming the service asked: an empty address handed on would surface three steps later as a refused connection that says nothing about why.
+A BPN the EDC Discovery holds no connector for fails the step, naming the service asked: an empty address handed on would surface three steps later as a refused connection that says nothing about why.
 
 **Inputs**
 
 | Parameter | Type | Required | Default | Also accepts | Description |
 |---|---|---|---|---|---|
-| `headers` | object | no | `{}` | — | Extra HTTP headers merged into the request. |
-| `timeout` | number | no | `None` | — | Request timeout in seconds; the test's default is used when omitted. |
 | `bpnl` | string | yes | — | — | BPN of the business partner whose connectors are looked up. |
 | `discovery_type` | string | no | `'bpn'` | — | Key type the Discovery Finder is asked for. 'bpn' is the EDC Discovery; change it only for a dataspace that files the service under another type. |
-| `discovery_finder_url` | string | no | `''` | — | Discovery Finder search URL to ask instead of 'infrastructure.engine.discovery.finder_url'. |
-| `edc_discovery_url` | string | no | `''` | — | EDC Discovery URL to ask directly. When given, the Discovery Finder is not asked at all. |
-| `access_token` | string | no | `''` | — | Bearer token to call the discovery services with, instead of the one the engine obtains with 'infrastructure.engine.discovery' client credentials. |
+| `discovery_finder_url` | string | no | `''` | — | Discovery Finder search URL to ask instead of 'infrastructure.engine.discovery.finder_url' — a mock's, most of all. The binding's technical user still signs the requests. |
 
 **Output** — the value assertions and `returns:` read
 
@@ -33,4 +29,3 @@ _Output contract of `discovery/connectors_by_bpn`._
 | `connector_endpoints` | list of string | Every connector endpoint the EDC Discovery holds for the BPN. |
 | `counter_party_address` | string | The first of them — the DSP root to hand to connector discovery. |
 | `edc_discovery_url` | string | EDC Discovery URL that was asked, as the finder answered it. |
-| `discovery` | any | The EDC Discovery response document, unchanged. |

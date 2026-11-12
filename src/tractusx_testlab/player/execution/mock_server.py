@@ -29,12 +29,17 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 
 import uvicorn
 
 from tractusx_testlab.config.settings import TestlabConfig
 
 logger = logging.getLogger(__name__)
+
+#: How long ``start`` waits for the server to listen before carrying on regardless.
+_READY_TIMEOUT_S = 10.0
+_READY_POLL_S = 0.01
 
 
 class _BackgroundMockServer:
@@ -78,7 +83,26 @@ class _BackgroundMockServer:
             daemon=True,
         )
         self._thread.start()
+        self._await_listening()
         logger.info("Mock server started on port %d (background thread)", self._port)
+
+    def _await_listening(self) -> None:
+        """Return once the server listens, so the run's first call cannot beat it.
+
+        The thread binds the socket some milliseconds after it starts. A step
+        that calls one of the run's own mocks straight away — a discovery
+        lookup against ``mock/discovery`` is one — was refused a connection
+        while uvicorn was still starting. A server that never comes up is
+        reported and the run goes on: a run that uses no mock does not need it.
+        """
+        deadline = time.monotonic() + _READY_TIMEOUT_S
+        while time.monotonic() < deadline:
+            if self._server is None or self._server.started:
+                return
+            if self._thread is not None and not self._thread.is_alive():
+                break
+            time.sleep(_READY_POLL_S)
+        logger.warning("Mock server on port %d is not listening yet", self._port)
 
     def stop(self) -> None:
         """Signal the server to shut down."""

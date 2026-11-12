@@ -22,79 +22,112 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""What the discovery steps share: the engine's token, and reading the services' answers."""
+"""The SDK's discovery services, built from ``infrastructure.engine.discovery``.
+
+Testlab sends none of the discovery requests itself: the SDK's
+``DiscoveryFinderService`` and ``ConnectorDiscoveryService`` do, and their HTTP
+calls land in the step's trace through the SDK's own instrumentation. What is
+here is only the wiring — the binding turned into the SDK's ``OAuth2Manager``
+and services — and the SDK's failures named for the report.
+"""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from tractusx_sdk.dataspace.managers import OAuth2Manager
+from tractusx_sdk.dataspace.services.discovery import (
+    ConnectorDiscoveryService,
+    DiscoveryFinderService,
+)
+
 from tractusx_testlab.logging.masking import register_secret
-from tractusx_testlab.models import StepExecutionError
-from tractusx_testlab.steps import http_client
+from tractusx_testlab.models import BoundServiceError, StepExecutionError
+from tractusx_testlab.steps import sdk_call
 
 if TYPE_CHECKING:
     from tractusx_testlab.models.domain.discovery_capability import DiscoveryBinding
 
-__all__ = ["client_token", "endpoints_for", "quoted"]
-
-#: How much of a refusing server's body an error message quotes.
-_QUOTED_BODY = 300
+__all__ = ["DiscoveryServices", "build_services", "call"]
 
 
-async def client_token(step_type: str, binding: DiscoveryBinding, timeout: float, run: str) -> str:
-    """A token for the engine's technical user, or ``""`` when none is configured."""
-    if not binding.token_url:
-        return ""
-    if not binding.client_id:
+class _NoToken:
+    """The ``OAuth2Manager`` stand-in for discovery services that ask for no token.
+
+    The SDK's services always ask their manager for a header; a finder bound
+    without ``auth_url`` — a mock, an open lab deployment — gets the headers
+    back as they were.
+    """
+
+    connected = True
+
+    def add_auth_header(self, headers: dict[str, str] | None = None) -> dict[str, str]:
+        return dict(headers or {})
+
+
+class DiscoveryServices:
+    """The finder and the EDC Discovery behind it, sharing one sign-in."""
+
+    __slots__ = ("connectors", "finder")
+
+    def __init__(self, finder: DiscoveryFinderService, connectors: ConnectorDiscoveryService):
+        self.finder = finder
+        self.connectors = connectors
+
+
+def _sign_in(binding: DiscoveryBinding) -> OAuth2Manager | _NoToken:
+    """The engine's technical user, signed in — or no one, when no IdP is bound."""
+    if not binding.auth_url:
+        return _NoToken()
+    return OAuth2Manager(
+        auth_url=binding.auth_url,
+        realm=binding.realm,
+        clientid=binding.client_id,
+        clientsecret=binding.client_secret,
+    )
+
+
+async def build_services(
+    step_type: str, binding: DiscoveryBinding, finder_url: str, discovery_type: str, run: str
+) -> DiscoveryServices:
+    """Build the SDK services for *finder_url* with the binding's technical user.
+
+    Built per step, not per run: the SDK caches a finder's answer for twelve
+    hours, and a cache outliving the step would answer the next run from this
+    one's dataspace.
+    """
+    if binding.auth_url and not (binding.realm and binding.client_id):
         raise StepExecutionError(
             step_type,
-            "infrastructure.engine.discovery.token_url is set but client_id is not. "
-            "The discovery services are reached with the engine's technical user; "
-            "bind its client_id and client_secret, or leave token_url empty.",
+            "infrastructure.engine.discovery.auth_url is set but realm or client_id is not. "
+            "The discovery services are reached with the engine's technical user; bind "
+            "its realm, client_id and client_secret, or leave auth_url empty.",
         )
     if binding.client_secret:
         register_secret(binding.client_secret, run=run, explicit=True)
-    form = {
-        "grant_type": "client_credentials",
-        "client_id": binding.client_id,
-        "client_secret": binding.client_secret,
-    }
-    if binding.scope:
-        form["scope"] = binding.scope
-    resp = await http_client.request("POST", binding.token_url, data=form, timeout=timeout)
-    body = http_client.body_of(resp)
-    token = body.get("access_token") if isinstance(body, dict) else None
-    if resp.status_code >= 400 or not isinstance(token, str) or not token:
-        raise StepExecutionError(
-            step_type,
-            f"the identity provider at {binding.token_url} gave the engine's technical "
-            f"user '{binding.client_id}' no token (HTTP {resp.status_code}). Check "
-            f"infrastructure.engine.discovery.client_id and client_secret.",
-        )
-    return token
+    # Signing in reads the IdP's well-known document: a network call, so off the loop.
+    oauth = await call(step_type, f"the identity provider at {binding.auth_url}", _sign_in, binding)
+    finder = DiscoveryFinderService(url=finder_url, oauth=oauth)
+    connectors = ConnectorDiscoveryService(
+        oauth=oauth,
+        discovery_finder_service=finder,
+        connector_discovery_key=discovery_type,
+    )
+    return DiscoveryServices(finder, connectors)
 
 
-def endpoints_for(document: Any, bpnl: str) -> list[str]:
-    """Every endpoint *document* lists for *bpnl*, once each and in the order given.
+async def call[T](step_type: str, service: str, operation: Callable[..., T], *args: Any) -> T:
+    """Run an SDK discovery *operation* off the loop, naming *service* when it fails.
 
-    The EDC Discovery answers ``[{"bpn": …, "connectorEndpoint": [...]}]``; an
-    entry for another BPN is ignored, and a BPN is compared without regard to
-    case, since a partner's registration and a test's spelling may differ there
-    and nowhere else.
+    The SDK's discovery services report every failure — a refusal, an empty
+    finder answer, an IdP that would not sign the client in — as a bare
+    ``Exception`` with a sentence of its own. Left alone the runner reads that
+    as a TestLab fault; it is the dataspace's service not doing its part.
     """
-    wanted = bpnl.strip().upper()
-    found: list[str] = []
-    for entry in document if isinstance(document, list) else []:
-        if not isinstance(entry, dict) or str(entry.get("bpn", "")).strip().upper() != wanted:
-            continue
-        endpoints = entry.get("connectorEndpoint") or []
-        for endpoint in [endpoints] if isinstance(endpoints, str) else endpoints:
-            if isinstance(endpoint, str) and endpoint and endpoint not in found:
-                found.append(endpoint)
-    return found
-
-
-def quoted(document: Any) -> str:
-    """*document* shortened for an error message."""
-    text = str(document) if document not in (None, "") else "nothing"
-    return text if len(text) <= _QUOTED_BODY else f"{text[:_QUOTED_BODY]}…"
+    try:
+        return await sdk_call.run(operation, *args)
+    except (StepExecutionError, BoundServiceError):
+        raise
+    except Exception as exc:  # the SDK raises bare Exception here
+        raise BoundServiceError(f"{step_type}: {service} did not answer: {exc}") from exc

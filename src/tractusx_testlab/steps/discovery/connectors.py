@@ -25,25 +25,18 @@
 """discovery/connectors_by_bpn — where a business partner's connectors are.
 
 A Catena-X consumer holds a BPN, not an address. The dataspace answers the
-question in two hops:
-
-1. The **Discovery Finder** is asked for the discovery service of a key type
-   (``POST {"types": ["bpn"]}``) and answers with the address of the
-   **EDC Discovery** service.
-2. The EDC Discovery is asked for the BPN (``POST ["BPNL…"]``) and answers
-   with every connector endpoint registered for it.
+question in two hops: the **Discovery Finder** names the **EDC Discovery**
+(key type ``bpn``), and the EDC Discovery names every connector endpoint
+registered for the BPN. Both hops are the SDK's ``ConnectorDiscoveryService``;
+the step builds it from ``infrastructure.engine.discovery`` and reads what it
+answers.
 
 What comes back is the DSP *root* of each connector. Its protocol version is a
 third question, put to the connector itself, which is what
-``connector/consumer/discover_connector`` asks — so this step's
-``counter_party_address`` is written to be handed straight to that one. Between
-them a test goes from a BPN alone to an address and protocol a catalog query
-can use, which is what a use case such as CCM expects a consumer to do.
-
-The finder's address and the engine's technical user are the deployment's, and
-come from ``infrastructure.engine.discovery``. A test may name an EDC Discovery
-directly (``edc_discovery_url``), which skips the finder — a mock, or a
-dataspace that publishes the service's address instead of a finder.
+``connector/consumer/discover_connector`` asks — so ``counter_party_address`` is
+written to be handed straight to that one. Between them a test goes from a BPN
+alone to an address and protocol a catalog query can use, which is what a use
+case such as CCM expects a consumer to do.
 """
 
 from __future__ import annotations
@@ -54,15 +47,12 @@ from typing import TYPE_CHECKING, Any
 from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.logging.masking import register_secret
-from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition, StepExecutionError
-from tractusx_testlab.steps import http_client
-from tractusx_testlab.steps.discovery._lookup import client_token, endpoints_for, quoted
-from tractusx_testlab.steps.shared_models import HttpTransportParams
+from tractusx_testlab.models import StepDefinition, StepExecutionError
+from tractusx_testlab.steps.discovery._lookup import build_services, call
+from tractusx_testlab.steps.shared_models import StepParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
 if TYPE_CHECKING:
-    from tractusx_testlab.models.domain.discovery_capability import DiscoveryBinding
     from tractusx_testlab.player.execution.context import StepContext
 
 logger = logging.getLogger(__name__)
@@ -77,10 +67,8 @@ __all__ = [
 #: Key type the Discovery Finder files the EDC Discovery under.
 BPN_DISCOVERY_TYPE = "bpn"
 
-_AUTHORIZATION = "Authorization"
 
-
-class ConnectorsByBpnParams(HttpTransportParams):
+class ConnectorsByBpnParams(StepParams):
     """Input contract of ``discovery/connectors_by_bpn``."""
 
     bpnl: str = Field(
@@ -98,21 +86,8 @@ class ConnectorsByBpnParams(HttpTransportParams):
         default="",
         description=(
             "Discovery Finder search URL to ask instead of "
-            "'infrastructure.engine.discovery.finder_url'."
-        ),
-    )
-    edc_discovery_url: str = Field(
-        default="",
-        description=(
-            "EDC Discovery URL to ask directly. When given, the Discovery Finder is not "
-            "asked at all."
-        ),
-    )
-    access_token: str = Field(
-        default="",
-        description=(
-            "Bearer token to call the discovery services with, instead of the one the "
-            "engine obtains with 'infrastructure.engine.discovery' client credentials."
+            "'infrastructure.engine.discovery.finder_url' — a mock's, most of all. The "
+            "binding's technical user still signs the requests."
         ),
     )
 
@@ -134,17 +109,15 @@ class ConnectorsByBpnOutput(StepPayload):
     edc_discovery_url: str = Field(
         description="EDC Discovery URL that was asked, as the finder answered it."
     )
-    discovery: Any = Field(description="The EDC Discovery response document, unchanged.")
 
 
 @step("discovery/connectors_by_bpn")
 class ConnectorsByBpnStep(BaseStep[ConnectorsByBpnParams, ConnectorsByBpnOutput]):
     """Look up a business partner's connector endpoints from its BPN.
 
-    Asks the Discovery Finder for the EDC Discovery, then the EDC Discovery for
-    the BPN. A BPN the service holds no connector for fails the step, naming
-    the service asked: an empty address handed on would surface three steps
-    later as a refused connection that says nothing about why.
+    A BPN the EDC Discovery holds no connector for fails the step, naming the
+    service asked: an empty address handed on would surface three steps later
+    as a refused connection that says nothing about why.
     """
 
     params_model = ConnectorsByBpnParams
@@ -157,38 +130,31 @@ class ConnectorsByBpnStep(BaseStep[ConnectorsByBpnParams, ConnectorsByBpnOutput]
         definition: StepDefinition,
     ) -> StepOutput[ConnectorsByBpnOutput]:
         binding = context.infrastructure.engine.discovery
-        timeout = params.timeout_or(context.config.default_timeout_s)
-        run = str(context.job.job_id)
-
-        token = params.access_token or await client_token(self.step_type, binding, timeout, run)
-        headers = dict(params.headers)
-        if token:
-            register_secret(token, run=run, explicit=True)
-            headers[_AUTHORIZATION] = f"Bearer {token}"
-
-        edc_discovery_url = params.edc_discovery_url or await self._find_edc_discovery(
-            params, binding, headers, timeout
+        finder_url = params.discovery_finder_url or binding.finder_url
+        if not finder_url:
+            raise StepExecutionError(
+                self.step_type,
+                "no Discovery Finder to ask: bind infrastructure.engine.discovery.finder_url, "
+                "or give the step 'discovery_finder_url'.",
+            )
+        services = await build_services(
+            self.step_type, binding, finder_url, params.discovery_type, str(context.job.job_id)
         )
 
-        body = [params.bpnl]
-        resp = await http_client.request(
-            "POST",
-            edc_discovery_url,
-            json=body,
-            headers=headers,
-            timeout=timeout,
-            secret_headers=(_AUTHORIZATION,),
+        found: Any = await call(
+            self.step_type,
+            f"the EDC Discovery behind the Discovery Finder at {finder_url}",
+            services.connectors.find_connector_by_bpn,
+            params.bpnl,
         )
-        document = http_client.body_of(resp)
-        self._refuse_error_status(resp.status_code, document, "EDC Discovery", edc_discovery_url)
-
-        endpoints = endpoints_for(document, params.bpnl)
+        edc_discovery_url = _asked_url(services.connectors.get_cache_status(), params)
+        endpoints = _unique(found)
         if not endpoints:
             raise StepExecutionError(
                 self.step_type,
-                f"the EDC Discovery at {edc_discovery_url} holds no connector endpoint for "
-                f"BPN '{params.bpnl}'. A partner reachable by BPN registers its connector "
-                f"there; it answered: {quoted(document)}",
+                f"the EDC Discovery at {edc_discovery_url or finder_url} holds no connector "
+                f"endpoint for BPN '{params.bpnl}'. A partner reachable by BPN registers "
+                f"its connector there.",
             )
 
         logger.info(
@@ -202,62 +168,23 @@ class ConnectorsByBpnStep(BaseStep[ConnectorsByBpnParams, ConnectorsByBpnOutput]
                 connector_endpoints=endpoints,
                 counter_party_address=endpoints[0],
                 edc_discovery_url=edc_discovery_url,
-                discovery=document,
-            ),
-            request=HttpRequest(method="POST", url=edc_discovery_url, body=body),
-            response=HttpResponse(
-                status_code=resp.status_code, headers=dict(resp.headers), body=document
-            ),
+            )
         )
 
-    async def _find_edc_discovery(
-        self,
-        params: ConnectorsByBpnParams,
-        binding: DiscoveryBinding,
-        headers: dict[str, str],
-        timeout: float,
-    ) -> str:
-        """Ask the Discovery Finder where the discovery service of *discovery_type* is."""
-        finder_url = params.discovery_finder_url or binding.finder_url
-        if not finder_url:
-            raise StepExecutionError(
-                self.step_type,
-                "no Discovery Finder to ask: bind infrastructure.engine.discovery.finder_url, "
-                "or give the step 'discovery_finder_url' or 'edc_discovery_url'.",
-            )
-        resp = await http_client.request(
-            "POST",
-            finder_url,
-            json={"types": [params.discovery_type]},
-            headers=headers,
-            timeout=timeout,
-            secret_headers=(_AUTHORIZATION,),
-        )
-        document = http_client.body_of(resp)
-        self._refuse_error_status(resp.status_code, document, "Discovery Finder", finder_url)
 
-        entries = document.get("endpoints") if isinstance(document, dict) else None
-        addresses = [
-            entry["endpointAddress"]
-            for entry in entries or []
-            if isinstance(entry, dict)
-            and entry.get("type") == params.discovery_type
-            and isinstance(entry.get("endpointAddress"), str)
-            and entry["endpointAddress"]
-        ]
-        if not addresses:
-            raise StepExecutionError(
-                self.step_type,
-                f"the Discovery Finder at {finder_url} names no discovery service of type "
-                f"'{params.discovery_type}'. It answered: {quoted(document)}",
-            )
-        return addresses[0]
+def _asked_url(cache_status: dict[str, Any], params: ConnectorsByBpnParams) -> str:
+    """The EDC Discovery URL the SDK resolved through the finder, from its cache report."""
+    for entry in cache_status.get("entries", []):
+        if entry.get("key") == params.discovery_type:
+            return str(entry.get("url") or "")
+    return ""
 
-    def _refuse_error_status(self, status: int, document: Any, service: str, url: str) -> None:
-        """Fail on a refusal, quoting what the service said."""
-        if status >= 400:
-            raise StepExecutionError(
-                self.step_type,
-                f"the {service} at {url} refused the request with HTTP {status}: "
-                f"{quoted(document)}",
-            )
+
+def _unique(found: Any) -> list[str]:
+    """The endpoints the SDK returned, once each and in order; none for ``None``."""
+    endpoints = [found] if isinstance(found, str) else found or []
+    unique: list[str] = []
+    for endpoint in endpoints:
+        if isinstance(endpoint, str) and endpoint and endpoint not in unique:
+            unique.append(endpoint)
+    return unique

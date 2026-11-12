@@ -22,18 +22,18 @@
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Tests for discovery/connectors_by_bpn — the Discovery Finder → EDC Discovery lookup."""
+"""Tests for discovery/connectors_by_bpn — built on the SDK's discovery services."""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from conftest import http_response
 from tractusx_testlab.authoring.registry import StepRegistry
 from tractusx_testlab.logging.masking import forget_secrets, mask
-from tractusx_testlab.models import StepDefinition, StepExecutionError
+from tractusx_testlab.models import BoundServiceError, StepDefinition, StepExecutionError
 from tractusx_testlab.models.domain.discovery_capability import DiscoveryBinding
 from tractusx_testlab.models.domain.infrastructure import EngineBindings, Infrastructure
 from tractusx_testlab.player.execution.context import StepContext
@@ -43,8 +43,11 @@ _STEP = "discovery/connectors_by_bpn"
 _BPNL = "BPNL000000000001"
 _FINDER = "https://finder.example/api/v1.0/administration/connectors/discovery/search"
 _EDC_DISCOVERY = "https://edc-discovery.example/api/v1.0/administration/connectors/discovery"
-_TOKEN_URL = "https://idp.example/realms/CX-Central/protocol/openid-connect/token"
 _DSP = "https://provider.example/api/v1/dsp"
+
+#: The SDK's own transport: every discovery request goes through it.
+_DO_POST = "tractusx_sdk.dataspace.tools.http_tools.HttpTools.do_post"
+_OAUTH = "tractusx_testlab.steps.discovery._lookup.OAuth2Manager"
 
 _FINDER_ANSWER = {
     "endpoints": [
@@ -64,15 +67,20 @@ def _forget() -> None:
     forget_secrets()
 
 
+def _answer(body: Any, status: int = 200) -> MagicMock:
+    response = MagicMock()
+    response.status_code = status
+    response.json.return_value = body
+    return response
+
+
 def _context(**binding: str) -> StepContext:
-    config = MagicMock()
-    config.default_timeout_s = 30
     job = MagicMock()
     job.job_id = "run-1"
     return StepContext(
         services=MagicMock(),
         job=job,
-        config=config,
+        config=MagicMock(),
         infrastructure=Infrastructure(engine=EngineBindings(discovery=DiscoveryBinding(**binding))),
     )
 
@@ -81,8 +89,8 @@ def _definition() -> StepDefinition:
     return StepDefinition(id="find", uses=_STEP)
 
 
-def _calls(post: AsyncMock) -> list[tuple[str, str]]:
-    return [(call.args[0], call.args[1]) for call in post.await_args_list]
+def _urls(post: MagicMock) -> list[str]:
+    return [call.kwargs["url"] for call in post.call_args_list]
 
 
 class TestRegistration:
@@ -93,124 +101,98 @@ class TestRegistration:
 
 class TestLookup:
     @pytest.mark.asyncio
-    async def test_finder_then_edc_discovery(self) -> None:
-        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
-            post.side_effect = [http_response(_FINDER_ANSWER), http_response(_DISCOVERY_ANSWER)]
+    async def test_finder_then_edc_discovery_through_the_sdk(self) -> None:
+        with patch(_DO_POST) as post:
+            post.side_effect = [_answer(_FINDER_ANSWER), _answer(_DISCOVERY_ANSWER)]
             out = await ConnectorsByBpnStep().invoke(
                 {"bpnl": _BPNL}, _context(finder_url=_FINDER), _definition()
             )
 
-        assert _calls(post) == [("POST", _FINDER), ("POST", _EDC_DISCOVERY)]
-        assert post.await_args_list[0].kwargs["json"] == {"types": ["bpn"]}
-        assert post.await_args_list[1].kwargs["json"] == [_BPNL]
-        value = out.value
+        assert _urls(post) == [_FINDER, _EDC_DISCOVERY]
+        assert post.call_args_list[0].kwargs["json"] == {"types": ["bpn"]}
+        assert post.call_args_list[1].kwargs["json"] == [_BPNL]
         # Only this BPN's endpoints, once each, in the order the service gave them.
-        assert value["connector_endpoints"] == [_DSP, "https://second.example/api/v1/dsp"]
-        assert value["counter_party_address"] == _DSP
-        assert value["edc_discovery_url"] == _EDC_DISCOVERY
-        assert value["discovery"] == _DISCOVERY_ANSWER
-        assert out.request.url == _EDC_DISCOVERY
-
-    @pytest.mark.asyncio
-    async def test_edc_discovery_url_skips_the_finder(self) -> None:
-        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
-            post.return_value = http_response(_DISCOVERY_ANSWER)
-            out = await ConnectorsByBpnStep().invoke(
-                {"bpnl": _BPNL, "edc_discovery_url": _EDC_DISCOVERY}, _context(), _definition()
-            )
-        assert _calls(post) == [("POST", _EDC_DISCOVERY)]
+        assert out.value["connector_endpoints"] == [_DSP, "https://second.example/api/v1/dsp"]
         assert out.value["counter_party_address"] == _DSP
+        assert out.value["edc_discovery_url"] == _EDC_DISCOVERY
 
     @pytest.mark.asyncio
     async def test_step_finder_url_wins_over_the_binding(self) -> None:
         other = "https://mock.example/run-1/api/v1.0/administration/connectors/discovery/search"
-        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
-            post.side_effect = [http_response(_FINDER_ANSWER), http_response(_DISCOVERY_ANSWER)]
+        with patch(_DO_POST) as post:
+            post.side_effect = [_answer(_FINDER_ANSWER), _answer(_DISCOVERY_ANSWER)]
             await ConnectorsByBpnStep().invoke(
                 {"bpnl": _BPNL, "discovery_finder_url": other},
                 _context(finder_url=_FINDER),
                 _definition(),
             )
-        assert _calls(post)[0] == ("POST", other)
+        assert _urls(post)[0] == other
 
     @pytest.mark.asyncio
-    async def test_bpn_is_matched_without_regard_to_case(self) -> None:
-        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
-            post.return_value = http_response([{"bpn": _BPNL.lower(), "connectorEndpoint": _DSP}])
-            out = await ConnectorsByBpnStep().invoke(
-                {"bpnl": _BPNL, "edc_discovery_url": _EDC_DISCOVERY}, _context(), _definition()
+    async def test_no_token_is_asked_for_without_an_idp(self) -> None:
+        with patch(_DO_POST) as post, patch(_OAUTH) as oauth:
+            post.side_effect = [_answer(_FINDER_ANSWER), _answer(_DISCOVERY_ANSWER)]
+            await ConnectorsByBpnStep().invoke(
+                {"bpnl": _BPNL}, _context(finder_url=_FINDER), _definition()
             )
-        assert out.value["connector_endpoints"] == [_DSP]
+        oauth.assert_not_called()
+        assert "Authorization" not in post.call_args_list[0].kwargs["headers"]
 
 
-class TestAuthentication:
+class TestTechnicalUser:
     @pytest.mark.asyncio
-    async def test_client_credentials_token_is_sent_and_masked(self) -> None:
-        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
-            post.side_effect = [
-                http_response({"access_token": "tok-123", "token_type": "Bearer"}),
-                http_response(_FINDER_ANSWER),
-                http_response(_DISCOVERY_ANSWER),
-            ]
+    async def test_the_bindings_user_signs_every_request(self) -> None:
+        with patch(_DO_POST) as post, patch(_OAUTH) as oauth:
+            oauth.return_value.connected = True
+            oauth.return_value.add_auth_header.side_effect = lambda headers: {
+                **headers,
+                "Authorization": "Bearer tok-123",
+            }
+            post.side_effect = [_answer(_FINDER_ANSWER), _answer(_DISCOVERY_ANSWER)]
             await ConnectorsByBpnStep().invoke(
                 {"bpnl": _BPNL},
                 _context(
                     finder_url=_FINDER,
-                    token_url=_TOKEN_URL,
+                    auth_url="https://centralidp.example/auth/",
+                    realm="CX-Central",
                     client_id="engine",
                     client_secret="s3cret",
-                    scope="openid",
                 ),
                 _definition(),
             )
 
-        token_call, finder_call, discovery_call = post.await_args_list
-        assert token_call.args == ("POST", _TOKEN_URL)
-        assert token_call.kwargs["data"] == {
-            "grant_type": "client_credentials",
-            "client_id": "engine",
-            "client_secret": "s3cret",
-            "scope": "openid",
-        }
-        for call in (finder_call, discovery_call):
+        oauth.assert_called_once_with(
+            auth_url="https://centralidp.example/auth/",
+            realm="CX-Central",
+            clientid="engine",
+            clientsecret="s3cret",
+        )
+        for call in post.call_args_list:
             assert call.kwargs["headers"]["Authorization"] == "Bearer tok-123"
-            assert "Authorization" in call.kwargs["secret_headers"]
-        assert "tok-123" not in mask("Bearer tok-123")
         assert "s3cret" not in mask("secret=s3cret")
 
     @pytest.mark.asyncio
-    async def test_given_access_token_replaces_client_credentials(self) -> None:
-        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
-            post.return_value = http_response(_DISCOVERY_ANSWER)
-            await ConnectorsByBpnStep().invoke(
-                {"bpnl": _BPNL, "edc_discovery_url": _EDC_DISCOVERY, "access_token": "given"},
-                _context(token_url=_TOKEN_URL, client_id="engine", client_secret="x"),
-                _definition(),
-            )
-        assert _calls(post) == [("POST", _EDC_DISCOVERY)]
-        assert post.await_args.kwargs["headers"]["Authorization"] == "Bearer given"
-
-    @pytest.mark.asyncio
-    async def test_refused_token_names_the_client(self) -> None:
-        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
-            post.return_value = http_response({"error": "unauthorized_client"}, status=401)
-            with pytest.raises(StepExecutionError, match="'engine' no token"):
+    async def test_an_idp_that_will_not_sign_in_is_the_infrastructures_fault(self) -> None:
+        with patch(_OAUTH, side_effect=ConnectionError("Unable to access the Keycloak instance")):
+            with pytest.raises(BoundServiceError, match="identity provider"):
                 await ConnectorsByBpnStep().invoke(
                     {"bpnl": _BPNL},
                     _context(
                         finder_url=_FINDER,
-                        token_url=_TOKEN_URL,
+                        auth_url="https://centralidp.example/auth/",
+                        realm="CX-Central",
                         client_id="engine",
-                        client_secret="bad",
                     ),
                     _definition(),
                 )
 
     @pytest.mark.asyncio
-    async def test_token_url_without_client_id_is_refused(self) -> None:
-        with pytest.raises(StepExecutionError, match="client_id is not"):
+    async def test_auth_url_without_realm_or_client_is_refused(self) -> None:
+        with pytest.raises(StepExecutionError, match="realm or client_id is not"):
             await ConnectorsByBpnStep().invoke(
-                {"bpnl": _BPNL}, _context(finder_url=_FINDER, token_url=_TOKEN_URL), _definition()
+                {"bpnl": _BPNL},
+                _context(finder_url=_FINDER, auth_url="https://centralidp.example/auth/"),
+                _definition(),
             )
 
 
@@ -221,32 +203,28 @@ class TestFailures:
             await ConnectorsByBpnStep().invoke({"bpnl": _BPNL}, _context(), _definition())
 
     @pytest.mark.asyncio
-    async def test_finder_without_a_bpn_service(self) -> None:
-        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
-            post.return_value = http_response({"endpoints": []})
-            with pytest.raises(StepExecutionError, match="no discovery service of type 'bpn'"):
+    async def test_finder_without_a_bpn_service_is_the_infrastructures_fault(self) -> None:
+        with patch(_DO_POST) as post:
+            post.return_value = _answer({"endpoints": []})
+            with pytest.raises(BoundServiceError, match="EDC Discovery behind the Discovery"):
                 await ConnectorsByBpnStep().invoke(
                     {"bpnl": _BPNL}, _context(finder_url=_FINDER), _definition()
                 )
 
     @pytest.mark.asyncio
     async def test_unknown_bpn_fails_naming_the_service(self) -> None:
-        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
-            post.return_value = http_response([])
-            with pytest.raises(StepExecutionError, match="holds no connector endpoint"):
+        with patch(_DO_POST) as post:
+            post.side_effect = [_answer(_FINDER_ANSWER), _answer([])]
+            with pytest.raises(StepExecutionError, match=f"{_EDC_DISCOVERY} holds no connector"):
                 await ConnectorsByBpnStep().invoke(
-                    {"bpnl": _BPNL, "edc_discovery_url": _EDC_DISCOVERY},
-                    _context(),
-                    _definition(),
+                    {"bpnl": _BPNL}, _context(finder_url=_FINDER), _definition()
                 )
 
     @pytest.mark.asyncio
-    async def test_refusal_quotes_the_status(self) -> None:
-        with patch("tractusx_testlab.steps.http_client.request", new_callable=AsyncMock) as post:
-            post.return_value = http_response({"error": "forbidden"}, status=403)
-            with pytest.raises(StepExecutionError, match="HTTP 403"):
+    async def test_refusal_is_the_infrastructures_fault(self) -> None:
+        with patch(_DO_POST) as post:
+            post.side_effect = [_answer(_FINDER_ANSWER), _answer({"error": "forbidden"}, 403)]
+            with pytest.raises(BoundServiceError, match="did not answer"):
                 await ConnectorsByBpnStep().invoke(
-                    {"bpnl": _BPNL, "edc_discovery_url": _EDC_DISCOVERY},
-                    _context(),
-                    _definition(),
+                    {"bpnl": _BPNL}, _context(finder_url=_FINDER), _definition()
                 )

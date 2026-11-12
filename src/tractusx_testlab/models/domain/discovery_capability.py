@@ -57,12 +57,14 @@ class DiscoveryBinding(CapabilityBinding):
 
     The services are the dataspace's, not the system under test's, and they
     are reached with the engine's own technical user, which is why this is an
-    engine-side capability. The OAuth client is optional: a dataspace — or a
-    mock — that serves discovery unauthenticated binds the finder URL alone.
+    engine-side capability. The fields are the SDK's own: ``auth_url``,
+    ``realm``, ``client_id`` and ``client_secret`` build its ``OAuth2Manager``,
+    and ``finder_url`` its ``DiscoveryFinderService``. Leaving ``auth_url``
+    empty reaches a finder — or a mock — that asks for no token.
     """
 
     identity_field: ClassVar[str] = "finder_url"
-    credential_url_field: ClassVar[str] = "token_url"
+    credential_url_field: ClassVar[str] = "auth_url"
 
     finder_url: str = Field(
         default="",
@@ -72,29 +74,28 @@ class DiscoveryBinding(CapabilityBinding):
         ),
         json_schema_extra=OPERATOR_SUPPLIED,
     )
-    token_url: str = Field(
+    auth_url: str = Field(
         default="",
         description=(
-            "Token endpoint the engine's technical user authenticates against with the "
-            "client-credentials grant — e.g. "
-            "'https://centralidp.example.com/auth/realms/CX-Central/protocol/openid-connect/token'. "
-            "Empty when the discovery services are unauthenticated."
+            "Root URL of the identity provider the engine's technical user signs in at — "
+            "e.g. 'https://centralidp.example.com/auth/'. Empty when the discovery "
+            "services ask for no token."
         ),
+    )
+    realm: str = Field(
+        default="",
+        description="Realm of the technical user at 'auth_url', e.g. 'CX-Central'.",
     )
     client_id: str = Field(
         default="",
-        description="Client ID of the engine's technical user at 'token_url'.",
+        description="Client ID of the engine's technical user.",
     )
     client_secret: str = Field(
         default="",
         description=(
             "Client secret of the engine's technical user. A test reads it only as a "
-            "handle, presentable to 'token_url' alone."
+            "handle, presentable to 'auth_url' alone."
         ),
         json_schema_extra=SECRET,
         repr=False,
-    )
-    scope: str = Field(
-        default="",
-        description="Scope requested with the token, when the identity provider needs one.",
     )
