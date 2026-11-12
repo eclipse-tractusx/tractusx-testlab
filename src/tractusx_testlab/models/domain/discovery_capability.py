@@ -57,9 +57,9 @@ class DiscoveryBinding(CapabilityBinding):
 
     The services are the dataspace's, not the system under test's, and they
     are reached with the engine's own technical user, which is why this is an
-    engine-side capability. The fields are the SDK's own: ``auth_url``,
-    ``realm``, ``client_id`` and ``client_secret`` build its ``OAuth2Manager``,
-    and ``finder_url`` its ``DiscoveryFinderService``. Leaving ``auth_url``
+    engine-side capability. The fields are the SDK's own: ``oauth2_auth_url``,
+    ``oauth2_realm``, ``oauth2_client_id`` and ``oauth2_client_secret`` build its ``OAuth2Manager``,
+    and ``finder_url`` its ``DiscoveryFinderService``. Leaving ``oauth2_auth_url``
     empty reaches a finder — or a mock — that asks for no token.
     """
 
@@ -74,7 +74,7 @@ class DiscoveryBinding(CapabilityBinding):
         ),
         json_schema_extra=OPERATOR_SUPPLIED,
     )
-    auth_url: str = Field(
+    oauth2_auth_url: str = Field(
         default="",
         description=(
             "Root URL of the identity provider the engine's technical user signs in at — "
@@ -82,19 +82,19 @@ class DiscoveryBinding(CapabilityBinding):
             "services ask for no token."
         ),
     )
-    realm: str = Field(
+    oauth2_realm: str = Field(
         default="",
-        description="Realm of the technical user at 'auth_url', e.g. 'CX-Central'.",
+        description="Realm of the technical user at 'oauth2_auth_url', e.g. 'CX-Central'.",
     )
-    client_id: str = Field(
+    oauth2_client_id: str = Field(
         default="",
         description="Client ID of the engine's technical user.",
     )
-    client_secret: str = Field(
+    oauth2_client_secret: str = Field(
         default="",
         description=(
             "Client secret of the engine's technical user. A test reads it only as a "
-            "handle, presentable to 'auth_url' alone."
+            "handle, presentable to 'oauth2_auth_url' alone."
         ),
         json_schema_extra=SECRET,
         repr=False,

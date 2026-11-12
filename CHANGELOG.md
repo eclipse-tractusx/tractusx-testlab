@@ -20,9 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   endpoint for fails the step; a finder, EDC Discovery or IdP that does not
   answer is reported as the infrastructure's failure (`BoundServiceError`).
 - `infrastructure.engine.discovery`: the dataspace's Discovery Finder
-  (`finder_url`) and the engine's technical user for it — `auth_url`, `realm`,
-  `client_id`, `client_secret`, the SDK's `OAuth2Manager` arguments. Without
-  `auth_url` no token is asked for. `client_secret` is a secret field,
+  (`finder_url`) and the engine's technical user for it — `oauth2_auth_url`, `oauth2_realm`,
+  `oauth2_client_id`, `oauth2_client_secret`, the SDK's `OAuth2Manager` arguments. Without
+  `oauth2_auth_url` no token is asked for. `oauth2_client_secret` is a secret field,
   projected as a handle and masked.
 - `mock/discovery` also serves the Discovery Finder search
   (`POST /api/v1.0/administration/connectors/discovery/search`), answering a

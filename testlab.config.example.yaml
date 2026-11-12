@@ -54,10 +54,10 @@ infrastructure:
       submodel_base_url: ""
     discovery:                            # the dataspace's Discovery Finder, for discovery/* steps
       finder_url: ""                      # https://discoveryfinder.example.com/api/v1.0/administration/connectors/discovery/search
-      auth_url: ""                        # central IdP root, e.g. https://centralidp.example.com/auth/; empty when unauthenticated
-      realm: ""                           # CX-Central
-      client_id: ""                       # the engine's technical user
-      client_secret: ""
+      oauth2_auth_url: ""                 # central IdP root, e.g. https://centralidp.example.com/auth/; empty when unauthenticated
+      oauth2_realm: ""                    # CX-Central
+      oauth2_client_id: ""                # the engine's technical user
+      oauth2_client_secret: ""
   sut:
     connector:
       management_url: ""

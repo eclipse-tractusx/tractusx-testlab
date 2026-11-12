@@ -153,10 +153,10 @@ class TestTechnicalUser:
                 {"bpnl": _BPNL},
                 _context(
                     finder_url=_FINDER,
-                    auth_url="https://centralidp.example/auth/",
-                    realm="CX-Central",
-                    client_id="engine",
-                    client_secret="s3cret",
+                    oauth2_auth_url="https://centralidp.example/auth/",
+                    oauth2_realm="CX-Central",
+                    oauth2_client_id="engine",
+                    oauth2_client_secret="s3cret",
                 ),
                 _definition(),
             )
@@ -179,19 +179,19 @@ class TestTechnicalUser:
                     {"bpnl": _BPNL},
                     _context(
                         finder_url=_FINDER,
-                        auth_url="https://centralidp.example/auth/",
-                        realm="CX-Central",
-                        client_id="engine",
+                        oauth2_auth_url="https://centralidp.example/auth/",
+                        oauth2_realm="CX-Central",
+                        oauth2_client_id="engine",
                     ),
                     _definition(),
                 )
 
     @pytest.mark.asyncio
     async def test_auth_url_without_realm_or_client_is_refused(self) -> None:
-        with pytest.raises(StepExecutionError, match="realm or client_id is not"):
+        with pytest.raises(StepExecutionError, match="oauth2_realm or"):
             await ConnectorsByBpnStep().invoke(
                 {"bpnl": _BPNL},
-                _context(finder_url=_FINDER, auth_url="https://centralidp.example/auth/"),
+                _context(finder_url=_FINDER, oauth2_auth_url="https://centralidp.example/auth/"),
                 _definition(),
             )
 

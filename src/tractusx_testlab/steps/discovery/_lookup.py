@@ -56,7 +56,7 @@ class _NoToken:
     """The ``OAuth2Manager`` stand-in for discovery services that ask for no token.
 
     The SDK's services always ask their manager for a header; a finder bound
-    without ``auth_url`` — a mock, an open lab deployment — gets the headers
+    without ``oauth2_auth_url`` — a mock, an open lab deployment — gets the headers
     back as they were.
     """
 
@@ -78,13 +78,13 @@ class DiscoveryServices:
 
 def _sign_in(binding: DiscoveryBinding) -> OAuth2Manager | _NoToken:
     """The engine's technical user, signed in — or no one, when no IdP is bound."""
-    if not binding.auth_url:
+    if not binding.oauth2_auth_url:
         return _NoToken()
     return OAuth2Manager(
-        auth_url=binding.auth_url,
-        realm=binding.realm,
-        clientid=binding.client_id,
-        clientsecret=binding.client_secret,
+        auth_url=binding.oauth2_auth_url,
+        realm=binding.oauth2_realm,
+        clientid=binding.oauth2_client_id,
+        clientsecret=binding.oauth2_client_secret,
     )
 
 
@@ -97,17 +97,20 @@ async def build_services(
     hours, and a cache outliving the step would answer the next run from this
     one's dataspace.
     """
-    if binding.auth_url and not (binding.realm and binding.client_id):
+    if binding.oauth2_auth_url and not (binding.oauth2_realm and binding.oauth2_client_id):
         raise StepExecutionError(
             step_type,
-            "infrastructure.engine.discovery.auth_url is set but realm or client_id is not. "
-            "The discovery services are reached with the engine's technical user; bind "
-            "its realm, client_id and client_secret, or leave auth_url empty.",
+            "infrastructure.engine.discovery.oauth2_auth_url is set but oauth2_realm or "
+            "oauth2_client_id is not. The discovery services are reached with the engine's "
+            "technical user; bind its oauth2_realm, oauth2_client_id and oauth2_client_secret, "
+            "or leave oauth2_auth_url empty.",
         )
-    if binding.client_secret:
-        register_secret(binding.client_secret, run=run, explicit=True)
+    if binding.oauth2_client_secret:
+        register_secret(binding.oauth2_client_secret, run=run, explicit=True)
     # Signing in reads the IdP's well-known document: a network call, so off the loop.
-    oauth = await call(step_type, f"the identity provider at {binding.auth_url}", _sign_in, binding)
+    oauth = await call(
+        step_type, f"the identity provider at {binding.oauth2_auth_url}", _sign_in, binding
+    )
     finder = DiscoveryFinderService(url=finder_url, oauth=oauth)
     connectors = ConnectorDiscoveryService(
         oauth=oauth,

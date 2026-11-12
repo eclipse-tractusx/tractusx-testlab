@@ -72,8 +72,8 @@ The dataspace's **discovery services** are an engine-side capability too.
 A consumer that holds only a business partner's BPN asks the Discovery Finder
 (`engine.discovery.finder_url`) where the EDC Discovery is, and the EDC
 Discovery where the BPN's connectors are — signed in as the engine's own
-technical user (`auth_url`, `realm`, `client_id`, `client_secret`: the SDK's
-`OAuth2Manager` arguments; leave `auth_url` empty for a service that asks for
+technical user (`oauth2_auth_url`, `oauth2_realm`, `oauth2_client_id`, `oauth2_client_secret`: the SDK's
+`OAuth2Manager` arguments; leave `oauth2_auth_url` empty for a service that asks for
 no token). Only the finder's address is bound: the EDC Discovery's is whatever
 the finder answers. `discovery/connectors_by_bpn` builds the SDK's
 `ConnectorDiscoveryService` from it.
