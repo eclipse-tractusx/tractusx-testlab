@@ -61,6 +61,7 @@ if TYPE_CHECKING:
     from tractusx_testlab.logging.structured import StructuredLogger
     from tractusx_testlab.logging.trace import ExecutionTrace
     from tractusx_testlab.models import TckResult, TestResult
+    from tractusx_testlab.player.execution._plan import TestPlan
     from tractusx_testlab.player.execution.context import StepContext
     from tractusx_testlab.player.execution.monitor import ExecutionMonitor
     from tractusx_testlab.player.jobs import JobManager
@@ -89,11 +90,11 @@ class TckSession:
         "_lock",
         "_monitor",
         "_on_close",
+        "_plan",
         "_records",
         "_result",
         "_results",
         "_services",
-        "_skip_ids",
         "_started_at",
         "_tck",
         "_trace",
@@ -111,7 +112,7 @@ class TckSession:
         services: ServiceManager,
         job_logger: StructuredLogger,
         trace: ExecutionTrace | None,
-        skip_ids: frozenset[str],
+        plan: TestPlan,
         records: contextlib.ExitStack,
         on_close: Callable[[], None],
     ) -> None:
@@ -123,7 +124,7 @@ class TckSession:
         self._services = services
         self._job_logger = job_logger
         self._trace = trace
-        self._skip_ids = skip_ids
+        self._plan = plan  # skip_tests, only_tests, on_failure
         self._records = records
         self._on_close = on_close
         self._lock = asyncio.Lock()
@@ -210,11 +211,11 @@ class TckSession:
     async def close(self) -> TckResult:
         """Tear the session down and deliver the verdict (latest attempts); idempotent.
 
-        A test that never ran (skipped, or ``async: true`` and never asked for) is
-        skipped. A test the run was interrupted in (cancelled mid-test, or an
-        error the test did not catch) is not started over to be skipped: it ends
-        ``CANCELLED``, and what its checkpoints became stays as it was. The services, the mock server and the transcript are released even
-        when publishing that raises (a host abandoning a cancelled run does).
+        A test that never ran (skipped, or ``async: true`` and never asked for) is skipped. A test
+        the run was interrupted in (cancelled mid-test, or an error the test did not catch) is not
+        started over to be skipped: it ends ``CANCELLED``, and what its checkpoints became stays as
+        it was. The services, the mock server and the transcript are released even when publishing
+        that raises (a host abandoning a cancelled run does).
         """
         async with self._lock:
             if self._closed:
@@ -227,14 +228,13 @@ class TckSession:
                     self._end_unfinished()
                     for idx, test in enumerate(self._tck.tests):
                         if test.test_id not in self._results:
-                            self._skip(idx, test)
+                            self._skip(idx, test, self._plan.reason(test))
                 finally:
                     self._services.teardown()
                     self._on_close()
                 results = [self._results[test.test_id] for test in self._tck.tests]
-                result = build_tck_result(
-                    self._tck.name, results, self._started_at, datetime.now(UTC)
-                )
+                end, only = datetime.now(UTC), self._plan.only_tests
+                result = build_tck_result(self._tck.name, results, self._started_at, end, only)
                 finalize_job(
                     self._jobs, self._job, result, self._monitor, self._job_logger, self._trace
                 )
@@ -248,14 +248,14 @@ class TckSession:
     # ------------------------------------------------------------------
 
     async def _run_scheduled(self, idx: int, test: Test) -> TestResult | None:
-        """Run *test* as part of the planned sequence, honouring the operator's skips."""
+        """Run *test* as part of the planned sequence: the operator's selection, ``on_failure``."""
         async with self._lock:
             self._require_open()
             # A cancelled run starts no further test (ADR-0028: the operator stopped it).
-            if test.test_id in self._skip_ids or self._jobs.is_cancelled(self.job_id):
-                self._skip(idx, test)
+            if self._plan.leaves_out(test) or self._jobs.is_cancelled(self.job_id):
+                self._skip(idx, test, self._plan.reason(test))
                 return self._results[test.test_id]
-            return await self._run(idx, test)
+            return self._plan.record(test, await self._run(idx, test))  # on_failure: stop
 
     async def _run(self, idx: int, test: Test) -> TestResult:
         attempt = self._attempts.get(test.test_id, 0) + 1
@@ -271,8 +271,8 @@ class TckSession:
         self._monitor.on_test_completed(self.job_id, result, attempt)
         return result
 
-    def _skip(self, idx: int, test: Test) -> None:
-        skipped = make_intentionally_skipped_result(test)
+    def _skip(self, idx: int, test: Test, reason: str | None = None) -> None:
+        skipped = make_intentionally_skipped_result(test, reason)
         self._results[test.test_id] = skipped
         self._monitor.on_test_started(self.job_id, test.definition.id, idx, skipped=True)
         self._monitor.on_test_completed(self.job_id, skipped)

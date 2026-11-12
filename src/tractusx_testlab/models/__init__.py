@@ -103,6 +103,7 @@ from tractusx_testlab.models.primitives.exceptions import (
     SkipNotAllowedError,
     StepConfigError,
     TestLabError,
+    UnknownFocusTestError,
     UnresolvedReferenceError,
     VariableTypeError,
 )
@@ -284,6 +285,7 @@ __all__ = [
     "TestStartedEvent",
     "TestStatus",
     "UnknownBindingKeyError",
+    "UnknownFocusTestError",
     "UnresolvedReferenceError",
     # server
     "UploadedPackage",

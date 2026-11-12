@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Inspection result models — static metadata extracted from a loaded Tck."""
@@ -28,6 +29,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
+from tractusx_testlab.models.authoring.definitions import OnFailure
 from tractusx_testlab.models.primitives.enums import StepPhase
 
 
@@ -51,6 +53,8 @@ class TestInspection(BaseModel):
     name: str
     test_id: str = ""
     skippable: bool = False
+    #: The manifest entry's ``on_failure``: ``stop`` skips every later test when this one fails.
+    on_failure: OnFailure = "continue"
     #: The manifest entry says ``async: true`` (labs): a session runs it on demand.
     on_demand: bool = False
     steps: tuple[StepMeta, ...]

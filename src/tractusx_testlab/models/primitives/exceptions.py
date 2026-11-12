@@ -190,6 +190,20 @@ class SkipNotAllowedError(AuthoringError):
         )
 
 
+class UnknownFocusTestError(SkipNotAllowedError):
+    """Raised before the run starts when ``only_tests`` names a test the TCK does not have.
+
+    A :class:`SkipNotAllowedError`, so a host that refuses a bad ``skip_tests`` refuses it too.
+    """
+
+    def __init__(self, test_ids: list[str]) -> None:
+        self.test_ids = test_ids
+        ids_str = ", ".join(f"'{t}'" for t in test_ids)
+        AuthoringError.__init__(
+            self, f"Cannot focus the run on test(s) {ids_str}: not found in TCK tests list."
+        )
+
+
 #: The code a failure is published under when all that is known is whose it is
 #: (ADR-0016). A verdict about the SUT has none of its own: ``STEP_FAILED``.
 _CODE_OF_ORIGIN: dict[str, str | None] = {

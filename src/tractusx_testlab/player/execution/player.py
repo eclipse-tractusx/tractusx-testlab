@@ -47,7 +47,7 @@ from tractusx_testlab.models import TckResult as TckResult  # SDK alias
 from tractusx_testlab.player.checkpoints.run_plan import follow_checkpoints
 from tractusx_testlab.player.execution._binding import bind_infrastructure, seal_bindings
 from tractusx_testlab.player.execution._context_seeder import require_inputs, seed_context_variables
-from tractusx_testlab.player.execution._skip import resolve_skip_ids
+from tractusx_testlab.player.execution._skip import resolve_plan
 from tractusx_testlab.player.execution._trace_formatter import open_run_records
 from tractusx_testlab.player.execution.context import StepContext
 from tractusx_testlab.player.execution.infrastructure_seeder import seed_infrastructure_services
@@ -242,11 +242,11 @@ class TestlabPlayer:
             self._jobs.fail(job.job_id, str(exc))
             raise
 
-        skip_ids = resolve_skip_ids(tck, runtime_vars)
+        plan = resolve_plan(tck, runtime_vars)  # skip_tests, only_tests: refused before any test
         self._ensure_callback_manager()
         seed_infrastructure_services(svc_mgr, context)
         seal_bindings(context)
-        follow_checkpoints(context, monitor, self._jobs, tck, skip_ids)  # ADR-0028
+        follow_checkpoints(context, monitor, self._jobs, tck, plan.left_out_ids)  # ADR-0028
 
         return TckSession(
             tck=tck,
@@ -257,7 +257,7 @@ class TestlabPlayer:
             services=svc_mgr,
             job_logger=job_logger,
             trace=trace,
-            skip_ids=skip_ids,
+            plan=plan,
             records=records,
             on_close=self._stop_mock_server,
         )

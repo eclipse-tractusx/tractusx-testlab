@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Runtime wrappers around parsed definitions with execution helpers."""
@@ -34,6 +35,7 @@ from tractusx_testlab.authoring._infrastructure import collect_infrastructure_re
 from tractusx_testlab.authoring._inspection import build_inspection_result
 from tractusx_testlab.authoring._variable_form import parse_variables_block
 from tractusx_testlab.models.authoring.definitions import (
+    OnFailure,
     TckDefinition,
     TestDefinition,
     VariableDefinition,
@@ -48,7 +50,7 @@ class Test:
     """Runtime wrapper for a single test definition."""
 
     __test__ = False  # Prevent pytest from collecting this class
-    __slots__ = ("_on_demand", "_skippable", "_test_id", "definition")
+    __slots__ = ("_on_demand", "_on_failure", "_skippable", "_test_id", "definition")
 
     def __init__(
         self,
@@ -57,12 +59,14 @@ class Test:
         skippable: bool = False,
         test_id: str = "",
         on_demand: bool = False,
+        on_failure: OnFailure = "continue",
     ):
         """Initialize with a parsed test definition."""
         self.definition = definition
         self._skippable = skippable
         self._test_id = test_id
         self._on_demand = on_demand
+        self._on_failure: OnFailure = on_failure
 
     @property
     def skippable(self) -> bool:
@@ -77,6 +81,11 @@ class Test:
         waiting until it is asked to run it; a plain run runs it in order.
         """
         return self._on_demand
+
+    @property
+    def on_failure(self) -> OnFailure:
+        """``stop``: a run this test fails skips every later test (manifest ``on_failure``)."""
+        return self._on_failure
 
     @property
     def test_id(self) -> str:

@@ -19,9 +19,10 @@
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
-"""Skip-resolution helper — validates operator-requested skip IDs against the TCK.
+"""Skip resolution — validates the operator's ``skip_tests`` and ``only_tests`` against the TCK.
 
 Extracted from ``player.py`` to keep each module under 300 lines and to isolate
 the pure skip-validation logic from the execution coordinator.
@@ -31,10 +32,27 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tractusx_testlab.models.primitives.exceptions import SkipNotAllowedError
+from tractusx_testlab.models.primitives.exceptions import (
+    SkipNotAllowedError,
+    UnknownFocusTestError,
+)
+from tractusx_testlab.player.execution._plan import TestPlan
 
 if TYPE_CHECKING:
     from tractusx_testlab.authoring.test import Tck
+
+
+def requested_ids(runtime_vars: dict | None, key: str) -> list[str]:
+    """The test ids the runtime variable *key* names (``skip_tests``, ``only_tests``).
+
+    A string arrives from ``--var skip_tests=a,b``, where the shell cannot
+    express a list. A comma is not legal in a test id, so splitting on it is
+    unambiguous — and without it the whole string reads as one unknown id.
+    """
+    raw = (runtime_vars or {}).get(key) or []
+    if isinstance(raw, str):
+        return [part.strip() for part in raw.split(",") if part.strip()]
+    return [str(entry) for entry in raw]
 
 
 def resolve_skip_ids(tck: Tck, runtime_vars: dict | None) -> frozenset[str]:
@@ -58,17 +76,9 @@ def resolve_skip_ids(tck: Tck, runtime_vars: dict | None) -> frozenset[str]:
     Raises:
         SkipNotAllowedError: If any requested test ID is unknown or not skippable.
     """
-    raw = (runtime_vars or {}).get("skip_tests") or []
-    if not raw:
+    skip_ids = requested_ids(runtime_vars, "skip_tests")
+    if not skip_ids:
         return frozenset()
-
-    # A string arrives from `--var skip_tests=a,b`, where the shell cannot
-    # express a list. A comma is not legal in a test id, so splitting on it is
-    # unambiguous — and without it the whole string reads as one unknown id.
-    if isinstance(raw, str):
-        skip_ids = [part.strip() for part in raw.split(",") if part.strip()]
-    else:
-        skip_ids = [str(entry) for entry in raw]
 
     all_test_ids = {s.test_id for s in tck.tests}
     skippable_ids = {s.test_id for s in tck.tests if s.skippable}
@@ -82,3 +92,31 @@ def resolve_skip_ids(tck: Tck, runtime_vars: dict | None) -> frozenset[str]:
         raise SkipNotAllowedError(not_allowed)
 
     return frozenset(skip_ids)
+
+
+def resolve_only_ids(tck: Tck, runtime_vars: dict | None) -> frozenset[str]:
+    """Return the tests a focus run (``only_tests``) runs; empty for a plain run.
+
+    Every other test is skipped whatever its ``skippable`` says: a focus run
+    is a look at some tests, not a verdict on the TCK.
+
+    Raises:
+        UnknownFocusTestError: Before any test runs, if an id names no test of the TCK.
+    """
+    only_ids = requested_ids(runtime_vars, "only_tests")
+    all_test_ids = {test.test_id for test in tck.tests}
+    unknown = [tid for tid in only_ids if tid not in all_test_ids]
+    if unknown:
+        raise UnknownFocusTestError(unknown)
+    return frozenset(only_ids)
+
+
+def resolve_plan(tck: Tck, runtime_vars: dict | None) -> TestPlan:
+    """The run's :class:`TestPlan`: ``skip_tests`` and ``only_tests``, both validated.
+
+    Raises:
+        SkipNotAllowedError: ``skip_tests`` names an unknown or required test, or
+            ``only_tests`` an unknown one (:class:`UnknownFocusTestError`).
+    """
+    skip_ids, only_ids = resolve_skip_ids(tck, runtime_vars), resolve_only_ids(tck, runtime_vars)
+    return TestPlan(tck.tests, skip_ids, only_ids)
