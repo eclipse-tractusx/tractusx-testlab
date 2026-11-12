@@ -55,9 +55,12 @@ A consumer step can then resolve a counter-party's DSP endpoint from its BPN exa
 
 **Output** — the value assertions and `returns:` read
 
-_This step produces no value — it acts, and there is nothing to read back._
+_Output contract of `mock/discovery`: where the two mock services answer._
 
-Type: NoneType
+| Field | Type | Description |
+|---|---|---|
+| `edc_discovery_url` | string | URL of the mock EDC Discovery. |
+| `discovery_finder_url` | string | Search URL of the mock Discovery Finder, which names the mock EDC Discovery. |
 
 ## `mock/dtr` { #mock-dtr }
 

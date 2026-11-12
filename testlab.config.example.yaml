@@ -52,6 +52,11 @@ infrastructure:
     dtr:
       base_url: ""                        # https://engine.example.com/semantics/registry
       submodel_base_url: ""
+    discovery:                            # the dataspace's Discovery Finder, for discovery/* steps
+      finder_url: ""                      # https://discoveryfinder.example.com/api/v1.0/administration/connectors/discovery/search
+      token_url: ""                       # central IdP token endpoint; empty when unauthenticated
+      client_id: ""
+      client_secret: ""
   sut:
     connector:
       management_url: ""

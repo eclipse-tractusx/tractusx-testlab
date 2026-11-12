@@ -148,6 +148,7 @@ class TestCredentialProjection:
     def test_secret_fields_are_read_off_the_model(self) -> None:
         assert secret_keys() == {
             "infrastructure.engine.connector.api_key",
+            "infrastructure.engine.discovery.client_secret",
             "infrastructure.sut.connector.api_key",
         }
 

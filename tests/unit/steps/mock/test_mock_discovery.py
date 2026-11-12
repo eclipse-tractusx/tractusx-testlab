@@ -34,6 +34,7 @@ from tractusx_testlab.server.mock_registry import clear_mocks, resolve_mock
 from tractusx_testlab.steps.mock.discovery import MockDiscoveryStep
 
 _DISCOVERY_PATH = "/api/administration/connectors/discovery"
+_FINDER_PATH = "/api/v1.0/administration/connectors/discovery/search"
 
 
 @pytest.fixture(autouse=True)
@@ -126,3 +127,42 @@ class TestMockDiscoveryStep:
             body=["BPNL_UNKNOWN"],
         )
         assert mock.body == []
+
+
+class TestMockDiscoveryFinder:
+    """The finder in front of the mock EDC Discovery, for the two-hop lookup."""
+
+    @pytest.mark.asyncio
+    async def test_publishes_both_addresses(self, context: StepContext) -> None:
+        out = await MockDiscoveryStep().invoke(
+            {"id": "disc1", "mappings": {"BPNL1": "https://a/dsp"}}, context, _definition()
+        )
+        assert out.value["edc_discovery_url"].endswith(_DISCOVERY_PATH)
+        assert out.value["discovery_finder_url"].endswith(_FINDER_PATH)
+
+    @pytest.mark.asyncio
+    async def test_finder_names_the_mock_edc_discovery_for_bpn(self, context: StepContext) -> None:
+        out = await MockDiscoveryStep().invoke(
+            {"id": "disc1", "mappings": {"BPNL1": "https://a/dsp"}}, context, _definition()
+        )
+        mock = resolve_mock(
+            _FINDER_PATH, "POST", headers={}, query_params={}, body={"types": ["bpn"]}
+        )
+        assert mock.status_code == 200
+        [endpoint] = mock.body["endpoints"]
+        assert endpoint["type"] == "bpn"
+        assert endpoint["endpointAddress"] == out.value["edc_discovery_url"]
+
+    @pytest.mark.asyncio
+    async def test_finder_names_nothing_for_another_type(self, context: StepContext) -> None:
+        await MockDiscoveryStep().invoke(
+            {"id": "disc1", "mappings": {"BPNL1": "https://a/dsp"}}, context, _definition()
+        )
+        mock = resolve_mock(
+            _FINDER_PATH,
+            "POST",
+            headers={},
+            query_params={},
+            body={"types": ["manufacturerPartId"]},
+        )
+        assert mock.body == {"endpoints": []}

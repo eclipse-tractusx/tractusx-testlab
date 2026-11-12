@@ -4,7 +4,7 @@
 
 Every step a test can name in `uses:`, with the parameters it accepts under `with:` and the output fields it publishes — the names `returns:`, `validate:` and later steps read. The reference is generated from the steps' declared Pydantic models, so it cannot drift from the implementation. For where these blocks sit in a test file, see the [TCK syntax](../../tck-syntax/index.md).
 
-74 steps. The checks a step's outputs are held to are listed under [Validations](validations.md).
+75 steps. The checks a step's outputs are held to are listed under [Validations](validations.md).
 
 ## Categories and modules
 
@@ -20,6 +20,7 @@ Every step a test can name in `uses:`, with the parameters it accepts under `wit
 | `digital-twin-registry` | `provider` | [`create_shell_descriptor`](digital-twin-registry/provider.md#digital-twin-registry-provider-create_shell_descriptor), [`create_submodel_descriptor`](digital-twin-registry/provider.md#digital-twin-registry-provider-create_submodel_descriptor), [`delete_shell_descriptor`](digital-twin-registry/provider.md#digital-twin-registry-provider-delete_shell_descriptor), [`get_shell_descriptor`](digital-twin-registry/provider.md#digital-twin-registry-provider-get_shell_descriptor), [`lookup_shells`](digital-twin-registry/provider.md#digital-twin-registry-provider-lookup_shells) |
 | `digital-twin-registry` | `provider/wizard` | [`create_shell_descriptor`](digital-twin-registry/provider-wizard.md#digital-twin-registry-provider-wizard-create_shell_descriptor), [`create_submodel_descriptor`](digital-twin-registry/provider-wizard.md#digital-twin-registry-provider-wizard-create_submodel_descriptor) |
 | `digital-twin-registry` | `submodel` | [`delete`](digital-twin-registry/submodel.md#digital-twin-registry-submodel-delete), [`upload`](digital-twin-registry/submodel.md#digital-twin-registry-submodel-upload) |
+| `discovery` | — | [`connectors_by_bpn`](discovery/index.md#discovery-connectors_by_bpn) |
 | `flow` | — | [`delay`](flow/index.md#flow-delay), [`if`](flow/index.md#flow-if), [`retry`](flow/index.md#flow-retry), [`select`](flow/index.md#flow-select) |
 | `http` | — | [`http_request`](http/index.md#http-http_request) |
 | `labs` | `connector/dataplane` | [`api_request`](labs/connector-dataplane.md#labs-connector-dataplane-api_request) |

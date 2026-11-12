@@ -9,6 +9,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `discovery/connectors_by_bpn`: looks up a business partner's connector
+  endpoints from its BPN, the way a Catena-X consumer (CCM, for one) must. It
+  asks the Discovery Finder for the `bpn` discovery service, then that EDC
+  Discovery for the BPN, and publishes `connector_endpoints`,
+  `counter_party_address` (the first endpoint, ready for
+  `connector/consumer/discover_connector` to resolve the protocol),
+  `edc_discovery_url` and the raw `discovery` document. `edc_discovery_url`
+  skips the finder, `discovery_finder_url` overrides the binding and
+  `access_token` the engine's own token. A BPN the service holds no endpoint
+  for, a finder with no `bpn` service or a refusal fails the step, naming the
+  service asked.
+- `infrastructure.engine.discovery`: the dataspace's Discovery Finder
+  (`finder_url`) and the engine's technical user for it (`token_url`,
+  `client_id`, `client_secret`, `scope`), with the client-credentials token
+  fetched by the step. `client_secret` is a secret field, projected as a
+  handle and masked.
+- `mock/discovery` also serves the Discovery Finder search
+  (`POST /api/v1.0/administration/connectors/discovery/search`), answering a
+  `bpn` lookup with the mock EDC Discovery's own address, and publishes
+  `edc_discovery_url` and `discovery_finder_url` — so the two-hop lookup runs
+  against the mock. The e2e `bpn_discovery.yaml` runs BPN → connector →
+  protocol through it.
 - API files (ADR-0030): a TCK carries the OpenAPI document of an API it tests,
   unchanged, under `apis/` and declares it in `env.apis` as `{id, source, type}`.
   `type` is `application/vnd.oai.openapi` (YAML) or

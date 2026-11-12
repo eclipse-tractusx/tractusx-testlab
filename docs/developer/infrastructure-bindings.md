@@ -39,7 +39,8 @@ Infrastructure
 ├── engine                 # infrastructure TestLab operates — it holds credentials
 │   ├── connector          # management_url, api_key, api_key_header,
 │   │                      # participant_id, dsp_url, name
-│   └── dtr                # base_url, submodel_base_url
+│   ├── dtr                # base_url, submodel_base_url
+│   └── discovery          # finder_url, token_url, client_id, client_secret, scope
 └── sut                    # infrastructure TestLab talks to — an identity and an endpoint
     ├── connector          # participant_id, dsp_url — management_url only if you
     │                      # happen to operate the SUT as well
@@ -66,6 +67,15 @@ against](#what-a-run-certifies-against).
 The asymmetry is deliberate (ADR-0019 §4). The engine side is driven through
 management APIs, so it carries credentials — and it has a registry of its own,
 alongside the connector. The SUT side is a counter-party reached over DSP.
+
+The dataspace's **discovery services** are an engine-side capability too.
+A consumer that holds only a business partner's BPN asks the Discovery Finder
+(`engine.discovery.finder_url`) where the EDC Discovery is, and the EDC
+Discovery where the BPN's connectors are — with the engine's own technical
+user (`token_url`, `client_id`, `client_secret`, `scope`; all optional for an
+unauthenticated service). Only the finder's address is bound: the EDC
+Discovery's is whatever the finder answers. `discovery/connectors_by_bpn` is
+the step that reads it.
 
 The submodel server is **not** a capability of its own. A registry entry is a
 pointer to a payload, so the backend those payloads live on is part of the

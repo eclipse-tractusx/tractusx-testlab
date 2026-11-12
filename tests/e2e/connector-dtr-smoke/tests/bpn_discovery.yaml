@@ -44,6 +44,12 @@ metadata:
     and seeds it with both participants, so what a green run here says is that
     the BPN reached the directory, the directory answered with the DID, and
     the DID was the identity the provider then presented in its own catalog.
+    It opens with the lookup a consumer makes before any of that, when it
+    holds the BPN and not the address: the Discovery Finder names the EDC
+    Discovery, the EDC Discovery names the connector, and the connector
+    names its DSP version. The dataspace runs neither discovery service, so
+    testlab's mock stands in for both and what is proven is the consumer's
+    side of the chain.
 
 setup:
   - id: create_access_policy
@@ -89,7 +95,77 @@ setup:
       contract_definition_id:
         type: string
 
+  # The dataspace this suite runs in has no Discovery Finder or EDC Discovery,
+  # so testlab stands in for both: the mock files the SUT's DSP endpoint under
+  # its BPN and answers a finder lookup with its own EDC Discovery address.
+  # What the chain below proves is the consumer half — that a BPN alone goes
+  # through the finder, the EDC Discovery and the connector's own version
+  # answer to an address a catalog query can use, the way a CCM consumer must.
+  - id: edc_discovery
+    uses: mock/discovery
+    name: Stand in for the dataspace's Discovery Finder and EDC Discovery
+    with:
+      id: testlab-e2e-edc-discovery
+      mappings:
+        - bpn: "${{ env.sut_bpnl }}"
+          endpoint: "${{ infrastructure.sut.connector.dsp_url }}"
+    returns:
+      discovery_finder_url:
+        type: string
+      edc_discovery_url:
+        type: string
+
 execution:
+  # Where is the BPN's connector? Asked of the finder, which names the EDC
+  # Discovery, which names the connector.
+  - id: connectors_by_bpn
+    uses: discovery/connectors_by_bpn
+    name: Look up the SUT's connector from its BPN through the Discovery Finder
+    with:
+      bpnl: "${{ env.sut_bpnl }}"
+      discovery_finder_url: "${{ setup.edc_discovery.discovery_finder_url }}"
+    returns:
+      connector_endpoints:
+        type: array
+      counter_party_address:
+        type: string
+      edc_discovery_url:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: connector_endpoints, operator: length_equals, value: 1 }
+      - uses: validate/assert
+        with:
+          input: edc_discovery_url
+          operator: equals
+          value: "${{ setup.edc_discovery.edc_discovery_url }}"
+      - uses: validate/assert
+        with:
+          input: counter_party_address
+          operator: equals
+          value: "${{ infrastructure.sut.connector.dsp_url }}"
+
+  # And which protocol does it speak? Asked of the connector, at the address
+  # the lookup found rather than the one the binding holds.
+  - id: protocol_of_discovered
+    uses: connector/consumer/discover_connector
+    name: Resolve the DSP version at the address discovery found
+    with:
+      bpnl: "${{ env.sut_bpnl }}"
+      counter_party_address: "${{ execution.connectors_by_bpn.counter_party_address }}"
+    returns:
+      counter_party_id:
+        type: string
+      protocol:
+        type: string
+    validate:
+      - uses: validate/assert
+        with:
+          input: counter_party_id
+          operator: equals
+          value: "${{ infrastructure.sut.connector.participant_id }}"
+      - uses: validate/assert
+        with: { input: protocol, operator: contains, value: "2025-1" }
   # Discovery on its own, before anything is done with what it found. The
   # address is given because this dataspace runs no Discovery Finder — only a
   # BPN-DID directory — so what is being resolved here is the identity and the
