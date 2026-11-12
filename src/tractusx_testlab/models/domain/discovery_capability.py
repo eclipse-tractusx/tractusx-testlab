@@ -64,7 +64,7 @@ class DiscoveryBinding(CapabilityBinding):
     """
 
     identity_field: ClassVar[str] = "finder_url"
-    credential_url_field: ClassVar[str] = "auth_url"
+    credential_url_field: ClassVar[str] = "oauth2_auth_url"
 
     finder_url: str = Field(
         default="",
