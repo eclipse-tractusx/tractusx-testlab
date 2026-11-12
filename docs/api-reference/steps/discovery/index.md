@@ -4,7 +4,32 @@
 
 | Module | Step | Summary |
 |---|---|---|
+| — | [`discovery/bpns_by_identifier`](#discovery-bpns_by_identifier) | Look up the BPNs a part identifier is registered for. |
 | — | [`discovery/connectors_by_bpn`](#discovery-connectors_by_bpn) | Look up a business partner's connector endpoints from its BPN. |
+
+## `discovery/bpns_by_identifier` { #discovery-bpns_by_identifier }
+
+Look up the BPNs a part identifier is registered for.
+
+An identifier no BPN is registered for fails the step, naming the service asked: a test that goes on to look up a connector has nobody to look up.
+
+**Inputs**
+
+| Parameter | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `keys` | list of string | yes | — | — | Identifiers to look up — one, or several of the same type. |
+| `identifier_type` | string | no | `'manufacturerPartId'` | — | Type of the identifiers, as the BPN Discovery files them, e.g. 'manufacturerPartId'. |
+| `discovery_finder_url` | string | no | `''` | — | Discovery Finder search URL to ask instead of 'infrastructure.engine.discovery.finder_url' — a mock's, most of all. The binding's technical user still signs the requests. |
+
+**Output** — the value assertions and `returns:` read
+
+_Output contract of `discovery/bpns_by_identifier`._
+
+| Field | Type | Description |
+|---|---|---|
+| `bpns` | list of string | Every BPN the identifiers are registered for, sorted. |
+| `bpnl` | string | The first of them — the BPN to look a connector up for. |
+| `bpn_discovery_url` | string | BPN Discovery URL that was asked, as the finder answered it. |
 
 ## `discovery/connectors_by_bpn` { #discovery-connectors_by_bpn }
 

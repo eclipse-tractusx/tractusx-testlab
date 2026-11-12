@@ -28,4 +28,5 @@ The directory mirrors the step id: a step written ``discovery/…`` in a TCK is
 implemented here.
 """
 
+import tractusx_testlab.steps.discovery.bpns
 import tractusx_testlab.steps.discovery.connectors

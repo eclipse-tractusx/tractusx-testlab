@@ -5,7 +5,7 @@
 | Module | Step | Summary |
 |---|---|---|
 | — | [`mock/api`](#mock-api) | Register a mock HTTP endpoint that returns a canned response. |
-| — | [`mock/discovery`](#mock-discovery) | Register a BPN Discovery Finder mock returning configured EDC endpoints. |
+| — | [`mock/discovery`](#mock-discovery) | Register mock discovery services: EDC Discovery, BPN Discovery and the finder. |
 | — | [`mock/dtr`](#mock-dtr) | Register a protocol-aware AAS Digital Twin Registry mock. |
 | `wait/dataplane` | [`mock/wait/dataplane/http_request`](wait-dataplane.md#mock-wait-dataplane-http_request) | Wait for an inbound HTTP request that arrives through the engine connector's data plane. |
 | `wait` | [`mock/wait/http_request`](wait.md#mock-wait-http_request) | Wait for an inbound HTTP request on a previously-registered mock endpoint. |
@@ -42,9 +42,9 @@ _The mock that now exists, and the two URLs a test needs from it._
 
 ## `mock/discovery` { #mock-discovery }
 
-Register a BPN Discovery Finder mock returning configured EDC endpoints.
+Register mock discovery services: EDC Discovery, BPN Discovery and the finder.
 
-A consumer step can then resolve a counter-party's DSP endpoint from its BPN exactly as it would against the real service — the mock answers only for the BPNs it was asked about.
+A consumer step can then resolve a counter-party's DSP endpoint from its BPN, or a BPN from a part identifier, exactly as it would against the real services — the mock answers only for what it was asked about.
 
 **Inputs**
 
@@ -52,15 +52,17 @@ A consumer step can then resolve a counter-party's DSP endpoint from its BPN exa
 |---|---|---|---|---|---|
 | `id` | string | yes | — | — | Unique identifier for the registered mock. |
 | `mappings` | object | yes | — | — | BPN to EDC endpoint mapping, or a list of {bpn, endpoint} entries. |
+| `identifiers` | list of [MockIdentifier](#mockidentifier) | no | `[]` | — | Identifiers the mock BPN Discovery holds, as {type, key, bpn} entries. Empty registers no BPN Discovery. |
 
 **Output** — the value assertions and `returns:` read
 
-_Output contract of `mock/discovery`: where the two mock services answer._
+_Output contract of `mock/discovery`: where the mock services answer._
 
 | Field | Type | Description |
 |---|---|---|
 | `edc_discovery_url` | string | URL of the mock EDC Discovery. |
-| `discovery_finder_url` | string | Search URL of the mock Discovery Finder, which names the mock EDC Discovery. |
+| `bpn_discovery_url` | string | URL of the mock BPN Discovery; empty when no identifiers were given. |
+| `discovery_finder_url` | string | Search URL of the mock Discovery Finder, which names the other two. |
 
 ## `mock/dtr` { #mock-dtr }
 
@@ -82,6 +84,16 @@ _This step produces no value — it acts, and there is nothing to read back._
 Type: NoneType
 
 ## Nested objects
+
+### MockIdentifier
+
+One identifier the mock BPN Discovery holds, and the BPN it belongs to.
+
+| Field | Type | Required | Default | Also accepts | Description |
+|---|---|---|---|---|---|
+| `type` | string | no | `'manufacturerPartId'` | — | Identifier type, e.g. 'manufacturerPartId'. |
+| `key` | string | yes | — | — | The identifier, e.g. a manufacturer part ID. |
+| `bpn` | string | yes | — | — | BPN the identifier is registered for. |
 
 ### MockInstance
 

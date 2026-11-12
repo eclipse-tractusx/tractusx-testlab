@@ -19,17 +19,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   overrides the binding's finder (a mock's). A BPN the service holds no
   endpoint for fails the step; a finder, EDC Discovery or IdP that does not
   answer is reported as the infrastructure's failure (`BoundServiceError`).
+- `discovery/bpns_by_identifier`: looks up the BPNs a part identifier is
+  registered for (`keys`, `identifier_type` defaulting to `manufacturerPartId`)
+  through the SDK's `BpnDiscoveryService`, found via the same Discovery Finder,
+  and publishes `bpns` (sorted), `bpnl` (the first, ready for
+  `discovery/connectors_by_bpn`) and `bpn_discovery_url`. An identifier no BPN
+  is registered for fails the step.
 - `infrastructure.engine.discovery`: the dataspace's Discovery Finder
   (`finder_url`) and the engine's technical user for it — `oauth2_auth_url`, `oauth2_realm`,
   `oauth2_client_id`, `oauth2_client_secret`, the SDK's `OAuth2Manager` arguments. Without
   `oauth2_auth_url` no token is asked for. `oauth2_client_secret` is a secret field,
   projected as a handle and masked.
 - `mock/discovery` also serves the Discovery Finder search
-  (`POST /api/v1.0/administration/connectors/discovery/search`), answering a
-  `bpn` lookup with the mock EDC Discovery's own address, and publishes
-  `edc_discovery_url` and `discovery_finder_url` — so the two-hop lookup runs
-  against the mock. The e2e `bpn_discovery.yaml` runs BPN → connector →
-  protocol through it.
+  (`POST /api/v1.0/administration/connectors/discovery/search`) and, given
+  `identifiers` (`{type, key, bpn}`), a BPN Discovery
+  (`POST /api/v1.0/administration/connectors/bpnDiscovery/search`). The finder
+  names the mock EDC Discovery for `bpn` and the mock BPN Discovery for each
+  identifier type, and `edc_discovery_url`, `bpn_discovery_url` and
+  `discovery_finder_url` are published — so both lookups run against the mock.
+  The e2e `bpn_discovery.yaml` runs part ID → BPN → connector → protocol
+  through it.
 - API files (ADR-0030): a TCK carries the OpenAPI document of an API it tests,
   unchanged, under `apis/` and declares it in `env.apis` as `{id, source, type}`.
   `type` is `application/vnd.oai.openapi` (YAML) or

@@ -48,7 +48,7 @@ from pydantic import Field
 
 from tractusx_testlab.authoring.registry import step
 from tractusx_testlab.models import StepDefinition, StepExecutionError
-from tractusx_testlab.steps.discovery._lookup import build_services, call
+from tractusx_testlab.steps.discovery._lookup import asked_url, build_services, call
 from tractusx_testlab.steps.shared_models import StepParams
 from tractusx_testlab.steps.step_contract import BaseStep, StepOutput, StepPayload
 
@@ -138,16 +138,17 @@ class ConnectorsByBpnStep(BaseStep[ConnectorsByBpnParams, ConnectorsByBpnOutput]
                 "or give the step 'discovery_finder_url'.",
             )
         services = await build_services(
-            self.step_type, binding, finder_url, params.discovery_type, str(context.job.job_id)
+            self.step_type, binding, finder_url, str(context.job.job_id)
         )
+        discovery = services.connectors(params.discovery_type)
 
         found: Any = await call(
             self.step_type,
             f"the EDC Discovery behind the Discovery Finder at {finder_url}",
-            services.connectors.find_connector_by_bpn,
+            discovery.find_connector_by_bpn,
             params.bpnl,
         )
-        edc_discovery_url = _asked_url(services.connectors.get_cache_status(), params)
+        edc_discovery_url = asked_url(discovery.get_cache_status(), params.discovery_type)
         endpoints = _unique(found)
         if not endpoints:
             raise StepExecutionError(
@@ -170,14 +171,6 @@ class ConnectorsByBpnStep(BaseStep[ConnectorsByBpnParams, ConnectorsByBpnOutput]
                 edc_discovery_url=edc_discovery_url,
             )
         )
-
-
-def _asked_url(cache_status: dict[str, Any], params: ConnectorsByBpnParams) -> str:
-    """The EDC Discovery URL the SDK resolved through the finder, from its cache report."""
-    for entry in cache_status.get("entries", []):
-        if entry.get("key") == params.discovery_type:
-            return str(entry.get("url") or "")
-    return ""
 
 
 def _unique(found: Any) -> list[str]:

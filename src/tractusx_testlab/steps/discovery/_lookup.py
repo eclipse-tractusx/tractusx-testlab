@@ -41,6 +41,7 @@ from tractusx_sdk.dataspace.services.discovery import (
     ConnectorDiscoveryService,
     DiscoveryFinderService,
 )
+from tractusx_sdk.industry.services.discovery import BpnDiscoveryService
 
 from tractusx_testlab.logging.masking import register_secret
 from tractusx_testlab.models import BoundServiceError, StepExecutionError
@@ -49,7 +50,7 @@ from tractusx_testlab.steps import sdk_call
 if TYPE_CHECKING:
     from tractusx_testlab.models.domain.discovery_capability import DiscoveryBinding
 
-__all__ = ["DiscoveryServices", "build_services", "call"]
+__all__ = ["DiscoveryServices", "asked_url", "build_services", "call"]
 
 
 class _NoToken:
@@ -67,13 +68,25 @@ class _NoToken:
 
 
 class DiscoveryServices:
-    """The finder and the EDC Discovery behind it, sharing one sign-in."""
+    """The Discovery Finder, and the SDK services that ask it, sharing one sign-in."""
 
-    __slots__ = ("connectors", "finder")
+    __slots__ = ("finder", "oauth")
 
-    def __init__(self, finder: DiscoveryFinderService, connectors: ConnectorDiscoveryService):
+    def __init__(self, finder: DiscoveryFinderService, oauth: OAuth2Manager | _NoToken) -> None:
         self.finder = finder
-        self.connectors = connectors
+        self.oauth = oauth
+
+    def connectors(self, discovery_type: str) -> ConnectorDiscoveryService:
+        """The EDC Discovery the finder files under *discovery_type* (``bpn``)."""
+        return ConnectorDiscoveryService(
+            oauth=self.oauth,
+            discovery_finder_service=self.finder,
+            connector_discovery_key=discovery_type,
+        )
+
+    def bpns(self) -> BpnDiscoveryService:
+        """The BPN Discovery, found through the finder per identifier type."""
+        return BpnDiscoveryService(oauth=self.oauth, discovery_finder_service=self.finder)
 
 
 def _sign_in(binding: DiscoveryBinding) -> OAuth2Manager | _NoToken:
@@ -89,7 +102,7 @@ def _sign_in(binding: DiscoveryBinding) -> OAuth2Manager | _NoToken:
 
 
 async def build_services(
-    step_type: str, binding: DiscoveryBinding, finder_url: str, discovery_type: str, run: str
+    step_type: str, binding: DiscoveryBinding, finder_url: str, run: str
 ) -> DiscoveryServices:
     """Build the SDK services for *finder_url* with the binding's technical user.
 
@@ -111,13 +124,7 @@ async def build_services(
     oauth = await call(
         step_type, f"the identity provider at {binding.oauth2_auth_url}", _sign_in, binding
     )
-    finder = DiscoveryFinderService(url=finder_url, oauth=oauth)
-    connectors = ConnectorDiscoveryService(
-        oauth=oauth,
-        discovery_finder_service=finder,
-        connector_discovery_key=discovery_type,
-    )
-    return DiscoveryServices(finder, connectors)
+    return DiscoveryServices(DiscoveryFinderService(url=finder_url, oauth=oauth), oauth)
 
 
 async def call[T](step_type: str, service: str, operation: Callable[..., T], *args: Any) -> T:
@@ -134,3 +141,11 @@ async def call[T](step_type: str, service: str, operation: Callable[..., T], *ar
         raise
     except Exception as exc:  # the SDK raises bare Exception here
         raise BoundServiceError(f"{step_type}: {service} did not answer: {exc}") from exc
+
+
+def asked_url(cache_status: dict[str, Any], key: str) -> str:
+    """The service URL the SDK resolved through the finder for *key*, from its cache report."""
+    for entry in cache_status.get("entries", []):
+        if entry.get("key") == key:
+            return str(entry.get("url") or "")
+    return ""

@@ -44,10 +44,11 @@ metadata:
     and seeds it with both participants, so what a green run here says is that
     the BPN reached the directory, the directory answered with the DID, and
     the DID was the identity the provider then presented in its own catalog.
-    It opens with the lookup a consumer makes before any of that, when it
-    holds the BPN and not the address: the Discovery Finder names the EDC
-    Discovery, the EDC Discovery names the connector, and the connector
-    names its DSP version. The dataspace runs neither discovery service, so
+    It opens with the lookups a consumer makes before any of that, when it
+    holds a part and not the partner: the BPN Discovery names the BPN a
+    manufacturer part ID is registered for, the EDC Discovery names that
+    BPN's connector, and the connector names its DSP version — each service
+    found through the Discovery Finder. The dataspace runs neither discovery service, so
     testlab's mock stands in for both and what is proven is the consumer's
     side of the chain.
 
@@ -109,20 +110,51 @@ setup:
       mappings:
         - bpn: "${{ env.sut_bpnl }}"
           endpoint: "${{ infrastructure.sut.connector.dsp_url }}"
+      identifiers:
+        - type: manufacturerPartId
+          key: MPN-TESTLAB-E2E-0001
+          bpn: "${{ env.sut_bpnl }}"
     returns:
       discovery_finder_url:
         type: string
       edc_discovery_url:
         type: string
+      bpn_discovery_url:
+        type: string
 
 execution:
+  # Whose part is it? Asked of the finder, which names the BPN Discovery for
+  # the identifier's type, which names the BPN the part is registered for.
+  - id: bpns_by_identifier
+    uses: discovery/bpns_by_identifier
+    name: Look up the SUT's BPN from a manufacturer part ID
+    with:
+      keys: [MPN-TESTLAB-E2E-0001]
+      identifier_type: manufacturerPartId
+      discovery_finder_url: "${{ setup.edc_discovery.discovery_finder_url }}"
+    returns:
+      bpns:
+        type: array
+      bpnl:
+        type: string
+      bpn_discovery_url:
+        type: string
+    validate:
+      - uses: validate/assert
+        with: { input: bpnl, operator: equals, value: "${{ env.sut_bpnl }}" }
+      - uses: validate/assert
+        with:
+          input: bpn_discovery_url
+          operator: equals
+          value: "${{ setup.edc_discovery.bpn_discovery_url }}"
+
   # Where is the BPN's connector? Asked of the finder, which names the EDC
   # Discovery, which names the connector.
   - id: connectors_by_bpn
     uses: discovery/connectors_by_bpn
     name: Look up the SUT's connector from its BPN through the Discovery Finder
     with:
-      bpnl: "${{ env.sut_bpnl }}"
+      bpnl: "${{ execution.bpns_by_identifier.bpnl }}"
       discovery_finder_url: "${{ setup.edc_discovery.discovery_finder_url }}"
     returns:
       connector_endpoints:

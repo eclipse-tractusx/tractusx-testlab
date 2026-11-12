@@ -76,7 +76,8 @@ technical user (`oauth2_auth_url`, `oauth2_realm`, `oauth2_client_id`, `oauth2_c
 `OAuth2Manager` arguments; leave `oauth2_auth_url` empty for a service that asks for
 no token). Only the finder's address is bound: the EDC Discovery's is whatever
 the finder answers. `discovery/connectors_by_bpn` builds the SDK's
-`ConnectorDiscoveryService` from it.
+`ConnectorDiscoveryService` from it, and `discovery/bpns_by_identifier` its
+`BpnDiscoveryService` (part identifier → BPN) — one technical user for both.
 
 The submodel server is **not** a capability of its own. A registry entry is a
 pointer to a payload, so the backend those payloads live on is part of the
