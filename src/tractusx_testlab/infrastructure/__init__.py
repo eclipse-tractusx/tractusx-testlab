@@ -51,6 +51,7 @@ from tractusx_testlab.infrastructure.standards import (
 from tractusx_testlab.models.domain.infrastructure import (
     CapabilityBinding,
     ConnectorBinding,
+    DiscoveryBinding,
     DtrBinding,
     EngineBindings,
     EngineDtrBinding,
@@ -65,6 +66,7 @@ __all__ = [
     "KNOWN_RELEASES",
     "CapabilityBinding",
     "ConnectorBinding",
+    "DiscoveryBinding",
     "DtrBinding",
     "EngineBindings",
     "EngineDtrBinding",

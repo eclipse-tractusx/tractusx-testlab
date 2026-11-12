@@ -34,6 +34,7 @@ from tractusx_testlab.config.loader import ConfigLoader
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.infrastructure import (
     ConnectorBinding,
+    DiscoveryBinding,
     DtrBinding,
     EngineBindings,
     EngineDtrBinding,
@@ -59,6 +60,7 @@ __all__ = [
     "ConfigLoader",
     # Infrastructure
     "ConnectorBinding",
+    "DiscoveryBinding",
     "DtrBinding",
     "EngineBindings",
     "EngineDtrBinding",
