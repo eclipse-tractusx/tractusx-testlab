@@ -25,6 +25,7 @@
 import tractusx_testlab.extensions.step_modules
 import tractusx_testlab.steps.connector
 import tractusx_testlab.steps.digital_twin_registry
+import tractusx_testlab.steps.discovery
 import tractusx_testlab.steps.flow
 import tractusx_testlab.steps.http
 import tractusx_testlab.steps.mock
