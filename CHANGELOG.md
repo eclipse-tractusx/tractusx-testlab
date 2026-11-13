@@ -26,6 +26,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `TestResult` its `skip_reason`, and the `tck.test.skipped` trace event the same
   reason in `data.reason`. Checkpoint briefings leave out the tests a focus run
   does not run (`TestPlan.left_out_ids`).
+- `discovery/connectors_by_bpn`: looks up a business partner's connector
+  endpoints from its BPN, the way a Catena-X consumer (CCM, for one) must. The
+  step sends no request itself: it builds the SDK's `DiscoveryFinderService`
+  and `ConnectorDiscoveryService` from `infrastructure.engine.discovery` and
+  publishes what they answer — `connector_endpoints`, `counter_party_address`
+  (the first endpoint, ready for `connector/consumer/discover_connector` to
+  resolve the protocol) and `edc_discovery_url`. `discovery_finder_url`
+  overrides the binding's finder (a mock's). A BPN the service holds no
+  endpoint for fails the step; a finder, EDC Discovery or IdP that does not
+  answer is reported as the infrastructure's failure (`BoundServiceError`).
+- `discovery/bpns_by_identifier`: looks up the BPNs a part identifier is
+  registered for (`keys`, `identifier_type` defaulting to `manufacturerPartId`)
+  through the SDK's `BpnDiscoveryService`, found via the same Discovery Finder,
+  and publishes `bpns` (sorted), `bpnl` (the first, ready for
+  `discovery/connectors_by_bpn`) and `bpn_discovery_url`. An identifier no BPN
+  is registered for fails the step.
+- `infrastructure.engine.discovery`: the dataspace's Discovery Finder
+  (`finder_url`) and the engine's technical user for it — `oauth2_auth_url`, `oauth2_realm`,
+  `oauth2_client_id`, `oauth2_client_secret`, the SDK's `OAuth2Manager` arguments. Without
+  `oauth2_auth_url` no token is asked for. `oauth2_client_secret` is a secret field,
+  projected as a handle and masked.
+- `mock/discovery` also serves the Discovery Finder search
+  (`POST /api/v1.0/administration/connectors/discovery/search`) and, given
+  `identifiers` (`{type, key, bpn}`), a BPN Discovery
+  (`POST /api/v1.0/administration/connectors/bpnDiscovery/search`). The finder
+  names the mock EDC Discovery for `bpn` and the mock BPN Discovery for each
+  identifier type, and `edc_discovery_url`, `bpn_discovery_url` and
+  `discovery_finder_url` are published — so both lookups run against the mock.
+  The e2e `bpn_discovery.yaml` runs part ID → BPN → connector → protocol
+  through it.
 - API files (ADR-0030): a TCK carries the OpenAPI document of an API it tests,
   unchanged, under `apis/` and declares it in `env.apis` as `{id, source, type}`.
   `type` is `application/vnd.oai.openapi` (YAML) or
@@ -363,6 +393,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- The CLI's background mock server is listening before the run's first step:
+  `start()` returned while uvicorn was still binding, so a step calling one of
+  the run's own mocks at once (a discovery lookup against `mock/discovery`) was
+  refused a connection.
 - The end-of-run result tables keep their right border when a step or test
   name contains a registered secret. The terminal masks secrets in what it
   prints, so `oauth_password` in a run whose connector API key is `password`

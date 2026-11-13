@@ -203,6 +203,7 @@ nav:
         - provider: api-reference/steps/digital-twin-registry/provider.md
         - provider/wizard: api-reference/steps/digital-twin-registry/provider-wizard.md
         - submodel: api-reference/steps/digital-twin-registry/submodel.md
+      - discovery: api-reference/steps/discovery/index.md
       - flow: api-reference/steps/flow/index.md
       - http: api-reference/steps/http/index.md
       - labs:

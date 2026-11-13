@@ -55,10 +55,12 @@ from tractusx_testlab.models.domain.capabilities import (
     EngineDtrBinding,
     SutConnectorBinding,
 )
+from tractusx_testlab.models.domain.discovery_capability import DiscoveryBinding
 
 __all__ = [
     "CapabilityBinding",
     "ConnectorBinding",
+    "DiscoveryBinding",
     "DtrBinding",
     "EngineBindings",
     "EngineDtrBinding",
@@ -77,6 +79,7 @@ class EngineBindings(BaseModel):
 
     connector: ConnectorBinding = Field(default_factory=ConnectorBinding)
     dtr: EngineDtrBinding = Field(default_factory=EngineDtrBinding)
+    discovery: DiscoveryBinding = Field(default_factory=DiscoveryBinding)
 
 
 class SutBindings(BaseModel):

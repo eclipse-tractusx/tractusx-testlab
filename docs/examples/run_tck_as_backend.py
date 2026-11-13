@@ -76,6 +76,7 @@ REQUEST_VARS: dict[str, str] = {
 # Step 1 — Load (done once; in a real backend this is cached at startup)
 # ---------------------------------------------------------------------------
 
+
 def load_tck(path: Path) -> object:
     """Load a compiled .tck archive and return the runtime Tck object."""
     print(f"[loader] Loading TCK from: {path}")
@@ -88,6 +89,7 @@ def load_tck(path: Path) -> object:
 # Step 2 — Discover variables (what the backend exposes to the caller)
 # ---------------------------------------------------------------------------
 
+
 def describe_variables(tck) -> None:
     """Print all variables the TCK declares, split by required vs optional."""
     required = tck.required_variables()
@@ -96,18 +98,23 @@ def describe_variables(tck) -> None:
 
     print("\n[variables] Required (must be provided by caller):")
     for name, var in required.items():
-        print(f"  - {name}  (type: {var.type})"
-              + (f"  # {var.description}" if var.description else ""))
+        print(
+            f"  - {name}  (type: {var.type})"
+            + (f"  # {var.description}" if var.description else "")
+        )
 
     print("\n[variables] Optional (have defaults):")
     for name, var in optional.items():
-        print(f"  - {name}  (type: {var.type}, default: {var.default!r})"
-              + (f"  # {var.description}" if var.description else ""))
+        print(
+            f"  - {name}  (type: {var.type}, default: {var.default!r})"
+            + (f"  # {var.description}" if var.description else "")
+        )
 
 
 # ---------------------------------------------------------------------------
 # Step 3 — Validate incoming request variables
 # ---------------------------------------------------------------------------
+
 
 def validate_request(tck, request_vars: dict[str, str]) -> None:
     """Raise ValueError listing every missing required variable."""
@@ -115,8 +122,7 @@ def validate_request(tck, request_vars: dict[str, str]) -> None:
     missing = [name for name in required if name not in request_vars]
     if missing:
         raise ValueError(
-            f"Missing required variables: {missing}. "
-            f"Provide all of: {list(required.keys())}"
+            f"Missing required variables: {missing}. Provide all of: {list(required.keys())}"
         )
     print(f"\n[validate] All {len(required)} required variables present — OK")
 
@@ -124,6 +130,7 @@ def validate_request(tck, request_vars: dict[str, str]) -> None:
 # ---------------------------------------------------------------------------
 # Step 4 — Execute
 # ---------------------------------------------------------------------------
+
 
 async def execute(tck, runtime_vars: dict[str, str]) -> TckResult:
     """Run the TCK with the provided variables and return the full result."""
@@ -135,6 +142,7 @@ async def execute(tck, runtime_vars: dict[str, str]) -> TckResult:
 # ---------------------------------------------------------------------------
 # Step 5 — Print result summary
 # ---------------------------------------------------------------------------
+
 
 def print_result(result: TckResult) -> None:
     """Print a human-readable summary of the TCK execution result."""
@@ -160,6 +168,7 @@ def print_result(result: TckResult) -> None:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     dry_run = "--dry-run" in sys.argv
