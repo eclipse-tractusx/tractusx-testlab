@@ -49,14 +49,14 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Resolve the cached Kind node tag
         env:
           CACHE_TAG: ${{ hashFiles('tests/e2e/connector-dtr-smoke/ci/umbrella.values.yaml', '.github/workflows/build-kind-node-cache.yml', '.github/workflows/e2e-umbrella.yml') }}
         run: echo "KIND_NODE_CACHE_IMAGE=${KIND_NODE_CACHE_REPO}:${CACHE_TAG}" >> "${GITHUB_ENV}"
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: "${{ env.HELM_VERSION }}"
 
