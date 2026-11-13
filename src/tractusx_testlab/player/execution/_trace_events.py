@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Turning the engine's typed events into the ADR-0016 trace vocabulary.
@@ -268,6 +269,8 @@ def test_data(result: TestResult) -> dict[str, Any]:
         errors.append(dict(_CANCELLED_ERROR))
     if result.error:
         errors.append({"code": "TEST_FAILED", "message": result.error, "retryable": False})
+    if result.skip_reason:  # a focus run, or an ``on_failure: stop`` test that failed
+        data["reason"] = result.skip_reason
     if errors:
         data["errors"] = errors
     return data

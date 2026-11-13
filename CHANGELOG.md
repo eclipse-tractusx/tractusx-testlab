@@ -9,6 +9,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `on_failure` on a manifest `tests:` entry: `continue` (the default, left out)
+  or `stop`. When a `stop` test fails, every later test is not run and is
+  reported `SKIPPED` with the reason
+  `stopped: <test id> failed and is marked on_failure: stop`, and the TCK fails.
+  The test's own teardown still runs, and a test already left out by
+  `skip_tests` or `only_tests` keeps its own skip. The compiled package carries
+  `on_failure` when it is `stop`; `Test.on_failure`, `TestInspection.on_failure`
+  and `testlab inspect` (`On failure: …`) show it next to `skippable`.
+- Focus runs: the `only_tests` runtime variable (a list, or IDs separated by
+  commas, as for `skip_tests`) runs only the tests it names. Every other test is
+  reported `SKIPPED` with the reason `not selected for this focus run`, whether
+  or not it is `skippable`; `skip_tests` is still checked and applied on top. An
+  unknown ID refuses the run before any test runs (`UnknownFocusTestError`, a
+  `SkipNotAllowedError`). `TckResult` carries `focus` and `only_tests`, a skipped
+  `TestResult` its `skip_reason`, and the `tck.test.skipped` trace event the same
+  reason in `data.reason`. Checkpoint briefings leave out the tests a focus run
+  does not run (`TestPlan.left_out_ids`).
 - `discovery/connectors_by_bpn`: looks up a business partner's connector
   endpoints from its BPN, the way a Catena-X consumer (CCM, for one) must. The
   step sends no request itself: it builds the SDK's `DiscoveryFinderService`

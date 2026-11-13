@@ -239,12 +239,17 @@ class EnvDefinition(BaseModel):
     apis: list[ApiDefinition] | None = None
 
 
+#: What a run does when a test fails (manifest ``on_failure``).
+OnFailure = Literal["continue", "stop"]
+
+
 class TckTestEntry(EntryExtensionKeys):
     """A single entry in the TCK ``tests:`` list.
 
     ``id`` is the test filename under ``tests/``; ``name`` a label for reports and
-    logs; ``skippable`` whether the operator may omit the test via ``skip_tests``.
-    The ``labs`` extension adds ``async:`` (:class:`EntryExtensionKeys`).
+    logs; ``skippable`` whether the operator may omit the test via ``skip_tests``;
+    ``on_failure: stop`` ends the run when this test fails: every later test is
+    reported skipped. The ``labs`` extension adds ``async:`` (:class:`EntryExtensionKeys`).
     """
 
     model_config = _STRICT
@@ -252,6 +257,13 @@ class TckTestEntry(EntryExtensionKeys):
     id: str = Field(pattern=r"^[a-zA-Z0-9_\-\.]+\.yaml$")
     name: str | None = None
     skippable: bool = False
+    on_failure: OnFailure = Field(
+        default="continue",
+        description=(
+            "What the run does when this test fails: 'continue' with the next test, "
+            "or 'stop' — every later test is reported SKIPPED and the TCK fails."
+        ),
+    )
 
 
 class TckDefinition(BaseModel):

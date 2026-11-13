@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Everything a TCK declares survives compilation into ``tck-execution.json``.
@@ -113,7 +114,13 @@ def _manifest() -> dict:
             "testdata": [{"id": "body", "source": "body.json"}],
         },
         "tests": [
-            {"id": "everything.yaml", "name": "Everything", "skippable": True, "async": True}
+            {
+                "id": "everything.yaml",
+                "name": "Everything",
+                "skippable": True,
+                "async": True,
+                "on_failure": "stop",
+            }
         ],
     }
 
@@ -365,6 +372,7 @@ class TestEveryManifestEntryFieldSurvives:
 
         assert entry["skippable"] is True
         assert entry["async"] is True
+        assert entry["on_failure"] == "stop"
         assert entry["name"] == "Everything"
 
     def test_the_manifest_carries_the_same_entries(self, tmp_path) -> None:
@@ -388,3 +396,4 @@ class TestEveryManifestEntryFieldSurvives:
         _, execution = build_ir(manifest_path)
         assert execution["tests"][0]["skippable"] is False
         assert "async" not in execution["tests"][0]
+        assert "on_failure" not in execution["tests"][0]  # ``continue`` is the default

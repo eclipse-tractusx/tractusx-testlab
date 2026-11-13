@@ -304,7 +304,7 @@
     },
     "TckTestEntry": {
       "additionalProperties": false,
-      "description": "A single entry in the TCK ``tests:`` list.\n\n``id`` is the test filename under ``tests/``; ``name`` a label for reports and\nlogs; ``skippable`` whether the operator may omit the test via ``skip_tests``.\nThe ``labs`` extension adds ``async:`` (:class:`EntryExtensionKeys`).",
+      "description": "A single entry in the TCK ``tests:`` list.\n\n``id`` is the test filename under ``tests/``; ``name`` a label for reports and\nlogs; ``skippable`` whether the operator may omit the test via ``skip_tests``;\n``on_failure: stop`` ends the run when this test fails: every later test is\nreported skipped. The ``labs`` extension adds ``async:`` (:class:`EntryExtensionKeys`).",
       "properties": {
         "async": {
           "default": false,
@@ -328,6 +328,16 @@
           ],
           "default": null,
           "title": "Name"
+        },
+        "on_failure": {
+          "default": "continue",
+          "description": "What the run does when this test fails: 'continue' with the next test, or 'stop' \u2014 every later test is reported SKIPPED and the TCK fails.",
+          "enum": [
+            "continue",
+            "stop"
+          ],
+          "title": "On Failure",
+          "type": "string"
         },
         "skippable": {
           "default": false,
