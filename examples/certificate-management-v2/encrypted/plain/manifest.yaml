@@ -1,0 +1,46 @@
+kind: manifest
+package:
+  format: tck
+  format_version: 1.0.0
+  testlab: v1-alpha
+  checksum: blake2b:a19520209bd7c9c3215c047a64380e8c0553646a65fddb35f4162527c6037daf
+  encrypted: true
+  allow_asset_override: false
+tck:
+  id: certificate-management-tck-v0.0.1
+  metadata:
+    name: Certificate Management TCK
+    version: v0.0.1
+    description: 'Validate CCMAPI certificate management workflow per CX-0135 v3.1.0:
+      (1) Validate CX-0135 catalog policy constraints (2) Request certificate from
+      provider and validate payload (3) Send feedback notification and await acknowledgment
+      (4) Verify error handling for unknown certificate types
+
+      '
+    authors:
+    - name: Certificate Management Expert Group
+      email: ccm-eg@catena-x.net
+      company: Catena-X Automotive Network e.V.
+    copyright_holders:
+    - 2026 Catena-X Automotive Network e.V.
+    license: LicenseRef-Proprietary
+    standards:
+    - id: CX-0135
+      version: v3.1.0
+    tags:
+    - CCM
+compilation:
+  compiled_at: '2026-08-05T13:07:43Z'
+  compiler_version: 0.5.0
+  fingerprint:
+    nonce: blake2b:a7b88906e1fbbe4934e03eb5eff41674d745419ac4c798b45c34b4f4a9989f05
+    public_key: ed25519:yORG/mdbiDnJ8PQ/aLohTGahgQQ6OmWLMd389EQ0QVk=
+    digest: blake2b:9ffbb982290434f94ab1429cd24e572862a853aec112637dd2acec8a16e6f61f
+security:
+  algorithm: AES-256-GCM
+  key_derivation: RSA-OAEP-SHA256
+  compiler_id: d36577bad7b2a159485a4893c9c0696479973121bcf71bb383e0aae04dbc8f1e
+  signature: ckOLAkSdMqIS17xBVTWbKgVgb97nLmHRxc9p0k3gjW+cKcywM8EVoMEoh83TyuOpc88PDMA7cxoJdn3wo/8cBw==
+  authorized_players:
+  - player_id: 5b4a4fc43e9ada7a2b94d6e4e3903ee5da7c81274009a32bc2a39d37f1147f7a
+    encrypted_key: o9YTypQXnFt2RtwQRDCo5drTzq1AJ1CVuOZG/dSbDDVpA4TGGHMOKVOSMU/Aa5iakLPVmqTBSbMfqW+aTtOJBtCLDFtSE/kWww0OI7HmxLnsf0OovrGiV7/+B4wt8nO6+8E/dZeHc/NjxfxOKMT4inG1B/a3N2i5CI8eKKepXcHxcWhPtlufRDhQd5jwGVqsCmQLNI4V8k26CY2RLq8igceVK/EcpA7eEAlJUcHUhHrER/zTBnHP+Jjv3V3VExsuOAutlbN87gR99Lt8KElKXSr5USA+wtT3TpUFi7EOygOWzDa46jbr3kIzL/cDfYFy/OjqtkeiJ576fO+Z+mv2I3SzuOEq28cOgBbpMnyvIKkQDAYmP/Y16lqzIs3O8BlZ0DSZD5hVedeaOmPBVNRo+6owKd0UlxE3L7SbQ0UX3LHfa2i+Pdtj8K5FThWhZf33PMElmwKxAyKFhhYRC4XEXbTC2Ea6m5PoPiS7a0TvGx0AF2rekablMiWvfn3eH47QD3zbLPyBEfqNnSMrMi89Bh7qEmKTdy6gWUBIHdHHc0wqTDg1G7BjEYouQIbY4H5OMlKpqxHfSQ63ZJB+ptjpwGX5ZrxMEC5CIoVgW5E2tKycAnbjXGgnM1lvUmp6I40fSqIfvz1T54cp7PC1dIwZscjj1FhC73mDv2CEa1TEBkQ=
