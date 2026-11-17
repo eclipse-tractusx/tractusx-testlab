@@ -31,7 +31,7 @@ license = { text = "Apache-2.0" }
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
-    "tractusx-sdk (>=0.8.2)",
+    "tractusx-sdk (>=0.8.5,<0.9)",
     "pydantic (>=2.6.0,<3.0.0)",
     # F-E02, second round. All three are imported by name in `src/` and were
     # undeclared. `pydantic-core` and `starlette` were harmless in practice —

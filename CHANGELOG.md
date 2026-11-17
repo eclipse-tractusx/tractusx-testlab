@@ -327,6 +327,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- Requires `tractusx-sdk (>=0.8.5,<0.9)` (was `>=0.8.2`). 0.8.5 carries the offer `target` fix above; 0.9 changes the service constructors (no `verbose`) and is not supported yet.
 - **A negotiating step without filters is refused.** `pull_data_filtered`,
   `pull_data_filtered_by_policy`, `do_dsp` and `do_dsp_with_bpnl` negotiate the
   first offer that passes their `filters`; with none, that was whatever the
