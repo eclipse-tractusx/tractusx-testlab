@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.0.0a24] - 2026-11-17
+
+### Fixed
+
+- Catalog offers that carry `target` (allowed by DSP 2025-1, sent by some connectors) are no longer refused with `POLICY_MISMATCH` when their rules match. The comparison is the SDK's, and from tractusx-sdk 0.8.5 it compares only `permission`, `prohibition` and `obligation`.
+- `POLICY_MISMATCH`: an offer whose conditions agree with the expected policy no longer ends at "the offer differs elsewhere in the policy document". The message and the step error's `context.offers[].other_differences` name what the SDK found different, for example `permission.action: catalog has 'odrl:use', allowed has 'use'`. The comparison moved to `steps/connector/policy_comparison.py`.
+
 ### Added
 
 - `discovery/connectors_by_bpn`: looks up a business partner's connector
