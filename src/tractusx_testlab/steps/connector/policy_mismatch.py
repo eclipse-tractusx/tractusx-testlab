@@ -49,16 +49,13 @@ naming ``Membership``, in the console and under the step error's ``context``
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any
 
 from tractusx_sdk.dataspace.tools import PolicyMismatchError as SdkPolicyMismatchError
 
 from tractusx_testlab.models import BoundServiceError, ExecutionError
-from tractusx_testlab.steps.connector.policy_reading import (
-    Constraint,
-    constraints_of,
-    offers_of,
-)
+from tractusx_testlab.steps.connector.policy_comparison import OfferComparison, compare
+from tractusx_testlab.steps.connector.policy_reading import Constraint, constraints_of
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -78,33 +75,6 @@ _OFFERS_IN_CONTEXT = 20
 #: and runs past 100 characters, which buries the line it appears on; the full
 #: value stays in the structured context.
 _ID_CHARS = 24
-
-
-class OfferComparison(NamedTuple):
-    """One catalog offer, measured against the expected policy closest to it."""
-
-    asset_id: str
-    offer_id: str
-    offered: tuple[Constraint, ...]
-    expected_index: int
-    offered_not_expected: tuple[Constraint, ...]
-    expected_not_offered: tuple[Constraint, ...]
-
-    @property
-    def differences(self) -> int:
-        """How far this offer is from the expected policy it is closest to."""
-        return len(self.offered_not_expected) + len(self.expected_not_offered)
-
-    def as_context(self) -> dict[str, Any]:
-        """The comparison as the trace carries it (ADR-0016 ``errors[].context``)."""
-        return {
-            "asset_id": self.asset_id,
-            "offer_id": self.offer_id,
-            "constraints": [item.described() for item in self.offered],
-            "closest_expected_policy": self.expected_index,
-            "offered_not_expected": [item.described() for item in self.offered_not_expected],
-            "expected_not_offered": [item.described() for item in self.expected_not_offered],
-        }
 
 
 class PolicyMismatchError(ExecutionError):
@@ -141,54 +111,6 @@ def explained(counter_party_address: str) -> Iterator[None]:
         if mismatch is None:
             raise
         raise mismatch from exc
-
-
-def compare(catalog: dict | None, expected: list[Any]) -> list[OfferComparison]:
-    """Measure every offer in the catalog against every expected policy.
-
-    Each offer is reported against the expected policy it is *closest* to: a
-    test naming three alternatives is not asking for three failures, it is
-    asking which of them the provider came nearest to satisfying.
-    """
-    expectations = [constraints_of(policy) for policy in expected]
-    if not expectations:
-        # An empty allow-list rejects every offer without comparing anything, so
-        # there is no comparison to report — only the empty list itself, which
-        # the message names as the cause.
-        return []
-    return [
-        _closest(offer.asset_id, offer.offer_id, constraints_of(offer.policy), expectations)
-        for offer in offers_of(catalog)
-    ]
-
-
-def _closest(
-    asset_id: str,
-    offer_id: str,
-    offered: tuple[Constraint, ...],
-    expectations: list[tuple[Constraint, ...]],
-) -> OfferComparison:
-    """The offer measured against whichever expected policy it differs from least."""
-    candidates = [
-        OfferComparison(
-            asset_id=asset_id,
-            offer_id=offer_id,
-            offered=offered,
-            expected_index=index,
-            offered_not_expected=_ordered(offered, exclude=wanted),
-            expected_not_offered=_ordered(wanted, exclude=offered),
-        )
-        for index, wanted in enumerate(expectations)
-    ]
-    return min(candidates, key=lambda item: item.differences)
-
-
-def _ordered(
-    items: tuple[Constraint, ...], exclude: tuple[Constraint, ...]
-) -> tuple[Constraint, ...]:
-    """The conditions in *items* that *exclude* does not carry, in their own order."""
-    unwanted = set(exclude)
-    return tuple(item for item in items if item not in unwanted)
 
 
 def _explain(exc: BoundServiceError, counter_party_address: str) -> PolicyMismatchError | None:
@@ -267,10 +189,7 @@ def _offer_lines(comparison: OfferComparison, several: bool) -> list[str]:
             f"      the provider does not offer: {_listed(comparison.expected_not_offered)}"
         )
     if not comparison.differences:
-        lines.append(
-            "      the same conditions on both sides — the offer differs elsewhere in "
-            "the policy document (compare it in the trace)"
-        )
+        lines.extend(_same_conditions_lines(comparison.other_differences))
     return lines
 
 
@@ -298,3 +217,16 @@ def _listed(constraints: tuple[Constraint, ...]) -> str:
 def _short(value: str) -> str:
     """An identifier at a length that leaves the line readable."""
     return f"'{value}'" if len(value) <= _ID_CHARS else f"'{value[:_ID_CHARS]}…'"
+
+
+def _same_conditions_lines(differences: tuple[str, ...]) -> list[str]:
+    """The lines a rejected offer gets when its conditions agree with the expected ones."""
+    if not differences:
+        return [
+            "      the same conditions on both sides — the offer differs elsewhere in "
+            "the policy document (compare it in the trace)"
+        ]
+    return [
+        "      the same conditions on both sides, but the policy documents differ:",
+        *(f"        {line}" for item in differences for line in item.splitlines()),
+    ]

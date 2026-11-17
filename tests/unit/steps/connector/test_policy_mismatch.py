@@ -316,3 +316,75 @@ class TestAgainstTheSdk:
             catalog=CATALOG, allowed_policies=[PROVIDER_POLICY]
         )
         assert matched == [("asset-dtr", PROVIDER_POLICY)]
+
+
+class TestTheSameConditionsInADifferentDocument:
+    """Conditions that agree leave the reason in the document around them.
+
+    The SDK compares whole documents, so an offer can carry exactly the
+    conditions the test expects and still be refused. The comparison then has to
+    say what the SDK found, not leave the reader to diff two trees by eye.
+    """
+
+    @staticmethod
+    def _offered_with_action(action: str) -> dict[str, Any]:
+        offered = {**EXPECTED_POLICY, "@id": "offer-1", "@type": "Offer"}
+        offered["permission"] = [{**EXPECTED_POLICY["permission"][0], "action": action}]
+        return offered
+
+    def test_the_sdk_names_the_difference(self) -> None:
+        offered = self._offered_with_action("odrl:use")
+        catalog = {"dataset": [{"@id": "asset-dtr", "hasPolicy": [offered]}]}
+
+        (comparison,) = policy_mismatch.compare(catalog, [EXPECTED_POLICY])
+
+        assert comparison.differences == 0
+        assert any("action" in line and "odrl:use" in line for line in comparison.other_differences)
+        assert comparison.as_context()["other_differences"] == list(comparison.other_differences)
+
+    async def test_the_message_carries_it(self) -> None:
+        offered = self._offered_with_action("odrl:use")
+        catalog = {"dataset": [{"@id": "asset-dtr", "hasPolicy": [offered]}]}
+
+        with pytest.raises(PolicyMismatchError) as raised:
+            await _flow_raising(
+                _sdk_failure(catalog, [EXPECTED_POLICY]), "https://provider.example/dsp"
+            )
+
+        message = str(raised.value)
+        assert "the same conditions on both sides, but the policy documents differ:" in message
+        assert "odrl:use" in message
+        assert "differs elsewhere" not in message
+
+    def test_an_offer_with_other_conditions_is_not_asked(self) -> None:
+        """Differing conditions already are the reason; the SDK is not asked for more."""
+        (comparison,) = policy_mismatch.compare(CATALOG, [EXPECTED_POLICY])
+
+        assert comparison.differences == 1
+        assert comparison.other_differences == ()
+
+
+class TestTheOfferTarget:
+    def test_an_offer_naming_its_dataset_as_target_is_accepted(self) -> None:
+        """DSP 2025-1 lets a catalog Offer carry ``target``; it is not a term of use."""
+        offered = {**EXPECTED_POLICY, "@id": "offer-1", "@type": "Offer", "target": "asset-dtr"}
+        catalog = {"dataset": [{"@id": "asset-dtr", "hasPolicy": [offered]}]}
+
+        matched = DspTools.filter_assets_and_policies(
+            catalog=catalog, allowed_policies=[EXPECTED_POLICY]
+        )
+
+        assert [(asset_id, policy) for asset_id, policy in matched] == [("asset-dtr", offered)]
+
+    def test_the_target_is_not_named_as_a_difference(self) -> None:
+        """The SDK no longer counts ``target``, so the explanation does not either."""
+        offered = {
+            **TestTheSameConditionsInADifferentDocument._offered_with_action("odrl:use"),
+            "target": "asset-dtr",
+        }
+        catalog = {"dataset": [{"@id": "asset-dtr", "hasPolicy": [offered]}]}
+
+        (comparison,) = policy_mismatch.compare(catalog, [EXPECTED_POLICY])
+
+        assert comparison.other_differences
+        assert not any("target" in line for line in comparison.other_differences)

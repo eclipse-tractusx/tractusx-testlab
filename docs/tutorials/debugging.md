@@ -115,7 +115,7 @@ Error: no offer from https://sut.example/api/v1/dsp/2025-1 is made under a polic
 
 - **"the provider also requires"**: the offer carries a condition you didn't expect. An extra condition refuses the offer just as a missing one does.
 - **"the provider does not offer"**: you require a condition the offers don't carry.
-- **"the same conditions on both sides"**: the conditions agree, but the policy documents still differ (an action, a rule kind, a prefixed operand). Compare the two documents in the trace.
+- **"the same conditions on both sides, but the policy documents differ"**: the conditions agree, and the lines below name what the SDK found different (an action, a rule kind, how the conditions are nested). Only the rules are compared, so an offer's `target` or other attributes never cause this.
 - **`'expected_policies' is an empty list`**: an empty list accepts nothing. Name the policies, or omit the key to take any offer.
 
 The full comparison, with offer and asset ids, is in the trace:
