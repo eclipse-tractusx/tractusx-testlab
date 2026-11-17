@@ -362,10 +362,13 @@ One CloudEvent per line. Each is self-contained: it says which TCK, which test, 
     "offers":[{"asset_id":"ichub:asset:dtr:9foUM7pmSTrr5LZnx0NqiQ",
                "offer_id":"aWNodWI6Y29udHJhY3Q6T0Js…",
                "offered_not_expected":["Membership eq active"],
-               "expected_not_offered":[]}]}}]}}
+               "expected_not_offered":[],
+               "other_differences":[]}]}}]}}
 ```
 
 Read it as a set difference. `offered_not_expected` is what the provider requires and your `expected_policies` does not carry — the offer is refused for it just as surely as for something missing, so a deployment that added `Membership` to its policy fails a TCK that never listed it. `expected_not_offered` is the other direction: what the test requires and the provider does not offer.
+
+When both are empty the conditions agree and the policy documents differ elsewhere, for example an action spelled `odrl:use` against `use`, or conditions nested differently. `other_differences` then holds the SDK's own description of each difference. The SDK compares only the rules (`permission`, `prohibition`, `obligation`), so an offer's `target`, `assigner` or other attributes are never among them.
 
 #### Reading a trace
 
