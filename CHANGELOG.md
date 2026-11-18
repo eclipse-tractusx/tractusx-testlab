@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `connector/provider/create_mock_asset`: a test run again in a step-by-step session (`TckSession.run_test`) no longer fails its setup with `AUTHORING_ERROR` "Asset … already exists on the engine connector". The first attempt's teardown cannot delete an asset a contract agreement references (the connector answers 409, retired or not), so the second attempt found it there. An asset in the run's own namespace (`execution.resource_prefix`) is now replaced in place (`PUT /v3/assets`) with what the attempt offers; an asset outside it is still refused as before.
+
 ## [1.0.0a24] - 2026-11-17
 
 ### Fixed

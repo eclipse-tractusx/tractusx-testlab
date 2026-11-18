@@ -35,6 +35,7 @@ test never names it.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import time
 from collections.abc import Iterator
@@ -50,6 +51,7 @@ from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.logging.masking import forget_secrets, mask
 from tractusx_testlab.models import AuthoringError, StepDefinition
 from tractusx_testlab.models.authoring.definitions import ReturnFieldDefinition
+from tractusx_testlab.models.primitives.exceptions import BoundServiceError
 from tractusx_testlab.player.execution._step_outputs import hide_secrets
 from tractusx_testlab.server.app import create_app
 from tractusx_testlab.server.callbacks import CallbackManager
@@ -276,6 +278,44 @@ class TestTheReflexiveAsset:
         assert "{{{{" not in str(raised.value)
         # The TCK reused an id across runs: nothing about the SUT was tested.
         assert (raised.value.origin, raised.value.code) == ("authoring", "AUTHORING_ERROR")
+
+    @pytest.mark.asyncio
+    async def test_this_runs_own_asset_offered_again_is_replaced_in_place(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        # A test run again in a step-by-step session: its first attempt's
+        # teardown could not delete the asset (an agreement references it).
+        context.resource_prefix = "testlab:run-1:"
+        provider.create_asset.side_effect = ValueError("HTTP 409 conflict")
+        provider.dataspace_version = "saturn"
+        provider.build_properties.return_value = {"dct:type": {"@id": "cx-taxo:CCMAPI"}}
+        provider.assets.update.return_value = MagicMock(status_code=204)
+
+        output = await self._offer(
+            context, {"asset_id": "testlab:run-1:ccmapi", "dct_type": "cx-taxo:CCMAPI"}
+        )
+
+        assert output.value["asset_id"] == "testlab:run-1:ccmapi"
+        assert output.response.status_code == 204
+        sent = json.loads(provider.assets.update.call_args.kwargs["obj"].to_data())
+        header, key = required_header("/companycertificate/push", "POST")
+        assert sent["@id"] == "testlab:run-1:ccmapi"
+        assert sent["dataAddress"]["baseUrl"] == "http://localhost:8080/runs/run-1"
+        assert sent["dataAddress"][f"header:{header}"] == key
+        assert sent["dataAddress"]["proxyBody"] == "true"
+
+    @pytest.mark.asyncio
+    async def test_a_refused_replacement_is_the_connectors_fault(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        context.resource_prefix = "testlab:run-1:"
+        provider.create_asset.side_effect = ValueError("HTTP 409 conflict")
+        provider.dataspace_version = "saturn"
+        provider.build_properties.return_value = {}
+        provider.assets.update.return_value = MagicMock(status_code=500)
+
+        with pytest.raises(BoundServiceError, match="replacing it was refused"):
+            await self._offer(context, {"asset_id": "testlab:run-1:ccmapi"})
 
     @pytest.mark.asyncio
     async def test_a_public_mock_cannot_be_offered(
