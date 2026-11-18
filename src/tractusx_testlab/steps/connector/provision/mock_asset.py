@@ -29,14 +29,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
+from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.models.primitives.exceptions import AuthoringError
+from tractusx_testlab.models import HttpResponse, StepDefinition
+from tractusx_testlab.models.primitives.exceptions import AuthoringError, BoundServiceError
 from tractusx_testlab.player.execution.dataspace_access import DataspaceAccess
 from tractusx_testlab.server.mock_registry import required_header
 from tractusx_testlab.steps.connector.provision._shared import _ALREADY_EXISTS, _config_object
 from tractusx_testlab.steps.connector.provision.asset import (
+    _DEFAULT_ASSET_CONTEXT,
     CreateAssetOutput,
     CreateAssetParams,
     _register_asset,
@@ -130,6 +132,12 @@ class CreateMockAssetStep(BaseStep[CreateMockAssetParams, CreateAssetOutput]):
     409, so that is an error here rather than the "already there" that
     ``create_asset`` reports; give the asset id the run id
     (``${{ execution.id }}``) and withdraw it in teardown.
+
+    An asset in this run's own namespace is this run's, though: a test run
+    again in a step-by-step session offers it a second time, and the first
+    attempt's teardown cannot always withdraw it — the connector refuses to
+    delete an asset a contract agreement references, retired or not. That
+    asset is replaced in place with what this attempt offers.
     """
 
     params_model = CreateMockAssetParams
@@ -182,11 +190,58 @@ class CreateMockAssetStep(BaseStep[CreateMockAssetParams, CreateAssetOutput]):
                 "assets",
             ),
         )
-        if output.response is not None and output.response.status_code == _ALREADY_EXISTS:
-            raise AuthoringError(
-                f"Asset '{asset_id}' already exists on the engine connector, and the "
-                "connector keeps it as it was — with an earlier run's key, which the "
-                "mock refuses. Give the asset id the run id (${{ execution.id }}) and "
-                "withdraw it in teardown."
-            )
-        return output
+        if output.response is None or output.response.status_code != _ALREADY_EXISTS:
+            return output
+        if context.resource_prefix and output.value.asset_id.startswith(context.resource_prefix):
+            return _replace_asset(provider, output, asset_definition)
+        raise AuthoringError(
+            f"Asset '{asset_id}' already exists on the engine connector, and the "
+            "connector keeps it as it was — with an earlier run's key, which the "
+            "mock refuses. Give the asset id the run id (${{ execution.id }}) and "
+            "withdraw it in teardown."
+        )
+
+
+def _replace_asset(
+    provider: Any, output: StepOutput[CreateAssetOutput], definition: dict[str, Any]
+) -> StepOutput[CreateAssetOutput]:
+    """Overwrite this run's own asset with *definition* (``PUT /v3/assets``).
+
+    The SDK has a shortcut for creating an asset, not for replacing one, so the
+    asset is built here the way ``create_asset`` builds it and sent through
+    the asset controller.
+    """
+    asset_id = output.value.asset_id
+    data_address = {
+        "@type": "DataAddress",
+        "type": "HttpData",
+        "baseUrl": definition["base_url"],
+        **(definition["proxy_params"] or {}),
+        **{f"header:{name}": value for name, value in (definition["headers"] or {}).items()},
+    }
+    asset = ModelFactory.get_asset_model(
+        dataspace_version=provider.dataspace_version,
+        context=definition["context"] or dict(_DEFAULT_ASSET_CONTEXT),
+        oid=asset_id,
+        properties=provider.build_properties(
+            dct_type=definition["dct_type"],
+            dct_subject=definition["dct_subject"],
+            version=definition["version"],
+            properties=definition["properties"],
+        ),
+        private_properties=definition["private_properties"],
+        data_address=data_address,
+    )
+    response = provider.assets.update(obj=asset, verify=provider.verify_ssl)
+    if response.status_code not in (200, 204):
+        raise BoundServiceError(
+            f"Asset '{asset_id}' already exists on the engine connector from an earlier "
+            f"attempt of this run, and replacing it was refused ({response.status_code})."
+        )
+    return StepOutput(
+        value=output.value,
+        request=output.request,
+        response=HttpResponse(
+            status_code=response.status_code, body={"asset_id": asset_id, "replaced": True}
+        ),
+    )
