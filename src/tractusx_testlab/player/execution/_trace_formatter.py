@@ -52,13 +52,16 @@ _NON_FAILING_STATUSES: frozenset[TestStatus] = frozenset(
 )
 
 
-def make_intentionally_skipped_result(test: Test) -> TestResult:
+def make_intentionally_skipped_result(test: Test, reason: str | None = None) -> TestResult:
     """Build a SKIPPED result for a test intentionally omitted by the operator.
 
     this result uses ``TestStatus.SKIPPED`` so the overall TCK result remains
-    ``COMPLETED`` when all non-skipped tests pass.
+    ``COMPLETED`` when all non-skipped tests pass. *reason* says why, when it
+    was not ``skip_tests`` (a focus run, an ``on_failure: stop`` test that failed).
     """
-    return _not_run_result(test, TestStatus.SKIPPED)
+    skipped = _not_run_result(test, TestStatus.SKIPPED)
+    skipped.skip_reason = reason
+    return skipped
 
 
 def make_interrupted_result(test: Test) -> TestResult:
@@ -89,12 +92,14 @@ def build_tck_result(
     test_results: list[TestResult],
     started_at: datetime,
     finished_at: datetime,
+    only_tests: list[str] | None = None,
 ) -> TckResult:
     """Aggregate test results into a single TckResult.
 
     The overall status is ``COMPLETED`` when every test is either ``COMPLETED``
     or ``SKIPPED`` (intentionally omitted by the operator).  Any ``FAILED`` or
-    ``CANCELLED`` test makes the overall result ``FAILED``.
+    ``CANCELLED`` test makes the overall result ``FAILED``. *only_tests* marks a
+    focus run (``focus: true``) and the tests it ran.
     """
     all_ok = all(test.status in _NON_FAILING_STATUSES for test in test_results)
     return TckResult(
@@ -103,6 +108,8 @@ def build_tck_result(
         tests=test_results,
         started_at=started_at,
         finished_at=finished_at,
+        focus=bool(only_tests),
+        only_tests=list(only_tests or []),
     )
 
 

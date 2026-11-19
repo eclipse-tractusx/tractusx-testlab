@@ -51,7 +51,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from tractusx_testlab.models.runtime.checkpoints import CheckpointEntry
 from tractusx_testlab.models.runtime.selection import Selection
-from tractusx_testlab.player.execution._skip import resolve_skip_ids
+from tractusx_testlab.player.execution._skip import resolve_plan
 
 if TYPE_CHECKING:
     from tractusx_testlab.authoring.test import Tck
@@ -125,7 +125,7 @@ def approve_run(tck: Tck, operator: Operator, runtime_vars: dict | None = None) 
     cannot be interrupted by the loop's Ctrl-C handler. A run without
     checkpoints is not asked about.
     """
-    checkpoints = tck.checkpoints(resolve_skip_ids(tck, runtime_vars))
+    checkpoints = tck.checkpoints(resolve_plan(tck, runtime_vars).left_out_ids)
     if checkpoints and not operator.approve(checkpoints):
         raise RunDeclined(f"The run of {tck.name} was not approved; no test ran.")
 
@@ -147,7 +147,7 @@ async def run_with_operator(
     """
     if not approved:
         approve_run(tck, operator, runtime_vars)
-    briefed = len(tck.checkpoints(resolve_skip_ids(tck, runtime_vars)))
+    briefed = len(tck.checkpoints(resolve_plan(tck, runtime_vars).left_out_ids))
     desk = _Desk(player, operator, asyncio.get_running_loop(), briefed)
     player.monitor.add_callback(desk)
     try:

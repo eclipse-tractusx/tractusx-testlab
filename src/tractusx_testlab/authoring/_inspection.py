@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Pure helper — maps a loaded Tck into a TckInspectionResult.
@@ -64,6 +65,7 @@ def build_inspection_result(tck: Tck) -> TckInspectionResult:
                 name=test.name,
                 test_id=test.test_id,
                 skippable=test.skippable,
+                on_failure=test.on_failure,
                 on_demand=test.on_demand,
                 steps=tuple(step_metas),
             )

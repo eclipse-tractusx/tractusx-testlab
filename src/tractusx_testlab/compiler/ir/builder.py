@@ -47,9 +47,7 @@ from tractusx_testlab.compiler.ir._assets import (
     build_testdata_refs,
 )
 from tractusx_testlab.compiler.ir._compilation import build_compiled_tests, iter_test_entries
-from tractusx_testlab.compiler.ir._instructions import (
-    compute_source_hash,
-)
+from tractusx_testlab.compiler.ir._instructions import compute_source_hash
 from tractusx_testlab.compiler.ir._symbols import build_global_symbols
 from tractusx_testlab.compiler.validation._expressions import resolve_expression
 from tractusx_testlab.models.authoring.infrastructure import (
@@ -258,6 +256,8 @@ def _build_tests_list(
         test_entry["skippable"] = entry.skippable
         if entry.async_:  # labs; absent otherwise, so other packages are unchanged
             test_entry["async"] = True
+        if entry.on_failure != "continue":  # absent at the default, like ``async``
+            test_entry["on_failure"] = entry.on_failure
         test_entry["source_hash"] = source_hash
         tests_list.append(test_entry)
 

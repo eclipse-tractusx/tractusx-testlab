@@ -145,7 +145,8 @@ Key points:
   `testdata/` — referenced as `${{ env.schemas.<id> }}` and `${{ env.testdata.<id> }}`.
 - `apis` (optional, not used here) lists OpenAPI documents under `apis/` the same way, referenced as
   `${{ env.apis.<id> }}` — see [API Files](../../tck-syntax/package/api-files.md).
-- `tests` lists the test files in execution order. `id` is the file name; `name` and `skippable` are optional.
+- `tests` lists the test files in execution order. `id` is the file name; `name`, `skippable` and `on_failure`
+  (`continue` or `stop`) are optional.
 
 ## Step 2 — Write Your First Test
 

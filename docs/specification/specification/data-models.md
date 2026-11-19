@@ -90,6 +90,7 @@ classDiagram
         +str id
         +str name?
         +bool skippable = False
+        +str on_failure = "continue"
     }
 
     class TckDefinition {
@@ -343,6 +344,7 @@ classDiagram
         +float total_duration_s?
         +dict metadata?
         +AssertionSummary assertion_summary
+        +str skip_reason?
     }
 
     class AssertionSummary {
@@ -359,6 +361,8 @@ classDiagram
         +list~TestResult~ tests
         +datetime started_at?
         +datetime finished_at?
+        +bool focus = False
+        +list~str~ only_tests
     }
 
     TestResult --> "*" StepResult : steps
@@ -423,6 +427,7 @@ Top-level security metadata in `manifest.yaml` for encrypted packages.
 | `DuplicateServiceError` | Two services in `services` block share the same name | `name` |
 | `ServiceInitError` | Service fails to initialize (connection, auth failure) | `name`, `cause` |
 | `SkipNotAllowedError` | `skip_tests` runtime variable references an unknown ID or one not marked `skippable: true` | `test_ids`, `reason` |
+| `UnknownFocusTestError` | `only_tests` runtime variable references an unknown ID (a `SkipNotAllowedError`) | `test_ids` |
 
 ---
 

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Sonnet 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Rendering the sections of ``testlab inspect`` for a person to read.
@@ -71,7 +72,10 @@ def print_inspection(package: Path, result: object) -> None:
 
     for test in r.tests:
         skippable_label = "Yes" if test.skippable else "No"
-        typer.echo(f"  Test: {test.name}  |  ID: {test.test_id}  |  Skippable: {skippable_label}")
+        typer.echo(
+            f"  Test: {test.name}  |  ID: {test.test_id}  |  Skippable: {skippable_label}"
+            f"  |  On failure: {test.on_failure}"
+        )
         typer.echo(f"  {'Step Name':<40} {'Uses':<35} {'Phase':<10} {'Validations'}")
         typer.echo(f"  {'-' * 40} {'-' * 35} {'-' * 10} {'-' * 11}")
 
