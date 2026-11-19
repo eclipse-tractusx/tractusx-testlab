@@ -1,0 +1,41 @@
+variables:
+  # --- Access control ------------------------------------------------------
+  valid_bpn: BPNL000000000ISY
+  # TC-17: BPN of a third party that is neither the manufacturer nor a customer.
+  # Replace with a real non-privileged BPN before relying on TC-17 results.
+  unauthorized_bpn: BPNL00000000NONE
+ 
+  # --- Part type under test -----------------------------------------------
+  # AAS id (URN) — RAW, not base64 (tests encode internally).
+  shell_descriptor_id: urn:uuid:14ae1508-5e08-4d85-9455-53174cecb029
+  # Known PartInstance twin (TC-16 negative): MUST NOT appear in PartType lookup.
+  # Replace with a real PartInstance shell id from the same DTR.
+  shell_descriptor_id_part_instance: urn:uuid:00000000-0000-0000-0000-000000000000
+ 
+  # TC-16: SpecificAssetId criteria for GET /lookup/shells. Every criterion has
+  # to match; CX-0126 TC-16 is about digitalTwinType, so that is the one here.
+  digital_twin_type_filter:
+    - name: digitalTwinType
+      value: PartType
+ 
+  # --- Unique ID Push (TC-24–32) -------------------------------------------
+  # Skip validate_unique_id_push.yaml if the SUT does not publish Connect-to-Parent.
+  unique_id_push_receiver_bpn: BPNL00000003CRHK
+  unique_id_push_sender_bpn: BPNL00000003CRHK
+  unique_id_push_catena_x_id: urn:uuid:14ae1508-5e08-4d85-9455-53174cecb029
+  unique_id_push_manufacturer_id: BPNL00000003CRHK
+  unique_id_push_manufacturer_part_id: PART-ICPT-001
+  unique_id_push_part_instance_id: INSTANCE-001
+ 
+  # --- Infrastructure bindings (ADR-0019 connector seeding) ----------------
+  infrastructure.sut.connector.dsp_url: https://edc-provider-ichub-control.int.catena-x.net/api/v1/dsp/2025-1
+  infrastructure.sut.connector.participant_id: did:web:portal-backend.int.catena-x.net:api:administration:staticdata:did:BPNL0000000093Q7
+
+  infrastructure.engine.connector.management_url: https://edc-consumer-ichub-control.int.catena-x.net/management
+  # Management API key of the engine's own connector. Take it from the
+  # deployment's secret store at run time — a real key never belongs in a
+  # template that is committed.
+  infrastructure.engine.connector.api_key: <management-api-key>
+  infrastructure.engine.connector.participant_id: BPNL00000003CRHK
+  infrastructure.engine.connector.version: saturn
+  infrastructure.engine.connector.dsp_url: https://edc-consumer-ichub-control.int.catena-x.net/api/v1/dsp/2025-1
