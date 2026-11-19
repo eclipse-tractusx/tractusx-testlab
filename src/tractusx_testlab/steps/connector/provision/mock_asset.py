@@ -29,14 +29,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
+from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 
 from tractusx_testlab.authoring.registry import step
-from tractusx_testlab.models import StepDefinition
-from tractusx_testlab.models.primitives.exceptions import AuthoringError
+from tractusx_testlab.models import HttpRequest, HttpResponse, StepDefinition
+from tractusx_testlab.models.primitives.exceptions import AuthoringError, BoundServiceError
 from tractusx_testlab.player.execution.dataspace_access import DataspaceAccess
 from tractusx_testlab.server.mock_registry import required_header
 from tractusx_testlab.steps.connector.provision._shared import _ALREADY_EXISTS, _config_object
 from tractusx_testlab.steps.connector.provision.asset import (
+    _DEFAULT_ASSET_CONTEXT,
     CreateAssetOutput,
     CreateAssetParams,
     _register_asset,
@@ -127,9 +129,19 @@ class CreateMockAssetStep(BaseStep[CreateMockAssetParams, CreateAssetOutput]):
 
     The key is new every run, so an asset left by an earlier run with the same
     id would forward the wrong one. The connector keeps an existing asset on
-    409, so that is an error here rather than the "already there" that
-    ``create_asset`` reports; give the asset id the run id
-    (``${{ execution.id }}``) and withdraw it in teardown.
+    409, so for an asset that is not provably this run's own that is an error
+    here rather than the "already there" that ``create_asset`` reports; give
+    the asset id the run id (``${{ execution.id }}``) and withdraw it in
+    teardown.
+
+    A 409 on this run's own asset — its id carries the run's resource prefix,
+    which names the run — is a test run again in the same run (a step-by-step
+    session re-running an ``async`` test). The earlier attempt's asset is still
+    there: teardown cannot delete it once a contract agreement references it,
+    and agreements keep their history even when retired. Its data address is
+    then replaced in place (``PUT /v3/assets``) with the one built now, and the
+    step passes with the same asset id. Should the connector refuse that
+    update, the step fails saying so.
     """
 
     params_model = CreateMockAssetParams
@@ -183,6 +195,14 @@ class CreateMockAssetStep(BaseStep[CreateMockAssetParams, CreateAssetOutput]):
             ),
         )
         if output.response is not None and output.response.status_code == _ALREADY_EXISTS:
+            scoped_id = output.value.asset_id
+            if _owned_by_this_run(context, scoped_id):
+                return _update_asset(
+                    provider,
+                    scoped_id,
+                    asset_definition,
+                    request=output.request,
+                )
             raise AuthoringError(
                 f"Asset '{asset_id}' already exists on the engine connector, and the "
                 "connector keeps it as it was — with an earlier run's key, which the "
@@ -190,3 +210,80 @@ class CreateMockAssetStep(BaseStep[CreateMockAssetParams, CreateAssetOutput]):
                 "withdraw it in teardown."
             )
         return output
+
+
+def _owned_by_this_run(context: StepContext, asset_id: str) -> bool:
+    """Whether *asset_id* lies in this run's own resource namespace.
+
+    The namespace is the run's resource prefix, which the player builds from
+    the execution id; an id under it can only have been created by this run.
+    No prefix, a prefix that does not name the run, or an id outside it, and
+    the asset may be another run's — the stale-key case.
+    """
+    prefix = context.resource_prefix
+    run_id = str(context.job.job_id or "")
+    return bool(prefix and run_id) and run_id in prefix and asset_id.startswith(prefix)
+
+
+def _update_asset(
+    provider: Any,
+    asset_id: str,
+    definition: dict[str, Any],
+    *,
+    request: HttpRequest | None,
+) -> StepOutput[CreateAssetOutput]:
+    """Replace this run's existing asset with *definition* (``PUT /v3/assets``).
+
+    The SDK's provider has a create shortcut but no update one, so the asset
+    is assembled here the way ``create_asset`` assembles it — an ``HttpData``
+    address carrying the proxy flags and the key as ``header:<name>`` — and
+    sent through the asset controller's ``update``.
+    """
+    data_address: dict[str, Any] = {
+        "@type": "DataAddress",
+        "type": "HttpData",
+        "baseUrl": definition["base_url"],
+        **(definition.get("proxy_params") or {}),
+    }
+    for name, value in (definition.get("headers") or {}).items():
+        data_address[f"header:{name}"] = value
+    asset = ModelFactory.get_asset_model(
+        dataspace_version=provider.dataspace_version,
+        oid=asset_id,
+        context=definition.get("context") or dict(_DEFAULT_ASSET_CONTEXT),
+        properties=provider.build_properties(
+            dct_type=definition.get("dct_type"),
+            dct_subject=definition.get("dct_subject"),
+            version=definition.get("version"),
+            properties=definition.get("properties"),
+        ),
+        private_properties=definition.get("private_properties"),
+        data_address=data_address,
+    )
+
+    failure = (
+        f"Asset '{asset_id}' is this run's own, left on the engine connector by an earlier "
+        "attempt of the test, and the connector would not update it with this attempt's "
+        "mock key"
+    )
+    try:
+        response = provider.assets.update(obj=asset, verify=provider.verify_ssl)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise BoundServiceError(f"{failure}: {exc}") from exc
+    status = getattr(response, "status_code", None)
+    if not isinstance(status, int) or not 200 <= status < 300:
+        detail = str(getattr(response, "text", "") or "").strip()
+        raise BoundServiceError(
+            f"{failure}: it answered {status} to PUT /v3/assets"
+            + (f" — {detail}" if detail else "")
+        )
+
+    return StepOutput(
+        value=CreateAssetOutput(asset_id=asset_id),
+        request=HttpRequest(
+            method="PUT",
+            url=request.url if request is not None else "",
+            body=request.body if request is not None else None,
+        ),
+        response=HttpResponse(status_code=status, body={"asset_id": asset_id, "updated": True}),
+    )
