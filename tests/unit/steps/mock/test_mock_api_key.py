@@ -48,7 +48,7 @@ from starlette.testclient import TestClient
 
 from tractusx_testlab.config.settings import TestlabConfig
 from tractusx_testlab.logging.masking import forget_secrets, mask
-from tractusx_testlab.models import AuthoringError, StepDefinition
+from tractusx_testlab.models import AuthoringError, BoundServiceError, StepDefinition
 from tractusx_testlab.models.authoring.definitions import ReturnFieldDefinition
 from tractusx_testlab.player.execution._step_outputs import hide_secrets
 from tractusx_testlab.server.app import create_app
@@ -276,6 +276,101 @@ class TestTheReflexiveAsset:
         assert "{{{{" not in str(raised.value)
         # The TCK reused an id across runs: nothing about the SUT was tested.
         assert (raised.value.origin, raised.value.code) == ("authoring", "AUTHORING_ERROR")
+
+    @staticmethod
+    def _in_run_namespace(context: MagicMock, provider: MagicMock, prefix: str) -> None:
+        """Give the context the player's resource namespace and *provider* an SDK shape."""
+        from tractusx_sdk.dataspace.services.connector.base_connector_provider import (
+            BaseConnectorProviderService,
+        )
+
+        context.resource_prefix = prefix
+        context.resource_id = lambda local: local if local.startswith(prefix) else prefix + local
+        provider.dataspace_version = "saturn"
+        provider.verify_ssl = True
+        provider.build_properties.side_effect = lambda **kw: (
+            BaseConnectorProviderService.build_properties(None, **kw)
+        )
+
+    @pytest.mark.asyncio
+    async def test_the_runs_own_asset_from_an_earlier_attempt_is_updated(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        # A step-by-step session runs the test again in the same run: the asset
+        # id is the run's own, and the first attempt's asset is still there.
+        self._in_run_namespace(context, provider, "cx-test-suite:run-1:")
+        provider.create_asset.side_effect = ValueError("HTTP 409 conflict")
+        provider.assets.update.return_value = MagicMock(status_code=204, text="")
+
+        output = await self._offer(
+            context,
+            {
+                "asset_id": "cx-test-suite:run-1:testlab-ccmapi-asset-BPNL1",
+                "dct_type": "https://w3id.org/catenax/taxonomy#CCMAPI",
+                "version": "3.0",
+            },
+        )
+
+        assert output.value["asset_id"] == "cx-test-suite:run-1:testlab-ccmapi-asset-BPNL1"
+        assert output.request.method == "PUT"
+        # The assets endpoint the create was reported against: the same resource.
+        assert output.request.url == "https://engine/management"
+        assert output.response.status_code == 204
+        sent = provider.assets.update.call_args.kwargs["obj"].to_data()
+        header, key = required_header("/companycertificate/push", "POST")
+        assert '"cx-test-suite:run-1:testlab-ccmapi-asset-BPNL1"' in sent
+        assert f'"header:{header}": "{key}"' in sent
+        assert '"baseUrl": "http://localhost:8080/runs/run-1"' in sent
+        assert '"proxyBody": "true"' in sent
+
+    @pytest.mark.asyncio
+    async def test_an_unprefixed_id_is_scoped_and_still_the_runs_own(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        self._in_run_namespace(context, provider, "cx-test-suite:run-1:")
+        provider.create_asset.side_effect = ValueError("HTTP 409 conflict")
+        provider.assets.update.return_value = MagicMock(status_code=200, text="")
+
+        output = await self._offer(context, {"asset_id": "testlab-fixed"})
+
+        assert output.value["asset_id"] == "cx-test-suite:run-1:testlab-fixed"
+        assert output.request.method == "PUT"
+
+    @pytest.mark.asyncio
+    async def test_a_prefix_that_does_not_name_the_run_is_not_proof_of_ownership(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        self._in_run_namespace(context, provider, "cx-test-suite:")
+        provider.create_asset.side_effect = ValueError("HTTP 409 conflict")
+
+        with pytest.raises(AuthoringError, match="earlier run's key"):
+            await self._offer(context, {"asset_id": "testlab-fixed"})
+        provider.assets.update.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_an_update_the_connector_refuses_fails_the_step(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        self._in_run_namespace(context, provider, "cx-test-suite:run-1:")
+        provider.create_asset.side_effect = ValueError("HTTP 409 conflict")
+        provider.assets.update.return_value = MagicMock(status_code=400, text="bad asset")
+
+        with pytest.raises(BoundServiceError, match="would not update it") as raised:
+            await self._offer(context, {"asset_id": "testlab-fixed"})
+
+        assert "400" in str(raised.value) and "bad asset" in str(raised.value)
+        assert raised.value.origin == "infrastructure"
+
+    @pytest.mark.asyncio
+    async def test_an_update_that_does_not_reach_the_connector_fails_the_step(
+        self, context: MagicMock, provider: MagicMock
+    ) -> None:
+        self._in_run_namespace(context, provider, "cx-test-suite:run-1:")
+        provider.create_asset.side_effect = ValueError("HTTP 409 conflict")
+        provider.assets.update.side_effect = ConnectionError("connection refused")
+
+        with pytest.raises(BoundServiceError, match="connection refused"):
+            await self._offer(context, {"asset_id": "testlab-fixed"})
 
     @pytest.mark.asyncio
     async def test_a_public_mock_cannot_be_offered(
