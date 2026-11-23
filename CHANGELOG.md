@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `config/testdata/register`: an `env.variables` type that names a test data
+  file — `with: { ref: ${{ env.testdata.<id> }} }` — so `${{ env.<variable id> }}`
+  resolves to that file's content. It is what the Test Suite IDE writes for a
+  "Linked test data" variable, which every compile used to refuse as an unknown
+  type. The compiler checks that `with.ref` is one whole reference to a file
+  `env.testdata` declares and that `with` holds nothing else; `returns:` is
+  optional and, when written, must say `type: object`.
+
 ## [1.0.0a24] - 2026-11-17
 
 ### Fixed

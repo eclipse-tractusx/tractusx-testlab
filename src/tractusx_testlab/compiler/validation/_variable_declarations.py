@@ -42,6 +42,10 @@ from collections.abc import Iterator
 from typing import Any
 
 from tractusx_testlab.compiler.validation._credential_references import misplaced_in_value
+from tractusx_testlab.compiler.validation._file_references import (
+    check_reference,
+    declared_asset_ids,
+)
 from tractusx_testlab.compiler.validation._register_declarations import (
     check_alternative,
     check_instructions,
@@ -105,11 +109,12 @@ def validate_variable_declarations(env_data: dict[str, Any]) -> list[str]:
 
     errors: list[str] = []
     seen: set[str] = set()
+    assets = declared_asset_ids(env_data)
     for index, entry in enumerate(variables):
         if not isinstance(entry, dict):
             errors.append(f"env.variables[{index}] is not a mapping — write it as 'id: …' entry.")
             continue
-        errors.extend(_check_entry(entry, index, seen))
+        errors.extend(_check_entry(entry, index, seen, assets))
         # A credential is a header of the one request it authenticates, never a variable.
         for where, reference in misplaced_in_value(entry, f"env.variables[{index}]"):
             errors.append(CredentialMisuseError(reference, where).args[0])
@@ -117,7 +122,9 @@ def validate_variable_declarations(env_data: dict[str, Any]) -> list[str]:
     return errors
 
 
-def _check_entry(entry: dict[str, Any], index: int, seen: set[str]) -> Iterator[str]:
+def _check_entry(
+    entry: dict[str, Any], index: int, seen: set[str], assets: dict[str, set[str]]
+) -> Iterator[str]:
     """Check one entry: its id, its verb, and what it says it publishes."""
     var_id = str(entry.get(keys.ID) or "")
     if not var_id:
@@ -152,6 +159,13 @@ def _check_entry(entry: dict[str, Any], index: int, seen: set[str]) -> Iterator[
 
     if keys.SECRET in entry and not isinstance(entry[keys.SECRET], bool):
         yield f"Variable '{var_id}' has 'secret: {entry[keys.SECRET]}'. Write 'secret: true' or leave it out."
+    if verb.refers_to is not None:
+        yield from check_reference(entry, var_id, verb, assets.get(verb.refers_to, set()))
+        # The file decides what the variable holds, so a ``returns:`` only
+        # restates it — checked when written, not required.
+        if keys.RETURNS in entry:
+            yield from _check_returns(entry, var_id, verb)
+        return
     yield from _check_source(entry, var_id)
     yield from _check_value(entry, var_id, verb)
     yield from _check_returns(entry, var_id, verb)

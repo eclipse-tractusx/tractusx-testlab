@@ -127,6 +127,8 @@ SECRET = "secret"
 ONE_OF = "one_of"
 # Marks the alternative of a ``one_of`` group the operator is offered first.
 DEFAULT = "default"
+# The ``${{ env.testdata.<id> }}`` a ``config/testdata/register`` variable stands for.
+REF = "ref"
 
 # -- Test case entry ----------------------------------------------------------
 TEST = "test"

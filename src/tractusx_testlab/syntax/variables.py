@@ -73,6 +73,10 @@ class VariableVerb:
     type: str
     purpose: str
     class_: str | None = None
+    #: The ``env`` asset block whose entries the variable names under
+    #: ``with.ref`` instead of carrying a value of its own — ``testdata`` for
+    #: ``config/testdata/register``. ``None`` for a verb that carries its value.
+    refers_to: str | None = None
 
     def declaration(self) -> str:
         """The ``returns:`` block this verb requires, as it is written in YAML."""
@@ -111,6 +115,13 @@ CATALOG: tuple[VariableVerb, ...] = (
         "connector/provider/create_mock_asset",
         class_="MockAsset",
     ),
+    VariableVerb(
+        "config/testdata/register",
+        "object",
+        "A test data file declared under env.testdata, named by its "
+        "'${{ env.testdata.<id> }}' reference",
+        refers_to="testdata",
+    ),
 )
 
 _BY_USES: dict[str, VariableVerb] = {verb.uses: verb for verb in CATALOG}
@@ -119,6 +130,22 @@ _BY_USES: dict[str, VariableVerb] = {verb.uses: verb for verb in CATALOG}
 def verb_for(uses: str) -> VariableVerb | None:
     """Return the verb *uses* names, or ``None`` when it names none."""
     return _BY_USES.get(uses)
+
+
+def reference_of(entry: dict[str, Any]) -> str | None:
+    """The ``with.ref`` an entry stands for, when its verb names a file rather than a value.
+
+    A ``config/testdata/register`` variable is another name for a test data
+    file: it is seeded with the reference itself, so ``${{ env.<id> }}``
+    resolves to whatever ``${{ env.testdata.<file> }}`` does — the file the run
+    loaded — and nothing is copied that could drift from it.
+    """
+    verb = verb_for(str(entry.get("uses") or ""))
+    if verb is None or verb.refers_to is None:
+        return None
+    with_block = entry.get("with")
+    ref = with_block.get("ref") if isinstance(with_block, dict) else None
+    return ref if isinstance(ref, str) else None
 
 
 def known_uses() -> tuple[str, ...]:

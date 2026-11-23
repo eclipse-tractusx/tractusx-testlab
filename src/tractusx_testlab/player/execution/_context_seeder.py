@@ -145,6 +145,12 @@ def seed_env_variables(context: StepContext, tck: Tck) -> None:
     knew about. Every variable publishes one value, so the id is the reference.
     """
     for var in _declared_variables(tck):
+        # A ``config/testdata/register`` variable is another name for a file:
+        # it holds the reference, resolved to what the run loaded when read.
+        ref = variables.reference_of(var)
+        if ref is not None:
+            context.set_template(str(var[keys.ID]), ref)
+            continue
         value = (var.get(keys.WITH) or {}).get(keys.VALUE)
         if value is None:
             continue
