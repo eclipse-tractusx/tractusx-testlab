@@ -1,0 +1,783 @@
+{
+  "global_symbols": {
+    "env.sut_counter_party_id": {
+      "source": "env.variables",
+      "type": "string",
+      "default": null
+    },
+    "env.sut_counter_party_address": {
+      "source": "env.variables",
+      "type": "string",
+      "default": null
+    },
+    "env.ccm_usage_policy": {
+      "source": "env.variables",
+      "type": "object",
+      "default": {
+        "permissions": [
+          {
+            "action": "use",
+            "constraints": {
+              "and": [
+                {
+                  "left_operand": "UsagePurpose",
+                  "operator": "isAnyOf",
+                  "right_operand": "cx.ccm.base:1"
+                },
+                {
+                  "left_operand": "FrameworkAgreement",
+                  "operator": "eq",
+                  "right_operand": "DataExchangeGovernance:1.0"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "class": "Policy"
+    },
+    "env.schemas.certificate_schema": {
+      "source": "env.schemas",
+      "type": "object"
+    },
+    "env.testdata.request_certificate_body": {
+      "source": "env.testdata",
+      "type": "object"
+    },
+    "env.testdata.send_feedback_body": {
+      "source": "env.testdata",
+      "type": "object"
+    },
+    "env.testdata.error_unknown_cert_type_body": {
+      "source": "env.testdata",
+      "type": "object"
+    }
+  },
+  "services": [],
+  "schemas": {
+    "certificate_schema": {
+      "asset_key": "business_partner_certificate_schema-v3.0.1.json",
+      "type": "application/json"
+    }
+  },
+  "testdata": {
+    "request_certificate_body": {
+      "asset_key": "request_certificate_body.json",
+      "type": "application/json"
+    },
+    "send_feedback_body": {
+      "asset_key": "send_feedback_body.json",
+      "type": "application/json"
+    },
+    "error_unknown_cert_type_body": {
+      "asset_key": "error_unknown_cert_type_body.json",
+      "type": "application/json"
+    }
+  },
+  "tests": [
+    {
+      "id": "catalog-policy-validation",
+      "test_id": "catalog_policy_validation.yaml",
+      "name": "Validate CX-0135 catalog policy constraints",
+      "skippable": false,
+      "source_hash": "blake2b:c210d631655fdaca19492405acdb70c62b74086968e4f4ea637103869c8767b5"
+    },
+    {
+      "id": "request-certificate",
+      "test_id": "request_certificate.yaml",
+      "name": "Request a certificate via CCMAPI",
+      "skippable": false,
+      "source_hash": "blake2b:06c9cbf4baa0fce700e6c214a436d7ff4b725dd525ca709348c1253c2c81d0d4"
+    },
+    {
+      "id": "send-feedback-notification",
+      "test_id": "send_feedback_notification.yaml",
+      "name": "Send a feedback notification and await acknowledgment",
+      "skippable": false,
+      "source_hash": "blake2b:0f8d1762c4d08cffd33f181d63b96299dcea018b0af20cdc849ffda691e5a6c2"
+    },
+    {
+      "id": "error-handling",
+      "test_id": "error_handling.yaml",
+      "name": "Verify error handling for unknown certificate types",
+      "skippable": false,
+      "source_hash": "blake2b:ac1e5a36b9c30c3afc8e8d7f5cb3ea1459118a14d0e55a584231a96321349754"
+    }
+  ],
+  "compiled_tests": [
+    {
+      "id": "catalog-policy-validation",
+      "metadata": {
+        "name": "Catalog Policy Validation",
+        "version": "v1.0.0",
+        "description": "Validate CX-0135 catalog requirements: exactly one CCMAPI asset per BPNL and mandatory usage policy constraints (UsagePurpose: cx.ccm.base:1, FrameworkAgreement: DataExchangeGovernance:1.0).\n"
+      },
+      "symbol_table": {
+        "execution.pull_ccmapi_endpoint.edr_token": {
+          "source": "step_output",
+          "produced_by": 0,
+          "type": "string",
+          "class": "AuthToken"
+        },
+        "execution.pull_ccmapi_endpoint.dataplane_url": {
+          "source": "step_output",
+          "produced_by": 0,
+          "type": "string"
+        }
+      },
+      "instructions": [
+        {
+          "index": 0,
+          "id": "pull_ccmapi_endpoint",
+          "uses": "connector/consumer/pull_data_filtered",
+          "name": "Query catalog for CCMAPI assets and obtain dataplane credentials",
+          "with": {
+            "counter_party_address": {
+              "$ref": "env.sut_counter_party_address"
+            },
+            "counter_party_id": {
+              "$ref": "env.sut_counter_party_id"
+            },
+            "expected_policies": {
+              "$ref": "env.ccm_usage_policy"
+            },
+            "filters": [
+              {
+                "operand_left": "https://w3id.org/edc/v0.0.1/ns/type",
+                "operator": "=",
+                "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
+              },
+              {
+                "operand_left": "http://purl.org/dc/terms/subject",
+                "operator": "=",
+                "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
+              },
+              {
+                "operand_left": "https://w3id.org/catenax/ontology/common#version",
+                "operator": "=",
+                "operand_right": "3.0"
+              }
+            ]
+          },
+          "returns": {
+            "edr_token": {
+              "type": "string",
+              "class": "AuthToken"
+            },
+            "dataplane_url": {
+              "type": "string"
+            }
+          },
+          "validate": [
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "edr_token",
+                "operator": "not_null"
+              }
+            },
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "dataplane_url",
+                "operator": "not_null"
+              }
+            }
+          ],
+          "phase": "main",
+          "phase_index": 0
+        }
+      ]
+    },
+    {
+      "id": "request-certificate",
+      "metadata": {
+        "name": "Request Certificate",
+        "version": "v1.0.0",
+        "description": "Request certificate via CCMAPI endpoint per CX-0135 v3.1.0. Validates HTTP 200 response, header message ID format, and payload schema.\n"
+      },
+      "symbol_table": {
+        "execution.pull_ccmapi_endpoint.edr_token": {
+          "source": "step_output",
+          "produced_by": 0,
+          "type": "string",
+          "class": "AuthToken"
+        },
+        "execution.pull_ccmapi_endpoint.dataplane_url": {
+          "source": "step_output",
+          "produced_by": 0,
+          "type": "string"
+        },
+        "execution.request_certificate.status_code": {
+          "source": "step_output",
+          "produced_by": 1,
+          "type": "integer"
+        },
+        "execution.request_certificate.response_body": {
+          "source": "step_output",
+          "produced_by": 1,
+          "type": "object",
+          "class": "ResponseBody"
+        }
+      },
+      "instructions": [
+        {
+          "index": 0,
+          "id": "pull_ccmapi_endpoint",
+          "uses": "connector/consumer/pull_data_filtered",
+          "name": "Discover CCMAPI offer and obtain dataplane credentials",
+          "with": {
+            "counter_party_address": {
+              "$ref": "env.sut_counter_party_address"
+            },
+            "counter_party_id": {
+              "$ref": "env.sut_counter_party_id"
+            },
+            "expected_policies": {
+              "$ref": "env.ccm_usage_policy"
+            },
+            "filters": [
+              {
+                "operand_left": "https://w3id.org/edc/v0.0.1/ns/type",
+                "operator": "=",
+                "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
+              },
+              {
+                "operand_left": "http://purl.org/dc/terms/subject",
+                "operator": "=",
+                "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
+              },
+              {
+                "operand_left": "https://w3id.org/catenax/ontology/common#version",
+                "operator": "=",
+                "operand_right": "3.0"
+              }
+            ]
+          },
+          "returns": {
+            "edr_token": {
+              "type": "string",
+              "class": "AuthToken"
+            },
+            "dataplane_url": {
+              "type": "string"
+            }
+          },
+          "validate": [
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "edr_token",
+                "operator": "not_null"
+              }
+            },
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "dataplane_url",
+                "operator": "not_null"
+              }
+            }
+          ],
+          "phase": "main",
+          "phase_index": 0
+        },
+        {
+          "index": 1,
+          "id": "request_certificate",
+          "uses": "connector/dataplane/http_request",
+          "name": "POST certificate request to CCMAPI endpoint via dataplane",
+          "with": {
+            "method": "POST",
+            "dataplane_url": {
+              "$ref": "execution.pull_ccmapi_endpoint.dataplane_url"
+            },
+            "path": "/companycertificate/request",
+            "edr_token": {
+              "$ref": "execution.pull_ccmapi_endpoint.edr_token"
+            },
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "$ref": "env.testdata.request_certificate_body"
+            }
+          },
+          "returns": {
+            "status_code": {
+              "type": "integer"
+            },
+            "response_body": {
+              "type": "object",
+              "class": "ResponseBody"
+            }
+          },
+          "validate": [
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "status_code",
+                "operator": "equals",
+                "value": 200
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "response_body",
+                "path": "header.messageId",
+                "operator": "matches_regex",
+                "value": "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              }
+            },
+            {
+              "uses": "validate/schema",
+              "with": {
+                "input": "response_body",
+                "schema": {
+                  "$ref": "env.schemas.certificate_schema"
+                }
+              }
+            }
+          ],
+          "phase": "main",
+          "phase_index": 1
+        }
+      ]
+    },
+    {
+      "id": "send-feedback-notification",
+      "metadata": {
+        "name": "Send Feedback Notification",
+        "version": "v1.0.0",
+        "description": "Send a CX-0135 CCMAPI status notification to the provider via EDC dataplane and await the provider's acknowledgment on a TestLab mock endpoint.\n"
+      },
+      "symbol_table": {
+        "setup.mock_receive_ack.mock": {
+          "source": "setup_output",
+          "produced_by": 0,
+          "type": "class",
+          "class": "MockInstance"
+        },
+        "setup.mock_receive_ack.full_mock_url": {
+          "source": "setup_output",
+          "produced_by": 0,
+          "type": "string"
+        },
+        "execution.pull_ccmapi_endpoint.edr_token": {
+          "source": "step_output",
+          "produced_by": 1,
+          "type": "string",
+          "class": "AuthToken"
+        },
+        "execution.pull_ccmapi_endpoint.dataplane_url": {
+          "source": "step_output",
+          "produced_by": 1,
+          "type": "string"
+        },
+        "execution.send_status_notification.status_code": {
+          "source": "step_output",
+          "produced_by": 2,
+          "type": "integer"
+        },
+        "execution.wait_provider_ack.request_method": {
+          "source": "step_output",
+          "produced_by": 3,
+          "type": "string"
+        },
+        "execution.wait_provider_ack.request_body": {
+          "source": "step_output",
+          "produced_by": 3,
+          "type": "object",
+          "class": "CallbackPayload"
+        }
+      },
+      "instructions": [
+        {
+          "index": 0,
+          "id": "mock_receive_ack",
+          "uses": "mock/api",
+          "name": "Expose mock endpoint for provider RECEIVE acknowledgment",
+          "with": {
+            "method": "POST",
+            "path": "/companycertificate/notification/receive",
+            "response_status": 200,
+            "response_body": {
+              "$ref": "env.testdata.send_feedback_body"
+            }
+          },
+          "returns": {
+            "mock": {
+              "type": "class",
+              "class": "MockInstance"
+            },
+            "full_mock_url": {
+              "type": "string"
+            }
+          },
+          "validate": [],
+          "phase": "setup",
+          "phase_index": 0
+        },
+        {
+          "index": 1,
+          "id": "pull_ccmapi_endpoint",
+          "uses": "connector/consumer/pull_data_filtered",
+          "name": "Find CCMAPI endpoint and obtain dataplane credentials",
+          "with": {
+            "counter_party_address": {
+              "$ref": "env.sut_counter_party_address"
+            },
+            "counter_party_id": {
+              "$ref": "env.sut_counter_party_id"
+            },
+            "expected_policies": {
+              "$ref": "env.ccm_usage_policy"
+            },
+            "filters": [
+              {
+                "operand_left": "https://w3id.org/edc/v0.0.1/ns/type",
+                "operator": "=",
+                "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
+              },
+              {
+                "operand_left": "http://purl.org/dc/terms/subject",
+                "operator": "=",
+                "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
+              },
+              {
+                "operand_left": "https://w3id.org/catenax/ontology/common#version",
+                "operator": "=",
+                "operand_right": "3.0"
+              }
+            ]
+          },
+          "returns": {
+            "edr_token": {
+              "type": "string",
+              "class": "AuthToken"
+            },
+            "dataplane_url": {
+              "type": "string"
+            }
+          },
+          "validate": [
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "edr_token",
+                "operator": "not_null"
+              }
+            },
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "dataplane_url",
+                "operator": "not_null"
+              }
+            }
+          ],
+          "phase": "main",
+          "phase_index": 0
+        },
+        {
+          "index": 2,
+          "id": "send_status_notification",
+          "uses": "connector/dataplane/http_request",
+          "name": "Send CX-0135 status notification to provider via dataplane",
+          "with": {
+            "method": "POST",
+            "dataplane_url": {
+              "$ref": "execution.pull_ccmapi_endpoint.dataplane_url"
+            },
+            "path": "/companycertificate/status",
+            "edr_token": {
+              "$ref": "execution.pull_ccmapi_endpoint.edr_token"
+            },
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "$ref": "env.testdata.send_feedback_body"
+            }
+          },
+          "returns": {
+            "status_code": {
+              "type": "integer"
+            }
+          },
+          "validate": [
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "status_code",
+                "operator": "equals",
+                "value": 200
+              }
+            }
+          ],
+          "phase": "main",
+          "phase_index": 1
+        },
+        {
+          "index": 3,
+          "id": "wait_provider_ack",
+          "uses": "mock/wait/http_request",
+          "name": "Wait for provider RECEIVE acknowledgment",
+          "with": {
+            "mock": {
+              "$ref": "setup.mock_receive_ack.mock"
+            },
+            "timeout_s": 60
+          },
+          "returns": {
+            "request_method": {
+              "type": "string"
+            },
+            "request_body": {
+              "type": "object",
+              "class": "CallbackPayload"
+            }
+          },
+          "validate": [
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "request_method",
+                "operator": "equals",
+                "value": "POST"
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "request_body",
+                "path": "header.messageId",
+                "operator": "matches_regex",
+                "value": "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "request_body",
+                "path": "header.context",
+                "operator": "equals",
+                "value": "CompanyCertificateManagement-CCMAPI-Status:1.0.0"
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "request_body",
+                "path": "header.sentDateTime",
+                "operator": "not_null"
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "request_body",
+                "path": "header.senderBpn",
+                "operator": "matches_regex",
+                "value": "^BPNL[0-9A-Z]{12}$"
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "request_body",
+                "path": "header.receiverBpn",
+                "operator": "equals",
+                "value": {
+                  "$ref": "env.consumer_bpn"
+                }
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "request_body",
+                "path": "header.version",
+                "operator": "equals",
+                "value": "3.1.0"
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "request_body",
+                "path": "content.certificateStatus",
+                "operator": "one_of",
+                "value": [
+                  "RECEIVED",
+                  "ACCEPTED",
+                  "REJECTED"
+                ]
+              }
+            }
+          ],
+          "phase": "main",
+          "phase_index": 2
+        }
+      ]
+    },
+    {
+      "id": "error-handling",
+      "metadata": {
+        "name": "Error Handling",
+        "version": "v1.0.0",
+        "description": "Verify CX-0135 error handling: send a request with an unknown certificate type and verify the SUT responds with REJECTED status and a valid CX-0135 header envelope.\n"
+      },
+      "symbol_table": {
+        "execution.pull_ccmapi_endpoint.edr_token": {
+          "source": "step_output",
+          "produced_by": 0,
+          "type": "string",
+          "class": "AuthToken"
+        },
+        "execution.pull_ccmapi_endpoint.dataplane_url": {
+          "source": "step_output",
+          "produced_by": 0,
+          "type": "string"
+        },
+        "execution.send_unknown_cert_type.status_code": {
+          "source": "step_output",
+          "produced_by": 1,
+          "type": "integer"
+        },
+        "execution.send_unknown_cert_type.response_body": {
+          "source": "step_output",
+          "produced_by": 1,
+          "type": "object",
+          "class": "ResponseBody"
+        }
+      },
+      "instructions": [
+        {
+          "index": 0,
+          "id": "pull_ccmapi_endpoint",
+          "uses": "connector/consumer/pull_data_filtered",
+          "name": "Discover CCMAPI offer and obtain dataplane credentials",
+          "with": {
+            "counter_party_address": {
+              "$ref": "env.sut_counter_party_address"
+            },
+            "counter_party_id": {
+              "$ref": "env.sut_counter_party_id"
+            },
+            "expected_policies": {
+              "$ref": "env.ccm_usage_policy"
+            },
+            "filters": [
+              {
+                "operand_left": "https://w3id.org/edc/v0.0.1/ns/type",
+                "operator": "=",
+                "operand_right": "https://w3id.org/catenax/taxonomy#CCMAPI"
+              },
+              {
+                "operand_left": "http://purl.org/dc/terms/subject",
+                "operator": "=",
+                "operand_right": "https://w3id.org/catenax/taxonomy#CompanyCertificateManagementNotificationApi"
+              },
+              {
+                "operand_left": "https://w3id.org/catenax/ontology/common#version",
+                "operator": "=",
+                "operand_right": "3.0"
+              }
+            ]
+          },
+          "returns": {
+            "edr_token": {
+              "type": "string",
+              "class": "AuthToken"
+            },
+            "dataplane_url": {
+              "type": "string"
+            }
+          },
+          "validate": [
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "edr_token",
+                "operator": "not_null"
+              }
+            },
+            {
+              "uses": "validate/assert",
+              "with": {
+                "input": "dataplane_url",
+                "operator": "not_null"
+              }
+            }
+          ],
+          "phase": "main",
+          "phase_index": 0
+        },
+        {
+          "index": 1,
+          "id": "send_unknown_cert_type",
+          "uses": "connector/dataplane/http_request",
+          "name": "Send request with unknown certificate type — SUT must return REJECTED",
+          "with": {
+            "method": "POST",
+            "dataplane_url": {
+              "$ref": "execution.pull_ccmapi_endpoint.dataplane_url"
+            },
+            "path": "/companycertificate/request",
+            "edr_token": {
+              "$ref": "execution.pull_ccmapi_endpoint.edr_token"
+            },
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "$ref": "env.testdata.error_unknown_cert_type_body"
+            }
+          },
+          "returns": {
+            "status_code": {
+              "type": "integer"
+            },
+            "response_body": {
+              "type": "object",
+              "class": "ResponseBody"
+            }
+          },
+          "validate": [
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "status_code",
+                "operator": "equals",
+                "value": 200
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "response_body",
+                "path": "header.messageId",
+                "operator": "matches_regex",
+                "value": "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              }
+            },
+            {
+              "uses": "validate/field",
+              "with": {
+                "input": "response_body",
+                "path": "content.requestStatus",
+                "operator": "equals",
+                "value": "REJECTED"
+              }
+            }
+          ],
+          "phase": "main",
+          "phase_index": 1,
+          "expects": "fail"
+        }
+      ]
+    }
+  ]
+}
