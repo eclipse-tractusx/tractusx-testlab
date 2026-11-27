@@ -130,8 +130,9 @@ class TckDefinition(BaseModel):
 ```
 
 Each `TckTestEntry` names a test file relative to the package's `tests/` folder,
-with an optional human-readable `name` and a `skippable` flag the operator can act
-on at runtime.
+with an optional human-readable `name`, a `skippable` flag the operator can act
+on at runtime, and `on_failure` (`continue` or `stop`: a failed `stop` test skips
+every later test).
 
 `EnvDefinition` is the shared environment: `variables`, `services`, `schemas`
 (each a `SchemaDefinition` with `id` + `source`), `testdata` entries, and `apis`

@@ -20,6 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 ## This code was partially generated using artificial intelligence (AI) (Tool: Copilot, Model: Claude Opus 4.6).
+## This code was partially generated using artificial intelligence (AI) (Tool: Claude Code, Model: Claude Opus 5.5).
 ## It was reviewed and tested by a human committer.
 
 """Test compilation — builds compiled test dicts with symbol tables and instructions."""
@@ -43,10 +44,11 @@ def iter_test_entries(manifest_data: dict[str, Any]) -> Iterator[TckTestEntry]:
     """Yield the manifest's ``tests:`` entries, in order, as the model states them.
 
     A manifest entry is a mapping naming the test file in ``id`` and carrying
-    the two things an author may say about it — its ``name`` and whether it is
-    ``skippable``. Reading it through :class:`TckTestEntry` is what keeps the
-    compiler on the one spelling the schema accepts: entries written any other
-    way are rejected here rather than half-understood.
+    what an author may say about it — its ``name``, whether it is ``skippable``
+    and what a failure of it does (``on_failure``). Reading it through
+    :class:`TckTestEntry` is what keeps the compiler on the one spelling the
+    schema accepts: entries written any other way are rejected here rather than
+    half-understood.
     """
     for entry in manifest_data.get("tests", []):
         yield TckTestEntry.model_validate(entry)

@@ -81,6 +81,7 @@ def _load_tests(entries: list, base_dir: Path) -> list[Test]:
                     skippable=entry.skippable,
                     test_id=entry.id,
                     on_demand=entry.async_,
+                    on_failure=entry.on_failure,
                 )
             )
         except ValidationError as exc:

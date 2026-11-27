@@ -43,11 +43,10 @@ from tractusx_testlab.models.runtime.listener import InboundAnswer
 
 #: Marks a ``StepResult.error`` whose failure came from TestLab, not from the SUT.
 #:
-#: There is no ``StepStatus.ERROR`` yet — adding one changes the event payload
-#: the IDE consumes, so it lands in P4 with the rest of that contract. Until
-#: then the distinction is carried in the message, which is at least visible in
-#: the report instead of being lost entirely, and the trace turns it back into a
-#: structured ``origin`` on the step's error (ADR-0016).
+#: There is no ``StepStatus.ERROR`` yet — adding one changes the event payload the IDE consumes, so
+#: it lands in P4 with the rest of that contract. Until then the distinction is carried in the
+#: message, which is at least visible in the report instead of being lost entirely, and the trace
+#: turns it back into a structured ``origin`` on the step's error (ADR-0016).
 ENGINE_FAULT_PREFIX = "[engine fault] "
 
 
@@ -252,6 +251,7 @@ class TestResult(BaseModel):
     assertion_summary: AssertionSummary = Field(default_factory=AssertionSummary)
     callback_results: list[CallbackResult] = Field(default_factory=list)
     error: str | None = None
+    skip_reason: str | None = None  # why a SKIPPED test did not run, when it was not skip_tests
 
 
 class TckResult(BaseModel):
@@ -263,6 +263,8 @@ class TckResult(BaseModel):
     tests: list[TestResult] = Field(default_factory=list)
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    focus: bool = False  # a focus run: only the tests in ``only_tests`` ran
+    only_tests: list[str] = Field(default_factory=list)
 
     @property
     def duration_ms(self) -> float | None:

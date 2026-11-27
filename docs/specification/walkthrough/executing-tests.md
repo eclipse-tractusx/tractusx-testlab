@@ -168,8 +168,8 @@ testlab inspect dist/my-certificate-tck.tck
 ```
 
 ```text
-  Test: Ping Catalog  |  ID: ping_catalog.yaml  |  Skippable: Yes
-  Test: Request Certificate  |  ID: request_certificate.yaml  |  Skippable: No
+  Test: Ping Catalog  |  ID: ping_catalog.yaml  |  Skippable: Yes  |  On failure: stop
+  Test: Request Certificate  |  ID: request_certificate.yaml  |  Skippable: No  |  On failure: continue
 ```
 
 The **ID** (the test's file name) is what `skip_tests` takes; the display name cannot be used.
@@ -208,6 +208,36 @@ Cannot run my-certificate-tck.tck:
 
 !!! note
     Only the TCK author can allow skipping. Tests without `skippable: true` are mandatory conformance checks.
+
+### Focus runs
+
+To run only some tests, for example to try one test again after fixing it, list them in `only_tests`. It takes
+the same IDs as `skip_tests`, as a list or separated by commas:
+
+```bash
+testlab run dist/my-certificate-tck.tck --config run.yaml --var only_tests=request_certificate.yaml
+```
+
+Every other test is reported `SKIPPED` with the reason `not selected for this focus run`. This includes tests
+without `skippable: true`, so a focus run never counts as a conformance result. The TCK's environment and each
+selected test's setup and teardown still run. `skip_tests` still applies to the tests you selected, and is
+still checked.
+
+The result says it was a focus run: `focus: true` and `only_tests` list the tests it ran. An ID the TCK does
+not have refuses the run before any test runs:
+
+```text
+Cannot run my-certificate-tck.tck:
+  Cannot focus the run on test(s) 'no_such_test.yaml': not found in TCK tests list.
+```
+
+### Stopping on failure
+
+A test the author marked `on_failure: stop` in the manifest ends the run when it fails. Its own teardown still
+runs. Every later test is not run and is reported `SKIPPED` with the reason
+`stopped: <test id> failed and is marked on_failure: stop`. The TCK result is `FAIL`. A test that was already
+left out by `skip_tests` or a focus run keeps its own skip. `testlab inspect` shows the setting per test
+(`On failure: stop`).
 
 ---
 

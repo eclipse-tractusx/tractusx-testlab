@@ -80,6 +80,7 @@ env:
 tests:                       # ordered; entries are mappings, never bare strings
   - id: test_one.yaml        # the file name in tests/
     name: What test one proves
+    on_failure: stop         # optional; if this test fails, the later tests are skipped
   - id: test_two.yaml
     name: What test two proves
     skippable: true          # optional; the operator may omit it via skip_tests
@@ -88,6 +89,12 @@ tests:                       # ordered; entries are mappings, never bare strings
 `skippable` defaults to `false`. The player rejects the whole run when
 `skip_tests` names a test that is unknown or not marked, so only what the author
 allowed can ever be skipped.
+
+`on_failure` is `continue` (the default, left out) or `stop`. When a `stop` test
+fails, every later test is reported `SKIPPED` with the reason
+`stopped: <test id> failed and is marked on_failure: stop`, and the TCK fails.
+Use it for a test the rest depend on, such as a connection check. See
+[Stopping on failure](../specification/walkthrough/executing-tests.md#stopping-on-failure).
 
 With `extensions: [labs]`, an entry may also say `async: true`: a host that holds
 the run open (a `TckSession`) leaves that test waiting until someone runs it, and

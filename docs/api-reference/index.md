@@ -163,6 +163,7 @@ TCK: Certificate Management Conformity
         "name": "request-certificate",
         "test_id": "request_certificate.yaml",
         "skippable": false,
+        "on_failure": "continue",
         "steps": [
           {
             "step_name": "Request certificate",
@@ -176,6 +177,7 @@ TCK: Certificate Management Conformity
         "name": "catalog_policy_validation",
         "test_id": "catalog_policy_validation.yaml",
         "skippable": true,
+        "on_failure": "continue",
         "steps": [
           {
             "step_name": "Validate catalog policy",
@@ -335,6 +337,28 @@ Set skippable: true on the test entry in the TCK manifest to allow skipping.
 
 For the architectural rationale see
 [ADR-0024: Test-Level Skip Configuration](../developer/decision-records/backend/ADR-0024-test-skip-configuration.md).
+
+### `testlab run` — Focus Runs
+
+The `only_tests` runtime variable runs only the tests it names (a list, or IDs separated
+by commas, as for `skip_tests`). Every other test is `SKIPPED` with the reason
+`not selected for this focus run`, whether or not it is `skippable`. `skip_tests` still
+applies on top. The `TckResult` carries `focus: true` and `only_tests`; each skipped
+`TestResult` carries the reason in `skip_reason`, and its `tck.test.skipped` trace event
+in `data.reason`.
+
+```bash
+testlab run index.yaml --var only_tests=catalog_policy_validation.yaml --config your-env.yaml
+```
+
+An ID the TCK does not have raises `UnknownFocusTestError` (a `SkipNotAllowedError`)
+before any test runs.
+
+### `on_failure: stop`
+
+A manifest entry with `on_failure: stop` ends the run when that test fails: every later
+test is `SKIPPED` with the reason `stopped: <test id> failed and is marked on_failure: stop`
+and the TCK result is `FAILED`. The default is `on_failure: continue`.
 
 
 ## Provider resource namespaces
