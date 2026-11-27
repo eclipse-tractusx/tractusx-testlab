@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.0.0a25] - 2026-11-27
+
+### Fixed
+
+- `connector/provider/create_mock_asset`: running an `async` test again in a
+  step-by-step session no longer fails its setup with "Asset … already exists
+  on the engine connector". A 409 on an asset that is provably this run's own
+  (its id starts with the run's resource prefix, which carries the run id) is
+  replaced in place through `PUT /v3/assets` with this attempt's data address
+  and mock key; a refused update fails the step as the infrastructure's error
+  (`BoundServiceError`). A 409 on any other asset is still an authoring error.
+
 ### Added
 
 - `config/testdata/register`: an `env.variables` type that names a test data
