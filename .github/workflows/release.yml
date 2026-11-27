@@ -24,7 +24,12 @@ on:
   workflow_dispatch:
   push:
     tags:
+      # The release tags are named v1-alpha<N> (v1-alpha24, v1-alpha25, …), which
+      # "v*.*.*" never matched, so every release had to be published by hand.
       - "v*.*.*"
+      - "v*-alpha*"
+      - "v*-beta*"
+      - "v*-rc*"
 
 jobs:
   build:
