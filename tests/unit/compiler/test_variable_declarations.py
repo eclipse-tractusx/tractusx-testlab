@@ -367,3 +367,87 @@ class TestOneOfGroups:
 
         assert len(errors) == 1
         assert "more than one default: a, b" in errors[0]
+
+
+class TestATestDataReference:
+    """``config/testdata/register`` names a declared test data file, as the IDE writes it."""
+
+    @staticmethod
+    def _env_with_testdata(*entries: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "testdata": [{"id": "engine_certificate", "source": "engine_certificate.json"}],
+            "variables": list(entries),
+        }
+
+    @staticmethod
+    def _reference(**overrides: Any) -> dict[str, Any]:
+        """The entry exactly as the IDE's 'Linked test data' variable serializes it."""
+        entry: dict[str, Any] = {
+            "id": "engine_certificate",
+            "uses": "config/testdata/register",
+            "name": "engine_certificate",
+            "with": {"ref": "${{ env.testdata.engine_certificate }}"},
+        }
+        entry.update(overrides)
+        return entry
+
+    def test_the_ide_entry_compiles_without_a_returns_block(self) -> None:
+        assert validate_variable_declarations(self._env_with_testdata(self._reference())) == []
+
+    def test_a_file_in_the_mapping_form_of_env_testdata_is_found(self) -> None:
+        env = {
+            "testdata": {"engine_certificate": {"file": "engine_certificate.json"}},
+            "variables": [self._reference()],
+        }
+
+        assert validate_variable_declarations(env) == []
+
+    def test_a_returns_block_is_checked_when_written(self) -> None:
+        ok = self._reference(returns={"value": {"type": "object"}})
+        wrong = self._reference(id="other", returns={"value": {"type": "string"}})
+
+        assert validate_variable_declarations(self._env_with_testdata(ok)) == []
+        errors = validate_variable_declarations(self._env_with_testdata(wrong))
+        assert len(errors) == 1
+        assert "type: string" in errors[0]
+
+    def test_a_missing_ref_is_rejected(self) -> None:
+        errors = validate_variable_declarations(
+            self._env_with_testdata(self._reference(**{"with": {}}))
+        )
+
+        assert len(errors) == 1
+        assert "no 'with.ref'" in errors[0]
+
+    def test_a_file_env_does_not_declare_is_rejected(self) -> None:
+        entry = self._reference(**{"with": {"ref": "${{ env.testdata.engine_cert }}"}})
+
+        errors = validate_variable_declarations(self._env_with_testdata(entry))
+
+        assert len(errors) == 1
+        assert "env.testdata.engine_cert" in errors[0]
+        assert "engine_certificate" in errors[0]
+
+    def test_a_ref_that_is_not_one_test_data_file_is_rejected(self) -> None:
+        for ref in (
+            "${{ env.schemas.engine_certificate }}",
+            "${{ env.testdata.engine_certificate.field }}",
+            "prefix ${{ env.testdata.engine_certificate }}",
+            "engine_certificate",
+        ):
+            entry = self._reference(**{"with": {"ref": ref}})
+
+            errors = validate_variable_declarations(self._env_with_testdata(entry))
+
+            assert len(errors) == 1, ref
+            assert "not a reference to one file under env.testdata" in errors[0]
+
+    def test_a_value_beside_the_ref_is_rejected(self) -> None:
+        entry = self._reference(
+            **{"with": {"ref": "${{ env.testdata.engine_certificate }}", "value": {}}}
+        )
+
+        errors = validate_variable_declarations(self._env_with_testdata(entry))
+
+        assert len(errors) == 1
+        assert "takes only 'with.ref'" in errors[0]

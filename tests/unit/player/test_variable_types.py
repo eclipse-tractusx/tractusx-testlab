@@ -29,7 +29,7 @@ import pytest
 
 from tractusx_testlab.authoring.test import Tck
 from tractusx_testlab.config.settings import TestlabConfig
-from tractusx_testlab.models import Job
+from tractusx_testlab.models import Job, UnresolvedReferenceError
 from tractusx_testlab.models.authoring.definitions import TckDefinition, TckMetadataDefinition
 from tractusx_testlab.models.primitives.exceptions import VariableTypeError
 from tractusx_testlab.player.execution._context_seeder import (
@@ -297,3 +297,39 @@ class TestOneOfGroupIsTheListOfItsAlternatives:
 
         group = resolve_str("${{ env.usage_policy }}", context)
         assert group[1] == {"permission": [{"action": "use", "constraint": []}]}
+
+
+class TestATestDataReferenceIsTheFile:
+    """A ``config/testdata/register`` variable resolves to the test data file it names."""
+
+    _CERTIFICATE = {"certificate": {"type": "PCF", "holder": "BPNL000000000001"}}
+
+    def _seeded(self, *, loaded: bool = True) -> StepContext:
+        context = _context()
+        if loaded:  # as load_env_assets binds a test data file
+            context.set_template("testdata.engine_certificate", self._CERTIFICATE)
+            context.set_template("env.testdata.engine_certificate", self._CERTIFICATE)
+        seed_env_variables(
+            context,
+            _tck(
+                {
+                    "id": "engine_certificate",
+                    "uses": "config/testdata/register",
+                    "name": "engine_certificate",
+                    "with": {"ref": "${{ env.testdata.engine_certificate }}"},
+                }
+            ),
+        )
+        return context
+
+    def test_a_reference_reads_the_file_content(self) -> None:
+        assert resolve_str("${{ env.engine_certificate }}", self._seeded()) == self._CERTIFICATE
+
+    def test_the_variable_holds_the_reference_not_a_copy(self) -> None:
+        assert self._seeded().get_variable("engine_certificate") == (
+            "${{ env.testdata.engine_certificate }}"
+        )
+
+    def test_a_file_the_run_did_not_load_fails_as_unresolved(self) -> None:
+        with pytest.raises(UnresolvedReferenceError):
+            resolve_str("${{ env.engine_certificate }}", self._seeded(loaded=False))

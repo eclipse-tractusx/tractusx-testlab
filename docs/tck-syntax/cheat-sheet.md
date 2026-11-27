@@ -433,10 +433,24 @@ env:
         value:
           type: object
           class: Asset
+
+    # Another name for a test data file declared under env.testdata
+    - id: engine_certificate
+      uses: config/testdata/register
+      name: Engine certificate
+      with:
+        ref: ${{ env.testdata.engine_certificate }}
 ```
 
 **Reference in tests:** `${{ env.sut_dsp_url }}`, `${{ env.usage_policy }}`,
-`${{ env.api_asset }}` — the id alone, for every type.
+`${{ env.api_asset }}`, `${{ env.engine_certificate }}` — the id alone, for every type.
+
+**`config/testdata/register`** names a test data file rather than carrying a value:
+`with.ref` is the whole `${{ env.testdata.<id> }}` reference and nothing else, the
+`<id>` must be declared under `env.testdata`, and `${{ env.<variable id> }}` resolves
+to what that file holds. `returns:` may be left out; when written it is
+`returns: { value: { type: object } }`. This is the form the IDE's "Linked test data"
+variable writes.
 
 **`secret: true`** marks a variable whose value is a secret. It is read like any other — `${{ env.sut_api_token }}`
 resolves to the string — and every record of the run (trace, live events, console transcript, job API) shows it
@@ -530,7 +544,7 @@ one of them fails.
 | `util/` | `util/generate_uuid`, `util/log`, `util/parse_kv`, `util/base64` |
 | `validate/` | `validate/assert`, `validate/field`, `validate/schema` |
 | `variable/` | `variable/type/string`, `variable/type/integer`, `variable/type/boolean` |
-| `config/` | `config/connector/policy`, `config/connector/asset` |
+| `config/` | `config/connector/policy`, `config/connector/asset`, `config/testdata/register` |
 | `service/` | `service/connector_service` |
 | _(no prefix)_ | `json_path_extract` |
 
